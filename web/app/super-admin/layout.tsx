@@ -6,12 +6,13 @@
  * dashboard db-theme vars — because super-admin is a separate area
  * with its own access controls.
  *
- * TODO(roles): gate this entire layout to Super Admin / designated admin roles
- *   once the roles system exists (admin_roles / users.role).
+ * Access is gated by <SuperAdminGate> (users.role === 'super_admin' or an
+ * admin_roles entry; demo mode allows so the panel stays viewable).
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import SuperAdminGate from "@/components/SuperAdminGate";
 import {
   IconShield,
   IconMapPin,
@@ -131,7 +132,7 @@ export default function SuperAdminLayout({
           padding: "24px",
         }}
       >
-        {children}
+        <SuperAdminGate>{children}</SuperAdminGate>
       </main>
     </div>
   );

@@ -31,6 +31,7 @@
 
 import React, {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -73,6 +74,7 @@ import { initAndPresentPaymentSheet } from '../../services/stripe';
 import type { OrderPayload } from '../../services/stripe';
 import { createOrderRecord } from '../../services/orders';
 import { isSupabaseConfigured } from '../../services/supabase';
+import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -92,8 +94,7 @@ interface PaymentMethodOption {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Hardcoded tax rate — TODO: derive from business location. */
-const TAX_RATE = 0.08;
+// Tax rate is resolved per business via getTaxRateForBusiness (localized).
 
 const TIP_PRESETS: TipPreset[] = [10, 15, 20, 'custom'];
 
@@ -373,6 +374,16 @@ export default function CheckoutScreen() {
   const [errorVisible, setErrorVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Localized tax rate, resolved from the business (Stage 3 cleanup).
+  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
+  useEffect(() => {
+    let cancelled = false;
+    getTaxRateForBusiness(businessId).then((rate) => {
+      if (!cancelled) setTaxRate(rate);
+    });
+    return () => { cancelled = true; };
+  }, [businessId]);
+
   // Animated scale for pay button press
   const payBtnScale = useRef(new Animated.Value(1)).current;
 
@@ -391,8 +402,8 @@ export default function CheckoutScreen() {
 
   // ── Total breakdown ──────────────────────────────────────────────────────────
 
-  // TODO: tax from business location — hardcoded 8% for now.
-  const taxCents = Math.round(subtotalCents * TAX_RATE);
+  // Localized tax rate (from business.tax_rate or address).
+  const taxCents = Math.round(subtotalCents * taxRate);
   const totalCents = subtotalCents + taxCents + tipCents;
 
   // ── Payment options (platform-filtered) ──────────────────────────────────────

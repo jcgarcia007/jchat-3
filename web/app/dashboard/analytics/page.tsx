@@ -62,6 +62,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isBusinessPro } from "@/lib/roles";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1229,8 +1230,17 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  // TODO(plan gate): read from Supabase businesses.plan — remove UpgradePrompt when plan === 'pro'
-  const [isPro] = useState(true); // stub: treat as Pro in demo; real check is from businesses table
+  // Plan gate: Analytics Pro is gated to the Business Pro plan (demo → allowed).
+  const [isPro, setIsPro] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    isBusinessPro().then((pro) => {
+      if (!cancelled) setIsPro(pro);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Data state
   const [revenue, setRevenue] = useState<DailyRevenue[]>([]);

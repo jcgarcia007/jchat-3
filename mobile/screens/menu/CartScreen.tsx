@@ -65,6 +65,7 @@ import { useCart } from '../../context/CartContext';
 import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -87,8 +88,7 @@ interface PromoResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Hardcoded tax rate — TODO: derive from business location. */
-const TAX_RATE = 0.08;
+// Tax rate is resolved per business via getTaxRateForBusiness (localized).
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -183,6 +183,7 @@ export default function CartScreen() {
     promoCode,
     subtotalCents,
     roomId,
+    businessId,
     updateQty,
     removeLine,
     setOrderType,
@@ -195,6 +196,16 @@ export default function CartScreen() {
   const [promoInput, setPromoInput] = useState(promoCode ?? '');
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
+
+  // Localized tax rate, resolved from the business (Stage 3 cleanup).
+  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
+  useEffect(() => {
+    let cancelled = false;
+    getTaxRateForBusiness(businessId).then((rate) => {
+      if (!cancelled) setTaxRate(rate);
+    });
+    return () => { cancelled = true; };
+  }, [businessId]);
 
   // Gift recipient picker state
   const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
@@ -216,32 +227,33 @@ export default function CartScreen() {
 
     async function loadRoomUsers() {
       try {
-        // TODO: query room_members join users once presence/membership table exists.
-        // Heuristic: fetch recent message senders in this room as a proxy for members.
+        // TODO(presence): use a room_members table once live presence exists.
+        // Heuristic: recent message authors in this room as a proxy for members.
+        // Correct schema: messages.user_id → users (not sender_id/profiles).
         const { data, error } = await supabase
           .from('messages')
-          .select('sender_id, profiles:sender_id(display_name, username)')
+          .select('user_id, users:user_id(display_name, username)')
           .eq('room_id', roomId!)
-          .neq('sender_id', user?.id ?? '')
+          .neq('user_id', user?.id ?? '')
           .order('created_at', { ascending: false })
           .limit(50);
 
         if (error) throw error;
         if (cancelled) return;
 
-        // De-duplicate by sender_id
+        // De-duplicate by user_id
         const seen = new Set<string>();
         const users: RoomUser[] = [];
         for (const row of (data ?? []) as unknown as Array<{
-          sender_id: string;
-          profiles: { display_name: string | null; username: string } | null;
+          user_id: string;
+          users: { display_name: string | null; username: string } | null;
         }>) {
-          if (seen.has(row.sender_id)) continue;
-          seen.add(row.sender_id);
+          if (seen.has(row.user_id)) continue;
+          seen.add(row.user_id);
           users.push({
-            userId: row.sender_id,
-            displayName: row.profiles?.display_name ?? row.profiles?.username ?? 'User',
-            username: row.profiles?.username ?? '',
+            userId: row.user_id,
+            displayName: row.users?.display_name ?? row.users?.username ?? 'User',
+            username: row.users?.username ?? '',
           });
         }
         setRoomUsers(users);
@@ -339,8 +351,8 @@ export default function CartScreen() {
 
   const discountCents = promoResult?.valid ? promoResult.discountCents : 0;
   const afterDiscount = Math.max(0, subtotalCents - discountCents);
-  // TODO: tax from business location — hardcoded 8% for now.
-  const taxCents = Math.round(afterDiscount * TAX_RATE);
+  // Localized tax rate (from business.tax_rate or address).
+  const taxCents = Math.round(afterDiscount * taxRate);
   const totalCents = afterDiscount + taxCents;
 
   // ── Checkout eligibility ─────────────────────────────────────────────────────
