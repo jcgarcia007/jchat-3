@@ -12,7 +12,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IconShield, IconMapPin, IconArrowLeft } from "@tabler/icons-react";
+import { IconShield, IconMapPin, IconArrowLeft, IconReceiptRefund } from "@tabler/icons-react";
 
 export const metadata: Metadata = {
   title: "JChat — Super Admin",
@@ -81,6 +81,7 @@ export default function SuperAdminLayout({
 
         {/* Nav links */}
         <NavLink href="/super-admin/locations" icon={IconMapPin} label="Public Locations" />
+        <NavLink href="/super-admin/disputes" icon={IconReceiptRefund} label="Disputes" />
 
         {/* Back to dashboard */}
         <div style={{ marginTop: "auto", padding: "16px 0 0" }}>
