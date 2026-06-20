@@ -1,0 +1,249 @@
+/* ============================================================
+   JChat 3.0 — Dashboard Themes (Task 0.3)
+   Source of truth: JCHAT_3.0_DESIGN_SYSTEM.docx · Section 5
+   Ten themes, each in its own CSS scope.
+
+   Derivation rules (applied uniformly across all 10 themes):
+   ─────────────────────────────────────────────────────────
+   • --db-bg-base        From design system table (exact)
+   • --db-bg-surface     From design system table (exact)
+   • --db-bg-elevated    Dark themes:  surface + ~8% lighter step
+                         Light themes: #eef1f6 (subtle off-white lift)
+   • --db-bg-overlay     Dark themes:  surface + ~14% lighter step
+                         Light themes: #e5e9f0
+   • --db-border         = --db-bg-elevated (same as T1 pattern)
+   • --db-accent         From design system table (exact)
+   • --db-accent-text    #ffffff for all (all accents are saturated/dark enough)
+   • --db-accent-bg      rgba(R,G,B,0.12) where RGB = accent hex
+   • --db-text-primary   From design system table (exact)
+   • --db-text-secondary Dark themes: text-primary at ~55% muted toward bg
+                         Light themes: mid-gray (#64748b range)
+   • --db-text-tertiary  Dark themes: text-primary at ~35% muted toward bg
+                         Light themes: light-gray (#94a3b8 range)
+   • --db-success        #22c55e (uniform across all themes)
+   • --db-warning        #f59e0b (uniform across all themes)
+   • --db-danger         #ef4444 (uniform across all themes)
+
+   Usage:
+   <div class="theme-midnight-blue"> OR <div data-db-theme="midnight-blue">
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   T1 · Midnight Blue (reference theme — all others follow this structure)
+   bg-base: #0a0c14 · bg-surface: #0d0f1a · accent: #378ADD · text-primary: #e8eaff
+   ───────────────────────────────────────────────────────────── */
+.theme-midnight-blue,
+[data-db-theme="midnight-blue"] {
+  --db-bg-base:        #0a0c14;
+  --db-bg-surface:     #0d0f1a;
+  --db-bg-elevated:    #151824;
+  --db-bg-overlay:     #1a1d35;
+  --db-border:         #151824;
+  --db-accent:         #378ADD;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(55, 138, 221, 0.12);
+  --db-text-primary:   #e8eaff;
+  --db-text-secondary: #9095b0;
+  --db-text-tertiary:  #636390;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T2 · Clean White (light theme)
+   bg-base: #f8f9fc · bg-surface: #ffffff · accent: #4F46E5 · text-primary: #1e293b
+   ───────────────────────────────────────────────────────────── */
+.theme-clean-white,
+[data-db-theme="clean-white"] {
+  --db-bg-base:        #f8f9fc;
+  --db-bg-surface:     #ffffff;
+  --db-bg-elevated:    #eef1f6;
+  --db-bg-overlay:     #e5e9f0;
+  --db-border:         #eef1f6;
+  --db-accent:         #4F46E5;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(79, 70, 229, 0.12);
+  --db-text-primary:   #1e293b;
+  --db-text-secondary: #64748b;
+  --db-text-tertiary:  #94a3b8;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T3 · Forest Green (dark theme)
+   bg-base: #0a120a · bg-surface: #0d150d · accent: #22C55E · text-primary: #dcfce7
+   ───────────────────────────────────────────────────────────── */
+.theme-forest-green,
+[data-db-theme="forest-green"] {
+  --db-bg-base:        #0a120a;
+  --db-bg-surface:     #0d150d;
+  --db-bg-elevated:    #152015;
+  --db-bg-overlay:     #1a2d1a;
+  --db-border:         #152015;
+  --db-accent:         #22C55E;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(34, 197, 94, 0.12);
+  --db-text-primary:   #dcfce7;
+  --db-text-secondary: #86c996;
+  --db-text-tertiary:  #4d8a5c;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T4 · Royal Purple (dark theme)
+   bg-base: #0e0814 · bg-surface: #110a1a · accent: #7C3AED · text-primary: #ede9fe
+   ───────────────────────────────────────────────────────────── */
+.theme-royal-purple,
+[data-db-theme="royal-purple"] {
+  --db-bg-base:        #0e0814;
+  --db-bg-surface:     #110a1a;
+  --db-bg-elevated:    #1a1028;
+  --db-bg-overlay:     #201535;
+  --db-border:         #1a1028;
+  --db-accent:         #7C3AED;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(124, 58, 237, 0.12);
+  --db-text-primary:   #ede9fe;
+  --db-text-secondary: #a89cc0;
+  --db-text-tertiary:  #6a5e8a;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T5 · Slate Gray (dark theme)
+   bg-base: #0f1117 · bg-surface: #131720 · accent: #64748B · text-primary: #f1f5f9
+   ───────────────────────────────────────────────────────────── */
+.theme-slate-gray,
+[data-db-theme="slate-gray"] {
+  --db-bg-base:        #0f1117;
+  --db-bg-surface:     #131720;
+  --db-bg-elevated:    #1b2030;
+  --db-bg-overlay:     #22283c;
+  --db-border:         #1b2030;
+  --db-accent:         #64748B;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(100, 116, 139, 0.12);
+  --db-text-primary:   #f1f5f9;
+  --db-text-secondary: #94a3b8;
+  --db-text-tertiary:  #64748b;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T6 · Sunset Orange (dark theme)
+   bg-base: #0f0800 · bg-surface: #130a00 · accent: #F97316 · text-primary: #fff7ed
+   ───────────────────────────────────────────────────────────── */
+.theme-sunset-orange,
+[data-db-theme="sunset-orange"] {
+  --db-bg-base:        #0f0800;
+  --db-bg-surface:     #130a00;
+  --db-bg-elevated:    #1e1200;
+  --db-bg-overlay:     #271800;
+  --db-border:         #1e1200;
+  --db-accent:         #F97316;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(249, 115, 22, 0.12);
+  --db-text-primary:   #fff7ed;
+  --db-text-secondary: #c4a882;
+  --db-text-tertiary:  #8a6a44;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T7 · Rose Crimson (dark theme)
+   bg-base: #0f0005 · bg-surface: #130008 · accent: #E11D48 · text-primary: #fff1f2
+   ───────────────────────────────────────────────────────────── */
+.theme-rose-crimson,
+[data-db-theme="rose-crimson"] {
+  --db-bg-base:        #0f0005;
+  --db-bg-surface:     #130008;
+  --db-bg-elevated:    #1e0010;
+  --db-bg-overlay:     #280018;
+  --db-border:         #1e0010;
+  --db-accent:         #E11D48;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(225, 29, 72, 0.12);
+  --db-text-primary:   #fff1f2;
+  --db-text-secondary: #c88090;
+  --db-text-tertiary:  #8a4455;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T8 · Ocean Teal (dark theme)
+   bg-base: #040f12 · bg-surface: #051218 · accent: #0D9488 · text-primary: #f0fdfa
+   ───────────────────────────────────────────────────────────── */
+.theme-ocean-teal,
+[data-db-theme="ocean-teal"] {
+  --db-bg-base:        #040f12;
+  --db-bg-surface:     #051218;
+  --db-bg-elevated:    #0c1e24;
+  --db-bg-overlay:     #102830;
+  --db-border:         #0c1e24;
+  --db-accent:         #0D9488;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(13, 148, 136, 0.12);
+  --db-text-primary:   #f0fdfa;
+  --db-text-secondary: #80c8be;
+  --db-text-tertiary:  #408880;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T9 · Gold Black (dark theme)
+   bg-base: #080600 · bg-surface: #0a0800 · accent: #D97706 · text-primary: #fefce8
+   ───────────────────────────────────────────────────────────── */
+.theme-gold-black,
+[data-db-theme="gold-black"] {
+  --db-bg-base:        #080600;
+  --db-bg-surface:     #0a0800;
+  --db-bg-elevated:    #161200;
+  --db-bg-overlay:     #201a00;
+  --db-border:         #161200;
+  --db-accent:         #D97706;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(217, 119, 6, 0.12);
+  --db-text-primary:   #fefce8;
+  --db-text-secondary: #c8b870;
+  --db-text-tertiary:  #887a30;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T10 · Arctic White (light theme)
+   bg-base: #f8fafc · bg-surface: #ffffff · accent: #0EA5E9 · text-primary: #0f172a
+   ───────────────────────────────────────────────────────────── */
+.theme-arctic-white,
+[data-db-theme="arctic-white"] {
+  --db-bg-base:        #f8fafc;
+  --db-bg-surface:     #ffffff;
+  --db-bg-elevated:    #eef1f6;
+  --db-bg-overlay:     #e5e9f0;
+  --db-border:         #eef1f6;
+  --db-accent:         #0EA5E9;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(14, 165, 233, 0.12);
+  --db-text-primary:   #0f172a;
+  --db-text-secondary: #475569;
+  --db-text-tertiary:  #94a3b8;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+}
