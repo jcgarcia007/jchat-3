@@ -45,6 +45,7 @@ import {
   type PostRow,
 } from '../../services/posts';
 import PostCard from '../../components/feed/PostCard';
+import StoriesRow from '../../components/stories/StoriesRow';
 
 // ─── Local helper — get IDs the current user follows ─────────────────────────
 
@@ -324,6 +325,21 @@ export default function FeedScreen() {
     );
   }
 
+  // ── Stories row header ────────────────────────────────────────────────────
+
+  const StoriesHeader = useMemo(() => {
+    if (!user?.id) return null;
+    return (
+      <StoriesRow
+        currentUserId={user.id}
+        currentUserAvatarUrl={
+          // user.user_metadata may carry avatar_url from the auth provider.
+          (user.user_metadata?.avatar_url as string | undefined) ?? null
+        }
+      />
+    );
+  }, [user?.id, user?.user_metadata?.avatar_url]);
+
   return (
     <View style={[styles.container, { backgroundColor: c.bgBase }]}>
       <FlatList<PostRow>
@@ -333,6 +349,7 @@ export default function FeedScreen() {
         refreshControl={refreshControl}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
+        ListHeaderComponent={StoriesHeader}
         ListEmptyComponent={ListEmptyComponent}
         ListFooterComponent={ListFooterComponent}
         contentContainerStyle={
