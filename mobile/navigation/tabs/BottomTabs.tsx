@@ -23,7 +23,8 @@ import { palette } from '../../theme/tokens';
 
 import MapScreen from '../../screens/map/MapScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
-import DMsScreen from '../../screens/dms/DMsScreen';
+// Task 1.12: DMsScreen placeholder replaced by the real DMStack navigator
+import DMStack from '../DMStack';
 import FriendsScreen from '../../screens/friends/FriendsScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
 
@@ -88,11 +89,13 @@ export default function BottomTabs() {
       />
       <Tab.Screen
         name="DMs"
-        component={DMsScreen}
+        component={DMStack}
         options={{
           tabBarIcon: ({ color }) => (
             <IconMessage size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
+          // TODO(tab-badge): wire getTotalUnread() here once dynamic badge
+          // support is stable in React Navigation v7.
         }}
       />
       <Tab.Screen
