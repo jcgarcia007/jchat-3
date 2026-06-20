@@ -1,0 +1,77 @@
+/* ============================================================
+   JChat 3.0 — Core Color Tokens (Task 0.2)
+   Source of truth: JCHAT_3.0_DESIGN_SYSTEM.docx · Section 1
+   Hex values must match the Design System exactly.
+   NEVER hardcode hex in components — always use these vars.
+
+   Theme switching: dark is the default. Set `data-theme="light"`
+   on <html> to switch. The semantic surface/text tokens
+   (--bg-*, --text-*, --border-subtle) re-resolve per theme; the
+   explicit *-light tokens hold the raw light values.
+   ============================================================ */
+
+:root,
+[data-theme="dark"] {
+  /* 1.1 Brand Colors (theme-independent) */
+  --color-brand: #5C7CFA;
+  --color-brand-dark: #4A6AE8;
+  --color-brand-light: rgba(92, 124, 250, 0.12);
+  --color-brand-purple: #7C3AED;
+  --color-success: #1D9E75;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-gold: #D97706;
+
+  /* 1.2 Dark Mode Surface Colors (semantic defaults) */
+  --bg-base: #0f0f11;
+  --bg-surface: #18181b;
+  --bg-elevated: #1a1d2e;
+  --bg-overlay: #2a2a2e;
+  --border-subtle: #2a2a2e;
+  --text-primary: #f5f5f7;
+  --text-secondary: #aeaeb2;
+  --text-tertiary: #636366;
+
+  /* 1.3 Light Mode Surface Colors (raw values, always available) */
+  --bg-base-light: #f9f9fb;
+  --bg-surface-light: #ffffff;
+  --bg-elevated-light: #f2f2f7;
+  --border-subtle-light: #e5e5ea;
+  --text-primary-light: #1d1d1f;
+  --text-secondary-light: #8e8e93;
+  --text-tertiary-light: #c7c7cc;
+
+  /* 1.4 Map Colors — light */
+  --map-light-base: #eef1f8;
+  --map-light-roads: #ffffff;
+  --map-light-blocks: #e0e5f0;
+  --map-light-parks: #c8e6c9;
+  --map-light-water: #b3d9f5;
+
+  /* 1.4 Map Colors — dark */
+  --map-dark-base: #111827;
+  --map-dark-roads: #252d3d;
+  --map-dark-blocks: #1a2030;
+  --map-dark-parks: #162412;
+  --map-dark-water: #0d2035;
+
+  /* 1.4 Heatmap */
+  --heat-hot: #FF3B30;
+  --heat-warm: #FF9500;
+  --heat-mild: #FFCC00;
+  --heat-cool: #34C759;
+}
+
+/* Light theme: remap semantic surface/text tokens to the light values. */
+[data-theme="light"] {
+  --bg-base: var(--bg-base-light);
+  --bg-surface: var(--bg-surface-light);
+  --bg-elevated: var(--bg-elevated-light);
+  --border-subtle: var(--border-subtle-light);
+  --text-primary: var(--text-primary-light);
+  --text-secondary: var(--text-secondary-light);
+  --text-tertiary: var(--text-tertiary-light);
+  /* Design System Section 1 defines no light --bg-overlay; reuse the
+     light elevated surface so hover/divider chips stay coherent. */
+  --bg-overlay: var(--bg-elevated-light);
+}

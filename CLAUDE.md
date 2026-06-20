@@ -110,15 +110,20 @@ supabase/
 > **NUNCA hardcodear hex en componentes. SIEMPRE usar tokens.**
 
 ```
---color-brand    #5C7CFA
---color-success  #1D9E75
---color-warning  #D97706
---color-danger   #EF4444
+--color-brand        #5C7CFA
+--color-brand-dark   #4A6AE8
+--color-brand-light  rgba(92,124,250,0.12)
 --color-brand-purple #7C3AED
+--color-success      #1D9E75
+--color-warning      #f59e0b   ← NO confundir con gold
+--color-danger       #ef4444
+--color-gold         #D97706
 ```
 
-Mobile: `mobile/theme/tokens.ts`. Web: `web/styles/tokens.css` (globals.css /
-tailwind.config.js). Todo dark mode **y** light mode.
+> Tokens completos (37, incl. surface dark/light, map, heatmap) implementados en
+> `web/styles/tokens.css` y `mobile/theme/tokens.ts` (Task 0.2). Switching:
+> `data-theme` (web) · `useColorScheme` → `useThemeColors()` (mobile).
+> Todo dark mode **y** light mode.
 
 ### Temas — valores fijos del Design System (no modificar)
 - **10 dashboard themes** → `web/styles/themes/dashboard.css`
