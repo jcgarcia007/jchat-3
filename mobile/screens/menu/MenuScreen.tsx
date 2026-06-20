@@ -368,14 +368,15 @@ export default function MenuScreen() {
   }, [navigation]);
 
   const handleCartPress = useCallback(() => {
-    // TODO(Task 3.4): navigate to CartScreen
-    Alert.alert('Cart', 'Cart screen — coming in Task 3.4.');
-  }, []);
+    navigation.navigate('Cart');
+  }, [navigation]);
 
-  const handleOpenDetail = useCallback((_item: MenuItem) => {
-    // TODO(Task 3.3): navigate to ProductDetailScreen
-    // For now addLine falls back to the first size inside ProductRow.
-  }, []);
+  const handleOpenDetail = useCallback(
+    (item: MenuItem) => {
+      navigation.navigate('ProductDetail', { item });
+    },
+    [navigation],
+  );
 
   // ── Render helpers ────────────────────────────────────────────────────────────
 
