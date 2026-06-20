@@ -38,6 +38,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
   IconChevronRight,
@@ -254,7 +256,8 @@ function SegmentedPicker<T extends string>({
 export default function SettingsScreen() {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>>();
   const { user, signOut } = useAuth();
 
   // ── Local state ────────────────────────────────────────────────────────────
@@ -357,9 +360,6 @@ export default function SettingsScreen() {
 
   // ── Privacy navigation ─────────────────────────────────────────────────────
   const handlePrivacy = useCallback(() => {
-    // TODO(nav): ensure 'Privacy' screen is registered in a SettingsStack or MainStack
-    // @ts-ignore — Privacy screen not yet in the type-safe param list;
-    //              will be resolved when PrivacyScreen is registered in AppNavigator
     navigation.navigate('Privacy');
   }, [navigation]);
 

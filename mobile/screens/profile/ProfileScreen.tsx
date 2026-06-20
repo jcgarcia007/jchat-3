@@ -46,7 +46,10 @@ import {
   IconMovie,
 } from '@tabler/icons-react-native';
 
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
@@ -238,6 +241,7 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProps = {}) {
   const c = useThemeColors();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user: authUser, signOut } = useAuth();
 
   // Determine whose profile to show
@@ -356,8 +360,8 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
   }, []);
 
   const handleEditProfile = useCallback(() => {
-    // TODO(nav Task 1.8): navigate to EditProfileScreen
-  }, []);
+    navigation.navigate('EditProfile');
+  }, [navigation]);
 
   const handleEditCover = useCallback(() => {
     // TODO(Task 1.8): open cover photo picker
