@@ -41,6 +41,12 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: "2024-06-20" });
 }
 
+/** Email lives in auth.users, not public.users — fetch via the admin API. */
+async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string): Promise<string | undefined> {
+  const { data } = await db.auth.admin.getUserById(userId);
+  return data.user?.email ?? undefined;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
@@ -80,7 +86,7 @@ async function handleCreateConnectAccount(
   // Look up existing business record
   const { data: business, error: bizErr } = await db
     .from("businesses")
-    .select("id, stripe_account_id, name, owner_email")
+    .select("id, stripe_account_id, name, owner_id")
     .eq("id", businessId)
     .maybeSingle();
 
@@ -91,10 +97,14 @@ async function handleCreateConnectAccount(
 
   // Create a new Express account if one doesn't exist yet
   if (!accountId) {
+    // Owner email comes from auth.users (public.users/businesses have no email).
+    const ownerEmail =
+      email ??
+      (business.owner_id ? await userEmail(db, business.owner_id as string) : undefined);
     const account = await stripe.accounts.create({
       type: "express",
       country,
-      email: email ?? business.owner_email ?? undefined,
+      email: ownerEmail,
       business_type: "company",
       business_profile: {
         name: businessName ?? business.name ?? undefined,
