@@ -1,131 +1,125 @@
 /**
- * JChat 3.0 — Map Screen (Task 4.1)
+ * JChat 3.0 — Map Screen (Tasks 4.1 + 4.2/4.6 integration)
  *
- * Features implemented in this task:
- *   - Google Maps via JChatMap (PROVIDER_GOOGLE, no API key in JS)
- *   - A2 Pastel style (light) / Dark style — auto-switches with system color scheme
- *   - Location permission via expo-location; graceful fallback to city center
+ *   - Google Maps via JChatMap (PROVIDER_GOOGLE, key injected natively)
+ *   - A2 Pastel (light) / Dark style, auto-switch with system scheme
+ *   - Location permission via expo-location; city-center fallback
  *   - Style switcher: Normal / Dark / Satellite / Terrain
- *   - Filter chips: All / Bars / Cafes / Food / Events / Open now
+ *   - BusinessPin teardrops + HeatmapLayer (Task 4.2)
+ *   - FilterPanel: chips + advanced filters + search (Task 4.6)
+ *   - Tap a pin → BusinessPreviewCard bottom sheet (Task 2.3)
  *
- * Pending tasks:
- *   - Task 4.2: BusinessPin + HeatmapLayer (slot left inside <JChatMap>)
- *   - Task 4.6: Advanced FilterPanel (TODO comment below)
+ * TODO(Task 4.5): mount <MapReactionOverlay> — needs an async coordinate→point
+ *   resolver (MapView.pointForCoordinate) maintained on region change; the
+ *   component is built and tsc-clean, wiring is a follow-up.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  Modal,
   ActivityIndicator,
+  useColorScheme,
 } from 'react-native';
-import { useColorScheme } from 'react-native';
 import * as Location from 'expo-location';
-import {
-  IconMap,
-  IconMoon,
-  IconSatellite,
-  IconMountain,
-  IconAdjustmentsHorizontal,
-} from '@tabler/icons-react-native';
+import { Linking } from 'react-native';
+import { IconMap, IconMoon, IconSatellite, IconMountain, IconX } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
+import BusinessPin from '../../components/map/BusinessPin';
+import HeatmapLayer from '../../components/map/HeatmapLayer';
+import FilterPanel, { defaultFilters, type MapFilters } from '../../components/map/FilterPanel';
+import BusinessPreviewCard, { isOpenNow, type HoursMap } from '../../components/map/BusinessPreviewCard';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
-/** Fallback city center (Miami, FL) used when location permission is denied. */
+interface MapBusiness {
+  id: string;
+  name: string;
+  category: string;
+  icon_emoji: string;
+  lat: number;
+  lng: number;
+  status: string;
+  activeCount: number;
+  address: string;
+  cover_url: string | null;
+  hours: HoursMap | null;
+  rating?: number;
+  review_count?: number;
+}
+
 const FALLBACK_REGION: Region = {
   latitude: 25.7617,
   longitude: -80.1918,
   latitudeDelta: 0.05,
   longitudeDelta: 0.05,
 };
+const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
-const DEFAULT_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
+const DEMO_BUSINESSES: MapBusiness[] = [
+  { id: 'b1', name: 'The Rooftop Bar', category: 'Bar', icon_emoji: '🍸', lat: 25.765, lng: -80.193, status: 'verified', activeCount: 62, address: '100 Ocean Dr', cover_url: null, hours: null, rating: 4.6 },
+  { id: 'b2', name: 'Bean Scene', category: 'Cafe', icon_emoji: '☕️', lat: 25.758, lng: -80.196, status: 'verified', activeCount: 14, address: '22 Collins Ave', cover_url: null, hours: null, rating: 4.3 },
+  { id: 'b3', name: 'Taco Loco', category: 'Restaurant', icon_emoji: '🌮', lat: 25.7705, lng: -80.188, status: 'pending', activeCount: 3, address: '7 Washington Ave', cover_url: null, hours: null, rating: 4.1 },
+  { id: 'b4', name: 'Pulse Live', category: 'Event', icon_emoji: '🎉', lat: 25.7555, lng: -80.184, status: 'verified', activeCount: 28, address: '500 Biscayne Blvd', cover_url: null, hours: null, rating: 4.8 },
+];
 
-// ---------------------------------------------------------------------------
-// Style switcher config
-// ---------------------------------------------------------------------------
+/** Map a FilterPanel category to the business.category text. */
+function categoryMatches(cat: string, filter: MapFilters['category']): boolean {
+  if (filter === 'all' || filter === 'open_now') return true;
+  const c = cat.toLowerCase();
+  switch (filter) {
+    case 'bars': return c.includes('bar');
+    case 'cafes': return c.includes('cafe') || c.includes('coffee');
+    case 'food': return c.includes('restaurant') || c.includes('food');
+    case 'events': return c.includes('event');
+    default: return true;
+  }
+}
 
 interface StyleOption {
   variant: MapStyleVariant;
   label: string; // TODO(i18n)
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 }
-
 const STYLE_OPTIONS: StyleOption[] = [
-  { variant: 'pastel',    label: 'Normal',    Icon: IconMap },
-  { variant: 'dark',      label: 'Dark',      Icon: IconMoon },
+  { variant: 'pastel', label: 'Normal', Icon: IconMap },
+  { variant: 'dark', label: 'Dark', Icon: IconMoon },
   { variant: 'satellite', label: 'Satellite', Icon: IconSatellite },
-  { variant: 'terrain',   label: 'Terrain',   Icon: IconMountain },
+  { variant: 'terrain', label: 'Terrain', Icon: IconMountain },
 ];
-
-// ---------------------------------------------------------------------------
-// Filter chip config
-// ---------------------------------------------------------------------------
-
-type FilterKey = 'all' | 'bars' | 'cafes' | 'food' | 'events' | 'open_now';
-
-interface FilterChip {
-  key: FilterKey;
-  label: string; // TODO(i18n)
-}
-
-const FILTER_CHIPS: FilterChip[] = [
-  { key: 'all',      label: 'All' },
-  { key: 'bars',     label: 'Bars' },
-  { key: 'cafes',    label: 'Cafes' },
-  { key: 'food',     label: 'Food' },
-  { key: 'events',   label: 'Events' },
-  { key: 'open_now', label: 'Open now' },
-];
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export default function MapScreen() {
   const scheme = useColorScheme();
   const c = useThemeColors();
+  const navigation = useNavigation<MapNav>();
+  const mapRef = useRef<MapView>(null);
 
-  // Auto-switch map style with system color scheme
-  const [mapVariant, setMapVariant] = useState<MapStyleVariant>(
-    scheme === 'dark' ? 'dark' : 'pastel',
-  );
-
-  // Sync when OS color scheme changes (e.g., user toggles system dark mode)
+  const [mapVariant, setMapVariant] = useState<MapStyleVariant>(scheme === 'dark' ? 'dark' : 'pastel');
   useEffect(() => {
-    setMapVariant((prev) => {
-      // Only auto-switch between pastel and dark — don't override satellite/terrain
-      if (prev === 'pastel' || prev === 'dark') {
-        return scheme === 'dark' ? 'dark' : 'pastel';
-      }
-      return prev;
-    });
+    setMapVariant((prev) => (prev === 'pastel' || prev === 'dark' ? (scheme === 'dark' ? 'dark' : 'pastel') : prev));
   }, [scheme]);
 
   const [region, setRegion] = useState<Region | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationDenied, setLocationDenied] = useState(false);
 
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
-
-  const mapRef = useRef<MapView>(null);
-
-  // ---------------------------------------------------------------------------
-  // Location permission + initial position
-  // ---------------------------------------------------------------------------
+  const [businesses, setBusinesses] = useState<MapBusiness[]>([]);
+  const [filters, setFilters] = useState<MapFilters>(defaultFilters);
+  const [selected, setSelected] = useState<MapBusiness | null>(null);
 
   const requestLocation = useCallback(async () => {
     setLocationLoading(true);
@@ -137,16 +131,9 @@ export default function MapScreen() {
         setRegion(FALLBACK_REGION);
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setRegion({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        ...DEFAULT_DELTA,
-      });
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setRegion({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, ...DEFAULT_DELTA });
     } catch {
-      // Any OS error (e.g., location services off) → fall back gracefully
       setLocationDenied(true);
       setRegion(FALLBACK_REGION);
     } finally {
@@ -154,294 +141,152 @@ export default function MapScreen() {
     }
   }, []);
 
+  useEffect(() => { void requestLocation(); }, [requestLocation]);
+
+  // Load businesses (demo when Supabase isn't configured).
   useEffect(() => {
-    void requestLocation();
-  }, [requestLocation]);
-
-  // ---------------------------------------------------------------------------
-  // Style switcher handlers
-  // ---------------------------------------------------------------------------
-
-  const handleStyleSelect = useCallback((variant: MapStyleVariant) => {
-    setMapVariant(variant);
+    let active = true;
+    (async () => {
+      if (!isSupabaseConfigured) { setBusinesses(DEMO_BUSINESSES); return; }
+      const { data } = await supabase
+        .from('businesses')
+        .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours')
+        .in('status', ['pending', 'verified']);
+      if (!active) return;
+      const rows = (data ?? []) as Array<Partial<MapBusiness>>;
+      setBusinesses(
+        rows
+          .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
+          .map((r) => ({
+            id: r.id!, name: r.name ?? '', category: r.category ?? '',
+            icon_emoji: r.icon_emoji ?? '📍', lat: r.lat!, lng: r.lng!,
+            status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
+            address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
+          })),
+      );
+    })();
+    return () => { active = false; };
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Derived colors
-  // ---------------------------------------------------------------------------
+  const filtered = useMemo(
+    () =>
+      businesses.filter((b) => {
+        if (!categoryMatches(b.category, filters.category)) return false;
+        if ((filters.openNow || filters.category === 'open_now') && !isOpenNow(b.hours)) return false;
+        if (filters.minActiveUsers > 0 && b.activeCount < filters.minActiveUsers) return false;
+        if (filters.minRating > 0 && (b.rating ?? 0) < filters.minRating) return false;
+        if (filters.searchQuery && !b.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
+        return true;
+      }),
+    [businesses, filters],
+  );
 
-  const controlBg = c.bgSurface;
-  const controlBorder = c.borderSubtle;
-  const labelColor = c.textPrimary;
-  const subLabelColor = c.textSecondary;
-  const chipActiveBg = palette.brand;
-  const chipActiveText = palette.bgSurfaceLight; // always white-ish regardless of theme
-  const chipInactiveBg = c.bgElevated;
-  const chipInactiveText = c.textSecondary;
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  const handleNavigate = useCallback((lat: number, lng: number) => {
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?daddr=${lat},${lng}`,
+      android: `geo:0,0?q=${lat},${lng}`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+    });
+    void Linking.openURL(url);
+  }, []);
 
   if (locationLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
         <ActivityIndicator size="large" color={palette.brand} />
-        <Text style={[styles.loadingText, { color: c.textSecondary }]}>
-          {/* TODO(i18n) */}
-          Finding your location…
-        </Text>
+        <Text style={[styles.loadingText, { color: c.textSecondary }]}>Finding your location…{/* TODO(i18n) */}</Text>
       </View>
     );
   }
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
-      {/* ── Map fills the entire screen ── */}
-      <JChatMap
-        ref={mapRef}
-        mapStyleVariant={mapVariant}
-        style={StyleSheet.absoluteFill}
-        initialRegion={region ?? FALLBACK_REGION}
-      >
-        {/* TODO(Task 4.2): BusinessPin + HeatmapLayer */}
+      <JChatMap ref={mapRef} mapStyleVariant={mapVariant} style={StyleSheet.absoluteFill} initialRegion={region ?? FALLBACK_REGION}>
+        <HeatmapLayer businesses={filtered.map((b) => ({ id: b.id, lat: b.lat, lng: b.lng, activeCount: b.activeCount }))} />
+        {filtered.map((b) => (
+          <BusinessPin
+            key={b.id}
+            business={{ id: b.id, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, status: b.status, activeCount: b.activeCount }}
+            onPress={() => setSelected(b)}
+          />
+        ))}
+        {/* TODO(Task 4.5): <MapReactionOverlay> — needs coordinate→point resolver */}
       </JChatMap>
 
-      {/* ── Overlays rendered above the map ── */}
       <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
-
-        {/* ── Location denied banner ── */}
         {locationDenied && (
-          <TouchableOpacity
-            style={[styles.deniedBanner, { backgroundColor: palette.warning + 'EE' }]}
-            onPress={requestLocation}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.deniedBannerText}>
-              {/* TODO(i18n) */}
-              Location access denied — showing default area. Tap to retry.
-            </Text>
+          <TouchableOpacity style={[styles.deniedBanner, { backgroundColor: palette.warning }]} onPress={requestLocation} activeOpacity={0.8}>
+            <Text style={styles.deniedBannerText}>Location access denied — showing default area. Tap to retry.{/* TODO(i18n) */}</Text>
           </TouchableOpacity>
         )}
 
-        {/* ── Filter chips row ── */}
-        <View style={styles.chipsWrapper} pointerEvents="box-none">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsContent}
-            pointerEvents="box-none"
-          >
-            {FILTER_CHIPS.map((chip) => {
-              const isActive = chip.key === activeFilter;
-              return (
-                <TouchableOpacity
-                  key={chip.key}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: isActive ? chipActiveBg : chipInactiveBg,
-                      borderColor: isActive ? chipActiveBg : controlBorder,
-                    },
-                  ]}
-                  onPress={() => setActiveFilter(chip.key)}
-                  activeOpacity={0.75}
-                >
-                  <Text
-                    style={[
-                      styles.chipLabel,
-                      { color: isActive ? chipActiveText : chipInactiveText },
-                    ]}
-                  >
-                    {chip.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {/* Filters (chips + advanced + search) — Task 4.6 */}
+        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
 
-            {/* TODO(Task 4.6): Advanced FilterPanel trigger */}
-            <TouchableOpacity
-              style={[
-                styles.chip,
-                styles.chipFilters,
-                { backgroundColor: chipInactiveBg, borderColor: controlBorder },
-              ]}
-              onPress={() => {
-                // TODO(Task 4.6): open advanced FilterPanel
-              }}
-              activeOpacity={0.75}
-            >
-              <IconAdjustmentsHorizontal
-                size={14}
-                color={chipInactiveText}
-                strokeWidth={2}
-              />
-              <Text style={[styles.chipLabel, { color: chipInactiveText, marginLeft: 4 }]}>
-                {/* TODO(i18n) */}
-                Filters
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        {/* ── Style switcher — bottom-right corner ── */}
-        <View
-          style={[
-            styles.styleSwitcher,
-            {
-              backgroundColor: controlBg + 'F2', // slight transparency
-              borderColor: controlBorder,
-            },
-          ]}
-        >
+        {/* Style switcher */}
+        <View style={[styles.styleSwitcher, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
           {STYLE_OPTIONS.map(({ variant, label, Icon }, idx) => {
             const isActive = mapVariant === variant;
             return (
               <TouchableOpacity
                 key={variant}
-                style={[
-                  styles.styleBtn,
-                  isActive && { backgroundColor: palette.brand + '22' },
-                  idx < STYLE_OPTIONS.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: controlBorder,
-                  },
-                ]}
-                onPress={() => handleStyleSelect(variant)}
+                style={[styles.styleBtn, isActive && { backgroundColor: palette.brandLight }, idx < STYLE_OPTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle }]}
+                onPress={() => setMapVariant(variant)}
                 activeOpacity={0.7}
               >
-                <Icon
-                  size={18}
-                  color={isActive ? palette.brand : subLabelColor}
-                  strokeWidth={isActive ? 2.5 : 1.75}
-                />
-                <Text
-                  style={[
-                    styles.styleBtnLabel,
-                    { color: isActive ? labelColor : subLabelColor },
-                  ]}
-                >
-                  {label}
-                </Text>
+                <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
+                <Text style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
       </SafeAreaView>
+
+      {/* Business preview bottom sheet (Task 2.3) */}
+      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+        <View style={styles.sheetBackdrop}>
+          <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
+          <View style={[styles.sheetBody, { backgroundColor: c.bgBase }]}>
+            <TouchableOpacity style={styles.sheetClose} onPress={() => setSelected(null)}>
+              <IconX size={22} color={c.textSecondary} />
+            </TouchableOpacity>
+            {selected && (
+              <BusinessPreviewCard
+                business={{
+                  id: selected.id, name: selected.name, category: selected.category,
+                  icon_emoji: selected.icon_emoji, cover_url: selected.cover_url, hours: selected.hours,
+                  address: selected.address, lat: selected.lat, lng: selected.lng,
+                  rating: selected.rating, active_count: selected.activeCount,
+                }}
+                onEnterChat={(id) => { setSelected(null); navigation.navigate('ChatRoom', { id }); }}
+                onViewMenu={(id) => { setSelected(null); navigation.navigate('Menu', { businessId: id, businessName: selected.name }); }}
+                onNavigate={handleNavigate}
+                onShare={() => { /* TODO: share */ }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-  },
-
-  overlayContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'space-between',
-  },
-
-  // Location denied banner
-  deniedBanner: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  deniedBannerText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-
-  // Filter chips
-  chipsWrapper: {
-    marginTop: 8,
-  },
-  chipsContent: {
-    paddingHorizontal: 12,
-    gap: 8,
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    // Shadow for legibility over the map
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  chipFilters: {
-    paddingHorizontal: 12,
-  },
-  chipLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // Map style switcher (bottom-right)
+  root: { flex: 1 },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingText: { fontSize: 14 },
+  overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'space-between' },
+  deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
+  deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
   styleSwitcher: {
-    position: 'absolute',
-    bottom: 24,
-    right: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    minWidth: 90,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    position: 'absolute', bottom: 24, right: 16, borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 90,
+    ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
   },
-  styleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  styleBtnLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  styleBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
+  styleBtnLabel: { fontSize: 13, fontWeight: '500' },
+  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheetDismiss: { flex: 1 },
+  sheetBody: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 24, maxHeight: '85%' },
+  sheetClose: { alignSelf: 'flex-end', padding: 12 },
 });
