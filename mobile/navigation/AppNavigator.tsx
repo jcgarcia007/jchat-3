@@ -31,6 +31,10 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
+import ProductDetailScreen from '../screens/menu/ProductDetailScreen';
+import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
+import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
+import type { MenuItem } from '../services/menu';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -62,6 +66,15 @@ export type MainStackParamList = {
     /** Business name to show in the header while the menu loads. */
     businessName?: string;
   };
+  ProductDetail: { item: MenuItem };
+  PaymentSuccess: {
+    orderNumber: string;
+    businessName: string;
+    orderType: string;
+    roomId?: string;
+    cardAlreadySaved?: boolean;
+  };
+  OrderTracking: { orderId: string; roomId?: string };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -101,6 +114,9 @@ export default function AppNavigator() {
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />
           <MainStack.Screen name="Menu" component={MenuScreen} />
+          <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} />
+          <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+          <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>
