@@ -47,11 +47,7 @@ const ICON_SIZE = 24;
 // Component
 // ---------------------------------------------------------------------------
 
-interface Props {
-  onSignOut: () => void;
-}
-
-export default function BottomTabs({ onSignOut }: Props) {
+export default function BottomTabs() {
   const scheme = useColorScheme();
   const c = getColors(scheme);
 
@@ -110,14 +106,13 @@ export default function BottomTabs({ onSignOut }: Props) {
       />
       <Tab.Screen
         name="Profile"
+        component={ProfileScreen}
         options={{
           tabBarIcon: ({ color }) => (
             <IconUser size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
         }}
-      >
-        {() => <ProfileScreen onSignOut={onSignOut} />}
-      </Tab.Screen>
+      />
     </Tab.Navigator>
   );
 }

@@ -10,16 +10,14 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { useAuth } from '../../context/AuthContext';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 type WelcomeNav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
-interface Props {
-  onSignIn: () => void;
-}
-
-export default function WelcomeScreen({ onSignIn }: Props) {
+export default function WelcomeScreen() {
   const c = useThemeColors();
+  const { devBypass } = useAuth();
   const navigation = useNavigation<WelcomeNav>();
 
   return (
@@ -32,7 +30,7 @@ export default function WelcomeScreen({ onSignIn }: Props) {
       {/* Auth guard test — calls signIn() directly */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: palette.brand }]}
-        onPress={onSignIn}
+        onPress={devBypass}
         accessibilityRole="button"
         accessibilityLabel="Sign in (stub)"
       >

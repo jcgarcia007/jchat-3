@@ -1,11 +1,11 @@
 /**
- * JChat 3.0 — Root Navigator (Task 0.7)
+ * JChat 3.0 — Root Navigator (Task 0.7, auth upgraded in Stage 1)
  *
  * Auth guard: if isAuthenticated → MainStack (tabs + modal screens)
  *             otherwise         → AuthStack (Splash → Welcome → Login → Register)
  *
  * Deep linking: jchat://room/:id  →  ChatRoomScreen
- * TODO(Task 1.3): swap useAuthStub with real Supabase AuthContext
+ * Auth comes from AuthContext (useAuth); screens consume it directly.
  */
 
 import React from 'react';
@@ -15,7 +15,7 @@ import {
   NativeStackNavigationOptions,
 } from '@react-navigation/native-stack';
 
-import { useAuthStub } from './useAuthStub';
+import { useAuth } from '../context/AuthContext';
 import BottomTabs from './tabs/BottomTabs';
 
 // Auth screens
@@ -28,16 +28,12 @@ import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 // Non-tab screens that live inside the main (authenticated) stack
 import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 
-// ---------------------------------------------------------------------------
-// Param lists — exported so screens can import them for typed navigation hooks
-// ---------------------------------------------------------------------------
-
 export type AuthStackParamList = {
   Splash: undefined;
   Welcome: undefined;
   Login: undefined;
   RegisterStep1: undefined;
-  RegisterStep2: undefined;
+  RegisterStep2: { name?: string; email?: string; password?: string };
 };
 
 /** Tabs are nested under BottomTabs — only ChatRoom is a "push" screen here */
@@ -46,20 +42,12 @@ export type MainStackParamList = {
   ChatRoom: { id: string };
 };
 
-// ---------------------------------------------------------------------------
-// Stacks
-// ---------------------------------------------------------------------------
-
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 const defaultScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
 };
-
-// ---------------------------------------------------------------------------
-// Deep linking
-// ---------------------------------------------------------------------------
 
 const linking: LinkingOptions<MainStackParamList> = {
   prefixes: ['jchat://'],
@@ -70,63 +58,25 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Auth guard component — switches tree based on isAuthenticated
-// ---------------------------------------------------------------------------
-
-interface AuthGuardProps {
-  isAuthenticated: boolean;
-  signIn: () => void;
-  signOut: () => void;
-}
-
-function AuthGuard({ isAuthenticated, signIn, signOut }: AuthGuardProps) {
-  if (!isAuthenticated) {
-    return (
-      <AuthStack.Navigator screenOptions={defaultScreenOptions}>
-        <AuthStack.Screen name="Splash" component={SplashScreen} />
-        <AuthStack.Screen name="Welcome">
-          {() => <WelcomeScreen onSignIn={signIn} />}
-        </AuthStack.Screen>
-        <AuthStack.Screen name="Login">
-          {() => <LoginScreen onSignIn={signIn} />}
-        </AuthStack.Screen>
-        <AuthStack.Screen
-          name="RegisterStep1"
-          component={RegisterStep1Screen}
-        />
-        <AuthStack.Screen
-          name="RegisterStep2"
-          component={RegisterStep2Screen}
-        />
-      </AuthStack.Navigator>
-    );
-  }
-
-  return (
-    <MainStack.Navigator screenOptions={defaultScreenOptions}>
-      <MainStack.Screen name="Tabs">
-        {() => <BottomTabs onSignOut={signOut} />}
-      </MainStack.Screen>
-      <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
-    </MainStack.Navigator>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Root navigator
-// ---------------------------------------------------------------------------
-
 export default function AppNavigator() {
-  const { isAuthenticated, signIn, signOut } = useAuthStub();
+  const { isAuthenticated } = useAuth();
 
   return (
     <NavigationContainer linking={linking}>
-      <AuthGuard
-        isAuthenticated={isAuthenticated}
-        signIn={signIn}
-        signOut={signOut}
-      />
+      {!isAuthenticated ? (
+        <AuthStack.Navigator screenOptions={defaultScreenOptions}>
+          <AuthStack.Screen name="Splash" component={SplashScreen} />
+          <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+          <AuthStack.Screen name="Login" component={LoginScreen} />
+          <AuthStack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
+          <AuthStack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
+        </AuthStack.Navigator>
+      ) : (
+        <MainStack.Navigator screenOptions={defaultScreenOptions}>
+          <MainStack.Screen name="Tabs" component={BottomTabs} />
+          <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
+        </MainStack.Navigator>
+      )}
     </NavigationContainer>
   );
 }

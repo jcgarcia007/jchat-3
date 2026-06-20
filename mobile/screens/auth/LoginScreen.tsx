@@ -8,13 +8,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { useAuth } from '../../context/AuthContext';
 
-interface Props {
-  onSignIn: () => void;
-}
-
-export default function LoginScreen({ onSignIn }: Props) {
+export default function LoginScreen() {
   const c = useThemeColors();
+  const { devBypass } = useAuth();
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgBase }]}>
@@ -25,7 +23,7 @@ export default function LoginScreen({ onSignIn }: Props) {
 
       <TouchableOpacity
         style={[styles.button, { backgroundColor: palette.brand }]}
-        onPress={onSignIn}
+        onPress={devBypass}
         accessibilityRole="button"
         accessibilityLabel="Sign in (stub)"
       >

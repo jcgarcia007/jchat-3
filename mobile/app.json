@@ -30,7 +30,9 @@
           "merchantIdentifier": "merchant.com.jchat.app",
           "enableGooglePay": false
         }
-      ]
+      ],
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

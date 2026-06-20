@@ -8,13 +8,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { useAuth } from '../../context/AuthContext';
 
-interface Props {
-  onSignOut: () => void;
-}
-
-export default function ProfileScreen({ onSignOut }: Props) {
+export default function ProfileScreen() {
   const c = useThemeColors();
+  const { signOut } = useAuth();
   return (
     <View style={[styles.container, { backgroundColor: c.bgBase }]}>
       <Text style={[styles.title, { color: c.textPrimary }]}>Profile</Text>
@@ -23,7 +21,7 @@ export default function ProfileScreen({ onSignOut }: Props) {
       </Text>
       <TouchableOpacity
         style={[styles.button, { backgroundColor: palette.danger }]}
-        onPress={onSignOut}
+        onPress={signOut}
         accessibilityRole="button"
         accessibilityLabel="Sign out"
       >
