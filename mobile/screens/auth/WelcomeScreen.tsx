@@ -1,68 +1,215 @@
 /**
- * JChat 3.0 — Welcome Screen placeholder (Task 0.7)
- * Real implementation: Task 1.2
- * Provides sign-in button for testing the auth guard.
+ * JChat 3.0 — Welcome Screen (Task 1.2)
+ * Full-screen branded gradient with logo, tagline, nav dots, and CTA buttons.
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  StatusBar,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useThemeColors } from '../../theme/colors';
+import { IconBrandPagekit } from '@tabler/icons-react-native';
+
 import { palette } from '../../theme/tokens';
-import { useAuth } from '../../context/AuthContext';
+import { useThemeColors } from '../../theme/colors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
+
+// ---------------------------------------------------------------------------
+// Design-System gradient / border hexes specific to this screen.
+// All other colors come from palette / useThemeColors(). // TODO(i18n)
+// ---------------------------------------------------------------------------
+const WELCOME_COLORS = {
+  gradientStart: '#060810',   // splash gradient top
+  gradientEnd:   '#0d1030',   // splash gradient bottom
+  ghostBorder:   '#2a2a3e',   // ghost button border
+  dotInactive:   '#2a2d4a',   // inactive nav dot
+  textOnDark:    '#f5f5f7',   // title — always light on the fixed dark gradient
+  onBrand:       '#ffffff',   // text on the brand-fill primary button
+} as const;
 
 type WelcomeNav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BUTTON_RADIUS = 14;
+const BUTTON_HEIGHT = 44;
+
 export default function WelcomeScreen() {
   const c = useThemeColors();
-  const { devBypass } = useAuth();
   const navigation = useNavigation<WelcomeNav>();
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bgBase }]}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>Welcome</Text>
-      <Text style={[styles.subtitle, { color: c.textTertiary }]}>
-        Coming — Task 1.2
-      </Text>
+    <LinearGradient
+      colors={[WELCOME_COLORS.gradientStart, WELCOME_COLORS.gradientEnd]}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <StatusBar barStyle="light-content" />
 
-      {/* Auth guard test — calls signIn() directly */}
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: palette.brand }]}
-        onPress={devBypass}
-        accessibilityRole="button"
-        accessibilityLabel="Sign in (stub)"
-      >
-        <Text style={styles.buttonText}>Sign In (Stub)</Text>
-      </TouchableOpacity>
+      {/* ── Hero section ── */}
+      <View style={styles.hero}>
+        {/* Logo icon */}
+        <View style={[styles.logoWrap, { borderColor: palette.brandLight }]}>
+          <IconBrandPagekit
+            size={56}
+            color={palette.brand}
+            strokeWidth={1.5}
+          />
+        </View>
 
-      <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate('Login')}
-        accessibilityRole="button"
-      >
-        <Text style={[styles.linkText, { color: palette.brand }]}>
-          Go to Login
+        {/* Tagline */}
+        {/* TODO(i18n) */}
+        <Text style={styles.title}>
+          The people around you are waiting
         </Text>
-      </TouchableOpacity>
-    </View>
+
+        {/* Subtitle */}
+        {/* TODO(i18n) */}
+        <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+          Discover local hangouts, connect with the crowd, and join the conversation in real time.
+        </Text>
+      </View>
+
+      {/* ── Navigation dots ── */}
+      <View style={styles.dotsRow} accessibilityLabel="Step 1 of 4">
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              i === 0
+                ? { backgroundColor: palette.brand, width: 20 }
+                : { backgroundColor: WELCOME_COLORS.dotInactive },
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* ── CTA buttons ── */}
+      <View style={styles.buttonsWrap}>
+        {/* Primary — Get started */}
+        <TouchableOpacity
+          style={[styles.button, styles.primaryButton]}
+          onPress={() => navigation.navigate('RegisterStep1')}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Get started"  // TODO(i18n)
+        >
+          {/* TODO(i18n) */}
+          <Text style={styles.primaryButtonText}>Get started</Text>
+        </TouchableOpacity>
+
+        {/* Ghost — Log in */}
+        <TouchableOpacity
+          style={[styles.button, styles.ghostButton]}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Log in"  // TODO(i18n)
+        >
+          {/* TODO(i18n) */}
+          <Text style={[styles.ghostButtonText, { color: c.textPrimary }]}>
+            Log in
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '600' },
-  subtitle: { fontSize: 14, marginTop: 6 },
-  button: {
-    marginTop: 32,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    minWidth: 200,
+  gradient: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
   },
-  buttonText: { color: palette.bgSurfaceLight, fontWeight: '600', fontSize: 16 },
-  link: { marginTop: 16, padding: 8 },
-  linkText: { fontSize: 15, fontWeight: '500' },
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  hero: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  logoWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    // Subtle glass feel — no opaque background needed; gradient shows through
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: WELCOME_COLORS.textOnDark, // always-light on dark gradient (Design System)
+    textAlign: 'center',
+    lineHeight: 36,
+    letterSpacing: -0.3,
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
+  },
+
+  // ── Nav dots ──────────────────────────────────────────────────────────────
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 36,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+    width: 6,           // overridden inline for active dot
+  },
+
+  // ── Buttons ───────────────────────────────────────────────────────────────
+  buttonsWrap: {
+    width: SCREEN_WIDTH - 48,   // full-width with 24px side margins each
+    gap: 12,
+  },
+  button: {
+    height: BUTTON_HEIGHT,
+    minHeight: 44,              // 44px minimum touch target
+    borderRadius: BUTTON_RADIUS,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  primaryButton: {
+    backgroundColor: palette.brand,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: WELCOME_COLORS.onBrand,
+    letterSpacing: 0.1,
+  },
+  ghostButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: WELCOME_COLORS.ghostBorder,
+  },
+  ghostButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
 });
