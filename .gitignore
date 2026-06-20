@@ -4,6 +4,10 @@
 .env.*
 !.env.example
 
+# Firebase config (contains keys) — inject via EAS file secrets, not git
+google-services.json
+GoogleService-Info.plist
+
 # ── Dependencies ────────────────────────────────────────
 node_modules/
 .pnp
