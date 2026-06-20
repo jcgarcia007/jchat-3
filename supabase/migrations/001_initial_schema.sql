@@ -819,7 +819,7 @@ create policy "notifications: user update own"
 create policy "notifications: service role insert"
   on notifications for insert
   to service_role
-  using (true);
+  with check (true);
 
 create index if not exists idx_notifications_user_id    on notifications (user_id);
 create index if not exists idx_notifications_is_read    on notifications (user_id, is_read);
