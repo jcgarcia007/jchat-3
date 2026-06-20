@@ -62,6 +62,7 @@ import type { ChatMessage } from '../../components/chat/MessageBubble';
 import { IncognitoToggle, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
 import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
+import { PinnedBanner } from '../../components/chat/PinnedBanner';
 import { MapReactionButton } from '../../components/chat/MapReactionButton';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
@@ -688,7 +689,14 @@ export default function ChatRoomScreen() {
         />
       </ChatTopBar>
 
-      {/* TODO(Task 2.5): <PinnedBanner roomId={activeRoomId} theme={chatTheme} /> */}
+      {/* Pinned banner — sticky below the sub-room tabs (Task 2.5). */}
+      <PinnedBanner
+        roomId={activeRoomId}
+        theme={chatTheme}
+        canUnpin={viewerRole !== 'user'}
+      />
+      {/* TODO(Task 2.5/2.6): wire PinMessageSheet (message long-press) + CreateOfferSheet
+          (AttachmentPanel Offer) + OfferCard render in MessageBubble offer case. */}
 
       {/* ── Messages list ────────────────────────────────────────────────── */}
       <KeyboardAvoidingView
