@@ -226,31 +226,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const sig = req.headers.get("stripe-signature") ?? "";
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
-  let event: Stripe.Event;
-
-  // TODO(security): Enable webhook signature verification before going to production.
-  // Replace the JSON.parse block below with the constructEventAsync block:
-  //
-  // if (!webhookSecret) {
-  //   console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
-  //   return errorResponse("Webhook secret not configured", 500);
-  // }
-  // try {
-  //   event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
-  // } catch (err) {
-  //   console.error("[stripe-webhook] signature verification failed:", err);
-  //   return errorResponse("Invalid webhook signature", 400);
-  // }
-
-  // For now: parse without verification (dev/staging only). Remove for production.
-  if (webhookSecret && sig) {
-    // Intentional stub: verification skipped until STRIPE_WEBHOOK_SECRET is wired.
-    console.warn("[stripe-webhook] WARNING: signature verification is disabled in this build.");
+  if (!webhookSecret) {
+    console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
+    return errorResponse("Webhook secret not configured", 500);
   }
+
+  let event: Stripe.Event;
   try {
-    event = JSON.parse(rawBody) as Stripe.Event;
-  } catch {
-    return errorResponse("Invalid JSON body", 400);
+    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error("[stripe-webhook] signature verification failed:", err);
+    return errorResponse("Invalid webhook signature", 400);
   }
 
   console.log(`[stripe-webhook] event: ${event.type} id=${event.id}`);

@@ -232,32 +232,17 @@ async function handleWebhook(req: Request): Promise<Response> {
   const sig = req.headers.get("stripe-signature") ?? "";
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
-  let event: Stripe.Event;
+  if (!webhookSecret) {
+    console.error("[subscriptions webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
+    return errorResponse("Webhook secret not configured", 500);
+  }
 
-  if (webhookSecret && sig) {
-    // TODO(security): Enable signature verification in production.
-    // Currently stubbed — constructEvent throws if the secret doesn't match.
-    // Uncomment the block below once STRIPE_WEBHOOK_SECRET is set:
-    //
-    // try {
-    //   event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
-    // } catch (err) {
-    //   console.error("Webhook signature verification failed:", err);
-    //   return errorResponse("Invalid webhook signature", 400);
-    // }
-    //
-    // For now, parse without verification (dev/staging only):
-    try {
-      event = JSON.parse(rawBody) as Stripe.Event;
-    } catch {
-      return errorResponse("Invalid JSON body", 400);
-    }
-  } else {
-    try {
-      event = JSON.parse(rawBody) as Stripe.Event;
-    } catch {
-      return errorResponse("Invalid JSON body", 400);
-    }
+  let event: Stripe.Event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error("[subscriptions webhook] signature verification failed:", err);
+    return errorResponse("Invalid webhook signature", 400);
   }
 
   console.log(`[subscriptions webhook] event: ${event.type}`);
