@@ -27,6 +27,7 @@ import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 
 // Non-tab screens that live inside the main (authenticated) stack
 import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -40,6 +41,12 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Tabs: undefined;
   ChatRoom: { id: string };
+  /**
+   * Onboarding — 4-screen flow for brand-new users.
+   * TODO(Task 1.7): gate on users.onboarding_completed so it only shows once.
+   * For now Skip/Complete always navigate to Tabs.
+   */
+  Onboarding: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -75,6 +82,7 @@ export default function AppNavigator() {
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
           <MainStack.Screen name="Tabs" component={BottomTabs} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
+          <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>
