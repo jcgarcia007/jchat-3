@@ -27,14 +27,14 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.jchat.app',
+    bundleIdentifier: 'com.juangarciacruz.jchatapp',
     // react-native-maps (Google provider) reads this native key.
     config: { googleMapsApiKey: GOOGLE_MAPS_KEY },
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
   },
   android: {
-    package: 'com.jchat.app',
+    package: 'com.juangarciacruz.jchatapp',
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -50,7 +50,7 @@ const config: ExpoConfig = {
     [
       '@stripe/stripe-react-native',
       {
-        merchantIdentifier: 'merchant.com.jchat.app',
+        merchantIdentifier: 'merchant.com.juangarciacruz.jchatapp',
         enableGooglePay: false,
       },
     ],
