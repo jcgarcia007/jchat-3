@@ -12,6 +12,11 @@ import appJson from './app.json';
 
 const GOOGLE_MAPS_KEY = process.env.GOOGLE_MAPS_KEY ?? '';
 
+// EAS file secrets expose a path env var at build time; fall back to the local
+// file for dev. Upload via: eas secret:create --type file --name GOOGLE_SERVICES_JSON ...
+const ANDROID_GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
+const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist';
+
 const base = appJson.expo;
 
 export default {
@@ -20,14 +25,14 @@ export default {
     ...base.ios,
     // react-native-maps (Google provider) reads this native key.
     config: { googleMapsApiKey: GOOGLE_MAPS_KEY },
-    // Firebase (APNs push) — file lives in mobile/.
-    googleServicesFile: './GoogleService-Info.plist',
+    // Firebase (APNs push) — local file in dev, EAS file secret in CI.
+    googleServicesFile: IOS_GOOGLE_SERVICES,
   },
   android: {
     ...base.android,
     config: { googleMaps: { apiKey: GOOGLE_MAPS_KEY } },
-    // Firebase Cloud Messaging — file lives in mobile/.
-    googleServicesFile: './google-services.json',
+    // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
+    googleServicesFile: ANDROID_GOOGLE_SERVICES,
   },
   plugins: [
     ...base.plugins,
