@@ -1,0 +1,20 @@
+# JChat 3.0 — Supabase project config
+# Links the CLI to the project and sets per-function JWT verification so
+# `supabase functions deploy` picks up the right flags automatically.
+
+project_id = "klfsgcfoahdtkojyqspd"
+
+# App-invoked functions: called from the client with a Supabase JWT → verify.
+[functions.payments]
+verify_jwt = true
+
+[functions.stripe-connect]
+verify_jwt = true
+
+# Stripe-invoked webhooks: called by Stripe with NO Supabase JWT (they verify
+# the Stripe signature instead) → JWT verification must be off.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.subscriptions]
+verify_jwt = false
