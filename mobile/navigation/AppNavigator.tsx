@@ -33,6 +33,7 @@ import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import ProductDetailScreen from '../screens/menu/ProductDetailScreen';
 import CartScreen from '../screens/menu/CartScreen';
+import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
 import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
 import type { MenuItem } from '../services/menu';
@@ -69,6 +70,7 @@ export type MainStackParamList = {
   };
   ProductDetail: { item: MenuItem };
   Cart: undefined;
+  Checkout: undefined;
   PaymentSuccess: {
     orderNumber: string;
     businessName: string;
@@ -118,6 +120,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="Menu" component={MenuScreen} />
           <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} />
           <MainStack.Screen name="Cart" component={CartScreen} />
+          <MainStack.Screen name="Checkout" component={CheckoutScreen} />
           <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         </MainStack.Navigator>
