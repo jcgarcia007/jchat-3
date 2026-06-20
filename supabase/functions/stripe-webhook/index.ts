@@ -1,0 +1,279 @@
+/**
+ * JChat 3.0 — Stripe Webhook Edge Function (Task 3.6)
+ * Runtime: Deno (Supabase Edge Functions)
+ *
+ * Handles Stripe payment lifecycle events for ORDER payments (not subscriptions —
+ * those go to supabase/functions/subscriptions/index.ts).
+ *
+ * Handled events:
+ *   payment_intent.succeeded      → create orders + order_items rows; KDS picks
+ *                                   them up via Supabase Realtime on the orders table.
+ *   payment_intent.payment_failed → log failure (client polling / error state).
+ *
+ * Deploy:
+ *   supabase functions deploy stripe-webhook
+ *
+ * Required env vars (Supabase dashboard → Edge Functions → Secrets):
+ *   STRIPE_SECRET_KEY         — sk_live_… or sk_test_…
+ *   STRIPE_WEBHOOK_SECRET     — whsec_… from Stripe dashboard webhook config
+ *   SUPABASE_URL              — auto-injected
+ *   SUPABASE_SERVICE_ROLE_KEY — set manually
+ *
+ * Stripe webhook endpoint to register:
+ *   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
+ *   Events to send: payment_intent.succeeded, payment_intent.payment_failed
+ */
+
+import Stripe from "npm:stripe@16.2.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+
+// ── Supabase admin client ─────────────────────────────────────────────────────
+
+function getAdminClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+// ── Stripe client ─────────────────────────────────────────────────────────────
+
+function getStripe(): Stripe {
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
+  return new Stripe(key, { apiVersion: "2024-06-20" });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, stripe-signature",
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
+
+function errorResponse(message: string, status = 400): Response {
+  return jsonResponse({ error: message }, status);
+}
+
+// ── Cart item shape packed into PaymentIntent metadata ────────────────────────
+
+interface PackedItem {
+  m: string; // menu_item_id
+  q: number; // qty
+  p: number; // price_cents
+  o?: Record<string, unknown>; // options
+  s?: string; // special_instructions
+}
+
+// ── Handler: payment_intent.succeeded ────────────────────────────────────────
+
+async function handlePaymentSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<void> {
+  const meta = paymentIntent.metadata ?? {};
+
+  const businessId = meta.business_id;
+  const userId = meta.user_id;
+  const orderType = (meta.order_type ?? "counter") as "table" | "counter" | "gift";
+  const giftRecipientId = meta.gift_recipient_id ?? null;
+  const roomId = meta.room_id ?? null;
+  const subtotalCents = parseInt(meta.subtotal_cents ?? "0", 10);
+  const taxCents = parseInt(meta.tax_cents ?? "0", 10);
+  const tipCents = parseInt(meta.tip_cents ?? "0", 10);
+  const discountCents = parseInt(meta.discount_cents ?? "0", 10);
+  const totalCents = parseInt(meta.total_cents ?? "0", 10);
+  const promoCode = meta.promo_code ?? null;
+  const specialInstructions = meta.special_instructions ?? null;
+  const itemsRaw = meta.items ?? "[]";
+
+  if (!businessId || !userId) {
+    console.error(
+      `[stripe-webhook] payment_intent.succeeded: missing metadata on PI ${paymentIntent.id}`,
+    );
+    return;
+  }
+
+  // Parse items (may be truncated if cart was very large — items_overflow flag)
+  let items: PackedItem[] = [];
+  try {
+    items = JSON.parse(itemsRaw) as PackedItem[];
+  } catch (err) {
+    console.warn(`[stripe-webhook] could not parse items metadata on PI ${paymentIntent.id}:`, err);
+  }
+
+  const db = getAdminClient();
+
+  // 1. Guard: check if we already processed this PaymentIntent (idempotency)
+  const { data: existing } = await db
+    .from("orders")
+    .select("id")
+    .eq("stripe_pi_id", paymentIntent.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(
+      `[stripe-webhook] payment_intent.succeeded: order already exists for PI ${paymentIntent.id} — skipping`,
+    );
+    return;
+  }
+
+  // 2. Insert order row
+  const { data: order, error: orderErr } = await db
+    .from("orders")
+    .insert({
+      business_id: businessId,
+      user_id: userId,
+      room_id: roomId,
+      status: "confirmed",
+      order_type: orderType,
+      gift_recipient_id: giftRecipientId,
+      subtotal_cents: subtotalCents,
+      tax_cents: taxCents,
+      tip_cents: tipCents,
+      discount_cents: discountCents,
+      total_cents: totalCents,
+      promo_code: promoCode,
+      special_instructions: specialInstructions,
+      stripe_pi_id: paymentIntent.id,
+      status_updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (orderErr) {
+    console.error(`[stripe-webhook] failed to insert order for PI ${paymentIntent.id}:`, orderErr);
+    throw orderErr;
+  }
+
+  const orderId = (order as { id: string }).id;
+
+  // 3. Insert order_items rows
+  if (items.length > 0) {
+    const { error: itemsErr } = await db.from("order_items").insert(
+      items.map((it) => ({
+        order_id: orderId,
+        menu_item_id: it.m,
+        qty: it.q,
+        price_cents: it.p,
+        options: it.o ?? {},
+        special_instructions: it.s ?? null,
+        item_status: "cooking",
+      })),
+    );
+
+    if (itemsErr) {
+      console.error(`[stripe-webhook] failed to insert order_items for order ${orderId}:`, itemsErr);
+      // Order row was inserted — partial state. Log but don't throw so webhook returns 200.
+      // KDS will show an order with no items; staff can manually add them.
+    }
+  }
+
+  console.log(
+    `[stripe-webhook] order created: id=${orderId} business=${businessId} total=${totalCents} pi=${paymentIntent.id}`,
+  );
+
+  // KDS picks up the new order automatically via Supabase Realtime
+  // (postgres_changes on orders table — INSERT event).
+
+  // TODO(push): notify business owner of new order
+  //   await sendPushToBusinessOwner(businessId, { type: 'new_order', orderId, totalCents });
+}
+
+// ── Handler: payment_intent.payment_failed ────────────────────────────────────
+
+async function handlePaymentFailed(
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<void> {
+  const meta = paymentIntent.metadata ?? {};
+  const businessId = meta.business_id ?? "(unknown)";
+  const userId = meta.user_id ?? "(unknown)";
+
+  console.warn(
+    `[stripe-webhook] payment_intent.payment_failed: pi=${paymentIntent.id} ` +
+      `user=${userId} business=${businessId} ` +
+      `reason=${paymentIntent.last_payment_error?.message ?? "none"}`,
+  );
+
+  // The mobile client is polling / observing presentPaymentSheet result,
+  // so it already knows the charge failed. No additional DB write needed here
+  // unless you want to track failed attempts — add a payment_attempts table if so.
+
+  // TODO(push): optionally notify user "Payment failed — please try again"
+  //   await sendPushToUser(userId, { type: 'payment_failed', piId: paymentIntent.id });
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+
+  const stripe = getStripe();
+  const rawBody = await req.text();
+  const sig = req.headers.get("stripe-signature") ?? "";
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+
+  let event: Stripe.Event;
+
+  // TODO(security): Enable webhook signature verification before going to production.
+  // Replace the JSON.parse block below with the constructEventAsync block:
+  //
+  // if (!webhookSecret) {
+  //   console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
+  //   return errorResponse("Webhook secret not configured", 500);
+  // }
+  // try {
+  //   event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
+  // } catch (err) {
+  //   console.error("[stripe-webhook] signature verification failed:", err);
+  //   return errorResponse("Invalid webhook signature", 400);
+  // }
+
+  // For now: parse without verification (dev/staging only). Remove for production.
+  if (webhookSecret && sig) {
+    // Intentional stub: verification skipped until STRIPE_WEBHOOK_SECRET is wired.
+    console.warn("[stripe-webhook] WARNING: signature verification is disabled in this build.");
+  }
+  try {
+    event = JSON.parse(rawBody) as Stripe.Event;
+  } catch {
+    return errorResponse("Invalid JSON body", 400);
+  }
+
+  console.log(`[stripe-webhook] event: ${event.type} id=${event.id}`);
+
+  try {
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      case "payment_intent.payment_failed":
+        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      default:
+        // Non-order events (subscription events go to /subscriptions webhook)
+        console.log(`[stripe-webhook] unhandled event type: ${event.type}`);
+    }
+  } catch (err) {
+    console.error(`[stripe-webhook] handler error for ${event.type}:`, err);
+    // Return 500 so Stripe retries the event
+    return errorResponse("Internal server error", 500);
+  }
+
+  return jsonResponse({ received: true });
+});

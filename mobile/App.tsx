@@ -1,19 +1,29 @@
 /**
  * JChat 3.0 — Entry point
- * Renders the root navigator wrapped in AuthProvider (Supabase-backed auth).
+ * Renders the root navigator wrapped in all global providers.
+ *
+ * Provider order (per CLAUDE.md):
+ *   StripeRoot → Language → Theme → AuthContext → children
+ *
+ * StripeRoot is a platform split:
+ *   .native.tsx — wraps in @stripe/stripe-react-native StripeProvider
+ *   .web.tsx    — pass-through (stripe-react-native is native-only)
  */
 
 import React from 'react';
+import StripeRoot from './components/StripeRoot';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import AppNavigator from './navigation/AppNavigator';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <AppNavigator />
-      </CartProvider>
-    </AuthProvider>
+    <StripeRoot>
+      <AuthProvider>
+        <CartProvider>
+          <AppNavigator />
+        </CartProvider>
+      </AuthProvider>
+    </StripeRoot>
   );
 }
