@@ -30,6 +30,7 @@ import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsStack from './SettingsStack';
+import MenuScreen from '../screens/menu/MenuScreen';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -51,6 +52,16 @@ export type MainStackParamList = {
   Onboarding: undefined;
   EditProfile: undefined;
   Settings: undefined;
+  /**
+   * Task 3.2 — Full-screen menu for a business.
+   * Navigated to from ChatRoomScreen (menu button in header).
+   */
+  Menu: {
+    businessId: string;
+    roomId?: string;
+    /** Business name to show in the header while the menu loads. */
+    businessName?: string;
+  };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -89,6 +100,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />
+          <MainStack.Screen name="Menu" component={MenuScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>
