@@ -1,0 +1,123 @@
+/**
+ * JChat 3.0 — Bottom Tab Navigator (Task 0.7)
+ * Design System Section 10.1:
+ *   Tab order:  Map | Nearby | DMs | Friends | Profile
+ *   Active:     palette.brand        (#5C7CFA)
+ *   Inactive:   palette.textTertiary (#636366)
+ *   Icons:      @tabler/icons-react-native
+ */
+
+import React from 'react';
+import { useColorScheme } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  IconMap,
+  IconBuildingStore,
+  IconMessage,
+  IconUsers,
+  IconUser,
+} from '@tabler/icons-react-native';
+
+import { getColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
+
+import MapScreen from '../../screens/map/MapScreen';
+import NearbyScreen from '../../screens/nearby/NearbyScreen';
+import DMsScreen from '../../screens/dms/DMsScreen';
+import FriendsScreen from '../../screens/friends/FriendsScreen';
+import ProfileScreen from '../../screens/profile/ProfileScreen';
+
+// ---------------------------------------------------------------------------
+// Param list
+// ---------------------------------------------------------------------------
+
+export type BottomTabParamList = {
+  Map: undefined;
+  Nearby: undefined;
+  DMs: undefined;
+  Friends: undefined;
+  Profile: undefined;
+};
+
+const Tab = createBottomTabNavigator<BottomTabParamList>();
+
+const ICON_SIZE = 24;
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+interface Props {
+  onSignOut: () => void;
+}
+
+export default function BottomTabs({ onSignOut }: Props) {
+  const scheme = useColorScheme();
+  const c = getColors(scheme);
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: palette.brand,
+        tabBarInactiveTintColor: palette.textTertiary,
+        tabBarStyle: {
+          backgroundColor: c.bgSurface,
+          borderTopColor: c.borderSubtle,
+          borderTopWidth: 1,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <IconMap size={ICON_SIZE} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Nearby"
+        component={NearbyScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <IconBuildingStore size={ICON_SIZE} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="DMs"
+        component={DMsScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <IconMessage size={ICON_SIZE} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Friends"
+        component={FriendsScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <IconUsers size={ICON_SIZE} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <IconUser size={ICON_SIZE} color={color} strokeWidth={2} />
+          ),
+        }}
+      >
+        {() => <ProfileScreen onSignOut={onSignOut} />}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+}
