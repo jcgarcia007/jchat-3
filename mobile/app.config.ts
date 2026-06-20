@@ -1,8 +1,11 @@
 /**
  * JChat 3.0 — dynamic Expo config (Stage 4).
- * Extends app.json and injects the Google Maps API key from the environment
- * (GOOGLE_MAPS_KEY) so it is NEVER hardcoded in the repo (Rule 2). Also adds
- * the expo-location plugin with permission strings + react-native-maps.
+ * Extends app.json and:
+ *  - injects the Google Maps API key from env (GOOGLE_MAPS_KEY) — never
+ *    hardcoded (Rule 2);
+ *  - wires the Firebase config files (FCM/APNs push via expo-notifications):
+ *    Android → google-services.json, iOS → GoogleService-Info.plist;
+ *  - adds expo-location, react-native-maps, and expo-notifications plugins.
  */
 
 import appJson from './app.json';
@@ -17,10 +20,14 @@ export default {
     ...base.ios,
     // react-native-maps (Google provider) reads this native key.
     config: { googleMapsApiKey: GOOGLE_MAPS_KEY },
+    // Firebase (APNs push) — file lives in mobile/.
+    googleServicesFile: './GoogleService-Info.plist',
   },
   android: {
     ...base.android,
     config: { googleMaps: { apiKey: GOOGLE_MAPS_KEY } },
+    // Firebase Cloud Messaging — file lives in mobile/.
+    googleServicesFile: './google-services.json',
   },
   plugins: [
     ...base.plugins,
@@ -34,5 +41,7 @@ export default {
       },
     ],
     'react-native-maps',
+    // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
+    'expo-notifications',
   ],
 };
