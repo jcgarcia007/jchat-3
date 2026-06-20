@@ -1,28 +1,938 @@
 /**
- * JChat 3.0 — Register Step 2 Screen placeholder (Task 0.7)
- * Real implementation: Task 1.5
+ * JChat 3.0 — Register Step 2 Screen (Task 1.5)
+ *
+ * Collects: Date of birth, Language preference, @username, Terms acceptance.
+ * Validates 18+ on submission, real-time debounced username availability check,
+ * then calls supabase.auth.signUp and inserts the profile row into `users`.
+ *
+ * Design:
+ *  • Progress dots — BOTH filled (brand color)
+ *  • Title "Almost there!" + subtitle
+ *  • Date-of-birth picker via @react-native-community/datetimepicker
+ *  • Language selector (EN / ES)
+ *  • @username field with real-time availability (debounced 300ms)
+ *  • Terms + Privacy Policy checkbox (links via expo-web-browser)
+ *  • "Create my account 🎉" button
+ *
+ * Auth guard: supabase.auth.signUp → AuthContext session listener flips
+ * isAuthenticated → AppNavigator switches to main tabs automatically.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useThemeColors } from '../../theme/colors';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Modal,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  IconAt,
+  IconCheck,
+  IconAlertCircle,
+  IconChevronDown,
+  IconCalendar,
+  IconLoader2,
+} from '@tabler/icons-react-native';
 
-export default function RegisterStep2Screen() {
+import { palette } from '../../theme/tokens';
+import { useThemeColors } from '../../theme/colors';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import type { AuthStackParamList } from '../../navigation/AppNavigator';
+
+// ---------------------------------------------------------------------------
+// Screen-local color constants — only values not already in palette/tokens
+// ---------------------------------------------------------------------------
+const LOCAL_COLORS = {
+  onBrand: '#FFFFFF',            // text on filled brand button
+  dividerLine: 'rgba(128,128,128,0.25)',
+  checkboxBorder: 'rgba(128,128,128,0.5)',
+  overlayBackdrop: 'rgba(0,0,0,0.6)',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Types / navigation
+// ---------------------------------------------------------------------------
+type Props = {
+  route: RouteProp<AuthStackParamList, 'RegisterStep2'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'RegisterStep2'>;
+};
+
+type Language = 'en' | 'es';
+
+const LANGUAGE_OPTIONS: { value: Language; label: string; flag: string }[] = [
+  { value: 'en', label: 'English', flag: '🇺🇸' },
+  { value: 'es', label: 'Español', flag: '🇲🇽' },
+];
+
+// ---------------------------------------------------------------------------
+// Legal URL stubs
+// ---------------------------------------------------------------------------
+const TERMS_URL = 'https://jchat.app/terms';       // TODO
+const PRIVACY_URL = 'https://jchat.app/privacy';   // TODO
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const USERNAME_REGEX = /^[a-z0-9_]{3,30}$/;
+
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${m}/${d}/${y}`;
+}
+
+function isAtLeast18(dob: Date): boolean {
+  const today = new Date();
+  const eighteenYearsAgo = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  );
+  return dob <= eighteenYearsAgo;
+}
+
+function validateUsername(v: string): string | null {
+  if (!v.trim()) return 'Username is required'; // TODO(i18n)
+  if (!USERNAME_REGEX.test(v.trim()))
+    return 'Username must be 3–30 chars: lowercase letters, numbers, underscores'; // TODO(i18n)
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Username availability status type
+// ---------------------------------------------------------------------------
+type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+export default function RegisterStep2Screen({ route, navigation }: Props) {
   const c = useThemeColors();
+  const { name = '', email = '', password = '' } = route.params ?? {};
+
+  // ── Date of birth ──────────────────────────────────────────────────────────
+  const defaultDob = new Date(2000, 0, 1);
+  const [dob, setDob] = useState<Date>(defaultDob);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dobTouched, setDobTouched] = useState(false);
+
+  // ── Language selector ──────────────────────────────────────────────────────
+  const [language, setLanguage] = useState<Language>('en');
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  // ── Username ───────────────────────────────────────────────────────────────
+  const [username, setUsername] = useState('');
+  const [usernameTouched, setUsernameTouched] = useState(false);
+  const [availability, setAvailability] = useState<AvailabilityStatus>('idle');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Terms ──────────────────────────────────────────────────────────────────
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsTouched, setTermsTouched] = useState(false);
+
+  // ── Submission ─────────────────────────────────────────────────────────────
+  const [submitting, setSubmitting] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Derived errors (only after touch or submit attempt)
+  // ---------------------------------------------------------------------------
+  const dobError: string | null =
+    dobTouched && !isAtLeast18(dob)
+      ? 'You must be at least 18 years old to create an account' // TODO(i18n)
+      : null;
+
+  const usernameFormatError: string | null = usernameTouched
+    ? validateUsername(username)
+    : null;
+
+  const termsError: string | null =
+    termsTouched && !termsAccepted
+      ? 'You must accept the Terms to continue' // TODO(i18n)
+      : null;
+
+  // ---------------------------------------------------------------------------
+  // Real-time username availability check — debounced 300ms
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    // Clear any pending timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    // Skip check if there's a format error or the field is empty
+    if (!username.trim() || validateUsername(username) !== null) {
+      setAvailability('idle');
+      return;
+    }
+
+    setAvailability('checking');
+
+    debounceTimer.current = setTimeout(async () => {
+      if (!isSupabaseConfigured) {
+        // Demo mode — treat as available so flow is unblocked
+        setAvailability('available');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('username')
+          .eq('username', username.trim().toLowerCase())
+          .maybeSingle();
+
+        if (error) {
+          setAvailability('error');
+          return;
+        }
+
+        setAvailability(data ? 'taken' : 'available');
+      } catch {
+        setAvailability('error');
+      }
+    }, 300);
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [username]);
+
+  // ---------------------------------------------------------------------------
+  // Date picker handlers
+  // ---------------------------------------------------------------------------
+  const handleDateChange = useCallback(
+    (event: DateTimePickerEvent, selectedDate?: Date) => {
+      // On Android the picker dismisses itself after selection / cancellation
+      if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+      }
+      if (event.type === 'set' && selectedDate) {
+        setDob(selectedDate);
+        setDobTouched(true);
+      }
+    },
+    [],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Legal links
+  // ---------------------------------------------------------------------------
+  const openTerms = useCallback(async () => {
+    await WebBrowser.openBrowserAsync(TERMS_URL);
+  }, []);
+
+  const openPrivacy = useCallback(async () => {
+    await WebBrowser.openBrowserAsync(PRIVACY_URL);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Submit — validate → signUp → insert profile
+  // ---------------------------------------------------------------------------
+  const handleCreateAccount = useCallback(async () => {
+    // Mark all as touched to surface any hidden errors
+    setDobTouched(true);
+    setUsernameTouched(true);
+    setTermsTouched(true);
+
+    // ── Client-side validation ────────────────────────────────────────────
+    if (!isAtLeast18(dob)) {
+      Alert.alert(
+        'Age requirement', // TODO(i18n)
+        'You must be at least 18 years old to create a JChat account.',
+      );
+      return;
+    }
+
+    const formatErr = validateUsername(username);
+    if (formatErr) {
+      Alert.alert('Invalid username', formatErr); // TODO(i18n)
+      return;
+    }
+
+    if (availability !== 'available') {
+      if (availability === 'taken') {
+        Alert.alert('Username taken', 'Please choose a different username.'); // TODO(i18n)
+      } else if (availability === 'checking') {
+        Alert.alert('Please wait', 'Checking username availability…'); // TODO(i18n)
+      } else {
+        // idle or error — re-trigger a check
+        Alert.alert('Check username', 'Please wait for the username check to complete.'); // TODO(i18n)
+      }
+      return;
+    }
+
+    if (!termsAccepted) {
+      Alert.alert(
+        'Terms required', // TODO(i18n)
+        'Please accept the Terms of Service and Privacy Policy.',
+      );
+      return;
+    }
+
+    if (!email || !password) {
+      Alert.alert(
+        'Missing data', // TODO(i18n)
+        'Account info from Step 1 is missing. Please go back and try again.',
+      );
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // ── Guard: no real backend configured ────────────────────────────────
+      if (!isSupabaseConfigured) {
+        Alert.alert(
+          'Demo mode', // TODO(i18n)
+          'Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // ── 1. Create auth user ───────────────────────────────────────────────
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (signUpError) {
+        Alert.alert('Sign up failed', signUpError.message); // TODO(i18n)
+        setSubmitting(false);
+        return;
+      }
+
+      const userId = authData.user?.id;
+      if (!userId) {
+        Alert.alert(
+          'Sign up error', // TODO(i18n)
+          'Could not retrieve your account ID. Please try again.',
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // ── 2. Insert profile into `users` table ──────────────────────────────
+      const { error: profileError } = await supabase.from('users').upsert({
+        id: userId,
+        username: username.trim().toLowerCase(),
+        display_name: name.trim() || null,
+        language,
+        profile_theme_id: 1, // default theme
+      });
+
+      if (profileError) {
+        // Non-fatal: auth succeeded; user can update profile later.
+        // Log but don't block navigation.
+        console.warn('[RegisterStep2] profile insert error:', profileError.message);
+      }
+
+      // TODO(Task 1.6): navigate to Onboarding before main tabs.
+      // For now, the AuthContext session listener (supabase.auth.onAuthStateChange)
+      // detects the new session and flips isAuthenticated → AppNavigator renders
+      // MainStack (BottomTabs) automatically — no explicit navigation needed here.
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      Alert.alert('Error', message); // TODO(i18n)
+      setSubmitting(false);
+    }
+  }, [dob, username, availability, termsAccepted, email, password, name, language]);
+
+  // ---------------------------------------------------------------------------
+  // Computed values for rendering
+  // ---------------------------------------------------------------------------
+  const inputBg = c.bgSurface;
+  const inputBorder = c.borderSubtle;
+  const selectedLanguage = LANGUAGE_OPTIONS.find((o) => o.value === language)!;
+
+  // Max date: today (can't claim a future DOB)
+  const maxDate = new Date();
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
-    <View style={[styles.container, { backgroundColor: c.bgBase }]}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>
-        Register — Step 2
-      </Text>
-      <Text style={[styles.subtitle, { color: c.textTertiary }]}>
-        Coming — Task 1.5
-      </Text>
-    </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Progress dots — both filled ─────────────────────────────── */}
+          <View style={styles.dotsRow} accessibilityLabel="Step 2 of 2">
+            <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
+            <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
+          </View>
+
+          {/* ── Title ────────────────────────────────────────────────────── */}
+          <Text style={[styles.title, { color: c.textPrimary }]}>
+            Almost there! {/* TODO(i18n) */}
+          </Text>
+          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+            Just a few more details to set up your profile. {/* TODO(i18n) */}
+          </Text>
+
+          {/* ── Date of birth ─────────────────────────────────────────────── */}
+          <View style={styles.fieldWrap}>
+            <Text style={[styles.label, { color: c.textSecondary }]}>
+              Date of birth {/* TODO(i18n) */}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.input,
+                styles.selectorRow,
+                {
+                  backgroundColor: inputBg,
+                  borderColor: dobError ? palette.danger : inputBorder,
+                },
+              ]}
+              onPress={() => {
+                setShowDatePicker(true);
+                setDobTouched(true);
+              }}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Select date of birth" // TODO(i18n)
+            >
+              <IconCalendar size={18} color={c.textTertiary} strokeWidth={1.75} />
+              <Text
+                style={[
+                  styles.selectorText,
+                  {
+                    color: dobTouched ? c.textPrimary : c.textTertiary,
+                    marginLeft: 8,
+                    flex: 1,
+                  },
+                ]}
+              >
+                {dobTouched ? formatDate(dob) : 'Select your date of birth'}{/* TODO(i18n) */}
+              </Text>
+            </TouchableOpacity>
+            {dobError ? (
+              <Text style={[styles.errorText, { color: palette.danger }]}>
+                {dobError}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* iOS: inline picker when triggered */}
+          {showDatePicker && Platform.OS === 'ios' && (
+            <View
+              style={[
+                styles.iosPickerWrap,
+                { backgroundColor: inputBg, borderColor: inputBorder },
+              ]}
+            >
+              <DateTimePicker
+                value={dob}
+                mode="date"
+                display="spinner"
+                maximumDate={maxDate}
+                onChange={handleDateChange}
+                textColor={c.textPrimary}
+              />
+              <TouchableOpacity
+                style={[styles.iosDoneButton, { borderTopColor: inputBorder }]}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={[styles.iosDoneText, { color: palette.brand }]}>
+                  Done {/* TODO(i18n) */}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Android: modal picker — shown imperatively */}
+          {showDatePicker && Platform.OS === 'android' && (
+            <DateTimePicker
+              value={dob}
+              mode="date"
+              display="default"
+              maximumDate={maxDate}
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* ── Language selector ─────────────────────────────────────────── */}
+          <View style={styles.fieldWrap}>
+            <Text style={[styles.label, { color: c.textSecondary }]}>
+              Language {/* TODO(i18n) */}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.input,
+                styles.selectorRow,
+                { backgroundColor: inputBg, borderColor: inputBorder },
+              ]}
+              onPress={() => setShowLanguagePicker(true)}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Select language" // TODO(i18n)
+            >
+              <Text style={[styles.selectorText, { color: c.textPrimary }]}>
+                {selectedLanguage.flag}{'  '}{selectedLanguage.label}
+              </Text>
+              <IconChevronDown size={18} color={c.textTertiary} strokeWidth={1.75} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Language picker modal */}
+          <Modal
+            visible={showLanguagePicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowLanguagePicker(false)}
+          >
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={() => setShowLanguagePicker(false)}
+            >
+              <View
+                style={[
+                  styles.languageSheet,
+                  { backgroundColor: c.bgSurface, borderColor: inputBorder },
+                ]}
+              >
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.languageOption,
+                      opt.value === language && {
+                        backgroundColor: palette.brandLight,
+                      },
+                    ]}
+                    onPress={() => {
+                      setLanguage(opt.value);
+                      setShowLanguagePicker(false);
+                    }}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel={opt.label}
+                  >
+                    <Text style={styles.languageFlag}>{opt.flag}</Text>
+                    <Text style={[styles.languageLabel, { color: c.textPrimary }]}>
+                      {opt.label}
+                    </Text>
+                    {opt.value === language && (
+                      <IconCheck size={18} color={palette.brand} strokeWidth={2} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Pressable>
+          </Modal>
+
+          {/* ── @username ─────────────────────────────────────────────────── */}
+          <View style={styles.fieldWrap}>
+            <Text style={[styles.label, { color: c.textSecondary }]}>
+              Username {/* TODO(i18n) */}
+            </Text>
+            <View
+              style={[
+                styles.usernameInputWrapper,
+                {
+                  backgroundColor: inputBg,
+                  borderColor:
+                    usernameFormatError || availability === 'taken'
+                      ? palette.danger
+                      : availability === 'available'
+                      ? palette.success
+                      : inputBorder,
+                },
+              ]}
+            >
+              {/* @ prefix icon */}
+              <IconAt size={18} color={c.textTertiary} strokeWidth={1.75} style={styles.atIcon} />
+
+              <TextInput
+                style={[styles.usernameInput, { color: c.textPrimary }]}
+                placeholder="your_username" // TODO(i18n)
+                placeholderTextColor={c.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                value={username}
+                onChangeText={(v) => {
+                  // Normalise to lowercase as the user types
+                  setUsername(v.toLowerCase());
+                }}
+                onBlur={() => setUsernameTouched(true)}
+                accessibilityLabel="Username"
+              />
+
+              {/* Availability indicator */}
+              <View style={styles.availabilityIcon}>
+                {availability === 'checking' && (
+                  <ActivityIndicator size="small" color={c.textTertiary} />
+                )}
+                {availability === 'available' && !usernameFormatError && (
+                  <IconCheck size={18} color={palette.success} strokeWidth={2.5} />
+                )}
+                {availability === 'taken' && (
+                  <IconAlertCircle size={18} color={palette.danger} strokeWidth={2} />
+                )}
+              </View>
+            </View>
+
+            {/* Inline status messages */}
+            {usernameFormatError && usernameTouched ? (
+              <Text style={[styles.errorText, { color: palette.danger }]}>
+                {usernameFormatError}
+              </Text>
+            ) : availability === 'taken' ? (
+              <Text style={[styles.errorText, { color: palette.danger }]}>
+                This username is already taken. {/* TODO(i18n) */}
+              </Text>
+            ) : availability === 'available' && !usernameFormatError ? (
+              <Text style={[styles.statusText, { color: palette.success }]}>
+                Username is available! {/* TODO(i18n) */}
+              </Text>
+            ) : availability === 'error' ? (
+              <Text style={[styles.errorText, { color: palette.warning }]}>
+                Couldn't verify username — please try again. {/* TODO(i18n) */}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* ── Terms & Privacy checkbox ──────────────────────────────────── */}
+          <View style={styles.fieldWrap}>
+            <TouchableOpacity
+              style={styles.termsRow}
+              onPress={() => {
+                setTermsAccepted((v) => !v);
+                setTermsTouched(true);
+              }}
+              activeOpacity={0.75}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: termsAccepted }}
+              accessibilityLabel="Accept Terms of Service and Privacy Policy" // TODO(i18n)
+            >
+              {/* Checkbox */}
+              <View
+                style={[
+                  styles.checkbox,
+                  {
+                    borderColor: termsError
+                      ? palette.danger
+                      : termsAccepted
+                      ? palette.brand
+                      : LOCAL_COLORS.checkboxBorder,
+                    backgroundColor: termsAccepted ? palette.brand : 'transparent',
+                  },
+                ]}
+              >
+                {termsAccepted && (
+                  <IconCheck size={14} color={LOCAL_COLORS.onBrand} strokeWidth={2.5} />
+                )}
+              </View>
+
+              {/* Label with tappable links */}
+              <View style={styles.termsTextWrap}>
+                <Text style={[styles.termsText, { color: c.textSecondary }]}>
+                  {'I agree to the '}{/* TODO(i18n) */}
+                </Text>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    void openTerms();
+                  }}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.termsLink, { color: palette.brand }]}>
+                    Terms of Service{/* TODO(i18n) */}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.termsText, { color: c.textSecondary }]}>
+                  {' and '}{/* TODO(i18n) */}
+                </Text>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    void openPrivacy();
+                  }}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.termsLink, { color: palette.brand }]}>
+                    Privacy Policy{/* TODO(i18n) */}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+            {termsError ? (
+              <Text style={[styles.errorText, { color: palette.danger }]}>
+                {termsError}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* ── Create account button ─────────────────────────────────────── */}
+          <TouchableOpacity
+            style={[
+              styles.createButton,
+              {
+                backgroundColor: palette.brand,
+                opacity: submitting ? 0.7 : 1,
+              },
+            ]}
+            onPress={() => { void handleCreateAccount(); }}
+            activeOpacity={0.85}
+            disabled={submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Create my account" // TODO(i18n)
+          >
+            {submitting ? (
+              <ActivityIndicator color={LOCAL_COLORS.onBrand} />
+            ) : (
+              <Text style={styles.createButtonText}>
+                Create my account 🎉{/* TODO(i18n) */}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* ── Back link ─────────────────────────────────────────────────── */}
+          <TouchableOpacity
+            style={styles.backRow}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to Step 1" // TODO(i18n)
+          >
+            <Text style={[styles.backText, { color: c.textTertiary }]}>
+              ← Back {/* TODO(i18n) */}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles — no hardcoded hex except in LOCAL_COLORS above
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '600' },
-  subtitle: { fontSize: 14, marginTop: 6 },
+  safe: { flex: 1 },
+  flex: { flex: 1 },
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 48,
+  },
+
+  // ── Progress dots ──────────────────────────────────────────────────────────
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 28,
+  },
+  dot: {
+    height: 6,
+    width: 6,
+    borderRadius: 3,
+  },
+
+  // ── Title ──────────────────────────────────────────────────────────────────
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+
+  // ── Shared field wrapper ───────────────────────────────────────────────────
+  fieldWrap: { marginBottom: 18 },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+
+  // ── Generic input / selector ───────────────────────────────────────────────
+  input: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectorText: {
+    fontSize: 15,
+    flex: 1,
+  },
+
+  // ── iOS date picker inline ─────────────────────────────────────────────────
+  iosPickerWrap: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginTop: -12,
+    marginBottom: 18,
+  },
+  iosDoneButton: {
+    borderTopWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  iosDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // ── Language picker modal ──────────────────────────────────────────────────
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: LOCAL_COLORS.overlayBackdrop,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageSheet: {
+    width: 260,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  languageFlag: {
+    fontSize: 22,
+  },
+  languageLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  // ── @username field ────────────────────────────────────────────────────────
+  usernameInputWrapper: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  atIcon: {
+    // Keep the icon vertically centred; no extra margins needed — gap handles spacing
+  },
+  usernameInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+  },
+  availabilityIcon: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Inline feedback text ───────────────────────────────────────────────────
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+  statusText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+
+  // ── Terms checkbox row ─────────────────────────────────────────────────────
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,       // align with first text line
+    flexShrink: 0,
+  },
+  termsTextWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  termsText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  termsLink: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+
+  // ── Create account button ──────────────────────────────────────────────────
+  createButton: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  createButtonText: {
+    color: LOCAL_COLORS.onBrand,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+
+  // ── Back link ──────────────────────────────────────────────────────────────
+  backRow: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backText: {
+    fontSize: 14,
+  },
 });
