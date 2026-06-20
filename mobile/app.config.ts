@@ -49,4 +49,10 @@ export default {
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
   ],
+  extra: {
+    ...(base as { extra?: Record<string, unknown> }).extra,
+    eas: {
+      projectId: '6fd667cf-ddde-4236-83be-71b2477eaa0f',
+    },
+  },
 };
