@@ -1,41 +1,61 @@
 /**
- * JChat 3.0 — dynamic Expo config (Stage 4).
- * Extends app.json and:
- *  - injects the Google Maps API key from env (GOOGLE_MAPS_KEY) — never
- *    hardcoded (Rule 2);
- *  - wires the Firebase config files (FCM/APNs push via expo-notifications):
- *    Android → google-services.json, iOS → GoogleService-Info.plist;
- *  - adds expo-location, react-native-maps, and expo-notifications plugins.
+ * JChat 3.0 — Expo config (single source of truth; app.json removed).
+ *  - Google Maps API key from env (GOOGLE_MAPS_KEY) — never hardcoded (Rule 2).
+ *  - Firebase config files (FCM/APNs) resolved from EAS file secrets with a
+ *    local fallback for dev: Android → google-services.json, iOS → plist.
+ *  - Plugins: Stripe, web-browser, datetimepicker, location, maps, notifications.
  */
 
-import appJson from './app.json';
+import type { ExpoConfig } from 'expo/config';
 
 const GOOGLE_MAPS_KEY = process.env.GOOGLE_MAPS_KEY ?? '';
 
 // EAS file secrets expose a path env var at build time; fall back to the local
-// file for dev. Upload via: eas secret:create --type file --name GOOGLE_SERVICES_JSON ...
+// file for dev. Uploaded via: eas env:create --type file --name GOOGLE_SERVICES_JSON ...
 const ANDROID_GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
 const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist';
 
-const base = appJson.expo;
-
-export default {
-  ...base,
+const config: ExpoConfig = {
+  name: 'JChat',
+  slug: 'jchat',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  web: {
+    favicon: './assets/favicon.png',
+  },
   ios: {
-    ...base.ios,
+    supportsTablet: true,
+    bundleIdentifier: 'com.jchat.app',
     // react-native-maps (Google provider) reads this native key.
     config: { googleMapsApiKey: GOOGLE_MAPS_KEY },
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
   },
   android: {
-    ...base.android,
+    package: 'com.jchat.app',
+    adaptiveIcon: {
+      backgroundColor: '#E6F4FE',
+      foregroundImage: './assets/android-icon-foreground.png',
+      backgroundImage: './assets/android-icon-background.png',
+      monochromeImage: './assets/android-icon-monochrome.png',
+    },
+    predictiveBackGestureEnabled: false,
     config: { googleMaps: { apiKey: GOOGLE_MAPS_KEY } },
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
   },
   plugins: [
-    ...base.plugins,
+    [
+      '@stripe/stripe-react-native',
+      {
+        merchantIdentifier: 'merchant.com.jchat.app',
+        enableGooglePay: false,
+      },
+    ],
+    'expo-web-browser',
+    '@react-native-community/datetimepicker',
     [
       'expo-location',
       {
@@ -50,9 +70,10 @@ export default {
     'expo-notifications',
   ],
   extra: {
-    ...(base as { extra?: Record<string, unknown> }).extra,
     eas: {
       projectId: '6fd667cf-ddde-4236-83be-71b2477eaa0f',
     },
   },
 };
+
+export default config;
