@@ -260,8 +260,19 @@ export function CreateOfferSheet({
             user_id:   createdBy,
             body:      title.trim(),
             type:      'offer',
-            is_system: true,
-            metadata:  { offer_id: offerId },
+            is_system: false,
+            // Snapshot offer fields so MessageBubble/OfferCard render without a fetch.
+            metadata:  {
+              offer_id:           offerId,
+              title:              title.trim(),
+              discount:           discount.trim() || null,
+              description:        description.trim() || null,
+              expires_at:         expiresAt,
+              offer_type:         offerType,
+              min_purchase_cents: minCents,
+              created_by:         createdBy,
+              business_id:        businessId,
+            },
           })
           .select('id')
           .single();

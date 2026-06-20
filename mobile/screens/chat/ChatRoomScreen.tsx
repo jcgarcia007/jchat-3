@@ -27,6 +27,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -63,6 +64,8 @@ import { IncognitoToggle, isIncognitoValid } from '../../components/chat/Incogni
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
 import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
 import { PinnedBanner } from '../../components/chat/PinnedBanner';
+import { PinMessageSheet } from '../../components/chat/PinMessageSheet';
+import { CreateOfferSheet } from '../../components/chat/CreateOfferSheet';
 import { MapReactionButton } from '../../components/chat/MapReactionButton';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
@@ -550,6 +553,23 @@ export default function ChatRoomScreen() {
   // TODO(Task 2.9): resolve viewer role from employees table.
   const viewerRole: ViewerRole = 'user';
 
+  // ── Pin & Offer sheets (Tasks 2.5 / 2.6) ────────────────────────────────────
+  const [pinMsg, setPinMsg] = useState<ChatMessage | null>(null);
+  const [offerVisible, setOfferVisible] = useState(false);
+
+  const handleLongPressMessage = useCallback(
+    (m: ChatMessage) => {
+      // Pin is Owner/Moderator only (spec 2.5).
+      if (viewerRole !== 'user') setPinMsg(m);
+    },
+    [viewerRole],
+  );
+
+  const sheetRooms = useMemo(
+    () => subRooms.map((r) => ({ id: r.id, name: r.name })),
+    [subRooms],
+  );
+
   // ── Infinite scroll (load older on reaching top) ───────────────────────────
 
   const handleScrollTop = useCallback(() => {
@@ -571,9 +591,10 @@ export default function ChatRoomScreen() {
         isOwn={item.user_id === user?.id}
         theme={chatTheme}
         onLongPressUser={handleUserLongPress}
+        onLongPressMessage={handleLongPressMessage}
       />
     ),
-    [user?.id, chatTheme, handleUserLongPress],
+    [user?.id, chatTheme, handleUserLongPress, handleLongPressMessage],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────
@@ -756,10 +777,7 @@ export default function ChatRoomScreen() {
           theme={chatTheme}
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
-          onOfferPress={() => {
-            // TODO(Task 2.6): open CreateOfferSheet
-            Alert.alert('Coming soon', 'Offer creation will be available soon.'); // TODO(i18n)
-          }}
+          onOfferPress={() => setOfferVisible(true)}
         />
       </KeyboardAvoidingView>
 
@@ -798,6 +816,38 @@ export default function ChatRoomScreen() {
           setUsersInRoom((prev) => prev.filter((u) => u.id !== userId));
         }}
         onClose={handleCloseUserSheet}
+      />
+
+      {/* ── Pin message sheet (Task 2.5) ──────────────────────────────────── */}
+      {pinMsg && (
+        <PinMessageSheet
+          visible={!!pinMsg}
+          message={{ id: pinMsg.id, previewText: (pinMsg.body ?? '').slice(0, 120) }}
+          roomId={activeRoomId}
+          rooms={sheetRooms}
+          pinnedBy={user?.id ?? ''}
+          theme={chatTheme}
+          onClose={() => setPinMsg(null)}
+          onPinned={() => {
+            setPinMsg(null);
+            void loadMessages(activeRoomId);
+          }}
+        />
+      )}
+
+      {/* ── Create offer sheet (Task 2.6) ─────────────────────────────────── */}
+      <CreateOfferSheet
+        visible={offerVisible}
+        businessId={room?.business_id ?? DEMO_BUSINESS.id}
+        roomId={activeRoomId}
+        rooms={sheetRooms}
+        createdBy={user?.id ?? ''}
+        theme={chatTheme}
+        onClose={() => setOfferVisible(false)}
+        onCreated={() => {
+          setOfferVisible(false);
+          void loadMessages(activeRoomId);
+        }}
       />
     </View>
   );

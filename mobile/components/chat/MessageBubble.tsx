@@ -29,9 +29,10 @@ import {
   IconMicrophone,
   IconGif,
   IconPhoto,
-  IconAlertCircle,
 } from '@tabler/icons-react-native';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { OfferCard } from './OfferCard';
+import type { Offer } from './OfferCard';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,25 @@ export interface MessageBubbleProps {
   theme: ChatTheme;
   /** Called with the sender's user_id when avatar/name area is long-pressed. */
   onLongPressUser?: (userId: string, displayName: string) => void;
+  /** Called when the message bubble itself is long-pressed (e.g. to pin). */
+  onLongPressMessage?: (message: ChatMessage) => void;
+}
+
+/** Build an Offer object from an offer message's metadata snapshot (Task 2.6). */
+function offerFromMessage(message: ChatMessage): Offer {
+  const meta = message.metadata;
+  return {
+    id: typeof meta.offer_id === 'string' ? meta.offer_id : message.id,
+    title: typeof meta.title === 'string' ? meta.title : message.body ?? 'Offer',
+    discount: typeof meta.discount === 'string' ? meta.discount : null,
+    description: typeof meta.description === 'string' ? meta.description : null,
+    expires_at: typeof meta.expires_at === 'string' ? meta.expires_at : null,
+    type: (meta.offer_type as Offer['type']) ?? null,
+    min_purchase_cents:
+      typeof meta.min_purchase_cents === 'number' ? meta.min_purchase_cents : null,
+    created_by: typeof meta.created_by === 'string' ? meta.created_by : null,
+    business_id: typeof meta.business_id === 'string' ? meta.business_id : '',
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -159,16 +179,7 @@ function BubbleContent({ message, isOwn, theme }: BubbleContentProps) {
       );
 
     case 'offer':
-      // TODO(Task 2.6): replace with <OfferCard message={message} theme={theme} />
-      return (
-        <View style={[styles.offerSlot, { borderColor: theme.accent }]}>
-          <IconAlertCircle size={16} color={theme.accent} />
-          <Text style={[styles.bodyText, { color: textColor }]}>
-            {/* TODO(Task 2.6): OfferCard */}
-            Offer — {message.body ?? ''}
-          </Text>
-        </View>
-      );
+      return <OfferCard offer={offerFromMessage(message)} theme={theme} />;
 
     case 'system':
     default:
@@ -188,9 +199,11 @@ export function MessageBubble({
   isOwn,
   theme,
   onLongPressUser,
+  onLongPressMessage,
 }: MessageBubbleProps) {
   const displayName = resolveDisplayName(message);
   const incognito = isIncognito(message);
+  const isOffer = message.type === 'offer';
 
   const handleLongPressUser = useCallback(() => {
     if (onLongPressUser) {
@@ -198,8 +211,12 @@ export function MessageBubble({
     }
   }, [onLongPressUser, message.user_id, displayName]);
 
-  // System messages render centered with no bubble
-  if (message.is_system || message.type === 'system') {
+  const handleLongPressMessage = useCallback(() => {
+    onLongPressMessage?.(message);
+  }, [onLongPressMessage, message]);
+
+  // System messages render centered with no bubble (offer messages are NOT system).
+  if ((message.is_system || message.type === 'system') && !isOffer) {
     return (
       <View style={styles.systemRow} accessibilityRole="text">
         <Text style={[styles.systemText, { color: theme.tabInactive }]}>
@@ -248,10 +265,16 @@ export function MessageBubble({
           </Pressable>
         )}
 
-        {/* Bubble */}
-        <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-          <BubbleContent message={message} isOwn={isOwn} theme={theme} />
-        </View>
+        {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
+        <Pressable onLongPress={handleLongPressMessage} delayLongPress={400}>
+          {isOffer ? (
+            <BubbleContent message={message} isOwn={isOwn} theme={theme} />
+          ) : (
+            <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
+              <BubbleContent message={message} isOwn={isOwn} theme={theme} />
+            </View>
+          )}
+        </Pressable>
 
         {/* Timestamp */}
         <Text style={[styles.timestamp, { color: theme.tabInactive }, isOwn && styles.timestampOwn]}>
