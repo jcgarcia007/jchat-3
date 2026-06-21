@@ -1074,8 +1074,8 @@ export default function BusinessVerifyPage() {
     if (step < 3) {
       setCurrentStep(step + 1);
     } else {
-      // All steps done — redirect to dashboard
-      router.push("/business/dashboard");
+      // All steps done — redirect to the business dashboard.
+      router.push("/dashboard");
     }
   }
 
