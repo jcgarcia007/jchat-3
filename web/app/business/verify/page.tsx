@@ -491,6 +491,18 @@ function Step2CodeSelfie({
   const codeReady = codeState.status === "done" && dailyCode;
   const canContinue = codeReady && selfieSubmitted;
 
+  // TEMPORARY testing escape hatch (same as Step 1): bypasses the daily-code +
+  // selfie review and advances to Step 3. Shown ALWAYS for now; opt-out with
+  // NEXT_PUBLIC_HIDE_TEST_SKIP="true".
+  // REMOVE THIS (and the button below) BEFORE PUBLIC LAUNCH.
+  const showTestSkip = process.env.NEXT_PUBLIC_HIDE_TEST_SKIP !== "true";
+
+  function handleTestSkip() {
+    setSelfieSubmitted(true);
+    setSelfieState({ status: "done", error: null });
+    onComplete();
+  }
+
   return (
     <div>
       {/* Daily Code section */}
@@ -674,6 +686,20 @@ function Step2CodeSelfie({
         <div style={{ marginTop: "20px" }}>
           <button type="button" onClick={onComplete} style={S.primaryBtn}>
             Continue to Step 3
+            <IconChevronRight size={15} />
+          </button>
+        </div>
+      )}
+
+      {showTestSkip && !canContinue && (
+        <div style={{ marginTop: "20px" }}>
+          <button
+            type="button"
+            onClick={handleTestSkip}
+            style={{ ...S.ghostBtn, borderStyle: "dashed" }}
+            title="Testing only — bypasses the code + selfie review"
+          >
+            Skip for now (Testing)
             <IconChevronRight size={15} />
           </button>
         </div>
