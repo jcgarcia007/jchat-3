@@ -20,7 +20,8 @@ import { IconMapPin, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-const DEFAULT_CENTER = { lat: 25.7617, lng: -80.1918 };
+// Fallback view when the business has no saved coordinates: center of the USA.
+const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
 
 type LatLng = { lat: number; lng: number };
 
@@ -33,6 +34,17 @@ function accentColor(): string {
     root.getPropertyValue("--color-brand").trim() ||
     "rgb(92,124,250)"
   );
+}
+
+// ── Imperative recenter (does NOT control the map, so panning stays free) ───────
+function Recenter({ target }: { target: LatLng | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !target) return;
+    map.panTo(target);
+    map.setZoom(15);
+  }, [map, target]);
+  return null;
 }
 
 // ── Draggable pin (native marker, no mapId needed) ──────────────────────────────
@@ -142,6 +154,8 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Imperative recenter target — set on load/search, NOT on pin drag/map click.
+  const [recenterTo, setRecenterTo] = useState<LatLng | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !businessId) return;
@@ -154,9 +168,12 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         .maybeSingle();
       if (active && b) {
         const row = b as Record<string, number | null>;
-        setLat(row.latitude ?? row.lat ?? null);
-        setLng(row.longitude ?? row.lng ?? null);
+        const blat = row.latitude ?? row.lat ?? null;
+        const blng = row.longitude ?? row.lng ?? null;
+        setLat(blat);
+        setLng(blng);
         setRadius(row.geofence_radius_m ?? row.radius_m ?? 200);
+        if (blat != null && blng != null) setRecenterTo({ lat: blat, lng: blng });
       }
     })();
     return () => {
@@ -164,7 +181,8 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
     };
   }, [businessId]);
 
-  const center: LatLng = lat != null && lng != null ? { lat, lng } : DEFAULT_CENTER;
+  // The pin is always visible: at the saved location, or the USA fallback.
+  const pin: LatLng = lat != null && lng != null ? { lat, lng } : DEFAULT_CENTER;
 
   const saveBusiness = useCallback(async () => {
     if (!businessId) return;
@@ -237,13 +255,15 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
       {hasKey ? (
         <APIProvider apiKey={MAPS_KEY}>
           <div style={{ marginBottom: "12px" }}>
-            <PlacesSearch onPlace={(p) => { setLat(p.lat); setLng(p.lng); }} />
+            <PlacesSearch onPlace={(p) => { setLat(p.lat); setLng(p.lng); setRecenterTo(p); }} />
           </div>
           <div style={{ height: "400px", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--db-border)" }}>
             <GMap
-              center={center}
-              defaultZoom={15}
+              defaultCenter={pin}
+              defaultZoom={lat != null && lng != null ? 15 : 4}
               gestureHandling="greedy"
+              draggable
+              scrollwheel
               disableDefaultUI={false}
               style={{ width: "100%", height: "400px" }}
               onClick={(e) => {
@@ -251,8 +271,9 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                 if (ll) { setLat(ll.lat); setLng(ll.lng); }
               }}
             >
-              <DraggablePin position={center} onMove={(p) => { setLat(p.lat); setLng(p.lng); }} />
-              <RadiusCircle center={center} radius={radius} />
+              <DraggablePin position={pin} onMove={(p) => { setLat(p.lat); setLng(p.lng); }} />
+              <RadiusCircle center={pin} radius={radius} />
+              <Recenter target={recenterTo} />
             </GMap>
           </div>
           <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: "6px 0 0" }}>
