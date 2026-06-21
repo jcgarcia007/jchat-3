@@ -1239,7 +1239,10 @@ export default function BusinessRegisterPage() {
       if (profileError) throw new Error(profileError.message);
 
       // 1) Insert business row (owned by the signed-in user)
-      const slug = toSlug(data.name);
+      // Append a short random suffix so the slug never collides with an
+      // existing business (businesses_slug_key is UNIQUE).
+      const slugSuffix = (Math.random().toString(36) + "0000").slice(2, 6);
+      const slug = `${toSlug(data.name)}-${slugSuffix}`;
       const { data: inserted, error: bizError } = await supabase
         .from("businesses")
         .insert({
