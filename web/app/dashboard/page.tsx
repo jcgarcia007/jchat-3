@@ -104,23 +104,80 @@ export default function OverviewPage() {
       </section>
 
       {/* Secondary: dedicated event creation wizard (needs a business first) */}
-      <Link
-        href="/dashboard/events/new"
+      <section
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "8px",
+          background: "var(--db-bg-surface)",
+          border: "1px solid var(--db-border)",
+          borderRadius: "14px",
+          padding: "24px",
+          maxWidth: "640px",
           marginTop: "16px",
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "var(--db-accent)",
-          textDecoration: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "20px",
+          flexWrap: "wrap",
         }}
       >
-        <IconCalendarEvent size={16} />
-        Create an event
-        <IconArrowRight size={14} />
-      </Link>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "48px",
+            height: "48px",
+            borderRadius: "12px",
+            background: "var(--db-accent-bg)",
+            color: "var(--db-accent)",
+            flexShrink: 0,
+          }}
+        >
+          <IconCalendarEvent size={26} />
+        </span>
+
+        <div style={{ flex: 1, minWidth: "200px" }}>
+          <h2
+            style={{
+              fontSize: "16px",
+              fontWeight: 700,
+              color: "var(--db-text-primary)",
+              margin: "0 0 4px",
+            }}
+          >
+            Create an event
+          </h2>
+          <p
+            style={{
+              fontSize: "13px",
+              color: "var(--db-text-secondary)",
+              margin: 0,
+            }}
+          >
+            Publish an event on the map and open a dedicated chat room that
+            closes when it ends.
+          </p>
+        </div>
+
+        <Link
+          href="/dashboard/events/new"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "11px 18px",
+            borderRadius: "10px",
+            background: "var(--db-accent)",
+            color: "var(--db-accent-text)",
+            fontSize: "14px",
+            fontWeight: 600,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <IconCalendarEvent size={18} />
+          Create an event
+          <IconArrowRight size={16} />
+        </Link>
+      </section>
     </div>
   );
 }
