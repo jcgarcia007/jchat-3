@@ -1676,11 +1676,15 @@ export default function MenuPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated.");
 
+      // An owner may have more than one business — pick the most recent.
+      // (.single() errors when >1 row, which surfaced as "Business not found".)
       const { data: biz, error: bizErr } = await supabase
         .from("businesses")
         .select("id")
         .eq("owner_id", user.id)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (bizErr || !biz) throw new Error("Business not found for this account.");
       const bid: string = biz.id as string;
       setBusinessId(bid);

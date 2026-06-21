@@ -34,6 +34,8 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconEyeOff,
+  IconPlus,
+  IconDownload,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -382,6 +384,16 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+const addLabelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "var(--db-text-secondary)",
+  marginBottom: "5px",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
 function btnStyle(bg: string, color: string): React.CSSProperties {
   return {
     display: "inline-flex",
@@ -454,6 +466,12 @@ export default function InventoryPage() {
   const [editMap, setEditMap] = useState<Record<string, EditState>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  // Manual "Add Product" form
+  const [newName, setNewName] = useState("");
+  const [newStock, setNewStock] = useState("");
+  const [newThreshold, setNewThreshold] = useState("");
+  const [adding, setAdding] = useState(false);
+
   // CSV import
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -476,11 +494,15 @@ export default function InventoryPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoadingBiz(false); return; }
+        // An owner may have more than one business — pick the most recent.
+        // (.single() errors when >1 row, breaking inventory for multi-business owners.)
         const { data: biz } = await supabase
           .from("businesses")
           .select("id")
           .eq("owner_id", user.id)
-          .single();
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
         if (biz) setBusinessId(biz.id as string);
       } catch {
         // silently fall through — live data won't load but demo is fine
@@ -767,6 +789,132 @@ export default function InventoryPage() {
     reader.readAsText(file);
   }
 
+  // ── Manual add product ───────────────────────────────────────────────────────
+  async function addProduct() {
+    const name = newName.trim();
+    const stockNum = parseInt(newStock, 10);
+    const thresholdNum = newThreshold.trim() === "" ? 5 : parseInt(newThreshold, 10);
+
+    if (!name) {
+      setError("Product name is required.");
+      return;
+    }
+    if (isNaN(stockNum) || stockNum < 0) {
+      setError("Initial stock must be a non-negative number.");
+      return;
+    }
+    if (isNaN(thresholdNum) || thresholdNum < 0) {
+      setError("Alert threshold must be a non-negative number.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+
+    // Demo mode: append locally only.
+    if (!isSupabaseConfigured) {
+      setItems((prev) =>
+        [
+          ...prev,
+          {
+            id: `demo-new-${Date.now()}`,
+            business_id: "demo-biz",
+            name,
+            stock_count: stockNum,
+            low_stock_threshold: thresholdNum,
+            is_published: true,
+          },
+        ].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setNewName("");
+      setNewStock("");
+      setNewThreshold("");
+      setSuccess(`Added "${name}" (demo mode).`);
+      return;
+    }
+
+    if (!businessId) {
+      setError("No business found for this account. Register a business first.");
+      return;
+    }
+
+    setAdding(true);
+    try {
+      // menu_items.category_id is NOT NULL → find or create a default category.
+      let categoryId: string;
+      const { data: cats, error: catSelErr } = await supabase
+        .from("menu_categories")
+        .select("id")
+        .eq("business_id", businessId)
+        .order("sort", { ascending: true })
+        .limit(1);
+      if (catSelErr) throw catSelErr;
+
+      if (cats && cats.length > 0) {
+        categoryId = cats[0].id as string;
+      } else {
+        const { data: newCat, error: catInsErr } = await supabase
+          .from("menu_categories")
+          .insert({ business_id: businessId, name: "Uncategorized" })
+          .select("id")
+          .single();
+        if (catInsErr || !newCat) throw new Error(catInsErr?.message ?? "Failed to create category.");
+        categoryId = newCat.id as string;
+      }
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("menu_items")
+        .insert({
+          business_id: businessId,
+          category_id: categoryId,
+          name,
+          stock_count: stockNum,
+          low_stock_threshold: thresholdNum,
+          price_cents: 0,
+        })
+        .select("id, business_id, name, stock_count, low_stock_threshold, is_published")
+        .single();
+      if (insErr || !inserted) throw new Error(insErr?.message ?? "Failed to add product.");
+
+      // Log the initial stock as a movement.
+      if (stockNum > 0) {
+        await supabase.from("stock_movements").insert({
+          menu_item_id: (inserted as MenuItem).id,
+          business_id: businessId,
+          delta: stockNum,
+          reason: "Initial stock",
+        });
+      }
+
+      setItems((prev) =>
+        [...prev, inserted as MenuItem].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setNewName("");
+      setNewStock("");
+      setNewThreshold("");
+      setSuccess(`Added "${name}".`);
+      if (showHistory) void loadMovements(businessId);
+    } catch (e: unknown) {
+      setError(`Add product failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  // ── Download a CSV template ──────────────────────────────────────────────────
+  function downloadCsvTemplate() {
+    const csv = "name,stock\nHamburger,50\nFrench Fries,30\nCoca Cola,100\n";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory_template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // ── Derived stats ────────────────────────────────────────────────────────────
   const lowCount = items.filter((i) => isLowStock(i)).length;
   const outCount = items.filter((i) => isOutOfStock(i)).length;
@@ -857,6 +1005,73 @@ export default function InventoryPage() {
       {success && <AlertBanner type="success" message={success} />}
       {csvReport && <AlertBanner type="info"  message={csvReport} />}
 
+      {/* Manual add product */}
+      <SectionCard>
+        <SectionTitle>
+          <IconPlus size={16} color="var(--db-accent)" />
+          Add a Product
+        </SectionTitle>
+        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
+          Add a product manually without a CSV. It will be created in your menu so
+          you can set a price later from the Menu page.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 130px 150px auto",
+            gap: "12px",
+            alignItems: "end",
+          }}
+        >
+          <div>
+            <label style={addLabelStyle}>Product name *</label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Hamburger"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={addLabelStyle}>Initial stock *</label>
+            <input
+              type="number"
+              min="0"
+              value={newStock}
+              onChange={(e) => setNewStock(e.target.value)}
+              placeholder="0"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={addLabelStyle}>Alert threshold</label>
+            <input
+              type="number"
+              min="0"
+              value={newThreshold}
+              onChange={(e) => setNewThreshold(e.target.value)}
+              placeholder="5"
+              style={inputStyle}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void addProduct()}
+            disabled={adding}
+            style={{
+              ...btnStyle("var(--db-accent)", "var(--db-accent-text)"),
+              padding: "9px 16px",
+              opacity: adding ? 0.7 : 1,
+              cursor: adding ? "not-allowed" : "pointer",
+            }}
+          >
+            <IconPlus size={14} />
+            {adding ? "Adding…" : "Add Product"}
+          </button>
+        </div>
+      </SectionCard>
+
       {/* CSV import */}
       <SectionCard>
         <SectionTitle>
@@ -891,6 +1106,73 @@ export default function InventoryPage() {
             Parses client-side — no file is uploaded to a server.
           </span>
         </div>
+
+        {/* CSV format example + downloadable template */}
+        <div style={{ marginTop: "16px" }}>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--db-text-tertiary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginBottom: "8px",
+            }}
+          >
+            Example
+          </div>
+          <table
+            style={{
+              borderCollapse: "collapse",
+              fontSize: "13px",
+              color: "var(--db-text-primary)",
+              marginBottom: "12px",
+              minWidth: "280px",
+            }}
+          >
+            <thead>
+              <tr>
+                {["name", "stock"].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      padding: "6px 16px",
+                      border: "1px solid var(--db-border)",
+                      background: "var(--db-bg-elevated)",
+                      fontFamily: "var(--font-mono, monospace)",
+                      fontSize: "12px",
+                      color: "var(--db-text-secondary)",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Hamburger", "50"],
+                ["French Fries", "30"],
+                ["Coca Cola", "100"],
+              ].map(([n, s]) => (
+                <tr key={n}>
+                  <td style={{ padding: "6px 16px", border: "1px solid var(--db-border)" }}>{n}</td>
+                  <td style={{ padding: "6px 16px", border: "1px solid var(--db-border)" }}>{s}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button
+            type="button"
+            onClick={downloadCsvTemplate}
+            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+          >
+            <IconDownload size={14} />
+            Download template
+          </button>
+        </div>
+
         <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "10px", fontStyle: "italic" }}>
           {/* TODO(server/Edge Function): email owner on low stock */}
           Email alerts when stock hits threshold — Edge Function integration pending.
