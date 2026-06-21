@@ -37,6 +37,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ─── Co-located types ─────────────────────────────────────────────────────────
 
@@ -396,6 +398,12 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Add-employee form
+  const [showAdd, setShowAdd] = useState(false);
+  const [addUsername, setAddUsername] = useState("");
+  const [addRole, setAddRole] = useState<EmployeeRole>("Cashier");
+  const [adding, setAdding] = useState(false);
+
   // ── Resolve business id ────────────────────────────────────────────────────
 
   const resolveBusinessId = useCallback(async () => {
@@ -411,16 +419,12 @@ export default function EmployeesPage() {
         setLoadingBiz(false);
         return;
       }
-      const { data: biz, error: bizErr } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (bizErr || !biz) {
+      const res = await resolveActiveBusiness();
+      if (!res.ok) {
         setLoadingBiz(false);
         return;
       }
-      setBusinessId((biz as { id: string }).id);
+      setBusinessId(res.business.id);
     } catch {
       // business not found — keep null
     } finally {
@@ -529,6 +533,47 @@ export default function EmployeesPage() {
     []
   );
 
+  // ── Add employee (look up user by username → insert) ─────────────────────────
+
+  const handleAdd = useCallback(async () => {
+    if (!businessId) return;
+    const uname = addUsername.trim().replace(/^@/, "");
+    if (!uname) {
+      setError("Enter the employee's username.");
+      return;
+    }
+    setAdding(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const { data: u, error: uErr } = await supabase
+        .from("users")
+        .select("id, username")
+        .ilike("username", uname)
+        .maybeSingle();
+      if (uErr) throw uErr;
+      if (!u) {
+        setError(`No user found with username @${uname}.`);
+        return;
+      }
+      const { error: insErr } = await supabase.from("employees").insert({
+        business_id: businessId,
+        user_id: (u as { id: string }).id,
+        role: addRole,
+        status: "accepted",
+      });
+      if (insErr) throw insErr;
+      setSuccessMsg(`Added @${(u as { username: string }).username} as ${addRole}.`);
+      setAddUsername("");
+      setShowAdd(false);
+      await loadEmployees(businessId);
+    } catch (e: unknown) {
+      setError(`Add failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setAdding(false);
+    }
+  }, [businessId, addUsername, addRole, loadEmployees]);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -583,10 +628,7 @@ export default function EmployeesPage() {
 
       {/* No business */}
       {!loadingBiz && isSupabaseConfigured && !businessId && (
-        <AlertBanner
-          type="warning"
-          message="No business found for this account. Complete business registration to manage employees."
-        />
+        <NoBusinessCTA message="Register your business to manage employees." />
       )}
 
       {/* Content card */}
@@ -604,21 +646,79 @@ export default function EmployeesPage() {
             style={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               gap: "10px",
               marginBottom: "6px",
             }}
           >
-            <IconUsers size={18} color="var(--db-accent)" />
-            <h2
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <IconUsers size={18} color="var(--db-accent)" />
+              <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+                Staff Roster
+              </h2>
+            </div>
+            {businessId && (
+              <button
+                type="button"
+                onClick={() => setShowAdd((v) => !v)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 14px", borderRadius: "9px", border: "none",
+                  background: showAdd ? "var(--db-bg-elevated)" : "var(--db-accent)",
+                  color: showAdd ? "var(--db-text-secondary)" : "var(--db-accent-text)",
+                  fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {showAdd ? "Cancel" : "+ Add employee"}
+              </button>
+            )}
+          </div>
+
+          {/* Add employee form */}
+          {showAdd && businessId && (
+            <div
               style={{
-                fontSize: "16px",
-                fontWeight: 600,
-                color: "var(--db-text-primary)",
+                display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap",
+                background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)",
+                borderRadius: "10px", padding: "14px", margin: "10px 0 16px",
               }}
             >
-              Staff Roster
-            </h2>
-          </div>
+              <div style={{ flex: 1, minWidth: "180px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={addUsername}
+                  onChange={(e) => setAddUsername(e.target.value)}
+                  placeholder="@username"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Role
+                </label>
+                <select
+                  value={addRole}
+                  onChange={(e) => setAddRole(e.target.value as EmployeeRole)}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", cursor: "pointer" }}
+                >
+                  {(["Manager", "Cashier", "Waiter", "Kitchen", "Chat Moderator", "Analyst"] as EmployeeRole[]).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleAdd()}
+                disabled={adding}
+                style={{ padding: "9px 16px", borderRadius: "8px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "14px", fontWeight: 600, cursor: adding ? "wait" : "pointer", opacity: adding ? 0.7 : 1 }}
+              >
+                {adding ? "Adding…" : "Add"}
+              </button>
+            </div>
+          )}
           <p
             style={{
               fontSize: "13px",

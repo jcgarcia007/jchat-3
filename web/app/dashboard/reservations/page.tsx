@@ -36,6 +36,8 @@ import {
   IconCalendarTime,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -829,16 +831,12 @@ export default function ReservationsPage() {
         setLoadingBiz(false);
         return;
       }
-      const { data: biz, error: bizErr } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (bizErr || !biz) {
+      const res = await resolveActiveBusiness();
+      if (!res.ok) {
         setLoadingBiz(false);
         return;
       }
-      setBusinessId((biz as { id: string }).id);
+      setBusinessId(res.business.id);
     } catch {
       // business not found — keep null
     } finally {
@@ -1191,10 +1189,7 @@ export default function ReservationsPage() {
 
       {/* Business not found */}
       {!loadingBiz && isSupabaseConfigured && !businessId && (
-        <AlertBanner
-          type="warning"
-          message="No business found for this account. Reservations cannot be loaded."
-        />
+        <NoBusinessCTA message="Register your business to manage reservations." />
       )}
 
       {/* Capacity settings panel */}

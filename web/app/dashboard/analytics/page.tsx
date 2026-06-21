@@ -1233,20 +1233,39 @@ interface RealKpis {
   ordersTotal: number;
   ordersToday: number;
   uniqueCustomers: number;
+  uniqueCheckins: number;
   topRoom: string | null;
   topRoomMessages: number;
+  ordersByDay: { date: string; orders: number }[]; // last 7 days
 }
 
 function RealKpiBand({ kpis }: { kpis: RealKpis }) {
+  const { accent } = useChartColors();
   return (
     <div style={{ marginBottom: "24px" }}>
       <SectionTitle>Overview — live</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px", marginBottom: "16px" }}>
         <KpiCard label="Revenue" value={fmt$(kpis.revenueTotal)} icon={IconCoin} sub={`${fmt$(kpis.revenueMonth)} this month`} />
         <KpiCard label="Orders" value={String(kpis.ordersTotal)} icon={IconTrendingUp} sub={`${kpis.ordersToday} today`} />
         <KpiCard label="Unique customers" value={String(kpis.uniqueCustomers)} icon={IconUsers} sub="Orders + check-ins" />
+        <KpiCard label="Unique check-ins" value={String(kpis.uniqueCheckins)} icon={IconBolt} sub="Distinct visitors" />
         <KpiCard label="Most active room" value={kpis.topRoom ?? "—"} icon={IconMessage} sub={`${kpis.topRoomMessages} messages`} />
       </div>
+      <Card>
+        <SectionTitle>Orders — last 7 days</SectionTitle>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={kpis.ordersByDay} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+            <Tooltip
+              formatter={(value: unknown) => [value as number, "Orders"]}
+              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+            />
+            <Bar dataKey="orders" fill={accent} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
     </div>
   );
 }
@@ -1291,7 +1310,29 @@ export default function AnalyticsPage() {
       const userIds = new Set<string>();
       o.forEach((x) => x.user_id && userIds.add(x.user_id));
       const { data: cis } = await supabase.from("check_ins").select("user_id").eq("business_id", bid);
-      (cis ?? []).forEach((c) => (c.user_id as string | null) && userIds.add(c.user_id as string));
+      const checkinIds = new Set<string>();
+      (cis ?? []).forEach((c) => {
+        const uid = c.user_id as string | null;
+        if (uid) {
+          userIds.add(uid);
+          checkinIds.add(uid);
+        }
+      });
+
+      // Orders per day for the last 7 days (oldest → newest).
+      const ordersByDay: { date: string; orders: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const start = d.getTime();
+        const end = start + 86400000;
+        ordersByDay.push({
+          date: DAYS[d.getDay()],
+          orders: o.filter((x) => {
+            const t = new Date(x.created_at).getTime();
+            return t >= start && t < end;
+          }).length,
+        });
+      }
 
       const { data: rms } = await supabase.from("rooms").select("id, name").eq("business_id", bid);
       let topRoom: string | null = null;
@@ -1314,8 +1355,10 @@ export default function AnalyticsPage() {
         ordersTotal: o.length,
         ordersToday,
         uniqueCustomers: userIds.size,
+        uniqueCheckins: checkinIds.size,
         topRoom,
         topRoomMessages,
+        ordersByDay,
       });
     })();
     return () => {

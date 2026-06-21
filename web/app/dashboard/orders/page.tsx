@@ -40,13 +40,14 @@ interface Order {
   items: OrderItem[];
 }
 
-type Filter = "all" | "pending" | "in_progress" | "completed" | "cancelled";
+type Filter = "all" | "pending" | "preparing" | "ready" | "delivered" | "cancelled";
 
 const FILTERS: { key: Filter; label: string; statuses: string[] | null }[] = [
   { key: "all", label: "All", statuses: null },
   { key: "pending", label: "Pending", statuses: ["confirmed", "pending"] },
-  { key: "in_progress", label: "In Progress", statuses: ["preparing", "ready"] },
-  { key: "completed", label: "Completed", statuses: ["delivered"] },
+  { key: "preparing", label: "Preparing", statuses: ["preparing"] },
+  { key: "ready", label: "Ready", statuses: ["ready"] },
+  { key: "delivered", label: "Delivered", statuses: ["delivered"] },
   { key: "cancelled", label: "Cancelled", statuses: ["cancelled"] },
 ];
 
