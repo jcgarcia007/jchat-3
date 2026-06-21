@@ -42,6 +42,7 @@ import {
   DASHBOARD_THEMES,
 } from "@/hooks/useDashboardTheme";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
+import { LocationEditor } from "@/components/dashboard/LocationEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -672,6 +673,15 @@ export default function ConfigurationPage() {
         >
           Save Info
         </PrimaryBtn>
+      </Section>
+
+      {/* ── 📍 Location & Geofence ───────────────────────────────────────────── */}
+      <Section
+        icon={<IconMapPin size={18} color="var(--db-accent)" />}
+        title="Location & Geofence"
+        subtitle="Set your venue's map position and geofence radius, or draw a custom area for an event."
+      >
+        <LocationEditor businessId={businessId} />
       </Section>
 
       {/* ── 2. Operating Hours ───────────────────────────────────────────────── */}
