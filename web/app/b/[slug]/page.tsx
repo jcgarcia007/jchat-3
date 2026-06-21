@@ -24,7 +24,10 @@ import {
   IconPhoto,
   IconToolsKitchen2,
 } from "@tabler/icons-react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,6 +97,8 @@ async function getBusiness(slug: string): Promise<Business | null> {
     // Return placeholder so the page renders without a backend
     return slug === "demo-venue" ? PLACEHOLDER_BUSINESS : null;
   }
+
+  const supabase = await createSupabaseServerClient();
 
   const { data: biz, error: bizError } = await supabase
     .from("businesses")

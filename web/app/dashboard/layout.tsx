@@ -1,19 +1,34 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "JChat Dashboard",
   description: "JChat 3.0 business owner dashboard",
 };
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // TODO(Task 2.x): redirect to login if not an authenticated business owner
-  // Example: const session = await getServerSession(); if (!session) redirect('/login');
+  // Auth gate: require an authenticated session to access the dashboard.
+  // Skipped only when Supabase is unconfigured (local/demo without a backend),
+  // to avoid an unrecoverable redirect loop.
+  if (isSupabaseConfigured) {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      redirect("/auth/login?next=/dashboard");
+    }
+  }
 
   // TODO(Task 2.16): load dashboard_theme_id from Supabase businesses table
   // and map it to the theme key via DASHBOARD_THEMES.find(t => t.id === themeId)?.key

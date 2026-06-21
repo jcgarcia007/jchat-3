@@ -8,7 +8,7 @@
  *            → redirects to /business/verify
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconBuilding,
@@ -861,6 +861,21 @@ export default function BusinessRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Require an authenticated session to register a business (RLS: owner insert
+  // checks auth.uid() = owner_id). Redirect to login if signed out.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (active && !user) {
+        router.replace("/auth/login?next=/business/register");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   function patch(update: Partial<WizardData>) {
     setData((prev) => ({ ...prev, ...update }));
   }
@@ -891,11 +906,21 @@ export default function BusinessRegisterPage() {
         return;
       }
 
-      // 1) Insert business row
+      // Require an authenticated session — owner_id must match auth.uid() (RLS).
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/auth/login?next=/business/register");
+        return;
+      }
+
+      // 1) Insert business row (owned by the signed-in user)
       const slug = toSlug(data.name);
       const { data: inserted, error: bizError } = await supabase
         .from("businesses")
         .insert({
+          owner_id: user.id,
           name: data.name.trim(),
           slug,
           category: data.category,
