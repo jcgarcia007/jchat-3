@@ -38,6 +38,7 @@ import {
   IconDownload,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -492,18 +493,12 @@ export default function InventoryPage() {
     }
     void (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoadingBiz(false); return; }
-        // An owner may have more than one business — pick the most recent.
-        // (.single() errors when >1 row, breaking inventory for multi-business owners.)
-        const { data: biz } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("owner_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (biz) setBusinessId(biz.id as string);
+        const res = await resolveActiveBusiness();
+        if (res.ok) {
+          setBusinessId(res.business.id);
+        } else if (res.reason === "no_business" || res.reason === "unauthenticated") {
+          setError(res.message);
+        }
       } catch {
         // silently fall through — live data won't load but demo is fine
       } finally {

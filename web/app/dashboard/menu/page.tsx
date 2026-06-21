@@ -49,6 +49,7 @@ import {
   IconFish,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1671,22 +1672,11 @@ export default function MenuPage() {
     setLoading(true);
     setError(null);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated.");
-
-      // An owner may have more than one business — pick the most recent.
-      // (.single() errors when >1 row, which surfaced as "Business not found".)
-      const { data: biz, error: bizErr } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (bizErr || !biz) throw new Error("Business not found for this account.");
-      const bid: string = biz.id as string;
+      // Resolve the owner's business via the shared helper (most-recent;
+      // tolerant of multiple businesses per owner).
+      const res = await resolveActiveBusiness();
+      if (!res.ok) throw new Error(res.message);
+      const bid: string = res.business.id;
       setBusinessId(bid);
 
       const [catsResult, itemsResult] = await Promise.all([
