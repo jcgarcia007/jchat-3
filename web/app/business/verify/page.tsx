@@ -248,6 +248,39 @@ function Step1Identity({
     void pollStatus();
   }, [pollStatus]);
 
+  // Testing-only escape hatch: marks Identity approved without Stripe.
+  // Hidden in real production (real Stripe Identity is used there).
+  const showTestSkip =
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_ENABLE_TEST_SKIP === "true";
+
+  const handleTestSkip = useCallback(async () => {
+    setError(null);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: existing } = await supabase
+          .from("business_verifications")
+          .select("id")
+          .eq("business_id", businessId)
+          .maybeSingle();
+        if (existing) {
+          await supabase
+            .from("business_verifications")
+            .update({ identity_status: "approved" })
+            .eq("business_id", businessId);
+        } else {
+          await supabase
+            .from("business_verifications")
+            .insert({ business_id: businessId, identity_status: "approved" });
+        }
+      }
+    } catch {
+      // Non-fatal in testing — still advance.
+    }
+    setIdentityStatus("approved");
+    onComplete();
+  }, [businessId, onComplete]);
+
   const isApproved = identityStatus === "approved";
   const isFailed = identityStatus === "failed";
 
@@ -361,6 +394,17 @@ function Step1Identity({
         {isApproved && (
           <button type="button" onClick={onComplete} style={S.primaryBtn}>
             Continue to Step 2
+            <IconChevronRight size={15} />
+          </button>
+        )}
+        {showTestSkip && !isApproved && (
+          <button
+            type="button"
+            onClick={() => void handleTestSkip()}
+            style={{ ...S.ghostBtn, borderStyle: "dashed" }}
+            title="Testing only — bypasses Stripe Identity"
+          >
+            Skip for now (Testing)
             <IconChevronRight size={15} />
           </button>
         )}

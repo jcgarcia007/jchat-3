@@ -348,7 +348,7 @@ function CoverUpload({
 
 function StepBar({ current }: { current: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", marginBottom: "28px" }}>
+    <div style={{ display: "flex", alignItems: "center", marginBottom: "32px", gap: 0 }}>
       {STEPS.map((s, idx) => {
         const done = current > s.number;
         const active = current === s.number;
@@ -367,26 +367,47 @@ function StepBar({ current }: { current: number }) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: done || active ? "var(--db-accent)" : "var(--db-bg-elevated)",
-                  color: done || active ? "var(--db-accent-text, #ffffff)" : "var(--db-text-tertiary)",
-                  border: "1px solid var(--db-border)",
+                  background: done
+                    ? "var(--db-success)"
+                    : active
+                    ? "var(--db-accent)"
+                    : "var(--db-bg-elevated)",
+                  border: active || done ? "none" : "1px solid var(--db-border)",
                   flexShrink: 0,
+                  transition: "background 0.2s ease",
                 }}
               >
-                {done ? <IconCheck size={16} /> : <Icon size={16} />}
+                {done ? (
+                  <IconCheck size={14} color="white" />
+                ) : (
+                  <Icon size={14} color={active ? "white" : "var(--db-text-tertiary)"} />
+                )}
               </div>
               <span
                 style={{
                   fontSize: "12px",
-                  fontWeight: 600,
-                  color: active ? "var(--db-text-primary)" : "var(--db-text-tertiary)",
+                  fontWeight: active || done ? 600 : 400,
+                  color: active
+                    ? "var(--db-accent)"
+                    : done
+                    ? "var(--db-success)"
+                    : "var(--db-text-tertiary)",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {s.label}
               </span>
             </div>
             {idx < STEPS.length - 1 && (
-              <div style={{ flex: 1, height: "1px", background: "var(--db-border)", margin: "0 10px" }} />
+              <div
+                style={{
+                  flex: 1,
+                  height: "1px",
+                  margin: "0 10px",
+                  background: done ? "var(--db-success)" : "var(--db-border)",
+                  transition: "background 0.2s ease",
+                }}
+              />
             )}
           </div>
         );
@@ -579,27 +600,62 @@ export default function NewEventPage() {
   }
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "8px 0 64px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-          Create an event
-        </h1>
-        <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: 0 }}>
-          Publish an event and open a dedicated chat room for it.
-        </p>
-      </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--db-bg-base)",
+        color: "var(--db-text-primary)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        padding: "40px 16px 80px",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: "640px" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "48px",
+              height: "48px",
+              borderRadius: "14px",
+              background: "var(--db-accent-bg, rgba(55,138,221,0.12))",
+              marginBottom: "14px",
+            }}
+          >
+            <IconCalendarEvent size={24} color="var(--db-accent)" />
+          </div>
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: 700,
+              color: "var(--db-text-primary)",
+              margin: "0 0 6px",
+            }}
+          >
+            Create an event
+          </h1>
+          <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: 0 }}>
+            Publish an event and open a dedicated chat room for it.
+          </p>
+        </div>
 
-      <StepBar current={step} />
+        {/* Step indicator */}
+        <StepBar current={step} />
 
-      <div
-        style={{
-          background: "var(--db-bg-surface)",
-          border: "1px solid var(--db-border)",
-          borderRadius: "14px",
-          padding: "24px",
-        }}
-      >
-        <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 18px" }}>
+        {/* Card */}
+        <div
+          style={{
+            background: "var(--db-bg-surface)",
+            border: "1px solid var(--db-border)",
+            borderRadius: "16px",
+            padding: "28px",
+          }}
+        >
+          <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 20px" }}>
           {stepTitles[step]}
         </h2>
 
@@ -834,9 +890,9 @@ export default function NewEventPage() {
           }}
         >
           {step === 1 ? (
-            <a href="/dashboard/events" style={{ ...S.ghostBtn, textDecoration: "none" }}>
-              Cancel
-            </a>
+            <span style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>
+              Step {step} of {STEPS.length}
+            </span>
           ) : (
             <button type="button" onClick={handleBack} disabled={submitting} style={S.ghostBtn}>
               <IconChevronLeft size={15} />
@@ -861,6 +917,19 @@ export default function NewEventPage() {
             </button>
           )}
         </div>
+        </div>
+
+        {/* Footer note */}
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "12px",
+            color: "var(--db-text-tertiary)",
+            marginTop: "20px",
+          }}
+        >
+          The event&apos;s chat room closes automatically when the event ends.
+        </p>
       </div>
     </div>
   );
