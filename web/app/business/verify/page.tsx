@@ -961,17 +961,18 @@ export default function BusinessVerifyPage() {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [businessId, setBusinessId] = useState<string>("");
 
-  // Resolve business_id: ideally passed via query param from /business/register.
-  // Falls back to a demo stub so the page works without a real DB row.
+  // Resolve the business id from the query param set by /business/register.
+  // Accepts ?id= (preferred) or ?business_id= (legacy). No placeholder — an
+  // invalid value would break uuid-typed queries/Edge Functions downstream.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("business_id") ?? "demo-business-id";
+    const id = params.get("id") ?? params.get("business_id") ?? "";
     setBusinessId(id);
 
     // If Supabase is configured, read businesses.status to determine which steps
     // are already complete (allows resuming an interrupted verification).
-    if (isSupabaseConfigured && id !== "demo-business-id") {
+    if (isSupabaseConfigured && id) {
       void (async () => {
         const { data } = await supabase
           .from("business_verifications")
@@ -1092,6 +1093,32 @@ export default function BusinessVerifyPage() {
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 20px" }}>
               {stepSubtitles[currentStep]}
             </p>
+
+            {/* No business id in the URL — nothing to verify yet. */}
+            {!businessId && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "24px 8px",
+                  color: "var(--text-secondary)",
+                  fontSize: "14px",
+                }}
+              >
+                <p style={{ margin: "0 0 12px" }}>
+                  No business selected for verification.
+                </p>
+                <a
+                  href="/business/register"
+                  style={{
+                    color: "var(--color-brand)",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Register your business first →
+                </a>
+              </div>
+            )}
 
             {/* Step content */}
             {currentStep === 1 && businessId && (

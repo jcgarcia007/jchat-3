@@ -1327,8 +1327,8 @@ export default function BusinessRegisterPage() {
         }
       }
 
-      // 4) Redirect to verification
-      router.push("/business/verify");
+      // 4) Redirect to verification with the real business UUID
+      router.push(`/business/verify?id=${businessId}`);
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "An unexpected error occurred."

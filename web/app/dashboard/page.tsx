@@ -103,9 +103,9 @@ export default function OverviewPage() {
         </Link>
       </section>
 
-      {/* Secondary: events live under their own dashboard section (needs a business first) */}
+      {/* Secondary: dedicated event creation wizard (needs a business first) */}
       <Link
-        href="/dashboard/events"
+        href="/dashboard/events/new"
         style={{
           display: "inline-flex",
           alignItems: "center",
