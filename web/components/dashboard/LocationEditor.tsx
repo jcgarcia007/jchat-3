@@ -3,20 +3,33 @@
 /**
  * JChat 3.0 — Business Location & Geofence editor (inside the Settings page).
  *
- * Business location only: Places Autocomplete + draggable pin + radius slider
- * with a live circle overlay → saves businesses.latitude/longitude/
- * geofence_radius_m (mirrors legacy lat/lng/radius_m so the map + nearby stay
- * in sync). Event geofences are handled separately from /dashboard/events.
+ * Tools above the map: Pin · Circle · Polygon · Clear.
+ *  - Pin (default): click/drag moves the red marker → business latitude/longitude.
+ *  - Circle: click drops an editable+draggable google.maps.Circle (initial radius
+ *    = slider); the slider resizes it; only one at a time; pin follows its center.
+ *  - Polygon: clicks add vertices, double-click closes; editable after; one only.
+ *  - Clear: removes the drawn circle/polygon, keeps the pin, returns to Pin mode.
  *
- * Maps: @vis.gl/react-google-maps; overlays use native google.maps primitives
- * via useMap() with guarded cleanup. Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY; degrades
- * to manual lat/lng inputs without it. Colors: --db-* tokens (the canvas overlay
- * reads --db-accent at runtime).
+ * Save → businesses.latitude/longitude (pin), geofence_radius_m (slider),
+ * geofence_polygon (GeoJSON of the circle/polygon, else null). Mirrors legacy
+ * lat/lng/radius_m so the map + nearby stay in sync.
+ *
+ * Maps: @vis.gl/react-google-maps (uncontrolled defaultCenter so panning is free);
+ * overlays are native google.maps managed via useMap() with guarded cleanup.
+ * Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY; degrades to manual lat/lng inputs without it.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { APIProvider, Map as GMap, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
-import { IconMapPin, IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconMapPin,
+  IconCheck,
+  IconAlertCircle,
+  IconPointer,
+  IconCircle,
+  IconPolygon,
+  IconTrash,
+} from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
@@ -24,6 +37,7 @@ const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
 
 type LatLng = { lat: number; lng: number };
+type Tool = "pin" | "circle" | "polygon";
 
 /** Brand accent for canvas overlays — reads the --db-accent token at runtime. */
 function accentColor(): string {
@@ -47,84 +61,25 @@ function Recenter({ target }: { target: LatLng | null }) {
   return null;
 }
 
-// ── Draggable pin (native marker, no mapId needed) ──────────────────────────────
-function DraggablePin({ position, onMove }: { position: LatLng; onMove: (p: LatLng) => void }) {
-  const map = useMap();
-  const markerRef = useRef<google.maps.Marker | null>(null);
-
-  useEffect(() => {
-    if (!map || typeof google === "undefined") return;
-    const marker = new google.maps.Marker({ map, position, draggable: true });
-    markerRef.current = marker;
-    const listener = marker.addListener("dragend", () => {
-      const p = marker.getPosition();
-      if (p) onMove({ lat: p.lat(), lng: p.lng() });
-    });
-    return () => {
-      if (listener) google.maps.event.removeListener(listener);
-      marker.setMap(null);
-      markerRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map]);
-
-  useEffect(() => {
-    markerRef.current?.setPosition(position);
-  }, [position]);
-
-  return null;
-}
-
-// ── Radius circle overlay ───────────────────────────────────────────────────────
-function RadiusCircle({ center, radius }: { center: LatLng; radius: number }) {
-  const map = useMap();
-  const ref = useRef<google.maps.Circle | null>(null);
-  useEffect(() => {
-    if (!map || typeof google === "undefined") return;
-    const accent = accentColor();
-    const circle = new google.maps.Circle({
-      map,
-      center,
-      radius,
-      strokeColor: accent,
-      strokeOpacity: 0.9,
-      strokeWeight: 2,
-      fillColor: accent,
-      fillOpacity: 0.15,
-      clickable: false,
-    });
-    ref.current = circle;
-    return () => {
-      circle.setMap(null);
-      ref.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map]);
-  useEffect(() => {
-    if (!ref.current) return;
-    ref.current.setCenter(center);
-    ref.current.setRadius(radius);
-  }, [center, radius]);
-  return null;
-}
-
 // ── Places Autocomplete search box ──────────────────────────────────────────────
 function PlacesSearch({ onPlace }: { onPlace: (p: LatLng) => void }) {
   const places = useMapsLibrary("places");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const onPlaceRef = useRef(onPlace);
+  onPlaceRef.current = onPlace;
 
   useEffect(() => {
     if (!places || !inputRef.current || typeof google === "undefined") return;
     const ac = new places.Autocomplete(inputRef.current, { fields: ["geometry"] });
     const listener = ac.addListener("place_changed", () => {
       const loc = ac.getPlace().geometry?.location;
-      if (loc) onPlace({ lat: loc.lat(), lng: loc.lng() });
+      if (loc) onPlaceRef.current({ lat: loc.lat(), lng: loc.lng() });
     });
     return () => {
       if (listener) google.maps.event.removeListener(listener);
       google.maps.event.clearInstanceListeners(ac);
     };
-  }, [places, onPlace]);
+  }, [places]);
 
   return (
     <input
@@ -145,17 +100,222 @@ function PlacesSearch({ onPlace }: { onPlace: (p: LatLng) => void }) {
   );
 }
 
+// ── Unified geofence layer: pin + radius circle + drawn circle/polygon ──────────
+function GeofenceLayer({
+  tool,
+  pin,
+  radius,
+  onPinMove,
+  onShapeChange,
+  registerClear,
+}: {
+  tool: Tool;
+  pin: LatLng;
+  radius: number;
+  onPinMove: (p: LatLng) => void;
+  onShapeChange: (geojson: unknown | null) => void;
+  registerClear: (fn: () => void) => void;
+}) {
+  const map = useMap();
+  const markerRef = useRef<google.maps.Marker | null>(null);
+  const pinCircleRef = useRef<google.maps.Circle | null>(null); // pin-mode visual radius
+  const circleRef = useRef<google.maps.Circle | null>(null); // circle tool
+  const polygonRef = useRef<google.maps.Polygon | null>(null); // polygon tool
+  const pathRef = useRef<LatLng[]>([]);
+
+  const toolRef = useRef(tool);
+  toolRef.current = tool;
+  const radiusRef = useRef(radius);
+  radiusRef.current = radius;
+  const onPinMoveRef = useRef(onPinMove);
+  onPinMoveRef.current = onPinMove;
+  const onShapeRef = useRef(onShapeChange);
+  onShapeRef.current = onShapeChange;
+
+  const emitShape = useCallback(() => {
+    const t = toolRef.current;
+    if (t === "circle" && circleRef.current) {
+      const c = circleRef.current.getCenter();
+      if (c) onShapeRef.current({ type: "Circle", center: [c.lng(), c.lat()], radius: circleRef.current.getRadius() });
+      return;
+    }
+    if (t === "polygon" && polygonRef.current) {
+      const path = polygonRef.current.getPath();
+      const coords: LatLng[] = [];
+      path.forEach((ll) => coords.push({ lat: ll.lat(), lng: ll.lng() }));
+      if (coords.length > 0) {
+        onShapeRef.current({ type: "Polygon", coordinates: [coords] });
+        return;
+      }
+    }
+    onShapeRef.current(null);
+  }, []);
+
+  const clearShapes = useCallback(() => {
+    circleRef.current?.setMap(null);
+    circleRef.current = null;
+    polygonRef.current?.setMap(null);
+    polygonRef.current = null;
+    pathRef.current = [];
+    onShapeRef.current(null);
+  }, []);
+
+  // Init marker + map listeners (once the map is ready).
+  useEffect(() => {
+    if (!map || typeof google === "undefined") return;
+    const accent = accentColor();
+
+    const marker = new google.maps.Marker({ map, position: pin, draggable: true });
+    markerRef.current = marker;
+    const dragL = marker.addListener("dragend", () => {
+      const p = marker.getPosition();
+      if (p) onPinMoveRef.current({ lat: p.lat(), lng: p.lng() });
+    });
+
+    const clickL = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+      const ll = e.latLng;
+      if (!ll) return;
+      const pos: LatLng = { lat: ll.lat(), lng: ll.lng() };
+      const t = toolRef.current;
+
+      if (t === "pin") {
+        onPinMoveRef.current(pos);
+      } else if (t === "circle") {
+        if (!circleRef.current) {
+          const circle = new google.maps.Circle({
+            map,
+            center: ll,
+            radius: radiusRef.current,
+            editable: true,
+            draggable: true,
+            strokeColor: accent,
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: accent,
+            fillOpacity: 0.2,
+          });
+          circle.addListener("radius_changed", emitShape);
+          circle.addListener("center_changed", () => {
+            const c = circle.getCenter();
+            if (c) onPinMoveRef.current({ lat: c.lat(), lng: c.lng() });
+            emitShape();
+          });
+          circleRef.current = circle;
+          onPinMoveRef.current(pos); // pin follows the circle center
+        } else {
+          circleRef.current.setCenter(ll);
+        }
+        emitShape();
+      } else if (t === "polygon") {
+        pathRef.current = [...pathRef.current, pos];
+        const gpath = pathRef.current.map((p) => ({ lat: p.lat, lng: p.lng }));
+        if (!polygonRef.current) {
+          const poly = new google.maps.Polygon({
+            map,
+            paths: gpath,
+            editable: true,
+            strokeColor: accent,
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: accent,
+            fillOpacity: 0.2,
+          });
+          const pp = poly.getPath();
+          pp.addListener("set_at", emitShape);
+          pp.addListener("insert_at", emitShape);
+          pp.addListener("remove_at", emitShape);
+          polygonRef.current = poly;
+        } else {
+          polygonRef.current.setPath(gpath);
+        }
+        emitShape();
+      }
+    });
+
+    const dblL = map.addListener("dblclick", () => {
+      if (toolRef.current === "polygon") emitShape();
+    });
+
+    registerClear(clearShapes);
+
+    return () => {
+      google.maps.event.removeListener(dragL);
+      google.maps.event.removeListener(clickL);
+      google.maps.event.removeListener(dblL);
+      marker.setMap(null);
+      markerRef.current = null;
+      pinCircleRef.current?.setMap(null);
+      pinCircleRef.current = null;
+      circleRef.current?.setMap(null);
+      circleRef.current = null;
+      polygonRef.current?.setMap(null);
+      polygonRef.current = null;
+    };
+    // Init once when the map is ready; pin syncs via the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, emitShape, clearShapes, registerClear]);
+
+  // Keep the marker synced when the pin is set externally (search / load / circle).
+  useEffect(() => {
+    markerRef.current?.setPosition(pin);
+  }, [pin]);
+
+  // Each tool starts fresh: switching clears any drawn circle/polygon (pin stays).
+  useEffect(() => {
+    clearShapes();
+  }, [tool, clearShapes]);
+
+  // Pin-mode visual radius circle (only in pin mode).
+  useEffect(() => {
+    if (!map || typeof google === "undefined") return;
+    if (tool === "pin") {
+      const accent = accentColor();
+      if (!pinCircleRef.current) {
+        pinCircleRef.current = new google.maps.Circle({
+          map,
+          center: pin,
+          radius,
+          clickable: false,
+          strokeColor: accent,
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: accent,
+          fillOpacity: 0.15,
+        });
+      } else {
+        pinCircleRef.current.setCenter(pin);
+        pinCircleRef.current.setRadius(radius);
+      }
+    } else {
+      pinCircleRef.current?.setMap(null);
+      pinCircleRef.current = null;
+    }
+  }, [map, tool, pin, radius]);
+
+  // Slider resizes the drawn circle while in circle mode.
+  useEffect(() => {
+    if (tool === "circle" && circleRef.current) {
+      circleRef.current.setRadius(radius);
+      emitShape();
+    }
+  }, [radius, tool, emitShape]);
+
+  return null;
+}
+
 // ── Main editor ─────────────────────────────────────────────────────────────────
 
 export function LocationEditor({ businessId }: { businessId: string | null }) {
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [radius, setRadius] = useState<number>(200);
+  const [tool, setTool] = useState<Tool>("pin");
+  const [shape, setShape] = useState<unknown | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  // Imperative recenter target — set on load/search, NOT on pin drag/map click.
   const [recenterTo, setRecenterTo] = useState<LatLng | null>(null);
+  const clearRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!isSupabaseConfigured || !businessId) return;
@@ -181,8 +341,17 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
     };
   }, [businessId]);
 
-  // The pin is always visible: at the saved location, or the USA fallback.
   const pin: LatLng = lat != null && lng != null ? { lat, lng } : DEFAULT_CENTER;
+
+  const registerClear = useCallback((fn: () => void) => {
+    clearRef.current = fn;
+  }, []);
+
+  const handleClear = useCallback(() => {
+    clearRef.current();
+    setShape(null);
+    setTool("pin");
+  }, []);
 
   const saveBusiness = useCallback(async () => {
     if (!businessId) return;
@@ -197,7 +366,15 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
       if (isSupabaseConfigured) {
         const { error: e } = await supabase
           .from("businesses")
-          .update({ latitude: lat, longitude: lng, geofence_radius_m: radius, lat, lng, radius_m: radius })
+          .update({
+            latitude: lat,
+            longitude: lng,
+            geofence_radius_m: radius,
+            geofence_polygon: shape ?? null,
+            lat,
+            lng,
+            radius_m: radius,
+          })
           .eq("id", businessId);
         if (e) throw e;
       }
@@ -207,16 +384,21 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
     } finally {
       setSaving(false);
     }
-  }, [businessId, lat, lng, radius]);
+  }, [businessId, lat, lng, radius, shape]);
 
   const hasKey = MAPS_KEY.length > 0;
 
-  // Shared controls below the map (radius slider, lat/lng, save).
+  const TOOLS: { id: Tool; label: string; icon: typeof IconPointer }[] = [
+    { id: "pin", label: "Pin", icon: IconMapPin },
+    { id: "circle", label: "Circle", icon: IconCircle },
+    { id: "polygon", label: "Polygon", icon: IconPolygon },
+  ];
+
   const controls = (
     <>
       <div style={{ marginTop: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <FieldLabel>Geofence radius</FieldLabel>
+          <FieldLabel>Geofence radius{tool === "circle" ? " (circle)" : ""}</FieldLabel>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-accent)" }}>{radius.toLocaleString()} m</span>
         </div>
         <input
@@ -233,6 +415,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
       <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 16px" }}>
         <IconMapPin size={12} style={{ verticalAlign: "middle" }} />{" "}
         {lat != null && lng != null ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "No location set"}
+        {shape ? ` · ${(shape as { type: string }).type} geofence drawn` : ""}
       </p>
 
       <SaveBtn onClick={() => void saveBusiness()} loading={saving} label="Save Location" />
@@ -257,6 +440,40 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
           <div style={{ marginBottom: "12px" }}>
             <PlacesSearch onPlace={(p) => { setLat(p.lat); setLng(p.lng); setRecenterTo(p); }} />
           </div>
+
+          {/* Drawing toolbar */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+            {TOOLS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTool(id)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "7px 12px", borderRadius: "8px",
+                  border: tool === id ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                  background: tool === id ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                  color: tool === id ? "var(--db-accent)" : "var(--db-text-secondary)",
+                  fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleClear}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "7px 12px", borderRadius: "8px", border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)", color: "var(--db-danger)",
+                fontSize: "13px", fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              <IconTrash size={14} /> Clear
+            </button>
+          </div>
+
           <div style={{ height: "400px", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--db-border)" }}>
             <GMap
               defaultCenter={pin}
@@ -264,20 +481,27 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
               gestureHandling="greedy"
               draggable
               scrollwheel
+              disableDoubleClickZoom
               disableDefaultUI={false}
               style={{ width: "100%", height: "400px" }}
-              onClick={(e) => {
-                const ll = e.detail.latLng;
-                if (ll) { setLat(ll.lat); setLng(ll.lng); }
-              }}
             >
-              <DraggablePin position={pin} onMove={(p) => { setLat(p.lat); setLng(p.lng); }} />
-              <RadiusCircle center={pin} radius={radius} />
+              <GeofenceLayer
+                tool={tool}
+                pin={pin}
+                radius={radius}
+                onPinMove={(p) => { setLat(p.lat); setLng(p.lng); }}
+                onShapeChange={setShape}
+                registerClear={registerClear}
+              />
               <Recenter target={recenterTo} />
             </GMap>
           </div>
           <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: "6px 0 0" }}>
-            Tip: click the map or drag the pin to move your location.
+            {tool === "pin"
+              ? "Pin: click the map or drag the marker to set your location."
+              : tool === "circle"
+                ? "Circle: click to place, then drag/resize. Slider sets the radius."
+                : "Polygon: click to add points, double-click to close."}
           </p>
           {controls}
         </APIProvider>
