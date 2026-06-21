@@ -47,6 +47,8 @@ import {
   IconFilter,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -489,8 +491,22 @@ export default function KDSPage() {
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
 
-  // Hardcoded business_id; TODO: derive from auth context once wired up
-  const BUSINESS_ID = "demo-biz";
+  // Resolve the signed-in owner's business (most recent).
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [needsRegister, setNeedsRegister] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    void resolveActiveBusiness().then((res) => {
+      if (!active) return;
+      if (res.ok) setBusinessId(res.business.id);
+      else if (res.reason === "no_business" || res.reason === "unauthenticated") setNeedsRegister(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ── Load rooms ──────────────────────────────────────────────────────────────
 
@@ -499,14 +515,15 @@ export default function KDSPage() {
       setRooms(DEMO_ROOMS);
       return;
     }
+    if (!businessId) return;
     const { data, error: err } = await supabase
       .from("rooms")
       .select("id, name")
-      .eq("business_id", BUSINESS_ID)
+      .eq("business_id", businessId)
       .order("name");
     if (err) return; // Non-fatal — keep the default "All Rooms" entry
     setRooms([{ id: "all", name: "All Rooms" }, ...(data ?? [])]);
-  }, []);
+  }, [businessId]);
 
   // ── Load orders ─────────────────────────────────────────────────────────────
 
@@ -514,6 +531,11 @@ export default function KDSPage() {
     if (!isSupabaseConfigured) {
       setOrders(DEMO_ORDERS);
       setLastRefreshed(new Date());
+      return;
+    }
+
+    if (!businessId) {
+      setOrders([]);
       return;
     }
 
@@ -525,7 +547,7 @@ export default function KDSPage() {
       let query = supabase
         .from("orders")
         .select("id, business_id, room_id, status, order_type, gift_recipient_id, total_cents, eta_minutes, created_at")
-        .eq("business_id", BUSINESS_ID)
+        .eq("business_id", businessId)
         .in("status", ["confirmed", "preparing", "ready"])
         .order("created_at", { ascending: true });
 
@@ -599,12 +621,12 @@ export default function KDSPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedRoomId]);
+  }, [selectedRoomId, businessId]);
 
   // ── Realtime subscriptions ──────────────────────────────────────────────────
 
   const setupRealtime = useCallback(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !businessId) return;
 
     // Tear down any existing channels before re-subscribing
     if (ordersChannelRef.current) {
@@ -618,14 +640,14 @@ export default function KDSPage() {
 
     // Subscribe to orders table
     ordersChannelRef.current = supabase
-      .channel(`kds-orders-${BUSINESS_ID}`)
+      .channel(`kds-orders-${businessId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "orders",
-          filter: `business_id=eq.${BUSINESS_ID}`,
+          filter: `business_id=eq.${businessId}`,
         },
         (payload) => {
           // Play beep on new order insert
@@ -640,7 +662,7 @@ export default function KDSPage() {
 
     // Subscribe to order_items table (item status changes)
     itemsChannelRef.current = supabase
-      .channel(`kds-order-items-${BUSINESS_ID}`)
+      .channel(`kds-order-items-${businessId}`)
       .on(
         "postgres_changes",
         {
@@ -654,7 +676,7 @@ export default function KDSPage() {
         }
       )
       .subscribe();
-  }, [loadOrders]);
+  }, [loadOrders, businessId]);
 
   // ── 30-second auto-refresh fallback ────────────────────────────────────────
 
@@ -697,7 +719,7 @@ export default function KDSPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRoomId]);
+  }, [selectedRoomId, businessId]);
 
   // ── Order actions ───────────────────────────────────────────────────────────
 
@@ -844,6 +866,17 @@ export default function KDSPage() {
     filteredOrders.filter((o) => o.status === status);
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  if (needsRegister) {
+    return (
+      <div style={{ maxWidth: "960px" }}>
+        <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
+          Kitchen Display
+        </h1>
+        <NoBusinessCTA message="Register your business to start receiving and preparing orders." />
+      </div>
+    );
+  }
 
   return (
     <div

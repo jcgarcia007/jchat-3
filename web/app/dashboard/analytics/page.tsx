@@ -63,6 +63,8 @@ import {
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isBusinessPro } from "@/lib/roles";
+import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1223,9 +1225,104 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
   doc.save("jchat-analytics.pdf");
 }
 
+// ── Real KPI band (live, scoped to the active business) ─────────────────────────
+
+interface RealKpis {
+  revenueTotal: number; // cents
+  revenueMonth: number; // cents
+  ordersTotal: number;
+  ordersToday: number;
+  uniqueCustomers: number;
+  topRoom: string | null;
+  topRoomMessages: number;
+}
+
+function RealKpiBand({ kpis }: { kpis: RealKpis }) {
+  return (
+    <div style={{ marginBottom: "24px" }}>
+      <SectionTitle>Overview — live</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "12px" }}>
+        <KpiCard label="Revenue" value={fmt$(kpis.revenueTotal)} icon={IconCoin} sub={`${fmt$(kpis.revenueMonth)} this month`} />
+        <KpiCard label="Orders" value={String(kpis.ordersTotal)} icon={IconTrendingUp} sub={`${kpis.ordersToday} today`} />
+        <KpiCard label="Unique customers" value={String(kpis.uniqueCustomers)} icon={IconUsers} sub="Orders + check-ins" />
+        <KpiCard label="Most active room" value={kpis.topRoom ?? "—"} icon={IconMessage} sub={`${kpis.topRoomMessages} messages`} />
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const [business, setBusiness] = useState<ActiveBusiness | null>(null);
+  const [needsRegister, setNeedsRegister] = useState(false);
+  const [realKpis, setRealKpis] = useState<RealKpis | null>(null);
+
+  // Live KPI band — scoped to the signed-in owner's business.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    void (async () => {
+      const res = await resolveActiveBusiness();
+      if (!active) return;
+      if (!res.ok) {
+        if (res.reason === "no_business" || res.reason === "unauthenticated") setNeedsRegister(true);
+        return;
+      }
+      setBusiness(res.business);
+      const bid = res.business.id;
+
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("status, total_cents, user_id, created_at")
+        .eq("business_id", bid);
+      const o = (orders ?? []) as { status: string; total_cents: number; user_id: string | null; created_at: string }[];
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const paid = o.filter((x) => x.status !== "cancelled");
+      const revenueTotal = paid.reduce((s, x) => s + (x.total_cents ?? 0), 0);
+      const revenueMonth = paid
+        .filter((x) => new Date(x.created_at).getTime() >= monthStart)
+        .reduce((s, x) => s + (x.total_cents ?? 0), 0);
+      const ordersToday = o.filter((x) => new Date(x.created_at).getTime() >= dayStart).length;
+
+      const userIds = new Set<string>();
+      o.forEach((x) => x.user_id && userIds.add(x.user_id));
+      const { data: cis } = await supabase.from("check_ins").select("user_id").eq("business_id", bid);
+      (cis ?? []).forEach((c) => (c.user_id as string | null) && userIds.add(c.user_id as string));
+
+      const { data: rms } = await supabase.from("rooms").select("id, name").eq("business_id", bid);
+      let topRoom: string | null = null;
+      let topRoomMessages = 0;
+      for (const r of (rms ?? []) as { id: string; name: string }[]) {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("room_id", r.id);
+        if ((count ?? 0) > topRoomMessages || topRoom === null) {
+          topRoomMessages = count ?? 0;
+          topRoom = r.name;
+        }
+      }
+
+      if (!active) return;
+      setRealKpis({
+        revenueTotal,
+        revenueMonth,
+        ordersTotal: o.length,
+        ordersToday,
+        uniqueCustomers: userIds.size,
+        topRoom,
+        topRoomMessages,
+      });
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<Tab>("revenue");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -1272,7 +1369,7 @@ export default function AnalyticsPage() {
       const { data: orders } = await supabase
         .from("orders")
         .select("total_cents, tip_cents, created_at, status")
-        .eq("status", "completed")
+        .eq("status", "delivered")
         .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString());
 
       if (orders && orders.length > 0) {
@@ -1372,6 +1469,17 @@ export default function AnalyticsPage() {
     );
   }
 
+  if (needsRegister) {
+    return (
+      <div style={{ maxWidth: "960px" }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 800, color: "var(--db-text-primary)", marginBottom: "16px" }}>
+          Analytics
+        </h1>
+        <NoBusinessCTA message="Register your business to see revenue, orders and customer analytics." />
+      </div>
+    );
+  }
+
   // TODO(plan gate): read businesses.plan from Supabase and gate here
   if (!isPro) {
     return <UpgradePrompt />;
@@ -1403,6 +1511,7 @@ export default function AnalyticsPage() {
             Analytics Pro
           </h1>
           <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+            {business ? business.name + " · " : ""}
             {isSupabaseConfigured ? "Live data" : "Demo data — connect Supabase to see live metrics"}
             {" · "}Business Pro
           </p>
@@ -1452,6 +1561,9 @@ export default function AnalyticsPage() {
           </button>
         </div>
       </div>
+
+      {/* Live KPI band — real data for the active business */}
+      {isSupabaseConfigured && realKpis && <RealKpiBand kpis={realKpis} />}
 
       {/* Tabs */}
       <TabBar active={activeTab} onChange={setActiveTab} />

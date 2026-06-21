@@ -50,6 +50,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1644,6 +1645,7 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [noBusiness, setNoBusiness] = useState(false);
 
   // Category form state
   const [showCatForm, setShowCatForm] = useState(false);
@@ -1675,7 +1677,14 @@ export default function MenuPage() {
       // Resolve the owner's business via the shared helper (most-recent;
       // tolerant of multiple businesses per owner).
       const res = await resolveActiveBusiness();
-      if (!res.ok) throw new Error(res.message);
+      if (!res.ok) {
+        if (res.reason === "no_business" || res.reason === "unauthenticated") {
+          setNoBusiness(true);
+          return;
+        }
+        throw new Error(res.message);
+      }
+      setNoBusiness(false);
       const bid: string = res.business.id;
       setBusinessId(bid);
 
@@ -2059,6 +2068,17 @@ export default function MenuPage() {
   const sortedCategories = [...categories].sort((a, b) => a.sort - b.sort);
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  if (noBusiness) {
+    return (
+      <div style={{ maxWidth: 880 }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
+          Menu Editor
+        </h1>
+        <NoBusinessCTA message="Register your business to build your menu." />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 880 }}>
       {/* Header */}

@@ -2,9 +2,10 @@
 
 /**
  * JChat 3.0 — Chat Rooms dashboard
- * Lists the rooms belonging to the signed-in owner's active business with their
- * type and message count, plus a link to view the public page. Real data from
- * the `rooms` + `messages` tables (RLS: rooms/messages are authenticated-read).
+ * Lists the rooms of the signed-in owner's active business with their type and
+ * member count (distinct participants), lets the owner open the public page and
+ * create a new room. Real data from `rooms` + `messages` (RLS: authenticated-read;
+ * rooms insert allowed for the business owner).
  */
 
 import { useEffect, useState } from "react";
@@ -16,9 +17,13 @@ import {
   IconCalendarEvent,
   IconHash,
   IconAlertCircle,
+  IconPlus,
+  IconUsers,
+  IconX,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 interface RoomRow {
   id: string;
@@ -28,7 +33,7 @@ interface RoomRow {
   is_active: boolean;
   is_password_protected: boolean;
   ttl_hours: number | null;
-  message_count: number;
+  member_count: number;
 }
 
 type RoomType = "Main" | "Event" | "Private" | "Sub-room";
@@ -48,16 +53,52 @@ const TYPE_META: Record<RoomType, { icon: React.ComponentType<{ size?: number }>
 };
 
 const DEMO_ROOMS: RoomRow[] = [
-  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, message_count: 128 },
-  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, message_count: 42 },
-  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, message_count: 17 },
+  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, member_count: 86 },
+  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, member_count: 12 },
+  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, member_count: 31 },
 ];
+
+const ROOM_EMOJIS = ["💬", "🥂", "🎶", "🍻", "🎉", "⭐️", "🔥", "🏆", "🎯", "🪩", "🎨", "📣"];
+
+function slugify(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+}
 
 export default function ChatRoomsPage() {
   const [business, setBusiness] = useState<ActiveBusiness | null>(null);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsRegister, setNeedsRegister] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create-room form
+  const [showForm, setShowForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmoji, setNewEmoji] = useState("💬");
+  const [creating, setCreating] = useState(false);
+
+  async function load(bizId: string) {
+    const { data, error: roomsErr } = await supabase
+      .from("rooms")
+      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours")
+      .eq("business_id", bizId)
+      .order("is_main", { ascending: false })
+      .order("sort", { ascending: true });
+    if (roomsErr) throw roomsErr;
+
+    const base = (data ?? []) as Omit<RoomRow, "member_count">[];
+    // "Members" = distinct message authors per room (no membership table yet).
+    const counts = await Promise.all(
+      base.map((r) =>
+        supabase
+          .from("messages")
+          .select("user_id")
+          .eq("room_id", r.id)
+          .then(({ data: msgs }) => new Set((msgs ?? []).map((m) => m.user_id as string)).size),
+      ),
+    );
+    setRooms(base.map((r, i) => ({ ...r, member_count: counts[i] })));
+  }
 
   useEffect(() => {
     let active = true;
@@ -71,34 +112,13 @@ export default function ChatRoomsPage() {
         const res = await resolveActiveBusiness();
         if (!active) return;
         if (!res.ok) {
-          setError(res.message);
+          if (res.reason === "no_business" || res.reason === "unauthenticated") setNeedsRegister(true);
+          else setError(res.message);
           setLoading(false);
           return;
         }
         setBusiness(res.business);
-
-        const { data, error: roomsErr } = await supabase
-          .from("rooms")
-          .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours")
-          .eq("business_id", res.business.id)
-          .order("is_main", { ascending: false })
-          .order("sort", { ascending: true });
-        if (roomsErr) throw roomsErr;
-
-        const base = (data ?? []) as Omit<RoomRow, "message_count">[];
-
-        // Message count per room (rooms are few — count in parallel).
-        const counts = await Promise.all(
-          base.map((r) =>
-            supabase
-              .from("messages")
-              .select("id", { count: "exact", head: true })
-              .eq("room_id", r.id)
-              .then(({ count }) => count ?? 0),
-          ),
-        );
-        if (!active) return;
-        setRooms(base.map((r, i) => ({ ...r, message_count: counts[i] })));
+        await load(res.business.id);
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load chat rooms.");
       } finally {
@@ -110,19 +130,164 @@ export default function ChatRoomsPage() {
     };
   }, []);
 
-  return (
-    <div style={{ maxWidth: "960px" }}>
-      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
-        <IconMessages size={22} color="var(--db-accent)" />
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+  async function createRoom() {
+    const name = newName.trim();
+    if (!name) {
+      setError("Room name is required.");
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    try {
+      if (!isSupabaseConfigured) {
+        setRooms((prev) => [
+          ...prev,
+          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, member_count: 0 },
+        ]);
+      } else if (business) {
+        const { error: insErr } = await supabase.from("rooms").insert({
+          business_id: business.id,
+          name,
+          icon: newEmoji,
+          chat_theme_id: 1,
+          is_main: false,
+          slug: `${slugify(name)}-${Date.now().toString(36)}`,
+        });
+        if (insErr) throw insErr;
+        await load(business.id);
+      }
+      setNewName("");
+      setNewEmoji("💬");
+      setShowForm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create room.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  if (!loading && needsRegister) {
+    return (
+      <div style={{ maxWidth: "960px" }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
           Chat Rooms
         </h1>
+        <NoBusinessCTA message="Register your business to create and manage chat rooms." />
       </div>
-      <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: "960px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "8px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <IconMessages size={22} color="var(--db-accent)" />
+          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+            Chat Rooms
+          </h1>
+        </div>
+        {!loading && (
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 16px",
+              borderRadius: "10px",
+              background: showForm ? "var(--db-bg-elevated)" : "var(--db-accent)",
+              color: showForm ? "var(--db-text-secondary)" : "var(--db-accent-text)",
+              border: "none",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {showForm ? <IconX size={16} /> : <IconPlus size={16} />}
+            {showForm ? "Cancel" : "New room"}
+          </button>
+        )}
+      </div>
+      <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
         {business
           ? `Rooms for ${business.name}. Moderation, pinned messages and members are managed in the JChat app.`
           : "Your venue's chat rooms."}
       </p>
+
+      {/* Create form */}
+      {showForm && (
+        <div
+          style={{
+            background: "var(--db-bg-surface)",
+            border: "1px solid var(--db-border)",
+            borderRadius: "12px",
+            padding: "20px",
+            marginBottom: "20px",
+            display: "flex",
+            gap: "12px",
+            alignItems: "flex-end",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: "200px" }}>
+            <label style={labelStyle}>Room name *</label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. VIP Lounge"
+              style={inputStyle}
+              maxLength={60}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Emoji</label>
+            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", maxWidth: "260px" }}>
+              {ROOM_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setNewEmoji(e)}
+                  style={{
+                    fontSize: "18px",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    background: e === newEmoji ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void createRoom()}
+            disabled={creating}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 18px",
+              borderRadius: "10px",
+              background: "var(--db-accent)",
+              color: "var(--db-accent-text)",
+              border: "none",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: creating ? "not-allowed" : "pointer",
+              opacity: creating ? 0.7 : 1,
+            }}
+          >
+            <IconPlus size={15} />
+            {creating ? "Creating…" : "Create room"}
+          </button>
+        </div>
+      )}
 
       {error && (
         <div
@@ -157,17 +322,10 @@ export default function ChatRoomsPage() {
             borderRadius: "12px",
           }}
         >
-          No chat rooms yet. A main room is created when you register a business.
+          No chat rooms yet. Create one above, or register a business to get a main room.
         </div>
       ) : (
-        <div
-          style={{
-            background: "var(--db-bg-surface)",
-            border: "1px solid var(--db-border)",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        >
+        <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", overflow: "hidden" }}>
           {/* Header */}
           <div
             style={{
@@ -185,7 +343,7 @@ export default function ChatRoomsPage() {
           >
             <span>Room</span>
             <span>Type</span>
-            <span style={{ textAlign: "right" }}>Messages</span>
+            <span style={{ textAlign: "right" }}>Members</span>
             <span style={{ textAlign: "right" }}>Action</span>
           </div>
 
@@ -205,7 +363,6 @@ export default function ChatRoomsPage() {
                   borderBottom: "1px solid var(--db-border)",
                 }}
               >
-                {/* Name */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
                   <span style={{ fontSize: "18px" }}>{r.icon ?? "💬"}</span>
                   <span
@@ -220,32 +377,19 @@ export default function ChatRoomsPage() {
                   >
                     {r.name}
                   </span>
-                  {!r.is_active && (
-                    <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>(inactive)</span>
-                  )}
+                  {!r.is_active && <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>(inactive)</span>}
                 </div>
 
-                {/* Type */}
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    fontSize: "13px",
-                    color: meta.color,
-                    fontWeight: 600,
-                  }}
-                >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", color: meta.color, fontWeight: 600 }}>
                   <TypeIcon size={14} />
                   {type}
                 </span>
 
-                {/* Message count */}
-                <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)", textAlign: "right" }}>
-                  {r.message_count}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)", justifyContent: "flex-end" }}>
+                  <IconUsers size={14} color="var(--db-text-tertiary)" />
+                  {r.member_count}
                 </span>
 
-                {/* Action */}
                 <div style={{ textAlign: "right" }}>
                   {business?.slug ? (
                     <a
@@ -263,7 +407,7 @@ export default function ChatRoomsPage() {
                         textDecoration: "none",
                       }}
                     >
-                      View
+                      Manage
                       <IconArrowRight size={14} />
                     </a>
                   ) : (
@@ -278,3 +422,25 @@ export default function ChatRoomsPage() {
     </div>
   );
 }
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "var(--db-text-secondary)",
+  marginBottom: "5px",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "8px 12px",
+  borderRadius: "8px",
+  border: "1px solid var(--db-border)",
+  background: "var(--db-bg-elevated)",
+  color: "var(--db-text-primary)",
+  fontSize: "14px",
+  outline: "none",
+};
