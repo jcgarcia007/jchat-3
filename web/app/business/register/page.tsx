@@ -23,6 +23,8 @@ import {
   IconPhone,
   IconWorld,
   IconAlertCircle,
+  IconUpload,
+  IconCalendarEvent,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -63,6 +65,12 @@ interface WizardData {
   hours: HoursMap;
   // Step 4 — Stripe
   stripe_account_id: string; // set after Stripe redirect (stub)
+  // Step 5 — Opening event (optional)
+  create_event: boolean;
+  event_name: string;
+  event_starts_at: string; // datetime-local value
+  event_ends_at: string;   // datetime-local value
+  event_description: string;
 }
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
@@ -113,6 +121,11 @@ const INITIAL_DATA: WizardData = {
   website: "",
   hours: DEFAULT_HOURS,
   stripe_account_id: "",
+  create_event: false,
+  event_name: "",
+  event_starts_at: "",
+  event_ends_at: "",
+  event_description: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,6 +220,173 @@ const S = {
 
 // ─── Step components ──────────────────────────────────────────────────────────
 
+const BUSINESS_EMOJIS = [
+  "🏢", "🍸", "🍺", "🍷", "🍻", "🥂", "🍹", "☕️", "🍴", "🍕", "🍔", "🌮",
+  "🍣", "🎤", "🎶", "🎵", "🎉", "🪩", "🎳", "🏨", "🛍️", "💈", "🔥", "⭐️",
+];
+
+/** Clickable emoji picker (a button that opens a small grid). */
+function EmojiPicker({
+  value,
+  onSelect,
+}: {
+  value: string;
+  onSelect: (emoji: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Choose an icon emoji"
+        style={{
+          ...S.input,
+          fontSize: "24px",
+          textAlign: "center",
+          padding: "6px 10px",
+          cursor: "pointer",
+        }}
+      >
+        {value || "🏢"}
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            zIndex: 30,
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "10px",
+            padding: "8px",
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: "4px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+          }}
+        >
+          {BUSINESS_EMOJIS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => {
+                onSelect(e);
+                setOpen(false);
+              }}
+              style={{
+                fontSize: "20px",
+                padding: "6px",
+                borderRadius: "8px",
+                border: "none",
+                background: e === value ? "var(--color-brand-light)" : "transparent",
+                cursor: "pointer",
+              }}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Cover photo upload → Supabase Storage bucket "covers". */
+function CoverUpload({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    if (!isSupabaseConfigured) {
+      setError("Storage is not configured.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Please sign in before uploading.");
+        return;
+      }
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      // Path must start with the user's id (storage RLS: own folder only).
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("covers")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("covers").getPublicUrl(path);
+      onChange(pub.publicUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      {value ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt="Cover preview"
+          style={{
+            width: "100%",
+            height: "120px",
+            objectFit: "cover",
+            borderRadius: "10px",
+            border: "1px solid var(--border-subtle)",
+            marginBottom: "8px",
+            display: "block",
+          }}
+        />
+      ) : null}
+      <label
+        style={{
+          ...S.ghostBtn,
+          justifyContent: "center",
+          width: "100%",
+          boxSizing: "border-box",
+          cursor: uploading ? "wait" : "pointer",
+        }}
+      >
+        <IconUpload size={15} />
+        {uploading ? "Uploading…" : value ? "Replace cover photo" : "Upload cover photo"}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          disabled={uploading}
+          style={{ display: "none" }}
+        />
+      </label>
+      {error && (
+        <p style={S.errorMsg}>
+          <IconAlertCircle size={12} /> {error}
+        </p>
+      )}
+      <p style={{ fontSize: "11px", color: "var(--text-tertiary)", marginTop: "4px" }}>
+        JPG/PNG/WebP — uploaded to secure Supabase Storage.
+      </p>
+    </div>
+  );
+}
+
 /** Step 1 — Business Info */
 function StepInfo({
   data,
@@ -270,26 +450,18 @@ function StepInfo({
         </p>
       </div>
 
-      {/* Photos row */}
-      <div style={{ ...S.row, marginBottom: "16px" }}>
+      {/* Photos + emoji */}
+      <div style={{ ...S.row, marginBottom: "16px", alignItems: "flex-start" }}>
         <div style={S.field(2)}>
           <label
             style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <IconPhoto size={14} /> Cover Photo URL
+            <IconPhoto size={14} /> Cover Photo
           </label>
-          {/* TODO(storage): replace URL input with file upload when Supabase Storage is configured */}
-          <input
-            style={S.input}
+          <CoverUpload
             value={data.cover_url}
-            onChange={(e) => onChange({ cover_url: e.target.value })}
-            placeholder="https://…/cover.jpg"
-            type="url"
+            onChange={(url) => onChange({ cover_url: url })}
           />
-          <p style={{ fontSize: "11px", color: "var(--text-tertiary)", marginTop: "4px" }}>
-            {/* TODO(storage): swap for an upload button once Storage bucket is ready */}
-            Paste an image URL for now — upload will be available once storage is configured.
-          </p>
         </div>
 
         <div style={S.field(1)}>
@@ -298,11 +470,9 @@ function StepInfo({
           >
             <IconMoodSmile size={14} /> Icon Emoji
           </label>
-          <input
-            style={{ ...S.input, fontSize: "24px", textAlign: "center", padding: "6px 10px" }}
+          <EmojiPicker
             value={data.icon_emoji}
-            onChange={(e) => onChange({ icon_emoji: e.target.value })}
-            maxLength={2}
+            onSelect={(e) => onChange({ icon_emoji: e })}
           />
         </div>
       </div>
@@ -736,6 +906,116 @@ function StepStripe({
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
+/** Step 5 — Opening event (optional) */
+function StepEvent({
+  data,
+  onChange,
+  errors,
+}: {
+  data: WizardData;
+  onChange: (patch: Partial<WizardData>) => void;
+  errors: Record<string, string>;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={data.create_event}
+          onChange={(e) => onChange({ create_event: e.target.checked })}
+          style={{ width: 18, height: 18, accentColor: "var(--color-brand)" }}
+        />
+        <span style={{ fontSize: "14px", color: "var(--text-primary)", fontWeight: 600 }}>
+          Create an opening event for this venue
+        </span>
+      </label>
+      <p
+        style={{
+          fontSize: "12px",
+          color: "var(--text-tertiary)",
+          margin: "6px 0 0 28px",
+        }}
+      >
+        We&apos;ll add it to the map and auto-create a dedicated chat room that
+        closes automatically when the event ends.
+      </p>
+
+      {data.create_event && (
+        <div style={{ marginTop: "20px" }}>
+          <div style={S.field()}>
+            <label style={S.label}>Event Name *</label>
+            <input
+              style={{ ...S.input, ...(errors.event_name ? S.inputError : {}) }}
+              value={data.event_name}
+              onChange={(e) => onChange({ event_name: e.target.value })}
+              placeholder="e.g. Grand Opening Night"
+              maxLength={100}
+            />
+            {errors.event_name && (
+              <p style={S.errorMsg}>
+                <IconAlertCircle size={12} /> {errors.event_name}
+              </p>
+            )}
+          </div>
+
+          <div style={S.row}>
+            <div style={S.field()}>
+              <label style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}>
+                <IconCalendarEvent size={14} /> Starts *
+              </label>
+              <input
+                type="datetime-local"
+                style={{ ...S.input, ...(errors.event_starts_at ? S.inputError : {}) }}
+                value={data.event_starts_at}
+                onChange={(e) => onChange({ event_starts_at: e.target.value })}
+              />
+              {errors.event_starts_at && (
+                <p style={S.errorMsg}>
+                  <IconAlertCircle size={12} /> {errors.event_starts_at}
+                </p>
+              )}
+            </div>
+            <div style={S.field()}>
+              <label style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}>
+                <IconCalendarEvent size={14} /> Ends
+              </label>
+              <input
+                type="datetime-local"
+                style={{ ...S.input, ...(errors.event_ends_at ? S.inputError : {}) }}
+                value={data.event_ends_at}
+                onChange={(e) => onChange({ event_ends_at: e.target.value })}
+              />
+              {errors.event_ends_at && (
+                <p style={S.errorMsg}>
+                  <IconAlertCircle size={12} /> {errors.event_ends_at}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div style={S.field()}>
+            <label style={S.label}>Description</label>
+            <textarea
+              style={{ ...S.input, ...S.textarea }}
+              value={data.event_description}
+              onChange={(e) => onChange({ event_description: e.target.value })}
+              placeholder="What's happening at the event?"
+              maxLength={500}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function validateStep(step: number, data: WizardData): Record<string, string> {
   const errors: Record<string, string> = {};
   if (step === 1) {
@@ -753,6 +1033,17 @@ function validateStep(step: number, data: WizardData): Record<string, string> {
       errors.radius_m = "Radius must be at least 10 m.";
   }
   // Steps 3 and 4 have no hard required fields — hours defaults are valid.
+  if (step === 5 && data.create_event) {
+    if (!data.event_name.trim()) errors.event_name = "Event name is required.";
+    if (!data.event_starts_at) errors.event_starts_at = "Start date/time is required.";
+    if (
+      data.event_ends_at &&
+      data.event_starts_at &&
+      new Date(data.event_ends_at) <= new Date(data.event_starts_at)
+    ) {
+      errors.event_ends_at = "End must be after the start.";
+    }
+  }
   return errors;
 }
 
@@ -763,6 +1054,7 @@ const STEPS = [
   { number: 2, label: "Location", icon: IconMapPin },
   { number: 3, label: "Hours",    icon: IconClock },
   { number: 4, label: "Stripe",   icon: IconBrandStripe },
+  { number: 5, label: "Event",    icon: IconCalendarEvent },
 ];
 
 function StepBar({ current }: { current: number }) {
@@ -896,6 +1188,13 @@ export default function BusinessRegisterPage() {
   }
 
   async function handleFinish() {
+    // Validate the optional event step before submitting.
+    const errs = validateStep(5, data);
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    setErrors({});
     setSubmitting(true);
     setSubmitError(null);
 
@@ -914,6 +1213,30 @@ export default function BusinessRegisterPage() {
         router.replace("/auth/login?next=/business/register");
         return;
       }
+
+      // 0) Ensure a public.users profile exists for this user.
+      // businesses.owner_id → public.users(id) FK; an OAuth/email user who never
+      // completed a profile has an auth.users row but no public.users row, which
+      // is what triggers the businesses_owner_id_fkey violation. Upsert it first.
+      const baseUsername =
+        (
+          (user.user_metadata?.username as string | undefined) ||
+          user.email?.split("@")[0] ||
+          "user"
+        )
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "")
+          .slice(0, 20) || "user";
+      const { error: profileError } = await supabase.from("users").upsert(
+        {
+          id: user.id,
+          username: `${baseUsername}_${user.id.slice(0, 6)}`,
+          display_name:
+            (user.user_metadata?.full_name as string | undefined) ?? null,
+        },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+      if (profileError) throw new Error(profileError.message);
 
       // 1) Insert business row (owned by the signed-in user)
       const slug = toSlug(data.name);
@@ -960,7 +1283,51 @@ export default function BusinessRegisterPage() {
         console.error("Failed to create Main Room:", roomError.message);
       }
 
-      // 3) Redirect to verification
+      // 3) Optional opening event + its dedicated TTL chat room
+      if (data.create_event && data.event_name.trim() && data.event_starts_at) {
+        const startsAtIso = new Date(data.event_starts_at).toISOString();
+        const endsAtIso = data.event_ends_at
+          ? new Date(data.event_ends_at).toISOString()
+          : null;
+        // TTL = hours from now until the event ends (room auto-closes after).
+        const ttlHours = endsAtIso
+          ? Math.max(
+              1,
+              Math.ceil((new Date(endsAtIso).getTime() - Date.now()) / 3_600_000)
+            )
+          : null;
+
+        const { data: eventRoom, error: eventRoomError } = await supabase
+          .from("rooms")
+          .insert({
+            business_id: businessId,
+            name: data.event_name.trim(),
+            is_main: false,
+            chat_theme_id: 1,
+            slug: `${slug}-event-${Date.now().toString(36)}`,
+            ttl_hours: ttlHours,
+          })
+          .select("id")
+          .single();
+        if (eventRoomError) {
+          console.error("Failed to create event room:", eventRoomError.message);
+        }
+
+        const { error: eventError } = await supabase.from("events").insert({
+          business_id: businessId,
+          name: data.event_name.trim(),
+          description: data.event_description.trim() || null,
+          starts_at: startsAtIso,
+          ends_at: endsAtIso,
+          room_id: eventRoom?.id ?? null,
+          status: "upcoming",
+        });
+        if (eventError) {
+          console.error("Failed to create event:", eventError.message);
+        }
+      }
+
+      // 4) Redirect to verification
       router.push("/business/verify");
     } catch (err) {
       setSubmitError(
@@ -975,6 +1342,7 @@ export default function BusinessRegisterPage() {
     2: "Where are you located?",
     3: "When are you open?",
     4: "Set up payments",
+    5: "Add an opening event",
   };
 
   return (
@@ -1059,6 +1427,9 @@ export default function BusinessRegisterPage() {
               data={data}
               onConnected={(accountId) => patch({ stripe_account_id: accountId })}
             />
+          )}
+          {step === 5 && (
+            <StepEvent data={data} onChange={patch} errors={errors} />
           )}
 
           {/* Global submit error */}
