@@ -49,18 +49,6 @@ function accentColor(): string {
   );
 }
 
-/** Approximate a circle as a GeoJSON polygon ring (for geofence_polygon). */
-function circleToGeoJson(center: LatLng, radiusM: number, points = 36) {
-  const latDeg = radiusM / 111320;
-  const lngDeg = radiusM / (111320 * Math.cos((center.lat * Math.PI) / 180) || 1);
-  const ring: number[][] = [];
-  for (let i = 0; i <= points; i++) {
-    const a = (i / points) * 2 * Math.PI;
-    ring.push([center.lng + lngDeg * Math.cos(a), center.lat + latDeg * Math.sin(a)]);
-  }
-  return { type: "Polygon", coordinates: [ring] };
-}
-
 // ── Business: draggable pin (native marker, no mapId needed) ─────────────────────
 function DraggablePin({ position, onMove }: { position: LatLng; onMove: (p: LatLng) => void }) {
   const map = useMap();
@@ -199,26 +187,37 @@ function EventDrawer({
     const accent = accentColor();
     registerClear(clearAll);
 
+    // Emit the drawn geometry in the exact storage shapes requested:
+    //  PIN     → { type:'Point',   coordinates:[lng,lat] }
+    //  CIRCLE  → { type:'Circle',  center:[lng,lat], radius:meters }
+    //  POLYGON → { type:'Polygon', coordinates:[[{lat,lng},…]] }
     const emit = () => {
       const m = modeRef.current;
       if (m === "point" && markerRef.current) {
         const p = markerRef.current.getPosition();
-        if (p) onChange({ lat: p.lat(), lng: p.lng() }, null);
+        if (p) onChange({ lat: p.lat(), lng: p.lng() }, { type: "Point", coordinates: [p.lng(), p.lat()] });
         return;
       }
       if (m === "circle" && circleRef.current) {
         const c = circleRef.current.getCenter();
-        if (c) onChange({ lat: c.lat(), lng: c.lng() }, circleToGeoJson({ lat: c.lat(), lng: c.lng() }, circleRef.current.getRadius()));
+        if (c) {
+          onChange(
+            { lat: c.lat(), lng: c.lng() },
+            { type: "Circle", center: [c.lng(), c.lat()], radius: circleRef.current.getRadius() },
+          );
+        }
         return;
       }
-      if (m === "polygon" && pathRef.current.length > 0) {
-        const pts = pathRef.current;
-        const sx = pts.reduce((s, p) => s + p.lng, 0);
-        const sy = pts.reduce((s, p) => s + p.lat, 0);
-        const ring = pts.map((p) => [p.lng, p.lat]);
-        if (ring.length > 0) ring.push(ring[0]);
-        onChange({ lat: sy / pts.length, lng: sx / pts.length }, { type: "Polygon", coordinates: [ring] });
-        return;
+      if (m === "polygon" && polygonRef.current) {
+        const path = polygonRef.current.getPath();
+        const coords: LatLng[] = [];
+        path.forEach((ll) => coords.push({ lat: ll.lat(), lng: ll.lng() }));
+        if (coords.length > 0) {
+          const sx = coords.reduce((s, p) => s + p.lng, 0);
+          const sy = coords.reduce((s, p) => s + p.lat, 0);
+          onChange({ lat: sy / coords.length, lng: sx / coords.length }, { type: "Polygon", coordinates: [coords] });
+          return;
+        }
       }
       onChange(null, null);
     };
@@ -271,6 +270,11 @@ function EventDrawer({
             fillColor: accent,
             fillOpacity: 0.2,
           });
+          // Re-emit when the user edits vertices via the polygon handles.
+          const pPath = polygonRef.current.getPath();
+          pPath.addListener("set_at", emit);
+          pPath.addListener("insert_at", emit);
+          pPath.addListener("remove_at", emit);
         } else {
           polygonRef.current.setPath(gpath);
         }
@@ -278,8 +282,14 @@ function EventDrawer({
       }
     });
 
+    // Double-click finalizes the polygon (stops adding new points).
+    const dblListener = map.addListener("dblclick", () => {
+      if (modeRef.current === "polygon") emit();
+    });
+
     return () => {
       if (clickListener) google.maps.event.removeListener(clickListener);
+      if (dblListener) google.maps.event.removeListener(dblListener);
       markerRef.current?.setMap(null);
       circleRef.current?.setMap(null);
       polygonRef.current?.setMap(null);
@@ -583,6 +593,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                     defaultCenter={center}
                     defaultZoom={15}
                     gestureHandling="greedy"
+                    disableDoubleClickZoom
                     style={{ width: "100%", height: "100%" }}
                   >
                     <EventDrawer
