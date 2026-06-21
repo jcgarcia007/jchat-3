@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   IconLayoutDashboard,
   IconShoppingCart,
@@ -16,7 +17,9 @@ import {
   IconChartBar,
   IconTag,
   IconSettings,
+  IconShield,
 } from "@tabler/icons-react";
+import { isSuperAdmin } from "@/lib/roles";
 
 // ─── Badge stubs ─────────────────────────────────────────────────────────────
 // TODO(Task 3.x): replace with real-time counts from Supabase Realtime
@@ -49,6 +52,18 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  // Show the Super Admin entry only for users with the super_admin/admin role.
+  useEffect(() => {
+    let active = true;
+    isSuperAdmin().then((ok) => {
+      if (active) setShowAdmin(ok);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <nav
@@ -134,6 +149,48 @@ export function Sidebar() {
           </Link>
         );
       })}
+
+      {/* Super Admin — only for super_admin / admin-role users */}
+      {showAdmin && (
+        <>
+          <div
+            style={{
+              width: "24px",
+              height: "1px",
+              background: "var(--db-border)",
+              margin: "8px 0",
+            }}
+          />
+          <Link
+            href="/super-admin"
+            title="Super Admin"
+            aria-label="Super Admin"
+            aria-current={pathname.startsWith("/super-admin") ? "page" : undefined}
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "40px",
+              height: "40px",
+              borderRadius: "10px",
+              textDecoration: "none",
+              background: pathname.startsWith("/super-admin")
+                ? "var(--db-bg-elevated)"
+                : "transparent",
+              borderLeft: pathname.startsWith("/super-admin")
+                ? "2px solid var(--color-brand)"
+                : "2px solid transparent",
+              color: pathname.startsWith("/super-admin")
+                ? "var(--db-accent)"
+                : "var(--db-text-secondary)",
+              transition: "background 0.15s, color 0.15s",
+            }}
+          >
+            <IconShield size={20} stroke={1.6} />
+          </Link>
+        </>
+      )}
     </nav>
   );
 }
