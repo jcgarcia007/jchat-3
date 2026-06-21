@@ -46,6 +46,20 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
+/** Resolve a business's main room id (is_main first, else lowest sort). */
+async function resolveMainRoomId(businessId: string): Promise<string | null> {
+  if (!isSupabaseConfigured) return businessId;
+  const { data } = await supabase
+    .from('rooms')
+    .select('id, is_main, sort')
+    .eq('business_id', businessId)
+    .order('is_main', { ascending: false })
+    .order('sort', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
+}
+
 interface MapBusiness {
   id: string;
   name: string;
@@ -258,7 +272,14 @@ export default function MapScreen() {
                   address: selected.address, lat: selected.lat, lng: selected.lng,
                   rating: selected.rating, active_count: selected.activeCount,
                 }}
-                onEnterChat={(id) => { setSelected(null); navigation.navigate('ChatRoom', { id }); }}
+                onEnterChat={(businessId) => {
+                  void (async () => {
+                    // ChatRoom expects a ROOM id; resolve the business's main room.
+                    const roomId = await resolveMainRoomId(businessId);
+                    setSelected(null);
+                    navigation.navigate('ChatRoom', { id: roomId ?? businessId });
+                  })();
+                }}
                 onViewMenu={(id) => { setSelected(null); navigation.navigate('Menu', { businessId: id, businessName: selected.name }); }}
                 onNavigate={handleNavigate}
                 onShare={() => { /* TODO: share */ }}

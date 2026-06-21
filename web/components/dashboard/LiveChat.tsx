@@ -90,8 +90,9 @@ export function LiveChat({ roomId }: { roomId: string }) {
 
         await loadMessages();
 
+        // Same channel name as the mobile ChatRoomScreen so web ↔ mobile stay in sync.
         channelRef.current = supabase
-          .channel(`chat-${roomId}`)
+          .channel(`room-messages:${roomId}`)
           .on(
             "postgres_changes",
             { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` },

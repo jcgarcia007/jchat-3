@@ -24,6 +24,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { CHAT_THEMES, getChatTheme } from "@/constants/chatThemes";
 
 interface RoomRow {
   id: string;
@@ -33,6 +34,7 @@ interface RoomRow {
   is_active: boolean;
   is_password_protected: boolean;
   ttl_hours: number | null;
+  chat_theme_id: number;
   member_count: number;
 }
 
@@ -53,9 +55,9 @@ const TYPE_META: Record<RoomType, { icon: React.ComponentType<{ size?: number }>
 };
 
 const DEMO_ROOMS: RoomRow[] = [
-  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, member_count: 86 },
-  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, member_count: 12 },
-  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, member_count: 31 },
+  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 86 },
+  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, member_count: 12 },
+  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, chat_theme_id: 7, member_count: 31 },
 ];
 
 const ROOM_EMOJIS = ["💬", "🥂", "🎶", "🍻", "🎉", "⭐️", "🔥", "🏆", "🎯", "🪩", "🎨", "📣"];
@@ -77,10 +79,31 @@ export default function ChatRoomsPage() {
   const [newEmoji, setNewEmoji] = useState("💬");
   const [creating, setCreating] = useState(false);
 
+  // Theme picker
+  const [themeRoom, setThemeRoom] = useState<RoomRow | null>(null);
+  const [savingTheme, setSavingTheme] = useState(false);
+
+  async function changeTheme(room: RoomRow, themeId: number) {
+    setSavingTheme(true);
+    setError(null);
+    try {
+      if (isSupabaseConfigured) {
+        const { error: upErr } = await supabase.from("rooms").update({ chat_theme_id: themeId }).eq("id", room.id);
+        if (upErr) throw upErr;
+      }
+      setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, chat_theme_id: themeId } : r)));
+      setThemeRoom(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to change theme.");
+    } finally {
+      setSavingTheme(false);
+    }
+  }
+
   async function load(bizId: string) {
     const { data, error: roomsErr } = await supabase
       .from("rooms")
-      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours")
+      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours, chat_theme_id")
       .eq("business_id", bizId)
       .order("is_main", { ascending: false })
       .order("sort", { ascending: true });
@@ -142,7 +165,7 @@ export default function ChatRoomsPage() {
       if (!isSupabaseConfigured) {
         setRooms((prev) => [
           ...prev,
-          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, member_count: 0 },
+          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 0 },
         ]);
       } else if (business) {
         const { error: insErr } = await supabase.from("rooms").insert({
@@ -330,7 +353,7 @@ export default function ChatRoomsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 120px 90px 220px",
+              gridTemplateColumns: "1fr 110px 70px 320px",
               gap: "12px",
               padding: "12px 20px",
               fontSize: "11px",
@@ -356,7 +379,7 @@ export default function ChatRoomsPage() {
                 key={r.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 120px 90px 220px",
+                  gridTemplateColumns: "1fr 110px 70px 320px",
                   gap: "12px",
                   padding: "14px 20px",
                   alignItems: "center",
@@ -410,6 +433,38 @@ export default function ChatRoomsPage() {
                     <IconMessages size={14} />
                     Open Chat
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => setThemeRoom(r)}
+                    title="Change chat theme"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "7px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--db-border)",
+                      background: "var(--db-bg-elevated)",
+                      color: "var(--db-text-secondary)",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: "12px",
+                        height: "12px",
+                        borderRadius: "50%",
+                        background: getChatTheme(r.chat_theme_id).accent,
+                        border: "1px solid var(--db-border)",
+                        flexShrink: 0,
+                      }}
+                    />
+                    Theme
+                  </button>
                   {business?.slug && (
                     <a
                       href={`/b/${business.slug}`}
@@ -434,6 +489,103 @@ export default function ChatRoomsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Theme picker modal — 15 chat themes with color previews */}
+      {themeRoom && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Change theme for ${themeRoom.name}`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingTheme) setThemeRoom(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--db-bg-surface)",
+              border: "1px solid var(--db-border)",
+              borderRadius: "14px",
+              padding: "20px",
+              width: "560px",
+              maxWidth: "100%",
+              maxHeight: "85vh",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                Chat theme — {themeRoom.name}
+              </h2>
+              <button
+                type="button"
+                onClick={() => !savingTheme && setThemeRoom(null)}
+                aria-label="Close"
+                style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer" }}
+              >
+                <IconX size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
+              {CHAT_THEMES.map((t) => {
+                const selected = t.id === themeRoom.chat_theme_id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => void changeTheme(themeRoom, t.id)}
+                    disabled={savingTheme}
+                    style={{
+                      textAlign: "left",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                      background: t.bg,
+                      cursor: savingTheme ? "wait" : "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    {/* Mini chat preview using the theme's own colors */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: t.bubbleInBg, color: t.bubbleInText, fontSize: "11px" }}>
+                        Hey there 👋
+                      </span>
+                      <span style={{ alignSelf: "flex-end", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: t.bubbleOutBg, color: t.bubbleOutText, fontSize: "11px" }}>
+                        Welcome!
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: t.bubbleInText }}>
+                        {t.id}. {t.name}
+                      </span>
+                      <span style={{ display: "flex", gap: "3px" }}>
+                        {[t.bg, t.accent, t.bubbleOutBg].map((col, i) => (
+                          <span key={i} style={{ width: "12px", height: "12px", borderRadius: "50%", background: col, border: `1px solid ${t.border}` }} />
+                        ))}
+                      </span>
+                    </div>
+                    {selected && (
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: t.accent }}>✓ Current</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

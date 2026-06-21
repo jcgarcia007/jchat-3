@@ -42,9 +42,12 @@ import {
   IconX,
 } from '@tabler/icons-react-native';
 
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,6 +71,8 @@ interface BusinessRow {
   icon_emoji: string | null;
   hours: Hours | null;
   room_count: number;
+  /** Main room of the business — navigation target for "Join Chat". */
+  main_room_id?: string | null;
   /** // TODO(presence): replace 0 with live active counts from presence channel */
   active_users: number;
 }
@@ -225,16 +230,21 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
     return [];
   }
 
-  // Fetch room counts per business in a single query
+  // Fetch rooms per business in a single query (count + main room id)
   const ids = businesses.map((b: { id: string }) => b.id);
-  const { data: roomCounts } = await supabase
+  const { data: roomRows } = await supabase
     .from('rooms')
-    .select('business_id')
-    .in('business_id', ids);
+    .select('id, business_id, is_main, sort')
+    .in('business_id', ids)
+    .order('is_main', { ascending: false })
+    .order('sort', { ascending: true });
 
   const countMap: Record<string, number> = {};
-  (roomCounts ?? []).forEach((r: { business_id: string }) => {
+  const mainRoomMap: Record<string, string> = {};
+  (roomRows ?? []).forEach((r: { id: string; business_id: string; is_main: boolean }) => {
     countMap[r.business_id] = (countMap[r.business_id] ?? 0) + 1;
+    // First row per business wins (is_main desc, sort asc) → the main room.
+    if (!mainRoomMap[r.business_id]) mainRoomMap[r.business_id] = r.id;
   });
 
   return businesses.map((b: {
@@ -254,6 +264,7 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
     icon_emoji: b.icon_emoji,
     hours: (b.hours as Hours) ?? null,
     room_count: countMap[b.id] ?? 0,
+    main_room_id: mainRoomMap[b.id] ?? null,
     // TODO(presence): replace 0 with live active counts from presence channel
     active_users: 0,
   }));
@@ -401,6 +412,7 @@ function CategoryChip({ label, active, onPress }: CategoryChipProps) {
 
 export default function NearbyScreen() {
   const c = useThemeColors();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -449,11 +461,15 @@ export default function NearbyScreen() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handlePress = useCallback((item: BusinessRow) => {
-    // TODO(Task 2.3): open BusinessPreviewCard with item.id / item.slug
-    // Example: navigation.navigate('BusinessPreview', { slug: item.slug });
-    console.log('[NearbyScreen] tapped:', item.slug);
-  }, []);
+  const handlePress = useCallback(
+    (item: BusinessRow) => {
+      // Enter the business's main room chat. In demo mode (no main_room_id) we
+      // pass the business id — ChatRoomScreen falls back to demo data there.
+      const target = item.main_room_id ?? item.id;
+      navigation.navigate('ChatRoom', { id: target });
+    },
+    [navigation],
+  );
 
   const handleCategoryPress = useCallback((cat: string) => {
     setSelectedCategory((prev) => (prev === cat ? null : cat));
