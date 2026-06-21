@@ -248,11 +248,12 @@ function Step1Identity({
     void pollStatus();
   }, [pollStatus]);
 
-  // Testing-only escape hatch: marks Identity approved without Stripe.
-  // Hidden in real production (real Stripe Identity is used there).
-  const showTestSkip =
-    process.env.NODE_ENV !== "production" ||
-    process.env.NEXT_PUBLIC_ENABLE_TEST_SKIP === "true";
+  // TEMPORARY testing escape hatch: marks Identity approved without Stripe.
+  // Shown ALWAYS for now (until real Stripe Identity is wired up). Opt-out:
+  // set NEXT_PUBLIC_HIDE_TEST_SKIP="true" to hide it.
+  // REMOVE THIS (and the button below) BEFORE PUBLIC LAUNCH — once Stripe
+  // Identity is integrated, real owners must verify; this bypass must not ship.
+  const showTestSkip = process.env.NEXT_PUBLIC_HIDE_TEST_SKIP !== "true";
 
   const handleTestSkip = useCallback(async () => {
     setError(null);
