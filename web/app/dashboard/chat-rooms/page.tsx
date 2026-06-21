@@ -9,9 +9,9 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   IconMessages,
-  IconArrowRight,
   IconLock,
   IconStar,
   IconCalendarEvent,
@@ -330,7 +330,7 @@ export default function ChatRoomsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 130px 130px 120px",
+              gridTemplateColumns: "1fr 120px 90px 220px",
               gap: "12px",
               padding: "12px 20px",
               fontSize: "11px",
@@ -356,7 +356,7 @@ export default function ChatRoomsPage() {
                 key={r.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 130px 130px 120px",
+                  gridTemplateColumns: "1fr 120px 90px 220px",
                   gap: "12px",
                   padding: "14px 20px",
                   alignItems: "center",
@@ -390,28 +390,45 @@ export default function ChatRoomsPage() {
                   {r.member_count}
                 </span>
 
-                <div style={{ textAlign: "right" }}>
-                  {business?.slug ? (
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  <Link
+                    href={`/dashboard/chat?room=${r.id}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "7px 12px",
+                      borderRadius: "8px",
+                      background: "var(--db-accent)",
+                      color: "var(--db-accent-text)",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <IconMessages size={14} />
+                    Open Chat
+                  </Link>
+                  {business?.slug && (
                     <a
                       href={`/b/${business.slug}`}
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: "6px",
-                        padding: "7px 12px",
+                        gap: "4px",
+                        padding: "7px 10px",
                         borderRadius: "8px",
                         background: "var(--db-bg-elevated)",
                         color: "var(--db-text-secondary)",
                         fontSize: "13px",
                         fontWeight: 600,
                         textDecoration: "none",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       Manage
-                      <IconArrowRight size={14} />
                     </a>
-                  ) : (
-                    <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>—</span>
                   )}
                 </div>
               </div>

@@ -20,7 +20,8 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   IconAlertCircle,
   IconCheck,
@@ -39,6 +40,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { CHAT_THEMES, getChatTheme } from "@/constants/chatThemes";
 import { ChatThemePreview } from "@/components/dashboard/ChatThemePreview";
 import { QRModal, type QRModalRoom, type QRModalBusiness } from "@/components/dashboard/QRModal";
+import { LiveChat } from "@/components/dashboard/LiveChat";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -998,7 +1000,25 @@ function DeleteConfirmModal({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function ChatRoomManagerPage() {
+/**
+ * Route entry: `?room=<id>` opens the live chat for that room; otherwise the
+ * Room Manager is shown. Wrapped in Suspense because useSearchParams requires it.
+ */
+export default function ChatPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChatRouter />
+    </Suspense>
+  );
+}
+
+function ChatRouter() {
+  const params = useSearchParams();
+  const roomId = params.get("room");
+  return roomId ? <LiveChat roomId={roomId} /> : <ChatRoomManagerPage />;
+}
+
+function ChatRoomManagerPage() {
   // ── State ──────────────────────────────────────────────────────────────────
 
   const [rooms, setRooms] = useState<Room[]>([]);
