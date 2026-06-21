@@ -49,6 +49,7 @@ import {
   IconBolt,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -730,22 +731,14 @@ export default function OffersPage() {
   const loadRooms = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (!biz) return;
+      // Shared resolver: tolerant of multiple businesses per owner.
+      const res = await resolveActiveBusiness();
+      if (!res.ok) return;
 
       const { data, error: err } = await supabase
         .from("rooms")
         .select("id, name")
-        .eq("business_id", biz.id)
+        .eq("business_id", res.business.id)
         .eq("is_active", true)
         .order("sort");
       if (err) throw err;
@@ -838,14 +831,11 @@ export default function OffersPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated.");
 
-      const { data: biz, error: bizErr } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (bizErr || !biz) throw new Error("Business not found for this account.");
+      // Shared resolver: tolerant of multiple businesses per owner.
+      const res = await resolveActiveBusiness();
+      if (!res.ok) throw new Error(res.message);
 
-      const businessId: string = biz.id as string;
+      const businessId: string = res.business.id;
 
       const startAt = combineDatetime(form.startDate, form.startTime);
       const expiresAt = combineDatetime(form.endDate, form.endTime);
@@ -958,13 +948,10 @@ export default function OffersPage() {
             data: { user },
           } = await supabase.auth.getUser();
           if (user) {
-            const { data: biz } = await supabase
-              .from("businesses")
-              .select("id")
-              .eq("owner_id", user.id)
-              .single();
-            if (biz) {
-              await publishOfferToChat(offer.id, offer.room_id, user.id, biz.id as string, {
+            // Shared resolver: tolerant of multiple businesses per owner.
+            const res = await resolveActiveBusiness();
+            if (res.ok) {
+              await publishOfferToChat(offer.id, offer.room_id, user.id, res.business.id, {
                 title: offer.title,
                 discount: offer.discount,
                 description: offer.description,

@@ -179,12 +179,17 @@ export default function EventsPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated.");
 
-      // Resolve business_id from the current user
+      // Resolve business_id from the current user. Owners may have multiple
+      // businesses, so pick the most-recent with maybeSingle() instead of
+      // .single() (which errors on multiple rows). lat/lng are needed here, so
+      // we query directly rather than via the shared id-only resolver.
       const { data: biz, error: bizErr } = await supabase
         .from("businesses")
         .select("id, lat, lng")
         .eq("owner_id", user.id)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (bizErr || !biz) throw new Error("Business not found for this account.");
 
       const starts_at = combineDatetime(form.date, form.time);

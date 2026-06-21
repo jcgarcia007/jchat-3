@@ -27,7 +27,8 @@ import {
   IconEdit,
   IconX,
 } from "@tabler/icons-react";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
 import {
   getRules,
   upsertRules,
@@ -185,23 +186,12 @@ export default function LoyaltyPage() {
       return;
     }
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoadingBiz(false);
-        return;
+      // Shared resolver: tolerant of an owner having multiple businesses
+      // (picks the most-recent). Avoids the .single() "multiple rows" error.
+      const res = await resolveActiveBusiness();
+      if (res.ok) {
+        setBusinessId(res.business.id);
       }
-      const { data: biz, error: bizErr } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (bizErr || !biz) {
-        setLoadingBiz(false);
-        return;
-      }
-      setBusinessId((biz as { id: string }).id);
     } catch {
       // business not found — keep null
     } finally {
