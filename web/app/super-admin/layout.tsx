@@ -25,6 +25,7 @@ import {
   IconBell,
   IconUsersGroup,
   IconBroadcast,
+  IconRulerMeasure,
   IconLayoutDashboard,
 } from "@tabler/icons-react";
 
@@ -98,6 +99,7 @@ export default function SuperAdminLayout({
         <NavLink href="/super-admin/users" icon={IconUsers} label="Users" />
         <NavLink href="/super-admin/businesses" icon={IconBuildingStore} label="Businesses" />
         <NavLink href="/super-admin/verification" icon={IconUserCheck} label="Verification" />
+        <NavLink href="/super-admin/radius-requests" icon={IconRulerMeasure} label="Radius Requests" />
         <NavLink href="/super-admin/revenue" icon={IconChartBar} label="Revenue" />
         <NavLink href="/super-admin/alerts" icon={IconBell} label="Alerts" />
         <NavLink href="/super-admin/team" icon={IconUsersGroup} label="Team" />

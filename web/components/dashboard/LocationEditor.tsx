@@ -29,12 +29,19 @@ import {
   IconCircle,
   IconPolygon,
   IconTrash,
+  IconX,
+  IconArrowRight,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 // Fallback view when the business has no saved coordinates: center of the USA.
 const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
+
+// Default geofence-radius caps. Above the cap, owners request an increase from a
+// super admin. (Event cap is prepared for the future events flow.)
+const BUSINESS_RADIUS_CAP = 100; // meters
+export const EVENT_RADIUS_CAP = 1609; // 1 mile, for the future events flow
 
 type LatLng = { lat: number; lng: number };
 type Tool = "pin" | "circle" | "polygon";
@@ -317,6 +324,17 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
   const [recenterTo, setRecenterTo] = useState<LatLng | null>(null);
   const clearRef = useRef<() => void>(() => {});
 
+  // Slider cap: the default cap, or a larger already-granted radius from the DB.
+  const [grantedMax, setGrantedMax] = useState<number>(BUSINESS_RADIUS_CAP);
+
+  // Radius-increase request modal
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRadius, setReqRadius] = useState("");
+  const [reqReason, setReqReason] = useState("");
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [reqError, setReqError] = useState<string | null>(null);
+  const [reqDone, setReqDone] = useState(false);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !businessId) return;
     let active = true;
@@ -330,9 +348,12 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         const row = b as Record<string, number | null>;
         const blat = row.latitude ?? row.lat ?? null;
         const blng = row.longitude ?? row.lng ?? null;
+        const r = row.geofence_radius_m ?? row.radius_m ?? BUSINESS_RADIUS_CAP;
         setLat(blat);
         setLng(blng);
-        setRadius(row.geofence_radius_m ?? row.radius_m ?? 200);
+        setRadius(r);
+        // Don't shrink an already-granted larger radius below what's saved.
+        setGrantedMax(Math.max(BUSINESS_RADIUS_CAP, r));
         if (blat != null && blng != null) setRecenterTo({ lat: blat, lng: blng });
       }
     })();
@@ -386,7 +407,48 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
     }
   }, [businessId, lat, lng, radius, shape]);
 
+  const openRequest = useCallback(() => {
+    setReqError(null);
+    setReqDone(false);
+    setReqRadius(String(grantedMax * 2));
+    setReqReason("");
+    setShowReqModal(true);
+  }, [grantedMax]);
+
+  const submitRequest = useCallback(async () => {
+    const rr = parseInt(reqRadius, 10);
+    if (isNaN(rr) || rr <= grantedMax) {
+      setReqError(`Requested radius must be greater than ${grantedMax} m.`);
+      return;
+    }
+    if (!reqReason.trim()) {
+      setReqError("Please provide a reason.");
+      return;
+    }
+    setReqSubmitting(true);
+    setReqError(null);
+    try {
+      if (isSupabaseConfigured && businessId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error: e } = await supabase.from("radius_increase_requests").insert({
+          business_id: businessId,
+          requested_by: user?.id ?? null,
+          current_radius_m: radius,
+          requested_radius_m: rr,
+          reason: reqReason.trim(),
+        });
+        if (e) throw e;
+      }
+      setReqDone(true);
+    } catch (e) {
+      setReqError(e instanceof Error ? e.message : "Failed to submit request.");
+    } finally {
+      setReqSubmitting(false);
+    }
+  }, [reqRadius, reqReason, grantedMax, businessId, radius]);
+
   const hasKey = MAPS_KEY.length > 0;
+  const atCap = radius >= grantedMax;
 
   const TOOLS: { id: Tool; label: string; icon: typeof IconPointer }[] = [
     { id: "pin", label: "Pin", icon: IconMapPin },
@@ -404,12 +466,31 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         <input
           type="range"
           min={50}
-          max={5000}
+          max={grantedMax}
           step={10}
-          value={radius}
+          value={Math.min(radius, grantedMax)}
           onChange={(e) => setRadius(parseInt(e.target.value, 10))}
           style={{ width: "100%", accentColor: "var(--db-accent)" }}
         />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
+          <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
+            Max {grantedMax.toLocaleString()} m{atCap ? " — limit reached" : ""}
+          </span>
+          {atCap && (
+            <button
+              type="button"
+              onClick={openRequest}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "4px",
+                padding: "5px 10px", borderRadius: "8px", border: "1px solid var(--db-accent)",
+                background: "transparent", color: "var(--db-accent)",
+                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Request larger radius <IconArrowRight size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 16px" }}>
@@ -522,6 +603,61 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
           </div>
           {controls}
         </>
+      )}
+
+      {/* Radius increase request modal */}
+      {showReqModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Request radius increase"
+          onClick={(e) => { if (e.target === e.currentTarget && !reqSubmitting) setShowReqModal(false); }}
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: "16px" }}
+        >
+          <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "14px", padding: "22px", width: "420px", maxWidth: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>Request Radius Increase</h2>
+              <button type="button" onClick={() => !reqSubmitting && setShowReqModal(false)} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer" }}>
+                <IconX size={20} />
+              </button>
+            </div>
+
+            {reqDone ? (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 14px", borderRadius: "8px", background: "rgba(29,158,117,0.10)", color: "var(--db-success)", fontSize: "13px", marginBottom: "16px" }}>
+                  <IconCheck size={16} /> Request submitted! A super admin will review your request.
+                </div>
+                <SaveBtn onClick={() => setShowReqModal(false)} loading={false} label="Done" />
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 14px" }}>
+                  Your current limit is <strong style={{ color: "var(--db-text-primary)" }}>{grantedMax.toLocaleString()} m</strong>. Tell us the radius you need and why.
+                </p>
+                <div style={{ marginBottom: "12px" }}>
+                  <FieldLabel>Requested radius (m)</FieldLabel>
+                  <NumberInput value={reqRadius === "" ? null : Number(reqRadius)} onChange={(v) => setReqRadius(v == null ? "" : String(v))} placeholder={String(grantedMax * 2)} />
+                </div>
+                <div style={{ marginBottom: "14px" }}>
+                  <FieldLabel>Reason *</FieldLabel>
+                  <textarea
+                    value={reqReason}
+                    onChange={(e) => setReqReason(e.target.value)}
+                    placeholder="Why do you need a larger geofence?"
+                    rows={3}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", resize: "vertical", fontFamily: "inherit" }}
+                  />
+                </div>
+                {reqError && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", background: "rgba(239,68,68,0.10)", color: "var(--db-danger)", fontSize: "13px", marginBottom: "12px" }}>
+                    <IconAlertCircle size={15} /> {reqError}
+                  </div>
+                )}
+                <SaveBtn onClick={() => void submitRequest()} loading={reqSubmitting} label="Submit Request" />
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
