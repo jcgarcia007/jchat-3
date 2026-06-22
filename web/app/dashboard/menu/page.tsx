@@ -1642,6 +1642,8 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
+  const [menuEnabled, setMenuEnabled] = useState(false);
+  const [togglingMenu, setTogglingMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1687,6 +1689,7 @@ export default function MenuPage() {
       setNoBusiness(false);
       const bid: string = res.business.id;
       setBusinessId(bid);
+      setMenuEnabled(res.business.menu_enabled ?? false);
 
       const [catsResult, itemsResult] = await Promise.all([
         supabase
@@ -1855,6 +1858,28 @@ export default function MenuPage() {
       }
     },
     []
+  );
+
+  // ── Toggle menu_enabled (show menu icon in chat) ─────────────────────────────
+  const handleToggleMenuEnabled = useCallback(
+    async (next: boolean) => {
+      setMenuEnabled(next); // optimistic
+      if (!isSupabaseConfigured) return;
+      setTogglingMenu(true);
+      try {
+        const { error: err } = await supabase
+          .from("businesses")
+          .update({ menu_enabled: next })
+          .eq("id", businessId);
+        if (err) throw err;
+      } catch (e: unknown) {
+        setMenuEnabled(!next); // revert
+        setError("Failed to update menu visibility.");
+      } finally {
+        setTogglingMenu(false);
+      }
+    },
+    [businessId],
   );
 
   // ── Delete category ──────────────────────────────────────────────────────────
@@ -2109,34 +2134,54 @@ export default function MenuPage() {
             the eye icon to publish or hide items.
           </p>
         </div>
-        {!showCatForm && (
-          <button
-            onClick={() => {
-              setShowCatForm(true);
-              setEditingCatId(null);
-              setCatFormInitial(EMPTY_CATEGORY_FORM);
-              setError(null);
-            }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "9px 18px",
-              borderRadius: "8px",
-              border: "none",
-              background: "var(--db-accent)",
-              color: "var(--db-accent-text)",
-              fontSize: "14px",
-              fontWeight: 600,
-              cursor: "pointer",
-              flexShrink: 0,
-              whiteSpace: "nowrap",
-            }}
-          >
-            <IconPlus size={16} />
-            New Category
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+          {/* menu_enabled toggle */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+            <Toggle
+              checked={menuEnabled}
+              onChange={(v) => void handleToggleMenuEnabled(v)}
+              label="Show menu in chat"
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: togglingMenu ? "var(--db-text-tertiary)" : "var(--db-text-tertiary)",
+                opacity: togglingMenu ? 0.5 : 1,
+              }}
+            >
+              When on, customers see your menu icon in the venue chat.
+            </span>
+          </div>
+
+          {!showCatForm && (
+            <button
+              onClick={() => {
+                setShowCatForm(true);
+                setEditingCatId(null);
+                setCatFormInitial(EMPTY_CATEGORY_FORM);
+                setError(null);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 18px",
+                borderRadius: "8px",
+                border: "none",
+                background: "var(--db-accent)",
+                color: "var(--db-accent-text)",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconPlus size={16} />
+              New Category
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Demo mode banner */}

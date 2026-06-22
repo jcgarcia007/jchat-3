@@ -347,7 +347,7 @@ export default function ChatRoomScreen() {
     void loadMessages(activeRoomId);
   }, [activeRoomId, initialLoading, entryVisible, loadMessages]);
 
-  // ── Realtime subscription ──────────────────────────────────────────────────
+  // ── Realtime subscription (messages) ──────────────────────────────────────
 
   useEffect(() => {
     if (!isSupabaseConfigured || entryVisible) return;
@@ -378,6 +378,70 @@ export default function ChatRoomScreen() {
     };
   }, [activeRoomId, entryVisible]);
 
+  // ── Realtime Presence (who is in the room) ────────────────────────────────
+
+  interface PresencePayload {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    is_incognito: boolean;
+    nickname: string | null;
+  }
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || entryVisible || !user) return;
+
+    const incognito = enteredIncognito;
+    const displayName = incognito?.enabled
+      ? (incognito.nickname ?? 'Anonymous')
+      : ((user.user_metadata?.username as string | undefined) ?? user.email ?? 'User');
+    const avatarUrl = incognito?.enabled
+      ? null
+      : ((user.user_metadata?.avatar_url as string | undefined) ?? null);
+
+    const presencePayload: PresencePayload = {
+      user_id: user.id,
+      display_name: displayName,
+      avatar_url: avatarUrl,
+      is_incognito: incognito?.enabled ?? false,
+      nickname: incognito?.nickname ?? null,
+    };
+
+    const presenceChannel = supabase.channel(`presence:${activeRoomId}`, {
+      config: { presence: { key: user.id } },
+    });
+
+    const rebuildUsers = () => {
+      const state = presenceChannel.presenceState<PresencePayload>();
+      const users: UserSummary[] = Object.values(state)
+        .flat()
+        .filter((p, i, arr) => arr.findIndex((x) => x.user_id === p.user_id) === i)
+        .map((p) => ({
+          id: p.user_id,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+          is_incognito: p.is_incognito,
+          nickname: p.nickname ?? undefined,
+        }));
+      setUsersInRoom(users);
+      setActiveCount(users.length);
+    };
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, rebuildUsers)
+      .on('presence', { event: 'join' }, rebuildUsers)
+      .on('presence', { event: 'leave' }, rebuildUsers)
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track(presencePayload);
+        }
+      });
+
+    return () => {
+      void presenceChannel.untrack().then(() => supabase.removeChannel(presenceChannel));
+    };
+  }, [activeRoomId, entryVisible, user, enteredIncognito]);
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   /** Called when the user confirms entry (after incognito selection). */
@@ -396,10 +460,13 @@ export default function ChatRoomScreen() {
   }, [navigation]);
 
   const handleMenuPress = useCallback(() => {
-    if (!business) return;
-    // TODO(Task 3.2): navigate to MenuScreen for business.id
-    Alert.alert('Menu', `Opening menu for ${business.name}…`); // TODO(i18n)
-  }, [business]);
+    if (!business || !room) return;
+    navigation.navigate('Menu', {
+      businessId: room.business_id,
+      roomId: activeRoomId,
+      businessName: business.name,
+    });
+  }, [business, room, activeRoomId, navigation]);
 
   const handleSendText = useCallback(
     async (text: string) => {
