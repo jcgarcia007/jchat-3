@@ -225,11 +225,14 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
     wrapper: {
       alignItems: 'center',
-      gap: 8,
     },
 
-    // Emoji picker panel — floats above the trigger button.
+    // Emoji picker panel — floats above the trigger button (absolute so it
+    // doesn't expand the input row when open).
     pickerPanel: {
+      position: 'absolute',
+      bottom: 44,   // clear the 36px button + 8px gap
+      right: 0,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
@@ -237,6 +240,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       borderRadius: 24,
       paddingHorizontal: 10,
       paddingVertical: 6,
+      zIndex: 10,
       // Subtle border so it lifts off the chat background.
       borderWidth: 1,
       borderColor: c.borderSubtle,

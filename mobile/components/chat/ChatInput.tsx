@@ -35,6 +35,8 @@ export interface ChatInputProps {
   onSendPhoto: (uri: string) => void;
   onOfferPress?: () => void;
   disabled?: boolean;
+  /** Optional button rendered between the TextInput and the Send button. */
+  reactionButton?: React.ReactNode;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -45,6 +47,7 @@ export function ChatInput({
   onSendPhoto,
   onOfferPress,
   disabled = false,
+  reactionButton,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachmentOpen, setAttachmentOpen] = useState(false);
@@ -126,6 +129,9 @@ export function ChatInput({
           onFocus={() => setAttachmentOpen(false)}
           accessibilityLabel="Message input" // TODO(i18n)
         />
+
+        {/* Reaction / emoji button slot */}
+        {reactionButton}
 
         {/* Send button */}
         <Pressable

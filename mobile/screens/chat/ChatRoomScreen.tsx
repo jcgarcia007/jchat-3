@@ -821,30 +821,30 @@ export default function ChatRoomScreen() {
           }
         />
 
-        {/* ── Bottom action row (MapReaction + CheckIn) ─────────────────── */}
-        <View style={[chatStyles.actionRow, { backgroundColor: chatTheme.topBg, borderTopColor: chatTheme.border }]}>
-          <MapReactionButton
-            businessId={room?.business_id ?? DEMO_BUSINESS.id}
-            roomId={activeRoomId}
-            inRoom
-          />
-
-          {/* Check-in — only for the main room */}
-          {isMainRoom && (
+        {/* ── Check-in bar — only when enabled for the main room ───────── */}
+        {isMainRoom && (room?.check_in_enabled ?? false) && (
+          <View style={[chatStyles.checkInBar, { backgroundColor: chatTheme.topBg }]}>
             <CheckInButton
-              enabled={room?.check_in_enabled ?? false}
+              enabled
               businessId={room?.business_id ?? DEMO_BUSINESS.id}
               roomId={activeRoomId}
             />
-          )}
-        </View>
+          </View>
+        )}
 
-        {/* ── Chat input ───────────────────────────────────────────────── */}
+        {/* ── Chat input (emoji reaction button lives inside the bar) ───── */}
         <ChatInput
           theme={chatTheme}
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
           onOfferPress={() => setOfferVisible(true)}
+          reactionButton={
+            <MapReactionButton
+              businessId={room?.business_id ?? DEMO_BUSINESS.id}
+              roomId={activeRoomId}
+              inRoom
+            />
+          }
         />
       </KeyboardAvoidingView>
 
@@ -1022,13 +1022,8 @@ const chatStyles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  checkInBar: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 12,
   },
 });
