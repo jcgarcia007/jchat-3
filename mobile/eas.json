@@ -6,11 +6,13 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "production"
     },
     "simulator": {
       "extends": "development",
-      "ios": { "simulator": true }
+      "ios": { "simulator": true },
+      "environment": "production"
     },
     "preview": {
       "distribution": "internal"
