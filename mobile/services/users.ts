@@ -52,10 +52,7 @@ export interface FollowRow {
  */
 export type FollowState = 'following' | 'pending' | 'none';
 
-/** Mirrors the `blocks` table — not yet in 001_initial_schema.sql */
-// TODO(schema): add blocks table with columns:
-//   id uuid, blocker_id uuid references users(id), blocked_id uuid references users(id),
-//   created_at timestamptz, unique(blocker_id, blocked_id)
+/** Mirrors the `blocks` table */
 export interface BlockRow {
   id: string;
   blocker_id: string;
@@ -63,16 +60,15 @@ export interface BlockRow {
   created_at: string;
 }
 
-/** Mirrors the `reports` table — not yet in 001_initial_schema.sql */
-// TODO(schema): add reports table with columns:
-//   id uuid, reporter_id uuid references users(id), reported_id uuid references users(id),
-//   reason text not null, created_at timestamptz
-//   (routed to Super Admin review queue)
+/** Mirrors the `reports` table */
 export interface ReportRow {
   id: string;
   reporter_id: string;
-  reported_id: string;
+  reported_user_id: string | null;
+  content_type: string;
+  content_id: string | null;
   reason: string;
+  status: string;
   created_at: string;
 }
 
@@ -202,15 +198,12 @@ export async function requestFollow(
  * Block a user.
  * Per spec: removes follow relationships in BOTH directions, then inserts a
  * block record so their content is hidden.
- *
- * TODO(schema): add `blocks` table — see BlockRow type above.
- * Until then, the mutual unfollow still executes; the block insert will error.
  */
 export async function blockUser(
   currentUserId: string,
   targetId: string,
 ): Promise<void> {
-  // 1 — Remove follows in both directions (fire-and-forget errors; both may not exist)
+  // 1 — Remove follows in both directions (fire-and-forget; both may not exist)
   await supabase
     .from('follows')
     .delete()
@@ -224,60 +217,44 @@ export async function blockUser(
     .eq('following_id', currentUserId);
 
   // 2 — Insert block record
-  // TODO(schema): add blocks table
   const { error } = await supabase
-    .from('blocks' as 'follows') // cast keeps tsc happy until table exists
+    .from('blocks')
     .upsert(
-      { blocker_id: currentUserId, blocked_id: targetId } as unknown as {
-        follower_id: string;
-        following_id: string;
-      },
-      { onConflict: 'blocker_id,blocked_id' } as { onConflict: string },
+      { blocker_id: currentUserId, blocked_id: targetId },
+      { onConflict: 'blocker_id,blocked_id' },
     );
   if (error) throw error;
 }
 
-/**
- * Unblock a user.
- * TODO(schema): requires `blocks` table.
- */
+/** Unblock a user. */
 export async function unblockUser(
   currentUserId: string,
   targetId: string,
 ): Promise<void> {
-  // TODO(schema): add blocks table
   const { error } = await supabase
-    .from('blocks' as 'follows') // cast keeps tsc happy until table exists
+    .from('blocks')
     .delete()
-    .eq(
-      'blocker_id' as 'follower_id',
-      currentUserId,
-    )
-    .eq('blocked_id' as 'following_id', targetId);
+    .eq('blocker_id', currentUserId)
+    .eq('blocked_id', targetId);
   if (error) throw error;
 }
 
 // ── Reports ─────────────────────────────────────────────────────────────────
 
-/**
- * Report a user for Super Admin review.
- *
- * TODO(schema): add `reports` table — see ReportRow type above.
- * Until the table exists this will error at runtime; the type signature is
- * stable so callers can import it without TypeScript errors.
- */
+/** Report a user for Super Admin review. */
 export async function reportUser(
   currentUserId: string,
   targetId: string,
   reason: string,
 ): Promise<void> {
-  // TODO(schema): add reports table
   const { error } = await supabase
-    .from('reports' as 'follows') // cast keeps tsc happy until table exists
+    .from('reports')
     .insert({
       reporter_id: currentUserId,
-      reported_id: targetId,
+      reported_user_id: targetId,
+      content_type: 'user',
+      status: 'pending',
       reason,
-    } as unknown as { follower_id: string; following_id: string });
+    });
   if (error) throw error;
 }
