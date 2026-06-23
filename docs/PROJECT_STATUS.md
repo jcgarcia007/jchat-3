@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 ## What JChat 3.0 is
 Location-based social + commerce mobile app. Proximity group chats tied to physical venues, in-venue ordering/gifting via Stripe, map-first UI, three-tier business subscriptions. Launch markets: USA + Dominican Republic.
@@ -62,9 +62,18 @@ GitHub (read-only), Supabase, Vercel, Stripe (plus Era Context, Plaud, M365). Wo
 ## What's next — Chat features (prioritized)
 Audit verified the chat is more complete than it looks. Most "broken" actions are small wiring gaps, not missing features. DB tables blocks, reports, follows, dm_conversations, dm_messages already exist with RLS — the TODO(schema) comments in code are obsolete.
 
-### In progress / immediate
-- Relocate emoji button into the input row beside Send (currently floats in its own row). Picker only shows ~4 emojis (incomplete) — relocation first, full picker later.
-- Avatar size: chat user-avatar row -> 40x40 (radius 20, initial fontSize ~15). Currently 30x30 in ChatTopBar.tsx avatarStyles.img.
+### Tanda 1 — estado
+- DONE Reubicar emoji button a la input bar (commit c31d847).
+- DONE Emoji picker inserta en el texto del input via rn-emoji-keyboard
+  (commit 9eeeb97). MapReactionButton.tsx intacto para reacciones de mapa
+  (Stage 4).
+- DONE Avatar de chat 40x40 (ChatTopBar.tsx avatarStyles: 40/40, radius 20,
+  initial fontSize 15).
+- DONE Foto en chat -> Supabase Storage bucket `post-media` via nuevo
+  mobile/services/storage.ts (uploadImage compartido); fallback a URI local si
+  el upload falla. messages.media_url ya existía (mig 006). (commit cd49a9a)
+- PENDIENTE Verificar columnas de Report & Block y remover comentarios
+  TODO(schema) obsoletos.
 
 ### Tanda 1 — Quick wins
 1. Avatar 40px.
@@ -96,11 +105,11 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 | Block | LIKELY OK | blocks table exists w/ RLS; verify columns |
 | Personal Mute | PARTIAL | Alert only; needs user_personal_mutes table |
 | Remove from room | PARTIAL | logs action but doesn't evict from Realtime |
-| Photo in chat -> Storage | PARTIAL | inserts local URI; needs uploadImage (Tanda 1) |
+| Photo in chat -> Storage | OK | uploadImage -> post-media bucket (cd49a9a) |
 | Cover photo | PARTIAL | bucket ready; needs users.cover_url column |
 | OfferCard "Order Now" | PARTIAL | not wired to MenuScreen filtered by offer |
 | CheckIn geofence | PARTIAL | happy path works; geofence (Stage 4) deferred |
-| Emoji picker | PARTIAL | stub ~4 emojis; relocate button + complete later |
+| Emoji picker | OK | rn-emoji-keyboard, inserts to text input (9eeeb97) |
 | Voice / GIF | MISSING | "coming soon" — deferred |
 
 ## Hardening / housekeeping backlog
@@ -118,6 +127,9 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 ## Recent commits (all on main, all Vercel READY)
 | Commit | Description |
 |---|---|
+| cd49a9a | Chat photo upload to Supabase Storage (post-media) + avatar 40px |
+| 9eeeb97 | Emoji picker inserts into message text (rn-emoji-keyboard) |
+| c31d847 | Move emoji reaction button into the input bar |
 | 68afb24 | Realtime presence in chat + menu_enabled toggle |
 | 1368497a | iOS Maps fix (plugin array form + platform key split + eas.json env) |
 | 1291830 | Radius caps + radius-increase request flow + super-admin review (mig 017) |
