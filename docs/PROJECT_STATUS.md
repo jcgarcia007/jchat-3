@@ -72,8 +72,9 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 - DONE Foto en chat -> Supabase Storage bucket `post-media` via nuevo
   mobile/services/storage.ts (uploadImage compartido); fallback a URI local si
   el upload falla. messages.media_url ya existía (mig 006). (commit cd49a9a)
-- PENDIENTE Verificar columnas de Report & Block y remover comentarios
-  TODO(schema) obsoletos.
+- DONE Report & Block alineados con esquema real (reports.reported_user_id
+  + content_type/status NOT NULL; blocks OK). Casts hack y TODO(schema)
+  obsoletos eliminados. follow_requests sigue pendiente. (commit e38c01f)
 
 ### Tanda 1 — Quick wins
 1. Avatar 40px.
@@ -101,8 +102,8 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 | View Profile | PARTIAL | onViewProfile is Alert placeholder |
 | Send DM | PARTIAL | Alert; dm_* tables exist (Tanda 2) |
 | Follow / Add Friend | PARTIAL | followUser works; no toggle; follow_requests missing for private |
-| Report | LIKELY OK | reports table exists w/ RLS; verify columns |
-| Block | LIKELY OK | blocks table exists w/ RLS; verify columns |
+| Report | OK | schema verified + aligned (e38c01f) |
+| Block | OK | schema verified + aligned (e38c01f) |
 | Personal Mute | PARTIAL | Alert only; needs user_personal_mutes table |
 | Remove from room | PARTIAL | logs action but doesn't evict from Realtime |
 | Photo in chat -> Storage | OK | uploadImage -> post-media bucket (cd49a9a) |
@@ -127,6 +128,7 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 ## Recent commits (all on main, all Vercel READY)
 | Commit | Description |
 |---|---|
+| e38c01f | Align blocks/reports service with real Supabase schema |
 | cd49a9a | Chat photo upload to Supabase Storage (post-media) + avatar 40px |
 | 9eeeb97 | Emoji picker inserts into message text (rn-emoji-keyboard) |
 | c31d847 | Move emoji reaction button into the input bar |
