@@ -116,9 +116,9 @@ const avatarStyles = StyleSheet.create({
     marginHorizontal: 3,
   },
   img: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1.5,
   },
   fallback: {
@@ -126,7 +126,7 @@ const avatarStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   initial: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
   },
 });
