@@ -2,7 +2,7 @@
  * JChat 3.0 — ChatInput (Task 2.4)
  *
  * The bottom input bar of the chat room.
- * Layout: [AttachmentPanel above when open] [+ button] [TextInput] [Send button]
+ * Layout: [AttachmentPanel above when open] [+ button] [TextInput] [😊 emoji] [Send button]
  *
  * Props:
  *   theme          — active ChatTheme
@@ -23,7 +23,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { IconPlus, IconSend, IconX } from '@tabler/icons-react-native';
+import { IconMoodSmile, IconPlus, IconSend, IconX } from '@tabler/icons-react-native';
+import EmojiPicker from 'rn-emoji-keyboard';
+import type { EmojiType } from 'rn-emoji-keyboard';
 import { AttachmentPanel } from './AttachmentPanel';
 import type { ChatTheme } from '../../theme/chatThemes';
 
@@ -35,8 +37,6 @@ export interface ChatInputProps {
   onSendPhoto: (uri: string) => void;
   onOfferPress?: () => void;
   disabled?: boolean;
-  /** Optional button rendered between the TextInput and the Send button. */
-  reactionButton?: React.ReactNode;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -47,10 +47,10 @@ export function ChatInput({
   onSendPhoto,
   onOfferPress,
   disabled = false,
-  reactionButton,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachmentOpen, setAttachmentOpen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const handleSend = useCallback(() => {
@@ -62,7 +62,7 @@ export function ChatInput({
 
   const handleToggleAttachment = useCallback(() => {
     setAttachmentOpen((prev) => !prev);
-    // Dismiss keyboard when opening the panel
+    setEmojiPickerOpen(false);
     inputRef.current?.blur();
   }, []);
 
@@ -73,6 +73,20 @@ export function ChatInput({
   const handlePhoto = useCallback((uri: string) => {
     onSendPhoto(uri);
   }, [onSendPhoto]);
+
+  const handleToggleEmoji = useCallback(() => {
+    const opening = !emojiPickerOpen;
+    setEmojiPickerOpen(opening);
+    if (opening) {
+      // Dismiss system keyboard so emoji picker has full room
+      setAttachmentOpen(false);
+      inputRef.current?.blur();
+    }
+  }, [emojiPickerOpen]);
+
+  const handleEmojiSelected = useCallback((emoji: EmojiType) => {
+    setText((prev) => prev + emoji.emoji);
+  }, []);
 
   const canSend = text.trim().length > 0 && !disabled;
 
@@ -126,12 +140,31 @@ export function ChatInput({
           maxLength={4000}
           returnKeyType="default"
           editable={!disabled}
-          onFocus={() => setAttachmentOpen(false)}
+          onFocus={() => {
+            setAttachmentOpen(false);
+            setEmojiPickerOpen(false);
+          }}
           accessibilityLabel="Message input" // TODO(i18n)
         />
 
-        {/* Reaction / emoji button slot */}
-        {reactionButton}
+        {/* Emoji picker button */}
+        <Pressable
+          onPress={handleToggleEmoji}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel={emojiPickerOpen ? 'Close emoji picker' : 'Open emoji picker'} // TODO(i18n)
+          style={({ pressed }) => [
+            barStyles.iconBtn,
+            { backgroundColor: emojiPickerOpen ? theme.accent : theme.inputBg, borderColor: theme.border },
+            pressed && barStyles.iconBtnPressed,
+            disabled && barStyles.disabled,
+          ]}
+        >
+          <IconMoodSmile
+            size={20}
+            color={emojiPickerOpen ? theme.topBg : theme.accent}
+          />
+        </Pressable>
 
         {/* Send button */}
         <Pressable
@@ -153,6 +186,13 @@ export function ChatInput({
           />
         </Pressable>
       </View>
+
+      {/* Emoji picker modal */}
+      <EmojiPicker
+        open={emojiPickerOpen}
+        onClose={() => setEmojiPickerOpen(false)}
+        onEmojiSelected={handleEmojiSelected}
+      />
     </KeyboardAvoidingView>
   );
 }

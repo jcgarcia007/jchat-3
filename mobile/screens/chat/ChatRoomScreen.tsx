@@ -66,7 +66,6 @@ import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
 import { PinnedBanner } from '../../components/chat/PinnedBanner';
 import { PinMessageSheet } from '../../components/chat/PinMessageSheet';
 import { CreateOfferSheet } from '../../components/chat/CreateOfferSheet';
-import { MapReactionButton } from '../../components/chat/MapReactionButton';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
@@ -832,19 +831,12 @@ export default function ChatRoomScreen() {
           </View>
         )}
 
-        {/* ── Chat input (emoji reaction button lives inside the bar) ───── */}
+        {/* ── Chat input ───────────────────────────────────────────────── */}
         <ChatInput
           theme={chatTheme}
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
           onOfferPress={() => setOfferVisible(true)}
-          reactionButton={
-            <MapReactionButton
-              businessId={room?.business_id ?? DEMO_BUSINESS.id}
-              roomId={activeRoomId}
-              inRoom
-            />
-          }
         />
       </KeyboardAvoidingView>
 
