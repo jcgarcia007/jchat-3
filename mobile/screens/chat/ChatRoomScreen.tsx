@@ -49,6 +49,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { uploadImage } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 import { getChatTheme } from '../../theme/chatThemes';
 import { useThemeColors } from '../../theme/colors';
@@ -549,14 +550,21 @@ export default function ChatRoomScreen() {
       if (!isSupabaseConfigured) return;
 
       try {
-        // TODO(Storage): upload photo to Supabase Storage and get public URL before inserting
-        // For now store the local URI; in production: upload → get URL → insert media_url
+        // Upload to Storage first; fall back to local URI on error so the
+        // optimistic message stays visible even if upload fails.
+        let publicUrl = uri;
+        try {
+          publicUrl = await uploadImage(user.id, uri, 'post-media');
+        } catch (uploadErr) {
+          console.warn('[ChatRoom] photo upload failed, using local URI:', uploadErr);
+        }
+
         const { data, error } = await supabase.from('messages').insert({
           room_id: activeRoomId,
           user_id: user.id,
           body: null,
           type: 'photo',
-          media_url: uri,
+          media_url: publicUrl,
           metadata: meta,
           is_system: false,
         }).select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at').single();
