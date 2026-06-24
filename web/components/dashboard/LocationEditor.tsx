@@ -40,7 +40,7 @@ const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
 
 // Default geofence-radius caps. Above the cap, owners request an increase from a
 // super admin. (Event cap is prepared for the future events flow.)
-const BUSINESS_RADIUS_CAP = 100; // meters
+const BUSINESS_RADIUS_CAP = 50; // meters (canónico — diseño 2026-06-24)
 export const EVENT_RADIUS_CAP = 1609; // 1 mile, for the future events flow
 
 type LatLng = { lat: number; lng: number };
