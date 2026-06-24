@@ -45,3 +45,8 @@ yarn-error.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# ── Codex environment (local tooling, not project files) ─
+# Root-anchored so mobile/AGENTS.md and web/AGENTS.md stay tracked.
+.codex/
+/AGENTS.md
