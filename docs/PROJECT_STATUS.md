@@ -52,6 +52,22 @@ GitHub (read-only), Supabase, Vercel, Stripe (plus Era Context, Plaud, M365). Wo
 - Realtime Presence in ChatRoomScreen.tsx: channel presence:\${activeRoomId} with config.presence.key=user.id; track() inside .subscribe() gated on status==='SUBSCRIBED'; sync/join/leave rebuild usersInRoom + activeCount; cleanup untrack()+removeChannel(); incognito respected (nickname + null avatar).
 - Menu gating: handleMenuPress -> navigation.navigate('Menu', {businessId, roomId, businessName}) (reuses Task 3.2 POS flow). Web /dashboard/menu has "Show menu in chat" toggle writing businesses.menu_enabled.
 
+### Chat fixes (sesión 06-23)
+- **Foto en chat:** upload real al bucket `post-media` via base64 +
+  `expo-file-system/legacy` decodificado a ArrayBuffer (`base64-arraybuffer`) —
+  Hermes-compatible, ya que RN/Hermes no puede construir un Blob desde `fetch()`.
+  Bug previo: el mensaje guardaba la URI `file://` local (rota para otros
+  dispositivos). `messages.body` ya no NULL en fotos (`body: ''`). (b700f08)
+- **Autoscroll:** inteligente — sigue al fondo solo si el usuario está cerca
+  (`isNearBottomRef`, umbral 80px); snap inicial sin animación con doble intento
+  (re-layout de fotos/multilínea); scroll forzado al enviar; `maintainVisible`
+  para no arrastrar al leer histórico. Dedup optimista/realtime. (87b013a)
+- **Report/Block:** alineados al esquema real de Supabase
+  (`reports.reported_user_id` + `content_type`/`status`; `blocks` OK); casts hack
+  y `TODO(schema)` obsoletos eliminados. (e38c01f)
+- Limpieza de logs `[DIAG]` de depuración (e9789c9); `.codex/` + root `AGENTS.md`
+  a `.gitignore` (4f4a7b1).
+
 ## Google Cloud API keys (project jchat-497118)
 | Key | Restriction | API | Status |
 |---|---|---|---|
@@ -121,7 +137,18 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 | Emoji picker | OK | rn-emoji-keyboard, inserts to text input (9eeeb97) |
 | Voice / GIF | MISSING | "coming soon" — deferred |
 
+## Security
+- **docs/SECURITY_AUDIT.md ya está en el repo** (verificado vs esquema real
+  2026-06-23). Los **P0 siguen ABIERTOS** — bloqueantes para producción:
+  P0-1 salas privadas legibles por cualquier autenticado (RLS `using(true)`),
+  P0-2 totales de orden no recalculados server-side, P0-3 Edge Functions confían
+  en IDs del cliente con `service_role`. No poner pagos reales ni salas privadas
+  en prod hasta cerrarlos.
+
 ## Hardening / housekeeping backlog
+- **Limpiar mensajes viejos con `media_url` `file://` en BD** — apuntan a URIs
+  locales del dispositivo emisor, rotas para todos los demás. Migración/cleanup:
+  borrar o marcar esos `messages` de tipo `photo` (anteriores al fix b700f08).
 - Rotate exposed web Google Maps key. iOS/Android keys never pasted — safe.
 - Android keystore + SHA-1 to finish Android Maps key; Android build path not started.
 - Re-enable "Confirm email" in Supabase (disabled for testing).
