@@ -37,6 +37,8 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   SafeAreaView,
@@ -166,6 +168,7 @@ const DEMO_MESSAGES: ChatMessage[] = [
 // ── Page size for infinite scroll ─────────────────────────────────────────────
 
 const PAGE_SIZE = 50;
+const AUTOSCROLL_BOTTOM_THRESHOLD = 80;
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -202,6 +205,12 @@ export default function ChatRoomScreen() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestTimestampRef = useRef<string | null>(null);
+  const flatListRef = useRef<FlatList>(null);
+  const isNearBottomRef = useRef(true);
+  const pendingInitialScrollRef = useRef(false);
+  const scrollFrameRef = useRef<number | null>(null);
+  const hasDoneInitialScrollRef = useRef(false);
+  const initialScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Users in room
   const [usersInRoom, setUsersInRoom] = useState<UserSummary[]>([]);
@@ -220,6 +229,50 @@ export default function ChatRoomScreen() {
   // ── Theme ──────────────────────────────────────────────────────────────────
 
   const chatTheme = getChatTheme(room?.chat_theme_id ?? 1);
+
+  const scrollToEndAfterRender = useCallback((animated: boolean) => {
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current);
+    }
+
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      flatListRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+      }
+      if (initialScrollTimerRef.current !== null) {
+        clearTimeout(initialScrollTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Initial scroll: when messages first arrive (empty → populated), snap to the
+  // bottom WITHOUT animation. Retry after a short delay because multiline bubbles
+  // and photos change height post-layout, so the first scrollToEnd can fall short.
+  useEffect(() => {
+    if (messages.length === 0 || hasDoneInitialScrollRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated: false });
+      initialScrollTimerRef.current = setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+        hasDoneInitialScrollRef.current = true;
+        initialScrollTimerRef.current = null;
+      }, 150);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (initialScrollTimerRef.current !== null) {
+        clearTimeout(initialScrollTimerRef.current);
+        initialScrollTimerRef.current = null;
+      }
+    };
+  }, [messages.length]);
 
   // ── Hide native header (we render our own ChatTopBar) ─────────────────────
 
@@ -248,6 +301,7 @@ export default function ChatRoomScreen() {
       setSubRooms(DEMO_ROOMS);
       setUsersInRoom(DEMO_USERS);
       setActiveCount(DEMO_USERS.length);
+      pendingInitialScrollRef.current = true;
       setMessages(DEMO_MESSAGES);
       setInitialLoading(false);
       return;
@@ -335,6 +389,7 @@ export default function ChatRoomScreen() {
         // Prepend older messages
         setMessages((prev) => [...msgs.reverse(), ...prev]);
       } else {
+        pendingInitialScrollRef.current = true;
         setMessages(msgs.reverse());
       }
     } finally {
@@ -369,6 +424,8 @@ export default function ChatRoomScreen() {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+          // Auto-scroll is handled by onContentSizeChange, gated on isNearBottomRef:
+          // grows content only scrolls down if the user was already near the bottom.
         },
       )
       .subscribe();
@@ -492,6 +549,9 @@ export default function ChatRoomScreen() {
       };
 
       setMessages((prev) => [...prev, optimistic]);
+      // Sender always jumps to the bottom regardless of prior scroll position.
+      isNearBottomRef.current = true;
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
 
       if (!isSupabaseConfigured) return;
 
@@ -506,9 +566,13 @@ export default function ChatRoomScreen() {
         }).select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at').single();
 
         if (!error && data) {
-          // Replace optimistic with the real row
+          // Remove any Realtime-added copy that arrived before the insert resolved,
+          // then replace the optimistic with the confirmed row.
+          const confirmed = data as ChatMessage;
           setMessages((prev) =>
-            prev.map((m) => (m.id === optimisticId ? (data as ChatMessage) : m)),
+            prev
+              .filter((m) => m.id !== confirmed.id)
+              .map((m) => (m.id === optimisticId ? confirmed : m)),
           );
         } else {
           // Remove optimistic on failure
@@ -524,6 +588,7 @@ export default function ChatRoomScreen() {
 
   const handleSendPhoto = useCallback(
     async (uri: string) => {
+      console.log('[DIAG] handleSendPhoto START uri:', uri, 'user:', !!user);
       if (!user) return;
 
       const incognito = enteredIncognito;
@@ -536,7 +601,7 @@ export default function ChatRoomScreen() {
         id: optimisticId,
         room_id: activeRoomId,
         user_id: user.id,
-        body: null,
+        body: '',
         type: 'photo',
         media_url: uri,
         metadata: meta,
@@ -546,6 +611,9 @@ export default function ChatRoomScreen() {
       };
 
       setMessages((prev) => [...prev, optimistic]);
+      // Sender always jumps to the bottom regardless of prior scroll position.
+      isNearBottomRef.current = true;
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
 
       if (!isSupabaseConfigured) return;
 
@@ -556,13 +624,15 @@ export default function ChatRoomScreen() {
         try {
           publicUrl = await uploadImage(user.id, uri, 'post-media');
         } catch (uploadErr) {
-          console.warn('[ChatRoom] photo upload failed, using local URI:', uploadErr);
+          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          console.log('[DIAG] upload catch — message:', msg);
         }
 
+        console.log('[DIAG] inserting photo msg, publicUrl:', publicUrl);
         const { data, error } = await supabase.from('messages').insert({
           room_id: activeRoomId,
           user_id: user.id,
-          body: null,
+          body: '',
           type: 'photo',
           media_url: publicUrl,
           metadata: meta,
@@ -570,13 +640,18 @@ export default function ChatRoomScreen() {
         }).select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at').single();
 
         if (!error && data) {
+          const confirmed = data as ChatMessage;
           setMessages((prev) =>
-            prev.map((m) => (m.id === optimisticId ? (data as ChatMessage) : m)),
+            prev
+              .filter((m) => m.id !== confirmed.id)
+              .map((m) => (m.id === optimisticId ? confirmed : m)),
           );
         } else {
+          console.log('[DIAG] photo error:', JSON.stringify(error));
           setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         }
-      } catch {
+      } catch (catchErr) {
+        console.log('[DIAG] photo error:', JSON.stringify(catchErr));
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       }
     },
@@ -588,6 +663,9 @@ export default function ChatRoomScreen() {
   const handleSelectSubRoom = useCallback((subRoom: SubRoom) => {
     setActiveRoomId(subRoom.id);
     oldestTimestampRef.current = null;
+    isNearBottomRef.current = true;
+    pendingInitialScrollRef.current = true;
+    hasDoneInitialScrollRef.current = false;
     setMessages([]);
     setHasMore(true);
   }, []);
@@ -653,6 +731,35 @@ export default function ChatRoomScreen() {
       void loadMessages(activeRoomId, before);
     }
   }, [hasMore, loadingMessages, activeRoomId, loadMessages]);
+
+  const handleMessageListScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      isNearBottomRef.current = distanceFromBottom <= AUTOSCROLL_BOTTOM_THRESHOLD;
+    },
+    [],
+  );
+
+  const handleContentSizeChange = useCallback(() => {
+    // Initial room load: snap to the bottom without animation.
+    if (pendingInitialScrollRef.current) {
+      pendingInitialScrollRef.current = false;
+      isNearBottomRef.current = true;
+      scrollToEndAfterRender(false);
+      return;
+    }
+    // While the initial layout is still settling (multiline bubbles / photos
+    // re-measure), the dedicated initial-scroll effect owns the scroll — never
+    // animate here, or it feels like a journey instead of "already at bottom".
+    if (!hasDoneInitialScrollRef.current) return;
+    // Content grew (new message). Only follow it down if the user was near the
+    // bottom — never yank them away from older history they scrolled up to read.
+    if (isNearBottomRef.current) {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [scrollToEndAfterRender]);
 
   // ── FlatList key extractor + render ───────────────────────────────────────
 
@@ -800,11 +907,25 @@ export default function ChatRoomScreen() {
         keyboardVerticalOffset={0}
       >
         <FlatList
+          ref={flatListRef}
           data={messages}
           keyExtractor={keyExtractor}
           renderItem={renderMessage}
           contentContainerStyle={chatStyles.listContent}
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           showsVerticalScrollIndicator={false}
+          onLayout={() => {
+            if (pendingInitialScrollRef.current) {
+              scrollToEndAfterRender(false);
+            }
+          }}
+          onContentSizeChange={handleContentSizeChange}
+          onScroll={handleMessageListScroll}
+          scrollEventThrottle={16}
+          onScrollToIndexFailed={() => {
+            // Safe no-op: we never call scrollToIndex, but guard against crashes.
+          }}
+          keyboardShouldPersistTaps="handled"
           // Newest at bottom — we render in ascending order
           // When list reaches the top (index 0 visible), load more
           onStartReached={handleScrollTop}
