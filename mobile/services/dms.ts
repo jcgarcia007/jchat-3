@@ -86,9 +86,9 @@ export async function listConversations(
   const otherIds = rows.map((c) => (c.user_a === userId ? c.user_b : c.user_a));
   const uniqueOtherIds = [...new Set(otherIds)];
 
-  // 3 — fetch those user profiles
+  // 3 — fetch those user profiles (other users → public_profiles view, mig 018)
   const { data: usersData, error: usersErr } = await supabase
-    .from('users')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', uniqueOtherIds);
 

@@ -222,17 +222,16 @@ export default function EditProfileScreen(): React.JSX.Element {
           return;
         }
         try {
-          const { data, error } = await supabase
-            .from('users')
-            .select('id')
-            .eq('username', value.trim())
-            .maybeSingle();
+          const { data, error } = await supabase.rpc('username_available', {
+            check_username: value.trim(),
+          });
 
           if (error) {
             setUsernameStatus('error');
             return;
           }
-          setUsernameStatus(data ? 'taken' : 'available');
+          // RPC returns boolean: true = available, false = taken.
+          setUsernameStatus(data === true ? 'available' : 'taken');
         } catch {
           setUsernameStatus('error');
         }

@@ -190,18 +190,17 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('username')
-          .eq('username', username.trim().toLowerCase())
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('username_available', {
+          check_username: username.trim().toLowerCase(),
+        });
 
         if (error) {
           setAvailability('error');
           return;
         }
 
-        setAvailability(data ? 'taken' : 'available');
+        // RPC returns boolean: true = available, false = taken.
+        setAvailability(data === true ? 'available' : 'taken');
       } catch {
         setAvailability('error');
       }

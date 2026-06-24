@@ -31,6 +31,22 @@ export interface UserRow {
   updated_at: string;
 }
 
+/**
+ * Mirrors the `public_profiles` view (migration 018) — the non-sensitive subset
+ * of `users` that ANY authenticated user may read. Has NO push_token / language /
+ * email / role. Use this for OTHER users' profiles; `users` is now own-read only.
+ */
+export interface PublicProfileRow {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  profile_theme_id: number;
+  is_verified: boolean;
+  created_at: string;
+}
+
 /** Mirrors the `follows` table row from 001_initial_schema.sql */
 export interface FollowRow {
   id: string;
@@ -74,7 +90,11 @@ export interface ReportRow {
 
 // ── User fetch ──────────────────────────────────────────────────────────────
 
-/** Fetch a single user profile by id. Returns null if not found. */
+/**
+ * Fetch the CURRENT user's own full row (includes language, etc.). RLS allows a
+ * user to read only their own row, so do NOT call this for other users — use
+ * getPublicProfile() instead. Returns null if not found.
+ */
 export async function getUserById(userId: string): Promise<UserRow | null> {
   const { data, error } = await supabase
     .from('users')
@@ -87,6 +107,27 @@ export async function getUserById(userId: string): Promise<UserRow | null> {
     throw error;
   }
   return data as UserRow;
+}
+
+/**
+ * Fetch any user's PUBLIC profile (non-sensitive columns) via the
+ * `public_profiles` view. Safe for OTHER users — never exposes push_token.
+ * Returns null if not found.
+ */
+export async function getPublicProfile(
+  userId: string,
+): Promise<PublicProfileRow | null> {
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('id, username, display_name, avatar_url, bio, profile_theme_id, is_verified, created_at')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // row not found
+    throw error;
+  }
+  return data as PublicProfileRow;
 }
 
 // ── Follow / Unfollow ───────────────────────────────────────────────────────

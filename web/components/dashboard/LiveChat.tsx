@@ -47,7 +47,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
   const namesFor = useCallback(async (ids: string[]) => {
     const missing = ids.filter((id) => id && !namesRef.current[id]);
     if (missing.length === 0) return;
-    const { data } = await supabase.from("users").select("id, display_name, username").in("id", missing);
+    const { data } = await supabase.from("public_profiles").select("id, display_name, username").in("id", missing);
     (data ?? []).forEach((u) => {
       namesRef.current[u.id as string] =
         (u.display_name as string) || (u.username ? `@${u.username}` : "User");

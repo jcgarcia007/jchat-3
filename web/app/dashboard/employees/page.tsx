@@ -456,7 +456,7 @@ export default function EmployeesPage() {
       // 2 — fetch user profiles
       const userIds = [...new Set(empRows.map((e) => e.user_id))];
       const { data: usersData, error: usersErr } = await supabase
-        .from("users")
+        .from("public_profiles")
         .select("id, username, display_name, avatar_url")
         .in("id", userIds);
 
@@ -547,7 +547,7 @@ export default function EmployeesPage() {
     setSuccessMsg(null);
     try {
       const { data: u, error: uErr } = await supabase
-        .from("users")
+        .from("public_profiles")
         .select("id, username")
         .ilike("username", uname)
         .maybeSingle();

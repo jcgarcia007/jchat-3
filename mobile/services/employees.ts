@@ -217,10 +217,10 @@ export async function listEmployees(businessId: string): Promise<EmployeeWithPro
 
   const empRows = rows as EmployeeRow[];
 
-  // 2 — fetch user profiles
+  // 2 — fetch user profiles (other users → public_profiles view, mig 018)
   const userIds = [...new Set(empRows.map((e) => e.user_id))];
   const { data: usersData, error: usersErr } = await supabase
-    .from('users')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', userIds);
 

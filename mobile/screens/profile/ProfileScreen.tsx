@@ -55,8 +55,8 @@ import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
 import { palette } from '../../theme/tokens';
 
-import { getUserById } from '../../services/users';
-import type { UserRow } from '../../services/users';
+import { getPublicProfile } from '../../services/users';
+import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
 import { getCheckInHistory } from '../../services/checkIn';
@@ -249,7 +249,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
   const isOwnProfile = !routeUserId || routeUserId === authUser?.id;
 
   // ── Profile data ──────────────────────────────────────────────────────────
-  const [profile, setProfile] = useState<UserRow | null>(null);
+  const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -288,7 +288,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
       setProfileLoading(true);
       setProfileError(null);
       try {
-        const row = await getUserById(targetId as string);
+        const row = await getPublicProfile(targetId as string);
         if (!cancelled) setProfile(row);
       } catch (err) {
         if (!cancelled)

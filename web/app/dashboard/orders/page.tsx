@@ -118,7 +118,7 @@ export default function OrdersPage() {
     const userIds = Array.from(new Set(base.map((o) => o.user_id).filter(Boolean))) as string[];
     const nameById: Record<string, string> = {};
     if (userIds.length > 0) {
-      const { data: users } = await supabase.from("users").select("id, display_name, username").in("id", userIds);
+      const { data: users } = await supabase.from("public_profiles").select("id, display_name, username").in("id", userIds);
       (users ?? []).forEach((u) => {
         nameById[u.id as string] = (u.display_name as string) || (u.username ? `@${u.username}` : "Customer");
       });
