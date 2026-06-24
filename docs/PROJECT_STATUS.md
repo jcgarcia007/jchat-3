@@ -163,8 +163,8 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 ## Recent commits (all on main, all Vercel READY)
 | Commit | Description |
 |---|---|
-| (pending) | Migration 021 — enforce 50m business radius cap server-side (trigger; >50m only via approved request or platform admin) |
-| (pending) | UI: LocationEditor BUSINESS_RADIUS_CAP 100m -> 50m (canonical cap) |
+| 6550bb6 | Migration 021 — enforce 50m business radius cap server-side (trigger; >50m only via approved request or platform admin) |
+| 91cc48b | UI: LocationEditor BUSINESS_RADIUS_CAP 100m -> 50m (canonical cap) |
 | 4f4a7b1 | gitignore Codex env files (.codex/, root AGENTS.md) |
 | b700f08 | Chat photo upload via base64 (Hermes-compatible, expo-file-system/legacy) |
 | e9789c9 | Remove [DIAG] debug logs from chat |
