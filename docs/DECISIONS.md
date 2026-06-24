@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-06-22
+Last updated: 2026-06-24
 
 ## Maps
 
@@ -32,6 +32,11 @@ Why: terra-draw's adapter cleanup and AdvancedMarker (invalid mapId) threw "Cann
 ### D-06 — Uncontrolled map center for drag/pan
 Decision: Use defaultCenter + imperative recenter (panTo/setZoom on load/search only), not a controlled center prop.
 Why: A controlled center without an onCenterChanged handler snaps the map back and blocks panning.
+
+### D-13 — Radio de geofence de negocio = 50 m (canónico), enforced server-side
+Decision: El radio máximo de geofence de un negocio es 50 m. Radios mayores solo con radius_increase_requests aprobado por un platform admin.
+Why: Decisión de producto de la sesión de diseño 2026-06-24. El código tenía 100 m (UI) y default 200 m (columna). Se unificó a 50 m. Para honrar la regla de oro de geo ("el servidor decide, nunca el cliente"), el cap se hace cumplir con un trigger en la BD (migración 021), no solo en la UI: permite >50 m únicamente si existe un request aprobado que cubra el valor, o si lo escribe un platform admin.
+Consequence: businesses.geofence_radius_m default pasó de 200 a 50. LocationEditor BUSINESS_RADIUS_CAP pasó de 100 a 50. EVENT_RADIUS_CAP (1609 m) sin cambios.
 
 ## Chat
 

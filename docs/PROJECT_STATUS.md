@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 ## What JChat 3.0 is
 Location-based social + commerce mobile app. Proximity group chats tied to physical venues, in-venue ordering/gifting via Stripe, map-first UI, three-tier business subscriptions. Launch markets: USA + Dominican Republic.
@@ -39,8 +39,8 @@ GitHub (read-only), Supabase, Vercel, Stripe (plus Era Context, Plaud, M365). Wo
 
 ### Geofence / location editor (web)
 - LocationEditor in /dashboard/configuration: native google.maps drawing, Pin/Circle/Polygon/Clear tools, draggable pin, Places Autocomplete, radius slider, uncontrolled defaultCenter + imperative recenter.
-- Radius caps: business 100m cap; EVENT_RADIUS_CAP=1609m prepared. "Request larger radius" -> radius_increase_requests table + /super-admin/radius-requests approval page.
-- Migrations applied through 017 (016: businesses.geofence_polygon; 017: radius_increase_requests).
+- Radius caps: business 50m cap (canónico, diseño 2026-06-24, enforced server-side en mig 021); EVENT_RADIUS_CAP=1609m preparado para eventos. "Request larger radius" -> radius_increase_requests table + /super-admin/radius-requests approval page.
+- Migrations applied through 021 (016: businesses.geofence_polygon; 017: radius_increase_requests; 021: enforce 50m business radius cap server-side).
 
 ### Maps on mobile — RESOLVED
 - Root cause of iOS blank map: react-native-maps plugin declared as bare string in app.config.ts -> Apple-Maps-only mode, no Google pod, no GMSServices.provideAPIKey() -> PROVIDER_GOOGLE fell back to Apple Maps -> blank.
@@ -163,6 +163,8 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 ## Recent commits (all on main, all Vercel READY)
 | Commit | Description |
 |---|---|
+| (pending) | Migration 021 — enforce 50m business radius cap server-side (trigger; >50m only via approved request or platform admin) |
+| (pending) | UI: LocationEditor BUSINESS_RADIUS_CAP 100m -> 50m (canonical cap) |
 | 4f4a7b1 | gitignore Codex env files (.codex/, root AGENTS.md) |
 | b700f08 | Chat photo upload via base64 (Hermes-compatible, expo-file-system/legacy) |
 | e9789c9 | Remove [DIAG] debug logs from chat |
