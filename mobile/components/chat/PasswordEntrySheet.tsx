@@ -192,6 +192,23 @@ export function PasswordEntrySheet({
         return;
       }
 
+      if (result.error === 'locked_out') {
+        // Server-side lockout is authoritative — reflect it in the UI.
+        setLocked(true);
+        if (result.lockedUntil) setLockedUntil(result.lockedUntil);
+        setPassword('');
+        const mins = result.lockedUntil
+          ? Math.max(1, Math.ceil((new Date(result.lockedUntil).getTime() - Date.now()) / 60_000))
+          : null;
+        // TODO(i18n)
+        setErrorMsg(
+          mins !== null
+            ? `Too many attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`
+            : 'Too many attempts. Please try again later.',
+        );
+        return;
+      }
+
       // Wrong password — record the failure and update lock state.
       const nextState = await recordFailure(roomId, user.id);
 

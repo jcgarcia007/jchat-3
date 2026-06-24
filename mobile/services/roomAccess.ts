@@ -39,6 +39,7 @@ export interface RoomAccessAttemptRow {
 /** Result of verifyRoomPassword(). */
 export type VerifyResult =
   | { ok: true }
+  | { ok: false; error: 'locked_out'; lockedUntil?: string }
   | { ok: false; error: 'wrong_password' | 'not_configured' | 'rpc_error'; message?: string };
 
 /** Snapshot of the current lockout state for a (room, user) pair. */
@@ -100,6 +101,16 @@ export async function verifyRoomPassword(
   });
 
   if (error) {
+    // The RPC raises `locked_out` (with detail = unlock timestamp) when the
+    // server-side lockout is active. supabase-js surfaces the RAISE message in
+    // `error.message` and the DETAIL in `error.details`.
+    const details = (error as { details?: string }).details;
+    if (error.message?.includes('locked_out') || details?.includes('locked_out')) {
+      // `details` carries the locked_until timestamp (e.g. "2026-06-24 05:19:40+00").
+      const lockedUntil =
+        details && !details.includes('locked_out') ? details : undefined;
+      return { ok: false, error: 'locked_out', lockedUntil };
+    }
     return { ok: false, error: 'rpc_error', message: error.message };
   }
 
