@@ -588,7 +588,6 @@ export default function ChatRoomScreen() {
 
   const handleSendPhoto = useCallback(
     async (uri: string) => {
-      console.log('[DIAG] handleSendPhoto START uri:', uri, 'user:', !!user);
       if (!user) return;
 
       const incognito = enteredIncognito;
@@ -624,11 +623,9 @@ export default function ChatRoomScreen() {
         try {
           publicUrl = await uploadImage(user.id, uri, 'post-media');
         } catch (uploadErr) {
-          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
-          console.log('[DIAG] upload catch — message:', msg);
+          console.warn('[ChatRoom] photo upload failed, using local URI:', uploadErr);
         }
 
-        console.log('[DIAG] inserting photo msg, publicUrl:', publicUrl);
         const { data, error } = await supabase.from('messages').insert({
           room_id: activeRoomId,
           user_id: user.id,
@@ -647,11 +644,9 @@ export default function ChatRoomScreen() {
               .map((m) => (m.id === optimisticId ? confirmed : m)),
           );
         } else {
-          console.log('[DIAG] photo error:', JSON.stringify(error));
           setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         }
-      } catch (catchErr) {
-        console.log('[DIAG] photo error:', JSON.stringify(catchErr));
+      } catch {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       }
     },

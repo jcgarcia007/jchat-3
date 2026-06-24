@@ -124,13 +124,13 @@ export function AttachmentPanel({
       allowsEditing: true,
       quality: 0.85,
     });
-    onClose();
     if (!result.canceled && result.assets.length > 0) {
       const uri = result.assets[0]?.uri;
       if (uri) {
         onPhoto(uri);
       }
     }
+    onClose();
   }, [onPhoto, onClose]);
 
   const handleVoice = useCallback(() => {
