@@ -72,6 +72,14 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 - DONE Foto en chat -> Supabase Storage bucket `post-media` via nuevo
   mobile/services/storage.ts (uploadImage compartido); fallback a URI local si
   el upload falla. messages.media_url ya existía (mig 006). (commit cd49a9a)
+- DONE Upload de foto corregido para Hermes: storage.ts lee el archivo como
+  base64 (expo-file-system/legacy) y lo decodifica a ArrayBuffer
+  (base64-arraybuffer) — RN/Hermes no soporta Blob desde fetch(). messages.body
+  ya no NULL en fotos (body: ''). (commit b700f08)
+- DONE Auto-scroll inteligente del chat: snap inicial sin animación con doble
+  intento (re-layout de fotos/multilínea), scroll forzado al enviar, follow al
+  fondo solo si el usuario está cerca (isNearBottomRef), maintainVisible para
+  histórico, dedup de mensajes optimista/realtime. (commits 87b013a, e9789c9)
 - DONE Report & Block alineados con esquema real (reports.reported_user_id
   + content_type/status NOT NULL; blocks OK). Casts hack y TODO(schema)
   obsoletos eliminados. follow_requests sigue pendiente. (commit e38c01f)
@@ -106,7 +114,7 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 | Block | OK | schema verified + aligned (e38c01f) |
 | Personal Mute | PARTIAL | Alert only; needs user_personal_mutes table |
 | Remove from room | PARTIAL | logs action but doesn't evict from Realtime |
-| Photo in chat -> Storage | OK | uploadImage -> post-media bucket (cd49a9a) |
+| Photo in chat -> Storage | OK | base64/ArrayBuffer upload (Hermes-safe) + smart auto-scroll (b700f08, 87b013a) |
 | Cover photo | PARTIAL | bucket ready; needs users.cover_url column |
 | OfferCard "Order Now" | PARTIAL | not wired to MenuScreen filtered by offer |
 | CheckIn geofence | PARTIAL | happy path works; geofence (Stage 4) deferred |
@@ -128,6 +136,10 @@ Audit verified the chat is more complete than it looks. Most "broken" actions ar
 ## Recent commits (all on main, all Vercel READY)
 | Commit | Description |
 |---|---|
+| 4f4a7b1 | gitignore Codex env files (.codex/, root AGENTS.md) |
+| b700f08 | Chat photo upload via base64 (Hermes-compatible, expo-file-system/legacy) |
+| e9789c9 | Remove [DIAG] debug logs from chat |
+| 87b013a | Smart chat auto-scroll with robust initial snap to bottom |
 | e38c01f | Align blocks/reports service with real Supabase schema |
 | cd49a9a | Chat photo upload to Supabase Storage (post-media) + avatar 40px |
 | 9eeeb97 | Emoji picker inserts into message text (rn-emoji-keyboard) |
