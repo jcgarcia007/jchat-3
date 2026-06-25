@@ -48,6 +48,8 @@ export interface AttachmentPanelProps {
   onGif?: () => void;
   onOffer?: () => void;
   onClose: () => void;
+  /** Gate: show Offer button only when the current user has offers_manage permission. */
+  canCreateOffer: boolean;
 }
 
 // ── Option button ──────────────────────────────────────────────────────────────
@@ -108,6 +110,7 @@ export function AttachmentPanel({
   onGif,
   onOffer,
   onClose,
+  canCreateOffer,
 }: AttachmentPanelProps) {
   const handlePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -184,12 +187,14 @@ export function AttachmentPanel({
           label="GIF" // TODO(i18n)
           onPress={handleGif}
         />
-        <OptionButton
-          theme={theme}
-          icon={<IconTag size={24} color={theme.accent} />}
-          label="Offer" // TODO(i18n)
-          onPress={handleOffer}
-        />
+        {canCreateOffer && (
+          <OptionButton
+            theme={theme}
+            icon={<IconTag size={24} color={theme.accent} />}
+            label="Offer" // TODO(i18n)
+            onPress={handleOffer}
+          />
+        )}
       </View>
     </View>
   );

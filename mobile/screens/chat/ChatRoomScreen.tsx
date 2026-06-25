@@ -51,6 +51,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { getChatPermissions, EMPTY_PERMISSIONS } from '../../services/permissions';
+import type { ChatPermissions } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 import { getChatTheme } from '../../theme/chatThemes';
@@ -700,6 +702,21 @@ export default function ChatRoomScreen() {
   // TODO(Task 2.9): resolve viewer role from employees table.
   const viewerRole: ViewerRole = 'user';
 
+  // ── Chat permissions (offers_manage gate — migration 022) ──────────────────
+
+  const [chatPermissions, setChatPermissions] = useState<ChatPermissions>(EMPTY_PERMISSIONS);
+
+  useEffect(() => {
+    // Demo mode: show all features without a backend call.
+    if (!isSupabaseConfigured) {
+      setChatPermissions((prev) => ({ ...prev, offers_manage: true }));
+      return;
+    }
+    if (!room?.business_id || !user?.id) return;
+    void getChatPermissions({ businessId: room.business_id, userId: user.id })
+      .then(setChatPermissions);
+  }, [room?.business_id, user?.id]);
+
   // ── Pin & Offer sheets (Tasks 2.5 / 2.6) ────────────────────────────────────
   const [pinMsg, setPinMsg] = useState<ChatMessage | null>(null);
   const [offerVisible, setOfferVisible] = useState(false);
@@ -961,6 +978,7 @@ export default function ChatRoomScreen() {
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
           onOfferPress={() => setOfferVisible(true)}
+          canCreateOffer={chatPermissions.offers_manage}
         />
       </KeyboardAvoidingView>
 
