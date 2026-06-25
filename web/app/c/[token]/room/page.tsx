@@ -38,6 +38,7 @@ export default async function RoomPage({
         businessName="Demo Business"
         businessId="demo-business"
         userId="demo-user"
+        chatThemeId={1}
       />
     );
   }
@@ -49,14 +50,24 @@ export default async function RoomPage({
     supabase.auth.getUser(),
   ]);
 
+  // Fetch chat_theme_id after we have the room_id
+  const room = (rpcData as ResolvedRoom[] | null)?.[0] ?? null;
+  let chatThemeId = 1;
+  if (room) {
+    const { data: roomRow } = await supabase
+      .from("rooms")
+      .select("chat_theme_id")
+      .eq("id", room.room_id)
+      .maybeSingle();
+    chatThemeId = (roomRow as { chat_theme_id: number | null } | null)?.chat_theme_id ?? 1;
+  }
+
   // No session → login with return URL
   if (!authData.user) {
     redirect(
       `/auth/login?next=${encodeURIComponent(`/c/${token}/room`)}`
     );
   }
-
-  const room = (rpcData as ResolvedRoom[] | null)?.[0] ?? null;
 
   // Invalid token
   if (!room) {
@@ -126,7 +137,8 @@ export default async function RoomPage({
       roomName={room.room_name}
       businessName={room.business_name}
       businessId={room.business_id}
-      userId={authData.user.id}
+      userId={authData.user!.id}
+      chatThemeId={chatThemeId}
     />
   );
 }

@@ -13,6 +13,7 @@ import { IconSend, IconArrowLeft, IconLoader2, IconPhoto, IconBell, IconX, IconP
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
+import { getChatTheme } from "@/lib/chatThemes";
 
 const WAITER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -80,9 +81,11 @@ interface Props {
   businessName: string;
   businessId: string;
   userId: string;
+  chatThemeId?: number;
 }
 
-export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId }: Props) {
+export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
+  const theme = getChatTheme(chatThemeId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
@@ -393,14 +396,14 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     }
   }
 
-  // ── CSS token shorthand ───────────────────────────────────────────────────────
+  // ── Theme-aware styles ────────────────────────────────────────────────────────
   const s = {
     wrap: {
       height: "100svh",
       display: "flex",
       flexDirection: "column" as const,
-      background: "var(--bg-base)",
-      color: "var(--text-primary)",
+      background: theme.bg,
+      color: theme.bubbleInText,
       overflow: "hidden",
       position: "relative" as const,
     } satisfies React.CSSProperties,
@@ -410,8 +413,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       alignItems: "center",
       gap: 10,
       padding: "12px 16px",
-      background: "var(--bg-surface)",
-      borderBottom: "1px solid var(--border-subtle)",
+      background: theme.topBg,
+      borderBottom: `1px solid ${theme.border}`,
       flexShrink: 0,
     } satisfies React.CSSProperties,
 
@@ -429,8 +432,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       alignItems: "flex-end",
       gap: 8,
       padding: "10px 12px",
-      background: "var(--bg-surface)",
-      borderTop: "1px solid var(--border-subtle)",
+      background: theme.inputBg,
+      borderTop: `1px solid ${theme.border}`,
       flexShrink: 0,
     } satisfies React.CSSProperties,
   };
@@ -548,10 +551,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             width: 34,
             height: 34,
             borderRadius: 10,
-            background: "var(--bg-elevated)",
-            color: "var(--text-secondary)",
+            background: theme.inputBg,
+            color: theme.bubbleInText,
             textDecoration: "none",
             flexShrink: 0,
+            opacity: 0.8,
           }}
         >
           <IconArrowLeft size={18} />
@@ -561,6 +565,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             style={{
               fontSize: 15,
               fontWeight: 700,
+              color: theme.bubbleInText,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -571,7 +576,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           <div
             style={{
               fontSize: 11,
-              color: "var(--text-secondary)",
+              color: theme.bubbleInText,
+              opacity: 0.55,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -591,7 +597,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "var(--text-tertiary)",
+              color: theme.bubbleInText,
+              opacity: 0.45,
               fontSize: 14,
             }}
           >
@@ -609,7 +616,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 style={{
                   textAlign: "center",
                   fontSize: 12,
-                  color: "var(--text-tertiary)",
+                  color: theme.bubbleInText,
+                  opacity: 0.5,
                   padding: "4px 0",
                 }}
               >
@@ -647,9 +655,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      color: incognito
-                        ? "var(--text-secondary)"
-                        : "var(--color-brand)",
+                      color: incognito ? theme.bubbleInText : theme.accent,
+                      opacity: incognito ? 0.65 : 1,
                     }}
                   >
                     {senderName(msg)}
@@ -697,7 +704,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       ? "16px 4px 16px 16px"
                       : "4px 16px 16px 16px",
                     overflow: "hidden",
-                    background: "var(--bg-elevated)",
+                    background: isOwn ? theme.bubbleOutBg : theme.bubbleInBg,
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -717,7 +724,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                         margin: 0,
                         padding: "6px 10px 8px",
                         fontSize: 13,
-                        color: "var(--text-secondary)",
+                        color: isOwn ? theme.bubbleOutText : theme.bubbleInText,
+                        opacity: 0.75,
                         lineHeight: 1.4,
                       }}
                     >
@@ -733,10 +741,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     borderRadius: isOwn
                       ? "16px 4px 16px 16px"
                       : "4px 16px 16px 16px",
-                    background: isOwn
-                      ? "var(--color-brand)"
-                      : "var(--bg-elevated)",
-                    color: isOwn ? "#fff" : "var(--text-primary)",
+                    background: isOwn ? theme.bubbleOutBg : theme.bubbleInBg,
+                    color: isOwn ? theme.bubbleOutText : theme.bubbleInText,
                     fontSize: 14,
                     lineHeight: 1.45,
                     wordBreak: "break-word",
@@ -749,7 +755,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               <span
                 style={{
                   fontSize: 10,
-                  color: "var(--text-tertiary)",
+                  color: isOwn ? theme.bubbleOutText : theme.bubbleInText,
+                  opacity: 0.45,
                   paddingLeft: isOwn ? 0 : 4,
                   paddingRight: isOwn ? 4 : 0,
                 }}
@@ -774,7 +781,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               left: 12,
               right: 12,
               padding: "8px 12px",
-              background: "var(--bg-surface)",
+              background: theme.topBg,
               border: "1px solid var(--color-danger)",
               borderRadius: 10,
               fontSize: 12,
@@ -803,12 +810,12 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 position: "absolute",
                 bottom: 50,
                 left: 0,
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
+                background: theme.topBg,
+                border: `1px solid ${theme.border}`,
                 borderRadius: 14,
                 padding: "6px 0",
                 minWidth: 180,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
                 zIndex: 20,
               }}
             >
@@ -828,16 +835,17 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   padding: "10px 14px",
                   border: "none",
                   background: "transparent",
-                  color: uploading ? "var(--text-tertiary)" : "var(--text-primary)",
+                  color: uploading ? theme.bubbleInText : theme.bubbleInText,
+                  opacity: uploading ? 0.5 : 1,
                   fontSize: 14,
                   cursor: uploading || sending ? "default" : "pointer",
                   textAlign: "left",
                 }}
               >
                 {uploading ? (
-                  <IconLoader2 size={18} className="spin" style={{ color: "var(--color-brand)", flexShrink: 0 }} />
+                  <IconLoader2 size={18} className="spin" style={{ color: theme.accent, flexShrink: 0 }} />
                 ) : (
-                  <IconPhoto size={18} style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                  <IconPhoto size={18} style={{ color: theme.accent, opacity: 0.7, flexShrink: 0 }} />
                 )}
                 {uploading ? "Subiendo…" : "Foto"}
               </button>
@@ -860,7 +868,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   padding: "10px 14px",
                   border: "none",
                   background: "transparent",
-                  color: waiterState === "cooldown" ? "var(--text-tertiary)" : "var(--text-primary)",
+                  color: theme.bubbleInText,
+                  opacity: waiterState === "cooldown" ? 0.5 : 1,
                   fontSize: 14,
                   cursor: "pointer",
                   textAlign: "left",
@@ -869,7 +878,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 <IconBell
                   size={18}
                   style={{
-                    color: waiterState === "cooldown" ? "var(--color-success)" : "var(--text-secondary)",
+                    color: waiterState === "cooldown" ? theme.bubbleInText : theme.accent,
+                    opacity: waiterState === "cooldown" ? 0.5 : 0.7,
                     flexShrink: 0,
                   }}
                 />
@@ -893,9 +903,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               width: 42,
               height: 42,
               borderRadius: 12,
-              border: "1px solid var(--border-subtle)",
-              background: showAttachPanel ? "var(--color-brand-light)" : "var(--bg-elevated)",
-              color: showAttachPanel ? "var(--color-brand)" : "var(--text-secondary)",
+              border: `1px solid ${theme.border}`,
+              background: showAttachPanel ? theme.bubbleInBg : theme.inputBg,
+              color: showAttachPanel ? theme.accent : theme.bubbleInText,
+              opacity: showAttachPanel ? 1 : 0.75,
               cursor: "pointer",
               transition: "background 0.15s, color 0.15s",
             }}
@@ -916,9 +927,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             resize: "none",
             padding: "10px 12px",
             borderRadius: 12,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--bg-elevated)",
-            color: "var(--text-primary)",
+            border: `1px solid ${theme.border}`,
+            background: theme.inputBg,
+            color: theme.bubbleInText,
             fontSize: 14,
             lineHeight: 1.4,
             outline: "none",
@@ -940,8 +951,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             height: 42,
             borderRadius: 12,
             border: "none",
-            background: "var(--color-brand)",
-            color: "#fff",
+            background: theme.accent,
+            color: theme.bubbleOutText,
             cursor: !inputText.trim() || sending || uploading ? "default" : "pointer",
             opacity: !inputText.trim() || sending || uploading ? 0.5 : 1,
             flexShrink: 0,
@@ -977,7 +988,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         >
           <div
             style={{
-              background: "var(--bg-surface)",
+              background: theme.topBg,
               borderRadius: "20px 20px 0 0",
               padding: "20px 20px 32px",
               display: "flex",
@@ -996,8 +1007,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconBell size={20} style={{ color: "var(--color-brand)" }} />
-                <span style={{ fontSize: 16, fontWeight: 700 }}>
+                <IconBell size={20} style={{ color: theme.accent }} />
+                <span style={{ fontSize: 16, fontWeight: 700, color: theme.bubbleInText }}>
                   Llamar al mesero
                 </span>
               </div>
@@ -1012,8 +1023,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   height: 32,
                   borderRadius: 8,
                   border: "none",
-                  background: "var(--bg-elevated)",
-                  color: "var(--text-secondary)",
+                  background: theme.inputBg,
+                  color: theme.bubbleInText,
+                  opacity: 0.7,
                   cursor: "pointer",
                 }}
               >
@@ -1064,7 +1076,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: "var(--text-secondary)",
+                      color: theme.bubbleInText,
+                      opacity: 0.6,
                     }}
                   >
                     Mesa (opcional)
@@ -1078,9 +1091,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     style={{
                       padding: "10px 12px",
                       borderRadius: 10,
-                      border: "1px solid var(--border-subtle)",
-                      background: "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                      border: `1px solid ${theme.border}`,
+                      background: theme.inputBg,
+                      color: theme.bubbleInText,
                       fontSize: 14,
                       outline: "none",
                       fontFamily: "inherit",
@@ -1093,7 +1106,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: "var(--text-secondary)",
+                      color: theme.bubbleInText,
+                      opacity: 0.6,
                     }}
                   >
                     Nota (opcional)
@@ -1107,9 +1121,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     style={{
                       padding: "10px 12px",
                       borderRadius: 10,
-                      border: "1px solid var(--border-subtle)",
-                      background: "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                      border: `1px solid ${theme.border}`,
+                      background: theme.inputBg,
+                      color: theme.bubbleInText,
                       fontSize: 14,
                       outline: "none",
                       fontFamily: "inherit",
@@ -1129,8 +1143,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                     padding: "13px 16px",
                     borderRadius: 12,
                     border: "none",
-                    background: "var(--color-brand)",
-                    color: "#fff",
+                    background: theme.accent,
+                    color: theme.bubbleOutText,
                     fontSize: 15,
                     fontWeight: 600,
                     cursor: waiterState === "sending" ? "default" : "pointer",
