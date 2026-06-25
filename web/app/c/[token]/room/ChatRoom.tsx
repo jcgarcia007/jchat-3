@@ -1,19 +1,20 @@
 "use client";
 
 /**
- * ChatRoom — Client Component for /c/[token]/room (Pieza 3a/3b)
- * Handles: message load, realtime INSERT subscription, send, auto-scroll,
+ * ChatRoom — Client Component for /c/[token]/room (Pieza 3a/3b/3c)
+ * Handles: message load, realtime INSERT, send text, upload+send photo,
  * role badges (Dueño/Staff), and incognito identity masking.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconSend, IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
+import { IconSend, IconArrowLeft, IconLoader2, IconPhoto } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 
 const PAGE_SIZE = 50;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ interface ChatMessage {
   user_id: string;
   body: string;
   type: string;
+  media_url: string | null;
   metadata: Record<string, unknown>;
   is_system: boolean;
   created_at: string;
@@ -36,6 +38,9 @@ interface ChatMessage {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const MSG_SELECT =
+  "id, room_id, user_id, body, type, media_url, metadata, is_system, created_at, users(username, display_name, avatar_url)";
 
 function isIncognito(msg: ChatMessage): boolean {
   return msg.metadata.incognito === true;
@@ -58,6 +63,11 @@ function formatTime(iso: string): string {
   });
 }
 
+function fileExt(file: File): string {
+  const parts = file.name.split(".");
+  return parts.length > 1 ? parts.pop()!.toLowerCase() : "jpg";
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -75,25 +85,25 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior, block: "end" });
   }, []);
 
-  // Fetch a single message with the users join (used after realtime INSERT)
+  // Fetch a single message with users join (used after realtime INSERT)
   const fetchMessage = useCallback(
     async (id: string): Promise<ChatMessage | null> => {
       const { data } = await supabase
         .from("messages")
-        .select(
-          "id, room_id, user_id, body, type, metadata, is_system, created_at, users(username, display_name, avatar_url)"
-        )
+        .select(MSG_SELECT)
         .eq("id", id)
         .maybeSingle();
       return (data as unknown as ChatMessage | null) ?? null;
@@ -111,8 +121,6 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     let cancelled = false;
 
     async function load() {
-      // Check membership: user must have a valid room_members entry.
-      // Without one, a password-protected room would silently return 0 messages.
       const [{ data: membership }, { data: msgs, error: msgsErr }] =
         await Promise.all([
           supabase
@@ -124,9 +132,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             .maybeSingle(),
           supabase
             .from("messages")
-            .select(
-              "id, room_id, user_id, body, type, metadata, is_system, created_at, users(username, display_name, avatar_url)"
-            )
+            .select(MSG_SELECT)
             .eq("room_id", roomId)
             .order("created_at", { ascending: false })
             .limit(PAGE_SIZE),
@@ -134,7 +140,6 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
       if (cancelled) return;
 
-      // No valid membership → show no-access screen
       if (!membership) {
         setLoadState("no_access");
         return;
@@ -145,9 +150,6 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         return;
       }
 
-      // Reverse to chronological order for display.
-      // Cast via unknown: Supabase infers users as array due to FK metadata,
-      // but messages.user_id is a many-to-one ref → always a single object/null.
       const sorted = ((msgs ?? []) as unknown as ChatMessage[]).slice().reverse();
       setMessages(sorted);
       setLoadState("ok");
@@ -166,7 +168,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     }
   }, [loadState, scrollToBottom]);
 
-  // Load role map once — roles change infrequently, one fetch per session is enough
+  // Load role map once on entry — roles change infrequently
   useEffect(() => {
     if (loadState !== "ok") return;
     void getBusinessRoleMap(businessId).then(setRoleMap);
@@ -191,7 +193,6 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           const full = await fetchMessage(newId);
           if (!full) return;
           setMessages((prev) => {
-            // Dedup by id — prevents doubling own messages sent optimistically
             if (prev.some((m) => m.id === full.id)) return prev;
             return [...prev, full];
           });
@@ -208,10 +209,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     };
   }, [loadState, roomId, fetchMessage, scrollToBottom]);
 
-  // ── Send message ──────────────────────────────────────────────────────────────
+  // ── Send text message ──────────────────────────────────────────────────────────
   async function handleSend() {
     const body = inputText.trim();
-    if (!body || sending) return;
+    if (!body || sending || uploading) return;
     setSending(true);
     setSendError(null);
 
@@ -231,13 +232,64 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
     setInputText("");
     inputRef.current?.focus();
-    // Message appears via realtime subscription
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSend();
+    }
+  }
+
+  // ── Photo upload + send ────────────────────────────────────────────────────────
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so the same file can be re-selected after an error
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setSendError("Solo se pueden enviar imágenes.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setSendError("La imagen no puede superar los 10 MB.");
+      return;
+    }
+
+    setSendError(null);
+    setUploading(true);
+
+    try {
+      // Path: userId is the first segment — required by the storage RLS policy
+      // (storage.foldername(name))[1] = auth.uid()
+      const ext = fileExt(file);
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from("post-media")
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage
+        .from("post-media")
+        .getPublicUrl(path);
+
+      const { error: msgErr } = await supabase.from("messages").insert({
+        room_id: roomId,
+        user_id: userId,
+        body: "",
+        type: "image",
+        media_url: urlData.publicUrl,
+      });
+
+      if (msgErr) throw msgErr;
+      // Message appears via realtime subscription
+    } catch {
+      setSendError("No se pudo enviar la imagen. Intenta de nuevo.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -282,7 +334,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     } satisfies React.CSSProperties,
   };
 
-  // ── No-access / loading / error states ───────────────────────────────────────
+  // ── Non-ok states ─────────────────────────────────────────────────────────────
   if (loadState === "loading") {
     return (
       <div
@@ -365,7 +417,14 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
   if (loadState === "error") {
     return (
-      <div style={{ ...s.wrap, alignItems: "center", justifyContent: "center", padding: "24px 16px" }}>
+      <div
+        style={{
+          ...s.wrap,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px 16px",
+        }}
+      >
         <p style={{ color: "var(--color-danger)", fontSize: 14 }}>
           Error al cargar los mensajes. Recarga la página.
         </p>
@@ -460,6 +519,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
           const incognito = isIncognito(msg);
           const authorRole = incognito ? null : (roleMap.get(msg.user_id) ?? null);
+          const isImage = msg.type === "image" && !!msg.media_url;
 
           return (
             <div
@@ -471,6 +531,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 gap: 2,
               }}
             >
+              {/* Sender name + role badge (others only) */}
               {!isOwn && (
                 <div
                   style={{
@@ -492,7 +553,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   >
                     {senderName(msg)}
                   </span>
-                  {/* CRITICAL: badge is NEVER rendered for incognito messages */}
+                  {/* CRITICAL: badge NEVER renders for incognito messages */}
                   {authorRole === "owner" && (
                     <span
                       style={{
@@ -525,24 +586,65 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   )}
                 </div>
               )}
-              <div
-                style={{
-                  maxWidth: "78%",
-                  padding: "8px 12px",
-                  borderRadius: isOwn
-                    ? "16px 4px 16px 16px"
-                    : "4px 16px 16px 16px",
-                  background: isOwn
-                    ? "var(--color-brand)"
-                    : "var(--bg-elevated)",
-                  color: isOwn ? "#fff" : "var(--text-primary)",
-                  fontSize: 14,
-                  lineHeight: 1.45,
-                  wordBreak: "break-word",
-                }}
-              >
-                {msg.body}
-              </div>
+
+              {/* Bubble: image or text */}
+              {isImage ? (
+                <div
+                  style={{
+                    maxWidth: "72%",
+                    borderRadius: isOwn
+                      ? "16px 4px 16px 16px"
+                      : "4px 16px 16px 16px",
+                    overflow: "hidden",
+                    background: "var(--bg-elevated)",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={msg.media_url!}
+                    alt="Imagen enviada"
+                    style={{
+                      display: "block",
+                      maxWidth: 220,
+                      width: "100%",
+                      height: "auto",
+                    }}
+                  />
+                  {msg.body && (
+                    <p
+                      style={{
+                        margin: 0,
+                        padding: "6px 10px 8px",
+                        fontSize: 13,
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {msg.body}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    maxWidth: "78%",
+                    padding: "8px 12px",
+                    borderRadius: isOwn
+                      ? "16px 4px 16px 16px"
+                      : "4px 16px 16px 16px",
+                    background: isOwn
+                      ? "var(--color-brand)"
+                      : "var(--bg-elevated)",
+                    color: isOwn ? "#fff" : "var(--text-primary)",
+                    fontSize: 14,
+                    lineHeight: 1.45,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {msg.body}
+                </div>
+              )}
+
               <span
                 style={{
                   fontSize: 10,
@@ -561,7 +663,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input row */}
       <div style={s.inputRow}>
         {sendError && (
           <div
@@ -581,6 +683,46 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             {sendError}
           </div>
         )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => void handlePhotoSelected(e)}
+        />
+
+        {/* Photo button */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading || sending}
+          aria-label="Enviar imagen"
+          title="Enviar imagen"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            border: "1px solid var(--border-subtle)",
+            background: "var(--bg-elevated)",
+            color: uploading ? "var(--color-brand)" : "var(--text-secondary)",
+            cursor: uploading || sending ? "default" : "pointer",
+            opacity: uploading || sending ? 0.6 : 1,
+            flexShrink: 0,
+            transition: "opacity 0.15s",
+          }}
+        >
+          {uploading ? (
+            <IconLoader2 size={18} className="spin" />
+          ) : (
+            <IconPhoto size={18} />
+          )}
+        </button>
+
         <textarea
           ref={inputRef}
           value={inputText}
@@ -604,9 +746,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             overflowY: "auto",
           }}
         />
+
         <button
           onClick={() => void handleSend()}
-          disabled={!inputText.trim() || sending}
+          disabled={!inputText.trim() || sending || uploading}
           aria-label="Enviar"
           style={{
             display: "inline-flex",
@@ -618,8 +761,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             border: "none",
             background: "var(--color-brand)",
             color: "#fff",
-            cursor: !inputText.trim() || sending ? "default" : "pointer",
-            opacity: !inputText.trim() || sending ? 0.5 : 1,
+            cursor: !inputText.trim() || sending || uploading ? "default" : "pointer",
+            opacity: !inputText.trim() || sending || uploading ? 0.5 : 1,
             flexShrink: 0,
             transition: "opacity 0.15s",
           }}
