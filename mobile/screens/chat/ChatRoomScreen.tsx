@@ -71,6 +71,7 @@ import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
 import { PinnedBanner } from '../../components/chat/PinnedBanner';
 import { PinMessageSheet } from '../../components/chat/PinMessageSheet';
 import { CreateOfferSheet } from '../../components/chat/CreateOfferSheet';
+import { ServiceCallSheet } from '../../components/chat/ServiceCallSheet';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
@@ -550,6 +551,10 @@ export default function ChatRoomScreen() {
     });
   }, [business, room, activeRoomId, navigation]);
 
+  const handleServiceCall = useCallback(() => {
+    setServiceSheetVisible(true);
+  }, []);
+
   const handleSendText = useCallback(
     async (text: string) => {
       if (!user) return;
@@ -741,9 +746,10 @@ export default function ChatRoomScreen() {
       .then(setChatPermissions);
   }, [room?.business_id, user?.id]);
 
-  // ── Pin & Offer sheets (Tasks 2.5 / 2.6) ────────────────────────────────────
+  // ── Pin & Offer & Service sheets (Tasks 2.5 / 2.6 / Tanda C) ────────────────
   const [pinMsg, setPinMsg] = useState<ChatMessage | null>(null);
   const [offerVisible, setOfferVisible] = useState(false);
+  const [serviceSheetVisible, setServiceSheetVisible] = useState(false);
 
   const handleLongPressMessage = useCallback(
     (m: ChatMessage) => {
@@ -1006,6 +1012,7 @@ export default function ChatRoomScreen() {
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
           onMenuPress={handleMenuPress}
+          onServiceCall={handleServiceCall}
           onOfferPress={() => setOfferVisible(true)}
           canCreateOffer={chatPermissions.offers_manage}
         />
@@ -1078,6 +1085,15 @@ export default function ChatRoomScreen() {
           setOfferVisible(false);
           void loadMessages(activeRoomId);
         }}
+      />
+
+      <ServiceCallSheet
+        visible={serviceSheetVisible}
+        roomId={activeRoomId}
+        businessId={room?.business_id ?? DEMO_BUSINESS.id}
+        userId={user?.id ?? ''}
+        theme={chatTheme}
+        onClose={() => setServiceSheetVisible(false)}
       />
     </View>
   );

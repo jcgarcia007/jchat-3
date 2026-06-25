@@ -47,6 +47,7 @@ export interface ChatInputProps {
   onSendText: (text: string) => void;
   onSendPhoto: (uri: string) => void;
   onMenuPress?: () => void;
+  onServiceCall?: () => void;
   onOfferPress?: () => void;
   /** Forwarded to AttachmentPanel — hides Offer button when false. */
   canCreateOffer?: boolean;
@@ -60,6 +61,7 @@ export function ChatInput({
   onSendText,
   onSendPhoto,
   onMenuPress,
+  onServiceCall,
   onOfferPress,
   canCreateOffer = false,
   disabled = false,
@@ -134,6 +136,7 @@ export function ChatInput({
         theme={theme}
         onPhoto={handleGalleryPhoto}
         onMenu={onMenuPress}
+        onServiceCall={onServiceCall}
         onOffer={onOfferPress}
         onClose={handleCloseAttachment}
         canCreateOffer={canCreateOffer}
