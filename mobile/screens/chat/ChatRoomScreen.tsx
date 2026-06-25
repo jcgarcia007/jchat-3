@@ -227,6 +227,9 @@ export default function ChatRoomScreen() {
 
   // Loading state
   const [initialLoading, setInitialLoading] = useState(true);
+  // True once the first scroll-to-bottom completes; gates maintainVisibleContentPosition
+  // so the anchor doesn't fight the initial snap (see FlatList prop below).
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
   // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -264,6 +267,7 @@ export default function ChatRoomScreen() {
       initialScrollTimerRef.current = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
         hasDoneInitialScrollRef.current = true;
+        setInitialScrollDone(true);
         initialScrollTimerRef.current = null;
       }, 150);
     });
@@ -663,6 +667,7 @@ export default function ChatRoomScreen() {
     isNearBottomRef.current = true;
     pendingInitialScrollRef.current = true;
     hasDoneInitialScrollRef.current = false;
+    setInitialScrollDone(false);
     setMessages([]);
     setHasMore(true);
   }, []);
@@ -924,7 +929,7 @@ export default function ChatRoomScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderMessage}
           contentContainerStyle={chatStyles.listContent}
-          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+          maintainVisibleContentPosition={initialScrollDone ? { minIndexForVisible: 0 } : undefined}
           showsVerticalScrollIndicator={false}
           onLayout={() => {
             if (pendingInitialScrollRef.current) {
