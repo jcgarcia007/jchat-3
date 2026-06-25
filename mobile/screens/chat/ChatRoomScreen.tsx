@@ -1005,6 +1005,7 @@ export default function ChatRoomScreen() {
           theme={chatTheme}
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
+          onMenuPress={handleMenuPress}
           onOfferPress={() => setOfferVisible(true)}
           canCreateOffer={chatPermissions.offers_manage}
         />
