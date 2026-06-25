@@ -36,6 +36,7 @@ export default async function RoomPage({
         roomId="demo-room"
         roomName="Demo Room"
         businessName="Demo Business"
+        businessId="demo-business"
         userId="demo-user"
       />
     );
@@ -124,6 +125,7 @@ export default async function RoomPage({
       roomId={room.room_id}
       roomName={room.room_name}
       businessName={room.business_name}
+      businessId={room.business_id}
       userId={authData.user.id}
     />
   );

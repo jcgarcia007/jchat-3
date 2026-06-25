@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * ChatRoom — Client Component for /c/[token]/room (Pieza 3a)
- * Handles: message load, realtime INSERT subscription, send, auto-scroll.
- * Scoped to text messages only — no media, badges, or incognito (3b/3c).
+ * ChatRoom — Client Component for /c/[token]/room (Pieza 3a/3b)
+ * Handles: message load, realtime INSERT subscription, send, auto-scroll,
+ * role badges (Dueño/Staff), and incognito identity masking.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -11,6 +11,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconSend, IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 
 const PAGE_SIZE = 50;
 
@@ -36,7 +37,15 @@ interface ChatMessage {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function isIncognito(msg: ChatMessage): boolean {
+  return msg.metadata.incognito === true;
+}
+
 function senderName(msg: ChatMessage): string {
+  if (isIncognito(msg)) {
+    const nick = msg.metadata.nickname;
+    return "🎭 " + (typeof nick === "string" && nick.trim() ? nick.trim() : "Anónimo");
+  }
   if (msg.users?.display_name) return msg.users.display_name;
   if (msg.users?.username) return msg.users.username;
   return "Usuario";
@@ -56,12 +65,14 @@ interface Props {
   roomId: string;
   roomName: string;
   businessName: string;
+  businessId: string;
   userId: string;
 }
 
-export function ChatRoom({ token, roomId, roomName, businessName, userId }: Props) {
+export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
+  const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -154,6 +165,12 @@ export function ChatRoom({ token, roomId, roomName, businessName, userId }: Prop
       scrollToBottom("instant" as ScrollBehavior);
     }
   }, [loadState, scrollToBottom]);
+
+  // Load role map once — roles change infrequently, one fetch per session is enough
+  useEffect(() => {
+    if (loadState !== "ok") return;
+    void getBusinessRoleMap(businessId).then(setRoleMap);
+  }, [loadState, businessId]);
 
   // ── Realtime subscription ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -441,6 +458,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, userId }: Prop
             );
           }
 
+          const incognito = isIncognito(msg);
+          const authorRole = incognito ? null : (roleMap.get(msg.user_id) ?? null);
+
           return (
             <div
               key={msg.id}
@@ -452,16 +472,58 @@ export function ChatRoom({ token, roomId, roomName, businessName, userId }: Prop
               }}
             >
               {!isOwn && (
-                <span
+                <div
                   style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "var(--color-brand)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
                     paddingLeft: 4,
+                    flexWrap: "nowrap",
                   }}
                 >
-                  {senderName(msg)}
-                </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: incognito
+                        ? "var(--text-secondary)"
+                        : "var(--color-brand)",
+                    }}
+                  >
+                    {senderName(msg)}
+                  </span>
+                  {/* CRITICAL: badge is NEVER rendered for incognito messages */}
+                  {authorRole === "owner" && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                        background: "rgba(217,119,6,0.15)",
+                        color: "var(--color-gold)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Dueño
+                    </span>
+                  )}
+                  {authorRole === "staff" && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                        background: "var(--color-brand-light)",
+                        color: "var(--color-brand)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Staff
+                    </span>
+                  )}
+                </div>
               )}
               <div
                 style={{
