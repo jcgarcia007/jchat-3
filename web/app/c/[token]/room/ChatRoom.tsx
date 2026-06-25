@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconSend, IconArrowLeft, IconLoader2, IconPhoto, IconBell, IconX } from "@tabler/icons-react";
+import { IconSend, IconArrowLeft, IconLoader2, IconPhoto, IconBell, IconX, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
@@ -90,6 +90,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [showAttachPanel, setShowAttachPanel] = useState(false);
 
   // ── Waiter call state ─────────────────────────────────────────────────────────
   const [showWaiterSheet, setShowWaiterSheet] = useState(false);
@@ -105,6 +106,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const channelRef = useRef<RealtimeChannel | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachPanelRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -279,6 +281,21 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     };
   }, []);
 
+  // Close attach panel on click-outside
+  useEffect(() => {
+    if (!showAttachPanel) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        attachPanelRef.current &&
+        !attachPanelRef.current.contains(e.target as Node)
+      ) {
+        setShowAttachPanel(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showAttachPanel]);
+
   // ── Call waiter ───────────────────────────────────────────────────────────────
   async function handleCallWaiter() {
     if (waiterState === "sending" || waiterState === "cooldown") return;
@@ -363,7 +380,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         room_id: roomId,
         user_id: userId,
         body: "",
-        type: "image",
+        type: "photo",
         media_url: urlData.publicUrl,
       });
 
@@ -603,7 +620,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
           const incognito = isIncognito(msg);
           const authorRole = incognito ? null : (roleMap.get(msg.user_id) ?? null);
-          const isImage = msg.type === "image" && !!msg.media_url;
+          const isImage = (msg.type === "photo" || msg.type === "image") && !!msg.media_url;
 
           return (
             <div
@@ -777,73 +794,115 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           onChange={(e) => void handlePhotoSelected(e)}
         />
 
-        {/* Bell button — call waiter */}
-        <button
-          type="button"
-          onClick={() => {
-            if (waiterState === "cooldown") return;
-            setWaiterState("idle");
-            setWaiterError(null);
-            setShowWaiterSheet(true);
-          }}
-          disabled={waiterState === "cooldown"}
-          aria-label="Llamar al mesero"
-          title={
-            waiterState === "cooldown"
-              ? `Espera ${cooldownSecsLeft}s`
-              : "Llamar al mesero"
-          }
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--bg-elevated)",
-            color:
-              waiterState === "cooldown"
-                ? "var(--color-success)"
-                : "var(--text-secondary)",
-            cursor: waiterState === "cooldown" ? "default" : "pointer",
-            opacity: waiterState === "cooldown" ? 0.6 : 1,
-            flexShrink: 0,
-            transition: "opacity 0.15s",
-          }}
-        >
-          <IconBell size={18} />
-        </button>
+        {/* "+" attach button + floating panel */}
+        <div ref={attachPanelRef} style={{ position: "relative", flexShrink: 0 }}>
+          {/* Floating attach panel — appears above the "+" button */}
+          {showAttachPanel && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 50,
+                left: 0,
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: 14,
+                padding: "6px 0",
+                minWidth: 180,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                zIndex: 20,
+              }}
+            >
+              {/* Photo option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachPanel(false);
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploading || sending}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "none",
+                  background: "transparent",
+                  color: uploading ? "var(--text-tertiary)" : "var(--text-primary)",
+                  fontSize: 14,
+                  cursor: uploading || sending ? "default" : "pointer",
+                  textAlign: "left",
+                }}
+              >
+                {uploading ? (
+                  <IconLoader2 size={18} className="spin" style={{ color: "var(--color-brand)", flexShrink: 0 }} />
+                ) : (
+                  <IconPhoto size={18} style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                )}
+                {uploading ? "Subiendo…" : "Foto"}
+              </button>
 
-        {/* Photo button */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || sending}
-          aria-label="Enviar imagen"
-          title="Enviar imagen"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--bg-elevated)",
-            color: uploading ? "var(--color-brand)" : "var(--text-secondary)",
-            cursor: uploading || sending ? "default" : "pointer",
-            opacity: uploading || sending ? 0.6 : 1,
-            flexShrink: 0,
-            transition: "opacity 0.15s",
-          }}
-        >
-          {uploading ? (
-            <IconLoader2 size={18} className="spin" />
-          ) : (
-            <IconPhoto size={18} />
+              {/* Waiter option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachPanel(false);
+                  if (waiterState === "cooldown") return;
+                  setWaiterState("idle");
+                  setWaiterError(null);
+                  setShowWaiterSheet(true);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "none",
+                  background: "transparent",
+                  color: waiterState === "cooldown" ? "var(--text-tertiary)" : "var(--text-primary)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <IconBell
+                  size={18}
+                  style={{
+                    color: waiterState === "cooldown" ? "var(--color-success)" : "var(--text-secondary)",
+                    flexShrink: 0,
+                  }}
+                />
+                {waiterState === "cooldown"
+                  ? `Mesero (${cooldownSecsLeft}s)`
+                  : "Llamar al mesero"}
+              </button>
+            </div>
           )}
-        </button>
+
+          {/* "+" / "×" toggle button */}
+          <button
+            type="button"
+            onClick={() => setShowAttachPanel((v) => !v)}
+            aria-label={showAttachPanel ? "Cerrar opciones" : "Adjuntar"}
+            title={showAttachPanel ? "Cerrar" : "Adjuntar foto o llamar al mesero"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              border: "1px solid var(--border-subtle)",
+              background: showAttachPanel ? "var(--color-brand-light)" : "var(--bg-elevated)",
+              color: showAttachPanel ? "var(--color-brand)" : "var(--text-secondary)",
+              cursor: "pointer",
+              transition: "background 0.15s, color 0.15s",
+            }}
+          >
+            {showAttachPanel ? <IconX size={18} /> : <IconPlus size={18} />}
+          </button>
+        </div>
 
         <textarea
           ref={inputRef}
