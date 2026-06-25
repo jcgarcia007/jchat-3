@@ -51,6 +51,13 @@ const config: ExpoConfig = {
   },
   plugins: [
     [
+      'expo-image-picker',
+      {
+        photosPermission: 'JChat needs access to your photos to share images in chat.',
+        cameraPermission: 'JChat needs access to your camera to take photos in chat.',
+      },
+    ],
+    [
       '@stripe/stripe-react-native',
       {
         merchantIdentifier: 'merchant.com.juangarciacruz.jchatapp',
