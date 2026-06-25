@@ -56,6 +56,7 @@ interface EmployeeRow {
   business_id: string;
   user_id: string;
   role: EmployeeRole;
+  custom_role_id?: string | null;
   status: EmployeeStatus;
   last_active_at: string | null;
   created_at: string;
@@ -65,6 +66,11 @@ interface EmployeeWithProfile extends EmployeeRow {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+}
+
+interface CustomRole {
+  id: string;
+  name: string;
 }
 
 // ─── Plan limit constant ──────────────────────────────────────────────────────
@@ -312,19 +318,35 @@ function EmployeeRow({
       </div>
 
       {/* Role badge */}
-      <div
-        style={{
-          padding: "3px 10px",
-          borderRadius: "999px",
-          background: "var(--db-accent-bg)",
-          color: "var(--db-accent)",
-          fontSize: "12px",
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        {employee.role}
+      <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+        <div
+          style={{
+            padding: "3px 10px",
+            borderRadius: "999px",
+            background: "var(--db-accent-bg)",
+            color: "var(--db-accent)",
+            fontSize: "12px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {employee.role}
+        </div>
+        {employee.custom_role_id && (
+          <div
+            style={{
+              padding: "2px 6px",
+              borderRadius: "999px",
+              background: "rgba(124,58,237,0.12)",
+              color: "var(--color-brand-purple)",
+              fontSize: "10px",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Custom
+          </div>
+        )}
       </div>
 
       {/* Status */}
@@ -401,8 +423,12 @@ export default function EmployeesPage() {
   // Add-employee form
   const [showAdd, setShowAdd] = useState(false);
   const [addUsername, setAddUsername] = useState("");
-  const [addRole, setAddRole] = useState<EmployeeRole>("Cashier");
+  const [addRole, setAddRole] = useState<string>("Cashier");
+  const [addCustomRoleId, setAddCustomRoleId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+
+  // Custom roles for this business
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
 
   // ── Resolve business id ────────────────────────────────────────────────────
 
@@ -429,6 +455,21 @@ export default function EmployeesPage() {
       // business not found — keep null
     } finally {
       setLoadingBiz(false);
+    }
+  }, []);
+
+  // ── Load custom roles ──────────────────────────────────────────────────────
+
+  const loadCustomRoles = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("custom_roles")
+        .select("id, name")
+        .eq("business_id", bizId)
+        .order("created_at", { ascending: true });
+      setCustomRoles((data ?? []) as CustomRole[]);
+    } catch {
+      // non-critical — custom roles are optional
     }
   }, []);
 
@@ -556,15 +597,19 @@ export default function EmployeesPage() {
         setError(`No user found with username @${uname}.`);
         return;
       }
-      const { error: insErr } = await supabase.from("employees").insert({
+      const insertPayload: Record<string, unknown> = {
         business_id: businessId,
         user_id: (u as { id: string }).id,
         role: addRole,
         status: "accepted",
-      });
+      };
+      if (addCustomRoleId) insertPayload.custom_role_id = addCustomRoleId;
+      const { error: insErr } = await supabase.from("employees").insert(insertPayload);
       if (insErr) throw insErr;
       setSuccessMsg(`Added @${(u as { username: string }).username} as ${addRole}.`);
       setAddUsername("");
+      setAddCustomRoleId(null);
+      setAddRole("Cashier");
       setShowAdd(false);
       await loadEmployees(businessId);
     } catch (e: unknown) {
@@ -572,7 +617,7 @@ export default function EmployeesPage() {
     } finally {
       setAdding(false);
     }
-  }, [businessId, addUsername, addRole, loadEmployees]);
+  }, [businessId, addUsername, addRole, addCustomRoleId, loadEmployees]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -581,8 +626,11 @@ export default function EmployeesPage() {
   }, [resolveBusinessId]);
 
   useEffect(() => {
-    if (businessId) void loadEmployees(businessId);
-  }, [businessId, loadEmployees]);
+    if (businessId) {
+      void loadEmployees(businessId);
+      void loadCustomRoles(businessId);
+    }
+  }, [businessId, loadEmployees, loadCustomRoles]);
 
   // ── Derived counts ─────────────────────────────────────────────────────────
 
@@ -700,13 +748,32 @@ export default function EmployeesPage() {
                   Role
                 </label>
                 <select
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as EmployeeRole)}
+                  value={addCustomRoleId ? `custom:${addCustomRoleId}` : addRole}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.startsWith("custom:")) {
+                      const id = val.slice(7);
+                      const cr = customRoles.find((r) => r.id === id);
+                      if (cr) { setAddCustomRoleId(id); setAddRole(cr.name); }
+                    } else {
+                      setAddCustomRoleId(null);
+                      setAddRole(val);
+                    }
+                  }}
                   style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", cursor: "pointer" }}
                 >
-                  {(["Manager", "Cashier", "Waiter", "Kitchen", "Chat Moderator", "Analyst"] as EmployeeRole[]).map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
+                  <optgroup label="Standard">
+                    {(["Manager", "Cashier", "Waiter", "Kitchen", "Chat Moderator", "Analyst"] as EmployeeRole[]).map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </optgroup>
+                  {customRoles.length > 0 && (
+                    <optgroup label="Custom">
+                      {customRoles.map((cr) => (
+                        <option key={cr.id} value={`custom:${cr.id}`}>{cr.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
               <button
