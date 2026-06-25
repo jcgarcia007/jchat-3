@@ -35,6 +35,9 @@ const config: ExpoConfig = {
     config: { googleMapsApiKey: IOS_MAPS_KEY },
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
     package: 'com.juangarciacruz.jchatapp',
