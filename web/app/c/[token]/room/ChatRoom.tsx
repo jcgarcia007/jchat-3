@@ -1,17 +1,20 @@
 "use client";
 
 /**
- * ChatRoom — Client Component for /c/[token]/room (Pieza 3a/3b/3c)
+ * ChatRoom — Client Component for /c/[token]/room (Pieza 3a/3b/3c + Fase 2)
  * Handles: message load, realtime INSERT, send text, upload+send photo,
- * role badges (Dueño/Staff), and incognito identity masking.
+ * role badges (Dueño/Staff), incognito identity masking,
+ * and "Llamar al mesero" service_calls insert with cooldown.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconSend, IconArrowLeft, IconLoader2, IconPhoto } from "@tabler/icons-react";
+import { IconSend, IconArrowLeft, IconLoader2, IconPhoto, IconBell, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
+
+const WAITER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
 const PAGE_SIZE = 50;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -87,6 +90,16 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // ── Waiter call state ─────────────────────────────────────────────────────────
+  const [showWaiterSheet, setShowWaiterSheet] = useState(false);
+  const [waiterTableLabel, setWaiterTableLabel] = useState("");
+  const [waiterNotes, setWaiterNotes] = useState("");
+  type WaiterState = "idle" | "sending" | "success" | "cooldown" | "error";
+  const [waiterState, setWaiterState] = useState<WaiterState>("idle");
+  const [waiterError, setWaiterError] = useState<string | null>(null);
+  const [cooldownSecsLeft, setCooldownSecsLeft] = useState(0);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -241,6 +254,76 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     }
   }
 
+  // ── Waiter cooldown countdown ─────────────────────────────────────────────────
+  function startCooldownTimer() {
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    const endsAt = Date.now() + WAITER_COOLDOWN_MS;
+    setCooldownSecsLeft(Math.ceil(WAITER_COOLDOWN_MS / 1000));
+    cooldownTimerRef.current = setInterval(() => {
+      const remaining = Math.ceil((endsAt - Date.now()) / 1000);
+      if (remaining <= 0) {
+        if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+        setCooldownSecsLeft(0);
+        setWaiterState("idle");
+      } else {
+        setCooldownSecsLeft(remaining);
+      }
+    }, 1000);
+  }
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    };
+  }, []);
+
+  // ── Call waiter ───────────────────────────────────────────────────────────────
+  async function handleCallWaiter() {
+    if (waiterState === "sending" || waiterState === "cooldown") return;
+    setWaiterState("sending");
+    setWaiterError(null);
+
+    const tableLabel = waiterTableLabel.trim() || null;
+    const notes = waiterNotes.trim() || null;
+
+    const { error } = await supabase.from("service_calls").insert({
+      room_id: roomId,
+      business_id: businessId,
+      user_id: userId,
+      type: "waiter",
+      table_label: tableLabel,
+      notes,
+      status: "pending",
+    });
+
+    if (!error) {
+      setWaiterState("success");
+      startCooldownTimer();
+      // Auto-close sheet after brief success display
+      setTimeout(() => {
+        setShowWaiterSheet(false);
+        setWaiterTableLabel("");
+        setWaiterNotes("");
+        // Transition from success to cooldown visually on bell button
+        setWaiterState("cooldown");
+      }, 1800);
+      return;
+    }
+
+    const msg = (error as { message?: string }).message ?? "";
+    if (msg.includes("service_call_cooldown")) {
+      setWaiterState("cooldown");
+      setShowWaiterSheet(false);
+      startCooldownTimer();
+      return;
+    }
+
+    setWaiterState("error");
+    setWaiterError("No se pudo enviar la llamada. Intenta de nuevo.");
+  }
+
   // ── Photo upload + send ────────────────────────────────────────────────────────
   async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -302,6 +385,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       background: "var(--bg-base)",
       color: "var(--text-primary)",
       overflow: "hidden",
+      position: "relative" as const,
     } satisfies React.CSSProperties,
 
     header: {
@@ -693,6 +777,44 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           onChange={(e) => void handlePhotoSelected(e)}
         />
 
+        {/* Bell button — call waiter */}
+        <button
+          type="button"
+          onClick={() => {
+            if (waiterState === "cooldown") return;
+            setWaiterState("idle");
+            setWaiterError(null);
+            setShowWaiterSheet(true);
+          }}
+          disabled={waiterState === "cooldown"}
+          aria-label="Llamar al mesero"
+          title={
+            waiterState === "cooldown"
+              ? `Espera ${cooldownSecsLeft}s`
+              : "Llamar al mesero"
+          }
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            border: "1px solid var(--border-subtle)",
+            background: "var(--bg-elevated)",
+            color:
+              waiterState === "cooldown"
+                ? "var(--color-success)"
+                : "var(--text-secondary)",
+            cursor: waiterState === "cooldown" ? "default" : "pointer",
+            opacity: waiterState === "cooldown" ? 0.6 : 1,
+            flexShrink: 0,
+            transition: "opacity 0.15s",
+          }}
+        >
+          <IconBell size={18} />
+        </button>
+
         {/* Photo button */}
         <button
           type="button"
@@ -774,6 +896,201 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           )}
         </button>
       </div>
+
+      {/* ── Waiter sheet (bottom-sheet overlay) ─────────────────────────────── */}
+      {showWaiterSheet && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Llamar al mesero"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            zIndex: 50,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowWaiterSheet(false);
+          }}
+        >
+          <div
+            style={{
+              background: "var(--bg-surface)",
+              borderRadius: "20px 20px 0 0",
+              padding: "20px 20px 32px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+              maxHeight: "80vh",
+              overflowY: "auto",
+            }}
+          >
+            {/* Handle + title row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <IconBell size={20} style={{ color: "var(--color-brand)" }} />
+                <span style={{ fontSize: 16, fontWeight: 700 }}>
+                  Llamar al mesero
+                </span>
+              </div>
+              <button
+                onClick={() => setShowWaiterSheet(false)}
+                aria-label="Cerrar"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-secondary)",
+                  cursor: "pointer",
+                }}
+              >
+                <IconX size={16} />
+              </button>
+            </div>
+
+            {/* Success state */}
+            {waiterState === "success" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "rgba(29,158,117,0.12)",
+                  color: "var(--color-success)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                ✓ El mesero fue notificado
+              </div>
+            )}
+
+            {/* Error state */}
+            {waiterState === "error" && waiterError && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid var(--color-danger)",
+                  color: "var(--color-danger)",
+                  fontSize: 13,
+                }}
+              >
+                {waiterError}
+              </div>
+            )}
+
+            {/* Form fields (hidden after success) */}
+            {waiterState !== "success" && (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Mesa (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. 5, barra, terraza…"
+                    value={waiterTableLabel}
+                    onChange={(e) => setWaiterTableLabel(e.target.value)}
+                    maxLength={40}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border-subtle)",
+                      background: "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      fontSize: 14,
+                      outline: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Nota (opcional)
+                  </label>
+                  <textarea
+                    placeholder="Ej. Traer la cuenta, más agua…"
+                    value={waiterNotes}
+                    onChange={(e) => setWaiterNotes(e.target.value)}
+                    rows={2}
+                    maxLength={200}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border-subtle)",
+                      background: "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      fontSize: 14,
+                      outline: "none",
+                      fontFamily: "inherit",
+                      resize: "none",
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={() => void handleCallWaiter()}
+                  disabled={waiterState === "sending"}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "13px 16px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "var(--color-brand)",
+                    color: "#fff",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: waiterState === "sending" ? "default" : "pointer",
+                    opacity: waiterState === "sending" ? 0.7 : 1,
+                    transition: "opacity 0.15s",
+                  }}
+                >
+                  {waiterState === "sending" && (
+                    <IconLoader2 size={18} className="spin" />
+                  )}
+                  {waiterState === "sending"
+                    ? "Notificando…"
+                    : "Llamar al mesero"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
