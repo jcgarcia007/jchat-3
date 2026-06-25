@@ -51,8 +51,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { getChatPermissions, EMPTY_PERMISSIONS } from '../../services/permissions';
-import type { ChatPermissions } from '../../services/permissions';
+import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
+import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 import { getChatTheme } from '../../theme/chatThemes';
@@ -746,6 +746,15 @@ export default function ChatRoomScreen() {
       .then(setChatPermissions);
   }, [room?.business_id, user?.id]);
 
+  // ── Role badge map (Dueño / Staff) ────────────────────────────────────────
+
+  const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
+
+  useEffect(() => {
+    if (!room?.business_id) return;
+    void getBusinessRoleMap(room.business_id).then(setRoleMap);
+  }, [room?.business_id]);
+
   // ── Pin & Offer & Service sheets (Tasks 2.5 / 2.6 / Tanda C) ────────────────
   const [pinMsg, setPinMsg] = useState<ChatMessage | null>(null);
   const [offerVisible, setOfferVisible] = useState(false);
@@ -813,11 +822,12 @@ export default function ChatRoomScreen() {
         message={item}
         isOwn={item.user_id === user?.id}
         theme={chatTheme}
+        authorRole={roleMap.get(item.user_id) ?? null}
         onLongPressUser={handleUserLongPress}
         onLongPressMessage={handleLongPressMessage}
       />
     ),
-    [user?.id, chatTheme, handleUserLongPress, handleLongPressMessage],
+    [user?.id, chatTheme, roleMap, handleUserLongPress, handleLongPressMessage],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────

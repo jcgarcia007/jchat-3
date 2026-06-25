@@ -151,3 +151,46 @@ export async function getChatPermissions({
     return EMPTY_PERMISSIONS;
   }
 }
+
+// ── Role badge helpers ────────────────────────────────────────────────────────
+
+export type ChatRole = 'owner' | 'staff' | null;
+
+/**
+ * Returns a Map<userId, ChatRole> for all members of `businessId` in two queries.
+ * Used by ChatRoomScreen to pass authorRole to every MessageBubble in one pass.
+ * Always resolves — returns an empty Map on any error (no badges is safe default).
+ */
+export async function getBusinessRoleMap(businessId: string): Promise<Map<string, ChatRole>> {
+  try {
+    const map = new Map<string, ChatRole>();
+
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('owner_id')
+      .eq('id', businessId)
+      .maybeSingle();
+
+    if (biz?.owner_id) {
+      map.set(biz.owner_id, 'owner');
+    }
+
+    const { data: emps } = await supabase
+      .from('employees')
+      .select('user_id')
+      .eq('business_id', businessId)
+      .eq('status', 'accepted');
+
+    if (emps) {
+      for (const emp of emps) {
+        if (emp.user_id && !map.has(emp.user_id)) {
+          map.set(emp.user_id, 'staff');
+        }
+      }
+    }
+
+    return map;
+  } catch {
+    return new Map();
+  }
+}

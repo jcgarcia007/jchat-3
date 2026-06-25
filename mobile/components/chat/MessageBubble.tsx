@@ -31,6 +31,7 @@ import {
   IconPhoto,
 } from '@tabler/icons-react-native';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { palette } from '../../theme/tokens';
 import { OfferCard } from './OfferCard';
 import type { Offer } from './OfferCard';
 
@@ -58,6 +59,8 @@ export interface MessageBubbleProps {
   /** Whether this message was sent by the current viewer. */
   isOwn: boolean;
   theme: ChatTheme;
+  /** Role of the author in this business chat room. Hidden for incognito messages. */
+  authorRole?: 'owner' | 'staff' | null;
   /** Called with the sender's user_id when avatar/name area is long-pressed. */
   onLongPressUser?: (userId: string, displayName: string) => void;
   /** Called when the message bubble itself is long-pressed (e.g. to pin). */
@@ -198,6 +201,7 @@ export function MessageBubble({
   message,
   isOwn,
   theme,
+  authorRole,
   onLongPressUser,
   onLongPressMessage,
 }: MessageBubbleProps) {
@@ -257,11 +261,36 @@ export function MessageBubble({
       <View style={[styles.bubbleCol, isOwn ? styles.bubbleColOwn : styles.bubbleColOther]}>
         {/* Sender name row — only for others */}
         {!isOwn && (
-          <Pressable onLongPress={handleLongPressUser} delayLongPress={400}>
+          <Pressable
+            onLongPress={handleLongPressUser}
+            delayLongPress={400}
+            style={styles.senderNameRow}
+          >
             <Text style={[styles.senderName, { color: theme.accent }]} numberOfLines={1}>
               {displayName}
               {incognito ? ' 🎭' : ''}
             </Text>
+            {!incognito && authorRole != null && (
+              <View
+                style={[
+                  styles.roleBadge,
+                  authorRole === 'owner'
+                    ? styles.roleBadgeOwner
+                    : styles.roleBadgeStaff,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.roleBadgeText,
+                    authorRole === 'owner'
+                      ? styles.roleBadgeTextOwner
+                      : styles.roleBadgeTextStaff,
+                  ]}
+                >
+                  {authorRole === 'owner' ? 'Dueño' : 'Staff'}
+                </Text>
+              </View>
+            )}
           </Pressable>
         )}
 
@@ -347,11 +376,46 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
 
+  senderNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    marginLeft: 4,
+    marginBottom: 2,
+    gap: 4,
+  },
+
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: 4,
-    marginBottom: 2,
+    flexShrink: 1,
+  },
+
+  roleBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+
+  roleBadgeOwner: {
+    backgroundColor: `${palette.gold}26`,
+  },
+
+  roleBadgeStaff: {
+    backgroundColor: `${palette.brand}26`,
+  },
+
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
+  roleBadgeTextOwner: {
+    color: palette.gold,
+  },
+
+  roleBadgeTextStaff: {
+    color: palette.brand,
   },
 
   bubble: {
