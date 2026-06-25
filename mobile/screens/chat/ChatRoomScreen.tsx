@@ -258,21 +258,40 @@ export default function ChatRoomScreen() {
   }, []);
 
   // Initial scroll: when messages first arrive (empty → populated), snap to the
-  // bottom WITHOUT animation. Retry after a short delay because multiline bubbles
-  // and photos change height post-layout, so the first scrollToEnd can fall short.
+  // bottom WITHOUT animation.
+  //
+  // Three retries cover the nested-KAV settling sequence:
+  //   ~0 ms  — first render
+  //  150 ms  — most item heights resolved
+  //  400 ms  — outer KAV has redistributed height after the input bar
+  //             (ChatInput's inner KAV) finishes measuring; this is the source
+  //             of the constant "~3 messages short" regression from commit 86e3d4b.
+  //
+  // hasDoneInitialScrollRef is marked true only at the 400 ms boundary so that
+  // handleContentSizeChange (which guards on that ref) doesn't prematurely fire
+  // an animated scroll while the layout is still settling.
   useEffect(() => {
     if (messages.length === 0 || hasDoneInitialScrollRef.current) return;
+    let midTimer: ReturnType<typeof setTimeout> | null = null;
     const frame = requestAnimationFrame(() => {
-      flatListRef.current?.scrollToEnd({ animated: false });
+      flatListRef.current?.scrollToEnd({ animated: false }); // attempt 1
+      midTimer = setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false }); // attempt 2
+        midTimer = null;
+      }, 150);
       initialScrollTimerRef.current = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
+        flatListRef.current?.scrollToEnd({ animated: false }); // attempt 3 — final
         hasDoneInitialScrollRef.current = true;
         setInitialScrollDone(true);
         initialScrollTimerRef.current = null;
-      }, 150);
+      }, 400);
     });
     return () => {
       cancelAnimationFrame(frame);
+      if (midTimer !== null) {
+        clearTimeout(midTimer);
+        midTimer = null;
+      }
       if (initialScrollTimerRef.current !== null) {
         clearTimeout(initialScrollTimerRef.current);
         initialScrollTimerRef.current = null;
@@ -932,7 +951,11 @@ export default function ChatRoomScreen() {
           maintainVisibleContentPosition={initialScrollDone ? { minIndexForVisible: 0 } : undefined}
           showsVerticalScrollIndicator={false}
           onLayout={() => {
-            if (pendingInitialScrollRef.current) {
+            // Fire scrollToEnd on every layout change while the initial scroll
+            // hasn't been marked done (400 ms window). This catches any KAV
+            // resize that happens AFTER the pendingInitialScrollRef path has
+            // already cleared but before the 400 ms timer fires.
+            if (pendingInitialScrollRef.current || !hasDoneInitialScrollRef.current) {
               scrollToEndAfterRender(false);
             }
           }}
@@ -1145,7 +1168,10 @@ const chatStyles = StyleSheet.create({
   listContent: {
     paddingVertical: 8,
     flexGrow: 1,
-    justifyContent: 'flex-end',
+    // justifyContent: 'flex-end' removed — for long content (> viewport) it has
+    // no effect on scroll math but can cause subtle interference with scrollToEnd.
+    // Short conversations look fine starting from the top; the app snaps to the
+    // bottom via scrollToEnd on mount anyway.
   },
   loadingHeader: {
     paddingVertical: 12,
