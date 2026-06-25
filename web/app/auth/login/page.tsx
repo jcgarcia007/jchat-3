@@ -23,7 +23,10 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  // Accept ?next= (dashboard flow) or ?redirect= (QR flow). Validate: must be
+  // an internal relative path (starts with '/') to prevent open-redirect attacks.
+  const rawNext = searchParams.get("next") ?? searchParams.get("redirect") ?? "/dashboard";
+  const next = rawNext.startsWith("/") ? rawNext : "/dashboard";
   const oauthError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
