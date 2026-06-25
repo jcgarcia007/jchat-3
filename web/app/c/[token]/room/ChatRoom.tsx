@@ -428,6 +428,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     } satisfies React.CSSProperties,
 
     inputRow: {
+      position: "relative",
       display: "flex",
       alignItems: "flex-end",
       gap: 8,
@@ -802,7 +803,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         />
 
         {/* "+" attach button + floating panel */}
-        <div ref={attachPanelRef} style={{ position: "relative", flexShrink: 0 }}>
+        <div ref={attachPanelRef} style={{ flexShrink: 0 }}>
           {/* Floating attach panel — horizontal cards matching mobile AttachmentPanel */}
           {showAttachPanel && (
             <div
@@ -810,6 +811,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 position: "absolute",
                 bottom: 54,
                 left: 0,
+                right: 0,
                 background: theme.topBg,
                 border: `1px solid ${theme.border}`,
                 borderRadius: 16,
