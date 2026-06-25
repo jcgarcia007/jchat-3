@@ -1,21 +1,27 @@
 /**
- * JChat 3.0 — ChatInput (Task 2.4)
+ * JChat 3.0 — ChatInput (Task 2.4, WhatsApp-style bar)
  *
  * The bottom input bar of the chat room.
- * Layout: [AttachmentPanel above when open] [+ button] [TextInput] [😊 emoji] [Send button]
+ * Layout: [AttachmentPanel above when open] [+] [TextInput] [camera] [mic/send]
  *
  * Props:
  *   theme          — active ChatTheme
  *   onSendText     — called with the trimmed text string
- *   onSendPhoto    — called with the image URI from the gallery picker
- *   onOfferPress   — TODO(Task 2.6): will open CreateOfferSheet
+ *   onSendPhoto    — called with the image URI (gallery OR camera)
+ *   onOfferPress   — TODO(Task 2.6): opens CreateOfferSheet
+ *   canCreateOffer — forwarded to AttachmentPanel (offers_manage permission gate)
  *   disabled       — prevents sending (e.g. muted)
+ *
+ * Dynamic mic/send button:
+ *   text is empty  → microphone icon (tapping shows "coming soon" alert)
+ *   text has chars → send icon (tapping sends the message)
  *
  * // TODO(i18n)
  */
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,9 +29,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { IconMoodSmile, IconPlus, IconSend, IconX } from '@tabler/icons-react-native';
-import EmojiPicker from 'rn-emoji-keyboard';
-import type { EmojiType } from 'rn-emoji-keyboard';
+import {
+  IconCamera,
+  IconMicrophone,
+  IconPlus,
+  IconSend,
+  IconX,
+} from '@tabler/icons-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { AttachmentPanel } from './AttachmentPanel';
 import type { ChatTheme } from '../../theme/chatThemes';
 
@@ -53,8 +64,13 @@ export function ChatInput({
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachmentOpen, setAttachmentOpen] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  const canSend = text.trim().length > 0 && !disabled;
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -65,7 +81,6 @@ export function ChatInput({
 
   const handleToggleAttachment = useCallback(() => {
     setAttachmentOpen((prev) => !prev);
-    setEmojiPickerOpen(false);
     inputRef.current?.blur();
   }, []);
 
@@ -73,25 +88,39 @@ export function ChatInput({
     setAttachmentOpen(false);
   }, []);
 
-  const handlePhoto = useCallback((uri: string) => {
+  const handleGalleryPhoto = useCallback((uri: string) => {
     onSendPhoto(uri);
   }, [onSendPhoto]);
 
-  const handleToggleEmoji = useCallback(() => {
-    const opening = !emojiPickerOpen;
-    setEmojiPickerOpen(opening);
-    if (opening) {
-      // Dismiss system keyboard so emoji picker has full room
-      setAttachmentOpen(false);
-      inputRef.current?.blur();
+  const handleCamera = useCallback(async () => {
+    setAttachmentOpen(false);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Permission required', // TODO(i18n)
+        'Allow camera access to take photos in chat.',
+      );
+      return;
     }
-  }, [emojiPickerOpen]);
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const uri = result.assets[0]?.uri;
+      if (uri) {
+        onSendPhoto(uri);
+      }
+    }
+  }, [onSendPhoto]);
 
-  const handleEmojiSelected = useCallback((emoji: EmojiType) => {
-    setText((prev) => prev + emoji.emoji);
+  const handleMicPress = useCallback(() => {
+    // TODO(audio): implement voice recording in a future tanda
+    Alert.alert('Coming soon', 'Voice messages will be available soon.'); // TODO(i18n)
   }, []);
 
-  const canSend = text.trim().length > 0 && !disabled;
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <KeyboardAvoidingView
@@ -101,7 +130,7 @@ export function ChatInput({
       <AttachmentPanel
         visible={attachmentOpen}
         theme={theme}
-        onPhoto={handlePhoto}
+        onPhoto={handleGalleryPhoto}
         onOffer={onOfferPress}
         onClose={handleCloseAttachment}
         canCreateOffer={canCreateOffer}
@@ -109,7 +138,8 @@ export function ChatInput({
 
       {/* Input bar */}
       <View style={[barStyles.container, { backgroundColor: theme.topBg, borderTopColor: theme.border }]}>
-        {/* + / X toggle */}
+
+        {/* + / X toggle — opens AttachmentPanel */}
         <Pressable
           onPress={handleToggleAttachment}
           disabled={disabled}
@@ -144,59 +174,46 @@ export function ChatInput({
           maxLength={4000}
           returnKeyType="default"
           editable={!disabled}
-          onFocus={() => {
-            setAttachmentOpen(false);
-            setEmojiPickerOpen(false);
-          }}
+          onFocus={() => setAttachmentOpen(false)}
           accessibilityLabel="Message input" // TODO(i18n)
         />
 
-        {/* Emoji picker button */}
+        {/* Camera — quick photo without opening panel */}
         <Pressable
-          onPress={handleToggleEmoji}
+          onPress={() => void handleCamera()}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel={emojiPickerOpen ? 'Close emoji picker' : 'Open emoji picker'} // TODO(i18n)
+          accessibilityLabel="Take a photo" // TODO(i18n)
           style={({ pressed }) => [
             barStyles.iconBtn,
-            { backgroundColor: emojiPickerOpen ? theme.accent : theme.inputBg, borderColor: theme.border },
+            { backgroundColor: theme.inputBg, borderColor: theme.border },
             pressed && barStyles.iconBtnPressed,
             disabled && barStyles.disabled,
           ]}
         >
-          <IconMoodSmile
-            size={20}
-            color={emojiPickerOpen ? theme.topBg : theme.accent}
-          />
+          <IconCamera size={20} color={theme.accent} />
         </Pressable>
 
-        {/* Send button */}
+        {/* Dynamic: mic (text empty) ↔ send (text present) */}
         <Pressable
-          onPress={handleSend}
-          disabled={!canSend}
+          onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
-          accessibilityLabel="Send message" // TODO(i18n)
-          accessibilityState={{ disabled: !canSend }}
+          accessibilityLabel={canSend ? 'Send message' : 'Voice message (coming soon)'} // TODO(i18n)
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: canSend ? theme.accent : theme.inputBg, borderColor: theme.border },
-            pressed && canSend && barStyles.iconBtnPressed,
-            !canSend && barStyles.disabled,
+            pressed && barStyles.iconBtnPressed,
+            disabled && barStyles.disabled,
           ]}
         >
-          <IconSend
-            size={20}
-            color={canSend ? theme.topBg : theme.tabInactive}
-          />
+          {canSend ? (
+            <IconSend size={20} color={theme.topBg} />
+          ) : (
+            <IconMicrophone size={20} color={disabled ? theme.tabInactive : theme.accent} />
+          )}
         </Pressable>
-      </View>
 
-      {/* Emoji picker modal */}
-      <EmojiPicker
-        open={emojiPickerOpen}
-        onClose={() => setEmojiPickerOpen(false)}
-        onEmojiSelected={handleEmojiSelected}
-      />
+      </View>
     </KeyboardAvoidingView>
   );
 }
