@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconSend, IconArrowLeft, IconLoader2, IconPhoto, IconBell, IconX, IconPlus } from "@tabler/icons-react";
+import { IconSend, IconArrowLeft, IconLoader2, IconCamera, IconToolsKitchen2, IconBell, IconHeart, IconX, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
@@ -803,23 +803,26 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
         {/* "+" attach button + floating panel */}
         <div ref={attachPanelRef} style={{ position: "relative", flexShrink: 0 }}>
-          {/* Floating attach panel — appears above the "+" button */}
+          {/* Floating attach panel — horizontal cards matching mobile AttachmentPanel */}
           {showAttachPanel && (
             <div
               style={{
                 position: "absolute",
-                bottom: 50,
+                bottom: 54,
                 left: 0,
                 background: theme.topBg,
                 border: `1px solid ${theme.border}`,
-                borderRadius: 14,
-                padding: "6px 0",
-                minWidth: 180,
+                borderRadius: 16,
+                padding: 10,
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
+                gap: 8,
                 boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
                 zIndex: 20,
               }}
             >
-              {/* Photo option */}
+              {/* Foto */}
               <button
                 type="button"
                 onClick={() => {
@@ -828,29 +831,58 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 }}
                 disabled={uploading || sending}
                 style={{
+                  flex: 1,
+                  minWidth: 62,
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  padding: "10px 14px",
-                  border: "none",
-                  background: "transparent",
-                  color: uploading ? theme.bubbleInText : theme.bubbleInText,
-                  opacity: uploading ? 0.5 : 1,
-                  fontSize: 14,
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "12px 8px",
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.bubbleInBg,
                   cursor: uploading || sending ? "default" : "pointer",
-                  textAlign: "left",
+                  opacity: uploading || sending ? 0.5 : 1,
                 }}
               >
-                {uploading ? (
-                  <IconLoader2 size={18} className="spin" style={{ color: theme.accent, flexShrink: 0 }} />
-                ) : (
-                  <IconPhoto size={18} style={{ color: theme.accent, opacity: 0.7, flexShrink: 0 }} />
-                )}
-                {uploading ? "Subiendo…" : "Foto"}
+                {uploading
+                  ? <IconLoader2 size={24} className="spin" style={{ color: theme.accent }} />
+                  : <IconCamera size={24} style={{ color: theme.accent }} />
+                }
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
+                  {uploading ? "Subiendo…" : "Foto"}
+                </span>
               </button>
 
-              {/* Waiter option */}
+              {/* Menú — disabled, coming soon */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 62,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  padding: "12px 8px",
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.bubbleInBg,
+                  opacity: 0.72,
+                  cursor: "default",
+                }}
+              >
+                <IconToolsKitchen2 size={24} style={{ color: theme.accent }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
+                  Menú
+                </span>
+                <span style={{ fontSize: 9, color: theme.bubbleInText, opacity: 0.55, marginTop: -2 }}>
+                  pronto
+                </span>
+              </div>
+
+              {/* Servicio */}
               <button
                 type="button"
                 onClick={() => {
@@ -861,32 +893,53 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   setShowWaiterSheet(true);
                 }}
                 style={{
+                  flex: 1,
+                  minWidth: 62,
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  padding: "10px 14px",
-                  border: "none",
-                  background: "transparent",
-                  color: theme.bubbleInText,
-                  opacity: waiterState === "cooldown" ? 0.5 : 1,
-                  fontSize: 14,
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "12px 8px",
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.bubbleInBg,
                   cursor: "pointer",
-                  textAlign: "left",
+                  opacity: waiterState === "cooldown" ? 0.5 : 1,
                 }}
               >
-                <IconBell
-                  size={18}
-                  style={{
-                    color: waiterState === "cooldown" ? theme.bubbleInText : theme.accent,
-                    opacity: waiterState === "cooldown" ? 0.5 : 0.7,
-                    flexShrink: 0,
-                  }}
-                />
-                {waiterState === "cooldown"
-                  ? `Mesero (${cooldownSecsLeft}s)`
-                  : "Llamar al mesero"}
+                <IconBell size={24} style={{ color: theme.accent }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
+                  {waiterState === "cooldown" ? `${cooldownSecsLeft}s` : "Servicio"}
+                </span>
               </button>
+
+              {/* Match — disabled, coming soon */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 62,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  padding: "12px 8px",
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.bubbleInBg,
+                  opacity: 0.72,
+                  cursor: "default",
+                }}
+              >
+                <IconHeart size={24} style={{ color: theme.accent }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
+                  Match
+                </span>
+                <span style={{ fontSize: 9, color: theme.bubbleInText, opacity: 0.55, marginTop: -2 }}>
+                  pronto
+                </span>
+              </div>
             </div>
           )}
 
