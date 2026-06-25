@@ -78,6 +78,13 @@ const config: ExpoConfig = {
     ['react-native-maps', { iosGoogleMapsApiKey: IOS_MAPS_KEY }],
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
+    [
+      'expo-audio',
+      {
+        microphonePermission: 'JChat needs access to your microphone to send voice messages.',
+        enableBackgroundRecording: false,
+      },
+    ],
   ],
   extra: {
     eas: {
