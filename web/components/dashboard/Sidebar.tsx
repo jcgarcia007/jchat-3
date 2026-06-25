@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconLayoutDashboard,
   IconShoppingCart,
@@ -14,7 +15,6 @@ import {
   IconBell,
   IconCalendar,
   IconAward,
-  IconBellRinging,
   IconCreditCard,
   IconChartBar,
   IconTag,
@@ -22,23 +22,19 @@ import {
   IconShield,
 } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
 
-// ─── Badge stubs ─────────────────────────────────────────────────────────────
-// TODO(Task 3.x): replace with real-time counts from Supabase Realtime
-const PENDING_ORDERS = 3;
-const UNREAD_ALERTS = 2;
-
-// ─── Nav items ───────────────────────────────────────────────────────────────
 interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ size?: number; stroke?: number }>;
-  badge?: number;
+  badgeKey?: "service_pending";
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Overview",       href: "/dashboard",               icon: IconLayoutDashboard },
-  { label: "Orders",         href: "/dashboard/orders",        icon: IconShoppingCart,   badge: PENDING_ORDERS },
+  { label: "Orders",         href: "/dashboard/orders",        icon: IconShoppingCart },
   { label: "Menu",           href: "/dashboard/menu",          icon: IconToolsKitchen2 },
   { label: "Inventory",      href: "/dashboard/inventory",     icon: IconPackage },
   { label: "Chat rooms",     href: "/dashboard/chat-rooms",    icon: IconMessages },
@@ -46,8 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Roles",          href: "/dashboard/roles",         icon: IconShieldLock },
   { label: "Reservations",   href: "/dashboard/reservations",  icon: IconCalendar },
   { label: "Loyalty",        href: "/dashboard/loyalty",       icon: IconAward },
-  { label: "Servicio",       href: "/dashboard/service",       icon: IconBell },
-  { label: "Alerts",         href: "/dashboard/alerts",        icon: IconBellRinging,    badge: UNREAD_ALERTS },
+  { label: "Servicio",       href: "/dashboard/service",       icon: IconBell, badgeKey: "service_pending" },
   { label: "Payments",       href: "/dashboard/payments",      icon: IconCreditCard },
   { label: "Reports",        href: "/dashboard/reports",       icon: IconChartBar },
   { label: "Offers",         href: "/dashboard/offers",        icon: IconTag },
@@ -57,8 +52,9 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
+  const [servicePending, setServicePending] = useState(0);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // Show the Super Admin entry only for users with the super_admin/admin role.
   useEffect(() => {
     let active = true;
     isSuperAdmin().then((ok) => {
@@ -66,6 +62,47 @@ export function Sidebar() {
     });
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+
+    async function countPending(businessId: string) {
+      const { count, error } = await supabase
+        .from("service_calls")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId)
+        .eq("status", "pending");
+      if (!active) return;
+      if (!error) setServicePending(count ?? 0);
+    }
+
+    void (async () => {
+      try {
+        const res = await resolveActiveBusiness();
+        if (!active || !res.ok) return;
+        const businessId = res.business.id;
+        await countPending(businessId);
+        channelRef.current = supabase
+          .channel(`sidebar-service-${businessId}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "service_calls", filter: `business_id=eq.${businessId}` },
+            () => {
+              void countPending(businessId).catch(() => {});
+            },
+          )
+          .subscribe();
+      } catch {
+        // Silent: badge is non-critical chrome.
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (channelRef.current) void supabase.removeChannel(channelRef.current);
     };
   }, []);
 
@@ -91,12 +128,13 @@ export function Sidebar() {
         scrollbarWidth: "none",
       }}
     >
-      {NAV_ITEMS.map(({ label, href, icon: Icon, badge }) => {
-        // Exact match for Overview, prefix match for all others
+      {NAV_ITEMS.map(({ label, href, icon: Icon, badgeKey }) => {
         const isActive =
           href === "/dashboard"
             ? pathname === "/dashboard"
             : pathname === href || pathname.startsWith(href + "/");
+
+        const badge = badgeKey === "service_pending" ? servicePending : 0;
 
         return (
           <Link
@@ -114,7 +152,6 @@ export function Sidebar() {
               height: "40px",
               borderRadius: "10px",
               textDecoration: "none",
-              // Active state per spec: elevated bg + brand left border + accent icon
               background: isActive ? "var(--db-bg-elevated)" : "transparent",
               borderLeft: isActive
                 ? "2px solid var(--color-brand)"
@@ -125,8 +162,7 @@ export function Sidebar() {
           >
             <Icon size={20} stroke={1.6} />
 
-            {/* Badge */}
-            {badge !== undefined && badge > 0 && (
+            {badge > 0 && (
               <span
                 aria-label={`${badge} pending`}
                 style={{
@@ -154,7 +190,6 @@ export function Sidebar() {
         );
       })}
 
-      {/* Super Admin — only for super_admin / admin-role users */}
       {showAdmin && (
         <>
           <div
