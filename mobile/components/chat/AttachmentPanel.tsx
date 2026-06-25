@@ -1,22 +1,24 @@
 /**
- * JChat 3.0 — AttachmentPanel (Task 2.4)
+ * JChat 3.0 — AttachmentPanel (Task 2.4, restructured)
  *
  * Expands from the "+" button in ChatInput.
- * Four options: Photo, Voice, GIF, Offer.
+ * Buttons (in order): Photo · Menú · Servicio · Match · Offer*
  *
- * Photo  — expo-image-picker (MediaTypeOptions.Images)
- * Voice  — TODO(expo-av): record audio
- * GIF    — TODO(giphy): open GIF picker
- * Offer  — TODO(Task 2.6): open CreateOfferSheet
+ * Photo    — expo-image-picker (MediaTypeOptions.Images)
+ * Menú     — opens the business menu (calls onMenu, wired in ChatRoomScreen)
+ * Servicio — calls service alert / waiter call (calls onServiceCall — Tanda C)
+ * Match    — DISABLED / coming soon, no-op (renders faded with "pronto" badge)
+ * Offer*   — gated by canCreateOffer (offers_manage permission); calls onOffer
  *
  * Props:
- *   visible       — controls whether the panel is displayed
- *   theme         — active ChatTheme
- *   onPhoto       — called with the selected image URI
- *   onVoice       — placeholder (not implemented)
- *   onGif         — placeholder (not implemented)
- *   onOffer       — placeholder (will open CreateOfferSheet in Task 2.6)
- *   onClose       — called after any action or dismiss
+ *   visible         — controls whether the panel is displayed
+ *   theme           — active ChatTheme
+ *   onPhoto         — called with the selected image URI
+ *   onMenu          — called when user taps Menú (optional; ChatRoomScreen wires this)
+ *   onServiceCall   — called when user taps Servicio (optional; Tanda C)
+ *   onOffer         — called when user taps Offer (optional; CreateOfferSheet)
+ *   onClose         — called after any action or dismiss
+ *   canCreateOffer  — hides Offer button when false (offers_manage permission gate)
  *
  * // TODO(i18n)
  */
@@ -31,8 +33,9 @@ import {
 } from 'react-native';
 import {
   IconCamera,
-  IconMicrophone,
-  IconGif,
+  IconToolsKitchen2,
+  IconBell,
+  IconHeart,
   IconTag,
 } from '@tabler/icons-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -44,8 +47,8 @@ export interface AttachmentPanelProps {
   visible: boolean;
   theme: ChatTheme;
   onPhoto: (uri: string) => void;
-  onVoice?: () => void;
-  onGif?: () => void;
+  onMenu?: () => void;
+  onServiceCall?: () => void;
   onOffer?: () => void;
   onClose: () => void;
   /** Gate: show Offer button only when the current user has offers_manage permission. */
@@ -88,8 +91,10 @@ const optStyles = StyleSheet.create({
     gap: 6,
     borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
     flex: 1,
+    minWidth: 60,
   },
   btnPressed: {
     opacity: 0.72,
@@ -106,8 +111,8 @@ export function AttachmentPanel({
   visible,
   theme,
   onPhoto,
-  onVoice,
-  onGif,
+  onMenu,
+  onServiceCall,
   onOffer,
   onClose,
   canCreateOffer,
@@ -136,25 +141,17 @@ export function AttachmentPanel({
     onClose();
   }, [onPhoto, onClose]);
 
-  const handleVoice = useCallback(() => {
+  const handleMenu = useCallback(() => {
     onClose();
-    if (onVoice) {
-      onVoice();
-    } else {
-      // TODO(expo-av): implement voice recording
-      Alert.alert('Coming soon', 'Voice messages will be available soon.'); // TODO(i18n)
-    }
-  }, [onVoice, onClose]);
+    if (onMenu) onMenu();
+    // ChatRoomScreen wires this to navigation.navigate('Menu', ...)
+  }, [onMenu, onClose]);
 
-  const handleGif = useCallback(() => {
+  const handleServiceCall = useCallback(() => {
     onClose();
-    if (onGif) {
-      onGif();
-    } else {
-      // TODO(giphy): open GIF picker
-      Alert.alert('Coming soon', 'GIF picker coming soon.'); // TODO(i18n)
-    }
-  }, [onGif, onClose]);
+    if (onServiceCall) onServiceCall();
+    // TODO(Tanda C): open service-call sheet
+  }, [onServiceCall, onClose]);
 
   const handleOffer = useCallback(() => {
     onClose();
@@ -169,24 +166,52 @@ export function AttachmentPanel({
   return (
     <View style={[panelStyles.container, { backgroundColor: theme.topBg, borderTopColor: theme.border }]}>
       <View style={panelStyles.row}>
+
+        {/* Photo */}
         <OptionButton
           theme={theme}
           icon={<IconCamera size={24} color={theme.accent} />}
           label="Photo" // TODO(i18n)
           onPress={handlePhoto}
         />
+
+        {/* Menú */}
         <OptionButton
           theme={theme}
-          icon={<IconMicrophone size={24} color={theme.accent} />}
-          label="Voice" // TODO(i18n)
-          onPress={handleVoice}
+          icon={<IconToolsKitchen2 size={24} color={theme.accent} />}
+          label="Menú" // TODO(i18n)
+          onPress={handleMenu}
         />
+
+        {/* Servicio */}
         <OptionButton
           theme={theme}
-          icon={<IconGif size={24} color={theme.accent} />}
-          label="GIF" // TODO(i18n)
-          onPress={handleGif}
+          icon={<IconBell size={24} color={theme.accent} />}
+          label="Servicio" // TODO(i18n)
+          onPress={handleServiceCall}
         />
+
+        {/* Match — disabled / coming soon */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Match — Próximamente" // TODO(i18n)
+          accessibilityState={{ disabled: true }}
+          onPress={() => Alert.alert('Próximamente', 'Match estará disponible pronto.')} // TODO(i18n)
+          style={[
+            optStyles.btn,
+            { backgroundColor: theme.inputBg, borderColor: theme.border, opacity: 0.4 },
+          ]}
+        >
+          <IconHeart size={24} color={theme.accent} />
+          <Text style={[optStyles.label, { color: theme.bubbleInText }]}>
+            Match
+          </Text>
+          <Text style={[panelStyles.pronto, { color: theme.accent }]}>
+            pronto
+          </Text>
+        </Pressable>
+
+        {/* Offer — visible only to users with offers_manage permission */}
         {canCreateOffer && (
           <OptionButton
             theme={theme}
@@ -195,6 +220,7 @@ export function AttachmentPanel({
             onPress={handleOffer}
           />
         )}
+
       </View>
     </View>
   );
@@ -209,6 +235,13 @@ const panelStyles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pronto: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginTop: -2,
   },
 });
