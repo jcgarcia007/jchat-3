@@ -20,7 +20,11 @@ import {
   IconPlus,
   IconUsers,
   IconX,
+  IconQrcode,
+  IconLoader2,
+  IconDownload,
 } from "@tabler/icons-react";
+import { roomQrUrl, generateQrPngDataUrl, downloadQrPng, downloadQrPdf } from "@/services/qr";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -35,6 +39,7 @@ interface RoomRow {
   is_password_protected: boolean;
   ttl_hours: number | null;
   chat_theme_id: number;
+  qr_token: string | null;
   member_count: number;
 }
 
@@ -55,9 +60,9 @@ const TYPE_META: Record<RoomType, { icon: React.ComponentType<{ size?: number }>
 };
 
 const DEMO_ROOMS: RoomRow[] = [
-  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 86 },
-  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, member_count: 12 },
-  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, chat_theme_id: 7, member_count: 31 },
+  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, qr_token: "demo-main-00000001", member_count: 86 },
+  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, qr_token: "demo-vip-00000002", member_count: 12 },
+  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, chat_theme_id: 7, qr_token: "demo-event-00000003", member_count: 31 },
 ];
 
 const ROOM_EMOJIS = ["💬", "🥂", "🎶", "🍻", "🎉", "⭐️", "🔥", "🏆", "🎯", "🪩", "🎨", "📣"];
@@ -83,6 +88,21 @@ export default function ChatRoomsPage() {
   const [themeRoom, setThemeRoom] = useState<RoomRow | null>(null);
   const [savingTheme, setSavingTheme] = useState(false);
 
+  // QR modal
+  const [qrRoom, setQrRoom] = useState<RoomRow | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrGenerating, setQrGenerating] = useState(false);
+
+  function openQr(room: RoomRow) {
+    if (!room.qr_token) return;
+    setQrRoom(room);
+    setQrDataUrl(null);
+    setQrGenerating(true);
+    void generateQrPngDataUrl(roomQrUrl(room.qr_token), { color: "#1a1a2e" })
+      .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
+      .catch(() => { setQrGenerating(false); });
+  }
+
   async function changeTheme(room: RoomRow, themeId: number) {
     setSavingTheme(true);
     setError(null);
@@ -103,7 +123,7 @@ export default function ChatRoomsPage() {
   async function load(bizId: string) {
     const { data, error: roomsErr } = await supabase
       .from("rooms")
-      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours, chat_theme_id")
+      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours, chat_theme_id, qr_token")
       .eq("business_id", bizId)
       .order("is_main", { ascending: false })
       .order("sort", { ascending: true });
@@ -165,7 +185,7 @@ export default function ChatRoomsPage() {
       if (!isSupabaseConfigured) {
         setRooms((prev) => [
           ...prev,
-          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 0 },
+          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, qr_token: null, member_count: 0 },
         ]);
       } else if (business) {
         const { error: insErr } = await supabase.from("rooms").insert({
@@ -353,7 +373,7 @@ export default function ChatRoomsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 110px 70px 320px",
+              gridTemplateColumns: "1fr 110px 70px 360px",
               gap: "12px",
               padding: "12px 20px",
               fontSize: "11px",
@@ -379,7 +399,7 @@ export default function ChatRoomsPage() {
                 key={r.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 110px 70px 320px",
+                  gridTemplateColumns: "1fr 110px 70px 360px",
                   gap: "12px",
                   padding: "14px 20px",
                   alignItems: "center",
@@ -465,6 +485,30 @@ export default function ChatRoomsPage() {
                     />
                     Theme
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => openQr(r)}
+                    title={r.qr_token ? "Ver QR de esta sala" : "Sin token QR"}
+                    disabled={!r.qr_token}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "7px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--db-border)",
+                      background: "var(--db-bg-elevated)",
+                      color: r.qr_token ? "var(--db-accent)" : "var(--db-text-tertiary)",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: r.qr_token ? "pointer" : "default",
+                      whiteSpace: "nowrap",
+                      opacity: r.qr_token ? 1 : 0.5,
+                    }}
+                  >
+                    <IconQrcode size={14} />
+                    QR
+                  </button>
                   {business?.slug && (
                     <a
                       href={`/b/${business.slug}`}
@@ -489,6 +533,167 @@ export default function ChatRoomsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* QR modal — preview + download */}
+      {qrRoom && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`QR de ${qrRoom.name}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setQrRoom(null); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--db-bg-surface)",
+              border: "1px solid var(--db-border)",
+              borderRadius: "16px",
+              padding: "24px",
+              width: "340px",
+              maxWidth: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <IconQrcode size={18} color="var(--db-accent)" />
+                <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                  {qrRoom.name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQrRoom(null)}
+                aria-label="Cerrar"
+                style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer", padding: "4px" }}
+              >
+                <IconX size={20} />
+              </button>
+            </div>
+
+            {/* QR preview */}
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: "12px",
+                padding: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "240px",
+              }}
+            >
+              {qrGenerating ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", color: "#888", fontSize: "13px" }}>
+                  <IconLoader2 size={28} className="spin" style={{ color: "#5C7CFA" }} />
+                  Generando QR…
+                </div>
+              ) : qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR ${qrRoom.name}`}
+                  style={{ width: "100%", maxWidth: "240px", height: "auto", display: "block" }}
+                />
+              ) : (
+                <span style={{ color: "#888", fontSize: "13px" }}>Error al generar</span>
+              )}
+            </div>
+
+            {/* URL */}
+            {qrRoom.qr_token && (
+              <p style={{
+                fontSize: "11px",
+                color: "var(--db-text-secondary)",
+                textAlign: "center",
+                margin: 0,
+                wordBreak: "break-all",
+                fontFamily: "monospace",
+              }}>
+                {roomQrUrl(qrRoom.qr_token)}
+              </p>
+            )}
+
+            {/* Download buttons */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                type="button"
+                disabled={!qrDataUrl || !qrRoom.qr_token}
+                onClick={() => {
+                  if (!qrRoom.qr_token) return;
+                  void downloadQrPng(
+                    roomQrUrl(qrRoom.qr_token),
+                    `qr-${qrRoom.qr_token}`,
+                    { color: "#1a1a2e" }
+                  );
+                }}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  color: "var(--db-text-primary)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: qrDataUrl ? "pointer" : "default",
+                  opacity: qrDataUrl ? 1 : 0.5,
+                }}
+              >
+                <IconDownload size={14} />
+                PNG
+              </button>
+              <button
+                type="button"
+                disabled={!qrDataUrl || !qrRoom.qr_token}
+                onClick={() => {
+                  if (!qrRoom.qr_token) return;
+                  void downloadQrPdf(
+                    roomQrUrl(qrRoom.qr_token),
+                    `qr-${qrRoom.qr_token}`,
+                    qrRoom.name,
+                    { color: "#1a1a2e" }
+                  );
+                }}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  background: "var(--db-accent)",
+                  color: "var(--db-accent-text)",
+                  border: "none",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: qrDataUrl ? "pointer" : "default",
+                  opacity: qrDataUrl ? 1 : 0.5,
+                }}
+              >
+                <IconDownload size={14} />
+                PDF
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -38,7 +38,7 @@ import {
 } from "@tabler/icons-react";
 import { getChatTheme } from "@/constants/chatThemes";
 import {
-  roomUrl,
+  roomQrUrl,
   generateQrSvg,
   downloadQrPng,
   downloadQrSvg,
@@ -48,11 +48,10 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface QRModalRoom {
-  slug: string;
+  /** QR token from rooms.qr_token — used to build the /c/{token} URL. */
+  qr_token: string;
   name: string;
   chat_theme_id: number;
-  /** If this room is a sub-room, supply the parent's slug. */
-  parent_slug?: string;
   /** True when this is the main (root) room of the venue. */
   is_main?: boolean;
 }
@@ -82,11 +81,10 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
   const theme = getChatTheme(room.chat_theme_id);
   const accentColor = theme.accent;
 
-  const isSubRoom = Boolean(room.parent_slug);
   const isPro = business.plan === "pro";
 
-  const deepLink = roomUrl(business.slug, room.slug, room.parent_slug);
-  const filename = safeFilename(`${business.slug}-${room.slug}-qr`);
+  const deepLink = roomQrUrl(room.qr_token);
+  const filename = safeFilename(`qr-${room.qr_token}`);
 
   const [svgContent, setSvgContent] = useState<string>("");
   const [copied, setCopied] = useState(false);
@@ -288,7 +286,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
           </h2>
 
           {/* Sub-room note */}
-          {isSubRoom && (
+          {!room.is_main && (
             <p
               style={{
                 margin: "6px 0 0",

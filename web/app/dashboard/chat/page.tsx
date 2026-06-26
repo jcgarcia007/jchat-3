@@ -60,6 +60,7 @@ interface Room {
   notify_enabled: boolean;
   is_main: boolean;
   sort: number;
+  qr_token: string | null;
 }
 
 /** Editable draft for a room's settings panel. */
@@ -97,6 +98,7 @@ const DEMO_ROOMS: Room[] = [
     notify_enabled: true,
     is_main: true,
     sort: 0,
+    qr_token: "demo-main-00000001",
   },
   {
     id: "demo-vip-room",
@@ -114,6 +116,7 @@ const DEMO_ROOMS: Room[] = [
     notify_enabled: false,
     is_main: false,
     sort: 1,
+    qr_token: "demo-vip-00000002",
   },
 ];
 
@@ -1072,7 +1075,7 @@ function ChatRoomManagerPage() {
       .select(
         "id, business_id, parent_room_id, name, description, icon, color, slug, " +
         "chat_theme_id, is_password_protected, password_hash, ttl_hours, " +
-        "notify_enabled, is_main, sort"
+        "notify_enabled, is_main, sort, qr_token"
       )
       .eq("business_id", businessId)
       .order("sort", { ascending: true });
@@ -1215,6 +1218,7 @@ function ChatRoomManagerPage() {
           notify_enabled: true,
           is_main: false,
           sort: rooms.length,
+          qr_token: null,
         };
         setRooms((prev) => [...prev, newRoom]);
         setDrafts((prev) => ({ ...prev, [newRoom.id]: toDraft(newRoom) }));
@@ -1527,12 +1531,9 @@ function ChatRoomManagerPage() {
       {qrRoom && (
         <QRModal
           room={{
-            slug: qrRoom.slug ?? qrRoom.id,
+            qr_token: qrRoom.qr_token ?? qrRoom.id,
             name: qrRoom.name,
             chat_theme_id: qrRoom.chat_theme_id,
-            parent_slug: qrRoom.parent_room_id
-              ? (rooms.find((r) => r.id === qrRoom.parent_room_id)?.slug ?? undefined)
-              : undefined,
             is_main: qrRoom.is_main,
           } satisfies QRModalRoom}
           business={
