@@ -24,7 +24,7 @@ import {
   IconLoader2,
   IconDownload,
 } from "@tabler/icons-react";
-import { roomQrUrl, generateQrPngDataUrl, downloadQrPng, downloadQrPdf } from "@/services/qr";
+import { roomQrUrl, generateStyledQrPngDataUrl, downloadStyledQrPdf, downloadDataUrl } from "@/services/qr";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -98,7 +98,7 @@ export default function ChatRoomsPage() {
     setQrRoom(room);
     setQrDataUrl(null);
     setQrGenerating(true);
-    void generateQrPngDataUrl(roomQrUrl(room.qr_token), { color: "#1a1a2e" })
+    void generateStyledQrPngDataUrl(roomQrUrl(room.qr_token))
       .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
       .catch(() => { setQrGenerating(false); });
   }
@@ -633,12 +633,8 @@ export default function ChatRoomsPage() {
                 type="button"
                 disabled={!qrDataUrl || !qrRoom.qr_token}
                 onClick={() => {
-                  if (!qrRoom.qr_token) return;
-                  void downloadQrPng(
-                    roomQrUrl(qrRoom.qr_token),
-                    `qr-${qrRoom.qr_token}`,
-                    { color: "#1a1a2e" }
-                  );
+                  if (!qrDataUrl || !qrRoom.qr_token) return;
+                  downloadDataUrl(qrDataUrl, `qr-${qrRoom.qr_token}.png`);
                 }}
                 style={{
                   flex: 1,
@@ -665,11 +661,11 @@ export default function ChatRoomsPage() {
                 disabled={!qrDataUrl || !qrRoom.qr_token}
                 onClick={() => {
                   if (!qrRoom.qr_token) return;
-                  void downloadQrPdf(
+                  void downloadStyledQrPdf(
                     roomQrUrl(qrRoom.qr_token),
                     `qr-${qrRoom.qr_token}`,
-                    qrRoom.name,
-                    { color: "#1a1a2e" }
+                    business?.name ?? "JChat",
+                    qrRoom.name
                   );
                 }}
                 style={{
