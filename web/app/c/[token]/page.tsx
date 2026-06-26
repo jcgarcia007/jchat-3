@@ -19,7 +19,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import { JoinRoomButton } from "./JoinRoomButton";
+import { RoomHub } from "./RoomHub";
 
 export const metadata: Metadata = {
   title: "Entrar al chat — JChat",
@@ -43,6 +43,7 @@ export default async function QREntryPage({
 
   let room: ResolvedRoom | null = null;
   let hasSession = false;
+  let userId = "";
 
   if (isSupabaseConfigured) {
     const supabase = await createSupabaseServerClient();
@@ -52,6 +53,7 @@ export default async function QREntryPage({
     ]);
     room = (rpcData as ResolvedRoom[] | null)?.[0] ?? null;
     hasSession = !!authData.user;
+    userId = authData.user?.id ?? "";
   }
 
   const shell: React.CSSProperties = {
@@ -204,38 +206,46 @@ export default async function QREntryPage({
           </div>
         </div>
 
-        {/* Access info */}
-        <div>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--text-primary)",
-              margin: "0 0 4px",
-              lineHeight: 1.5,
-            }}
-          >
-            Estás entrando al chat de{" "}
-            <strong>{room.business_name}</strong>
-            {" — "}
-            <strong>{room.room_name}</strong>.
-          </p>
-          {room.is_sub_room && (
+        {/* Access info — only shown pre-login */}
+        {!hasSession && (
+          <div>
             <p
               style={{
-                fontSize: 13,
-                color: "var(--text-secondary)",
-                margin: 0,
+                fontSize: 14,
+                color: "var(--text-primary)",
+                margin: "0 0 4px",
                 lineHeight: 1.5,
               }}
             >
-              También tendrás acceso a la sala principal del lugar.
+              Estás entrando al chat de{" "}
+              <strong>{room.business_name}</strong>
+              {" — "}
+              <strong>{room.room_name}</strong>.
             </p>
-          )}
-        </div>
+            {room.is_sub_room && (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-secondary)",
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                También tendrás acceso a la sala principal del lugar.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* CTA */}
         {hasSession ? (
-          <JoinRoomButton token={token} />
+          <RoomHub
+            token={token}
+            roomId={room.room_id}
+            businessId={room.business_id}
+            isSubRoom={room.is_sub_room}
+            userId={userId}
+          />
         ) : (
           <div
             style={{ display: "flex", flexDirection: "column", gap: 10 }}
