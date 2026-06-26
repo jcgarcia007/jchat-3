@@ -23,6 +23,7 @@ import {
   IconQrcode,
   IconLoader2,
   IconDownload,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { roomQrUrl, generateStyledQrPngDataUrl, downloadStyledQrPdf, downloadDataUrl } from "@/services/qr";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -92,15 +93,64 @@ export default function ChatRoomsPage() {
   const [qrRoom, setQrRoom] = useState<RoomRow | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrGenerating, setQrGenerating] = useState(false);
+  const [qrRenewing, setQrRenewing] = useState(false);
+  const [qrRenewError, setQrRenewError] = useState<string | null>(null);
 
   function openQr(room: RoomRow) {
     if (!room.qr_token) return;
     setQrRoom(room);
     setQrDataUrl(null);
     setQrGenerating(true);
+    setQrRenewError(null);
     void generateStyledQrPngDataUrl(roomQrUrl(room.qr_token))
       .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
       .catch(() => { setQrGenerating(false); });
+  }
+
+  async function renewQr() {
+    if (!qrRoom) return;
+    const confirmed = window.confirm(
+      "¿Renovar el código QR?\n\nEsto invalidará el QR actual de esta sala. Si ya lo imprimiste, deberás reimprimirlo.\n\nLas personas que ya están en el chat no se verán afectadas.",
+    );
+    if (!confirmed) return;
+
+    setQrRenewing(true);
+    setQrRenewError(null);
+
+    try {
+      let newToken: string;
+      if (!isSupabaseConfigured) {
+        newToken = `demo-main-${Date.now().toString(16).slice(-8)}`;
+      } else {
+        const { data, error: rpcErr } = await supabase.rpc("regenerate_room_qr_token", {
+          _room_id: qrRoom.id,
+        });
+        if (rpcErr) {
+          const msg = (rpcErr as { message?: string }).message ?? "";
+          setQrRenewError(
+            msg.includes("not_authorized")
+              ? "No tienes permiso para renovar este código."
+              : "Error al renovar. Intenta de nuevo.",
+          );
+          return;
+        }
+        newToken = data as string;
+      }
+
+      const updatedRoom = { ...qrRoom, qr_token: newToken };
+      setRooms((prev) => prev.map((r) => (r.id === qrRoom.id ? { ...r, qr_token: newToken } : r)));
+      setQrRoom(updatedRoom);
+
+      setQrDataUrl(null);
+      setQrGenerating(true);
+      void generateStyledQrPngDataUrl(roomQrUrl(newToken))
+        .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
+        .catch(() => { setQrGenerating(false); });
+    } catch {
+      setQrRenewError("Error al renovar. Intenta de nuevo.");
+    } finally {
+      setQrRenewing(false);
+    }
   }
 
   async function changeTheme(room: RoomRow, themeId: number) {
@@ -542,7 +592,7 @@ export default function ChatRoomsPage() {
           role="dialog"
           aria-modal="true"
           aria-label={`QR de ${qrRoom.name}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setQrRoom(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setQrRoom(null); setQrRenewError(null); } }}
           style={{
             position: "fixed",
             inset: 0,
@@ -574,16 +624,61 @@ export default function ChatRoomsPage() {
                 <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
                   {qrRoom.name}
                 </h2>
+                <button
+                  type="button"
+                  onClick={() => void renewQr()}
+                  disabled={qrRenewing || qrGenerating}
+                  title="Renovar código"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--db-border)",
+                    background: "var(--db-bg-elevated)",
+                    color: "var(--db-text-secondary)",
+                    cursor: qrRenewing || qrGenerating ? "not-allowed" : "pointer",
+                    opacity: qrRenewing || qrGenerating ? 0.5 : 1,
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  {qrRenewing
+                    ? <IconLoader2 size={13} className="spin" />
+                    : <IconRefresh size={13} />}
+                </button>
               </div>
               <button
                 type="button"
-                onClick={() => setQrRoom(null)}
+                onClick={() => { setQrRoom(null); setQrRenewError(null); }}
                 aria-label="Cerrar"
                 style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer", padding: "4px" }}
               >
                 <IconX size={20} />
               </button>
             </div>
+
+            {/* Renew error */}
+            {qrRenewError && (
+              <div
+                role="alert"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  background: "rgba(239,68,68,0.12)",
+                  color: "var(--db-danger)",
+                  fontSize: "12px",
+                }}
+              >
+                <IconAlertCircle size={14} />
+                {qrRenewError}
+              </div>
+            )}
 
             {/* QR preview */}
             <div
