@@ -28,6 +28,13 @@ interface MessageSender {
   avatar_url: string | null;
 }
 
+interface PresenceUser {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isIncognito: boolean;
+}
+
 interface ChatMessage {
   id: string;
   room_id: string;
@@ -72,6 +79,40 @@ function fileExt(file: File): string {
   return parts.length > 1 ? parts.pop()!.toLowerCase() : "jpg";
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0]! + parts[1][0]!).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function buildPresentUsers(state: Record<string, unknown[]>): PresenceUser[] {
+  const seen = new Set<string>();
+  const result: PresenceUser[] = [];
+  for (const presences of Object.values(state)) {
+    for (const raw of presences) {
+      const p = raw as {
+        user_id?: string;
+        display_name?: string | null;
+        avatar_url?: string | null;
+        is_incognito?: boolean;
+        nickname?: string | null;
+      };
+      if (!p.user_id || seen.has(p.user_id)) continue;
+      seen.add(p.user_id);
+      const incognito = p.is_incognito === true;
+      result.push({
+        userId: p.user_id,
+        displayName: incognito
+          ? (p.nickname?.trim() || "Anónimo")
+          : (p.display_name?.trim() || "Usuario"),
+        avatarUrl: incognito ? null : (p.avatar_url ?? null),
+        isIncognito: incognito,
+      });
+    }
+  }
+  return result;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -94,6 +135,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [showAttachPanel, setShowAttachPanel] = useState(false);
+  const [presentUsers, setPresentUsers] = useState<PresenceUser[]>([]);
 
   // ── Waiter call state ─────────────────────────────────────────────────────────
   const [showWaiterSheet, setShowWaiterSheet] = useState(false);
@@ -107,6 +149,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachPanelRef = useRef<HTMLDivElement>(null);
@@ -226,6 +269,85 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       }
     };
   }, [loadState, roomId, fetchMessage, scrollToBottom]);
+
+  // ── Presence subscription ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (loadState !== "ok") return;
+
+    if (!isSupabaseConfigured) {
+      // Demo mode: show the current user as sole presence
+      setPresentUsers([{ userId, displayName: "Tú (demo)", avatarUrl: null, isIncognito: false }]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function setupPresence() {
+      // Fetch current user profile for the presence payload
+      const { data: profile } = await supabase
+        .from("users")
+        .select("display_name, username, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      const p = profile as { display_name?: string | null; username?: string | null; avatar_url?: string | null } | null;
+      const displayName = p?.display_name?.trim() || p?.username?.trim() || "Usuario";
+      const avatarUrl = p?.avatar_url ?? null;
+
+      const trackPayload = {
+        user_id: userId,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        // Debt: web has no per-user incognito state — always false for own presence.
+        // Other users' incognito flag is honoured via their own payload.
+        is_incognito: false,
+        nickname: null as string | null,
+      };
+
+      const ch = supabase.channel(`presence:${roomId}`, {
+        config: { presence: { key: userId } },
+      });
+
+      presenceChannelRef.current = ch;
+
+      // Immediately clean up if unmounted between async operations
+      if (!isMounted) {
+        void supabase.removeChannel(ch);
+        presenceChannelRef.current = null;
+        return;
+      }
+
+      function handleSync() {
+        if (!isMounted) return;
+        setPresentUsers(buildPresentUsers(ch.presenceState() as Record<string, unknown[]>));
+      }
+
+      ch
+        .on("presence", { event: "sync" }, handleSync)
+        .on("presence", { event: "join" }, handleSync)
+        .on("presence", { event: "leave" }, handleSync)
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED" && isMounted) {
+            await ch.track(trackPayload);
+          }
+        });
+    }
+
+    void setupPresence();
+
+    return () => {
+      isMounted = false;
+      const ch = presenceChannelRef.current;
+      if (ch) {
+        void ch.untrack().finally(() => {
+          void supabase.removeChannel(ch);
+        });
+        presenceChannelRef.current = null;
+      }
+    };
+  }, [loadState, roomId, userId]);
 
   // ── Send text message ──────────────────────────────────────────────────────────
   async function handleSend() {
@@ -587,6 +709,90 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             {businessName}
           </div>
         </div>
+      </div>
+
+      {/* Presence bar — horizontal avatar strip under header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 12px",
+          background: theme.topBg,
+          borderBottom: `1px solid ${theme.border}`,
+          overflowX: "auto",
+          flexShrink: 0,
+          minHeight: 46,
+          // Hide native scrollbar while keeping scroll
+          scrollbarWidth: "none",
+        }}
+      >
+        {presentUsers.length === 0 ? (
+          <span
+            style={{
+              fontSize: 11,
+              color: theme.bubbleInText,
+              opacity: 0.35,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Conectando…
+          </span>
+        ) : (
+          <>
+            {presentUsers.map((u) => (
+              <div
+                key={u.userId}
+                title={u.displayName}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  background: theme.accent,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: u.isIncognito ? 18 : 12,
+                  fontWeight: 700,
+                  color: theme.bubbleOutText,
+                  // Highlight own avatar with a border ring
+                  boxSizing: "border-box" as const,
+                  border: u.userId === userId
+                    ? `2px solid ${theme.bubbleInText}`
+                    : "2px solid transparent",
+                  opacity: u.isIncognito ? 0.78 : 1,
+                  cursor: "default",
+                }}
+              >
+                {u.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={u.avatarUrl}
+                    alt={u.displayName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : u.isIncognito ? (
+                  "🎭"
+                ) : (
+                  getInitials(u.displayName)
+                )}
+              </div>
+            ))}
+            <span
+              style={{
+                fontSize: 11,
+                color: theme.bubbleInText,
+                opacity: 0.5,
+                whiteSpace: "nowrap",
+                marginLeft: 4,
+              }}
+            >
+              {presentUsers.length} en línea
+            </span>
+          </>
+        )}
       </div>
 
       {/* Message list */}
