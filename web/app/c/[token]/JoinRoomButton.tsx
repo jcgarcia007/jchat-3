@@ -2,20 +2,19 @@
 
 /**
  * JoinRoomButton — client-side join action for /c/[token]
- * Calls join_room_via_qr(token), handles loading/error/success states.
- * TODO(Pieza 3): replace the success screen with navigation to the live chat room.
+ * Calls join_room_via_qr(token), then navigates to the live chat room.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconLoader2, IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { IconLoader2, IconAlertCircle } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 interface Props {
   token: string;
 }
 
-type State = "idle" | "loading" | "success" | "error";
+type State = "idle" | "loading" | "error";
 
 export function JoinRoomButton({ token }: Props) {
   const router = useRouter();
@@ -28,16 +27,14 @@ export function JoinRoomButton({ token }: Props) {
     setErrorMsg(null);
 
     if (!isSupabaseConfigured) {
-      setState("success");
+      router.push(`/c/${token}/room`);
       return;
     }
 
     const { error } = await supabase.rpc("join_room_via_qr", { token });
 
     if (!error) {
-      setState("success");
-      // TODO(Pieza 3): navigate to live chat room once /c/[token]/room is implemented
-      // router.push(`/c/${token}/room`);
+      router.push(`/c/${token}/room`);
       return;
     }
 
@@ -71,53 +68,6 @@ export function JoinRoomButton({ token }: Props) {
     cursor: "pointer",
     transition: "opacity 0.15s",
   };
-
-  // ── Success ──────────────────────────────────────────────────────────────────
-  if (state === "success") {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 10,
-          padding: "20px 0 4px",
-          textAlign: "center",
-        }}
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 48,
-            height: 48,
-            borderRadius: "50%",
-            background: "var(--color-success)",
-            color: "#fff",
-          }}
-        >
-          <IconCheck size={26} />
-        </span>
-        <p
-          style={{ fontSize: 16, fontWeight: 700, margin: 0 }}
-        >
-          ¡Te uniste al chat!
-        </p>
-        <p
-          style={{
-            fontSize: 13,
-            color: "var(--text-secondary)",
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
-          El chat estará disponible en la próxima actualización de la app.
-          {/* TODO(Pieza 3): replace this message with chat navigation */}
-        </p>
-      </div>
-    );
-  }
 
   // ── Idle / Loading / Error ────────────────────────────────────────────────────
   return (
