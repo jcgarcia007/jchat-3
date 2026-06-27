@@ -208,6 +208,8 @@ export default function ChatRoomScreen() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestTimestampRef = useRef<string | null>(null);
+  // Cache user_id → display name to resolve sender_name for realtime messages
+  const userNameCacheRef = useRef<Map<string, string>>(new Map());
   const flatListRef = useRef<FlatList>(null);
   const isNearBottomRef = useRef(true);
   const pendingInitialScrollRef = useRef(false);
@@ -391,7 +393,7 @@ export default function ChatRoomScreen() {
     try {
       let query = supabase
         .from('messages')
-        .select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at')
+        .select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at, sender:users!messages_user_id_fkey(display_name, username)')
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
@@ -405,7 +407,14 @@ export default function ChatRoomScreen() {
         console.error('loadMessages error:', error);
         return;
       }
-      const msgs = (data ?? []) as ChatMessage[];
+      const msgs = (data ?? []).map((row: Record<string, unknown>) => {
+        const sender = row.sender as { display_name: string | null; username: string } | null;
+        const senderName = sender?.display_name ?? sender?.username ?? undefined;
+        if (senderName && typeof row.user_id === 'string') {
+          userNameCacheRef.current.set(row.user_id, senderName);
+        }
+        return { ...row, sender: undefined, sender_name: senderName } as unknown as ChatMessage;
+      });
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
         oldestTimestampRef.current = msgs[msgs.length - 1]?.created_at ?? null;
@@ -444,7 +453,9 @@ export default function ChatRoomScreen() {
           filter: `room_id=eq.${activeRoomId}`,
         },
         (payload) => {
-          const newMsg = payload.new as ChatMessage;
+          const raw = payload.new as ChatMessage;
+          const senderName = userNameCacheRef.current.get(raw.user_id);
+          const newMsg: ChatMessage = senderName ? { ...raw, sender_name: senderName } : raw;
           setMessages((prev) => {
             // Avoid duplicates
             if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -575,7 +586,9 @@ export default function ChatRoomScreen() {
         metadata: meta,
         is_system: false,
         created_at: new Date().toISOString(),
-        sender_name: incognito?.enabled ? incognito.nickname : (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You',
+        sender_name: incognito?.enabled
+          ? incognito.nickname
+          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
       };
 
       setMessages((prev) => [...prev, optimistic]);
@@ -636,7 +649,9 @@ export default function ChatRoomScreen() {
         metadata: meta,
         is_system: false,
         created_at: new Date().toISOString(),
-        sender_name: incognito?.enabled ? incognito.nickname : (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You',
+        sender_name: incognito?.enabled
+          ? incognito.nickname
+          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
       };
 
       setMessages((prev) => [...prev, optimistic]);
