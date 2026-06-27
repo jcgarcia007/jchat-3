@@ -116,7 +116,7 @@ SELECT
   a.id AS owner_id,
   d.name, d.slug, d.description, d.category,
   d.address, d.city, d.state, d.country, d.lat, d.lng,
-  true, true, 'active', d.theme_id, 'free', d.emoji, 0.08
+  true, true, 'verified', d.theme_id, 'free', d.emoji, 0.08
 FROM (VALUES
   ('user01@seed.jchat.test','Bar Aurora',          'seed-bar-aurora',      'Bar de cócteles artesanales con ambiente íntimo',   'bar',        '1205 NW 17th Ave',    'Miami',           'FL','US', 25.7617,-80.2130, 1, '🍸'),
   ('user02@seed.jchat.test','Restaurante Botánica','seed-restaurante-bota','Cocina de autor con ingredientes locales',          'restaurant', 'Calle El Conde 45',   'Santo Domingo',   null,'DO',18.4730,-69.8912, 3, '🌿'),
