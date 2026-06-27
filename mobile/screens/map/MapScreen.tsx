@@ -18,11 +18,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus } from '@tabler/icons-react-native';
@@ -116,6 +116,7 @@ const STYLE_OPTIONS: StyleOption[] = [
 
 export default function MapScreen() {
   const c = useThemeColors();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
   const isMounted = useRef(true);
@@ -243,7 +244,7 @@ export default function MapScreen() {
         {/* TODO(Task 4.5): <MapReactionOverlay> — needs coordinate→point resolver */}
       </JChatMap>
 
-      <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
+      <View style={[styles.overlayContainer, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         {locationDenied && (
           <TouchableOpacity style={[styles.deniedBanner, { backgroundColor: palette.warning }]} onPress={requestLocation} activeOpacity={0.8}>
             <Text style={styles.deniedBannerText}>Location unavailable — showing default area. Tap to retry.{/* TODO(i18n) */}</Text>
@@ -253,18 +254,20 @@ export default function MapScreen() {
         {/* Filters (chips + advanced + search) — Task 4.6 */}
         <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
 
-        {/* Zoom controls */}
-        <View style={[styles.zoomControls, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(1)} activeOpacity={0.7}>
-            <IconPlus size={20} color={c.textSecondary} strokeWidth={1.75} />
-          </TouchableOpacity>
-          <View style={[styles.zoomDivider, { backgroundColor: c.borderSubtle }]} />
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(-1)} activeOpacity={0.7}>
-            <IconMinus size={20} color={c.textSecondary} strokeWidth={1.75} />
-          </TouchableOpacity>
+        {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
+        <View style={styles.zoomRow} pointerEvents="box-none">
+          <View style={[styles.zoomControls, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+            <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(1)} activeOpacity={0.7}>
+              <IconPlus size={20} color={c.textSecondary} strokeWidth={1.75} />
+            </TouchableOpacity>
+            <View style={[styles.zoomDivider, { backgroundColor: c.borderSubtle }]} />
+            <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(-1)} activeOpacity={0.7}>
+              <IconMinus size={20} color={c.textSecondary} strokeWidth={1.75} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Style switcher */}
+        {/* Style switcher — absolute bottom-right */}
         <View style={[styles.styleSwitcher, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
           {STYLE_OPTIONS.map(({ variant, label, Icon }, idx) => {
             const isActive = mapVariant === variant;
@@ -281,7 +284,7 @@ export default function MapScreen() {
             );
           })}
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Business preview bottom sheet (Task 2.3) */}
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
@@ -323,7 +326,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14 },
-  overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'space-between' },
+  overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
   styleSwitcher: {
@@ -337,9 +340,9 @@ const styles = StyleSheet.create({
   sheetDismiss: { flex: 1 },
   sheetBody: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 24, maxHeight: '85%' },
   sheetClose: { alignSelf: 'flex-end', padding: 12 },
+  zoomRow: { alignItems: 'flex-end', marginTop: 8, marginRight: 16, pointerEvents: 'box-none' },
   zoomControls: {
-    position: 'absolute', bottom: 24, right: 120, borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden',
+    borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden',
     ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
   },
   zoomBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
