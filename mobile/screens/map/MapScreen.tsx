@@ -25,7 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
-import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -206,6 +206,32 @@ export default function MapScreen() {
     [businesses, filters],
   );
 
+  const recenterToUser = useCallback(async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const req = await Location.requestForegroundPermissionsAsync();
+        if (req.status !== 'granted') { setLocationDenied(true); return; }
+      }
+      const locationTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('location_timeout')), LOCATION_TIMEOUT_MS),
+      );
+      const pos = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        locationTimeout,
+      ]);
+      if (!isMounted.current) return;
+      const target = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, ...DEFAULT_DELTA };
+      setRegion(target);
+      setLocationDenied(false);
+      mapRef.current?.animateToRegion(target, 350);
+    } catch {
+      if (!isMounted.current) return;
+      const fallback = region ?? FALLBACK_REGION;
+      mapRef.current?.animateToRegion(fallback, 350);
+    }
+  }, [region]);
+
   const handleZoom = useCallback(async (delta: number) => {
     const cam = await mapRef.current?.getCamera();
     if (!cam) return;
@@ -265,6 +291,15 @@ export default function MapScreen() {
               <IconMinus size={20} color={c.textSecondary} strokeWidth={1.75} />
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={[styles.locateBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
+            onPress={() => void recenterToUser()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Center on my location"
+          >
+            <IconCurrentLocation size={20} color={palette.brand} strokeWidth={1.75} />
+          </TouchableOpacity>
         </View>
 
         {/* Style switcher — absolute bottom-right */}
@@ -347,4 +382,9 @@ const styles = StyleSheet.create({
   },
   zoomBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   zoomDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 8 },
+  locateBtn: {
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', marginTop: 8,
+    ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
+  },
 });
