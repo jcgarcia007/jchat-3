@@ -1,7 +1,8 @@
 /**
  * JChat 3.0 — Expo config (single source of truth; app.json removed).
- *  - Maps: native platform provider (Apple Maps on iOS, native Android).
- *    No Google Maps API key required on mobile.
+ *  - Maps: react-native-maps on Android always uses Google Maps SDK regardless
+ *    of the provider prop, so GOOGLE_MAPS_KEY must be injected into the manifest.
+ *    iOS uses Apple Maps (no key needed).
  *  - Firebase config files (FCM/APNs) resolved from EAS file secrets with a
  *    local fallback for dev: Android → google-services.json, iOS → plist.
  *  - Plugins: Stripe, web-browser, datetimepicker, location, notifications.
@@ -44,8 +45,19 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
+    config: {
+      googleMaps: {
+        apiKey: process.env.GOOGLE_MAPS_KEY ?? '',
+      },
+    },
   },
   plugins: [
+    [
+      'react-native-maps',
+      {
+        androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_KEY ?? '',
+      },
+    ],
     [
       'expo-image-picker',
       {
