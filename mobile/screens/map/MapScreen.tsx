@@ -235,8 +235,17 @@ export default function MapScreen() {
   const handleZoom = useCallback(async (delta: number) => {
     const cam = await mapRef.current?.getCamera();
     if (!cam) return;
-    const nextZoom = Math.max(1, Math.min(20, (cam.zoom ?? 14) + delta));
-    mapRef.current?.animateCamera({ ...cam, zoom: nextZoom }, { duration: 250 });
+    if (Platform.OS === 'ios') {
+      // Apple Maps uses altitude: lower = zoomed in, higher = zoomed out.
+      // Each step halves (zoom in) or doubles (zoom out) the altitude.
+      const currentAlt = cam.altitude ?? 10_000;
+      const factor = delta > 0 ? 0.5 : 2;
+      const nextAlt = Math.max(100, Math.min(10_000_000, currentAlt * factor));
+      mapRef.current?.animateCamera({ ...cam, altitude: nextAlt }, { duration: 250 });
+    } else {
+      const nextZoom = Math.max(1, Math.min(20, (cam.zoom ?? 14) + delta));
+      mapRef.current?.animateCamera({ ...cam, zoom: nextZoom }, { duration: 250 });
+    }
   }, []);
 
   const handleNavigate = useCallback((lat: number, lng: number) => {
