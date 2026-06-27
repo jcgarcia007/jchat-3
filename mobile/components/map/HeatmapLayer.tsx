@@ -1,4 +1,11 @@
 /**
+ * DEFERRED to next version — heatmap is Google-Maps-only and not used while
+ * the app uses native maps. Do not import. See web/map decision 2026-06.
+ * To re-enable: switch JChatMap back to PROVIDER_GOOGLE + API key injection
+ * in app.config.ts, then import HeatmapLayer in MapScreen.tsx.
+ */
+
+/**
  * JChat 3.0 — HeatmapLayer (Task 4.2)
  * Source of truth: JCHAT_3.0_DEV_PLAN.docx · Task 4.2
  *                  JCHAT_3.0_DESIGN_SYSTEM.docx · Section 12 (Map)

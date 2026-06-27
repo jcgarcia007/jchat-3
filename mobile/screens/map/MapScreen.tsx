@@ -1,17 +1,15 @@
 /**
- * JChat 3.0 — Map Screen (Tasks 4.1 + 4.2/4.6 integration)
+ * JChat 3.0 — Map Screen (Tasks 4.1 + 4.6 integration)
  *
- *   - Google Maps via JChatMap (PROVIDER_GOOGLE, key injected natively)
- *   - A2 Pastel (light) / Dark style, auto-switch with system scheme
+ *   - Native platform maps via JChatMap (Apple Maps on iOS, native Android)
  *   - Location permission via expo-location; city-center fallback
- *   - Style switcher: Normal / Dark / Satellite / Terrain
- *   - BusinessPin teardrops + HeatmapLayer (Task 4.2)
+ *   - Style switcher: Normal / Satellite / Terrain
+ *   - BusinessPin teardrops (Task 4.2)
  *   - FilterPanel: chips + advanced filters + search (Task 4.6)
  *   - Tap a pin → BusinessPreviewCard bottom sheet (Task 2.3)
  *
- * TODO(Task 4.5): mount <MapReactionOverlay> — needs an async coordinate→point
- *   resolver (MapView.pointForCoordinate) maintained on region change; the
- *   component is built and tsc-clean, wiring is a follow-up.
+ * DEFERRED: HeatmapLayer (Google-Maps-only) — see HeatmapLayer.tsx comment.
+ * TODO(Task 4.5): mount <MapReactionOverlay> — needs coordinate→point resolver.
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -24,11 +22,10 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
-  useColorScheme,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
-import { IconMap, IconMoon, IconSatellite, IconMountain, IconX } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconMountain, IconX } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -36,7 +33,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
 import BusinessPin from '../../components/map/BusinessPin';
-import HeatmapLayer from '../../components/map/HeatmapLayer';
 import FilterPanel, { defaultFilters, type MapFilters } from '../../components/map/FilterPanel';
 import BusinessPreviewCard, { isOpenNow, type HoursMap } from '../../components/map/BusinessPreviewCard';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
@@ -110,22 +106,17 @@ interface StyleOption {
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 }
 const STYLE_OPTIONS: StyleOption[] = [
-  { variant: 'pastel', label: 'Normal', Icon: IconMap },
-  { variant: 'dark', label: 'Dark', Icon: IconMoon },
+  { variant: 'normal', label: 'Normal', Icon: IconMap },
   { variant: 'satellite', label: 'Satellite', Icon: IconSatellite },
   { variant: 'terrain', label: 'Terrain', Icon: IconMountain },
 ];
 
 export default function MapScreen() {
-  const scheme = useColorScheme();
   const c = useThemeColors();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
 
-  const [mapVariant, setMapVariant] = useState<MapStyleVariant>(scheme === 'dark' ? 'dark' : 'pastel');
-  useEffect(() => {
-    setMapVariant((prev) => (prev === 'pastel' || prev === 'dark' ? (scheme === 'dark' ? 'dark' : 'pastel') : prev));
-  }, [scheme]);
+  const [mapVariant, setMapVariant] = useState<MapStyleVariant>('normal');
 
   const [region, setRegion] = useState<Region | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
@@ -216,7 +207,6 @@ export default function MapScreen() {
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
       <JChatMap ref={mapRef} mapStyleVariant={mapVariant} style={StyleSheet.absoluteFill} initialRegion={region ?? FALLBACK_REGION}>
-        <HeatmapLayer businesses={filtered.map((b) => ({ id: b.id, lat: b.lat, lng: b.lng, activeCount: b.activeCount }))} />
         {filtered.map((b) => (
           <BusinessPin
             key={b.id}

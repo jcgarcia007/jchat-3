@@ -1,17 +1,13 @@
 /**
  * JChat 3.0 — Expo config (single source of truth; app.json removed).
- *  - Google Maps keys are platform-specific (restricted per-platform in GCP):
- *      iOS:     GOOGLE_MAPS_KEY_IOS  (bundle-id restricted)
- *      Android: GOOGLE_MAPS_KEY_ANDROID (SHA-1 restricted)
+ *  - Maps: native platform provider (Apple Maps on iOS, native Android).
+ *    No Google Maps API key required on mobile.
  *  - Firebase config files (FCM/APNs) resolved from EAS file secrets with a
  *    local fallback for dev: Android → google-services.json, iOS → plist.
- *  - Plugins: Stripe, web-browser, datetimepicker, location, maps, notifications.
+ *  - Plugins: Stripe, web-browser, datetimepicker, location, notifications.
  */
 
 import type { ExpoConfig } from 'expo/config';
-
-const IOS_MAPS_KEY = process.env.GOOGLE_MAPS_KEY_IOS ?? '';
-const ANDROID_MAPS_KEY = process.env.GOOGLE_MAPS_KEY_ANDROID ?? '';
 
 // EAS file secrets expose a path env var at build time; fall back to the local
 // file for dev. Uploaded via: eas env:create --type file --name GOOGLE_SERVICES_JSON ...
@@ -31,8 +27,6 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.juangarciacruz.jchatapp',
-    // react-native-maps (Google provider) reads this native key.
-    config: { googleMapsApiKey: IOS_MAPS_KEY },
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
     infoPlist: {
@@ -48,7 +42,6 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    config: { googleMaps: { apiKey: ANDROID_MAPS_KEY } },
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
   },
@@ -78,7 +71,6 @@ const config: ExpoConfig = {
           'JChat uses your location to show nearby venues on the map.',
       },
     ],
-    ['react-native-maps', { iosGoogleMapsApiKey: IOS_MAPS_KEY }],
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
     [
