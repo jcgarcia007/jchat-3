@@ -80,6 +80,9 @@ const FALLBACK_REGION: Region = {
 };
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
+// GPS timeout — if no fix in 8s, fall back to FALLBACK_REGION (common in emulators).
+const LOCATION_TIMEOUT_MS = 8_000;
+
 const DEMO_BUSINESSES: MapBusiness[] = [
   { id: 'b1', name: 'The Rooftop Bar', category: 'Bar', icon_emoji: '🍸', lat: 25.765, lng: -80.193, status: 'verified', activeCount: 62, address: '100 Ocean Dr', cover_url: null, hours: null, rating: 4.6 },
   { id: 'b2', name: 'Bean Scene', category: 'Cafe', icon_emoji: '☕️', lat: 25.758, lng: -80.196, status: 'verified', activeCount: 14, address: '22 Collins Ave', cover_url: null, hours: null, rating: 4.3 },
@@ -115,6 +118,12 @@ export default function MapScreen() {
   const c = useThemeColors();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [mapVariant, setMapVariant] = useState<MapStyleVariant>('normal');
 
@@ -127,22 +136,32 @@ export default function MapScreen() {
   const [selected, setSelected] = useState<MapBusiness | null>(null);
 
   const requestLocation = useCallback(async () => {
+    if (!isMounted.current) return;
     setLocationLoading(true);
     setLocationDenied(false);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!isMounted.current) return;
       if (status !== 'granted') {
         setLocationDenied(true);
         setRegion(FALLBACK_REGION);
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const locationTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('location_timeout')), LOCATION_TIMEOUT_MS),
+      );
+      const pos = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        locationTimeout,
+      ]);
+      if (!isMounted.current) return;
       setRegion({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, ...DEFAULT_DELTA });
     } catch {
+      if (!isMounted.current) return;
       setLocationDenied(true);
       setRegion(FALLBACK_REGION);
     } finally {
-      setLocationLoading(false);
+      if (isMounted.current) setLocationLoading(false);
     }
   }, []);
 
@@ -220,7 +239,7 @@ export default function MapScreen() {
       <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
         {locationDenied && (
           <TouchableOpacity style={[styles.deniedBanner, { backgroundColor: palette.warning }]} onPress={requestLocation} activeOpacity={0.8}>
-            <Text style={styles.deniedBannerText}>Location access denied — showing default area. Tap to retry.{/* TODO(i18n) */}</Text>
+            <Text style={styles.deniedBannerText}>Location unavailable — showing default area. Tap to retry.{/* TODO(i18n) */}</Text>
           </TouchableOpacity>
         )}
 
