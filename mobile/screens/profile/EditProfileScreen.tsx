@@ -50,6 +50,7 @@ import {
   IconCamera,
   IconCheck,
   IconChevronRight,
+  IconLogout,
   IconPalette,
   IconUser,
   IconX,
@@ -122,7 +123,7 @@ async function uploadImage(
 export default function EditProfileScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation();
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
 
   // ── Local form state ──────────────────────────────────────────────────────
 
@@ -307,6 +308,19 @@ export default function EditProfileScreen(): React.JSX.Element {
       coverUri !== null // cover is always "new" if set
     );
   }
+
+  // ── Logout handler ────────────────────────────────────────────────────────
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Log out?',
+      'Are you sure you want to log out of your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log out', style: 'destructive', onPress: () => { void signOut(); } },
+      ],
+    );
+  }, [signOut]);
 
   // ── Cancel handler ────────────────────────────────────────────────────────
 
@@ -714,6 +728,18 @@ export default function EditProfileScreen(): React.JSX.Element {
               </TouchableOpacity>
             </View>
 
+            {/* Log Out */}
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={[styles.logoutBtn, { borderColor: palette.danger }]}
+              accessibilityRole="button"
+              accessibilityLabel="Log out"
+              disabled={saving}
+            >
+              <IconLogout size={18} color={palette.danger} />
+              <Text style={[styles.logoutLabel, { color: palette.danger }]}>Log Out{/* TODO(i18n) */}</Text>
+            </TouchableOpacity>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1027,4 +1053,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 40,
   },
+
+  // ── Log Out button ────────────────────────────────────────────────────────
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13, borderRadius: 10, borderWidth: 1, marginTop: 4,
+  },
+  logoutLabel: { fontSize: 15, fontWeight: '600' },
 });
