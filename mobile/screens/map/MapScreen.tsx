@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
-import { IconMap, IconSatellite, IconMountain, IconX } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -205,6 +205,13 @@ export default function MapScreen() {
     [businesses, filters],
   );
 
+  const handleZoom = useCallback(async (delta: number) => {
+    const cam = await mapRef.current?.getCamera();
+    if (!cam) return;
+    const nextZoom = Math.max(1, Math.min(20, (cam.zoom ?? 14) + delta));
+    mapRef.current?.animateCamera({ ...cam, zoom: nextZoom }, { duration: 250 });
+  }, []);
+
   const handleNavigate = useCallback((lat: number, lng: number) => {
     const url = Platform.select({
       ios: `http://maps.apple.com/?daddr=${lat},${lng}`,
@@ -245,6 +252,17 @@ export default function MapScreen() {
 
         {/* Filters (chips + advanced + search) — Task 4.6 */}
         <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
+
+        {/* Zoom controls */}
+        <View style={[styles.zoomControls, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(1)} activeOpacity={0.7}>
+            <IconPlus size={20} color={c.textSecondary} strokeWidth={1.75} />
+          </TouchableOpacity>
+          <View style={[styles.zoomDivider, { backgroundColor: c.borderSubtle }]} />
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(-1)} activeOpacity={0.7}>
+            <IconMinus size={20} color={c.textSecondary} strokeWidth={1.75} />
+          </TouchableOpacity>
+        </View>
 
         {/* Style switcher */}
         <View style={[styles.styleSwitcher, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -319,4 +337,11 @@ const styles = StyleSheet.create({
   sheetDismiss: { flex: 1 },
   sheetBody: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 24, maxHeight: '85%' },
   sheetClose: { alignSelf: 'flex-end', padding: 12 },
+  zoomControls: {
+    position: 'absolute', bottom: 24, right: 120, borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden',
+    ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
+  },
+  zoomBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  zoomDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 8 },
 });

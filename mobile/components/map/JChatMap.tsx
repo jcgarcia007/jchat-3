@@ -1,21 +1,24 @@
 /**
- * JChat 3.0 — Map wrapper (native platform maps, no API key required)
+ * JChat 3.0 — Map wrapper
  *
- * Uses the platform's default native map provider:
- *   - iOS:     Apple Maps
- *   - Android: native Google Maps tiles (no API key required for basic tiles)
+ * Platform providers:
+ *   - iOS:     Apple Maps (provider omitted → default)
+ *   - Android: Google Maps via PROVIDER_GOOGLE (requires GOOGLE_MAPS_KEY in manifest,
+ *              injected by the react-native-maps config plugin in app.config.ts)
  *
  * mapStyleVariant:
  *   - "normal"    → default provider style
  *   - "satellite" → satellite imagery
  *   - "terrain"   → terrain view
  *
- * DEFERRED: custom pastel/dark JSON styles (Google-Maps-only) — not compatible
- * with the native provider. See HeatmapLayer.tsx comment for context.
+ * DEFERRED: custom pastel/dark JSON styles (Google-Maps-only, needs customMapStyle).
+ * See HeatmapLayer.tsx comment for context.
  */
 
 import React, { forwardRef } from 'react';
+import { Platform } from 'react-native';
 import MapView, {
+  PROVIDER_GOOGLE,
   type MapViewProps,
   type MapType,
 } from 'react-native-maps';
@@ -68,7 +71,8 @@ export interface JChatMapProps
 /**
  * JChatMap — thin wrapper around react-native-maps MapView.
  *
- * Uses the platform's native map provider (no PROVIDER_GOOGLE, no API key).
+ * Android uses PROVIDER_GOOGLE explicitly (key injected via app.config.ts).
+ * iOS omits the provider, which defaults to Apple Maps.
  * Pass `mapStyleVariant` to switch between normal / satellite / terrain.
  * All other MapView props are forwarded transparently.
  */
@@ -79,6 +83,7 @@ const JChatMap = forwardRef<MapView, JChatMapProps>(
     return (
       <MapView
         ref={ref}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         mapType={mapType}
         style={style}
         showsUserLocation
