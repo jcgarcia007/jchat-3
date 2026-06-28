@@ -2317,13 +2317,22 @@ export default function MenuPage() {
       }
 
       try {
+        // low_stock_threshold is NOT NULL with default 5 in the DB.
+        // payload keeps null (for MenuItem type compat in demo path) but we
+        // strip it here so the DB default is used on INSERT and the field is
+        // left untouched on UPDATE.
+        const dbPayload = {
+          ...payload,
+          low_stock_threshold: payload.low_stock_threshold ?? undefined,
+        };
+
         // 1. Create or update the menu item; for new items capture the ID.
         let resolvedItemId: string;
         if (activeItemEdit.itemId) {
           resolvedItemId = activeItemEdit.itemId;
           const { error: err } = await supabase
             .from("menu_items")
-            .update(payload)
+            .update(dbPayload)
             .eq("id", resolvedItemId);
           if (err) throw err;
         } else {
@@ -2332,7 +2341,7 @@ export default function MenuPage() {
           ).length;
           const { data: newRow, error: err } = await supabase
             .from("menu_items")
-            .insert({ ...payload, sort })
+            .insert({ ...dbPayload, sort })
             .select("id")
             .single();
           if (err) throw err;
