@@ -2743,15 +2743,15 @@ export default function MenuPage() {
             )}
           </label>
 
-          {/* Opción 2 — Menú Web propio (FUTURO / deshabilitado) */}
-          <div
+          {/* Opción 2 — Menú Web propio */}
+          <label
             style={{
+              display: "block",
               padding: "14px 16px",
               borderRadius: 10,
-              border: "2px solid var(--db-border)",
-              background: "var(--db-bg-elevated)",
-              opacity: 0.55,
-              cursor: "not-allowed",
+              border: `2px solid ${menuMode === "web" ? "var(--db-accent)" : "var(--db-border)"}`,
+              background: menuMode === "web" ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
+              cursor: savingMode ? "wait" : "pointer",
               position: "relative",
             }}
           >
@@ -2760,33 +2760,21 @@ export default function MenuPage() {
                 type="radio"
                 name="menu_mode"
                 value="web"
-                disabled
                 checked={menuMode === "web"}
-                onChange={() => {/* futuro */}}
-                style={{ width: 16, height: 16, flexShrink: 0 }}
+                disabled={savingMode}
+                onChange={() => void handleSaveMenuMode("web")}
+                style={{ accentColor: "var(--db-accent)", width: 16, height: 16, flexShrink: 0 }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--db-text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: menuMode === "web" ? "var(--db-accent)" : "var(--db-text-primary)" }}>
                   Crear mi Menú Web (plantilla)
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: 20,
-                      background: "var(--db-accent)",
-                      color: "var(--db-accent-text)",
-                    }}
-                  >
-                    Próximamente
-                  </span>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--db-text-secondary)", marginTop: 2 }}>
                   Crea tu propio menú interactivo con el editor de JChat (categorías, productos, precios).
                 </div>
               </div>
             </div>
-          </div>
+          </label>
 
           {/* Sin menú — opción para quitar */}
           {menuMode !== "none" && (
@@ -2819,9 +2807,21 @@ export default function MenuPage() {
               : menuMode === "external"
               ? "Link externo (sin URL guardada)"
               : menuMode === "web"
-              ? "Menú Web (próximamente)"
+              ? "Menú Web propio activo ✓"
               : "Sin menú configurado"}
           </strong>
+          {menuMode === "web" && bizSlug && (
+            <span style={{ marginLeft: 10 }}>
+              <a
+                href={`/m/${bizSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 600 }}
+              >
+                Ver mi Menú Web ↗
+              </a>
+            </span>
+          )}
         </div>
       </div>
 
