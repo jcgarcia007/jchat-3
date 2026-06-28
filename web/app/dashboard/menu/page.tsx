@@ -112,6 +112,20 @@ interface ItemForm {
   options: ItemOptions;
 }
 
+// Photo upload types
+interface StagedPhotoFile {
+  key: string;      // local React key
+  file: File;
+  preview: string;  // object URL for preview (revoke on remove/unmount)
+}
+
+interface SavedPhoto {
+  id: string;
+  url: string;
+  storage_path: string | null;
+  sort: number;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DIETARY_TAG_OPTIONS: { value: string; label: string; icon: React.ReactNode }[] = [
@@ -652,6 +666,7 @@ function ItemEditorModal({
   item,
   categoryId,
   businessId,
+  itemId,
   onSave,
   onCancel,
   saving,
@@ -659,13 +674,70 @@ function ItemEditorModal({
   item: ItemForm;
   categoryId: string;
   businessId: string;
-  onSave: (form: ItemForm) => void;
+  itemId: string | null;
+  onSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[]) => void;
   onCancel: () => void;
   saving: boolean;
 }) {
   const [form, setForm] = useState<ItemForm>(item);
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  // ── Multi-photo state ────────────────────────────────────────────────────────
+  const [savedPhotos, setSavedPhotos] = useState<SavedPhoto[]>([]);
+  const [stagedPhotos, setStagedPhotos] = useState<StagedPhotoFile[]>([]);
+  const [photosToDelete, setPhotosToDelete] = useState<SavedPhoto[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  // Load existing photos when editing an existing item
+  useEffect(() => {
+    if (!isSupabaseConfigured || !itemId) return;
+    void (async () => {
+      setLoadingPhotos(true);
+      try {
+        const { data } = await supabase
+          .from("menu_item_photos")
+          .select("id, url, storage_path, sort")
+          .eq("menu_item_id", itemId)
+          .order("sort", { ascending: true });
+        setSavedPhotos((data ?? []) as SavedPhoto[]);
+      } finally {
+        setLoadingPhotos(false);
+      }
+    })();
+  }, [itemId]);
+
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => {
+      stagedPhotos.forEach((p) => URL.revokeObjectURL(p.preview));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const newStaged: StagedPhotoFile[] = files.map((file) => ({
+      key: `${Date.now()}-${Math.random()}`,
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setStagedPhotos((prev) => [...prev, ...newStaged]);
+    e.target.value = "";
+  };
+
+  const removeSavedPhoto = (photo: SavedPhoto) => {
+    setSavedPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    setPhotosToDelete((prev) => [...prev, photo]);
+  };
+
+  const removeStagedPhoto = (key: string) => {
+    setStagedPhotos((prev) => {
+      const photo = prev.find((p) => p.key === key);
+      if (photo) URL.revokeObjectURL(photo.preview);
+      return prev.filter((p) => p.key !== key);
+    });
+  };
 
   const toggleTag = (tag: string) => {
     const tags = form.dietary_tags.includes(tag)
@@ -840,44 +912,225 @@ function ItemEditorModal({
             </div>
           )}
 
-          {/* Photo URL */}
+          {/* Fotos del producto */}
           <div>
-            <SectionLabel>Photo URL</SectionLabel>
-            <FieldInput
-              value={form.photo_url}
-              onChange={(v) => set("photo_url", v)}
-              placeholder="https://… (paste image URL)"
-            />
-            <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: 4 }}>
-              {/* TODO(storage): replace with Supabase Storage upload
-                   when bucket 'menu-photos' is set up. */}
-              TODO(storage): direct URL for now — Supabase Storage upload coming.
-            </p>
-            {form.photo_url && (
-              <div
-                style={{
-                  marginTop: 8,
-                  width: 80,
-                  height: 80,
-                  borderRadius: 8,
-                  overflow: "hidden",
-                  border: "1px solid var(--db-border)",
-                  background: "var(--db-bg-elevated)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={form.photo_url}
-                  alt="preview"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
+            <SectionLabel>Fotos del producto</SectionLabel>
+
+            {loadingPhotos ? (
+              <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", margin: "0 0 8px" }}>
+                Cargando fotos…
+              </p>
+            ) : (
+              <>
+                {/* Thumbnail grid */}
+                {(savedPhotos.length > 0 || stagedPhotos.length > 0) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    {savedPhotos.map((photo, idx) => (
+                      <div
+                        key={photo.id}
+                        style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.url}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: 8,
+                            border: "1px solid var(--db-border)",
+                          }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.opacity = "0.3";
+                          }}
+                        />
+                        {idx === 0 && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: 3,
+                              left: 3,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              background: "var(--db-accent)",
+                              color: "#fff",
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            Principal
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeSavedPhoto(photo)}
+                          style={{
+                            position: "absolute",
+                            top: 3,
+                            right: 3,
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,0.75)",
+                            border: "none",
+                            color: "#fff",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 13,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+
+                    {stagedPhotos.map((photo, idx) => (
+                      <div
+                        key={photo.key}
+                        style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.preview}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: 8,
+                            border: "2px dashed var(--db-accent)",
+                            opacity: 0.9,
+                          }}
+                        />
+                        {savedPhotos.length === 0 && idx === 0 && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: 3,
+                              left: 3,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              background: "var(--db-accent)",
+                              color: "#fff",
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            Principal
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: 3,
+                            left: 3,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            background: "rgba(0,0,0,0.6)",
+                            color: "#fff",
+                            padding: "1px 5px",
+                            borderRadius: 4,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          Nueva
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeStagedPhoto(photo.key)}
+                          style={{
+                            position: "absolute",
+                            top: 3,
+                            right: 3,
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,0.75)",
+                            border: "none",
+                            color: "#fff",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 13,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload label / button */}
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    border: "1px dashed var(--db-border)",
+                    background: "var(--db-bg-elevated)",
+                    color: "var(--db-text-secondary)",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    userSelect: "none",
                   }}
-                />
-              </div>
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: "none" }}
+                    onChange={handleFileSelect}
+                  />
+                  <IconPhoto size={14} />
+                  Agregar fotos (jpeg, png, webp · máx 5 MB)
+                </label>
+
+                {/* Legacy photo_url — kept for backwards compatibility */}
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px" }}>
+                    O pega una URL directamente (campo heredado):
+                  </p>
+                  <FieldInput
+                    value={form.photo_url}
+                    onChange={(v) => set("photo_url", v)}
+                    placeholder="https://… (URL de imagen)"
+                  />
+                  {form.photo_url && savedPhotos.length === 0 && stagedPhotos.length === 0 && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        width: 64,
+                        height: 64,
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        border: "1px solid var(--db-border)",
+                        background: "var(--db-bg-elevated)",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={form.photo_url}
+                        alt="preview"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
@@ -1008,7 +1261,7 @@ function ItemEditorModal({
             Cancel
           </button>
           <button
-            onClick={() => onSave(form)}
+            onClick={() => onSave(form, stagedPhotos, photosToDelete)}
             disabled={saving || !form.name.trim() || !form.priceDollars.trim()}
             style={{
               display: "flex",
@@ -1437,7 +1690,7 @@ function CategorySection({
   deletingItem: string | null;
   savingItem: boolean;
   activeItemEdit: { item: ItemForm; itemId: string | null; categoryId: string } | null;
-  onItemSave: (form: ItemForm) => void;
+  onItemSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[]) => void;
   onItemEditCancel: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -1615,6 +1868,7 @@ function CategorySection({
           item={activeItemEdit.item}
           categoryId={category.id}
           businessId={category.business_id}
+          itemId={activeItemEdit.itemId}
           onSave={onItemSave}
           onCancel={onItemEditCancel}
           saving={savingItem}
@@ -2009,9 +2263,9 @@ export default function MenuPage() {
     });
   }, []);
 
-  // ── Save item ────────────────────────────────────────────────────────────────
+  // ── Save item (with multi-photo support) ────────────────────────────────────
   const handleSaveItem = useCallback(
-    async (form: ItemForm) => {
+    async (form: ItemForm, stagedPhotos: StagedPhotoFile[], photosToDelete: SavedPhoto[]) => {
       if (!activeItemEdit) return;
       if (!form.name.trim() || !form.priceDollars.trim()) {
         setError("Name and price are required.");
@@ -2063,22 +2317,78 @@ export default function MenuPage() {
       }
 
       try {
+        // 1. Create or update the menu item; for new items capture the ID.
+        let resolvedItemId: string;
         if (activeItemEdit.itemId) {
+          resolvedItemId = activeItemEdit.itemId;
           const { error: err } = await supabase
             .from("menu_items")
             .update(payload)
-            .eq("id", activeItemEdit.itemId);
+            .eq("id", resolvedItemId);
           if (err) throw err;
         } else {
           const sort = items.filter(
             (i) => i.category_id === activeItemEdit.categoryId
           ).length;
-          const { error: err } = await supabase.from("menu_items").insert({
-            ...payload,
-            sort,
-          });
+          const { data: newRow, error: err } = await supabase
+            .from("menu_items")
+            .insert({ ...payload, sort })
+            .select("id")
+            .single();
           if (err) throw err;
+          resolvedItemId = (newRow as { id: string }).id;
         }
+
+        // 2. Delete photos removed by the user (Storage object + DB row).
+        for (const photo of photosToDelete) {
+          if (photo.storage_path) {
+            await supabase.storage.from("menu-photos").remove([photo.storage_path]);
+          }
+          await supabase.from("menu_item_photos").delete().eq("id", photo.id);
+        }
+
+        // 3. Upload staged (new) photos and insert rows.
+        const uploadedUrls: string[] = [];
+        const baseSort = Date.now(); // monotonically increasing sort anchor
+        for (let i = 0; i < stagedPhotos.length; i++) {
+          const { file } = stagedPhotos[i];
+          const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+          const storagePath = `${businessId}/${resolvedItemId}/${crypto.randomUUID()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("menu-photos")
+            .upload(storagePath, file, { contentType: file.type, upsert: false });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage
+            .from("menu-photos")
+            .getPublicUrl(storagePath);
+          const { error: rowErr } = await supabase.from("menu_item_photos").insert({
+            menu_item_id: resolvedItemId,
+            business_id: businessId,
+            url: pub.publicUrl,
+            storage_path: storagePath,
+            sort: baseSort + i,
+          });
+          if (rowErr) throw rowErr;
+          uploadedUrls.push(pub.publicUrl);
+        }
+
+        // 4. Sync menu_items.photo_url with the first photo (sort asc).
+        if (stagedPhotos.length > 0 || photosToDelete.length > 0) {
+          const { data: firstPhoto } = await supabase
+            .from("menu_item_photos")
+            .select("url")
+            .eq("menu_item_id", resolvedItemId)
+            .order("sort", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (firstPhoto) {
+            await supabase
+              .from("menu_items")
+              .update({ photo_url: (firstPhoto as { url: string }).url })
+              .eq("id", resolvedItemId);
+          }
+        }
+
         setSuccess(`"${form.name.trim()}" saved.`);
         setActiveItemEdit(null);
         await loadData();
