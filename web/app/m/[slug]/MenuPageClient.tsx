@@ -8,6 +8,283 @@ import type {
   MenuItemOption,
 } from "./page";
 
+// ── Card effect types ─────────────────────────────────────────────────────────
+
+export type CardEffect =
+  | "lift"
+  | "reveal"
+  | "tilt"
+  | "spotlight"
+  | "duotone"
+  | "glass"
+  | "shine"
+  | "focus"
+  | "neon"
+  | "polaroid";
+
+type EffectStyles = {
+  cardStyle: React.CSSProperties;
+  photoWrapStyle: React.CSSProperties;
+  imgStyle: React.CSSProperties;
+  overlayStyle: React.CSSProperties;
+  revealInfo: boolean;
+  belowInfo: boolean;
+  revealWrapStyle: React.CSSProperties;
+  revealDescStyle: React.CSSProperties;
+};
+
+// Translated directly from Galeria Efectos.dc.html cardFor() function
+function buildEffectStyles(
+  eff: CardEffect,
+  h: boolean,
+  mx: number,
+  my: number
+): EffectStyles {
+  let cardStyle: React.CSSProperties = {
+    position: "relative",
+    background: "rgba(255,255,255,0.045)",
+    border: "0.5px solid rgba(255,255,255,0.09)",
+    borderRadius: 16,
+    overflow: "hidden",
+    cursor: "pointer",
+  };
+  let photoWrapStyle: React.CSSProperties = {
+    position: "relative",
+    aspectRatio: "4 / 3",
+    overflow: "hidden",
+  };
+  let imgStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transformOrigin: "center",
+    transition: "transform .5s ease, filter .5s ease",
+    zIndex: 1,
+  };
+  let overlayStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    zIndex: 2,
+    opacity: 0,
+    transition: "opacity .35s ease",
+  };
+  let revealInfo = false;
+  let belowInfo = true;
+  let revealWrapStyle: React.CSSProperties = {};
+  let revealDescStyle: React.CSSProperties = {};
+
+  if (eff === "lift") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease",
+      transform: h ? "translateY(-10px)" : "none",
+      boxShadow: h ? "0 22px 46px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.1)" : "scale(1)" };
+  } else if (eff === "reveal") {
+    belowInfo = false;
+    revealInfo = true;
+    photoWrapStyle = { ...photoWrapStyle, aspectRatio: "3 / 4" };
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease",
+      boxShadow: h ? "0 22px 46px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.06)" : "scale(1)" };
+    overlayStyle = {
+      ...overlayStyle,
+      background: "linear-gradient(to top, rgba(8,13,30,0.96) 2%, rgba(8,13,30,0.45) 38%, rgba(8,13,30,0) 72%)",
+      opacity: h ? 1 : 0.6,
+    };
+    revealWrapStyle = {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      padding: 16,
+      zIndex: 3,
+      color: "#F4F6FB",
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+      transform: h ? "translateY(0)" : "translateY(10px)",
+      transition: "transform .35s ease",
+    };
+    revealDescStyle = {
+      fontSize: 12.5,
+      color: "rgba(244,246,251,0.8)",
+      lineHeight: 1.4,
+      overflow: "hidden",
+      maxHeight: h ? 60 : 0,
+      opacity: h ? 1 : 0,
+      transition: "all .35s ease",
+    };
+  } else if (eff === "tilt") {
+    cardStyle = {
+      ...cardStyle,
+      transition: h
+        ? "transform .06s linear, box-shadow .3s ease"
+        : "transform .45s ease, box-shadow .3s ease",
+      transform: `perspective(720px) rotateX(${(-(my - 0.5) * 14).toFixed(2)}deg) rotateY(${((mx - 0.5) * 16).toFixed(2)}deg) scale(${h ? 1.03 : 1})`,
+      transformStyle: "preserve-3d",
+      boxShadow: h ? "0 24px 50px rgba(0,0,0,0.55)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.05)" : "scale(1)" };
+    overlayStyle = {
+      ...overlayStyle,
+      background: `radial-gradient(circle at ${(mx * 100).toFixed(1)}% ${(my * 100).toFixed(1)}%, rgba(255,255,255,0.30), rgba(255,255,255,0) 45%)`,
+      opacity: h ? 1 : 0,
+      transition: "opacity .2s ease",
+    };
+  } else if (eff === "spotlight") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease, border-color .3s ease",
+      border: "0.5px solid " + (h ? "rgba(227,183,101,0.6)" : "rgba(255,255,255,0.09)"),
+      boxShadow: h
+        ? "0 0 0 1px rgba(227,183,101,0.4), 0 16px 44px rgba(227,183,101,0.18)"
+        : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    overlayStyle = {
+      ...overlayStyle,
+      background: `radial-gradient(240px circle at ${(mx * 100).toFixed(1)}% ${(my * 100).toFixed(1)}%, rgba(227,183,101,0.34), rgba(227,183,101,0) 60%)`,
+      opacity: h ? 1 : 0,
+      transition: "opacity .2s ease",
+    };
+  } else if (eff === "duotone") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease",
+      boxShadow: h ? "0 18px 42px rgba(0,0,0,0.45)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = {
+      ...imgStyle,
+      filter: h ? "none" : "grayscale(0.9) contrast(1.05) brightness(0.82)",
+      transform: h ? "scale(1.06)" : "scale(1)",
+    };
+    overlayStyle = {
+      ...overlayStyle,
+      background: "linear-gradient(135deg,#378ADD,#534AB7)",
+      mixBlendMode: "color",
+      opacity: h ? 0 : 0.55,
+      transition: "opacity .5s ease",
+    };
+  } else if (eff === "glass") {
+    belowInfo = false;
+    revealInfo = true;
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease, transform .3s ease",
+      transform: h ? "translateY(-6px)" : "none",
+      boxShadow: h ? "0 22px 46px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.08)" : "scale(1)" };
+    overlayStyle = {
+      ...overlayStyle,
+      background: "linear-gradient(to top, rgba(8,13,30,0.5), rgba(8,13,30,0))",
+      opacity: h ? 1 : 0.4,
+    };
+    revealWrapStyle = {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      bottom: 12,
+      padding: "12px 14px",
+      zIndex: 3,
+      color: "#F4F6FB",
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+      borderRadius: 14,
+      background: "rgba(16,26,58,0.55)",
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      border: "0.5px solid rgba(255,255,255,0.18)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+      transform: h ? "translateY(0)" : "translateY(8px)",
+      transition: "transform .35s ease",
+    };
+    revealDescStyle = {
+      fontSize: 12.5,
+      color: "rgba(244,246,251,0.82)",
+      lineHeight: 1.4,
+      overflow: "hidden",
+      maxHeight: h ? 60 : 0,
+      opacity: h ? 1 : 0,
+      transition: "all .35s ease",
+    };
+  } else if (eff === "shine") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "transform .3s ease, box-shadow .3s ease",
+      transform: h ? "translateY(-6px)" : "none",
+      boxShadow: h ? "0 20px 44px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.06)" : "scale(1)" };
+    overlayStyle = {
+      ...overlayStyle,
+      background: "linear-gradient(115deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 65%)",
+      backgroundSize: "250% 100%",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: h ? "-40% 0" : "160% 0",
+      opacity: h ? 1 : 0,
+      transition: h ? "background-position .8s ease, opacity .15s ease" : "opacity .3s ease",
+    };
+  } else if (eff === "focus") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease, transform .3s ease",
+      transform: h ? "translateY(-6px)" : "none",
+      boxShadow: h ? "0 20px 44px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = {
+      ...imgStyle,
+      filter: h ? "blur(0px) brightness(1)" : "blur(3px) brightness(0.72)",
+      transform: h ? "scale(1.06)" : "scale(1.08)",
+    };
+  } else if (eff === "neon") {
+    cardStyle = {
+      ...cardStyle,
+      transition: "box-shadow .3s ease, transform .3s ease, border-color .3s ease",
+      transform: h ? "translateY(-6px)" : "none",
+      border: "0.5px solid " + (h ? "rgba(83,74,183,0.9)" : "rgba(255,255,255,0.09)"),
+      boxShadow: h
+        ? "0 0 0 1.5px rgba(83,74,183,0.9), 0 0 22px rgba(55,138,221,0.55), 0 16px 40px rgba(0,0,0,0.45)"
+        : "0 1px 3px rgba(0,0,0,0.25)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.05)" : "scale(1)" };
+    overlayStyle = {
+      ...overlayStyle,
+      background: "linear-gradient(135deg, rgba(55,138,221,0.25), rgba(83,74,183,0.25))",
+      opacity: h ? 1 : 0,
+      transition: "opacity .3s ease",
+    };
+  } else {
+    // polaroid
+    cardStyle = {
+      ...cardStyle,
+      transition: "transform .35s cubic-bezier(.22,1,.36,1), box-shadow .3s ease",
+      transform: h ? "rotate(0deg) translateY(-8px) scale(1.04)" : "rotate(-2deg)",
+      boxShadow: h ? "0 26px 52px rgba(0,0,0,0.55)" : "0 6px 16px rgba(0,0,0,0.35)",
+    };
+    imgStyle = { ...imgStyle, transform: h ? "scale(1.04)" : "scale(1)" };
+  }
+
+  return {
+    cardStyle,
+    photoWrapStyle,
+    imgStyle,
+    overlayStyle,
+    revealInfo,
+    belowInfo,
+    revealWrapStyle,
+    revealDescStyle,
+  };
+}
+
 // ── Cart types ────────────────────────────────────────────────────────────────
 
 interface CartItem {
@@ -36,7 +313,7 @@ function calcLine(
   extras: MenuItemOption[],
   qty: number
 ): number {
-  return ((base + (size?.price_cents ?? 0) + extras.reduce((s, e) => s + e.price_cents, 0)) * qty);
+  return (base + (size?.price_cents ?? 0) + extras.reduce((s, e) => s + e.price_cents, 0)) * qty;
 }
 
 const BADGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
@@ -171,7 +448,6 @@ function CategoryNav({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Scroll active chip into view when activeId changes
   useEffect(() => {
     const el = scrollRef.current?.querySelector<HTMLButtonElement>(
       `[data-cat="${activeId}"]`
@@ -218,9 +494,7 @@ function CategoryNav({
                 border: active
                   ? "1px solid var(--color-gold)"
                   : "1px solid var(--border-subtle)",
-                background: active
-                  ? "rgba(217,119,6,0.15)"
-                  : "var(--bg-surface)",
+                background: active ? "rgba(217,119,6,0.15)" : "var(--bg-surface)",
                 color: active ? "var(--color-gold)" : "var(--text-secondary)",
                 fontSize: 13,
                 fontWeight: active ? 600 : 400,
@@ -240,75 +514,27 @@ function CategoryNav({
   );
 }
 
-function ItemPhoto({
-  item,
-  size = 180,
-}: {
-  item: PublicMenuItem;
-  size?: number;
-}) {
-  const primaryUrl = item.photos[0]?.url ?? item.photo_url;
-  const extraCount = item.photos.length > 1 ? item.photos.length - 1 : 0;
-
-  if (!primaryUrl) {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: size,
-          background:
-            "linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 36,
-          flexShrink: 0,
-        }}
-      >
-        🍽️
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ position: "relative", width: "100%", height: size, flexShrink: 0 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={primaryUrl}
-        alt=""
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          display: "block",
-        }}
-      />
-      {extraCount > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 8,
-            right: 8,
-            background: "rgba(0,0,0,0.65)",
-            color: "#fff",
-            fontSize: 11,
-            fontWeight: 600,
-            borderRadius: 10,
-            padding: "2px 7px",
-          }}
-        >
-          +{extraCount}
-        </div>
-      )}
-    </div>
-  );
-}
+// ── ItemCard with effect support ──────────────────────────────────────────────
 
 function ItemCard({
   item,
+  effect,
+  hoveredCardId,
+  mx,
+  my,
+  onCardEnter,
+  onCardLeave,
+  onCardMove,
   onTap,
 }: {
   item: PublicMenuItem;
+  effect: CardEffect;
+  hoveredCardId: string | null;
+  mx: number;
+  my: number;
+  onCardEnter: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
+  onCardLeave: () => void;
+  onCardMove: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onTap: (item: PublicMenuItem) => void;
 }) {
   const soldOut = item.stock_count !== null && item.stock_count === 0;
@@ -317,27 +543,81 @@ function ItemCard({
   const hasOptions = hasSizes || hasExtras;
   const badge = item.badge ? BADGE_CONFIG[item.badge] : null;
 
+  const cardId = `${item.category_id}/${item.id}`;
+  const isHovered = !soldOut && hoveredCardId === cardId;
+
+  const {
+    cardStyle,
+    photoWrapStyle,
+    imgStyle,
+    overlayStyle,
+    revealInfo,
+    belowInfo,
+    revealWrapStyle,
+    revealDescStyle,
+  } = buildEffectStyles(effect, isHovered, mx, my);
+
+  const primaryUrl = item.photos[0]?.url ?? item.photo_url;
+
   return (
     <div
       onClick={() => !soldOut && onTap(item)}
+      onMouseEnter={soldOut ? undefined : (e) => onCardEnter(e, cardId)}
+      onMouseLeave={soldOut ? undefined : onCardLeave}
+      onMouseMove={soldOut ? undefined : (e) => onCardMove(e, cardId)}
       style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: 14,
-        overflow: "hidden",
-        cursor: soldOut ? "not-allowed" : "pointer",
+        ...cardStyle,
         opacity: soldOut ? 0.65 : 1,
-        transition: "transform 0.1s, box-shadow 0.1s",
-        position: "relative",
         display: "flex",
         flexDirection: "column",
       }}
     >
       {/* Photo area */}
-      <div style={{ position: "relative" }}>
-        <ItemPhoto item={item} size={160} />
+      <div style={{ ...photoWrapStyle, flexShrink: 0 }}>
+        {/* Image or placeholder */}
+        {primaryUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={primaryUrl} alt="" style={imgStyle} />
+        ) : (
+          <div
+            style={{
+              ...imgStyle,
+              background:
+                "linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 36,
+            }}
+          >
+            🍽️
+          </div>
+        )}
 
-        {/* Badge overlay on photo */}
+        {/* Effect overlay */}
+        <div style={overlayStyle} />
+
+        {/* +N photos badge */}
+        {item.photos.length > 1 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              background: "rgba(0,0,0,0.65)",
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: 10,
+              padding: "2px 7px",
+              zIndex: 4,
+            }}
+          >
+            +{item.photos.length - 1}
+          </div>
+        )}
+
+        {/* Badge */}
         {badge && (
           <div
             style={{
@@ -350,6 +630,7 @@ function ItemCard({
               fontWeight: 700,
               borderRadius: 8,
               padding: "3px 7px",
+              zIndex: 4,
             }}
           >
             {badge.label}
@@ -366,6 +647,7 @@ function ItemCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              zIndex: 5,
             }}
           >
             <span
@@ -382,97 +664,112 @@ function ItemCard({
             </span>
           </div>
         )}
+
+        {/* Reveal / Glass info panel (inside photo) */}
+        {revealInfo && (
+          <div style={revealWrapStyle}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#E3B765" }}>
+              {fmtPrice(item.price_cents)}
+            </div>
+            {item.description && (
+              <div style={revealDescStyle}>{item.description}</div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div style={{ padding: "10px 12px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+      {/* Below-photo content (all effects except reveal/glass) */}
+      {belowInfo && (
         <div
           style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            lineHeight: 1.3,
+            padding: "10px 12px 12px",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
           }}
         >
-          {item.name}
-        </div>
-
-        {item.description && (
           <div
             style={{
-              fontSize: 11,
-              color: "var(--text-tertiary)",
-              lineHeight: 1.4,
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              lineHeight: 1.3,
             }}
           >
-            {item.description}
+            {item.name}
           </div>
-        )}
 
-        {/* Dietary tags */}
-        {item.dietary_tags.length > 0 && (
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {item.dietary_tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                style={{
-                  fontSize: 9,
-                  color: "var(--text-tertiary)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: 6,
-                  padding: "1px 5px",
-                }}
-              >
-                {DIETARY_LABELS[tag] ?? tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Price row */}
-        <div
-          style={{
-            marginTop: "auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingTop: 4,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: "var(--color-gold)",
-            }}
-          >
-            {fmtPrice(item.price_cents)}
-          </span>
-          {!soldOut && (
+          {item.description && (
             <div
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: "var(--color-brand)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                color: "#fff",
-                fontWeight: 700,
-                flexShrink: 0,
+                fontSize: 11,
+                color: "var(--text-tertiary)",
+                lineHeight: 1.4,
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
               }}
             >
-              {hasOptions ? "⚙" : "+"}
+              {item.description}
             </div>
           )}
+
+          {item.dietary_tags.length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {item.dietary_tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    fontSize: 9,
+                    color: "var(--text-tertiary)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: 6,
+                    padding: "1px 5px",
+                  }}
+                >
+                  {DIETARY_LABELS[tag] ?? tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div
+            style={{
+              marginTop: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingTop: 4,
+            }}
+          >
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--color-gold)" }}>
+              {fmtPrice(item.price_cents)}
+            </span>
+            {!soldOut && (
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "var(--color-brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                  color: "#fff",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {hasOptions ? "⚙" : "+"}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -480,10 +777,24 @@ function ItemCard({
 function CategorySection({
   category,
   sectionRef,
+  effect,
+  hoveredCardId,
+  mx,
+  my,
+  onCardEnter,
+  onCardLeave,
+  onCardMove,
   onItemTap,
 }: {
   category: PublicMenuCategory;
   sectionRef: (el: HTMLElement | null) => void;
+  effect: CardEffect;
+  hoveredCardId: string | null;
+  mx: number;
+  my: number;
+  onCardEnter: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
+  onCardLeave: () => void;
+  onCardMove: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onItemTap: (item: PublicMenuItem) => void;
 }) {
   if (category.items.length === 0) return null;
@@ -504,9 +815,7 @@ function CategorySection({
           margin: "0 auto",
         }}
       >
-        {category.icon && (
-          <span style={{ fontSize: 20 }}>{category.icon}</span>
-        )}
+        {category.icon && <span style={{ fontSize: 20 }}>{category.icon}</span>}
         <h2
           style={{
             fontSize: 16,
@@ -542,7 +851,18 @@ function CategorySection({
         }}
       >
         {category.items.map((item) => (
-          <ItemCard key={item.id} item={item} onTap={onItemTap} />
+          <ItemCard
+            key={item.id}
+            item={item}
+            effect={effect}
+            hoveredCardId={hoveredCardId}
+            mx={mx}
+            my={my}
+            onCardEnter={onCardEnter}
+            onCardLeave={onCardLeave}
+            onCardMove={onCardMove}
+            onTap={onItemTap}
+          />
         ))}
       </div>
     </section>
@@ -568,9 +888,7 @@ function CustomizerSheet({
   const hasSizes = (item.options.sizes?.length ?? 0) > 0;
   const hasExtras = (item.options.extras?.length ?? 0) > 0;
 
-  const [selectedSize, setSelectedSize] = useState<MenuItemOption | null>(
-    hasSizes ? null : null
-  );
+  const [selectedSize, setSelectedSize] = useState<MenuItemOption | null>(null);
   const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
   const [qty, setQty] = useState(1);
 
@@ -586,15 +904,8 @@ function CustomizerSheet({
   const extrasArr: MenuItemOption[] = (item.options.extras ?? []).filter((e) =>
     selectedExtras.has(e.label)
   );
-  const totalCents = calcLine(
-    item.price_cents,
-    selectedSize,
-    extrasArr,
-    qty
-  );
-
+  const totalCents = calcLine(item.price_cents, selectedSize, extrasArr, qty);
   const canAdd = !hasSizes || selectedSize !== null;
-
   const primaryUrl = item.photos[0]?.url ?? item.photo_url;
 
   return (
@@ -635,7 +946,6 @@ function CustomizerSheet({
               🍽️
             </div>
           )}
-          {/* close button */}
           <button
             onClick={onClose}
             style={{
@@ -657,7 +967,6 @@ function CustomizerSheet({
           >
             ✕
           </button>
-          {/* multi-photo indicator */}
           {item.photos.length > 1 && (
             <div
               style={{
@@ -679,7 +988,6 @@ function CustomizerSheet({
 
         {/* Scrollable body */}
         <div style={{ overflowY: "auto", flex: 1, padding: "16px 16px 0" }}>
-          {/* Name + price */}
           <div
             style={{
               display: "flex",
@@ -724,7 +1032,6 @@ function CustomizerSheet({
             </p>
           )}
 
-          {/* Sizes */}
           {hasSizes && (
             <div style={{ marginBottom: 20 }}>
               <div
@@ -767,9 +1074,7 @@ function CustomizerSheet({
                         border: active
                           ? "2px solid var(--color-brand)"
                           : "1px solid var(--border-subtle)",
-                        background: active
-                          ? "rgba(79,70,229,0.1)"
-                          : "var(--bg-surface)",
+                        background: active ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
                         cursor: "pointer",
                         width: "100%",
                         textAlign: "left",
@@ -778,9 +1083,7 @@ function CustomizerSheet({
                       <span
                         style={{
                           fontSize: 14,
-                          color: active
-                            ? "var(--color-brand)"
-                            : "var(--text-primary)",
+                          color: active ? "var(--color-brand)" : "var(--text-primary)",
                           fontWeight: active ? 600 : 400,
                           display: "flex",
                           alignItems: "center",
@@ -802,11 +1105,7 @@ function CustomizerSheet({
                       </span>
                       {size.price_cents > 0 && (
                         <span
-                          style={{
-                            fontSize: 13,
-                            color: "var(--text-secondary)",
-                            fontWeight: 500,
-                          }}
+                          style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}
                         >
                           +{fmtPrice(size.price_cents)}
                         </span>
@@ -818,7 +1117,6 @@ function CustomizerSheet({
             </div>
           )}
 
-          {/* Extras */}
           {hasExtras && (
             <div style={{ marginBottom: 20 }}>
               <div
@@ -850,9 +1148,7 @@ function CustomizerSheet({
                         border: checked
                           ? "2px solid var(--color-brand)"
                           : "1px solid var(--border-subtle)",
-                        background: checked
-                          ? "rgba(79,70,229,0.1)"
-                          : "var(--bg-surface)",
+                        background: checked ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
                         cursor: "pointer",
                         width: "100%",
                         textAlign: "left",
@@ -861,9 +1157,7 @@ function CustomizerSheet({
                       <span
                         style={{
                           fontSize: 14,
-                          color: checked
-                            ? "var(--color-brand)"
-                            : "var(--text-primary)",
+                          color: checked ? "var(--color-brand)" : "var(--text-primary)",
                           fontWeight: checked ? 600 : 400,
                           display: "flex",
                           alignItems: "center",
@@ -885,11 +1179,7 @@ function CustomizerSheet({
                       </span>
                       {extra.price_cents > 0 && (
                         <span
-                          style={{
-                            fontSize: 13,
-                            color: "var(--text-secondary)",
-                            fontWeight: 500,
-                          }}
+                          style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}
                         >
                           +{fmtPrice(extra.price_cents)}
                         </span>
@@ -901,7 +1191,6 @@ function CustomizerSheet({
             </div>
           )}
 
-          {/* Qty */}
           <div
             style={{
               display: "flex",
@@ -911,10 +1200,7 @@ function CustomizerSheet({
               padding: "12px 0 20px",
             }}
           >
-            <button
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              style={qtyBtnStyle}
-            >
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))} style={qtyBtnStyle}>
               −
             </button>
             <span
@@ -928,10 +1214,7 @@ function CustomizerSheet({
             >
               {qty}
             </span>
-            <button
-              onClick={() => setQty((q) => q + 1)}
-              style={qtyBtnStyle}
-            >
+            <button onClick={() => setQty((q) => q + 1)} style={qtyBtnStyle}>
               +
             </button>
           </div>
@@ -947,10 +1230,7 @@ function CustomizerSheet({
           }}
         >
           <button
-            onClick={() => {
-              if (!canAdd) return;
-              onAddToCart(item, selectedSize, extrasArr, qty);
-            }}
+            onClick={() => canAdd && onAddToCart(item, selectedSize, extrasArr, qty)}
             disabled={!canAdd}
             style={{
               width: "100%",
@@ -1019,7 +1299,6 @@ function CartSheet({
           flexDirection: "column",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -1031,12 +1310,7 @@ function CartSheet({
           }}
         >
           <h2
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
+            style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}
           >
             🛒 Tu carrito
           </h2>
@@ -1055,7 +1329,6 @@ function CartSheet({
           </button>
         </div>
 
-        {/* Items */}
         <div style={{ overflowY: "auto", flex: 1, padding: "12px 16px" }}>
           {cartItems.length === 0 ? (
             <div
@@ -1116,7 +1389,6 @@ function CartSheet({
                     </button>
                   </div>
 
-                  {/* Options summary */}
                   {(ci.selectedSize || ci.selectedExtras.length > 0) && (
                     <div
                       style={{
@@ -1127,9 +1399,7 @@ function CartSheet({
                       }}
                     >
                       {ci.selectedSize && <span>{ci.selectedSize.label}</span>}
-                      {ci.selectedSize && ci.selectedExtras.length > 0 && (
-                        <span> · </span>
-                      )}
+                      {ci.selectedSize && ci.selectedExtras.length > 0 && <span> · </span>}
                       {ci.selectedExtras.map((e, i) => (
                         <span key={e.label}>
                           {i > 0 && ", "}
@@ -1139,7 +1409,6 @@ function CartSheet({
                     </div>
                   )}
 
-                  {/* Qty + line total */}
                   <div
                     style={{
                       display: "flex",
@@ -1147,13 +1416,7 @@ function CartSheet({
                       justifyContent: "space-between",
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <button
                         onClick={() => onUpdateQty(ci.cartId, -1)}
                         style={smallQtyBtnStyle}
@@ -1179,11 +1442,7 @@ function CartSheet({
                       </button>
                     </div>
                     <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "var(--color-gold)",
-                      }}
+                      style={{ fontSize: 14, fontWeight: 700, color: "var(--color-gold)" }}
                     >
                       {fmtPrice(ci.lineTotalCents)}
                     </span>
@@ -1194,7 +1453,6 @@ function CartSheet({
           )}
         </div>
 
-        {/* Footer */}
         <div
           style={{
             padding: "12px 16px 24px",
@@ -1210,22 +1468,10 @@ function CartSheet({
               marginBottom: 14,
             }}
           >
-            <span
-              style={{
-                fontSize: 14,
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
+            <span style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500 }}>
               Subtotal
             </span>
-            <span
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "var(--text-primary)",
-              }}
-            >
+            <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
               {fmtPrice(subtotal)}
             </span>
           </div>
@@ -1269,9 +1515,7 @@ function PickupSheet({
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [tableNumber, setTableNumber] = useState("");
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
-
-  const canConfirm =
-    pickupType === "counter" || tableNumber.trim().length > 0;
+  const canConfirm = pickupType === "counter" || tableNumber.trim().length > 0;
 
   return (
     <Backdrop onClose={onBack}>
@@ -1285,7 +1529,6 @@ function PickupSheet({
           flexDirection: "column",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -1311,24 +1554,26 @@ function PickupSheet({
             ←
           </button>
           <h2
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
+            style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}
           >
             ¿Cómo quieres recibir tu pedido?
           </h2>
         </div>
 
         <div style={{ overflowY: "auto", flex: 1, padding: "16px" }}>
-          {/* Pickup options */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
             {(
               [
-                { type: "counter" as PickupType, label: "🍽️ En la barra", desc: "Recoge en el counter cuando esté listo" },
-                { type: "table" as PickupType, label: "🪑 En mi mesa", desc: "Te lo llevamos a tu mesa" },
+                {
+                  type: "counter" as PickupType,
+                  label: "🍽️ En la barra",
+                  desc: "Recoge en el counter cuando esté listo",
+                },
+                {
+                  type: "table" as PickupType,
+                  label: "🪑 En mi mesa",
+                  desc: "Te lo llevamos a tu mesa",
+                },
               ] as const
             ).map(({ type, label, desc }) => {
               const active = pickupType === type;
@@ -1342,9 +1587,7 @@ function PickupSheet({
                     border: active
                       ? "2px solid var(--color-brand)"
                       : "1px solid var(--border-subtle)",
-                    background: active
-                      ? "rgba(79,70,229,0.1)"
-                      : "var(--bg-surface)",
+                    background: active ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
                     cursor: "pointer",
                     textAlign: "left",
                     width: "100%",
@@ -1354,28 +1597,18 @@ function PickupSheet({
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: active
-                        ? "var(--color-brand)"
-                        : "var(--text-primary)",
+                      color: active ? "var(--color-brand)" : "var(--text-primary)",
                       marginBottom: 3,
                     }}
                   >
                     {label}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    {desc}
-                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{desc}</div>
                 </button>
               );
             })}
           </div>
 
-          {/* Table number */}
           {pickupType === "table" && (
             <div style={{ marginBottom: 20 }}>
               <label
@@ -1410,7 +1643,6 @@ function PickupSheet({
             </div>
           )}
 
-          {/* Order summary */}
           <div
             style={{
               background: "var(--bg-surface)",
@@ -1442,23 +1674,12 @@ function PickupSheet({
                     gap: 8,
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "var(--text-secondary)",
-                      flex: 1,
-                    }}
-                  >
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1 }}>
                     {ci.quantity}× {ci.name}
                     {ci.selectedSize ? ` (${ci.selectedSize.label})` : ""}
                   </span>
                   <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "var(--text-primary)",
-                      flexShrink: 0,
-                    }}
+                    style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}
                   >
                     {fmtPrice(ci.lineTotalCents)}
                   </span>
@@ -1475,29 +1696,16 @@ function PickupSheet({
                 alignItems: "center",
               }}
             >
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                }}
-              >
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                 Total
               </span>
-              <span
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "var(--color-gold)",
-                }}
-              >
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--color-gold)" }}>
                 {fmtPrice(subtotal)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Confirm button */}
         <div
           style={{
             padding: "12px 16px 24px",
@@ -1506,9 +1714,7 @@ function PickupSheet({
           }}
         >
           <button
-            onClick={() =>
-              canConfirm && onConfirm(pickupType, tableNumber.trim())
-            }
+            onClick={() => canConfirm && onConfirm(pickupType, tableNumber.trim())}
             disabled={!canConfirm}
             style={{
               width: "100%",
@@ -1589,13 +1795,7 @@ function SuccessSheet({
             ? "Recoge tu pedido en la barra cuando esté listo."
             : `Te lo llevamos a la mesa ${tableNumber}.`}
         </p>
-        <p
-          style={{
-            fontSize: 12,
-            color: "var(--text-tertiary)",
-            margin: "0 0 28px",
-          }}
-        >
+        <p style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "0 0 28px" }}>
           Pago próximamente — esto es una demo del flujo.
         </p>
         <button
@@ -1620,7 +1820,7 @@ function SuccessSheet({
   );
 }
 
-// ── Backdrop (shared overlay wrapper) ────────────────────────────────────────
+// ── Backdrop ──────────────────────────────────────────────────────────────────
 
 function Backdrop({
   children,
@@ -1629,7 +1829,6 @@ function Backdrop({
   children: React.ReactNode;
   onClose: () => void;
 }) {
-  // Prevent body scroll while sheet is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -1780,6 +1979,41 @@ export default function MenuPageClient({
   business: PublicBusiness;
   categories: PublicMenuCategory[];
 }) {
+  const cardEffect = (business.menu_card_effect ?? "lift") as CardEffect;
+
+  // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState({ mx: 0.5, my: 0.5 });
+
+  const handleCardEnter = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      setMousePos({
+        mx: (e.clientX - r.left) / r.width,
+        my: (e.clientY - r.top) / r.height,
+      });
+      setHoveredCardId(id);
+    },
+    []
+  );
+
+  const handleCardLeave = useCallback(() => {
+    setHoveredCardId(null);
+  }, []);
+
+  const handleCardMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+      if (hoveredCardId === id) {
+        const r = e.currentTarget.getBoundingClientRect();
+        setMousePos({
+          mx: (e.clientX - r.left) / r.width,
+          my: (e.clientY - r.top) / r.height,
+        });
+      }
+    },
+    [hoveredCardId]
+  );
+
   // ── Cart state ──────────────────────────────────────────────────────────────
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
@@ -1879,17 +2113,18 @@ export default function MenuPageClient({
     setCartItems((prev) => prev.filter((ci) => ci.cartId !== cartId));
   }, []);
 
-  // ── Item tap handler ────────────────────────────────────────────────────────
-  const handleItemTap = useCallback((item: PublicMenuItem) => {
-    const hasSizes = (item.options.sizes?.length ?? 0) > 0;
-    const hasExtras = (item.options.extras?.length ?? 0) > 0;
-    if (hasSizes || hasExtras) {
-      setCustomizerItem(item);
-    } else {
-      // No options: add directly with qty=1
-      addToCart(item, null, [], 1);
-    }
-  }, [addToCart]);
+  const handleItemTap = useCallback(
+    (item: PublicMenuItem) => {
+      const hasSizes = (item.options.sizes?.length ?? 0) > 0;
+      const hasExtras = (item.options.extras?.length ?? 0) > 0;
+      if (hasSizes || hasExtras) {
+        setCustomizerItem(item);
+      } else {
+        addToCart(item, null, [], 1);
+      }
+    },
+    [addToCart]
+  );
 
   const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
@@ -1904,10 +2139,8 @@ export default function MenuPageClient({
         paddingBottom: cartCount > 0 ? 96 : 32,
       }}
     >
-      {/* Business header */}
       <BusinessHeader biz={business} />
 
-      {/* Category nav — only if there are categories */}
       {categories.length > 0 && (
         <CategoryNav
           categories={categories}
@@ -1916,7 +2149,6 @@ export default function MenuPageClient({
         />
       )}
 
-      {/* Menu content */}
       {categories.length === 0 ? (
         <EmptyMenu bizName={business.name} />
       ) : (
@@ -1929,20 +2161,21 @@ export default function MenuPageClient({
                 if (el) sectionRefs.current.set(cat.id, el);
                 else sectionRefs.current.delete(cat.id);
               }}
+              effect={cardEffect}
+              hoveredCardId={hoveredCardId}
+              mx={mousePos.mx}
+              my={mousePos.my}
+              onCardEnter={handleCardEnter}
+              onCardLeave={handleCardLeave}
+              onCardMove={handleCardMove}
               onItemTap={handleItemTap}
             />
           ))}
         </div>
       )}
 
-      {/* Floating cart button */}
-      <CartFAB
-        count={cartCount}
-        total={cartTotal}
-        onClick={() => setStep("cart")}
-      />
+      <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
 
-      {/* Customizer */}
       {customizerItem && (
         <CustomizerSheet
           item={customizerItem}
@@ -1951,7 +2184,6 @@ export default function MenuPageClient({
         />
       )}
 
-      {/* Cart sheet */}
       {step === "cart" && (
         <CartSheet
           cartItems={cartItems}
@@ -1962,7 +2194,6 @@ export default function MenuPageClient({
         />
       )}
 
-      {/* Pickup step */}
       {step === "pickup" && (
         <PickupSheet
           cartItems={cartItems}
@@ -1975,7 +2206,6 @@ export default function MenuPageClient({
         />
       )}
 
-      {/* Success */}
       {step === "success" && (
         <SuccessSheet
           pickupType={pickupType}

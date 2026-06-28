@@ -70,6 +70,7 @@ export interface PublicBusiness {
   description: string | null;
   cover_url: string | null;
   icon_emoji: string | null;
+  menu_card_effect: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ async function getMenuData(slug: string): Promise<{
 
   const { data: biz, error: bizErr } = await supabase
     .from("businesses")
-    .select("id, slug, name, category, description, cover_url, icon_emoji")
+    .select("id, slug, name, category, description, cover_url, icon_emoji, menu_card_effect")
     .eq("slug", slug)
     .single();
 
@@ -118,6 +119,7 @@ async function getMenuData(slug: string): Promise<{
     description: biz.description ?? null,
     cover_url: biz.cover_url ?? null,
     icon_emoji: biz.icon_emoji ?? null,
+    menu_card_effect: biz.menu_card_effect ?? "lift",
   };
 
   // Published categories ordered by sort

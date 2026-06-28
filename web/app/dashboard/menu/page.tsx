@@ -1903,6 +1903,9 @@ export default function MenuPage() {
   const [externalMenuUrl, setExternalMenuUrl] = useState<string>("");
   const [urlInput, setUrlInput] = useState<string>("");
   const [savingMode, setSavingMode] = useState(false);
+  const [cardEffect, setCardEffect] = useState<string>("lift");
+  const [savingEffect, setSavingEffect] = useState(false);
+  const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1954,6 +1957,8 @@ export default function MenuPage() {
       const extUrl = res.business.external_menu_url ?? "";
       setExternalMenuUrl(extUrl);
       setUrlInput(extUrl);
+      setCardEffect((res.business as unknown as { menu_card_effect?: string }).menu_card_effect ?? "lift");
+      setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
 
       const [catsResult, itemsResult] = await Promise.all([
         supabase
@@ -2201,6 +2206,27 @@ export default function MenuPage() {
       }
     },
     [businessId, urlInput],
+  );
+
+  const handleSaveCardEffect = useCallback(
+    async (eff: string) => {
+      if (!isSupabaseConfigured || !businessId) return;
+      setSavingEffect(true);
+      try {
+        const { error: err } = await supabase
+          .from("businesses")
+          .update({ menu_card_effect: eff } as never)
+          .eq("id", businessId);
+        if (err) throw err;
+        setCardEffect(eff);
+        setSuccess("Efecto guardado.");
+      } catch {
+        setError("Error al guardar el efecto.");
+      } finally {
+        setSavingEffect(false);
+      }
+    },
+    [businessId],
   );
 
   // ── Delete category ──────────────────────────────────────────────────────────
@@ -2798,6 +2824,99 @@ export default function MenuPage() {
           </strong>
         </div>
       </div>
+
+      {/* ── Efecto de tarjetas ─────────────────────────────────────────────── */}
+      {menuMode === "web" && (
+        <div
+          style={{
+            background: "var(--db-bg-card)",
+            border: "1px solid var(--db-border)",
+            borderRadius: 12,
+            padding: "20px 24px",
+            marginBottom: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            Efecto de tarjetas
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
+            Elige la animación que verán tus clientes al pasar el cursor sobre cada platillo.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 8,
+            }}
+          >
+            {([
+              { id: "lift",      name: "Elevar + Zoom",  desc: "Levanta y acerca",      emoji: "⬆️" },
+              { id: "reveal",    name: "Revelar",         desc: "Texto sobre la foto",   emoji: "👁️" },
+              { id: "tilt",      name: "Inclinación 3D",  desc: "Sigue el cursor",       emoji: "🎲" },
+              { id: "spotlight", name: "Reflector",       desc: "Luz dorada",            emoji: "✨" },
+              { id: "duotone",   name: "Duotono",         desc: "Grises → color",        emoji: "🎨" },
+              { id: "glass",     name: "Cristal",         desc: "Panel esmerilado",      emoji: "🪟" },
+              { id: "shine",     name: "Destello",        desc: "Brillo diagonal",       emoji: "💫" },
+              { id: "focus",     name: "Enfoque",         desc: "Desenfocado → nítido",  emoji: "🔍" },
+              { id: "neon",      name: "Marco Neón",      desc: "Borde brillante",       emoji: "🌆" },
+              { id: "polaroid",  name: "Polaroid",        desc: "Foto inclinada",        emoji: "📷" },
+            ] as const).map((opt) => {
+              const active = cardEffect === opt.id;
+              return (
+                <label
+                  key={opt.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `2px solid ${active ? "var(--db-accent)" : "var(--db-border)"}`,
+                    background: active ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
+                    cursor: savingEffect ? "wait" : "pointer",
+                    transition: "border-color 0.15s",
+                    opacity: savingEffect && !active ? 0.7 : 1,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="card_effect"
+                    value={opt.id}
+                    checked={active}
+                    disabled={savingEffect}
+                    onChange={() => void handleSaveCardEffect(opt.id)}
+                    style={{ accentColor: "var(--db-accent)", width: 15, height: 15, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{opt.emoji}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--db-text-primary)" }}>
+                      {opt.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--db-text-secondary)" }}>
+                      {opt.desc}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          {bizSlug && (
+            <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
+              <a
+                href={`/m/${bizSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
+              >
+                Ver menú público →
+              </a>
+              {" "}para ver el efecto aplicado.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* New / edit category form */}
       {showCatForm && (
