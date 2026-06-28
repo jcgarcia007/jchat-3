@@ -1,6 +1,3 @@
-// Auto-generated from Supabase (jchat-production). Do not edit by hand.
-// Regenerate: supabase gen types typescript --project-id klfsgcfoahdtkojyqspd
-
 export type Json =
   | string
   | number
@@ -44,6 +41,13 @@ export type Database = {
             foreignKeyName: "admin_roles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -78,6 +82,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "announcements_created_by_fkey"
             columns: ["created_by"]
@@ -120,6 +131,13 @@ export type Database = {
             foreignKeyName: "bans_banned_by_fkey"
             columns: ["banned_by"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -135,6 +153,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -170,7 +195,21 @@ export type Database = {
             foreignKeyName: "blocks_blocked_id_fkey"
             columns: ["blocked_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -226,7 +265,7 @@ export type Database = {
           {
             foreignKeyName: "business_verifications_business_id_fkey"
             columns: ["business_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
@@ -242,16 +281,22 @@ export type Database = {
           created_at: string
           dashboard_theme_id: number
           description: string | null
+          external_menu_url: string | null
           gallery_urls: string[]
+          geofence_polygon: Json | null
+          geofence_radius_m: number | null
           hours: Json
           icon_emoji: string | null
           id: string
           is_active: boolean
           is_verified: boolean
           lat: number | null
+          latitude: number | null
           lng: number | null
           logo_url: string | null
+          longitude: number | null
           menu_enabled: boolean
+          menu_mode: string
           name: string
           owner_id: string
           payout_frequency: string
@@ -277,16 +322,22 @@ export type Database = {
           created_at?: string
           dashboard_theme_id?: number
           description?: string | null
+          external_menu_url?: string | null
           gallery_urls?: string[]
+          geofence_polygon?: Json | null
+          geofence_radius_m?: number | null
           hours?: Json
           icon_emoji?: string | null
           id?: string
           is_active?: boolean
           is_verified?: boolean
           lat?: number | null
+          latitude?: number | null
           lng?: number | null
           logo_url?: string | null
+          longitude?: number | null
           menu_enabled?: boolean
+          menu_mode?: string
           name: string
           owner_id: string
           payout_frequency?: string
@@ -312,16 +363,22 @@ export type Database = {
           created_at?: string
           dashboard_theme_id?: number
           description?: string | null
+          external_menu_url?: string | null
           gallery_urls?: string[]
+          geofence_polygon?: Json | null
+          geofence_radius_m?: number | null
           hours?: Json
           icon_emoji?: string | null
           id?: string
           is_active?: boolean
           is_verified?: boolean
           lat?: number | null
+          latitude?: number | null
           lng?: number | null
           logo_url?: string | null
+          longitude?: number | null
           menu_enabled?: boolean
+          menu_mode?: string
           name?: string
           owner_id?: string
           payout_frequency?: string
@@ -339,6 +396,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "businesses_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "businesses_owner_id_fkey"
             columns: ["owner_id"]
@@ -373,6 +437,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -418,7 +489,49 @@ export type Database = {
             foreignKeyName: "comments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_roles: {
+        Row: {
+          base_template: string | null
+          business_id: string
+          created_at: string
+          id: string
+          name: string
+          permissions: Json
+        }
+        Insert: {
+          base_template?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          name: string
+          permissions?: Json
+        }
+        Update: {
+          base_template?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          permissions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_roles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -471,6 +584,13 @@ export type Database = {
             foreignKeyName: "disputes_opened_by_fkey"
             columns: ["opened_by"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -510,7 +630,21 @@ export type Database = {
             foreignKeyName: "dm_conversations_user_a_fkey"
             columns: ["user_a"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_conversations_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_conversations_user_b_fkey"
+            columns: ["user_b"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -565,6 +699,13 @@ export type Database = {
             foreignKeyName: "dm_messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -574,6 +715,7 @@ export type Database = {
         Row: {
           business_id: string
           created_at: string
+          custom_role_id: string | null
           id: string
           last_active_at: string | null
           role: string
@@ -583,6 +725,7 @@ export type Database = {
         Insert: {
           business_id: string
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           last_active_at?: string | null
           role?: string
@@ -592,6 +735,7 @@ export type Database = {
         Update: {
           business_id?: string
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           last_active_at?: string | null
           role?: string
@@ -607,6 +751,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "employees_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -618,13 +776,18 @@ export type Database = {
       events: {
         Row: {
           business_id: string
+          category: string | null
           cover_url: string | null
           created_at: string
           description: string | null
           ends_at: string | null
+          geofence_polygon: Json | null
+          icon_emoji: string | null
           id: string
           lat: number | null
           lng: number | null
+          location_lat: number | null
+          location_lng: number | null
           name: string
           room_id: string | null
           starts_at: string
@@ -632,13 +795,18 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          category?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          geofence_polygon?: Json | null
+          icon_emoji?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
           name: string
           room_id?: string | null
           starts_at: string
@@ -646,13 +814,18 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          category?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          geofence_polygon?: Json | null
+          icon_emoji?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
           name?: string
           room_id?: string | null
           starts_at?: string
@@ -702,7 +875,21 @@ export type Database = {
             foreignKeyName: "follow_requests_requester_id_fkey"
             columns: ["requester_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -738,7 +925,21 @@ export type Database = {
             foreignKeyName: "follows_follower_id_fkey"
             columns: ["follower_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -786,6 +987,13 @@ export type Database = {
             foreignKeyName: "gifts_from_user_fkey"
             columns: ["from_user"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gifts_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -794,6 +1002,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gifts_to_user_fkey"
+            columns: ["to_user"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -833,6 +1048,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_points_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -990,6 +1212,13 @@ export type Database = {
             foreignKeyName: "map_reactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1029,6 +1258,51 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_photos: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          menu_item_id: string
+          sort: number
+          storage_path: string | null
+          url: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          sort?: number
+          storage_path?: string | null
+          url: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          sort?: number
+          storage_path?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_photos_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_photos_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1173,6 +1447,13 @@ export type Database = {
             foreignKeyName: "messages_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1214,6 +1495,13 @@ export type Database = {
             foreignKeyName: "moderation_logs_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1229,6 +1517,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_logs_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1266,6 +1561,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
@@ -1345,6 +1647,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1496,6 +1805,13 @@ export type Database = {
             foreignKeyName: "orders_gift_recipient_id_fkey"
             columns: ["gift_recipient_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_gift_recipient_id_fkey"
+            columns: ["gift_recipient_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1504,6 +1820,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1555,6 +1878,13 @@ export type Database = {
             foreignKeyName: "pinned_messages_pinned_by_fkey"
             columns: ["pinned_by"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_messages_pinned_by_fkey"
+            columns: ["pinned_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1598,6 +1928,13 @@ export type Database = {
             foreignKeyName: "post_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1629,6 +1966,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_user_id_fkey"
             columns: ["user_id"]
@@ -1689,6 +2033,13 @@ export type Database = {
             foreignKeyName: "public_locations_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1697,6 +2048,91 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radius_increase_requests: {
+        Row: {
+          business_id: string | null
+          created_at: string
+          current_radius_m: number | null
+          event_id: string | null
+          id: string
+          reason: string
+          requested_by: string | null
+          requested_radius_m: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string
+          current_radius_m?: number | null
+          event_id?: string | null
+          id?: string
+          reason: string
+          requested_by?: string | null
+          requested_radius_m?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string
+          current_radius_m?: number | null
+          event_id?: string | null
+          id?: string
+          reason?: string
+          requested_by?: string | null
+          requested_radius_m?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radius_increase_requests_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radius_increase_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radius_increase_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radius_increase_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radius_increase_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radius_increase_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1737,7 +2173,21 @@ export type Database = {
             foreignKeyName: "reports_reported_user_id_fkey"
             columns: ["reported_user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reported_user_id_fkey"
+            columns: ["reported_user_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1795,6 +2245,13 @@ export type Database = {
             foreignKeyName: "reservations_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1846,6 +2303,13 @@ export type Database = {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1888,6 +2352,56 @@ export type Database = {
             foreignKeyName: "room_access_attempts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_access_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_members: {
+        Row: {
+          created_at: string
+          expires_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1923,6 +2437,13 @@ export type Database = {
             foreignKeyName: "room_mutes_muted_by_fkey"
             columns: ["muted_by"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_mutes_muted_by_fkey"
+            columns: ["muted_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1931,6 +2452,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_mutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1959,6 +2487,7 @@ export type Database = {
           notify_enabled: boolean
           parent_room_id: string | null
           password_hash: string | null
+          qr_token: string | null
           slug: string | null
           sort: number
           ttl_hours: number | null
@@ -1980,6 +2509,7 @@ export type Database = {
           notify_enabled?: boolean
           parent_room_id?: string | null
           password_hash?: string | null
+          qr_token?: string | null
           slug?: string | null
           sort?: number
           ttl_hours?: number | null
@@ -2001,6 +2531,7 @@ export type Database = {
           notify_enabled?: boolean
           parent_room_id?: string | null
           password_hash?: string | null
+          qr_token?: string | null
           slug?: string | null
           sort?: number
           ttl_hours?: number | null
@@ -2056,6 +2587,13 @@ export type Database = {
             foreignKeyName: "security_logs_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -2069,6 +2607,7 @@ export type Database = {
           notes: string | null
           room_id: string
           status: string
+          table_label: string | null
           type: string
           updated_at: string
           user_id: string | null
@@ -2080,6 +2619,7 @@ export type Database = {
           notes?: string | null
           room_id: string
           status?: string
+          table_label?: string | null
           type?: string
           updated_at?: string
           user_id?: string | null
@@ -2091,6 +2631,7 @@ export type Database = {
           notes?: string | null
           room_id?: string
           status?: string
+          table_label?: string | null
           type?: string
           updated_at?: string
           user_id?: string | null
@@ -2108,6 +2649,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2191,6 +2739,13 @@ export type Database = {
             foreignKeyName: "stories_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -2221,6 +2776,13 @@ export type Database = {
             columns: ["story_id"]
             isOneToOne: false
             referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2379,10 +2941,75 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          is_verified: boolean | null
+          profile_theme_id: number | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_verified?: boolean | null
+          profile_theme_id?: number | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_verified?: boolean | null
+          profile_theme_id?: number | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      can_access_room: { Args: { _room_id: string }; Returns: boolean }
+      generate_room_qr_token: {
+        Args: { _business_id: string; _is_sub_room: boolean }
+        Returns: string
+      }
+      is_platform_admin: { Args: never; Returns: boolean }
+      join_room_via_qr: {
+        Args: { token: string }
+        Returns: {
+          parent_room_id: string
+          room_id: string
+        }[]
+      }
+      regenerate_room_qr_token: { Args: { _room_id: string }; Returns: string }
+      resolve_room_qr: {
+        Args: { token: string }
+        Returns: {
+          business_id: string
+          business_name: string
+          is_sub_room: boolean
+          parent_room_id: string
+          room_id: string
+          room_name: string
+        }[]
+      }
+      set_room_password: {
+        Args: { password: string; room_id: string }
+        Returns: boolean
+      }
+      username_available: { Args: { check_username: string }; Returns: boolean }
+      verify_room_password: {
+        Args: { password: string; room_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
@@ -2515,4 +3142,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

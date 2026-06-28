@@ -53,7 +53,7 @@ interface Business {
   id: string;
   slug: string;
   name: string;
-  category: string;
+  category: string | null;
   description: string | null;
   cover_url: string | null;
   icon_emoji: string | null;

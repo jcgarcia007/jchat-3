@@ -50,6 +50,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -2323,7 +2324,11 @@ export default function MenuPage() {
         // left untouched on UPDATE.
         const dbPayload = {
           ...payload,
+          // NOT NULL with default 5 — omit when null so DB uses its default.
           low_stock_threshold: payload.low_stock_threshold ?? undefined,
+          // ItemOptions is valid JSON; cast required because Supabase types use
+          // the recursive Json type which TS can't infer from custom interfaces.
+          options: (payload.options ?? { sizes: [], extras: [] }) as unknown as Json,
         };
 
         // 1. Create or update the menu item; for new items capture the ID.

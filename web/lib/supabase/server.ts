@@ -9,6 +9,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import type { Database } from '@/lib/database.types';
 import { cookies } from 'next/headers';
 
 const SUPABASE_URL =
@@ -28,7 +29,7 @@ export const isSupabaseConfigured =
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

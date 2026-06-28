@@ -7,6 +7,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
 
 // Treat empty-string env vars as missing (`??` only catches null/undefined,
 // so an empty SUPABASE_SERVICE_ROLE_KEY="" would otherwise reach createClient
@@ -26,6 +27,6 @@ export const isSupabaseAdminConfigured =
   !!envOrUndefined(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
   !!envOrUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-export const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });

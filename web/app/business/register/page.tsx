@@ -27,6 +27,7 @@ import {
   IconCalendarEvent,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { Json } from "@/lib/database.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1259,7 +1260,7 @@ export default function BusinessRegisterPage() {
           radius_m: data.radius_m !== "" ? parseInt(data.radius_m) : 100,
           phone: data.phone.trim(),
           website: data.website.trim() || null,
-          hours: data.hours,
+          hours: data.hours as unknown as Json,
           status: "pending_verification",
           plan: "free",
           stripe_account_id: data.stripe_account_id || null,
