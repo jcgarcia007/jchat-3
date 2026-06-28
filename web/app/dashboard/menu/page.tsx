@@ -2358,7 +2358,9 @@ export default function MenuPage() {
 
         // 3. Upload staged (new) photos and insert rows.
         const uploadedUrls: string[] = [];
-        const baseSort = Date.now(); // monotonically increasing sort anchor
+        // Use Unix seconds (not ms) so the value fits in PostgreSQL integer
+        // (max ~2.1 B). Date.now() in ms (~1.78 T in 2026) would overflow.
+        const baseSort = Math.floor(Date.now() / 1000);
         for (let i = 0; i < stagedPhotos.length; i++) {
           const { file } = stagedPhotos[i];
           const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
