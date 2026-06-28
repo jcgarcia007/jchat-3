@@ -5,6 +5,11 @@
  * Shown after the user has a session. Calls join_room_via_qr on mount to
  * ensure membership, then presents three actions: Menú · Llamar al servicio
  * · Entrar al chat.
+ *
+ * Menu button behavior:
+ *   menu_mode='external' + external_menu_url → opens URL in new tab
+ *   menu_mode='web'                          → "Próximamente" (future)
+ *   menu_mode='none' (or unset)              → "Próximamente" / disabled
  */
 
 import { useState, useEffect } from "react";
@@ -33,7 +38,10 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
   const [joinState, setJoinState] = useState<JoinState>("joining");
   const [retryCount, setRetryCount] = useState(0);
   const [showWaiter, setShowWaiter] = useState(false);
-  const [showMenuMsg, setShowMenuMsg] = useState(false);
+
+  // Menu mode from businesses table
+  const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
+  const [externalMenuUrl, setExternalMenuUrl] = useState<string | null>(null);
 
   // Ensure membership on mount (or retry). join_room_via_qr is idempotent —
   // if membership already exists it just renews the 24h window.
@@ -71,6 +79,24 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     // retryCount is intentional: incrementing it triggers a re-join attempt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, retryCount]);
+
+  // Fetch menu_mode + external_menu_url from the business (read-only, public fields).
+  useEffect(() => {
+    if (!isSupabaseConfigured || !businessId) return;
+
+    void (async () => {
+      const { data } = await supabase
+        .from("businesses")
+        .select("menu_mode, external_menu_url")
+        .eq("id", businessId)
+        .maybeSingle();
+
+      if (data) {
+        setMenuMode((data.menu_mode as "none" | "external" | "web") ?? "none");
+        setExternalMenuUrl(data.external_menu_url ?? null);
+      }
+    })();
+  }, [businessId]);
 
   const btnBase: React.CSSProperties = {
     width: "100%",
@@ -150,6 +176,10 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     );
   }
 
+  // ── Derived: is the menu button active? ───────────────────────────────────────
+  const menuIsExternal = menuMode === "external" && !!externalMenuUrl;
+  const menuIsComingSoon = !menuIsExternal;
+
   // ── Hub ───────────────────────────────────────────────────────────────────────
   return (
     <>
@@ -173,18 +203,57 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* MENÚ — coming soon */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowMenuMsg((v) => !v)}
+        {/* MENÚ */}
+        {menuIsExternal ? (
+          <a
+            href={externalMenuUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               ...btnBase,
               background: "var(--color-brand-light)",
               color: "var(--color-brand)",
               border: "1px solid rgba(92,124,250,0.3)",
-              opacity: 0.8,
-              cursor: "default",
+              textDecoration: "none",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "var(--color-brand)",
+                color: "#fff",
+                flexShrink: 0,
+              }}
+            >
+              <IconToolsKitchen2 size={20} />
+            </span>
+            <span style={{ flex: 1 }}>Menú</span>
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--color-brand)",
+                opacity: 0.7,
+              }}
+            >
+              ↗
+            </span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            style={{
+              ...btnBase,
+              background: "var(--color-brand-light)",
+              color: "var(--color-brand)",
+              border: "1px solid rgba(92,124,250,0.3)",
+              opacity: 0.6,
+              cursor: "not-allowed",
             }}
           >
             <span
@@ -217,19 +286,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               pronto
             </span>
           </button>
-          {showMenuMsg && (
-            <p
-              style={{
-                fontSize: 12,
-                color: "var(--text-tertiary)",
-                margin: "6px 4px 0",
-                lineHeight: 1.5,
-              }}
-            >
-              El menú estará disponible próximamente.
-            </p>
-          )}
-        </div>
+        )}
 
         {/* LLAMAR AL SERVICIO */}
         <button

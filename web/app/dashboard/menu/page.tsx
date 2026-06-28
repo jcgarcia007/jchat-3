@@ -1644,6 +1644,10 @@ export default function MenuPage() {
   const [businessId, setBusinessId] = useState<string>("demo-biz");
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [togglingMenu, setTogglingMenu] = useState(false);
+  const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
+  const [externalMenuUrl, setExternalMenuUrl] = useState<string>("");
+  const [urlInput, setUrlInput] = useState<string>("");
+  const [savingMode, setSavingMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1690,6 +1694,11 @@ export default function MenuPage() {
       const bid: string = res.business.id;
       setBusinessId(bid);
       setMenuEnabled(res.business.menu_enabled ?? false);
+      const mode = res.business.menu_mode ?? "none";
+      setMenuMode(mode);
+      const extUrl = res.business.external_menu_url ?? "";
+      setExternalMenuUrl(extUrl);
+      setUrlInput(extUrl);
 
       const [catsResult, itemsResult] = await Promise.all([
         supabase
@@ -1880,6 +1889,56 @@ export default function MenuPage() {
       }
     },
     [businessId],
+  );
+
+  // ── Save menu mode ───────────────────────────────────────────────────────────
+  const handleSaveMenuMode = useCallback(
+    async (mode: "none" | "external" | "web") => {
+      if (!isSupabaseConfigured || !businessId) return;
+
+      // Validate URL when saving external mode
+      if (mode === "external") {
+        const trimmed = urlInput.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+          setError("La URL debe empezar con http:// o https://");
+          return;
+        }
+        setSavingMode(true);
+        try {
+          const { error: err } = await supabase
+            .from("businesses")
+            .update({ menu_mode: "external", external_menu_url: trimmed })
+            .eq("id", businessId);
+          if (err) throw err;
+          setMenuMode("external");
+          setExternalMenuUrl(trimmed);
+          setSuccess("Modo de menú guardado.");
+        } catch (e: unknown) {
+          setError("Error al guardar el modo de menú.");
+        } finally {
+          setSavingMode(false);
+        }
+      } else {
+        // For 'none' or future 'web', just update mode and clear url
+        setSavingMode(true);
+        try {
+          const { error: err } = await supabase
+            .from("businesses")
+            .update({ menu_mode: mode, external_menu_url: null })
+            .eq("id", businessId);
+          if (err) throw err;
+          setMenuMode(mode);
+          setExternalMenuUrl("");
+          setUrlInput("");
+          setSuccess("Modo de menú actualizado.");
+        } catch (e: unknown) {
+          setError("Error al guardar el modo de menú.");
+        } finally {
+          setSavingMode(false);
+        }
+      }
+    },
+    [businessId, urlInput],
   );
 
   // ── Delete category ──────────────────────────────────────────────────────────
@@ -2214,6 +2273,198 @@ export default function MenuPage() {
           {success}
         </Alert>
       )}
+
+      {/* ── Modo del menú ──────────────────────────────────────────────────── */}
+      <div
+        style={{
+          background: "var(--db-bg-card)",
+          border: "1px solid var(--db-border)",
+          borderRadius: 12,
+          padding: "20px 24px",
+          marginBottom: 24,
+        }}
+      >
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+          Modo del menú
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
+          Elige cómo quieres mostrar tu menú a los clientes en el hub web.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Opción 1 — Link externo */}
+          <label
+            style={{
+              display: "block",
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: `2px solid ${menuMode === "external" ? "var(--db-accent)" : "var(--db-border)"}`,
+              background: menuMode === "external" ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
+              cursor: "pointer",
+              transition: "border-color 0.15s",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="radio"
+                name="menu_mode"
+                value="external"
+                checked={menuMode === "external"}
+                onChange={() => setMenuMode("external")}
+                style={{ accentColor: "var(--db-accent)", width: 16, height: 16, flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--db-text-primary)" }}>
+                  Tengo mi propio menú (link)
+                </div>
+                <div style={{ fontSize: 12, color: "var(--db-text-secondary)", marginTop: 2 }}>
+                  Pega el link a tu menú existente (PDF, Linktree, Google Docs, etc.)
+                </div>
+              </div>
+            </div>
+
+            {/* URL input — visible when external is selected */}
+            {menuMode === "external" && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="url"
+                    placeholder="https://tu-menu.com"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--db-border)",
+                      background: "var(--db-bg-card)",
+                      color: "var(--db-text-primary)",
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveMenuMode("external")}
+                    disabled={savingMode || !urlInput.trim()}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "var(--db-accent)",
+                      color: "var(--db-accent-text)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: savingMode || !urlInput.trim() ? "not-allowed" : "pointer",
+                      opacity: savingMode || !urlInput.trim() ? 0.6 : 1,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {savingMode ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+                {externalMenuUrl && (
+                  <a
+                    href={externalMenuUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 12,
+                      color: "var(--db-accent)",
+                      textDecoration: "underline",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    Abrir menú ↗
+                  </a>
+                )}
+              </div>
+            )}
+          </label>
+
+          {/* Opción 2 — Menú Web propio (FUTURO / deshabilitado) */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: "2px solid var(--db-border)",
+              background: "var(--db-bg-elevated)",
+              opacity: 0.55,
+              cursor: "not-allowed",
+              position: "relative",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="radio"
+                name="menu_mode"
+                value="web"
+                disabled
+                checked={menuMode === "web"}
+                onChange={() => {/* futuro */}}
+                style={{ width: 16, height: 16, flexShrink: 0 }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--db-text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+                  Crear mi Menú Web (plantilla)
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 20,
+                      background: "var(--db-accent)",
+                      color: "var(--db-accent-text)",
+                    }}
+                  >
+                    Próximamente
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--db-text-secondary)", marginTop: 2 }}>
+                  Crea tu propio menú interactivo con el editor de JChat (categorías, productos, precios).
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sin menú — opción para quitar */}
+          {menuMode !== "none" && (
+            <button
+              type="button"
+              onClick={() => void handleSaveMenuMode("none")}
+              disabled={savingMode}
+              style={{
+                alignSelf: "flex-start",
+                fontSize: 12,
+                color: "var(--db-text-tertiary)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                textDecoration: "underline",
+                padding: 0,
+              }}
+            >
+              Quitar menú (no mostrar nada)
+            </button>
+          )}
+        </div>
+
+        {/* Estado actual */}
+        <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
+          Estado actual:{" "}
+          <strong>
+            {menuMode === "external" && externalMenuUrl
+              ? "Link externo configurado ✓"
+              : menuMode === "external"
+              ? "Link externo (sin URL guardada)"
+              : menuMode === "web"
+              ? "Menú Web (próximamente)"
+              : "Sin menú configurado"}
+          </strong>
+        </div>
+      </div>
 
       {/* New / edit category form */}
       {showCatForm && (
