@@ -16,6 +16,8 @@ export interface ActiveBusiness {
   plan: string | null;
   is_verified: boolean;
   menu_enabled: boolean;
+  menu_mode: "none" | "external" | "web";
+  external_menu_url: string | null;
 }
 
 export type BusinessResolution =
@@ -34,7 +36,7 @@ export async function resolveActiveBusiness(): Promise<BusinessResolution> {
   }
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, name, slug, status, plan, is_verified, menu_enabled")
+    .select("id, name, slug, status, plan, is_verified, menu_enabled, menu_mode, external_menu_url")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
