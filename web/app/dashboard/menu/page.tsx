@@ -25,7 +25,8 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   IconAlertCircle,
   IconArrowDown,
@@ -72,6 +73,7 @@ interface MenuCategory {
   business_id: string;
   name: string;
   icon: string | null;
+  icon_url: string | null;
   sort: number;
   is_published: boolean;
 }
@@ -98,6 +100,10 @@ interface MenuItem {
 interface CategoryForm {
   name: string;
   icon: string;
+  icon_url: string | null;
+  // staged photo for upload (only present client-side before saving)
+  _stagedIconFile?: File;
+  _stagedIconPreview?: string;
 }
 
 interface ItemForm {
@@ -146,7 +152,7 @@ const BADGE_OPTIONS: { value: Badge; label: string }[] = [
   { value: "hot", label: "Hot" },
 ];
 
-const EMPTY_CATEGORY_FORM: CategoryForm = { name: "", icon: "" };
+const EMPTY_CATEGORY_FORM: CategoryForm = { name: "", icon: "", icon_url: null };
 
 const EMPTY_ITEM_FORM: ItemForm = {
   name: "",
@@ -1296,6 +1302,9 @@ function ItemEditorModal({
 
 // ── Category Form ─────────────────────────────────────────────────────────────
 
+// Lazy-load emoji picker (client-only, heavy bundle)
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
+
 function CategoryFormPanel({
   initial,
   onSave,
@@ -1308,6 +1317,63 @@ function CategoryFormPanel({
   saving: boolean;
 }) {
   const [form, setForm] = useState<CategoryForm>(initial);
+  // "emoji" mode if initial has icon or no icon_url; "photo" if has icon_url
+  const [iconMode, setIconMode] = useState<"emoji" | "photo">(
+    initial.icon_url ? "photo" : "emoji"
+  );
+  const [showPicker, setShowPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Close picker on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    }
+    if (showPicker) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showPicker]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // revoke previous preview if any
+    if (form._stagedIconPreview) URL.revokeObjectURL(form._stagedIconPreview);
+    const preview = URL.createObjectURL(file);
+    setForm((p) => ({
+      ...p,
+      icon: "",
+      icon_url: null,
+      _stagedIconFile: file,
+      _stagedIconPreview: preview,
+    }));
+  }
+
+  function handleRemovePhoto() {
+    if (form._stagedIconPreview) URL.revokeObjectURL(form._stagedIconPreview);
+    setForm((p) => ({
+      ...p,
+      icon_url: null,
+      _stagedIconFile: undefined,
+      _stagedIconPreview: undefined,
+    }));
+  }
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "6px 0",
+    borderRadius: "6px",
+    border: "none",
+    background: active ? "var(--db-accent)" : "transparent",
+    color: active ? "var(--db-accent-text)" : "var(--db-text-secondary)",
+    fontSize: "12px",
+    fontWeight: active ? 700 : 400,
+    cursor: "pointer",
+  });
+
+  const currentIconPreview = form._stagedIconPreview ?? form.icon_url;
+
   return (
     <div
       style={{
@@ -1321,30 +1387,155 @@ function CategoryFormPanel({
       }}
     >
       <div style={{ display: "flex", gap: "10px" }}>
-        {/* Emoji icon */}
-        <div style={{ width: 80 }}>
-          <SectionLabel>Icon (emoji)</SectionLabel>
-          {/* TODO(Task 0.4): replace this emoji text input with the full
-               emoji / SF Symbol selector component once it's built. */}
-          <input
-            value={form.icon}
-            onChange={(e) => setForm((p) => ({ ...p, icon: e.target.value }))}
-            placeholder="🍹"
-            maxLength={4}
+        {/* Icon column */}
+        <div style={{ width: 100, flexShrink: 0 }}>
+          <SectionLabel>Icon</SectionLabel>
+          {/* Mode toggle */}
+          <div
             style={{
-              width: "100%",
-              padding: "9px 12px",
-              borderRadius: "8px",
-              border: "1px solid var(--db-border)",
+              display: "flex",
               background: "var(--db-bg-elevated)",
-              color: "var(--db-text-primary)",
-              fontSize: "22px",
-              textAlign: "center",
-              outline: "none",
-              boxSizing: "border-box",
+              borderRadius: "7px",
+              padding: "2px",
+              marginBottom: "8px",
+              border: "1px solid var(--db-border)",
             }}
-          />
+          >
+            <button
+              type="button"
+              onClick={() => { setIconMode("emoji"); setShowPicker(false); }}
+              style={tabStyle(iconMode === "emoji")}
+            >
+              Emoji
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIconMode("photo"); setShowPicker(false); }}
+              style={tabStyle(iconMode === "photo")}
+            >
+              Foto
+            </button>
+          </div>
+
+          {iconMode === "emoji" ? (
+            <div style={{ position: "relative" }} ref={pickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowPicker((v) => !v)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  fontSize: "26px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  minHeight: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {form.icon || "🍽️"}
+              </button>
+              {showPicker && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 4px)",
+                    left: 0,
+                    zIndex: 100,
+                  }}
+                >
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => {
+                      setForm((p) => ({
+                        ...p,
+                        icon: emojiData.emoji,
+                        icon_url: null,
+                        _stagedIconFile: undefined,
+                        _stagedIconPreview: undefined,
+                      }));
+                      setShowPicker(false);
+                    }}
+                    lazyLoadEmojis
+                    width={280}
+                    height={350}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {currentIconPreview ? (
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentIconPreview}
+                    alt=""
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "2px solid var(--db-accent)",
+                      display: "block",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -4,
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "var(--db-danger)",
+                      border: "none",
+                      color: "#fff",
+                      fontSize: 10,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    border: "2px dashed var(--db-border)",
+                    cursor: "pointer",
+                    fontSize: 20,
+                    color: "var(--db-text-tertiary)",
+                  }}
+                >
+                  +
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: "none" }}
+                    onChange={handleFileChange}
+                  />
+                </label>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Name */}
         <div style={{ flex: 1 }}>
           <SectionLabel>Category name *</SectionLabel>
           <FieldInput
@@ -1354,10 +1545,7 @@ function CategoryFormPanel({
           />
         </div>
       </div>
-      <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: 0 }}>
-        {/* TODO(Task 0.4): full emoji / SF Symbol picker coming. */}
-        TODO(Task 0.4): emoji/SF symbol selector — text input for now.
-      </p>
+
       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
         <button
           onClick={onCancel}
@@ -1765,9 +1953,23 @@ function CategorySection({
             color: "var(--db-text-primary)",
           }}
         >
-          {category.icon && (
+          {category.icon_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={category.icon_url}
+              alt=""
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                objectFit: "cover",
+                flexShrink: 0,
+                border: "1px solid var(--db-border)",
+              }}
+            />
+          ) : category.icon ? (
             <span style={{ fontSize: "20px", lineHeight: 1 }}>{category.icon}</span>
-          )}
+          ) : null}
           <span style={{ fontSize: "15px", fontWeight: 700 }}>{category.name}</span>
           <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginLeft: 2 }}>
             ({items.length} item{items.length !== 1 ? "s" : ""})
@@ -2043,12 +2245,34 @@ export default function MenuPage() {
       setSavingCat(true);
       setError(null);
 
+      // Resolve final icon_url — upload staged file if present
+      let resolvedIconUrl: string | null = form.icon_url ?? null;
+      if (form._stagedIconFile && isSupabaseConfigured) {
+        const file = form._stagedIconFile;
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${businessId}/category-icons/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("menu-photos")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) {
+          setError(`Upload failed: ${upErr.message}`);
+          setSavingCat(false);
+          return;
+        }
+        const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(path);
+        resolvedIconUrl = urlData.publicUrl;
+      }
+
+      // When photo mode chosen: clear emoji; when emoji mode: clear url
+      const finalIcon = resolvedIconUrl ? null : (form.icon || null);
+      const finalIconUrl = resolvedIconUrl;
+
       if (!isSupabaseConfigured) {
         if (editingCatId) {
           setCategories((prev) =>
             prev.map((c) =>
               c.id === editingCatId
-                ? { ...c, name: form.name.trim(), icon: form.icon || null }
+                ? { ...c, name: form.name.trim(), icon: finalIcon, icon_url: finalIconUrl }
                 : c
             )
           );
@@ -2057,7 +2281,8 @@ export default function MenuPage() {
             id: `demo-cat-${Date.now()}`,
             business_id: "demo-biz",
             name: form.name.trim(),
-            icon: form.icon || null,
+            icon: finalIcon,
+            icon_url: finalIconUrl,
             sort: categories.length,
             is_published: true,
           };
@@ -2075,17 +2300,18 @@ export default function MenuPage() {
         if (editingCatId) {
           const { error: err } = await supabase
             .from("menu_categories")
-            .update({ name: form.name.trim(), icon: form.icon || null })
+            .update({ name: form.name.trim(), icon: finalIcon, icon_url: finalIconUrl } as never)
             .eq("id", editingCatId);
           if (err) throw err;
         } else {
           const { error: err } = await supabase.from("menu_categories").insert({
             business_id: businessId,
             name: form.name.trim(),
-            icon: form.icon || null,
+            icon: finalIcon,
+            icon_url: finalIconUrl,
             sort: categories.length,
             is_published: true,
-          });
+          } as never);
           if (err) throw err;
         }
         setSuccess(`Category "${form.name.trim()}" saved.`);
@@ -2980,7 +3206,7 @@ export default function MenuPage() {
               onMoveDown={(c) => void reorderCategory(c, "down")}
               onEditCategory={(c) => {
                 setEditingCatId(c.id);
-                setCatFormInitial({ name: c.name, icon: c.icon ?? "" });
+                setCatFormInitial({ name: c.name, icon: c.icon ?? "", icon_url: c.icon_url ?? null });
                 setShowCatForm(true);
                 setError(null);
               }}
