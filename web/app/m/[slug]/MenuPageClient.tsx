@@ -504,7 +504,23 @@ function CategoryNav({
                 transition: "all 0.15s",
               }}
             >
-              {cat.icon && <span>{cat.icon}</span>}
+              {cat.icon_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cat.icon_url}
+                  alt=""
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    flexShrink: 0,
+                    border: "1px solid rgba(217,119,6,0.4)",
+                  }}
+                />
+              ) : cat.icon ? (
+                <span>{cat.icon}</span>
+              ) : null}
               {cat.name}
             </button>
           );
@@ -815,7 +831,23 @@ function CategorySection({
           margin: "0 auto",
         }}
       >
-        {category.icon && <span style={{ fontSize: 20 }}>{category.icon}</span>}
+        {category.icon_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={category.icon_url}
+            alt=""
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              objectFit: "cover",
+              flexShrink: 0,
+              border: "1.5px solid rgba(217,119,6,0.5)",
+            }}
+          />
+        ) : category.icon ? (
+          <span style={{ fontSize: 20 }}>{category.icon}</span>
+        ) : null}
         <h2
           style={{
             fontSize: 16,

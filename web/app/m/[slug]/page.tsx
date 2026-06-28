@@ -58,6 +58,7 @@ export interface PublicMenuCategory {
   id: string;
   name: string;
   icon: string | null;
+  icon_url: string | null;
   sort: number;
   items: PublicMenuItem[];
 }
@@ -125,7 +126,7 @@ async function getMenuData(slug: string): Promise<{
   // Published categories ordered by sort
   const { data: cats } = await supabase
     .from("menu_categories")
-    .select("id, name, icon, sort")
+    .select("id, name, icon, icon_url, sort")
     .eq("business_id", biz.id)
     .eq("is_published", true)
     .order("sort");
@@ -170,6 +171,7 @@ async function getMenuData(slug: string): Promise<{
     id: cat.id,
     name: cat.name,
     icon: cat.icon ?? null,
+    icon_url: (cat as unknown as { icon_url?: string | null }).icon_url ?? null,
     sort: cat.sort,
     items: items
       .filter((i) => i.category_id === cat.id)
