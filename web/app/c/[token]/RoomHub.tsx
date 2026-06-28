@@ -42,6 +42,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
   // Menu mode from businesses table
   const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
   const [externalMenuUrl, setExternalMenuUrl] = useState<string | null>(null);
+  const [bizSlug, setBizSlug] = useState<string | null>(null);
 
   // Ensure membership on mount (or retry). join_room_via_qr is idempotent —
   // if membership already exists it just renews the 24h window.
@@ -87,13 +88,14 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     void (async () => {
       const { data } = await supabase
         .from("businesses")
-        .select("menu_mode, external_menu_url")
+        .select("slug, menu_mode, external_menu_url")
         .eq("id", businessId)
         .maybeSingle();
 
       if (data) {
         setMenuMode((data.menu_mode as "none" | "external" | "web") ?? "none");
         setExternalMenuUrl(data.external_menu_url ?? null);
+        setBizSlug((data as unknown as { slug?: string }).slug ?? null);
       }
     })();
   }, [businessId]);
@@ -176,9 +178,11 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     );
   }
 
-  // ── Derived: is the menu button active? ───────────────────────────────────────
+  // ── Derived: menu button state ────────────────────────────────────────────────
   const menuIsExternal = menuMode === "external" && !!externalMenuUrl;
-  const menuIsComingSoon = !menuIsExternal;
+  const menuIsWeb = menuMode === "web" && !!bizSlug;
+  const menuIsActive = menuIsExternal || menuIsWeb;
+  const menuIsComingSoon = !menuIsActive;
 
   // ── Hub ───────────────────────────────────────────────────────────────────────
   return (
@@ -233,15 +237,35 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               <IconToolsKitchen2 size={20} />
             </span>
             <span style={{ flex: 1 }}>Menú</span>
+            <span style={{ fontSize: 11, color: "var(--color-brand)", opacity: 0.7 }}>↗</span>
+          </a>
+        ) : menuIsWeb ? (
+          <a
+            href={`/m/${bizSlug}`}
+            style={{
+              ...btnBase,
+              background: "var(--color-brand-light)",
+              color: "var(--color-brand)",
+              border: "1px solid rgba(92,124,250,0.3)",
+              textDecoration: "none",
+            }}
+          >
             <span
               style={{
-                fontSize: 11,
-                color: "var(--color-brand)",
-                opacity: 0.7,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "var(--color-brand)",
+                color: "#fff",
+                flexShrink: 0,
               }}
             >
-              ↗
+              <IconToolsKitchen2 size={20} />
             </span>
+            <span style={{ flex: 1 }}>Menú</span>
           </a>
         ) : (
           <button
