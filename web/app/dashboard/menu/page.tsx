@@ -1340,11 +1340,11 @@ function ItemCard({
           )}
 
           {item.options &&
-            (item.options.sizes.length > 0 || item.options.extras.length > 0) && (
+            ((item.options.sizes?.length ?? 0) > 0 || (item.options.extras?.length ?? 0) > 0) && (
               <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-                {item.options.sizes.length > 0 && `${item.options.sizes.length} size${item.options.sizes.length !== 1 ? "s" : ""}`}
-                {item.options.sizes.length > 0 && item.options.extras.length > 0 && " · "}
-                {item.options.extras.length > 0 && `${item.options.extras.length} extra${item.options.extras.length !== 1 ? "s" : ""}`}
+                {(item.options.sizes?.length ?? 0) > 0 && `${item.options.sizes!.length} size${item.options.sizes!.length !== 1 ? "s" : ""}`}
+                {(item.options.sizes?.length ?? 0) > 0 && (item.options.extras?.length ?? 0) > 0 && " · "}
+                {(item.options.extras?.length ?? 0) > 0 && `${item.options.extras!.length} extra${item.options.extras!.length !== 1 ? "s" : ""}`}
               </span>
             )}
         </div>
@@ -1717,7 +1717,14 @@ export default function MenuPage() {
       if (itemsResult.error) throw itemsResult.error;
 
       setCategories((catsResult.data as MenuCategory[]) ?? []);
-      setItems((itemsResult.data as MenuItem[]) ?? []);
+      // Normalize options to guard against DB rows where options is {} or has null arrays
+      const rawItems = (itemsResult.data as MenuItem[]) ?? [];
+      setItems(rawItems.map((item) => ({
+        ...item,
+        options: item.options
+          ? { sizes: item.options.sizes ?? [], extras: item.options.extras ?? [] }
+          : null,
+      })));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(`Failed to load menu: ${msg}`);
