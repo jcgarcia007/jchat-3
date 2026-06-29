@@ -53,7 +53,7 @@ function buildEffectStyles(
   };
   let photoWrapStyle: React.CSSProperties = {
     position: "relative",
-    aspectRatio: "4 / 3",
+    aspectRatio: "16 / 10",
     overflow: "hidden",
   };
   let imgStyle: React.CSSProperties = {
@@ -1028,10 +1028,6 @@ function CustomizerSheet({
   const [qty, setQty] = useState(1);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [notes, setNotes] = useState("");
-  const [gift, setGift] = useState(false);
-  const [giftTo, setGiftTo] = useState("");
-  const [giftMsg, setGiftMsg] = useState("");
-
   const toggleMulti = useCallback(
     (groupId: string, choice: ModifierChoice, maxSelect: number) => {
       setMultiSel((prev) => {
@@ -1093,7 +1089,7 @@ function CustomizerSheet({
           background: "var(--bg-elevated)",
           borderRadius: "20px 20px 0 0",
           overflow: "hidden",
-          maxHeight: "92vh",
+          maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
           width: "100%",
@@ -1371,7 +1367,7 @@ function CustomizerSheet({
           })}
 
           {/* Notes */}
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               Notas para la cocina
             </div>
@@ -1380,70 +1376,9 @@ function CustomizerSheet({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Sin cebolla, extra salsa..."
               rows={2}
+              maxLength={200}
               style={{ ...sheetInputStyle, resize: "none" }}
             />
-          </div>
-
-          {/* Gift toggle */}
-          <div style={{ marginBottom: 20 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 0",
-                borderTop: "1px solid var(--border-subtle)",
-                borderBottom: gift ? "none" : "1px solid var(--border-subtle)",
-              }}
-            >
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
-                🎁 Es un regalo
-              </span>
-              <div
-                onClick={() => setGift((g) => !g)}
-                style={{
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
-                  background: gift ? "var(--color-gold)" : "var(--bg-surface)",
-                  border: gift ? "none" : "1.5px solid var(--border-subtle)",
-                  cursor: "pointer",
-                  position: "relative",
-                  transition: "background .2s",
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 2,
-                    left: gift ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    background: "#fff",
-                    transition: "left .2s",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-                  }}
-                />
-              </div>
-            </div>
-            {gift && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 12 }}>
-                <input
-                  value={giftTo}
-                  onChange={(e) => setGiftTo(e.target.value)}
-                  placeholder="Para:"
-                  style={sheetInputStyle}
-                />
-                <input
-                  value={giftMsg}
-                  onChange={(e) => setGiftMsg(e.target.value)}
-                  placeholder="Mensaje..."
-                  style={sheetInputStyle}
-                />
-              </div>
-            )}
           </div>
 
           <div style={{ height: 8 }} />
