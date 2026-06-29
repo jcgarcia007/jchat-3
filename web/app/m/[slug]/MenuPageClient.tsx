@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -518,9 +519,12 @@ function CategoryNav({
                     border: "1px solid rgba(217,119,6,0.4)",
                   }}
                 />
-              ) : cat.icon ? (
-                <span>{cat.icon}</span>
-              ) : null}
+              ) : (() => {
+                const TablerIcon = getCategoryIcon(cat.icon);
+                if (TablerIcon) return <TablerIcon size={16} stroke={1.5} style={{ flexShrink: 0, color: "currentColor" }} />;
+                if (cat.icon) return <span style={{ fontSize: 15 }}>{cat.icon}</span>;
+                return null;
+              })()}
               {cat.name}
             </button>
           );
@@ -845,9 +849,12 @@ function CategorySection({
               border: "1.5px solid rgba(217,119,6,0.5)",
             }}
           />
-        ) : category.icon ? (
-          <span style={{ fontSize: 20 }}>{category.icon}</span>
-        ) : null}
+        ) : (() => {
+          const TablerIcon = getCategoryIcon(category.icon);
+          if (TablerIcon) return <TablerIcon size={22} stroke={1.5} color="var(--color-gold)" />;
+          if (category.icon) return <span style={{ fontSize: 20 }}>{category.icon}</span>;
+          return null;
+        })()}
         <h2
           style={{
             fontSize: 16,
