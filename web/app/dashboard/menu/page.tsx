@@ -26,7 +26,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import {
   IconAlertCircle,
   IconArrowDown,
@@ -1302,9 +1302,6 @@ function ItemEditorModal({
 
 // ── Category Form ─────────────────────────────────────────────────────────────
 
-// Lazy-load emoji picker (client-only, heavy bundle)
-const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
-
 function CategoryFormPanel({
   initial,
   onSave,
@@ -1317,28 +1314,13 @@ function CategoryFormPanel({
   saving: boolean;
 }) {
   const [form, setForm] = useState<CategoryForm>(initial);
-  // "emoji" mode if initial has icon or no icon_url; "photo" if has icon_url
-  const [iconMode, setIconMode] = useState<"emoji" | "photo">(
-    initial.icon_url ? "photo" : "emoji"
+  const [iconMode, setIconMode] = useState<"icon" | "photo">(
+    initial.icon_url ? "photo" : "icon"
   );
-  const [showPicker, setShowPicker] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-
-  // Close picker on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowPicker(false);
-      }
-    }
-    if (showPicker) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showPicker]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // revoke previous preview if any
     if (form._stagedIconPreview) URL.revokeObjectURL(form._stagedIconPreview);
     const preview = URL.createObjectURL(file);
     setForm((p) => ({
@@ -1386,164 +1368,183 @@ function CategoryFormPanel({
         gap: "12px",
       }}
     >
-      <div style={{ display: "flex", gap: "10px" }}>
-        {/* Icon column */}
-        <div style={{ width: 100, flexShrink: 0 }}>
-          <SectionLabel>Icon</SectionLabel>
-          {/* Mode toggle */}
+      {/* Name row */}
+      <div>
+        <SectionLabel>Category name *</SectionLabel>
+        <FieldInput
+          value={form.name}
+          onChange={(v) => setForm((p) => ({ ...p, name: v }))}
+          placeholder="e.g. Cocktails"
+        />
+      </div>
+
+      {/* Icon section */}
+      <div>
+        <SectionLabel>Icono</SectionLabel>
+        {/* Mode toggle */}
+        <div
+          style={{
+            display: "flex",
+            background: "var(--db-bg-elevated)",
+            borderRadius: "7px",
+            padding: "2px",
+            marginBottom: "10px",
+            border: "1px solid var(--db-border)",
+            width: 160,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setIconMode("icon")}
+            style={tabStyle(iconMode === "icon")}
+          >
+            Icono
+          </button>
+          <button
+            type="button"
+            onClick={() => setIconMode("photo")}
+            style={tabStyle(iconMode === "photo")}
+          >
+            Foto
+          </button>
+        </div>
+
+        {iconMode === "icon" ? (
+          /* ── Tabler icon gallery ───────────────────────────────────────────── */
           <div
             style={{
-              display: "flex",
-              background: "var(--db-bg-elevated)",
-              borderRadius: "7px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(58px, 1fr))",
+              gap: "6px",
+              maxHeight: 220,
+              overflowY: "auto",
               padding: "2px",
-              marginBottom: "8px",
-              border: "1px solid var(--db-border)",
             }}
           >
-            <button
-              type="button"
-              onClick={() => { setIconMode("emoji"); setShowPicker(false); }}
-              style={tabStyle(iconMode === "emoji")}
-            >
-              Emoji
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIconMode("photo"); setShowPicker(false); }}
-              style={tabStyle(iconMode === "photo")}
-            >
-              Foto
-            </button>
-          </div>
-
-          {iconMode === "emoji" ? (
-            <div style={{ position: "relative" }} ref={pickerRef}>
-              <button
-                type="button"
-                onClick={() => setShowPicker((v) => !v)}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--db-border)",
-                  background: "var(--db-bg-elevated)",
-                  fontSize: "26px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                  lineHeight: 1,
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {form.icon || "🍽️"}
-              </button>
-              {showPicker && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 4px)",
-                    left: 0,
-                    zIndex: 100,
-                  }}
-                >
-                  <EmojiPicker
-                    onEmojiClick={(emojiData) => {
-                      setForm((p) => ({
-                        ...p,
-                        icon: emojiData.emoji,
-                        icon_url: null,
-                        _stagedIconFile: undefined,
-                        _stagedIconPreview: undefined,
-                      }));
-                      setShowPicker(false);
-                    }}
-                    lazyLoadEmojis
-                    width={280}
-                    height={350}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              {currentIconPreview ? (
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={currentIconPreview}
-                    alt=""
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      border: "2px solid var(--db-accent)",
-                      display: "block",
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemovePhoto}
-                    style={{
-                      position: "absolute",
-                      top: -4,
-                      right: -4,
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      background: "var(--db-danger)",
-                      border: "none",
-                      color: "#fff",
-                      fontSize: 10,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <label
+            {CATEGORY_ICONS.map(({ name, label, Icon }) => {
+              const selected = form.icon === name;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  title={label}
+                  onClick={() =>
+                    setForm((p) => ({
+                      ...p,
+                      icon: name,
+                      icon_url: null,
+                      _stagedIconFile: undefined,
+                      _stagedIconPreview: undefined,
+                    }))
+                  }
                   style={{
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
+                    gap: 3,
+                    padding: "6px 4px",
+                    borderRadius: "8px",
+                    border: selected
+                      ? "2px solid var(--db-accent)"
+                      : "2px solid transparent",
+                    background: selected
+                      ? "rgba(var(--db-accent-rgb,217,119,6),0.12)"
+                      : "var(--db-bg-elevated)",
+                    cursor: "pointer",
+                    transition: "border-color 0.12s, background 0.12s",
+                  }}
+                >
+                  <Icon
+                    size={22}
+                    stroke={1.5}
+                    color={selected ? "var(--db-accent)" : "var(--db-text-secondary)"}
+                  />
+                  <span
+                    style={{
+                      fontSize: 9,
+                      color: selected ? "var(--db-accent)" : "var(--db-text-tertiary)",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                      maxWidth: 52,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Photo upload ──────────────────────────────────────────────────── */
+          <div>
+            {currentIconPreview ? (
+              <div style={{ position: "relative", display: "inline-block" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentIconPreview}
+                  alt=""
+                  style={{
                     width: 52,
                     height: 52,
                     borderRadius: "50%",
-                    border: "2px dashed var(--db-border)",
+                    objectFit: "cover",
+                    border: "2px solid var(--db-accent)",
+                    display: "block",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "var(--db-danger)",
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 10,
                     cursor: "pointer",
-                    fontSize: 20,
-                    color: "var(--db-text-tertiary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  +
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    style={{ display: "none" }}
-                    onChange={handleFileChange}
-                  />
-                </label>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Name */}
-        <div style={{ flex: 1 }}>
-          <SectionLabel>Category name *</SectionLabel>
-          <FieldInput
-            value={form.name}
-            onChange={(v) => setForm((p) => ({ ...p, name: v }))}
-            placeholder="e.g. Cocktails"
-          />
-        </div>
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 52,
+                  height: 52,
+                  borderRadius: "50%",
+                  border: "2px dashed var(--db-border)",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  color: "var(--db-text-tertiary)",
+                }}
+              >
+                +
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+              </label>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
@@ -1967,9 +1968,12 @@ function CategorySection({
                 border: "1px solid var(--db-border)",
               }}
             />
-          ) : category.icon ? (
-            <span style={{ fontSize: "20px", lineHeight: 1 }}>{category.icon}</span>
-          ) : null}
+          ) : (() => {
+            const TablerIcon = getCategoryIcon(category.icon);
+            if (TablerIcon) return <TablerIcon size={20} stroke={1.5} color="var(--db-accent)" />;
+            if (category.icon) return <span style={{ fontSize: "18px", lineHeight: 1 }}>{category.icon}</span>;
+            return <CategoryFallbackIcon size={20} stroke={1.5} color="var(--db-text-tertiary)" />;
+          })()}
           <span style={{ fontSize: "15px", fontWeight: 700 }}>{category.name}</span>
           <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginLeft: 2 }}>
             ({items.length} item{items.length !== 1 ? "s" : ""})
