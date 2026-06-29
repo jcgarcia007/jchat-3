@@ -534,6 +534,53 @@ function CategoryNav({
   );
 }
 
+// ── AddButton ─────────────────────────────────────────────────────────────────
+
+function AddButton({
+  hasOptions,
+  justAdded,
+  onClick,
+  floating,
+}: {
+  hasOptions: boolean;
+  justAdded: boolean;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  floating?: boolean;
+}) {
+  const label = hasOptions ? "⚙" : justAdded ? "✓" : "+";
+  const bg = justAdded ? "#059669" : "var(--color-brand)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={hasOptions ? "Personalizar" : "Agregar al carrito"}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: "50%",
+        background: bg,
+        border: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 17,
+        color: "#fff",
+        fontWeight: 700,
+        flexShrink: 0,
+        cursor: "pointer",
+        lineHeight: 1,
+        padding: 0,
+        boxShadow: floating ? "0 4px 12px rgba(0,0,0,0.45)" : "none",
+        transform: justAdded ? "scale(1.12)" : "scale(1)",
+        transition:
+          "transform .18s cubic-bezier(.22,1.4,.36,1), background .2s ease",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── ItemCard with effect support ──────────────────────────────────────────────
 
 function ItemCard({
@@ -545,7 +592,7 @@ function ItemCard({
   onCardEnter,
   onCardLeave,
   onCardMove,
-  onTap,
+  onAdd,
 }: {
   item: PublicMenuItem;
   effect: CardEffect;
@@ -555,7 +602,7 @@ function ItemCard({
   onCardEnter: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onCardLeave: () => void;
   onCardMove: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
-  onTap: (item: PublicMenuItem) => void;
+  onAdd: (item: PublicMenuItem) => void;
 }) {
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   const hasSizes = (item.options.sizes?.length ?? 0) > 0;
@@ -565,6 +612,24 @@ function ItemCard({
 
   const cardId = `${item.category_id}/${item.id}`;
   const isHovered = !soldOut && hoveredCardId === cardId;
+
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (addedTimer.current) clearTimeout(addedTimer.current); }, []);
+
+  const handleAddClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      if (soldOut) return;
+      onAdd(item);
+      if (!hasOptions) {
+        setJustAdded(true);
+        if (addedTimer.current) clearTimeout(addedTimer.current);
+        addedTimer.current = setTimeout(() => setJustAdded(false), 1000);
+      }
+    },
+    [soldOut, hasOptions, item, onAdd]
+  );
 
   const {
     cardStyle,
@@ -581,12 +646,12 @@ function ItemCard({
 
   return (
     <div
-      onClick={() => !soldOut && onTap(item)}
       onMouseEnter={soldOut ? undefined : (e) => onCardEnter(e, cardId)}
       onMouseLeave={soldOut ? undefined : onCardLeave}
       onMouseMove={soldOut ? undefined : (e) => onCardMove(e, cardId)}
       style={{
         ...cardStyle,
+        cursor: "default",
         opacity: soldOut ? 0.65 : 1,
         display: "flex",
         flexDirection: "column",
@@ -654,6 +719,18 @@ function ItemCard({
             }}
           >
             {badge.label}
+          </div>
+        )}
+
+        {/* Floating + button for reveal/glass effects (info inside photo, no below area) */}
+        {!belowInfo && !soldOut && (
+          <div style={{ position: "absolute", top: 8, right: 8, zIndex: 6 }}>
+            <AddButton
+              hasOptions={hasOptions}
+              justAdded={justAdded}
+              onClick={handleAddClick}
+              floating
+            />
           </div>
         )}
 
@@ -769,23 +846,11 @@ function ItemCard({
               {fmtPrice(item.price_cents)}
             </span>
             {!soldOut && (
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "var(--color-brand)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                  color: "#fff",
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
-                {hasOptions ? "⚙" : "+"}
-              </div>
+              <AddButton
+                hasOptions={hasOptions}
+                justAdded={justAdded}
+                onClick={handleAddClick}
+              />
             )}
           </div>
         </div>
@@ -804,7 +869,7 @@ function CategorySection({
   onCardEnter,
   onCardLeave,
   onCardMove,
-  onItemTap,
+  onItemAdd,
 }: {
   category: PublicMenuCategory;
   sectionRef: (el: HTMLElement | null) => void;
@@ -815,7 +880,7 @@ function CategorySection({
   onCardEnter: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onCardLeave: () => void;
   onCardMove: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
-  onItemTap: (item: PublicMenuItem) => void;
+  onItemAdd: (item: PublicMenuItem) => void;
 }) {
   if (category.items.length === 0) return null;
 
@@ -900,7 +965,7 @@ function CategorySection({
             onCardEnter={onCardEnter}
             onCardLeave={onCardLeave}
             onCardMove={onCardMove}
-            onTap={onItemTap}
+            onAdd={onItemAdd}
           />
         ))}
       </div>
@@ -2152,7 +2217,7 @@ export default function MenuPageClient({
     setCartItems((prev) => prev.filter((ci) => ci.cartId !== cartId));
   }, []);
 
-  const handleItemTap = useCallback(
+  const handleItemAdd = useCallback(
     (item: PublicMenuItem) => {
       const hasSizes = (item.options.sizes?.length ?? 0) > 0;
       const hasExtras = (item.options.extras?.length ?? 0) > 0;
@@ -2207,7 +2272,7 @@ export default function MenuPageClient({
               onCardEnter={handleCardEnter}
               onCardLeave={handleCardLeave}
               onCardMove={handleCardMove}
-              onItemTap={handleItemTap}
+              onItemAdd={handleItemAdd}
             />
           ))}
         </div>
