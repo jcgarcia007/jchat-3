@@ -308,6 +308,7 @@ interface CartItem {
   /** New unified selections (one entry per group) */
   groupSelections: GroupSelection[];
   lineTotalCents: number;
+  notes?: string;
 }
 
 type AppStep = "menu" | "cart" | "pickup" | "success";
@@ -592,7 +593,7 @@ function AddButton({
         boxShadow: floating ? "0 4px 12px rgba(0,0,0,0.45)" : "none",
         transform: justAdded ? "scale(1.12)" : "scale(1)",
         transition:
-          "transform .18s cubic-bezier(.22,1.4,.36,1), background .2s ease",
+          "transform .18s cubic-bezier(.22,1,.36,1), background .2s ease",
       }}
     >
       {label}
@@ -666,9 +667,10 @@ function ItemCard({
       onMouseEnter={soldOut ? undefined : (e) => onCardEnter(e, cardId)}
       onMouseLeave={soldOut ? undefined : onCardLeave}
       onMouseMove={soldOut ? undefined : (e) => onCardMove(e, cardId)}
+      onClick={soldOut ? undefined : () => onAdd(item)}
       style={{
         ...cardStyle,
-        cursor: "default",
+        cursor: soldOut ? "default" : "pointer",
         opacity: soldOut ? 0.65 : 1,
         display: "flex",
         flexDirection: "column",
@@ -1004,13 +1006,31 @@ function CustomizerSheet({
     size: MenuItemOption | null,
     extras: MenuItemOption[],
     qty: number,
-    groupSelections: GroupSelection[]
+    groupSelections: GroupSelection[],
+    notes?: string
   ) => void;
 }) {
-  // Per-group selection state: single → one choice or null; multi → Set of labels
-  const [singleSel, setSingleSel] = useState<Record<string, ModifierChoice | null>>({});
+  // Pre-select defaults: single groups get default index (hielo->2, picante->1, rest->0)
+  const [singleSel, setSingleSel] = useState<Record<string, ModifierChoice | null>>(() => {
+    const init: Record<string, ModifierChoice | null> = {};
+    for (const g of item.groups) {
+      if (g.type === "single" && g.choices.length > 0) {
+        const key = (g.label + g.id).toLowerCase();
+        const isIce = key.includes("hielo") || key.includes("ice");
+        const isSpice = key.includes("picante") || key.includes("spice");
+        const idx = isIce ? 2 : isSpice ? 1 : 0;
+        init[g.id] = g.choices[Math.min(idx, g.choices.length - 1)];
+      }
+    }
+    return init;
+  });
   const [multiSel, setMultiSel] = useState<Record<string, Set<string>>>({});
   const [qty, setQty] = useState(1);
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [notes, setNotes] = useState("");
+  const [gift, setGift] = useState(false);
+  const [giftTo, setGiftTo] = useState("");
+  const [giftMsg, setGiftMsg] = useState("");
 
   const toggleMulti = useCallback(
     (groupId: string, choice: ModifierChoice, maxSelect: number) => {
@@ -1043,21 +1063,27 @@ function CustomizerSheet({
     })
     .filter((gs): gs is GroupSelection => gs !== null);
 
-  // Validate: every group must satisfy its min_select
-  const blockingGroup = item.groups.find((g) => {
-    if (g.type === "single" && g.min_select >= 1) {
-      return !(singleSel[g.id]);
-    }
-    if (g.type === "multi" && g.min_select > 0) {
-      const sel = multiSel[g.id] ?? new Set();
-      return sel.size < g.min_select;
-    }
-    return false;
-  });
-  const canAdd = !blockingGroup;
-
   const totalCents = calcLineFromGroups(item.price_cents, groupSelections, qty);
-  const primaryUrl = item.photos[0]?.url ?? item.photo_url;
+
+  const allUrls: string[] = item.photos.length > 0
+    ? item.photos.map((p) => p.url)
+    : item.photo_url
+    ? [item.photo_url]
+    : [];
+  const displayUrl = allUrls[Math.min(photoIdx, allUrls.length - 1)] ?? null;
+
+  const sheetInputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1.5px solid var(--border-subtle)",
+    background: "var(--bg-surface)",
+    color: "var(--text-primary)",
+    fontSize: 14,
+    outline: "none",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
+  };
 
   return (
     <Backdrop onClose={onClose}>
@@ -1067,78 +1093,106 @@ function CustomizerSheet({
           background: "var(--bg-elevated)",
           borderRadius: "20px 20px 0 0",
           overflow: "hidden",
-          maxHeight: "90vh",
+          maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
+          width: "100%",
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
         }}
       >
-        {/* Header photo */}
-        <div style={{ position: "relative", height: 200, flexShrink: 0 }}>
-          {primaryUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={primaryUrl}
-              alt={item.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <div
+        {/* Photo area */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ position: "relative", height: 218 }}>
+            {displayUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={displayUrl}
+                alt={item.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  background:
+                    "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 56,
+                }}
+              >
+                🍽️
+              </div>
+            )}
+            <button
+              onClick={onClose}
               style={{
-                width: "100%",
-                height: "100%",
-                background:
-                  "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+                position: "absolute",
+                top: 12,
+                right: 12,
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.55)",
+                border: "none",
+                color: "#fff",
+                fontSize: 18,
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 48,
+                fontWeight: 700,
+                lineHeight: 1,
               }}
             >
-              🍽️
-            </div>
-          )}
-          <button
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "rgba(0,0,0,0.5)",
-              border: "none",
-              color: "#fff",
-              fontSize: 16,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            ✕
-          </button>
-          {item.photos.length > 1 && (
+              ×
+            </button>
+          </div>
+
+          {/* Photo thumbnails */}
+          {allUrls.length > 1 && (
             <div
               style={{
-                position: "absolute",
-                bottom: 10,
-                right: 12,
-                background: "rgba(0,0,0,0.6)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 10,
-                padding: "2px 8px",
+                display: "flex",
+                gap: 8,
+                padding: "10px 16px",
+                overflowX: "auto",
+                background: "var(--bg-elevated)",
               }}
             >
-              1 / {item.photos.length}
+              {allUrls.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  onClick={() => setPhotoIdx(i)}
+                  style={{
+                    width: 42,
+                    height: 42,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    flexShrink: 0,
+                    cursor: "pointer",
+                    border: i === photoIdx
+                      ? "2.5px solid var(--color-gold)"
+                      : "2px solid transparent",
+                    opacity: i === photoIdx ? 1 : 0.65,
+                    transition: "opacity .15s, border-color .15s",
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
 
         {/* Scrollable body */}
-        <div style={{ overflowY: "auto", flex: 1, padding: "16px 16px 0" }}>
+        <div style={{ overflowY: "auto", flex: 1, padding: "16px 16px 8px" }}>
+          {/* Name + base price */}
           <div
             style={{
               display: "flex",
@@ -1176,18 +1230,15 @@ function CustomizerSheet({
                 fontSize: 13,
                 color: "var(--text-secondary)",
                 lineHeight: 1.6,
-                margin: "0 0 16px",
+                margin: "0 0 18px",
               }}
             >
               {item.description}
             </p>
           )}
 
-          {/* Unified modifier groups */}
+          {/* Modifier groups */}
           {item.groups.map((group) => {
-            const isRequired = group.type === "single"
-              ? group.min_select >= 1
-              : group.min_select > 0;
             const multiSet = multiSel[group.id] ?? new Set<string>();
             const atMax = group.type === "multi" && multiSet.size >= group.max_select;
 
@@ -1196,204 +1247,303 @@ function CustomizerSheet({
                 {/* Group header */}
                 <div
                   style={{
-                    fontSize: 13,
-                    fontWeight: 600,
+                    fontSize: 12,
+                    fontWeight: 700,
                     color: "var(--text-secondary)",
-                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 10,
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                   }}
                 >
                   {group.label}
-                  {isRequired && group.type === "single" && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "var(--color-danger)",
-                        background: "rgba(220,38,38,0.1)",
-                        padding: "1px 6px",
-                        borderRadius: 6,
-                      }}
-                    >
-                      requerido
-                    </span>
-                  )}
                   {group.type === "multi" && group.max_select < group.choices.length && (
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                      (elige hasta {group.max_select})
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
+                      · hasta {group.max_select}
                     </span>
                   )}
-                  {group.type === "multi" && group.min_select > 0 && group.max_select >= group.choices.length && (
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                      (elige al menos {group.min_select})
+                  {group.type === "multi" && group.min_select > 0 && (
+                    <span style={{ fontSize: 11, color: "var(--color-danger)", textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+                      · mín {group.min_select}
                     </span>
                   )}
                 </div>
 
-                {/* Choices */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {group.choices.map((choice) => {
-                    const isSingle = group.type === "single";
-                    const active = isSingle
-                      ? singleSel[group.id]?.label === choice.label
-                      : multiSet.has(choice.label);
-                    const disabled = !isSingle && !active && atMax;
-
-                    return (
-                      <button
-                        key={choice.label}
-                        disabled={disabled}
-                        onClick={() => {
-                          if (isSingle) {
-                            setSingleSel((prev) => ({ ...prev, [group.id]: choice }));
-                          } else {
-                            toggleMulti(group.id, choice, group.max_select);
-                          }
-                        }}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "10px 14px",
-                          borderRadius: 12,
-                          border: active
-                            ? "2px solid var(--color-brand)"
-                            : "1px solid var(--border-subtle)",
-                          background: active
-                            ? "rgba(79,70,229,0.1)"
-                            : disabled
-                            ? "var(--bg-base)"
-                            : "var(--bg-surface)",
-                          cursor: disabled ? "not-allowed" : "pointer",
-                          opacity: disabled ? 0.45 : 1,
-                          width: "100%",
-                          textAlign: "left",
-                        }}
-                      >
-                        <span
+                {/* Single-choice: horizontal chips */}
+                {group.type === "single" && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {group.choices.map((choice) => {
+                      const active = singleSel[group.id]?.label === choice.label;
+                      return (
+                        <button
+                          key={choice.label}
+                          onClick={() => setSingleSel((prev) => ({ ...prev, [group.id]: choice }))}
                           style={{
-                            fontSize: 14,
-                            color: active ? "var(--color-brand)" : "var(--text-primary)",
+                            padding: "8px 14px",
+                            borderRadius: 10,
+                            border: active
+                              ? "2px solid var(--color-gold)"
+                              : "1.5px solid var(--border-subtle)",
+                            background: active
+                              ? "rgba(217,119,6,0.12)"
+                              : "var(--bg-surface)",
+                            color: active ? "var(--color-gold)" : "var(--text-primary)",
                             fontWeight: active ? 600 : 400,
+                            fontSize: 13.5,
+                            cursor: "pointer",
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
-                            gap: 8,
+                            gap: 2,
+                            transition: "border-color .15s, background .15s",
                           }}
                         >
-                          {/* Radio dot or checkbox square */}
+                          <span>{choice.label}</span>
+                          {choice.price_cents !== 0 && (
+                            <span style={{ fontSize: 11, color: active ? "var(--color-gold)" : "var(--text-secondary)", fontWeight: 500 }}>
+                              {choice.price_cents > 0 ? "+" : "−"}{fmtPrice(Math.abs(choice.price_cents))}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Multi-choice: checkbox rows */}
+                {group.type === "multi" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {group.choices.map((choice) => {
+                      const active = multiSet.has(choice.label);
+                      const disabled = !active && atMax;
+                      return (
+                        <button
+                          key={choice.label}
+                          disabled={disabled}
+                          onClick={() => toggleMulti(group.id, choice, group.max_select)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "10px 4px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: active ? "rgba(217,119,6,0.07)" : "transparent",
+                            cursor: disabled ? "not-allowed" : "pointer",
+                            opacity: disabled ? 0.4 : 1,
+                            width: "100%",
+                            textAlign: "left",
+                          }}
+                        >
                           <span
                             style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: isSingle ? "50%" : 4,
-                              border: active
-                                ? "5px solid var(--color-brand)"
-                                : "2px solid var(--border-subtle)",
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              border: active ? "none" : "2px solid var(--border-subtle)",
+                              background: active ? "var(--color-gold)" : "transparent",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                               flexShrink: 0,
-                            }}
-                          />
-                          {choice.label}
-                        </span>
-                        {choice.price_cents !== 0 && (
-                          <span
-                            style={{
-                              fontSize: 13,
-                              color: "var(--text-secondary)",
-                              fontWeight: 500,
+                              transition: "background .15s",
                             }}
                           >
-                            {choice.price_cents > 0 ? "+" : "−"}
-                            {fmtPrice(Math.abs(choice.price_cents))}
+                            {active && <span style={{ color: "#fff", fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>}
                           </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontWeight: active ? 500 : 400 }}>
+                            {choice.label}
+                          </span>
+                          {choice.price_cents > 0 && (
+                            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500, paddingRight: 4 }}>
+                              +{fmtPrice(choice.price_cents)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
 
-          {/* Quantity */}
+          {/* Notes */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Notas para la cocina
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Sin cebolla, extra salsa..."
+              rows={2}
+              style={{ ...sheetInputStyle, resize: "none" }}
+            />
+          </div>
+
+          {/* Gift toggle */}
+          <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 0",
+                borderTop: "1px solid var(--border-subtle)",
+                borderBottom: gift ? "none" : "1px solid var(--border-subtle)",
+              }}
+            >
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                🎁 Es un regalo
+              </span>
+              <div
+                onClick={() => setGift((g) => !g)}
+                style={{
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  background: gift ? "var(--color-gold)" : "var(--bg-surface)",
+                  border: gift ? "none" : "1.5px solid var(--border-subtle)",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background .2s",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    left: gift ? 22 : 2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    transition: "left .2s",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                  }}
+                />
+              </div>
+            </div>
+            {gift && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 12 }}>
+                <input
+                  value={giftTo}
+                  onChange={(e) => setGiftTo(e.target.value)}
+                  placeholder="Para:"
+                  style={sheetInputStyle}
+                />
+                <input
+                  value={giftMsg}
+                  onChange={(e) => setGiftMsg(e.target.value)}
+                  placeholder="Mensaje..."
+                  style={sheetInputStyle}
+                />
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: 8 }} />
+        </div>
+
+        {/* Fixed bottom bar: qty stepper + add button */}
+        <div
+          style={{
+            padding: "12px 16px",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--bg-elevated)",
+            borderTop: "1px solid var(--border-subtle)",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {/* Qty stepper */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 20,
-              padding: "12px 0 20px",
+              borderRadius: 12,
+              overflow: "hidden",
+              border: "1.5px solid var(--border-subtle)",
+              flexShrink: 0,
             }}
           >
-            <button onClick={() => setQty((q) => Math.max(1, q - 1))} style={qtyBtnStyle}>
+            <button
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              style={{
+                width: 38,
+                height: 42,
+                border: "none",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+                fontSize: 20,
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               −
             </button>
             <span
               style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "var(--text-primary)",
-                minWidth: 32,
+                width: 32,
                 textAlign: "center",
+                fontWeight: 700,
+                fontSize: 15,
+                color: "var(--text-primary)",
+                background: "var(--bg-elevated)",
               }}
             >
               {qty}
             </span>
-            <button onClick={() => setQty((q) => q + 1)} style={qtyBtnStyle}>
+            <button
+              onClick={() => setQty((q) => q + 1)}
+              style={{
+                width: 38,
+                height: 42,
+                border: "none",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+                fontSize: 20,
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               +
             </button>
           </div>
-        </div>
 
-        {/* Sticky CTA */}
-        <div
-          style={{
-            padding: "12px 16px 24px",
-            background: "var(--bg-elevated)",
-            borderTop: "1px solid var(--border-subtle)",
-            flexShrink: 0,
-          }}
-        >
+          {/* Add button */}
           <button
-            onClick={() =>
-              canAdd &&
-              onAddToCart(item, null, [], qty, groupSelections)
-            }
-            disabled={!canAdd}
+            onClick={() => onAddToCart(item, null, [], qty, groupSelections, notes)}
             style={{
-              width: "100%",
-              padding: "14px 20px",
-              borderRadius: 14,
+              flex: 1,
+              padding: "12px 14px",
+              borderRadius: 12,
               border: "none",
-              background: canAdd
-                ? "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)"
-                : "var(--bg-surface)",
-              color: canAdd ? "#fff" : "var(--text-tertiary)",
-              fontSize: 15,
+              background: "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+              color: "#fff",
+              fontSize: 14,
               fontWeight: 700,
-              cursor: canAdd ? "pointer" : "not-allowed",
+              cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
-            <span>Agregar al carrito</span>
+            <span>Agregar al pedido</span>
             <span>{fmtPrice(totalCents)}</span>
           </button>
-          {blockingGroup && (
-            <p
-              style={{
-                fontSize: 11,
-                color: "var(--color-danger)",
-                textAlign: "center",
-                margin: "8px 0 0",
-              }}
-            >
-              {blockingGroup.type === "single"
-                ? `Selecciona ${blockingGroup.label.toLowerCase()} para continuar`
-                : `Elige al menos ${blockingGroup.min_select} en ${blockingGroup.label.toLowerCase()}`}
-            </p>
-          )}
         </div>
       </div>
     </Backdrop>
@@ -1427,6 +1577,10 @@ function CartSheet({
           maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
+          width: "100%",
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
         }}
       >
         <div
@@ -1526,7 +1680,7 @@ function CartSheet({
                       style={{
                         fontSize: 11,
                         color: "var(--text-tertiary)",
-                        marginBottom: 8,
+                        marginBottom: ci.notes ? 4 : 8,
                         lineHeight: 1.5,
                       }}
                     >
@@ -1540,6 +1694,19 @@ function CartSheet({
                           ]
                             .filter(Boolean)
                             .join(" · ")}
+                    </div>
+                  )}
+                  {ci.notes && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text-tertiary)",
+                        fontStyle: "italic",
+                        marginBottom: 8,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      📝 {ci.notes}
                     </div>
                   )}
 
@@ -1661,6 +1828,10 @@ function PickupSheet({
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
+          width: "100%",
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
         }}
       >
         <div
@@ -1908,6 +2079,10 @@ function SuccessSheet({
           borderRadius: "20px 20px 0 0",
           padding: "32px 24px 40px",
           textAlign: "center",
+          width: "100%",
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
         }}
       >
         <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
@@ -1985,6 +2160,7 @@ function Backdrop({
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
+        alignItems: "center",
       }}
     >
       {children}
@@ -2205,7 +2381,8 @@ export default function MenuPageClient({
       size: MenuItemOption | null,
       extras: MenuItemOption[],
       qty: number,
-      groupSelections: GroupSelection[] = []
+      groupSelections: GroupSelection[] = [],
+      notes?: string
     ) => {
       const lineTotalCents =
         groupSelections.length > 0
@@ -2223,6 +2400,7 @@ export default function MenuPageClient({
           selectedExtras: extras,
           groupSelections,
           lineTotalCents,
+          notes: notes?.trim() || undefined,
         },
       ]);
       setCustomizerItem(null);
