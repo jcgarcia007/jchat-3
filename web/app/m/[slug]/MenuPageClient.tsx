@@ -7,6 +7,8 @@ import type {
   PublicMenuCategory,
   PublicMenuItem,
   MenuItemOption,
+  ModifierGroup,
+  ModifierChoice,
 } from "./page";
 
 // ── Card effect types ─────────────────────────────────────────────────────────
@@ -288,14 +290,23 @@ function buildEffectStyles(
 
 // ── Cart types ────────────────────────────────────────────────────────────────
 
+interface GroupSelection {
+  groupId: string;
+  groupLabel: string;
+  choices: ModifierChoice[];
+}
+
 interface CartItem {
   cartId: string;
   itemId: string;
   name: string;
   basePriceCents: number;
   quantity: number;
+  /** Legacy compat fields — kept so CartSheet/PickupSheet render unchanged for old items */
   selectedSize: MenuItemOption | null;
   selectedExtras: MenuItemOption[];
+  /** New unified selections (one entry per group) */
+  groupSelections: GroupSelection[];
   lineTotalCents: number;
 }
 
@@ -315,6 +326,14 @@ function calcLine(
   qty: number
 ): number {
   return (base + (size?.price_cents ?? 0) + extras.reduce((s, e) => s + e.price_cents, 0)) * qty;
+}
+
+function calcLineFromGroups(base: number, groups: GroupSelection[], qty: number): number {
+  const extra = groups.reduce(
+    (sum, g) => sum + g.choices.reduce((s, c) => s + c.price_cents, 0),
+    0
+  );
+  return (base + extra) * qty;
 }
 
 const BADGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
@@ -605,9 +624,7 @@ function ItemCard({
   onAdd: (item: PublicMenuItem) => void;
 }) {
   const soldOut = item.stock_count !== null && item.stock_count === 0;
-  const hasSizes = (item.options.sizes?.length ?? 0) > 0;
-  const hasExtras = (item.options.extras?.length ?? 0) > 0;
-  const hasOptions = hasSizes || hasExtras;
+  const hasOptions = item.groups.length > 0;
   const badge = item.badge ? BADGE_CONFIG[item.badge] : null;
 
   const cardId = `${item.category_id}/${item.id}`;
@@ -986,30 +1003,60 @@ function CustomizerSheet({
     item: PublicMenuItem,
     size: MenuItemOption | null,
     extras: MenuItemOption[],
-    qty: number
+    qty: number,
+    groupSelections: GroupSelection[]
   ) => void;
 }) {
-  const hasSizes = (item.options.sizes?.length ?? 0) > 0;
-  const hasExtras = (item.options.extras?.length ?? 0) > 0;
-
-  const [selectedSize, setSelectedSize] = useState<MenuItemOption | null>(null);
-  const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
+  // Per-group selection state: single → one choice or null; multi → Set of labels
+  const [singleSel, setSingleSel] = useState<Record<string, ModifierChoice | null>>({});
+  const [multiSel, setMultiSel] = useState<Record<string, Set<string>>>({});
   const [qty, setQty] = useState(1);
 
-  const toggleExtra = useCallback((extra: MenuItemOption) => {
-    setSelectedExtras((prev) => {
-      const next = new Set(prev);
-      if (next.has(extra.label)) next.delete(extra.label);
-      else next.add(extra.label);
-      return next;
-    });
-  }, []);
-
-  const extrasArr: MenuItemOption[] = (item.options.extras ?? []).filter((e) =>
-    selectedExtras.has(e.label)
+  const toggleMulti = useCallback(
+    (groupId: string, choice: ModifierChoice, maxSelect: number) => {
+      setMultiSel((prev) => {
+        const cur = new Set(prev[groupId] ?? []);
+        if (cur.has(choice.label)) {
+          cur.delete(choice.label);
+        } else if (cur.size < maxSelect) {
+          cur.add(choice.label);
+        }
+        return { ...prev, [groupId]: cur };
+      });
+    },
+    []
   );
-  const totalCents = calcLine(item.price_cents, selectedSize, extrasArr, qty);
-  const canAdd = !hasSizes || selectedSize !== null;
+
+  // Build GroupSelection[] from current state
+  const groupSelections: GroupSelection[] = item.groups
+    .map((g) => {
+      if (g.type === "single") {
+        const c = singleSel[g.id] ?? null;
+        return c ? { groupId: g.id, groupLabel: g.label, choices: [c] } : null;
+      } else {
+        const sel = multiSel[g.id] ?? new Set<string>();
+        const chosen = g.choices.filter((c) => sel.has(c.label));
+        return chosen.length > 0
+          ? { groupId: g.id, groupLabel: g.label, choices: chosen }
+          : null;
+      }
+    })
+    .filter((gs): gs is GroupSelection => gs !== null);
+
+  // Validate: every group must satisfy its min_select
+  const blockingGroup = item.groups.find((g) => {
+    if (g.type === "single" && g.min_select >= 1) {
+      return !(singleSel[g.id]);
+    }
+    if (g.type === "multi" && g.min_select > 0) {
+      const sel = multiSel[g.id] ?? new Set();
+      return sel.size < g.min_select;
+    }
+    return false;
+  });
+  const canAdd = !blockingGroup;
+
+  const totalCents = calcLineFromGroups(item.price_cents, groupSelections, qty);
   const primaryUrl = item.photos[0]?.url ?? item.photo_url;
 
   return (
@@ -1136,165 +1183,139 @@ function CustomizerSheet({
             </p>
           )}
 
-          {hasSizes && (
-            <div style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                Tamaño{" "}
-                <span
+          {/* Unified modifier groups */}
+          {item.groups.map((group) => {
+            const isRequired = group.type === "single"
+              ? group.min_select >= 1
+              : group.min_select > 0;
+            const multiSet = multiSel[group.id] ?? new Set<string>();
+            const atMax = group.type === "multi" && multiSet.size >= group.max_select;
+
+            return (
+              <div key={group.id} style={{ marginBottom: 20 }}>
+                {/* Group header */}
+                <div
                   style={{
-                    fontSize: 10,
-                    color: "var(--color-danger)",
-                    background: "rgba(220,38,38,0.1)",
-                    padding: "1px 6px",
-                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  requerido
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(item.options.sizes ?? []).map((size) => {
-                  const active = selectedSize?.label === size.label;
-                  return (
-                    <button
-                      key={size.label}
-                      onClick={() => setSelectedSize(size)}
+                  {group.label}
+                  {isRequired && group.type === "single" && (
+                    <span
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        border: active
-                          ? "2px solid var(--color-brand)"
-                          : "1px solid var(--border-subtle)",
-                        background: active ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
-                        cursor: "pointer",
-                        width: "100%",
-                        textAlign: "left",
+                        fontSize: 10,
+                        color: "var(--color-danger)",
+                        background: "rgba(220,38,38,0.1)",
+                        padding: "1px 6px",
+                        borderRadius: 6,
                       }}
                     >
-                      <span
+                      requerido
+                    </span>
+                  )}
+                  {group.type === "multi" && group.max_select < group.choices.length && (
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                      (elige hasta {group.max_select})
+                    </span>
+                  )}
+                  {group.type === "multi" && group.min_select > 0 && group.max_select >= group.choices.length && (
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                      (elige al menos {group.min_select})
+                    </span>
+                  )}
+                </div>
+
+                {/* Choices */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {group.choices.map((choice) => {
+                    const isSingle = group.type === "single";
+                    const active = isSingle
+                      ? singleSel[group.id]?.label === choice.label
+                      : multiSet.has(choice.label);
+                    const disabled = !isSingle && !active && atMax;
+
+                    return (
+                      <button
+                        key={choice.label}
+                        disabled={disabled}
+                        onClick={() => {
+                          if (isSingle) {
+                            setSingleSel((prev) => ({ ...prev, [group.id]: choice }));
+                          } else {
+                            toggleMulti(group.id, choice, group.max_select);
+                          }
+                        }}
                         style={{
-                          fontSize: 14,
-                          color: active ? "var(--color-brand)" : "var(--text-primary)",
-                          fontWeight: active ? 600 : 400,
                           display: "flex",
+                          justifyContent: "space-between",
                           alignItems: "center",
-                          gap: 8,
+                          padding: "10px 14px",
+                          borderRadius: 12,
+                          border: active
+                            ? "2px solid var(--color-brand)"
+                            : "1px solid var(--border-subtle)",
+                          background: active
+                            ? "rgba(79,70,229,0.1)"
+                            : disabled
+                            ? "var(--bg-base)"
+                            : "var(--bg-surface)",
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          opacity: disabled ? 0.45 : 1,
+                          width: "100%",
+                          textAlign: "left",
                         }}
                       >
                         <span
                           style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: "50%",
-                            border: active
-                              ? "5px solid var(--color-brand)"
-                              : "2px solid var(--border-subtle)",
-                            flexShrink: 0,
+                            fontSize: 14,
+                            color: active ? "var(--color-brand)" : "var(--text-primary)",
+                            fontWeight: active ? 600 : 400,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                           }}
-                        />
-                        {size.label}
-                      </span>
-                      {size.price_cents > 0 && (
-                        <span
-                          style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}
                         >
-                          +{fmtPrice(size.price_cents)}
+                          {/* Radio dot or checkbox square */}
+                          <span
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: isSingle ? "50%" : 4,
+                              border: active
+                                ? "5px solid var(--color-brand)"
+                                : "2px solid var(--border-subtle)",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {choice.label}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        {choice.price_cents !== 0 && (
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "var(--text-secondary)",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {choice.price_cents > 0 ? "+" : "−"}
+                            {fmtPrice(Math.abs(choice.price_cents))}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
 
-          {hasExtras && (
-            <div style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                }}
-              >
-                Extras{" "}
-                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                  (opcional)
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(item.options.extras ?? []).map((extra) => {
-                  const checked = selectedExtras.has(extra.label);
-                  return (
-                    <button
-                      key={extra.label}
-                      onClick={() => toggleExtra(extra)}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        border: checked
-                          ? "2px solid var(--color-brand)"
-                          : "1px solid var(--border-subtle)",
-                        background: checked ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
-                        cursor: "pointer",
-                        width: "100%",
-                        textAlign: "left",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: checked ? "var(--color-brand)" : "var(--text-primary)",
-                          fontWeight: checked ? 600 : 400,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 4,
-                            border: checked
-                              ? "5px solid var(--color-brand)"
-                              : "2px solid var(--border-subtle)",
-                            flexShrink: 0,
-                          }}
-                        />
-                        {extra.label}
-                      </span>
-                      {extra.price_cents > 0 && (
-                        <span
-                          style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}
-                        >
-                          +{fmtPrice(extra.price_cents)}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
+          {/* Quantity */}
           <div
             style={{
               display: "flex",
@@ -1334,7 +1355,10 @@ function CustomizerSheet({
           }}
         >
           <button
-            onClick={() => canAdd && onAddToCart(item, selectedSize, extrasArr, qty)}
+            onClick={() =>
+              canAdd &&
+              onAddToCart(item, null, [], qty, groupSelections)
+            }
             disabled={!canAdd}
             style={{
               width: "100%",
@@ -1356,7 +1380,7 @@ function CustomizerSheet({
             <span>Agregar al carrito</span>
             <span>{fmtPrice(totalCents)}</span>
           </button>
-          {hasSizes && !selectedSize && (
+          {blockingGroup && (
             <p
               style={{
                 fontSize: 11,
@@ -1365,7 +1389,9 @@ function CustomizerSheet({
                 margin: "8px 0 0",
               }}
             >
-              Selecciona un tamaño para continuar
+              {blockingGroup.type === "single"
+                ? `Selecciona ${blockingGroup.label.toLowerCase()} para continuar`
+                : `Elige al menos ${blockingGroup.min_select} en ${blockingGroup.label.toLowerCase()}`}
             </p>
           )}
         </div>
@@ -1493,7 +1519,9 @@ function CartSheet({
                     </button>
                   </div>
 
-                  {(ci.selectedSize || ci.selectedExtras.length > 0) && (
+                  {(ci.groupSelections.length > 0 ||
+                    ci.selectedSize ||
+                    ci.selectedExtras.length > 0) && (
                     <div
                       style={{
                         fontSize: 11,
@@ -1502,14 +1530,16 @@ function CartSheet({
                         lineHeight: 1.5,
                       }}
                     >
-                      {ci.selectedSize && <span>{ci.selectedSize.label}</span>}
-                      {ci.selectedSize && ci.selectedExtras.length > 0 && <span> · </span>}
-                      {ci.selectedExtras.map((e, i) => (
-                        <span key={e.label}>
-                          {i > 0 && ", "}
-                          {e.label}
-                        </span>
-                      ))}
+                      {ci.groupSelections.length > 0
+                        ? ci.groupSelections
+                            .flatMap((gs) => gs.choices.map((c) => c.label))
+                            .join(" · ")
+                        : [
+                            ci.selectedSize?.label,
+                            ...ci.selectedExtras.map((e) => e.label),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                     </div>
                   )}
 
@@ -1780,7 +1810,11 @@ function PickupSheet({
                 >
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1 }}>
                     {ci.quantity}× {ci.name}
-                    {ci.selectedSize ? ` (${ci.selectedSize.label})` : ""}
+                    {ci.groupSelections.length > 0
+                      ? ` (${ci.groupSelections.flatMap((gs) => gs.choices.map((c) => c.label)).join(", ")})`
+                      : ci.selectedSize
+                      ? ` (${ci.selectedSize.label})`
+                      : ""}
                   </span>
                   <span
                     style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}
@@ -2170,9 +2204,13 @@ export default function MenuPageClient({
       item: PublicMenuItem,
       size: MenuItemOption | null,
       extras: MenuItemOption[],
-      qty: number
+      qty: number,
+      groupSelections: GroupSelection[] = []
     ) => {
-      const lineTotalCents = calcLine(item.price_cents, size, extras, qty);
+      const lineTotalCents =
+        groupSelections.length > 0
+          ? calcLineFromGroups(item.price_cents, groupSelections, qty)
+          : calcLine(item.price_cents, size, extras, qty);
       setCartItems((prev) => [
         ...prev,
         {
@@ -2183,6 +2221,7 @@ export default function MenuPageClient({
           quantity: qty,
           selectedSize: size,
           selectedExtras: extras,
+          groupSelections,
           lineTotalCents,
         },
       ]);
@@ -2198,16 +2237,11 @@ export default function MenuPageClient({
           if (ci.cartId !== cartId) return ci;
           const newQty = ci.quantity + delta;
           if (newQty <= 0) return null;
-          return {
-            ...ci,
-            quantity: newQty,
-            lineTotalCents: calcLine(
-              ci.basePriceCents,
-              ci.selectedSize,
-              ci.selectedExtras,
-              newQty
-            ),
-          };
+          const lineTotalCents =
+            ci.groupSelections.length > 0
+              ? calcLineFromGroups(ci.basePriceCents, ci.groupSelections, newQty)
+              : calcLine(ci.basePriceCents, ci.selectedSize, ci.selectedExtras, newQty);
+          return { ...ci, quantity: newQty, lineTotalCents };
         })
         .filter(Boolean) as CartItem[]
     );
@@ -2219,9 +2253,7 @@ export default function MenuPageClient({
 
   const handleItemAdd = useCallback(
     (item: PublicMenuItem) => {
-      const hasSizes = (item.options.sizes?.length ?? 0) > 0;
-      const hasExtras = (item.options.extras?.length ?? 0) > 0;
-      if (hasSizes || hasExtras) {
+      if (item.groups.length > 0) {
         setCustomizerItem(item);
       } else {
         addToCart(item, null, [], 1);
