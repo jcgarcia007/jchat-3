@@ -48,6 +48,8 @@ import {
   IconFlame,
   IconAlertTriangle,
   IconFish,
+  IconAdjustments,
+  IconGripVertical,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -133,6 +135,27 @@ interface SavedPhoto {
   sort: number;
 }
 
+// ── Modifier group types (dashboard local state) ──────────────────────────────
+
+interface DashChoice {
+  label: string;
+  price_cents: number; // can be negative
+}
+
+// A group attached to an item in the editor. `groupId` is the UUID from
+// modifier_groups (null for a brand-new group not yet saved to DB).
+interface DashModifierGroup {
+  _localId: string; // stable React key (UUID generated locally)
+  groupId: string | null; // null = new, not yet in DB
+  key: string; // business-scoped unique key
+  label: string;
+  type: "single" | "multi";
+  min_select: number;
+  max_select: number;
+  choices: DashChoice[];
+  sort: number;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DIETARY_TAG_OPTIONS: { value: string; label: string; icon: React.ReactNode }[] = [
@@ -175,6 +198,7 @@ const DEMO_CATEGORIES: MenuCategory[] = [
     business_id: "demo-biz",
     name: "Cocktails",
     icon: "🍹",
+    icon_url: null,
     sort: 0,
     is_published: true,
   },
@@ -183,6 +207,7 @@ const DEMO_CATEGORIES: MenuCategory[] = [
     business_id: "demo-biz",
     name: "Small Bites",
     icon: "🍟",
+    icon_url: null,
     sort: 1,
     is_published: true,
   },
@@ -191,6 +216,7 @@ const DEMO_CATEGORIES: MenuCategory[] = [
     business_id: "demo-biz",
     name: "Non-Alcoholic",
     icon: "🥤",
+    icon_url: null,
     sort: 2,
     is_published: false,
   },
@@ -626,6 +652,434 @@ function OptionsEditor({
   );
 }
 
+// ── Modifier Groups Editor ────────────────────────────────────────────────────
+// Replaces OptionsEditor for the new system. Loads business-wide reusable
+// groups so the owner can pick from them or create item-specific ones inline.
+
+function ModifierGroupsEditor({
+  itemId,
+  businessId,
+  groups,
+  onChange,
+}: {
+  itemId: string | null;
+  businessId: string;
+  groups: DashModifierGroup[];
+  onChange: (groups: DashModifierGroup[]) => void;
+}) {
+  const [bizGroups, setBizGroups] = useState<DashModifierGroup[]>([]);
+  const [loadingBiz, setLoadingBiz] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Load all existing modifier_groups for this business (for the reuse picker)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !businessId || businessId === "demo-biz") return;
+    void (async () => {
+      setLoadingBiz(true);
+      try {
+        const { data } = await supabase
+          .from("modifier_groups")
+          .select("id, key, label, type, min_select, max_select, choices, sort")
+          .eq("business_id", businessId)
+          .order("label");
+        if (!data) return;
+        setBizGroups(
+          (data as Array<{
+            id: string; key: string; label: string; type: string;
+            min_select: number; max_select: number; choices: unknown; sort: number;
+          }>).map((g) => ({
+            _localId: g.id,
+            groupId: g.id,
+            key: g.key,
+            label: g.label,
+            type: (g.type === "multi" ? "multi" : "single") as "single" | "multi",
+            min_select: g.min_select,
+            max_select: g.max_select,
+            choices: (Array.isArray(g.choices) ? g.choices : []) as DashChoice[],
+            sort: g.sort,
+          }))
+        );
+      } finally {
+        setLoadingBiz(false);
+      }
+    })();
+  }, [businessId, itemId]);
+
+  const addNewGroup = () => {
+    const newG: DashModifierGroup = {
+      _localId: crypto.randomUUID(),
+      groupId: null,
+      key: `group_${Date.now()}`,
+      label: "",
+      type: "single",
+      min_select: 1,
+      max_select: 1,
+      choices: [],
+      sort: groups.length,
+    };
+    onChange([...groups, newG]);
+  };
+
+  const addReusableGroup = (g: DashModifierGroup) => {
+    if (groups.some((eg) => eg.groupId === g.groupId)) return; // already linked
+    onChange([...groups, { ...g, _localId: crypto.randomUUID(), sort: groups.length }]);
+    setShowPicker(false);
+  };
+
+  const updateGroup = (localId: string, patch: Partial<DashModifierGroup>) => {
+    onChange(groups.map((g) => (g._localId === localId ? { ...g, ...patch } : g)));
+  };
+
+  const removeGroup = (localId: string) => {
+    onChange(
+      groups
+        .filter((g) => g._localId !== localId)
+        .map((g, i) => ({ ...g, sort: i }))
+    );
+  };
+
+  const moveGroup = (localId: string, dir: "up" | "down") => {
+    const idx = groups.findIndex((g) => g._localId === localId);
+    const next = dir === "up" ? idx - 1 : idx + 1;
+    if (next < 0 || next >= groups.length) return;
+    const arr = [...groups];
+    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    onChange(arr.map((g, i) => ({ ...g, sort: i })));
+  };
+
+  const addChoice = (localId: string) => {
+    const g = groups.find((g) => g._localId === localId);
+    if (!g) return;
+    updateGroup(localId, { choices: [...g.choices, { label: "", price_cents: 0 }] });
+  };
+
+  const updateChoice = (localId: string, ci: number, field: keyof DashChoice, val: string) => {
+    const g = groups.find((g) => g._localId === localId);
+    if (!g) return;
+    const choices = g.choices.map((c, i) =>
+      i === ci
+        ? {
+            ...c,
+            [field]:
+              field === "price_cents"
+                ? (val === "" ? 0 : Math.round(parseFloat(val.replace(/[^0-9.-]/g, "")) * 100))
+                : val,
+          }
+        : c
+    );
+    updateGroup(localId, { choices });
+  };
+
+  const removeChoice = (localId: string, ci: number) => {
+    const g = groups.find((g) => g._localId === localId);
+    if (!g) return;
+    updateGroup(localId, { choices: g.choices.filter((_, i) => i !== ci) });
+  };
+
+  const alreadyLinkedIds = new Set(groups.map((g) => g.groupId).filter(Boolean));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {groups.length === 0 && (
+        <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", fontStyle: "italic", margin: 0 }}>
+          No hay grupos de opciones. Agrega uno nuevo o reutiliza un grupo existente del negocio.
+        </p>
+      )}
+
+      {groups.map((g, idx) => (
+        <GroupCard
+          key={g._localId}
+          group={g}
+          isFirst={idx === 0}
+          isLast={idx === groups.length - 1}
+          onUpdate={(patch) => updateGroup(g._localId, patch)}
+          onRemove={() => removeGroup(g._localId)}
+          onMove={(dir) => moveGroup(g._localId, dir)}
+          onAddChoice={() => addChoice(g._localId)}
+          onUpdateChoice={(ci, field, val) => updateChoice(g._localId, ci, field, val)}
+          onRemoveChoice={(ci) => removeChoice(g._localId, ci)}
+        />
+      ))}
+
+      {/* Action row */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" onClick={addNewGroup} style={smallAddBtnStyle}>
+          <IconPlus size={12} /> Nuevo grupo
+        </button>
+        {!loadingBiz && bizGroups.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowPicker((v) => !v)}
+            style={{ ...smallAddBtnStyle, borderColor: showPicker ? "var(--db-accent)" : undefined }}
+          >
+            <IconAdjustments size={12} />
+            {showPicker ? "Cerrar" : "Reutilizar grupo del negocio"}
+          </button>
+        )}
+      </div>
+
+      {/* Reusable group picker */}
+      {showPicker && (
+        <div
+          style={{
+            background: "var(--db-bg-elevated)",
+            border: "1px solid var(--db-border)",
+            borderRadius: 8,
+            padding: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px", fontWeight: 600 }}>
+            GRUPOS EXISTENTES DEL NEGOCIO
+          </p>
+          {bizGroups.map((bg) => {
+            const linked = alreadyLinkedIds.has(bg.groupId);
+            return (
+              <button
+                key={bg.groupId}
+                type="button"
+                disabled={linked}
+                onClick={() => addReusableGroup(bg)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--db-border)",
+                  background: linked ? "var(--db-bg-surface)" : "var(--db-bg-surface)",
+                  color: linked ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
+                  fontSize: 13,
+                  cursor: linked ? "default" : "pointer",
+                  textAlign: "left",
+                  opacity: linked ? 0.5 : 1,
+                }}
+              >
+                <span>
+                  <strong>{bg.label}</strong>
+                  <span style={{ color: "var(--db-text-tertiary)", marginLeft: 8, fontSize: 11 }}>
+                    {bg.type === "single" ? "único" : "múltiple"} · {bg.choices.length} opciones
+                  </span>
+                </span>
+                {linked ? (
+                  <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>ya vinculado</span>
+                ) : (
+                  <span style={{ fontSize: 11, color: "var(--db-accent)" }}>+ Agregar</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Single group card inside ModifierGroupsEditor
+function GroupCard({
+  group,
+  isFirst,
+  isLast,
+  onUpdate,
+  onRemove,
+  onMove,
+  onAddChoice,
+  onUpdateChoice,
+  onRemoveChoice,
+}: {
+  group: DashModifierGroup;
+  isFirst: boolean;
+  isLast: boolean;
+  onUpdate: (patch: Partial<DashModifierGroup>) => void;
+  onRemove: () => void;
+  onMove: (dir: "up" | "down") => void;
+  onAddChoice: () => void;
+  onUpdateChoice: (ci: number, field: keyof DashChoice, val: string) => void;
+  onRemoveChoice: (ci: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--db-border)",
+        borderRadius: 10,
+        overflow: "hidden",
+        background: "var(--db-bg-surface)",
+      }}
+    >
+      {/* Group header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "10px 12px",
+          background: "var(--db-bg-elevated)",
+          borderBottom: expanded ? "1px solid var(--db-border)" : "none",
+        }}
+      >
+        {/* Reorder */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <button
+            type="button"
+            onClick={() => onMove("up")}
+            disabled={isFirst}
+            style={{ ...reorderBtnStyle, opacity: isFirst ? 0.2 : 1 }}
+          >
+            <IconArrowUp size={10} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove("down")}
+            disabled={isLast}
+            style={{ ...reorderBtnStyle, opacity: isLast ? 0.2 : 1 }}
+          >
+            <IconArrowDown size={10} />
+          </button>
+        </div>
+
+        {/* Label input */}
+        <input
+          value={group.label}
+          onChange={(e) => onUpdate({ label: e.target.value })}
+          placeholder="Nombre del grupo (ej. Tamaño)"
+          style={{
+            flex: 1,
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid var(--db-border)",
+            background: "var(--db-bg-card)",
+            color: "var(--db-text-primary)",
+            fontSize: 13,
+            outline: "none",
+          }}
+        />
+
+        {/* Type toggle */}
+        <select
+          value={group.type}
+          onChange={(e) => {
+            const t = e.target.value as "single" | "multi";
+            onUpdate({
+              type: t,
+              min_select: t === "single" ? 1 : 0,
+              max_select: t === "single" ? 1 : group.choices.length || 1,
+            });
+          }}
+          style={{
+            padding: "6px 8px",
+            borderRadius: 6,
+            border: "1px solid var(--db-border)",
+            background: "var(--db-bg-card)",
+            color: "var(--db-text-secondary)",
+            fontSize: 12,
+            outline: "none",
+          }}
+        >
+          <option value="single">Único</option>
+          <option value="multi">Múltiple</option>
+        </select>
+
+        {/* Expand/collapse */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{ ...iconBtnStyle, color: "var(--db-text-tertiary)" }}
+        >
+          {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+        </button>
+
+        {/* Delete */}
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{ ...iconBtnStyle, color: "var(--db-danger)" }}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
+
+      {/* Group body */}
+      {expanded && (
+        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* min/max (only for multi) */}
+          {group.type === "multi" && (
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>Mín:</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={group.max_select}
+                  value={group.min_select}
+                  onChange={(e) => onUpdate({ min_select: parseInt(e.target.value) || 0 })}
+                  style={{ width: 52, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>Máx:</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={group.max_select}
+                  onChange={(e) => onUpdate({ max_select: parseInt(e.target.value) || 1 })}
+                  style={{ width: 52, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
+                />
+              </div>
+              <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>
+                {group.min_select > 0 ? "requerido" : "opcional"}
+              </span>
+            </div>
+          )}
+
+          {/* Choices */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {group.choices.length === 0 && (
+              <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", fontStyle: "italic", margin: 0 }}>
+                Sin opciones — agrega al menos una.
+              </p>
+            )}
+            {group.choices.map((c, ci) => (
+              <div key={ci} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  value={c.label}
+                  onChange={(e) => onUpdateChoice(ci, "label", e.target.value)}
+                  placeholder={`Opción ${ci + 1}`}
+                  style={{ ...optionInputStyle, flex: 1 }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                  <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>+$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={c.price_cents === 0 ? "" : (c.price_cents / 100).toFixed(2)}
+                    onChange={(e) => onUpdateChoice(ci, "price_cents", e.target.value)}
+                    placeholder="0.00"
+                    style={{ ...optionInputStyle, width: 76 }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRemoveChoice(ci)}
+                  style={removeOptionBtnStyle}
+                >
+                  <IconX size={12} />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={onAddChoice} style={{ ...smallAddBtnStyle, alignSelf: "flex-start" }}>
+              <IconPlus size={11} /> Agregar opción
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const optionInputStyle: React.CSSProperties = {
   padding: "7px 10px",
   borderRadius: "7px",
@@ -667,6 +1121,31 @@ const removeOptionBtnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+const iconBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 30,
+  height: 30,
+  borderRadius: "7px",
+  border: "1px solid var(--db-border)",
+  background: "transparent",
+  color: "var(--db-text-secondary)",
+  cursor: "pointer",
+};
+
+const reorderBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 22,
+  height: 18,
+  borderRadius: "4px",
+  border: "1px solid var(--db-border)",
+  background: "transparent",
+  color: "var(--db-text-tertiary)",
+};
+
 // ── Item Editor Modal ──────────────────────────────────────────────────────────
 
 function ItemEditorModal({
@@ -682,7 +1161,7 @@ function ItemEditorModal({
   categoryId: string;
   businessId: string;
   itemId: string | null;
-  onSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[]) => void;
+  onSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[], groups: DashModifierGroup[]) => void;
   onCancel: () => void;
   saving: boolean;
 }) {
@@ -695,6 +1174,10 @@ function ItemEditorModal({
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhotoFile[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<SavedPhoto[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  // ── Modifier groups state ────────────────────────────────────────────────────
+  const [modGroups, setModGroups] = useState<DashModifierGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   // Load existing photos when editing an existing item
   useEffect(() => {
@@ -710,6 +1193,50 @@ function ItemEditorModal({
         setSavedPhotos((data ?? []) as SavedPhoto[]);
       } finally {
         setLoadingPhotos(false);
+      }
+    })();
+  }, [itemId]);
+
+  // Load existing modifier groups when editing an existing item
+  useEffect(() => {
+    if (!isSupabaseConfigured || !itemId) return;
+    void (async () => {
+      setLoadingGroups(true);
+      try {
+        const { data: bridges } = await supabase
+          .from("menu_item_modifier_groups")
+          .select("modifier_group_id, sort")
+          .eq("menu_item_id", itemId)
+          .order("sort");
+        if (!bridges || bridges.length === 0) return;
+        const groupIds = bridges.map((b: { modifier_group_id: string }) => b.modifier_group_id);
+        const { data: gRows } = await supabase
+          .from("modifier_groups")
+          .select("id, key, label, type, min_select, max_select, choices, sort")
+          .in("id", groupIds);
+        if (!gRows) return;
+        type GRow = { id: string; key: string; label: string; type: string; min_select: number; max_select: number; choices: unknown; sort: number };
+        const byId: Record<string, GRow> = {};
+        for (const g of gRows as GRow[]) byId[g.id] = g;
+        const loaded: DashModifierGroup[] = (bridges as { modifier_group_id: string; sort: number }[])
+          .flatMap((b) => {
+            const g = byId[b.modifier_group_id];
+            if (!g) return [];
+            return [{
+              _localId: g.id,
+              groupId: g.id,
+              key: g.key,
+              label: g.label,
+              type: (g.type === "multi" ? "multi" : "single") as "single" | "multi",
+              min_select: g.min_select,
+              max_select: g.max_select,
+              choices: (Array.isArray(g.choices) ? g.choices : []) as unknown as DashChoice[],
+              sort: b.sort,
+            }];
+          });
+        setModGroups(loaded);
+      } finally {
+        setLoadingGroups(false);
       }
     })();
   }, [itemId]);
@@ -1226,19 +1753,23 @@ function ItemEditorModal({
               paddingTop: "18px",
             }}
           >
-            <div style={{ marginBottom: "14px" }}>
+            <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <IconAdjustments size={16} color="var(--db-accent)" />
               <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                Customization Options
+                Grupos de opciones
               </span>
-              <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginTop: 2 }}>
-                Saved to <code style={{ fontFamily: "monospace" }}>menu_items.options</code> as{" "}
-                <code style={{ fontFamily: "monospace" }}>&#123;sizes, extras&#125;</code>.
-              </p>
+              {loadingGroups && (
+                <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>Cargando…</span>
+              )}
             </div>
-            <OptionsEditor
-              options={form.options}
-              onChange={(opts) => set("options", opts)}
-            />
+            {!loadingGroups && (
+              <ModifierGroupsEditor
+                itemId={itemId}
+                businessId={businessId}
+                groups={modGroups}
+                onChange={setModGroups}
+              />
+            )}
           </div>
         </div>
 
@@ -1268,7 +1799,7 @@ function ItemEditorModal({
             Cancel
           </button>
           <button
-            onClick={() => onSave(form, stagedPhotos, photosToDelete)}
+            onClick={() => onSave(form, stagedPhotos, photosToDelete, modGroups)}
             disabled={saving || !form.name.trim() || !form.priceDollars.trim()}
             style={{
               display: "flex",
@@ -1827,19 +2358,6 @@ function ItemCard({
   );
 }
 
-const iconBtnStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 30,
-  height: 30,
-  borderRadius: "7px",
-  border: "1px solid var(--db-border)",
-  background: "transparent",
-  color: "var(--db-text-secondary)",
-  cursor: "pointer",
-};
-
 // ── CategorySection ────────────────────────────────────────────────────────────
 
 function CategorySection({
@@ -1880,7 +2398,7 @@ function CategorySection({
   deletingItem: string | null;
   savingItem: boolean;
   activeItemEdit: { item: ItemForm; itemId: string | null; categoryId: string } | null;
-  onItemSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[]) => void;
+  onItemSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[], groups: DashModifierGroup[]) => void;
   onItemEditCancel: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -2084,18 +2602,6 @@ function CategorySection({
     </div>
   );
 }
-
-const reorderBtnStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 22,
-  height: 18,
-  borderRadius: "4px",
-  border: "1px solid var(--db-border)",
-  background: "transparent",
-  color: "var(--db-text-tertiary)",
-};
 
 // ── Main page component ────────────────────────────────────────────────────────
 
@@ -2522,7 +3028,7 @@ export default function MenuPage() {
 
   // ── Save item (with multi-photo support) ────────────────────────────────────
   const handleSaveItem = useCallback(
-    async (form: ItemForm, stagedPhotos: StagedPhotoFile[], photosToDelete: SavedPhoto[]) => {
+    async (form: ItemForm, stagedPhotos: StagedPhotoFile[], photosToDelete: SavedPhoto[], modGroups: DashModifierGroup[] = []) => {
       if (!activeItemEdit) return;
       if (!form.name.trim() || !form.priceDollars.trim()) {
         setError("Name and price are required.");
@@ -2659,6 +3165,63 @@ export default function MenuPage() {
               .update({ photo_url: (firstPhoto as { url: string }).url })
               .eq("id", resolvedItemId);
           }
+        }
+
+        // 5. Sync modifier groups: upsert group rows, replace bridge rows.
+        if (modGroups.length > 0) {
+          for (const g of modGroups) {
+            if (!g.groupId) {
+              // New group: insert into modifier_groups, capture id
+              const { data: newG, error: gErr } = await supabase
+                .from("modifier_groups")
+                .insert({
+                  business_id: businessId,
+                  key: g.key || `item_${resolvedItemId}_${g._localId.slice(0, 8)}`,
+                  label: g.label || "Opciones",
+                  type: g.type,
+                  min_select: g.min_select,
+                  max_select: g.max_select,
+                  choices: g.choices as unknown as Json,
+                  sort: g.sort,
+                })
+                .select("id")
+                .single();
+              if (gErr) throw gErr;
+              g.groupId = (newG as { id: string }).id;
+            } else {
+              // Existing group: update its data (owner may have changed label/choices)
+              await supabase
+                .from("modifier_groups")
+                .update({
+                  label: g.label,
+                  type: g.type,
+                  min_select: g.min_select,
+                  max_select: g.max_select,
+                  choices: g.choices as unknown as Json,
+                })
+                .eq("id", g.groupId);
+            }
+          }
+          // Replace bridge rows: delete all for this item, re-insert in sort order
+          await supabase
+            .from("menu_item_modifier_groups")
+            .delete()
+            .eq("menu_item_id", resolvedItemId);
+          const bridgeRows = modGroups.map((g, i) => ({
+            menu_item_id: resolvedItemId,
+            modifier_group_id: g.groupId!,
+            sort: i,
+          }));
+          const { error: bridgeErr } = await supabase
+            .from("menu_item_modifier_groups")
+            .insert(bridgeRows);
+          if (bridgeErr) throw bridgeErr;
+        } else if (activeItemEdit?.itemId) {
+          // Item had groups before, now cleared — remove bridge rows
+          await supabase
+            .from("menu_item_modifier_groups")
+            .delete()
+            .eq("menu_item_id", resolvedItemId);
         }
 
         setSuccess(`"${form.name.trim()}" saved.`);
