@@ -1,0 +1,160 @@
+{
+  "business_id": "0478b8d5-5217-4369-9fa2-128dbe5b38f8",
+  "business_name": "Bar XZX",
+  "note": "Modifier groups seed — applied via Supabase MCP (project klfsgcfoahdtkojyqspd). 51 groups (4 reusable + 47 item-specific) + 60 item links.",
+
+  "reusable_groups": [
+    { "key": "tamano_coctel",  "label": "Tamaño",      "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Sencillo","price_cents":0},{"label":"Doble","price_cents":500}] },
+    { "key": "hielo",          "label": "Hielo",        "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Sin hielo","price_cents":0},{"label":"Poco","price_cents":0},{"label":"Normal","price_cents":0},{"label":"Extra","price_cents":0}] },
+    { "key": "tamano_cerveza", "label": "Tamaño",       "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Media (330ml)","price_cents":0},{"label":"Pinta (473ml)","price_cents":200},{"label":"Jarra (1L)","price_cents":600}] },
+    { "key": "temp_cerveza",   "label": "Temperatura",  "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Bien fría","price_cents":0},{"label":"Natural","price_cents":0}] }
+  ],
+
+  "items": [
+    {
+      "name": "Old Fashioned",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_coctel" },
+        { "sort": 1, "reuse": "hielo" },
+        { "sort": 2, "key": "bourbon_old_fashioned",  "label": "Bourbon",     "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"De la casa","price_cents":0},{"label":"Premium (Woodford)","price_cents":400}] },
+        { "sort": 3, "key": "extras_old_fashioned",   "label": "Extras",      "type": "multi",  "min_select": 0, "max_select": 3, "choices": [{"label":"Shot extra","price_cents":400},{"label":"Twist de naranja extra","price_cents":100},{"label":"Cereza luxardo","price_cents":200}] }
+      ]
+    },
+    {
+      "name": "Margarita Picante",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_coctel" },
+        { "sort": 1, "reuse": "hielo" },
+        { "sort": 2, "key": "picante_margarita", "label": "Nivel de picante", "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Suave","price_cents":0},{"label":"Medio","price_cents":0},{"label":"Picante","price_cents":0},{"label":"Extra picante","price_cents":0}] },
+        { "sort": 3, "key": "borde_margarita",   "label": "Borde",            "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Sal","price_cents":0},{"label":"Sal y chile (Tajín)","price_cents":100},{"label":"Sin borde","price_cents":0}] },
+        { "sort": 4, "key": "extras_margarita",  "label": "Extras",           "type": "multi",  "min_select": 0, "max_select": 2, "choices": [{"label":"Shot extra","price_cents":400},{"label":"Jalapeño fresco","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Mojito Clásico",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_coctel" },
+        { "sort": 1, "reuse": "hielo" },
+        { "sort": 2, "key": "sabor_mojito",  "label": "Sabor",  "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Clásico","price_cents":0},{"label":"Fresa","price_cents":100},{"label":"Maracuyá","price_cents":100},{"label":"Frambuesa","price_cents":100}] },
+        { "sort": 3, "key": "extras_mojito", "label": "Extras", "type": "multi",  "min_select": 0, "max_select": 2, "choices": [{"label":"Shot extra","price_cents":400},{"label":"Hierbabuena extra","price_cents":0}] }
+      ]
+    },
+    {
+      "name": "Negroni",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_coctel" },
+        { "sort": 1, "reuse": "hielo" },
+        { "sort": 2, "key": "gin_negroni",    "label": "Gin",    "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"De la casa","price_cents":0},{"label":"Premium (Hendrick's)","price_cents":400}] },
+        { "sort": 3, "key": "extras_negroni", "label": "Extras", "type": "multi",  "min_select": 0, "max_select": 1, "choices": [{"label":"Twist de naranja extra","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Piña Colada",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_coctel" },
+        { "sort": 1, "key": "preparacion_pina", "label": "Preparación", "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Frozen","price_cents":0},{"label":"Con hielo","price_cents":0}] },
+        { "sort": 2, "key": "alcohol_pina",     "label": "Alcohol",     "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Con ron","price_cents":0},{"label":"Sin alcohol","price_cents":-200}] },
+        { "sort": 3, "key": "extras_pina",      "label": "Extras",      "type": "multi",  "min_select": 0, "max_select": 3, "choices": [{"label":"Shot extra de ron","price_cents":400},{"label":"Crema de coco extra","price_cents":100},{"label":"Cereza","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "IPA Artesanal",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_cerveza" },
+        { "sort": 1, "reuse": "temp_cerveza" },
+        { "sort": 2, "key": "preparacion_ipa", "label": "Preparación", "type": "multi", "min_select": 0, "max_select": 3, "choices": [{"label":"Michelada","price_cents":200},{"label":"Limón y sal","price_cents":0},{"label":"Chamoy","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Lager Premium",
+      "groups": [
+        { "sort": 0, "reuse": "tamano_cerveza" },
+        { "sort": 1, "reuse": "temp_cerveza" },
+        { "sort": 2, "key": "preparacion_lager", "label": "Preparación", "type": "multi", "min_select": 0, "max_select": 3, "choices": [{"label":"Michelada","price_cents":200},{"label":"Limón y sal","price_cents":0},{"label":"Clamato","price_cents":200}] }
+      ]
+    },
+    {
+      "name": "Stout Oscura",
+      "groups": [
+        { "sort": 0, "key": "tamano_stout", "label": "Tamaño",      "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Media (330ml)","price_cents":0},{"label":"Pinta (473ml)","price_cents":200}] },
+        { "sort": 1, "key": "temp_stout",   "label": "Temperatura", "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Fría","price_cents":0},{"label":"Cellar (12°C)","price_cents":0}] }
+      ]
+    },
+    {
+      "name": "Alitas BBQ",
+      "groups": [
+        { "sort": 0, "key": "porcion_alitas", "label": "Porción",         "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"8 piezas","price_cents":0},{"label":"12 piezas","price_cents":600},{"label":"16 piezas","price_cents":1100}] },
+        { "sort": 1, "key": "salsa_alitas",   "label": "Salsa",           "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"BBQ","price_cents":0},{"label":"Buffalo","price_cents":0},{"label":"Mango habanero","price_cents":0},{"label":"BBQ chipotle","price_cents":0}] },
+        { "sort": 2, "key": "picante_alitas", "label": "Nivel de picante","type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Suave","price_cents":0},{"label":"Medio","price_cents":0},{"label":"Picante","price_cents":0},{"label":"Extra","price_cents":0}] },
+        { "sort": 3, "key": "dip_alitas",     "label": "Dip",             "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Ranch","price_cents":0},{"label":"Blue cheese","price_cents":100}] },
+        { "sort": 4, "key": "extras_alitas",  "label": "Agrega extras",   "type": "multi",  "min_select": 0, "max_select": 3, "choices": [{"label":"Papas a la francesa","price_cents":400},{"label":"Aros de cebolla","price_cents":400},{"label":"Dip extra","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Nachos Supremos",
+      "groups": [
+        { "sort": 0, "key": "porcion_nachos",  "label": "Porción",         "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Individual","price_cents":0},{"label":"Para compartir","price_cents":800}] },
+        { "sort": 1, "key": "proteina_nachos", "label": "Proteína",        "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Sin proteína","price_cents":0},{"label":"Pollo","price_cents":300},{"label":"Carne molida","price_cents":300},{"label":"Carnitas","price_cents":400}] },
+        { "sort": 2, "key": "picante_nachos",  "label": "Nivel de picante","type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Suave","price_cents":0},{"label":"Medio","price_cents":0},{"label":"Picante","price_cents":0}] },
+        { "sort": 3, "key": "extras_nachos",   "label": "Agrega extras",   "type": "multi",  "min_select": 0, "max_select": 4, "choices": [{"label":"Queso extra","price_cents":200},{"label":"Guacamole","price_cents":200},{"label":"Jalapeños extra","price_cents":100},{"label":"Crema","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Croquetas de Jamón",
+      "groups": [
+        { "sort": 0, "key": "porcion_croquetas", "label": "Porción", "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"6 piezas","price_cents":0},{"label":"12 piezas","price_cents":800}] },
+        { "sort": 1, "key": "salsa_croquetas",   "label": "Salsa",   "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Alioli de la casa","price_cents":0},{"label":"Mostaza miel","price_cents":0},{"label":"Bravas","price_cents":0}] },
+        { "sort": 2, "key": "extras_croquetas",  "label": "Extras",  "type": "multi",  "min_select": 0, "max_select": 1, "choices": [{"label":"Salsa extra","price_cents":100}] }
+      ]
+    },
+    {
+      "name": "Tabla de Quesos",
+      "groups": [
+        { "sort": 0, "key": "tamano_tabla",       "label": "Tamaño",        "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Para 2","price_cents":0},{"label":"Para 4","price_cents":1200}] },
+        { "sort": 1, "key": "acompanante_tabla",  "label": "Acompañante",   "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Pan tostado","price_cents":0},{"label":"Crackers","price_cents":0},{"label":"Ambos","price_cents":200}] },
+        { "sort": 2, "key": "extras_tabla",       "label": "Agrega extras", "type": "multi",  "min_select": 0, "max_select": 4, "choices": [{"label":"Jamón serrano","price_cents":400},{"label":"Miel trufada","price_cents":300},{"label":"Frutos secos extra","price_cents":200},{"label":"Mermelada","price_cents":200}] }
+      ]
+    },
+    {
+      "name": "Burger Angus",
+      "groups": [
+        { "sort": 0, "key": "termino_burger",     "label": "Término de la carne", "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Medio","price_cents":0},{"label":"Medio bien","price_cents":0},{"label":"Bien cocido","price_cents":0},{"label":"Tres cuartos","price_cents":0}] },
+        { "sort": 1, "key": "queso_burger",       "label": "Queso",               "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Cheddar","price_cents":0},{"label":"Suizo","price_cents":0},{"label":"Azul","price_cents":100},{"label":"Sin queso","price_cents":0}] },
+        { "sort": 2, "key": "acompanante_burger", "label": "Acompañante",         "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Papas rústicas","price_cents":0},{"label":"Papas a la francesa","price_cents":0},{"label":"Ensalada","price_cents":0},{"label":"Aros de cebolla","price_cents":200}] },
+        { "sort": 3, "key": "extras_burger",      "label": "Agrega extras",       "type": "multi",  "min_select": 0, "max_select": 4, "choices": [{"label":"Tocino extra","price_cents":300},{"label":"Huevo frito","price_cents":200},{"label":"Guacamole","price_cents":200},{"label":"Doble carne","price_cents":600}] }
+      ]
+    },
+    {
+      "name": "Tacos al Pastor",
+      "groups": [
+        { "sort": 0, "key": "porcion_tacos",  "label": "Porción",       "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"3 tacos","price_cents":0},{"label":"5 tacos","price_cents":500}] },
+        { "sort": 1, "key": "tortilla_tacos", "label": "Tortilla",      "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Maíz","price_cents":0},{"label":"Harina","price_cents":0}] },
+        { "sort": 2, "key": "salsa_tacos",    "label": "Salsa",         "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Verde","price_cents":0},{"label":"Roja","price_cents":0},{"label":"Habanero","price_cents":0},{"label":"Sin salsa","price_cents":0}] },
+        { "sort": 3, "key": "extras_tacos",   "label": "Agrega extras", "type": "multi",  "min_select": 0, "max_select": 4, "choices": [{"label":"Piña extra","price_cents":100},{"label":"Queso","price_cents":200},{"label":"Guacamole","price_cents":200},{"label":"Cebolla y cilantro extra","price_cents":0}] }
+      ]
+    },
+    {
+      "name": "Pizza de Trufa",
+      "groups": [
+        { "sort": 0, "key": "tamano_pizza", "label": "Tamaño",        "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Personal 10 pulg","price_cents":0},{"label":"Mediana 12 pulg","price_cents":600},{"label":"Grande 16 pulg","price_cents":1200}] },
+        { "sort": 1, "key": "masa_pizza",   "label": "Masa",          "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Tradicional","price_cents":0},{"label":"Delgada","price_cents":0},{"label":"Sin gluten","price_cents":300}] },
+        { "sort": 2, "key": "extras_pizza", "label": "Agrega extras", "type": "multi",  "min_select": 0, "max_select": 4, "choices": [{"label":"Champiñón extra","price_cents":200},{"label":"Aceite de trufa extra","price_cents":300},{"label":"Rúcula","price_cents":100},{"label":"Parmesano extra","price_cents":200}] }
+      ]
+    },
+    {
+      "name": "Cheesecake",
+      "groups": [
+        { "sort": 0, "key": "salsa_cheesecake",        "label": "Salsa",          "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Frutos rojos","price_cents":0},{"label":"Caramelo","price_cents":0},{"label":"Chocolate","price_cents":0},{"label":"Sin salsa","price_cents":0}] },
+        { "sort": 1, "key": "acompanantes_cheesecake", "label": "Acompañantes",   "type": "multi",  "min_select": 0, "max_select": 3, "choices": [{"label":"Bola de helado","price_cents":200},{"label":"Crema batida","price_cents":100},{"label":"Frutos rojos extra","price_cents":200}] }
+      ]
+    },
+    {
+      "name": "Brownie con Helado",
+      "groups": [
+        { "sort": 0, "key": "temp_brownie",         "label": "Temperatura",  "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Tibio","price_cents":0},{"label":"Frío","price_cents":0}] },
+        { "sort": 1, "key": "helado_brownie",       "label": "Helado",       "type": "single", "min_select": 1, "max_select": 1, "choices": [{"label":"Vainilla","price_cents":0},{"label":"Chocolate","price_cents":0},{"label":"Fresa","price_cents":0}] },
+        { "sort": 2, "key": "acompanantes_brownie", "label": "Acompañantes", "type": "multi",  "min_select": 0, "max_select": 3, "choices": [{"label":"Salsa de chocolate extra","price_cents":100},{"label":"Bola extra de helado","price_cents":200},{"label":"Nueces","price_cents":100}] }
+      ]
+    }
+  ]
+}
