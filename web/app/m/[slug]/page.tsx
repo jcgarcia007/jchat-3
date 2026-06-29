@@ -39,6 +39,20 @@ export interface MenuPhoto {
   sort: number;
 }
 
+export interface ModifierChoice {
+  label: string;
+  price_cents: number;
+}
+
+export interface ModifierGroup {
+  id: string;
+  label: string;
+  type: "single" | "multi";
+  min_select: number;
+  max_select: number;
+  choices: ModifierChoice[];
+}
+
 export interface PublicMenuItem {
   id: string;
   category_id: string;
@@ -50,6 +64,7 @@ export interface PublicMenuItem {
   badge: string | null;
   stock_count: number | null;
   options: ItemOptions;
+  groups: ModifierGroup[];
   sort: number;
   photos: MenuPhoto[];
 }
@@ -166,6 +181,92 @@ async function getMenuData(slug: string): Promise<{
     photosByItem[p.menu_item_id].push(p);
   }
 
+  // Modifier groups: read bridge table + groups for all items
+  type BridgeRow = { menu_item_id: string; modifier_group_id: string; sort: number };
+  type GroupRow = { id: string; key: string; label: string; type: string; min_select: number; max_select: number; choices: Json; sort: number };
+
+  let bridgeRows: BridgeRow[] = [];
+  let groupRows: GroupRow[] = [];
+
+  if (itemIds.length > 0) {
+    const { data: rawBridge } = await supabase
+      .from("menu_item_modifier_groups")
+      .select("menu_item_id, modifier_group_id, sort")
+      .in("menu_item_id", itemIds)
+      .order("sort");
+    bridgeRows = (rawBridge ?? []) as BridgeRow[];
+
+    const groupIds = [...new Set(bridgeRows.map((b) => b.modifier_group_id))];
+    if (groupIds.length > 0) {
+      const { data: rawGroups } = await supabase
+        .from("modifier_groups")
+        .select("id, key, label, type, min_select, max_select, choices, sort")
+        .in("id", groupIds);
+      groupRows = (rawGroups ?? []) as GroupRow[];
+    }
+  }
+
+  const groupById: Record<string, GroupRow> = {};
+  for (const g of groupRows) groupById[g.id] = g;
+
+  const bridgeByItem: Record<string, BridgeRow[]> = {};
+  for (const b of bridgeRows) {
+    if (!bridgeByItem[b.menu_item_id]) bridgeByItem[b.menu_item_id] = [];
+    bridgeByItem[b.menu_item_id].push(b);
+  }
+
+  function buildGroups(itemId: string, opts: ItemOptions): ModifierGroup[] {
+    const bridges = bridgeByItem[itemId];
+    if (bridges && bridges.length > 0) {
+      return bridges
+        .sort((a, b) => a.sort - b.sort)
+        .map((b) => {
+          const g = groupById[b.modifier_group_id];
+          if (!g) return null;
+          const rawChoices = Array.isArray(g.choices) ? g.choices : [];
+          const choices: ModifierChoice[] = (rawChoices as unknown[])
+            .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+            .map((c) => ({
+              label: typeof c.label === "string" ? c.label : String(c.label ?? ""),
+              price_cents: typeof c.price_cents === "number" ? c.price_cents : 0,
+            }));
+          return {
+            id: g.id,
+            label: g.label,
+            type: (g.type === "multi" ? "multi" : "single") as "single" | "multi",
+            min_select: g.min_select,
+            max_select: g.max_select,
+            choices,
+          };
+        })
+        .filter((g): g is ModifierGroup => g !== null);
+    }
+
+    // Legacy fallback: convert old options.sizes / options.extras → groups
+    const groups: ModifierGroup[] = [];
+    if (opts.sizes.length > 0) {
+      groups.push({
+        id: "legacy-size",
+        label: "Tamaño",
+        type: "single",
+        min_select: 1,
+        max_select: 1,
+        choices: opts.sizes,
+      });
+    }
+    if (opts.extras.length > 0) {
+      groups.push({
+        id: "legacy-extras",
+        label: "Extras",
+        type: "multi",
+        min_select: 0,
+        max_select: opts.extras.length,
+        choices: opts.extras,
+      });
+    }
+    return groups;
+  }
+
   // Assemble categories with their items
   const categories: PublicMenuCategory[] = cats.map((cat) => ({
     id: cat.id,
@@ -175,20 +276,24 @@ async function getMenuData(slug: string): Promise<{
     sort: cat.sort,
     items: items
       .filter((i) => i.category_id === cat.id)
-      .map((i) => ({
-        id: i.id,
-        category_id: i.category_id,
-        name: i.name,
-        description: i.description ?? null,
-        price_cents: i.price_cents,
-        photo_url: i.photo_url ?? null,
-        dietary_tags: ((i.dietary_tags ?? []) as string[]),
-        badge: i.badge ?? null,
-        stock_count: i.stock_count ?? null,
-        options: parseOptions(i.options as Json | null),
-        sort: i.sort,
-        photos: photosByItem[i.id] ?? [],
-      })),
+      .map((i) => {
+        const opts = parseOptions(i.options as Json | null);
+        return {
+          id: i.id,
+          category_id: i.category_id,
+          name: i.name,
+          description: i.description ?? null,
+          price_cents: i.price_cents,
+          photo_url: i.photo_url ?? null,
+          dietary_tags: ((i.dietary_tags ?? []) as string[]),
+          badge: i.badge ?? null,
+          stock_count: i.stock_count ?? null,
+          options: opts,
+          groups: buildGroups(i.id, opts),
+          sort: i.sort,
+          photos: photosByItem[i.id] ?? [],
+        };
+      }),
   }));
 
   return { business, categories };
