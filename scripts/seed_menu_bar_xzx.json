@@ -1,0 +1,28 @@
+{
+  "categories": [
+    { "slug": "cocteles", "name": "Cócteles", "tabler_icon": "cocktail" },
+    { "slug": "cervezas", "name": "Cervezas", "tabler_icon": "beer" },
+    { "slug": "picar", "name": "Para Picar", "tabler_icon": "salt" },
+    { "slug": "fuertes", "name": "Platos Fuertes", "tabler_icon": "burger" },
+    { "slug": "postres", "name": "Postres", "tabler_icon": "cake" }
+  ],
+  "items": [
+    { "cat": "cocteles", "name": "Old Fashioned", "price_cents": 1200, "tag": "Clásico", "desc": "Bourbon, angostura, azúcar y twist de naranja.", "imgs": ["https://www.thecocktaildb.com/images/media/drink/vrwquq1478252802.jpg"] },
+    { "cat": "cocteles", "name": "Margarita Picante", "price_cents": 1100, "tag": "Picante", "desc": "Tequila, jalapeño, limón y borde de sal.", "imgs": ["https://www.thecocktaildb.com/images/media/drink/5noda61589575158.jpg", "https://www.thecocktaildb.com/images/media/drink/bry4qh1582751040.jpg"] },
+    { "cat": "cocteles", "name": "Mojito Clásico", "price_cents": 1000, "tag": null, "desc": "Ron blanco, hierbabuena, lima y soda.", "imgs": ["https://www.thecocktaildb.com/images/media/drink/metwgh1606770327.jpg", "https://www.thecocktaildb.com/images/media/drink/vwxrsw1478251483.jpg"] },
+    { "cat": "cocteles", "name": "Negroni", "price_cents": 1300, "tag": "Amargo", "desc": "Gin, Campari y vermut rojo, twist de naranja.", "imgs": ["https://www.thecocktaildb.com/images/media/drink/qgdu971561574065.jpg", "https://www.thecocktaildb.com/images/media/drink/x8lhp41513703167.jpg"] },
+    { "cat": "cocteles", "name": "Piña Colada", "price_cents": 1100, "tag": null, "desc": "Ron, crema de coco y piña natural.", "imgs": ["https://www.thecocktaildb.com/images/media/drink/upgsue1668419912.jpg"] },
+    { "cat": "cervezas", "name": "IPA Artesanal", "price_cents": 700, "tag": "Local", "desc": "Lúpulo intenso, notas cítricas. 6.5%.", "imgs": ["https://images.unsplash.com/photo-1518176258769-f227c798150e?w=900&q=80&auto=format&fit=crop", "https://images.unsplash.com/photo-1571613316887-6f8d5cbf7ef7?w=900&q=80&auto=format&fit=crop"] },
+    { "cat": "cervezas", "name": "Lager Premium", "price_cents": 600, "tag": null, "desc": "Ligera y refrescante, fácil de beber. 4.8%.", "imgs": ["https://images.unsplash.com/photo-1608270586620-248524c67de9?w=900&q=80&auto=format&fit=crop", "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=900&q=80&auto=format&fit=crop"] },
+    { "cat": "cervezas", "name": "Stout Oscura", "price_cents": 800, "tag": "Cuerpo", "desc": "Café y chocolate, textura cremosa. 7%.", "imgs": ["https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=900&q=80&auto=format&fit=crop"] },
+    { "cat": "picar", "name": "Alitas BBQ", "price_cents": 1400, "tag": "Popular", "desc": "8 piezas glaseadas con aderezo ranch.", "imgs": ["https://www.themealdb.com/images/media/meals/4hzyvq1763792564.jpg"] },
+    { "cat": "picar", "name": "Nachos Supremos", "price_cents": 1200, "tag": null, "desc": "Queso, pico de gallo, guacamole y jalapeños.", "imgs": ["https://images.unsplash.com/photo-1582169296194-e4d644c48063?w=900&q=80&auto=format&fit=crop", "https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=900&q=80&auto=format&fit=crop"] },
+    { "cat": "picar", "name": "Croquetas de Jamón", "price_cents": 1000, "tag": null, "desc": "6 piezas crujientes con alioli de la casa.", "imgs": ["https://www.themealdb.com/images/media/meals/6dpa7m1763331105.jpg", "https://www.themealdb.com/images/media/meals/zc9cwz1763196177.jpg"] },
+    { "cat": "picar", "name": "Tabla de Quesos", "price_cents": 1800, "tag": "Para 2", "desc": "Selección de quesos, frutos secos y miel.", "imgs": ["https://images.unsplash.com/photo-1452195100486-9cc805987862?w=900&q=80&auto=format&fit=crop", "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=900&q=80&auto=format&fit=crop", "https://images.unsplash.com/photo-1631379578550-7038263db699?w=900&q=80&auto=format&fit=crop"] },
+    { "cat": "fuertes", "name": "Burger Angus", "price_cents": 1600, "tag": "Estrella", "desc": "200g angus, cheddar, tocino y papas rústicas.", "imgs": ["https://www.themealdb.com/images/media/meals/44bzep1761848278.jpg"] },
+    { "cat": "fuertes", "name": "Tacos al Pastor", "price_cents": 1300, "tag": null, "desc": "3 tacos con piña, cilantro y cebolla.", "imgs": ["https://www.themealdb.com/images/media/meals/ypxvwv1505333929.jpg", "https://www.themealdb.com/images/media/meals/uvuyxu1503067369.jpg"] },
+    { "cat": "fuertes", "name": "Pizza de Trufa", "price_cents": 1900, "tag": "Premium", "desc": "Mozzarella, champiñón y aceite de trufa.", "imgs": ["https://www.themealdb.com/images/media/meals/lrfdwz1764438393.jpg", "https://www.themealdb.com/images/media/meals/wf49qs1763075222.jpg"] },
+    { "cat": "postres", "name": "Cheesecake", "price_cents": 900, "tag": null, "desc": "New York con salsa de frutos rojos.", "imgs": ["https://www.themealdb.com/images/media/meals/swttys1511385853.jpg"] },
+    { "cat": "postres", "name": "Brownie con Helado", "price_cents": 800, "tag": "Caliente", "desc": "Brownie tibio con helado de vainilla.", "imgs": ["https://www.themealdb.com/images/media/meals/yypvst1511386427.jpg"] }
+  ]
+}
