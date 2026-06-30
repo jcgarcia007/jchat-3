@@ -1432,15 +1432,15 @@ export default function AnalyticsPage() {
       // ── Products from order_items ─────────────────────────────────────────
       const { data: items } = await supabase
         .from("order_items")
-        .select("name, quantity, price_cents");
+        .select("qty, price_cents, menu_items(name)");
 
       if (items && items.length > 0) {
         const byName: Record<string, { units: number; revenue: number }> = {};
         items.forEach((it) => {
-          const n = (it.name as string) ?? "Unknown";
+          const n = (it.menu_items as { name: string } | null)?.name ?? "Unknown";
           if (!byName[n]) byName[n] = { units: 0, revenue: 0 };
-          byName[n].units += (it.quantity as number) ?? 1;
-          byName[n].revenue += Math.round(((it.price_cents as number) ?? 0) * ((it.quantity as number) ?? 1) / 100);
+          byName[n].units += it.qty ?? 1;
+          byName[n].revenue += Math.round((it.price_cents ?? 0) * (it.qty ?? 1) / 100);
         });
         const sorted = Object.entries(byName)
           .map(([name, s]) => ({ name, ...s }))
@@ -1454,17 +1454,18 @@ export default function AnalyticsPage() {
       // ── Loyalty points ────────────────────────────────────────────────────
       const { data: pts } = await supabase
         .from("loyalty_points")
-        .select("points, type");
+        .select("points");
 
       if (pts && pts.length > 0) {
-        const issued = pts.filter((p) => p.type === "earn").reduce((s, p) => s + ((p.points as number) ?? 0), 0);
-        const redeemed = pts.filter((p) => p.type === "redeem").reduce((s, p) => s + ((p.points as number) ?? 0), 0);
+        // TODO: no existe columna type en loyalty_points; revisar si se necesita
+        // distinguir earn/redeem como feature futura con su propia migración.
+        const issued = pts.reduce((s, p) => s + (p.points ?? 0), 0);
         setLoyalty({
           points_issued: issued,
-          points_redeemed: redeemed,
+          points_redeemed: 0,
           revenue_from_members: 0, // TODO: join with orders
           revenue_from_non_members: 0,
-          redemption_rate: issued > 0 ? Math.round((redeemed / issued) * 1000) / 10 : 0,
+          redemption_rate: 0,
           roi_pct: 0, // TODO: compute from member vs non-member revenue diff
         });
       } else {

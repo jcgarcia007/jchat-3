@@ -30,11 +30,10 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 interface SecurityLog {
   id: string;
-  event_type: string;
+  action: string;
   target_id: string | null;
   target_type: string | null;
-  note: string | null;
-  resolved: boolean;
+  detail: string | null;
   created_at: string;
 }
 
@@ -61,29 +60,26 @@ interface ReportItem {
 const DEMO_SECURITY_LOGS: SecurityLog[] = [
   {
     id: "log-01",
-    event_type: "super_admin_silent_access",
+    action: "super_admin_silent_access",
     target_id: "biz-demo-01",
     target_type: "business",
-    note: "Routine compliance check.",
-    resolved: false,
+    detail: "Routine compliance check.",
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
   },
   {
     id: "log-02",
-    event_type: "login_anomaly",
+    action: "login_anomaly",
     target_id: "user-demo-03",
     target_type: "user",
-    note: "Login from new device in unusual location.",
-    resolved: false,
+    detail: "Login from new device in unusual location.",
     created_at: new Date(Date.now() - 6 * 3600000).toISOString(),
   },
   {
     id: "log-03",
-    event_type: "rate_limit_breach",
+    action: "rate_limit_breach",
     target_id: null,
     target_type: null,
-    note: "IP 203.0.113.1 hit rate limit 50x in 60s.",
-    resolved: false,
+    detail: "IP 203.0.113.1 hit rate limit 50x in 60s.",
     created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
   },
 ];
@@ -157,8 +153,7 @@ export default function SuperAdminAlertsPage() {
       const [{ data: logs }, { data: subs }, { data: rpts }] = await Promise.all([
         supabase
           .from("security_logs")
-          .select("id, event_type, target_id, target_type, note, resolved, created_at")
-          .eq("resolved", false)
+          .select("id, action, target_id, target_type, detail, created_at")
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
@@ -190,10 +185,9 @@ export default function SuperAdminAlertsPage() {
 
   // ── Resolve security log ──────────────────────────────────────────────────
 
-  async function resolveLog(id: string) {
-    if (isSupabaseConfigured) {
-      await supabase.from("security_logs").update({ resolved: true }).eq("id", id);
-    }
+  function resolveLog(id: string) {
+    // TODO: security_logs has no resolved column — resolution is UI-only until
+    // a resolved boolean is added via migration.
     setSecurityLogs((prev) => prev.filter((l) => l.id !== id));
     setSuccessMsg(`Alert ${id.slice(0, 8)}… marked as resolved.`);
   }
@@ -302,11 +296,11 @@ export default function SuperAdminAlertsPage() {
                 >
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "3px" }}>
-                      {log.event_type.replace(/_/g, " ")}
+                      {log.action.replace(/_/g, " ")}
                     </div>
-                    {log.note && (
+                    {log.detail && (
                       <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "3px" }}>
-                        {log.note}
+                        {log.detail}
                       </div>
                     )}
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
@@ -315,7 +309,7 @@ export default function SuperAdminAlertsPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => void resolveLog(log.id)}
+                    onClick={() => resolveLog(log.id)}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",

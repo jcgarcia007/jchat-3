@@ -35,7 +35,6 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 interface UserRow {
   id: string;
   username: string | null;
-  email: string | null;
   display_name: string | null;
   role: string | null;
   is_banned: boolean | null;
@@ -52,7 +51,6 @@ const DEMO_USERS: UserRow[] = [
   {
     id: "demo-user-01",
     username: "marisolr",
-    email: "marisol@example.com",
     display_name: "Marisol Reyes",
     role: "user",
     is_banned: false,
@@ -63,7 +61,6 @@ const DEMO_USERS: UserRow[] = [
   {
     id: "demo-user-02",
     username: "carlos_v",
-    email: "carlosv@example.com",
     display_name: "Carlos Vega",
     role: "business_owner",
     is_banned: false,
@@ -74,7 +71,6 @@ const DEMO_USERS: UserRow[] = [
   {
     id: "demo-user-03",
     username: "spammer99",
-    email: "spammer@bad.com",
     display_name: null,
     role: "user",
     is_banned: true,
@@ -128,7 +124,6 @@ export default function SuperAdminUsersPage() {
       const filtered = DEMO_USERS.filter(
         (u) =>
           u.username?.toLowerCase().includes(lower) ||
-          u.email?.toLowerCase().includes(lower) ||
           u.display_name?.toLowerCase().includes(lower)
       );
       setUsers(filtered);
@@ -142,10 +137,10 @@ export default function SuperAdminUsersPage() {
     const { data, error } = await supabase
       .from("users")
       .select(
-        "id, username, email, display_name, role, is_banned, created_at"
+        "id, username, display_name, role, is_banned, created_at"
       )
       .or(
-        `username.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`
+        `username.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`
       )
       .limit(30);
 
@@ -155,27 +150,13 @@ export default function SuperAdminUsersPage() {
       return;
     }
 
-    // Fetch subscription info in a second pass
-    const userIds = (data ?? []).map((u: { id: string }) => u.id);
-    let subMap: Record<string, { plan: string; status: string }> = {};
-    if (userIds.length > 0) {
-      const { data: subs } = await supabase
-        .from("subscriptions")
-        .select("user_id, plan, status")
-        .in("user_id", userIds)
-        .eq("status", "active");
-      for (const s of subs ?? []) {
-        subMap[s.user_id] = { plan: s.plan, status: s.status };
-      }
-    }
-
-    const enriched: UserRow[] = (data ?? []).map(
-      (u: Omit<UserRow, "subscription_plan" | "subscription_status">) => ({
-        ...u,
-        subscription_plan: subMap[u.id]?.plan ?? null,
-        subscription_status: subMap[u.id]?.status ?? null,
-      })
-    );
+    // TODO(server): subscription enrichment removed — subscriptions are per business_id,
+    // not user_id. Implement via a businesses→subscriptions join once the flow is defined.
+    const enriched: UserRow[] = (data ?? []).map((u) => ({
+      ...u,
+      subscription_plan: null,
+      subscription_status: null,
+    }));
 
     setUsers(enriched);
     setSearched(true);
@@ -214,31 +195,11 @@ export default function SuperAdminUsersPage() {
     }
 
     if (actionType === "trial") {
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + trialDays);
-
-      if (isSupabaseConfigured) {
-        // Upsert trial subscription record
-        const { error } = await supabase.from("subscriptions").upsert(
-          {
-            user_id: actionUser.id,
-            plan: "pro",
-            status: "trialing",
-            current_period_end: trialEnd.toISOString(),
-            // TODO(server): actual Stripe trial subscription creation via Edge Function.
-          },
-          { onConflict: "user_id" }
-        );
-        if (error) {
-          setSaveError(error.message);
-          setSaving(false);
-          return;
-        }
-        // TODO(server): notify user that trial was granted via push + email.
-      }
-      setSuccessMsg(
-        `${trialDays}-day Pro trial granted to @${actionUser.username ?? actionUser.id.slice(0, 8)}.`
-      );
+      // Trial grants not yet wired — subscriptions are keyed by business_id, not user_id.
+      // Button is disabled in the UI; this branch is a safety net.
+      setSaveError("Trial grants are not yet implemented. Subscriptions are per business_id — needs an Edge Function.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -311,7 +272,7 @@ export default function SuperAdminUsersPage() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search by @username, email, or name…"
+            placeholder="Search by @username or name…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -484,7 +445,7 @@ function UserRow({
           )}
         </div>
         <div style={{ fontSize: "12px", color: "var(--text-tertiary)", marginTop: "2px" }}>
-          {u.username ? `@${u.username}` : ""}{u.email ? ` · ${u.email}` : ""}
+          {u.username ? `@${u.username}` : ""}
         </div>
       </div>
 
@@ -524,8 +485,8 @@ function UserRow({
         {!u.is_banned && (
           <>
             <button
-              onClick={onTrial}
-              title="Grant trial"
+              disabled
+              title="Coming soon — trial grants not yet wired (subscriptions are per business)"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -537,7 +498,8 @@ function UserRow({
                 color: "var(--color-success)",
                 fontSize: "12px",
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: "not-allowed",
+                opacity: 0.4,
               }}
             >
               <IconPlayerPlay size={12} stroke={2} />

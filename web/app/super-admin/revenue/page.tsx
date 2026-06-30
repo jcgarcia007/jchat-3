@@ -48,7 +48,6 @@ interface PlanBreakdown {
 interface FailedPayment {
   id: string;
   business_id: string | null;
-  user_id: string | null;
   plan: string;
   status: string;
   current_period_end: string | null;
@@ -76,7 +75,6 @@ const DEMO_FAILED: FailedPayment[] = [
   {
     id: "sub-fail-01",
     business_id: "biz-01",
-    user_id: "user-fail-01",
     plan: "pro",
     status: "past_due",
     current_period_end: new Date(Date.now() - 3 * 86400000).toISOString(),
@@ -84,7 +82,6 @@ const DEMO_FAILED: FailedPayment[] = [
   {
     id: "sub-fail-02",
     business_id: "biz-02",
-    user_id: "user-fail-02",
     plan: "starter",
     status: "past_due",
     current_period_end: new Date(Date.now() - 1 * 86400000).toISOString(),
@@ -137,11 +134,11 @@ export default function SuperAdminRevenuePage() {
       const [{ data: activeSubs }, { data: failedSubs }] = await Promise.all([
         supabase
           .from("subscriptions")
-          .select("id, plan, status, current_period_end, business_id, user_id")
+          .select("id, plan, status, current_period_end, business_id")
           .eq("status", "active"),
         supabase
           .from("subscriptions")
-          .select("id, plan, status, current_period_end, business_id, user_id")
+          .select("id, plan, status, current_period_end, business_id")
           .eq("status", "past_due"),
       ]);
 

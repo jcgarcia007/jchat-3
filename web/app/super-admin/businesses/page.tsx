@@ -194,10 +194,10 @@ export default function SuperAdminBusinessesPage() {
       // TODO(server): this must be done server-side with service-role key to avoid RLS bypass exposure.
       if (isSupabaseConfigured) {
         await supabase.from("security_logs").insert({
-          event_type: "super_admin_silent_access",
+          action: "super_admin_silent_access",
           target_id: actionBiz.id,
           target_type: "business",
-          note: note || "Silent access by Super Admin.",
+          detail: note || "Silent access by Super Admin.",
           // actor_id: current admin user id — TODO(roles)
         });
       }
