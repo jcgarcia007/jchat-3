@@ -137,7 +137,7 @@ export default function SuperAdminUsersPage() {
     const { data, error } = await supabase
       .from("users")
       .select(
-        "id, username, display_name, role, is_banned, created_at"
+        "id, username, display_name, role, created_at"
       )
       .or(
         `username.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`
@@ -175,23 +175,11 @@ export default function SuperAdminUsersPage() {
     setSaveError(null);
 
     if (actionType === "ban") {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from("users")
-          .update({ is_banned: true })
-          .eq("id", actionUser.id);
-        if (error) {
-          setSaveError(error.message);
-          setSaving(false);
-          return;
-        }
-        // TODO(server): revoke all active sessions for this user.
-        // TODO(server): send account-banned notification email.
-      }
-      setUsers((prev) =>
-        prev.map((u) => (u.id === actionUser.id ? { ...u, is_banned: true } : u))
-      );
-      setSuccessMsg(`User @${actionUser.username ?? actionUser.id.slice(0, 8)} banned.`);
+      // Ban not yet wired — is_banned column does not exist in public.users, requires migration.
+      // Button is disabled in the UI; this branch is a safety net.
+      setSaveError("Ban is not yet implemented. is_banned does not exist in public.users — requires migration.");
+      setSaving(false);
+      return;
     }
 
     if (actionType === "trial") {
@@ -506,8 +494,8 @@ function UserRow({
               Trial
             </button>
             <button
-              onClick={onBan}
-              title="Ban user"
+              disabled
+              title="Coming soon — is_banned column no existe en users, requiere migración"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -519,7 +507,8 @@ function UserRow({
                 color: "var(--color-danger)",
                 fontSize: "12px",
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: "not-allowed",
+                opacity: 0.4,
               }}
             >
               <IconBan size={12} stroke={2} />
@@ -623,7 +612,6 @@ function ActionModal({
           User: <strong style={{ color: "var(--text-primary)" }}>
             {user.display_name ?? user.username ?? user.id.slice(0, 12)}
           </strong>
-          {user.email && <> · {user.email}</>}
         </div>
 
         {!isBan && (
