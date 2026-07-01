@@ -37,6 +37,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
@@ -597,7 +598,7 @@ export default function EmployeesPage() {
         setError(`No user found with username @${uname}.`);
         return;
       }
-      const insertPayload: Record<string, unknown> = {
+      const insertPayload: Database["public"]["Tables"]["employees"]["Insert"] = {
         business_id: businessId,
         user_id: (u as { id: string }).id,
         role: addRole,
