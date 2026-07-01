@@ -14,6 +14,8 @@ import {
   IconMail,
   IconLock,
   IconBrandGoogle,
+  IconBrandFacebook,
+  IconBrandApple,
   IconAlertCircle,
   IconLoader2,
   IconMessageCircle2,
@@ -288,6 +290,60 @@ function LoginForm() {
           <IconBrandGoogle size={18} />
         )}
         Continue with Google
+      </button>
+
+      {/* Facebook — coming soon (provider not configured in Supabase yet) */}
+      <button
+        type="button"
+        disabled
+        title="Coming soon — Facebook login próximamente"
+        style={{
+          width: "100%",
+          marginTop: 10,
+          padding: "11px 16px",
+          borderRadius: 10,
+          border: "1px solid var(--border-subtle)",
+          background: "var(--bg-elevated)",
+          color: "var(--text-primary)",
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: "not-allowed",
+          opacity: 0.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+        }}
+      >
+        <IconBrandFacebook size={18} style={{ color: "#1877F2" }} />
+        Continue with Facebook
+      </button>
+
+      {/* Apple — coming soon (provider not configured in Supabase yet) */}
+      <button
+        type="button"
+        disabled
+        title="Coming soon — Apple login próximamente"
+        style={{
+          width: "100%",
+          marginTop: 10,
+          padding: "11px 16px",
+          borderRadius: 10,
+          border: "1px solid var(--border-subtle)",
+          background: "var(--bg-elevated)",
+          color: "var(--text-primary)",
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: "not-allowed",
+          opacity: 0.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+        }}
+      >
+        <IconBrandApple size={18} style={{ color: "var(--text-primary)" }} />
+        Continue with Apple
       </button>
     </div>
   );
