@@ -175,18 +175,17 @@ export default function SuperAdminTeamPage() {
     setAddError(null);
 
     if (isSupabaseConfigured) {
-      // Look up user by email or username
+      // email column does not exist in public.users — search by username only
       const searchVal = addEmail.startsWith("@") ? addEmail.slice(1) : addEmail;
-      const field = addEmail.startsWith("@") ? "username" : "email";
 
       const { data: found, error: lookupErr } = await supabase
         .from("users")
         .select("id")
-        .eq(field, searchVal)
+        .eq("username", searchVal)
         .single();
 
       if (lookupErr || !found) {
-        setAddError("User not found. Check the email or @username.");
+        setAddError("User not found. Try entering their @username.");
         setAddSaving(false);
         return;
       }
@@ -208,8 +207,8 @@ export default function SuperAdminTeamPage() {
       const newMember: AdminMember = {
         id: `demo-admin-${Date.now()}`,
         user_id: `demo-user-${Date.now()}`,
-        email: addEmail.startsWith("@") ? null : addEmail,
-        username: addEmail.startsWith("@") ? addEmail.slice(1) : null,
+        email: null,
+        username: addEmail.startsWith("@") ? addEmail.slice(1) : addEmail,
         display_name: null,
         role: addRole,
         permissions: [],
@@ -495,11 +494,11 @@ function AddAdminModal({
 
         <div style={{ marginBottom: "14px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
-            Email or @username
+            @username
           </label>
           <input
             type="text"
-            placeholder="user@example.com or @username"
+            placeholder="@username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoFocus

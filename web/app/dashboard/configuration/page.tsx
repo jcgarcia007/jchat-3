@@ -37,6 +37,7 @@ import {
   IconLock,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import {
   useDashboardTheme,
   DASHBOARD_THEMES,
@@ -63,7 +64,7 @@ interface BusinessRow {
   tips_enabled: boolean;
   tip_percentages: number[] | null;
   payout_frequency: "daily" | "weekly" | "monthly" | null;
-  dashboard_theme_id: number | null;
+  dashboard_theme_id?: number;
 }
 
 /** Shape stored in businesses.hours (JSONB) */
@@ -450,7 +451,7 @@ export default function ConfigurationPage() {
       if (!isSupabaseConfigured || !businessId) return false;
       const { error: patchErr } = await supabase
         .from("businesses")
-        .update(payload)
+        .update(payload as unknown as Database["public"]["Tables"]["businesses"]["Update"])
         .eq("id", businessId);
       if (patchErr) throw patchErr;
       return true;

@@ -32,6 +32,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 interface AnnouncementSegment {
   audience: "all" | "business_owners" | "users" | "plan_pro" | "plan_starter" | "plan_enterprise" | "inactive_30d";
   city?: string;
+  [key: string]: string | undefined;
 }
 
 interface Announcement {
@@ -41,7 +42,6 @@ interface Announcement {
   segment: AnnouncementSegment;
   sent_at: string | null;
   created_at: string;
-  status: "draft" | "sent";
 }
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
@@ -54,7 +54,6 @@ const DEMO_ANNOUNCEMENTS: Announcement[] = [
     segment: { audience: "all" },
     sent_at: new Date(Date.now() - 7 * 86400000).toISOString(),
     created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
-    status: "sent",
   },
   {
     id: "ann-02",
@@ -63,7 +62,6 @@ const DEMO_ANNOUNCEMENTS: Announcement[] = [
     segment: { audience: "plan_starter" },
     sent_at: null,
     created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
-    status: "draft",
   },
 ];
 
@@ -118,7 +116,7 @@ export default function SuperAdminAnnouncementsPage() {
 
     const { data, error } = await supabase
       .from("announcements")
-      .select("id, title, body, segment, sent_at, created_at, status")
+      .select("id, title, body, segment, sent_at, created_at")
       .order("created_at", { ascending: false })
       .limit(30);
 
@@ -155,7 +153,6 @@ export default function SuperAdminAnnouncementsPage() {
       title: composeTitle.trim(),
       body: composeBody.trim(),
       segment,
-      status: sendNow ? "sent" : "draft",
       sent_at: sendNow ? new Date().toISOString() : null,
     };
 
@@ -296,7 +293,7 @@ export default function SuperAdminAnnouncementsPage() {
 // ─── AnnouncementRow ──────────────────────────────────────────────────────────
 
 function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }) {
-  const isSent = ann.status === "sent";
+  const isSent = ann.sent_at !== null;
   return (
     <div
       style={{

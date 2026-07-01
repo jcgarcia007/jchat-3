@@ -339,12 +339,12 @@ export default function BillingPage() {
 
       // If no subscription row yet, synthesize a free/regular one
       setSub(
-        data ?? {
+        (data as Subscription | null) ?? {
           id: "",
           business_id: business.id,
           stripe_subscription_id: null,
-          plan: "regular",
-          status: "active",
+          plan: "regular" as PlanId,
+          status: "active" as SubStatus,
           current_period_end: null,
           trial_end: null,
           grace_day: 0,

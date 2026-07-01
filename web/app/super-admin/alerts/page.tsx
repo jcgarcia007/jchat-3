@@ -48,8 +48,9 @@ interface FailedPayment {
 interface ReportItem {
   id: string;
   reporter_id: string | null;
-  target_id: string | null;
-  target_type: string | null;
+  reported_user_id: string | null;
+  content_type: string | null;
+  content_id: string | null;
   reason: string | null;
   status: string | null;
   created_at: string;
@@ -98,8 +99,9 @@ const DEMO_REPORTS: ReportItem[] = [
   {
     id: "report-01",
     reporter_id: "user-10",
-    target_id: "user-20",
-    target_type: "user",
+    reported_user_id: "user-20",
+    content_type: "user",
+    content_id: "user-20",
     reason: "Harassment in chat room",
     status: "pending",
     created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
@@ -107,8 +109,9 @@ const DEMO_REPORTS: ReportItem[] = [
   {
     id: "report-02",
     reporter_id: "user-11",
-    target_id: "biz-05",
-    target_type: "business",
+    reported_user_id: null,
+    content_type: "business",
+    content_id: "biz-05",
     reason: "Spam messages / fake offers",
     status: "pending",
     created_at: new Date(Date.now() - 8 * 3600000).toISOString(),
@@ -163,7 +166,7 @@ export default function SuperAdminAlertsPage() {
           .limit(20),
         supabase
           .from("reports")
-          .select("id, reporter_id, target_id, target_type, reason, status, created_at")
+          .select("id, reporter_id, reported_user_id, content_type, content_id, reason, status, created_at")
           .eq("status", "pending")
           .order("created_at", { ascending: false })
           .limit(30),
@@ -414,7 +417,7 @@ export default function SuperAdminAlertsPage() {
                     </div>
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
                       {timeAgo(r.created_at)}
-                      {r.target_type && ` · ${r.target_type}: ${r.target_id?.slice(0, 10) ?? "—"}`}
+                      {r.content_type && ` · ${r.content_type}: ${r.content_id?.slice(0, 10) ?? "—"}`}
                     </div>
                   </div>
                   <button

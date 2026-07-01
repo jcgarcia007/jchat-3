@@ -154,6 +154,7 @@ export default function SuperAdminUsersPage() {
     // not user_id. Implement via a businesses→subscriptions join once the flow is defined.
     const enriched: UserRow[] = (data ?? []).map((u) => ({
       ...u,
+      is_banned: null,
       subscription_plan: null,
       subscription_status: null,
     }));

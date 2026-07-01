@@ -33,6 +33,7 @@ import {
   IconArrowRight,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { Json } from "@/lib/database.types";
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 // Fallback view when the business has no saved coordinates: center of the USA.
@@ -391,7 +392,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
             latitude: lat,
             longitude: lng,
             geofence_radius_m: radius,
-            geofence_polygon: shape ?? null,
+            geofence_polygon: (shape ?? null) as unknown as Json,
             lat,
             lng,
             radius_m: radius,

@@ -211,7 +211,7 @@ export default function EventsPage() {
           name: form.name.trim(),
           description: form.description.trim() || null,
           cover_url: form.cover_url.trim() || null,
-          starts_at,
+          starts_at: starts_at ?? new Date().toISOString(),
           ends_at,
           lat,
           lng,

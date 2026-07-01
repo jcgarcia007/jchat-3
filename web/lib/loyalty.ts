@@ -121,7 +121,7 @@ export async function upsertRules(
     .single();
 
   if (error) throw error;
-  return data as LoyaltyRule;
+  return data as unknown as LoyaltyRule;
 }
 
 // ── Rewards ───────────────────────────────────────────────────────────────────

@@ -136,8 +136,8 @@ export default function SuperAdminOverviewPage() {
           .eq("status", "active"),
         supabase
           .from("security_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("resolved", false),
+          .select("id", { count: "exact", head: true }),
+          // TODO: security_logs has no 'resolved' column; counting all logs until migration adds it
         supabase
           .from("business_verifications")
           .select("id", { count: "exact", head: true })

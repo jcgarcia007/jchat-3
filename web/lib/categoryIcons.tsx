@@ -61,7 +61,7 @@ import {
   IconCategory,
 } from "@tabler/icons-react";
 
-export type TablerIcon = typeof TablerIconType;
+export type TablerIcon = TablerIconType;
 
 export interface CategoryIconEntry {
   name: string;

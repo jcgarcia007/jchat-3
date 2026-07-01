@@ -247,7 +247,7 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
     id: string;
     name: string;
     slug: string;
-    category: string;
+    category: string | null;
     address: string | null;
     icon_emoji: string | null;
     hours: unknown;
@@ -255,7 +255,7 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
     id: b.id,
     name: b.name,
     slug: b.slug,
-    category: b.category,
+    category: b.category ?? "",
     address: b.address,
     icon_emoji: b.icon_emoji,
     hours: (b.hours as Hours) ?? null,
