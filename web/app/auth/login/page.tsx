@@ -345,6 +345,21 @@ function LoginForm() {
         <IconBrandApple size={18} style={{ color: "var(--text-primary)" }} />
         Continue with Apple
       </button>
+
+      {/* Sign up link */}
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--text-secondary)",
+          textAlign: "center",
+          margin: "20px 0 0",
+        }}
+      >
+        Don&apos;t have an account?{" "}
+        <a href="/auth/register" style={{ color: "var(--color-brand)", fontWeight: 600 }}>
+          Sign up
+        </a>
+      </p>
     </div>
   );
 }
