@@ -28,6 +28,23 @@ export default async function DashboardLayout({
     if (!user) {
       redirect("/auth/login?next=/dashboard");
     }
+
+    // Plan gate: only paying/trialing business or pro accounts may access the
+    // dashboard. Anyone else is sent to register with the upgrade prompt.
+    const { data: profile } = await supabase
+      .from("users")
+      .select("plan, plan_status")
+      .eq("id", user.id)
+      .single();
+
+    const hasDashboardAccess =
+      profile != null &&
+      (profile.plan === "business" || profile.plan === "pro") &&
+      (profile.plan_status === "active" || profile.plan_status === "trialing");
+
+    if (!hasDashboardAccess) {
+      redirect("/auth/register?upgrade=1");
+    }
   }
 
   // TODO(Task 2.16): load dashboard_theme_id from Supabase businesses table
