@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
@@ -17,6 +18,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Initial dashboard theme (businesses.dashboard_theme_id). Defaults to 1
+  // (midnight-blue); demo mode keeps the default. The client-side
+  // DashboardThemeProvider owns the live theme + data-db-theme attribute.
+  let initialThemeId = 1;
+
   // Auth gate: require an authenticated session to access the dashboard.
   // Skipped only when Supabase is unconfigured (local/demo without a backend),
   // to avoid an unrecoverable redirect loop.
@@ -45,48 +51,54 @@ export default async function DashboardLayout({
     if (!hasDashboardAccess) {
       redirect("/auth/register?upgrade=1");
     }
+
+    // Seed the dashboard theme from the owner's business.
+    const { data: biz } = await supabase
+      .from("businesses")
+      .select("dashboard_theme_id")
+      .eq("owner_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    initialThemeId = biz?.dashboard_theme_id ?? 1;
   }
 
-  // TODO(Task 2.16): load dashboard_theme_id from Supabase businesses table
-  // and map it to the theme key via DASHBOARD_THEMES.find(t => t.id === themeId)?.key
-  const defaultThemeKey = "midnight-blue";
-
   return (
-    <div
-      data-db-theme={defaultThemeKey}
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        minHeight: "100vh",
-        background: "var(--db-bg-base)",
-        color: "var(--db-text-primary)",
-      }}
-    >
-      {/* 48-px icon rail */}
-      <Sidebar />
-
-      {/* Main content column */}
+    <DashboardThemeProvider initialThemeId={initialThemeId}>
       <div
         style={{
-          flex: 1,
           display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-          overflow: "hidden",
+          flexDirection: "row",
+          minHeight: "100vh",
+          background: "var(--db-bg-base)",
+          color: "var(--db-text-primary)",
         }}
       >
-        <TopBar />
+        {/* 48-px icon rail */}
+        <Sidebar />
 
-        <main
+        {/* Main content column */}
+        <div
           style={{
             flex: 1,
-            overflowY: "auto",
-            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
           }}
         >
-          {children}
-        </main>
+          <TopBar />
+
+          <main
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "24px",
+            }}
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </DashboardThemeProvider>
   );
 }

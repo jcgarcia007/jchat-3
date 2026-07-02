@@ -38,10 +38,8 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import {
-  useDashboardTheme,
-  DASHBOARD_THEMES,
-} from "@/hooks/useDashboardTheme";
+import { DASHBOARD_THEMES } from "@/hooks/useDashboardTheme";
+import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
 import { LocationEditor } from "@/components/dashboard/LocationEditor";
 
@@ -383,7 +381,9 @@ export default function ConfigurationPage() {
   const [savingMenu, setSavingMenu] = useState(false);
 
   // ── Section 7: Dashboard theme ────────────────────────────────────────────────
-  const { themeId, setThemeId } = useDashboardTheme(1);
+  // Shared with the layout via context so the picker updates the layout's
+  // data-db-theme wrapper (not a local, isolated copy).
+  const { themeId, setThemeId } = useDashboardThemeContext();
   const [savingTheme, setSavingTheme] = useState(false);
 
   // ── Section 8: Tips ───────────────────────────────────────────────────────────

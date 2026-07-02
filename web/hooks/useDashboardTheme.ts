@@ -27,7 +27,7 @@ export const DASHBOARD_THEMES: DashboardThemeEntry[] = [
   { id: 10, key: "arctic-white",   name: "Arctic White"   },
 ];
 
-function keyById(id: number): string {
+export function keyById(id: number): string {
   return DASHBOARD_THEMES.find((t) => t.id === id)?.key ?? DASHBOARD_THEMES[0].key;
 }
 
