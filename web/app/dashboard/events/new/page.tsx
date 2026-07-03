@@ -442,6 +442,15 @@ function validateStep(step: number, d: EventData): Record<string, string> {
 
 // ─── Main ────────────────────────────────────────────────────────────────────────
 
+// Map raw Postgres trigger errors (plan-limit guards) to friendly copy.
+function friendlyError(msg: string): string {
+  if (msg.includes("PLAN_LIMIT_BUSINESSES"))
+    return "You've reached your plan's business limit. Please upgrade or contact support to add more.";
+  if (msg.includes("PLAN_LIMIT_EVENTS"))
+    return "You've reached your plan's event limit. Please upgrade or contact support to add more.";
+  return msg;
+}
+
 export default function NewEventPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -527,6 +536,14 @@ export default function NewEventPage() {
         router.push("/dashboard/events");
         return;
       }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setSubmitError("Your session expired. Please sign in again.");
+        setSubmitting(false);
+        return;
+      }
       const startsIso = zonedToUtcISO(data.starts_at, data.timezone);
       const endsIso = data.ends_at ? zonedToUtcISO(data.ends_at, data.timezone) : null;
       const ttlHours = endsIso
@@ -564,6 +581,7 @@ export default function NewEventPage() {
 
       // 2) Event row.
       const { error: eventError } = await supabase.from("events").insert({
+        owner_id: user.id,
         business_id: data.business_id,
         name: data.name.trim(),
         description: data.description.trim() || null,
@@ -581,7 +599,7 @@ export default function NewEventPage() {
 
       router.push("/dashboard/events");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to create event.");
+      setSubmitError(err instanceof Error ? friendlyError(err.message) : "Failed to create event.");
       setSubmitting(false);
     }
   }
@@ -593,7 +611,6 @@ export default function NewEventPage() {
     4: "Add a cover photo",
   };
 
-  // No business yet → can't create an event.
   // Plan limit gate (UX): if the user has hit their event limit, show a banner
   // instead of the wizard. Takes priority over the "no businesses" banner. The
   // DB trigger is the real lock; when usage is null (demo) or still loading,
@@ -626,6 +643,7 @@ export default function NewEventPage() {
     );
   }
 
+  // No business yet → can't create an event.
   if (!loadingBiz && isSupabaseConfigured && businesses.length === 0) {
     return (
       <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--db-text-secondary)" }}>
