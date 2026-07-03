@@ -9,8 +9,10 @@ import {
   IconCircleCheck,
   IconClockHour4,
   IconExternalLink,
+  IconMail,
 } from "@tabler/icons-react";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
+import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 
 const CARD: React.CSSProperties = {
   background: "var(--db-bg-surface)",
@@ -80,17 +82,47 @@ function VerificationBadge({ business }: { business: ActiveBusiness }) {
   );
 }
 
+function ContactUsCard({ resource }: { resource: "business" | "event" }) {
+  const text =
+    resource === "business"
+      ? "You've reached your plan's business limit. Request a custom plan to add more."
+      : "You've reached your plan's event limit. Request a custom plan to add more.";
+  return (
+    <section style={{ ...CARD, marginTop: "16px" }}>
+      <span style={ICON_BOX}>
+        <IconMail size={26} />
+      </span>
+      <div style={{ flex: 1, minWidth: "200px" }}>
+        <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+          Limit reached
+        </h2>
+        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+          {text}
+        </p>
+      </div>
+      <a href="mailto:support@jchat.cloud?subject=Custom plan request" style={CTA}>
+        <IconMail size={18} />
+        Contact us
+      </a>
+    </section>
+  );
+}
+
 export default function OverviewPage() {
   const [business, setBusiness] = useState<ActiveBusiness | null>(null);
+  const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    void resolveActiveBusiness().then((res) => {
-      if (!active) return;
-      if (res.ok) setBusiness(res.business);
-      setLoading(false);
-    });
+    void Promise.all([resolveActiveBusiness(), getUsageAndLimits()]).then(
+      ([bizRes, usageRes]) => {
+        if (!active) return;
+        if (bizRes.ok) setBusiness(bizRes.business);
+        setUsage(usageRes);
+        setLoading(false);
+      },
+    );
     return () => {
       active = false;
     };
@@ -101,6 +133,12 @@ export default function OverviewPage() {
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
         Overview
       </h1>
+      {usage && (
+        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "8px" }}>
+          Businesses: {usage.businesses.used}/{usage.businesses.limit} · Events:{" "}
+          {usage.events.used}/{usage.events.limit} · {usage.plan} plan
+        </p>
+      )}
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
         High-level KPIs, recent activity, and quick actions — coming soon.
       </p>
@@ -160,33 +198,41 @@ export default function OverviewPage() {
         </section>
       )}
 
-      {/* Dedicated event creation wizard */}
-      <section style={{ ...CARD, marginTop: "16px" }}>
-        <span style={ICON_BOX}>
-          <IconCalendarEvent size={26} />
-        </span>
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+      {/* Dedicated event creation wizard.
+          When the plan's event limit is reached, swap the card for a Contact us CTA. */}
+      {usage && !usage.events.canCreate ? (
+        <ContactUsCard resource="event" />
+      ) : (
+        <section style={{ ...CARD, marginTop: "16px" }}>
+          <span style={ICON_BOX}>
+            <IconCalendarEvent size={26} />
+          </span>
+          <div style={{ flex: 1, minWidth: "200px" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+              Create an event
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+              Publish an event on the map and open a dedicated chat room that closes when it ends.
+            </p>
+          </div>
+          <Link href="/dashboard/events/new" style={CTA}>
+            <IconCalendarEvent size={18} />
             Create an event
-          </h2>
-          <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-            Publish an event on the map and open a dedicated chat room that closes when it ends.
-          </p>
-        </div>
-        <Link href="/dashboard/events/new" style={CTA}>
-          <IconCalendarEvent size={18} />
-          Create an event
-          <IconArrowRight size={16} />
-        </Link>
-      </section>
-
-      {business && (
-        <p style={{ fontSize: "13px", marginTop: "16px" }}>
-          <Link href="/business/register" style={{ color: "var(--db-accent)", textDecoration: "none" }}>
-            + Register another business
+            <IconArrowRight size={16} />
           </Link>
-        </p>
+        </section>
       )}
+
+      {business &&
+        (usage && !usage.businesses.canCreate && usage.businesses.used > 0 ? (
+          <ContactUsCard resource="business" />
+        ) : (
+          <p style={{ fontSize: "13px", marginTop: "16px" }}>
+            <Link href="/business/register" style={{ color: "var(--db-accent)", textDecoration: "none" }}>
+              + Register another business
+            </Link>
+          </p>
+        ))}
     </div>
   );
 }
