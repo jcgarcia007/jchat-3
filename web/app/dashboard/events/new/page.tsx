@@ -29,16 +29,7 @@ import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface BusinessOpt {
-  id: string;
-  name: string;
-  lat: number | null;
-  lng: number | null;
-  address: string | null;
-}
-
 interface EventData {
-  business_id: string;
   name: string;
   description: string;
   category: string;
@@ -46,7 +37,6 @@ interface EventData {
   starts_at: string; // datetime-local
   ends_at: string; // datetime-local
   timezone: string;
-  location_mode: "business" | "custom";
   lat: string;
   lng: string;
   cover_url: string;
@@ -91,7 +81,6 @@ const COMMON_TZS = Array.from(
 );
 
 const INITIAL: EventData = {
-  business_id: "",
   name: "",
   description: "",
   category: "",
@@ -99,7 +88,6 @@ const INITIAL: EventData = {
   starts_at: "",
   ends_at: "",
   timezone: DETECTED_TZ,
-  location_mode: "business",
   lat: "",
   lng: "",
   cover_url: "",
@@ -114,15 +102,6 @@ function zonedToUtcISO(localDateTime: string, timeZone: string): string {
   const asTZ = new Date(naive.toLocaleString("en-US", { timeZone }));
   const offset = asUTC.getTime() - asTZ.getTime();
   return new Date(naive.getTime() + offset).toISOString();
-}
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .substring(0, 50);
 }
 
 // ─── Shared styles (dashboard --db-* tokens) ────────────────────────────────────
@@ -424,7 +403,6 @@ function StepBar({ current }: { current: number }) {
 function validateStep(step: number, d: EventData): Record<string, string> {
   const e: Record<string, string> = {};
   if (step === 1) {
-    if (!d.business_id) e.business_id = "Select a business.";
     if (!d.name.trim()) e.name = "Event name is required.";
   }
   if (step === 2) {
@@ -433,9 +411,15 @@ function validateStep(step: number, d: EventData): Record<string, string> {
       e.ends_at = "End must be after the start.";
     }
   }
-  if (step === 3 && d.location_mode === "custom") {
-    if (d.lat !== "" && isNaN(parseFloat(d.lat))) e.lat = "Must be a number.";
-    if (d.lng !== "" && isNaN(parseFloat(d.lng))) e.lng = "Must be a number.";
+  if (step === 3) {
+    if (
+      d.lat.trim() === "" ||
+      d.lng.trim() === "" ||
+      isNaN(parseFloat(d.lat)) ||
+      isNaN(parseFloat(d.lng))
+    ) {
+      e.location = "Set the event location on the map.";
+    }
   }
   return e;
 }
@@ -456,8 +440,6 @@ export default function NewEventPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<EventData>(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [businesses, setBusinesses] = useState<BusinessOpt[]>([]);
-  const [loadingBiz, setLoadingBiz] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
@@ -467,12 +449,9 @@ export default function NewEventPage() {
     setData((prev) => ({ ...prev, ...u }));
   }
 
-  // Load the signed-in owner's businesses.
+  // Require a signed-in owner + load plan usage for the event-limit gate.
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoadingBiz(false);
-      return;
-    }
+    if (!isSupabaseConfigured) return;
     let active = true;
     (async () => {
       const {
@@ -482,29 +461,15 @@ export default function NewEventPage() {
         router.replace("/auth/login?next=/dashboard/events/new");
         return;
       }
-      // Load plan usage in parallel to decide whether to show the limit gate.
-      void getUsageAndLimits().then((u) => {
-        if (!active) return;
-        setUsage(u);
-        setUsageLoaded(true);
-      });
-      const { data: rows } = await supabase
-        .from("businesses")
-        .select("id, name, lat, lng, address")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: true });
+      const u = await getUsageAndLimits();
       if (!active) return;
-      const list = (rows ?? []) as BusinessOpt[];
-      setBusinesses(list);
-      if (list.length > 0) patch({ business_id: list[0].id });
-      setLoadingBiz(false);
+      setUsage(u);
+      setUsageLoaded(true);
     })();
     return () => {
       active = false;
     };
   }, [router]);
-
-  const selectedBiz = businesses.find((b) => b.id === data.business_id) ?? null;
 
   function handleNext() {
     const errs = validateStep(step, data);
@@ -526,7 +491,7 @@ export default function NewEventPage() {
     const errs = { ...validateStep(1, data), ...validateStep(2, data), ...validateStep(3, data) };
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      setStep(errs.business_id || errs.name ? 1 : errs.starts_at || errs.ends_at ? 2 : 3);
+      setStep(errs.name ? 1 : errs.starts_at || errs.ends_at ? 2 : 3);
       return;
     }
     setSubmitting(true);
@@ -546,43 +511,15 @@ export default function NewEventPage() {
       }
       const startsIso = zonedToUtcISO(data.starts_at, data.timezone);
       const endsIso = data.ends_at ? zonedToUtcISO(data.ends_at, data.timezone) : null;
-      const ttlHours = endsIso
-        ? Math.max(1, Math.ceil((new Date(endsIso).getTime() - Date.now()) / 3_600_000))
-        : null;
 
-      const lat =
-        data.location_mode === "business"
-          ? selectedBiz?.lat ?? null
-          : data.lat !== ""
-            ? parseFloat(data.lat)
-            : null;
-      const lng =
-        data.location_mode === "business"
-          ? selectedBiz?.lng ?? null
-          : data.lng !== ""
-            ? parseFloat(data.lng)
-            : null;
+      // Event location is always its own custom point on the map.
+      const lat = data.lat !== "" ? parseFloat(data.lat) : null;
+      const lng = data.lng !== "" ? parseFloat(data.lng) : null;
 
-      // 1) Dedicated event chat room with TTL.
-      const { data: room, error: roomError } = await supabase
-        .from("rooms")
-        .insert({
-          business_id: data.business_id,
-          name: data.name.trim(),
-          is_main: false,
-          chat_theme_id: 1,
-          icon: data.icon_emoji || null,
-          slug: `${toSlug(data.name)}-event-${Date.now().toString(36)}`,
-          ttl_hours: ttlHours,
-        })
-        .select("id")
-        .single();
-      if (roomError) throw new Error(roomError.message);
-
-      // 2) Event row.
+      // Insert the event — independent of any business, no chat room for now.
       const { error: eventError } = await supabase.from("events").insert({
         owner_id: user.id,
-        business_id: data.business_id,
+        business_id: null,
         name: data.name.trim(),
         description: data.description.trim() || null,
         category: data.category || null,
@@ -592,7 +529,6 @@ export default function NewEventPage() {
         ends_at: endsIso,
         lat,
         lng,
-        room_id: room?.id ?? null,
         status: "upcoming",
       });
       if (eventError) throw new Error(eventError.message);
@@ -643,23 +579,6 @@ export default function NewEventPage() {
     );
   }
 
-  // No business yet → can't create an event.
-  if (!loadingBiz && isSupabaseConfigured && businesses.length === 0) {
-    return (
-      <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--db-text-secondary)" }}>
-        <IconCalendarEvent size={32} color="var(--db-accent)" />
-        <h1 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: "12px 0 6px" }}>
-          You need a business first
-        </h1>
-        <p style={{ fontSize: "14px", margin: "0 0 16px" }}>Events are attached to a venue you own.</p>
-        <a href="/business/register" style={{ ...S.primaryBtn, textDecoration: "none" }}>
-          Register your business
-          <IconChevronRight size={15} />
-        </a>
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -700,7 +619,7 @@ export default function NewEventPage() {
             Create an event
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: 0 }}>
-            Publish an event and open a dedicated chat room for it.
+            Publish an event with its own spot on the map.
           </p>
         </div>
 
@@ -723,22 +642,6 @@ export default function NewEventPage() {
         {/* Step 1 — Info */}
         {step === 1 && (
           <div>
-            {businesses.length > 1 && (
-              <div style={S.field}>
-                <label style={S.label}>Business *</label>
-                <select
-                  style={{ ...S.input, ...S.select, ...(errors.business_id ? S.inputError : {}) }}
-                  value={data.business_id}
-                  onChange={(e) => patch({ business_id: e.target.value })}
-                >
-                  {businesses.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div style={S.field}>
               <label style={S.label}>Event Name *</label>
               <input
@@ -838,7 +741,7 @@ export default function NewEventPage() {
                 ))}
               </select>
               <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "6px" }}>
-                The event chat room auto-closes when the event ends.
+                Start and end times are stored in the selected timezone.
               </p>
             </div>
           </div>
@@ -847,65 +750,35 @@ export default function NewEventPage() {
         {/* Step 3 — Location */}
         {step === 3 && (
           <div>
-            <div style={{ ...S.field, display: "flex", flexDirection: "column", gap: "10px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 12px" }}>
+              Set where the event takes place. Enter its coordinates below.
+            </p>
+            <div style={S.row}>
+              <div style={{ ...S.field, flex: 1 }}>
+                <label style={S.label}>Latitude *</label>
                 <input
-                  type="radio"
-                  name="loc"
-                  checked={data.location_mode === "business"}
-                  onChange={() => patch({ location_mode: "business" })}
-                  style={{ accentColor: "var(--db-accent)" }}
+                  style={{ ...S.input, ...(errors.location ? S.inputError : {}) }}
+                  value={data.lat}
+                  onChange={(e) => patch({ lat: e.target.value })}
+                  placeholder="25.7617"
                 />
-                <span style={{ fontSize: "14px", color: "var(--db-text-primary)" }}>
-                  Use my business location
-                  {selectedBiz?.address ? ` — ${selectedBiz.address}` : ""}
-                </span>
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="loc"
-                  checked={data.location_mode === "custom"}
-                  onChange={() => patch({ location_mode: "custom" })}
-                  style={{ accentColor: "var(--db-accent)" }}
-                />
-                <span style={{ fontSize: "14px", color: "var(--db-text-primary)" }}>Custom location</span>
-              </label>
-            </div>
-
-            {data.location_mode === "custom" && (
-              <div style={S.row}>
-                <div style={{ ...S.field, flex: 1 }}>
-                  <label style={S.label}>Latitude</label>
-                  <input
-                    style={{ ...S.input, ...(errors.lat ? S.inputError : {}) }}
-                    value={data.lat}
-                    onChange={(e) => patch({ lat: e.target.value })}
-                    placeholder="25.7617"
-                  />
-                  {errors.lat && (
-                    <p style={S.errorMsg}>
-                      <IconAlertCircle size={12} /> {errors.lat}
-                    </p>
-                  )}
-                </div>
-                <div style={{ ...S.field, flex: 1 }}>
-                  <label style={S.label}>Longitude</label>
-                  <input
-                    style={{ ...S.input, ...(errors.lng ? S.inputError : {}) }}
-                    value={data.lng}
-                    onChange={(e) => patch({ lng: e.target.value })}
-                    placeholder="-80.1918"
-                  />
-                  {errors.lng && (
-                    <p style={S.errorMsg}>
-                      <IconAlertCircle size={12} /> {errors.lng}
-                    </p>
-                  )}
-                </div>
               </div>
+              <div style={{ ...S.field, flex: 1 }}>
+                <label style={S.label}>Longitude *</label>
+                <input
+                  style={{ ...S.input, ...(errors.location ? S.inputError : {}) }}
+                  value={data.lng}
+                  onChange={(e) => patch({ lng: e.target.value })}
+                  placeholder="-80.1918"
+                />
+              </div>
+            </div>
+            {errors.location && (
+              <p style={S.errorMsg}>
+                <IconAlertCircle size={12} /> {errors.location}
+              </p>
             )}
-            {/* TODO(Stage 4): pick the custom point on the native map. */}
+            {/* TODO(Stage 4): pick the event point on the native map. */}
           </div>
         )}
 
