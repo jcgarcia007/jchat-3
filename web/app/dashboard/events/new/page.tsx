@@ -21,8 +21,11 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconAlertCircle,
+  IconMail,
+  IconArrowLeft,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -448,6 +451,8 @@ export default function NewEventPage() {
   const [loadingBiz, setLoadingBiz] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageAndLimits | null>(null);
+  const [usageLoaded, setUsageLoaded] = useState(false);
 
   function patch(u: Partial<EventData>) {
     setData((prev) => ({ ...prev, ...u }));
@@ -468,6 +473,12 @@ export default function NewEventPage() {
         router.replace("/auth/login?next=/dashboard/events/new");
         return;
       }
+      // Load plan usage in parallel to decide whether to show the limit gate.
+      void getUsageAndLimits().then((u) => {
+        if (!active) return;
+        setUsage(u);
+        setUsageLoaded(true);
+      });
       const { data: rows } = await supabase
         .from("businesses")
         .select("id, name, lat, lng, address")
@@ -583,6 +594,38 @@ export default function NewEventPage() {
   };
 
   // No business yet → can't create an event.
+  // Plan limit gate (UX): if the user has hit their event limit, show a banner
+  // instead of the wizard. Takes priority over the "no businesses" banner. The
+  // DB trigger is the real lock; when usage is null (demo) or still loading,
+  // the normal flow (including the no-businesses banner) runs unchanged.
+  if (usageLoaded && usage !== null && !usage.events.canCreate) {
+    return (
+      <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--db-text-secondary)" }}>
+        <IconAlertCircle size={32} color="var(--db-danger, #ef4444)" />
+        <h1 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: "12px 0 6px" }}>
+          Event limit reached
+        </h1>
+        <p style={{ fontSize: "14px", margin: "0 0 16px" }}>
+          Your current plan allows {usage.events.limit} event(s) and you already have{" "}
+          {usage.events.used}. Upgrade or request a custom plan to add more.
+        </p>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+          <a
+            href="mailto:support@jchat.cloud?subject=Custom plan request"
+            style={{ ...S.primaryBtn, textDecoration: "none" }}
+          >
+            <IconMail size={16} />
+            Contact us
+          </a>
+          <a href="/dashboard" style={{ ...S.ghostBtn, textDecoration: "none" }}>
+            <IconArrowLeft size={16} />
+            Back to dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (!loadingBiz && isSupabaseConfigured && businesses.length === 0) {
     return (
       <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--db-text-secondary)" }}>
