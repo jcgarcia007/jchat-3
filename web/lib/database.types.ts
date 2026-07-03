@@ -2989,6 +2989,7 @@ export type Database = {
       }
       users: {
         Row: {
+          active_business_id: string | null
           avatar_url: string | null
           bio: string | null
           city: string | null
@@ -3014,6 +3015,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          active_business_id?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
@@ -3039,6 +3041,7 @@ export type Database = {
           username: string
         }
         Update: {
+          active_business_id?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
@@ -3063,7 +3066,15 @@ export type Database = {
           updated_at?: string
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_active_business_id_fkey"
+            columns: ["active_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
