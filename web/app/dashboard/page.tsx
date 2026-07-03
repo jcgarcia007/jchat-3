@@ -7,11 +7,19 @@ import {
   IconArrowRight,
   IconCalendarEvent,
   IconCircleCheck,
-  IconClockHour4,
   IconExternalLink,
   IconMail,
+  IconMapPin,
+  IconPlus,
 } from "@tabler/icons-react";
-import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
+import {
+  listUserBusinesses,
+  listUserEvents,
+  resolveActiveBusiness,
+  setActiveBusiness,
+  type BusinessListItem,
+  type EventListItem,
+} from "@/lib/business";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 
 const CARD: React.CSSProperties = {
@@ -36,6 +44,7 @@ const ICON_BOX: React.CSSProperties = {
   background: "var(--db-accent-bg)",
   color: "var(--db-accent)",
   flexShrink: 0,
+  fontSize: "24px",
 };
 
 const CTA: React.CSSProperties = {
@@ -52,15 +61,41 @@ const CTA: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-function VerificationBadge({ business }: { business: ActiveBusiness }) {
-  const verified = business.is_verified || business.status === "active" || business.status === "verified";
-  const Icon = verified ? IconCircleCheck : IconClockHour4;
-  const color = verified ? "var(--db-success)" : "var(--db-warning)";
-  const label = verified
-    ? "Verified"
-    : business.status
-      ? business.status.replace(/_/g, " ")
-      : "Pending verification";
+const SECONDARY_BTN: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  padding: "10px 16px",
+  borderRadius: "10px",
+  background: "transparent",
+  color: "var(--db-text-primary)",
+  border: "1px solid var(--db-border)",
+  fontSize: "14px",
+  fontWeight: 600,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const ADD_LINK: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  color: "var(--db-accent)",
+  textDecoration: "none",
+  fontSize: "14px",
+  fontWeight: 600,
+};
+
+const SECTION_TITLE: React.CSSProperties = {
+  fontSize: "16px",
+  fontWeight: 700,
+  color: "var(--db-text-primary)",
+  margin: "0 0 14px",
+};
+
+/** Green "Verified" pill; renders nothing when the business isn't verified. */
+function VerificationBadge({ isVerified }: { isVerified: boolean }) {
+  if (!isVerified) return null;
   return (
     <span
       style={{
@@ -71,13 +106,30 @@ function VerificationBadge({ business }: { business: ActiveBusiness }) {
         borderRadius: "999px",
         fontSize: "12px",
         fontWeight: 600,
-        textTransform: "capitalize",
-        background: verified ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
-        color,
+        background: "rgba(34,197,94,0.12)",
+        color: "var(--db-success)",
       }}
     >
-      <Icon size={13} />
-      {label}
+      <IconCircleCheck size={13} />
+      Verified
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      style={{
+        fontSize: "11px",
+        fontWeight: 600,
+        padding: "2px 8px",
+        borderRadius: "999px",
+        background: "var(--db-bg-overlay)",
+        color: "var(--db-text-secondary)",
+        textTransform: "capitalize",
+      }}
+    >
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -109,24 +161,53 @@ function ContactUsCard({ resource }: { resource: "business" | "event" }) {
 }
 
 export default function OverviewPage() {
-  const [business, setBusiness] = useState<ActiveBusiness | null>(null);
+  const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
+  const [events, setEvents] = useState<EventListItem[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [loading, setLoading] = useState(true);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    void Promise.all([resolveActiveBusiness(), getUsageAndLimits()]).then(
-      ([bizRes, usageRes]) => {
-        if (!active) return;
-        if (bizRes.ok) setBusiness(bizRes.business);
-        setUsage(usageRes);
-        setLoading(false);
-      },
-    );
+    void Promise.all([
+      listUserBusinesses(),
+      listUserEvents(),
+      resolveActiveBusiness(),
+      getUsageAndLimits(),
+    ]).then(([biz, evs, res, usageRes]) => {
+      if (!active) return;
+      setBusinesses(biz);
+      setEvents(evs);
+      setActiveId(res.ok ? res.business.id : null);
+      setUsage(usageRes);
+      setLoading(false);
+    });
     return () => {
       active = false;
     };
   }, []);
+
+  async function handleSetActive(id: string) {
+    if (id === activeId) return;
+    setSwitchingId(id);
+    const ok = await setActiveBusiness(id);
+    if (ok) {
+      // Reload so every dashboard surface re-resolves the active business.
+      window.location.reload();
+    } else {
+      setSwitchingId(null);
+    }
+  }
+
+  const loadingRow = (
+    <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>
+      Loading…
+    </div>
+  );
+
+  const canRegisterMore =
+    !usage || usage.businesses.canCreate || usage.businesses.used === 0;
 
   return (
     <div>
@@ -134,58 +215,26 @@ export default function OverviewPage() {
         Overview
       </h1>
       {usage && (
-        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "8px" }}>
+        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
           Businesses: {usage.businesses.used}/{usage.businesses.limit} · Events:{" "}
           {usage.events.used}/{usage.events.limit} · {usage.plan} plan
         </p>
       )}
-      <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
-        High-level KPIs, recent activity, and quick actions — coming soon.
-      </p>
+
+      {/* ═══ Section 1 — Businesses ═══ */}
+      <h2 style={SECTION_TITLE}>Your businesses</h2>
 
       {loading ? (
-        <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>Loading…</div>
-      ) : business ? (
-        /* Active business summary */
+        loadingRow
+      ) : businesses.length === 0 ? (
         <section style={CARD}>
           <span style={ICON_BOX}>
             <IconBuildingStore size={26} />
           </span>
           <div style={{ flex: 1, minWidth: "200px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
-              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                {business.name}
-              </h2>
-              <VerificationBadge business={business} />
-            </div>
-            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-              {business.slug ? (
-                <>
-                  jchat.app/b/<strong style={{ color: "var(--db-text-primary)" }}>{business.slug}</strong>
-                </>
-              ) : (
-                "No public slug yet."
-              )}
-              {business.plan ? ` · ${business.plan} plan` : ""}
-            </p>
-          </div>
-          {business.slug && (
-            <a href={`/b/${business.slug}`} target="_blank" rel="noreferrer" style={CTA}>
-              View public page
-              <IconExternalLink size={16} />
-            </a>
-          )}
-        </section>
-      ) : (
-        /* No business yet → register CTA */
-        <section style={CARD}>
-          <span style={ICON_BOX}>
-            <IconBuildingStore size={26} />
-          </span>
-          <div style={{ flex: 1, minWidth: "200px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
               Register your business
-            </h2>
+            </h3>
             <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
               Set up your venue to start chatting with customers, taking orders, and hosting events.
             </p>
@@ -196,43 +245,138 @@ export default function OverviewPage() {
             <IconArrowRight size={16} />
           </Link>
         </section>
-      )}
-
-      {/* Dedicated event creation wizard.
-          When the plan's event limit is reached, swap the card for a Contact us CTA. */}
-      {usage && !usage.events.canCreate ? (
-        <ContactUsCard resource="event" />
       ) : (
-        <section style={{ ...CARD, marginTop: "16px" }}>
-          <span style={ICON_BOX}>
-            <IconCalendarEvent size={26} />
-          </span>
-          <div style={{ flex: 1, minWidth: "200px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-              Create an event
-            </h2>
-            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-              Publish an event on the map and open a dedicated chat room that closes when it ends.
-            </p>
-          </div>
-          <Link href="/dashboard/events/new" style={CTA}>
-            <IconCalendarEvent size={18} />
-            Create an event
-            <IconArrowRight size={16} />
-          </Link>
-        </section>
+        <>
+          {businesses.map((b) => {
+            const isActive = b.id === activeId;
+            return (
+              <section
+                key={b.id}
+                style={{
+                  ...CARD,
+                  marginBottom: "12px",
+                  ...(isActive
+                    ? {
+                        border: "2px solid var(--db-accent)",
+                        boxShadow: "0 0 0 3px var(--db-accent-bg)",
+                      }
+                    : {}),
+                }}
+              >
+                <span style={ICON_BOX}>
+                  <IconBuildingStore size={26} />
+                </span>
+                <div style={{ flex: 1, minWidth: "200px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
+                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                      {b.name}
+                    </h3>
+                    <VerificationBadge isVerified={b.is_verified} />
+                    {isActive && (
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+                    {b.slug ? (
+                      <>
+                        jchat.app/b/<strong style={{ color: "var(--db-text-primary)" }}>{b.slug}</strong>
+                      </>
+                    ) : (
+                      "No public slug yet."
+                    )}
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {b.slug && (
+                    <a href={`/b/${b.slug}`} target="_blank" rel="noreferrer" style={CTA}>
+                      View public page
+                      <IconExternalLink size={16} />
+                    </a>
+                  )}
+                  {!isActive && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSetActive(b.id)}
+                      disabled={switchingId !== null}
+                      style={{
+                        ...SECONDARY_BTN,
+                        cursor: switchingId !== null ? "wait" : "pointer",
+                        opacity: switchingId !== null && switchingId !== b.id ? 0.6 : 1,
+                      }}
+                    >
+                      {switchingId === b.id ? "Switching…" : "Set as active"}
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+
+          {usage && !usage.businesses.canCreate && usage.businesses.used > 0 ? (
+            <ContactUsCard resource="business" />
+          ) : (
+            canRegisterMore && (
+              <div style={{ marginTop: "12px" }}>
+                <Link href="/business/register" style={ADD_LINK}>
+                  <IconPlus size={15} />
+                  Register another business
+                </Link>
+              </div>
+            )
+          )}
+        </>
       )}
 
-      {business &&
-        (usage && !usage.businesses.canCreate && usage.businesses.used > 0 ? (
-          <ContactUsCard resource="business" />
-        ) : (
-          <p style={{ fontSize: "13px", marginTop: "16px" }}>
-            <Link href="/business/register" style={{ color: "var(--db-accent)", textDecoration: "none" }}>
-              + Register another business
-            </Link>
-          </p>
-        ))}
+      {/* ═══ Section 2 — Events ═══ */}
+      <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>Your events</h2>
+
+      {loading ? (
+        loadingRow
+      ) : (
+        <>
+          {events.length === 0 ? (
+            <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "0 0 4px" }}>
+              No events yet.
+            </p>
+          ) : (
+            events.map((e) => (
+              <section key={e.id} style={{ ...CARD, marginBottom: "12px" }}>
+                <span style={ICON_BOX}>
+                  {e.icon_emoji ? e.icon_emoji : <IconCalendarEvent size={26} />}
+                </span>
+                <div style={{ flex: 1, minWidth: "200px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
+                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                      {e.name}
+                    </h3>
+                    <StatusBadge status={e.status} />
+                    {e.category && (
+                      <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{e.category}</span>
+                    )}
+                  </div>
+                  <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+                    <IconMapPin size={13} />
+                    {new Date(e.starts_at).toLocaleString()}
+                  </p>
+                </div>
+              </section>
+            ))
+          )}
+
+          {usage && !usage.events.canCreate ? (
+            <ContactUsCard resource="event" />
+          ) : (
+            <div style={{ marginTop: "12px" }}>
+              <Link href="/dashboard/events/new" style={ADD_LINK}>
+                <IconPlus size={15} />
+                Create an event
+              </Link>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

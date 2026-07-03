@@ -179,3 +179,36 @@ export async function setActiveBusiness(businessId: string | null): Promise<bool
   }
   return true;
 }
+
+// ─── Events (independent of businesses) ─────────────────────────────────────────
+
+export interface EventListItem {
+  id: string;
+  name: string;
+  starts_at: string;
+  ends_at: string | null;
+  status: string;
+  category: string | null;
+  icon_emoji: string | null;
+}
+
+/** All events owned by the signed-in user, soonest first. */
+export async function listUserEvents(): Promise<EventListItem[]> {
+  if (!isSupabaseConfigured) return [];
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, name, starts_at, ends_at, status, category, icon_emoji")
+    .eq("owner_id", user.id)
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    console.error("[business] listUserEvents:", error);
+    return [];
+  }
+  return (data ?? []) as EventListItem[];
+}
