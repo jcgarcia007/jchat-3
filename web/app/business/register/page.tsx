@@ -1149,6 +1149,15 @@ function StepBar({ current }: { current: number }) {
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
+// Map raw Postgres trigger errors (plan-limit guards) to friendly copy.
+function friendlyError(msg: string): string {
+  if (msg.includes("PLAN_LIMIT_BUSINESSES"))
+    return "You've reached your plan's business limit. Please upgrade or contact support to add more.";
+  if (msg.includes("PLAN_LIMIT_EVENTS"))
+    return "You've reached your plan's event limit. Please upgrade or contact support to add more.";
+  return msg;
+}
+
 export default function BusinessRegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -1331,6 +1340,7 @@ export default function BusinessRegisterPage() {
         }
 
         const { error: eventError } = await supabase.from("events").insert({
+          owner_id: user.id,
           business_id: businessId,
           name: data.event_name.trim(),
           description: data.event_description.trim() || null,
@@ -1348,7 +1358,7 @@ export default function BusinessRegisterPage() {
       router.push(`/business/verify?id=${businessId}`);
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "An unexpected error occurred."
+        err instanceof Error ? friendlyError(err.message) : "An unexpected error occurred."
       );
       setSubmitting(false);
     }
