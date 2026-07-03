@@ -25,9 +25,12 @@ import {
   IconAlertCircle,
   IconUpload,
   IconCalendarEvent,
+  IconMail,
+  IconArrowLeft,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Json } from "@/lib/database.types";
+import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1153,6 +1156,8 @@ export default function BusinessRegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageAndLimits | null>(null);
+  const [usageLoaded, setUsageLoaded] = useState(false);
 
   // Require an authenticated session to register a business (RLS: owner insert
   // checks auth.uid() = owner_id). Redirect to login if signed out.
@@ -1160,9 +1165,17 @@ export default function BusinessRegisterPage() {
     if (!isSupabaseConfigured) return;
     let active = true;
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (active && !user) {
+      if (!active) return;
+      if (!user) {
         router.replace("/auth/login?next=/business/register");
+        return;
       }
+      // User is signed in — load plan usage to decide whether to show the gate.
+      void getUsageAndLimits().then((u) => {
+        if (!active) return;
+        setUsage(u);
+        setUsageLoaded(true);
+      });
     });
     return () => {
       active = false;
@@ -1348,6 +1361,95 @@ export default function BusinessRegisterPage() {
     4: "Set up payments",
     5: "Add an opening event",
   };
+
+  // Plan limit gate (UX): if the user has hit their business limit, show a
+  // banner instead of the wizard. The DB trigger is the real lock; this just
+  // avoids letting them fill the whole form only to fail on submit. When usage
+  // is null (demo/no session) or still loading, the wizard renders as before.
+  if (usageLoaded && usage !== null && !usage.businesses.canCreate) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg-base)",
+          color: "var(--text-primary)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: "40px 16px 80px",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: "640px" }}>
+          <div
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "16px",
+              padding: "28px",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "48px",
+                height: "48px",
+                borderRadius: "14px",
+                background: "var(--color-brand-light)",
+                marginBottom: "14px",
+              }}
+            >
+              <IconAlertCircle size={24} color="var(--color-danger)" />
+            </div>
+            <h1
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                margin: "0 0 8px",
+              }}
+            >
+              Business limit reached
+            </h1>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+                margin: "0 0 24px",
+                lineHeight: 1.5,
+              }}
+            >
+              Your current plan allows {usage.businesses.limit} business(es) and you
+              already have {usage.businesses.used}. Upgrade or request a custom plan
+              to add more.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <a
+                href="mailto:support@jchat.cloud?subject=Custom plan request"
+                style={{ ...S.primaryBtn, textDecoration: "none" }}
+              >
+                <IconMail size={18} />
+                Contact us
+              </a>
+              <a href="/dashboard" style={{ ...S.ghostBtn, textDecoration: "none" }}>
+                <IconArrowLeft size={18} />
+                Back to dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
