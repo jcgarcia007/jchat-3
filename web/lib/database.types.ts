@@ -803,7 +803,7 @@ export type Database = {
       }
       events: {
         Row: {
-          business_id: string
+          business_id: string | null
           category: string | null
           cover_url: string | null
           created_at: string
@@ -817,12 +817,13 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           name: string
+          owner_id: string | null
           room_id: string | null
           starts_at: string
           status: string
         }
         Insert: {
-          business_id: string
+          business_id?: string | null
           category?: string | null
           cover_url?: string | null
           created_at?: string
@@ -836,12 +837,13 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           name: string
+          owner_id?: string | null
           room_id?: string | null
           starts_at: string
           status?: string
         }
         Update: {
-          business_id?: string
+          business_id?: string | null
           category?: string | null
           cover_url?: string | null
           created_at?: string
@@ -855,6 +857,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           name?: string
+          owner_id?: string | null
           room_id?: string | null
           starts_at?: string
           status?: string
