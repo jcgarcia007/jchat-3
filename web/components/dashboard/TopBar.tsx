@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconSearch } from "@tabler/icons-react";
-
-// ─── Stub business data ───────────────────────────────────────────────────────
-// TODO(Task 2.1): load business name from Supabase via businesses.name
-const STUB_BUSINESS_NAME = "My Business";
-// TODO(Task 3.15): load real subscription plan from lib/subscriptions.ts
-const STUB_PLAN = "Pro";
+import {
+  IconSearch,
+  IconChevronDown,
+  IconCheck,
+  IconBuildingStore,
+} from "@tabler/icons-react";
+import {
+  listUserBusinesses,
+  resolveActiveBusiness,
+  setActiveBusiness,
+  type BusinessListItem,
+} from "@/lib/business";
 
 function useClock(): string {
   const [time, setTime] = useState<string>("");
@@ -31,6 +36,51 @@ function useClock(): string {
 export function TopBar() {
   const time = useClock();
 
+  const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeName, setActiveName] = useState<string>("");
+  const [open, setOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([listUserBusinesses(), resolveActiveBusiness()]).then(
+      ([list, res]) => {
+        if (!active) return;
+        setBusinesses(list);
+        if (res.ok) {
+          setActiveId(res.business.id);
+          setActiveName(res.business.name);
+        } else {
+          setActiveId(null);
+          setActiveName("");
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleSelect(id: string) {
+    if (id === activeId) {
+      setOpen(false);
+      return;
+    }
+    setSwitching(true);
+    const okDone = await setActiveBusiness(id);
+    if (okDone) {
+      // Reload so every dashboard surface re-resolves the active business.
+      window.location.reload();
+    } else {
+      setSwitching(false);
+      setOpen(false);
+    }
+  }
+
+  const hasSwitcher = businesses.length > 1;
+  const displayName = activeName || "Select business";
+
   return (
     <header
       style={{
@@ -49,33 +99,126 @@ export function TopBar() {
         flexShrink: 0,
       }}
     >
-      {/* Left — business name + plan badge */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <span
-          style={{
-            fontWeight: 600,
-            fontSize: "14px",
-            color: "var(--db-text-primary)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {STUB_BUSINESS_NAME}
-        </span>
+      {/* Left — business switcher */}
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        {hasSwitcher ? (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            disabled={switching}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              height: "32px",
+              padding: "0 10px",
+              borderRadius: "8px",
+              border: "none",
+              background: "transparent",
+              color: "var(--db-text-primary)",
+              fontWeight: 600,
+              fontSize: "14px",
+              cursor: switching ? "wait" : "pointer",
+              whiteSpace: "nowrap",
+              opacity: switching ? 0.6 : 1,
+            }}
+          >
+            <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" />
+            <span>{switching ? "Switching…" : displayName}</span>
+            <IconChevronDown size={14} stroke={1.7} color="var(--db-text-tertiary)" />
+          </button>
+        ) : (
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "0 10px",
+              fontWeight: 600,
+              fontSize: "14px",
+              color: "var(--db-text-primary)",
+              whiteSpace: "nowrap",
+              opacity: switching ? 0.6 : 1,
+            }}
+          >
+            <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" />
+            {switching ? "Switching…" : displayName}
+          </span>
+        )}
 
-        <span
-          style={{
-            fontSize: "10px",
-            fontWeight: 600,
-            padding: "2px 7px",
-            borderRadius: "20px",
-            background: "var(--db-accent-bg)",
-            color: "var(--db-accent)",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-          }}
-        >
-          {STUB_PLAN}
-        </span>
+        {open && hasSwitcher && (
+          <>
+            {/* Click-away overlay */}
+            <div
+              onClick={() => setOpen(false)}
+              style={{ position: "fixed", inset: 0, zIndex: 15 }}
+            />
+            {/* Dropdown menu */}
+            <div
+              role="listbox"
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                minWidth: "220px",
+                background: "var(--db-bg-elevated)",
+                border: "1px solid var(--db-border)",
+                borderRadius: "10px",
+                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+                zIndex: 20,
+                padding: "4px",
+              }}
+            >
+              {businesses.map((b) => {
+                const isActive = b.id === activeId;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    onClick={() => void handleSelect(b.id)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--db-bg-overlay)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "transparent",
+                      color: isActive ? "var(--db-accent)" : "var(--db-text-primary)",
+                      fontSize: "14px",
+                      fontWeight: isActive ? 600 : 500,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {b.name}
+                    </span>
+                    {isActive && <IconCheck size={15} stroke={2} />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Right — Cmd+K trigger + live clock + avatar */}
@@ -153,7 +296,7 @@ export function TopBar() {
             cursor: "pointer",
           }}
         >
-          {STUB_BUSINESS_NAME.charAt(0).toUpperCase()}
+          {activeName ? activeName.charAt(0).toUpperCase() : "?"}
         </div>
       </div>
     </header>
