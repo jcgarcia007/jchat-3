@@ -306,6 +306,8 @@ export type Database = {
           created_at: string
           dashboard_theme_id: number
           description: string | null
+          event_ends_at: string | null
+          event_starts_at: string | null
           external_menu_url: string | null
           gallery_urls: string[]
           geofence_polygon: Json | null
@@ -314,6 +316,7 @@ export type Database = {
           icon_emoji: string | null
           id: string
           is_active: boolean
+          is_temporary: boolean
           is_verified: boolean
           lat: number | null
           latitude: number | null
@@ -348,6 +351,8 @@ export type Database = {
           created_at?: string
           dashboard_theme_id?: number
           description?: string | null
+          event_ends_at?: string | null
+          event_starts_at?: string | null
           external_menu_url?: string | null
           gallery_urls?: string[]
           geofence_polygon?: Json | null
@@ -356,6 +361,7 @@ export type Database = {
           icon_emoji?: string | null
           id?: string
           is_active?: boolean
+          is_temporary?: boolean
           is_verified?: boolean
           lat?: number | null
           latitude?: number | null
@@ -390,6 +396,8 @@ export type Database = {
           created_at?: string
           dashboard_theme_id?: number
           description?: string | null
+          event_ends_at?: string | null
+          event_starts_at?: string | null
           external_menu_url?: string | null
           gallery_urls?: string[]
           geofence_polygon?: Json | null
@@ -398,6 +406,7 @@ export type Database = {
           icon_emoji?: string | null
           id?: string
           is_active?: boolean
+          is_temporary?: boolean
           is_verified?: boolean
           lat?: number | null
           latitude?: number | null
@@ -797,84 +806,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      events: {
-        Row: {
-          business_id: string | null
-          category: string | null
-          cover_url: string | null
-          created_at: string
-          description: string | null
-          ends_at: string | null
-          geofence_polygon: Json | null
-          icon_emoji: string | null
-          id: string
-          lat: number | null
-          lng: number | null
-          location_lat: number | null
-          location_lng: number | null
-          name: string
-          owner_id: string | null
-          room_id: string | null
-          starts_at: string
-          status: string
-        }
-        Insert: {
-          business_id?: string | null
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string
-          description?: string | null
-          ends_at?: string | null
-          geofence_polygon?: Json | null
-          icon_emoji?: string | null
-          id?: string
-          lat?: number | null
-          lng?: number | null
-          location_lat?: number | null
-          location_lng?: number | null
-          name: string
-          owner_id?: string | null
-          room_id?: string | null
-          starts_at: string
-          status?: string
-        }
-        Update: {
-          business_id?: string | null
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string
-          description?: string | null
-          ends_at?: string | null
-          geofence_polygon?: Json | null
-          icon_emoji?: string | null
-          id?: string
-          lat?: number | null
-          lng?: number | null
-          location_lat?: number | null
-          location_lng?: number | null
-          name?: string
-          owner_id?: string | null
-          room_id?: string | null
-          starts_at?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "events_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -2215,13 +2146,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "radius_increase_requests_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
             referencedColumns: ["id"]
           },
           {
