@@ -108,19 +108,29 @@ export interface BusinessListItem {
   is_verified: boolean;
 }
 
-/** All businesses owned by the signed-in user (for the business switcher). */
-export async function listUserBusinesses(): Promise<BusinessListItem[]> {
+/**
+ * Businesses owned by the signed-in user.
+ * By default only permanent businesses (is_temporary=false); pass
+ * { includeTemporary: true } to also include events (for the TopBar switcher).
+ */
+export async function listUserBusinesses(
+  opts?: { includeTemporary?: boolean },
+): Promise<BusinessListItem[]> {
   if (!isSupabaseConfigured) return [];
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("businesses")
     .select("id, name, slug, is_verified")
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: true });
+    .eq("owner_id", user.id);
+  if (!opts?.includeTemporary) {
+    query = query.eq("is_temporary", false);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: true });
 
   if (error) {
     console.error("[business] listUserBusinesses:", error);

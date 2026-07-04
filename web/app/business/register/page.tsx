@@ -390,20 +390,22 @@ function StepInfo({
   data,
   onChange,
   errors,
+  isEventMode,
 }: {
   data: WizardData;
   onChange: (patch: Partial<WizardData>) => void;
   errors: Record<string, string>;
+  isEventMode: boolean;
 }) {
   return (
     <div>
       <div style={S.field()}>
-        <label style={S.label}>Business Name *</label>
+        <label style={S.label}>{isEventMode ? "Event Name *" : "Business Name *"}</label>
         <input
           style={{ ...S.input, ...(errors.name ? S.inputError : {}) }}
           value={data.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="e.g. The Blue Lounge"
+          placeholder={isEventMode ? "e.g. Friday Night Live" : "e.g. The Blue Lounge"}
           maxLength={80}
         />
         {errors.name && (
@@ -413,26 +415,28 @@ function StepInfo({
         )}
       </div>
 
-      <div style={S.field()}>
-        <label style={S.label}>Category *</label>
-        <select
-          style={{ ...S.input, ...S.select, ...(errors.category ? S.inputError : {}) }}
-          value={data.category}
-          onChange={(e) => onChange({ category: e.target.value })}
-        >
-          <option value="">Select a category…</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        {errors.category && (
-          <p style={S.errorMsg}>
-            <IconAlertCircle size={12} /> {errors.category}
-          </p>
-        )}
-      </div>
+      {!isEventMode && (
+        <div style={S.field()}>
+          <label style={S.label}>Category *</label>
+          <select
+            style={{ ...S.input, ...S.select, ...(errors.category ? S.inputError : {}) }}
+            value={data.category}
+            onChange={(e) => onChange({ category: e.target.value })}
+          >
+            <option value="">Select a category…</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {errors.category && (
+            <p style={S.errorMsg}>
+              <IconAlertCircle size={12} /> {errors.category}
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={S.field()}>
         <label style={S.label}>Description</label>
@@ -918,7 +922,7 @@ function StepEventDates({
         <label style={S.label}>Event start *</label>
         <input
           type="datetime-local"
-          style={{ ...S.input, ...(errors.event_starts_at ? S.inputError : {}) }}
+          style={{ ...S.input, colorScheme: "dark", ...(errors.event_starts_at ? S.inputError : {}) }}
           value={data.event_starts_at}
           onChange={(e) => onChange({ event_starts_at: e.target.value })}
         />
@@ -932,7 +936,7 @@ function StepEventDates({
         <label style={S.label}>Event end *</label>
         <input
           type="datetime-local"
-          style={{ ...S.input, ...(errors.event_ends_at ? S.inputError : {}) }}
+          style={{ ...S.input, colorScheme: "dark", ...(errors.event_ends_at ? S.inputError : {}) }}
           value={data.event_ends_at}
           onChange={(e) => onChange({ event_ends_at: e.target.value })}
         />
@@ -948,11 +952,16 @@ function StepEventDates({
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-function validateStep(key: StepKey, data: WizardData): Record<string, string> {
+function validateStep(
+  key: StepKey,
+  data: WizardData,
+  isEventMode: boolean,
+): Record<string, string> {
   const errors: Record<string, string> = {};
   if (key === "info") {
-    if (!data.name.trim()) errors.name = "Business name is required.";
-    if (!data.category) errors.category = "Please select a category.";
+    if (!data.name.trim())
+      errors.name = isEventMode ? "Event name is required." : "Business name is required.";
+    if (!isEventMode && !data.category) errors.category = "Please select a category.";
   }
   if (key === "dates") {
     if (!data.event_starts_at) errors.event_starts_at = "Event start is required.";
@@ -1148,7 +1157,7 @@ function BusinessRegisterWizard() {
   }
 
   function handleNext() {
-    const errs = validateStep(currentStep.key, data);
+    const errs = validateStep(currentStep.key, data, isEventMode);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -1218,7 +1227,7 @@ function BusinessRegisterWizard() {
           owner_id: user.id,
           name: data.name.trim(),
           slug,
-          category: data.category,
+          category: isEventMode ? null : data.category,
           description: data.description.trim() || null,
           cover_url: data.cover_url.trim() || null,
           icon_emoji: data.icon_emoji || "🏢",
@@ -1433,12 +1442,14 @@ function BusinessRegisterWizard() {
               margin: "0 0 20px",
             }}
           >
-            {currentStep.title}
+            {isEventMode && currentStep.key === "info"
+              ? "Tell us about your event"
+              : currentStep.title}
           </h2>
 
           {/* Step content (rendered by the current step's key, order-agnostic) */}
           {currentStep.key === "info" && (
-            <StepInfo data={data} onChange={patch} errors={errors} />
+            <StepInfo data={data} onChange={patch} errors={errors} isEventMode={isEventMode} />
           )}
           {currentStep.key === "dates" && (
             <StepEventDates data={data} onChange={patch} errors={errors} />

@@ -44,7 +44,10 @@ export function TopBar() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([listUserBusinesses(), resolveActiveBusiness()]).then(
+    void Promise.all([
+      listUserBusinesses({ includeTemporary: true }),
+      resolveActiveBusiness(),
+    ]).then(
       ([list, res]) => {
         if (!active) return;
         setBusinesses(list);
