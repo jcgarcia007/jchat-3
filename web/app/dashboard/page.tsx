@@ -8,7 +8,6 @@ import {
   IconCalendarEvent,
   IconCircleCheck,
   IconExternalLink,
-  IconMail,
   IconMapPin,
   IconPlus,
 } from "@tabler/icons-react";
@@ -76,16 +75,6 @@ const SECONDARY_BTN: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const ADD_LINK: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "6px",
-  color: "var(--db-accent)",
-  textDecoration: "none",
-  fontSize: "14px",
-  fontWeight: 600,
-};
-
 const SECTION_TITLE: React.CSSProperties = {
   fontSize: "16px",
   fontWeight: 700,
@@ -131,32 +120,6 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status.replace(/_/g, " ")}
     </span>
-  );
-}
-
-function ContactUsCard({ resource }: { resource: "business" | "event" }) {
-  const text =
-    resource === "business"
-      ? "You've reached your plan's business limit. Request a custom plan to add more."
-      : "You've reached your plan's event limit. Request a custom plan to add more.";
-  return (
-    <section style={{ ...CARD, marginTop: "16px" }}>
-      <span style={ICON_BOX}>
-        <IconMail size={26} />
-      </span>
-      <div style={{ flex: 1, minWidth: "200px" }}>
-        <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-          Limit reached
-        </h2>
-        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-          {text}
-        </p>
-      </div>
-      <a href="mailto:support@jchat.cloud?subject=Custom plan request" style={CTA}>
-        <IconMail size={18} />
-        Contact us
-      </a>
-    </section>
   );
 }
 
@@ -216,9 +179,6 @@ export default function OverviewPage() {
     </div>
   );
 
-  const canRegisterMore =
-    !usage || usage.businesses.canCreate || usage.businesses.used === 0;
-
   return (
     <div>
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
@@ -230,6 +190,13 @@ export default function OverviewPage() {
           {usage.events.used}/{usage.events.limit} · {usage.plan} plan
         </p>
       )}
+
+      {/* Single entry point for creating a business or an event */}
+      <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 26px" }}>
+        <Link href="/dashboard/create" style={{ ...CTA, fontSize: "17px", padding: "14px 28px", gap: "10px" }}>
+          <IconPlus size={20} /> Create new business or event
+        </Link>
+      </div>
 
       {/* ═══ Section 1 — Businesses ═══ */}
       <h2 style={SECTION_TITLE}>Your businesses</h2>
@@ -323,19 +290,6 @@ export default function OverviewPage() {
               </section>
             );
           })}
-
-          {usage && !usage.businesses.canCreate && usage.businesses.used > 0 ? (
-            <ContactUsCard resource="business" />
-          ) : (
-            canRegisterMore && (
-              <div style={{ marginTop: "12px" }}>
-                <Link href="/business/register" style={ADD_LINK}>
-                  <IconPlus size={15} />
-                  Register another business
-                </Link>
-              </div>
-            )
-          )}
         </>
       )}
 
@@ -351,37 +305,62 @@ export default function OverviewPage() {
               No events yet.
             </p>
           ) : (
-            events.map((e) => (
-              <section key={e.id} style={{ ...CARD, marginBottom: "12px" }}>
-                <span style={ICON_BOX}>
-                  <IconCalendarEvent size={26} />
-                </span>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
-                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                      {e.name}
-                    </h3>
-                    <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
+            events.map((e) => {
+              const isActive = e.id === activeId;
+              return (
+                <section
+                  key={e.id}
+                  style={{
+                    ...CARD,
+                    marginBottom: "12px",
+                    ...(isActive
+                      ? {
+                          border: "2px solid var(--db-accent)",
+                          boxShadow: "0 0 0 3px var(--db-accent-bg)",
+                        }
+                      : {}),
+                  }}
+                >
+                  <span style={ICON_BOX}>
+                    <IconCalendarEvent size={26} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: "200px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
+                      <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                        {e.name}
+                      </h3>
+                      <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
+                      {isActive && (
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+                      <IconMapPin size={13} />
+                      {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "No start date"}
+                      {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
+                    </p>
                   </div>
-                  <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-                    <IconMapPin size={13} />
-                    {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "No start date"}
-                    {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
-                  </p>
-                </div>
-              </section>
-            ))
-          )}
-
-          {usage && !usage.events.canCreate ? (
-            <ContactUsCard resource="event" />
-          ) : (
-            <div style={{ marginTop: "12px" }}>
-              <Link href="/dashboard/events/new" style={ADD_LINK}>
-                <IconPlus size={15} />
-                Create an event
-              </Link>
-            </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    {!isActive && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSetActive(e.id)}
+                        disabled={switchingId !== null}
+                        style={{
+                          ...SECONDARY_BTN,
+                          cursor: switchingId !== null ? "wait" : "pointer",
+                          opacity: switchingId !== null && switchingId !== e.id ? 0.6 : 1,
+                        }}
+                      >
+                        {switchingId === e.id ? "Switching…" : "Set as active"}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })
           )}
         </>
       )}
