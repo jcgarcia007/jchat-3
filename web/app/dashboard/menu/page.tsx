@@ -2617,6 +2617,8 @@ export default function MenuPage() {
   const [savingMode, setSavingMode] = useState(false);
   const [cardEffect, setCardEffect] = useState<string>("lift");
   const [savingEffect, setSavingEffect] = useState(false);
+  const [menuTemplate, setMenuTemplate] = useState<string>("bottom-nav");
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2670,6 +2672,7 @@ export default function MenuPage() {
       setExternalMenuUrl(extUrl);
       setUrlInput(extUrl);
       setCardEffect((res.business as unknown as { menu_card_effect?: string }).menu_card_effect ?? "lift");
+      setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "bottom-nav");
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
 
       const [catsResult, itemsResult] = await Promise.all([
@@ -2960,6 +2963,27 @@ export default function MenuPage() {
         setError("Error al guardar el efecto.");
       } finally {
         setSavingEffect(false);
+      }
+    },
+    [businessId],
+  );
+
+  const handleSaveTemplate = useCallback(
+    async (tpl: string) => {
+      if (!isSupabaseConfigured || !businessId) return;
+      setSavingTemplate(true);
+      try {
+        const { error: err } = await supabase
+          .from("businesses")
+          .update({ menu_template_id: tpl } as never)
+          .eq("id", businessId);
+        if (err) throw err;
+        setMenuTemplate(tpl);
+        setSuccess("Plantilla guardada.");
+      } catch {
+        setError("Error al guardar la plantilla.");
+      } finally {
+        setSavingTemplate(false);
       }
     },
     [businessId],
@@ -3617,6 +3641,110 @@ export default function MenuPage() {
           )}
         </div>
       </div>
+
+      {/* ── Plantilla de menú ──────────────────────────────────────────────── */}
+      {menuMode === "web" && (
+        <div
+          style={{
+            background: "var(--db-bg-card)",
+            border: "1px solid var(--db-border)",
+            borderRadius: 12,
+            padding: "20px 24px",
+            marginBottom: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            Plantilla de menú
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
+            Elige cómo navegan tus clientes tu menú web. Cada plantilla cambia la
+            estructura, las categorías y la forma de explorar los platillos.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 8,
+            }}
+          >
+            {([
+              { id: "bottom-nav",      name: "Barra inferior",        desc: "Pestañas abajo + cuadrícula",  emoji: "📱" },
+              { id: "left-drawer",     name: "Cajón lateral",         desc: "Menú hamburguesa",             emoji: "☰" },
+              { id: "icon-rail",       name: "Riel de iconos",        desc: "Categorías al lado del pulgar", emoji: "🎚️" },
+              { id: "sticky-tabs",     name: "Pestañas fijas",        desc: "Una página con scroll-spy",    emoji: "📑" },
+              { id: "category-sidebar",name: "Barra de categorías",   desc: "Dos paneles paralelos",        emoji: "🗂️" },
+              { id: "fullscreen-type", name: "Tipográfico",           desc: "Índice editorial a pantalla",  emoji: "🅰️" },
+              { id: "glass-chips",     name: "Chips de cristal",      desc: "Fotos con chrome esmerilado",  emoji: "🫧" },
+              { id: "infinite-feed",   name: "Feed infinito",         desc: "Sin categorías, todo scroll",  emoji: "♾️" },
+              { id: "carousel",        name: "Carrusel",              desc: "Un platillo a la vez",         emoji: "🎠" },
+              { id: "masonry-search",  name: "Mosaico + búsqueda",    desc: "Descubrir buscando",           emoji: "🔎" },
+              { id: "magazine",        name: "Revista",               desc: "Portada y artículos",          emoji: "📰" },
+              { id: "store-sections",  name: "Secciones tipo tienda", desc: "Tarjetas grandes por categoría", emoji: "🏬" },
+              { id: "streaming-rows",  name: "Filas de streaming",    desc: "Estanterías horizontales",     emoji: "🎬" },
+              { id: "timeline",        name: "Línea de tiempo",       desc: "Menú por horario",             emoji: "⏱️" },
+              { id: "stories",         name: "Historias",             desc: "Estilo stories a pantalla",    emoji: "⭕" },
+              { id: "gesture",         name: "Gestos",                desc: "Navegación por deslizar",      emoji: "👆" },
+              { id: "card-stack",      name: "Baraja",                desc: "Deslizar para elegir",         emoji: "🃏" },
+              { id: "ai-personalized", name: "IA personalizada",      desc: "Se reordena por cliente",      emoji: "🤖" },
+              { id: "immersive",       name: "Inmersivo",             desc: "Cada platillo a pantalla completa", emoji: "🖼️" },
+              { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
+            ] as const).map((opt) => {
+              const active = menuTemplate === opt.id;
+              return (
+                <label
+                  key={opt.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `2px solid ${active ? "var(--db-accent)" : "var(--db-border)"}`,
+                    background: active ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
+                    cursor: savingTemplate ? "wait" : "pointer",
+                    transition: "border-color 0.15s",
+                    opacity: savingTemplate && !active ? 0.7 : 1,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="menu_template"
+                    value={opt.id}
+                    checked={active}
+                    disabled={savingTemplate}
+                    onChange={() => void handleSaveTemplate(opt.id)}
+                    style={{ accentColor: "var(--db-accent)", width: 15, height: 15, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{opt.emoji}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--db-text-primary)" }}>
+                      {opt.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--db-text-secondary)" }}>
+                      {opt.desc}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          {bizSlug && (
+            <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
+              <a
+                href={`/m/${bizSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
+              >
+                Ver menú público →
+              </a>
+              {" "}para ver la plantilla aplicada.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Efecto de tarjetas ─────────────────────────────────────────────── */}
       {menuMode === "web" && (

@@ -326,6 +326,7 @@ export type Database = {
           menu_card_effect: string
           menu_enabled: boolean
           menu_mode: string
+          menu_template_id: string
           name: string
           owner_id: string
           payout_frequency: string
@@ -371,6 +372,7 @@ export type Database = {
           menu_card_effect?: string
           menu_enabled?: boolean
           menu_mode?: string
+          menu_template_id?: string
           name: string
           owner_id: string
           payout_frequency?: string
@@ -416,6 +418,7 @@ export type Database = {
           menu_card_effect?: string
           menu_enabled?: boolean
           menu_mode?: string
+          menu_template_id?: string
           name?: string
           owner_id?: string
           payout_frequency?: string
