@@ -76,7 +76,8 @@ export async function getUsageAndLimits(): Promise<UsageAndLimits | null> {
     const { count, error } = await supabase
       .from("businesses")
       .select("id", { count: "exact", head: true })
-      .eq("owner_id", user.id);
+      .eq("owner_id", user.id)
+      .eq("is_temporary", false);
     if (error) throw error;
     businessesUsed = count ?? 0;
   } catch (e) {
@@ -87,9 +88,10 @@ export async function getUsageAndLimits(): Promise<UsageAndLimits | null> {
   let eventsUsed = 0;
   try {
     const { count, error } = await supabase
-      .from("events")
+      .from("businesses")
       .select("id", { count: "exact", head: true })
-      .eq("owner_id", user.id);
+      .eq("owner_id", user.id)
+      .eq("is_temporary", true);
     if (error) throw error;
     eventsUsed = count ?? 0;
   } catch (e) {

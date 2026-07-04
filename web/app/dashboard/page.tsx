@@ -160,6 +160,16 @@ function ContactUsCard({ resource }: { resource: "business" | "event" }) {
   );
 }
 
+// Derive an event's status from its validity window (event = temporary business).
+function eventStatus(startsAt: string | null, endsAt: string | null): string {
+  const now = Date.now();
+  const s = startsAt ? new Date(startsAt).getTime() : null;
+  const e = endsAt ? new Date(endsAt).getTime() : null;
+  if (s && now < s) return "upcoming";
+  if (e && now > e) return "ended";
+  return "live";
+}
+
 export default function OverviewPage() {
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
@@ -344,21 +354,19 @@ export default function OverviewPage() {
             events.map((e) => (
               <section key={e.id} style={{ ...CARD, marginBottom: "12px" }}>
                 <span style={ICON_BOX}>
-                  {e.icon_emoji ? e.icon_emoji : <IconCalendarEvent size={26} />}
+                  <IconCalendarEvent size={26} />
                 </span>
                 <div style={{ flex: 1, minWidth: "200px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
                     <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
                       {e.name}
                     </h3>
-                    <StatusBadge status={e.status} />
-                    {e.category && (
-                      <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{e.category}</span>
-                    )}
+                    <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
                   </div>
                   <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
                     <IconMapPin size={13} />
-                    {new Date(e.starts_at).toLocaleString()}
+                    {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "No start date"}
+                    {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
                   </p>
                 </div>
               </section>
