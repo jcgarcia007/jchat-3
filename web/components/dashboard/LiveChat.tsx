@@ -91,6 +91,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
         await loadMessages();
 
         // Same channel name as the mobile ChatRoomScreen so web ↔ mobile stay in sync.
+        if (!active) return;
         channelRef.current = supabase
           .channel(`room-messages:${roomId}`)
           .on(
@@ -109,7 +110,10 @@ export function LiveChat({ roomId }: { roomId: string }) {
     })();
     return () => {
       active = false;
-      if (channelRef.current) void supabase.removeChannel(channelRef.current);
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [roomId, loadMessages]);
 
