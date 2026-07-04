@@ -8,10 +8,11 @@
  *            → redirects to /business/verify
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconBuilding,
+  IconCalendarEvent,
   IconMapPin,
   IconClock,
   IconBrandStripe,
@@ -24,7 +25,6 @@ import {
   IconWorld,
   IconAlertCircle,
   IconUpload,
-  IconCalendarEvent,
   IconMail,
   IconArrowLeft,
 } from "@tabler/icons-react";
@@ -69,12 +69,9 @@ interface WizardData {
   hours: HoursMap;
   // Step 4 — Stripe
   stripe_account_id: string; // set after Stripe redirect (stub)
-  // Step 5 — Opening event (optional)
-  create_event: boolean;
-  event_name: string;
+  // Event mode (?type=event) — validity window for a temporary business
   event_starts_at: string; // datetime-local value
-  event_ends_at: string;   // datetime-local value
-  event_description: string;
+  event_ends_at: string;
 }
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
@@ -125,11 +122,8 @@ const INITIAL_DATA: WizardData = {
   website: "",
   hours: DEFAULT_HOURS,
   stripe_account_id: "",
-  create_event: false,
-  event_name: "",
   event_starts_at: "",
   event_ends_at: "",
-  event_description: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -908,10 +902,8 @@ function StepStripe({
   );
 }
 
-// ─── Validation ───────────────────────────────────────────────────────────────
-
-/** Step 5 — Opening event (optional) */
-function StepEvent({
+/** Event mode — validity window for the temporary business. */
+function StepEventDates({
   data,
   onChange,
   errors,
@@ -922,111 +914,58 @@ function StepEvent({
 }) {
   return (
     <div>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          cursor: "pointer",
-        }}
-      >
+      <div style={S.field()}>
+        <label style={S.label}>Event start *</label>
         <input
-          type="checkbox"
-          checked={data.create_event}
-          onChange={(e) => onChange({ create_event: e.target.checked })}
-          style={{ width: 18, height: 18, accentColor: "var(--color-brand)" }}
+          type="datetime-local"
+          style={{ ...S.input, ...(errors.event_starts_at ? S.inputError : {}) }}
+          value={data.event_starts_at}
+          onChange={(e) => onChange({ event_starts_at: e.target.value })}
         />
-        <span style={{ fontSize: "14px", color: "var(--text-primary)", fontWeight: 600 }}>
-          Create an opening event for this venue
-        </span>
-      </label>
-      <p
-        style={{
-          fontSize: "12px",
-          color: "var(--text-tertiary)",
-          margin: "6px 0 0 28px",
-        }}
-      >
-        We&apos;ll add it to the map and auto-create a dedicated chat room that
-        closes automatically when the event ends.
-      </p>
-
-      {data.create_event && (
-        <div style={{ marginTop: "20px" }}>
-          <div style={S.field()}>
-            <label style={S.label}>Event Name *</label>
-            <input
-              style={{ ...S.input, ...(errors.event_name ? S.inputError : {}) }}
-              value={data.event_name}
-              onChange={(e) => onChange({ event_name: e.target.value })}
-              placeholder="e.g. Grand Opening Night"
-              maxLength={100}
-            />
-            {errors.event_name && (
-              <p style={S.errorMsg}>
-                <IconAlertCircle size={12} /> {errors.event_name}
-              </p>
-            )}
-          </div>
-
-          <div style={S.row}>
-            <div style={S.field()}>
-              <label style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}>
-                <IconCalendarEvent size={14} /> Starts *
-              </label>
-              <input
-                type="datetime-local"
-                style={{ ...S.input, ...(errors.event_starts_at ? S.inputError : {}) }}
-                value={data.event_starts_at}
-                onChange={(e) => onChange({ event_starts_at: e.target.value })}
-              />
-              {errors.event_starts_at && (
-                <p style={S.errorMsg}>
-                  <IconAlertCircle size={12} /> {errors.event_starts_at}
-                </p>
-              )}
-            </div>
-            <div style={S.field()}>
-              <label style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}>
-                <IconCalendarEvent size={14} /> Ends
-              </label>
-              <input
-                type="datetime-local"
-                style={{ ...S.input, ...(errors.event_ends_at ? S.inputError : {}) }}
-                value={data.event_ends_at}
-                onChange={(e) => onChange({ event_ends_at: e.target.value })}
-              />
-              {errors.event_ends_at && (
-                <p style={S.errorMsg}>
-                  <IconAlertCircle size={12} /> {errors.event_ends_at}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div style={S.field()}>
-            <label style={S.label}>Description</label>
-            <textarea
-              style={{ ...S.input, ...S.textarea }}
-              value={data.event_description}
-              onChange={(e) => onChange({ event_description: e.target.value })}
-              placeholder="What's happening at the event?"
-              maxLength={500}
-            />
-          </div>
-        </div>
-      )}
+        {errors.event_starts_at && (
+          <p style={S.errorMsg}>
+            <IconAlertCircle size={12} /> {errors.event_starts_at}
+          </p>
+        )}
+      </div>
+      <div style={S.field()}>
+        <label style={S.label}>Event end *</label>
+        <input
+          type="datetime-local"
+          style={{ ...S.input, ...(errors.event_ends_at ? S.inputError : {}) }}
+          value={data.event_ends_at}
+          onChange={(e) => onChange({ event_ends_at: e.target.value })}
+        />
+        {errors.event_ends_at && (
+          <p style={S.errorMsg}>
+            <IconAlertCircle size={12} /> {errors.event_ends_at}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-function validateStep(step: number, data: WizardData): Record<string, string> {
+// ─── Validation ───────────────────────────────────────────────────────────────
+
+function validateStep(key: StepKey, data: WizardData): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (step === 1) {
+  if (key === "info") {
     if (!data.name.trim()) errors.name = "Business name is required.";
     if (!data.category) errors.category = "Please select a category.";
   }
-  if (step === 2) {
+  if (key === "dates") {
+    if (!data.event_starts_at) errors.event_starts_at = "Event start is required.";
+    if (!data.event_ends_at) errors.event_ends_at = "Event end is required.";
+    if (
+      data.event_starts_at &&
+      data.event_ends_at &&
+      new Date(data.event_ends_at) <= new Date(data.event_starts_at)
+    ) {
+      errors.event_ends_at = "End must be after start.";
+    }
+  }
+  if (key === "location") {
     if (!data.address.trim()) errors.address = "Address is required.";
     if (!data.phone.trim()) errors.phone = "Phone number is required.";
     if (data.lat !== "" && isNaN(parseFloat(data.lat)))
@@ -1036,32 +975,33 @@ function validateStep(step: number, data: WizardData): Record<string, string> {
     if (data.radius_m !== "" && (isNaN(parseInt(data.radius_m)) || parseInt(data.radius_m) < 10))
       errors.radius_m = "Radius must be at least 10 m.";
   }
-  // Steps 3 and 4 have no hard required fields — hours defaults are valid.
-  if (step === 5 && data.create_event) {
-    if (!data.event_name.trim()) errors.event_name = "Event name is required.";
-    if (!data.event_starts_at) errors.event_starts_at = "Start date/time is required.";
-    if (
-      data.event_ends_at &&
-      data.event_starts_at &&
-      new Date(data.event_ends_at) <= new Date(data.event_starts_at)
-    ) {
-      errors.event_ends_at = "End must be after the start.";
-    }
-  }
+  // "hours" and "stripe" have no hard required fields.
   return errors;
 }
 
 // ─── Step header ──────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { number: 1, label: "Info",     icon: IconBuilding },
-  { number: 2, label: "Location", icon: IconMapPin },
-  { number: 3, label: "Hours",    icon: IconClock },
-  { number: 4, label: "Stripe",   icon: IconBrandStripe },
-  { number: 5, label: "Event",    icon: IconCalendarEvent },
-];
+type StepKey = "info" | "dates" | "location" | "hours" | "stripe";
 
-function StepBar({ current }: { current: number }) {
+interface StepDef {
+  key: StepKey;
+  label: string;
+  icon: typeof IconBuilding;
+  title: string;
+}
+
+const STEP_DEFS: Record<StepKey, StepDef> = {
+  info:     { key: "info",     label: "Info",     icon: IconBuilding,      title: "Tell us about your business" },
+  dates:    { key: "dates",    label: "Dates",    icon: IconCalendarEvent, title: "When is your event?" },
+  location: { key: "location", label: "Location", icon: IconMapPin,        title: "Where are you located?" },
+  hours:    { key: "hours",    label: "Hours",    icon: IconClock,         title: "When are you open?" },
+  stripe:   { key: "stripe",   label: "Stripe",   icon: IconBrandStripe,   title: "Set up payments" },
+};
+
+const BUSINESS_STEPS: StepDef[] = [STEP_DEFS.info, STEP_DEFS.location, STEP_DEFS.hours, STEP_DEFS.stripe];
+const EVENT_STEPS: StepDef[] = [STEP_DEFS.info, STEP_DEFS.dates, STEP_DEFS.location, STEP_DEFS.hours, STEP_DEFS.stripe];
+
+function StepBar({ steps, current }: { steps: StepDef[]; current: number }) {
   return (
     <div
       style={{
@@ -1071,14 +1011,15 @@ function StepBar({ current }: { current: number }) {
         gap: 0,
       }}
     >
-      {STEPS.map((s, idx) => {
-        const done = current > s.number;
-        const active = current === s.number;
+      {steps.map((s, idx) => {
+        const stepNum = idx + 1;
+        const done = current > stepNum;
+        const active = current === stepNum;
         const Icon = s.icon;
         return (
           <div
-            key={s.number}
-            style={{ display: "flex", alignItems: "center", flex: idx < STEPS.length - 1 ? 1 : undefined }}
+            key={s.key}
+            style={{ display: "flex", alignItems: "center", flex: idx < steps.length - 1 ? 1 : undefined }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div
@@ -1127,7 +1068,7 @@ function StepBar({ current }: { current: number }) {
                 {s.label}
               </span>
             </div>
-            {idx < STEPS.length - 1 && (
+            {idx < steps.length - 1 && (
               <div
                 style={{
                   flex: 1,
@@ -1158,8 +1099,10 @@ function friendlyError(msg: string): string {
   return msg;
 }
 
-export default function BusinessRegisterPage() {
+function BusinessRegisterWizard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEventMode = searchParams.get("type") === "event";
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(INITIAL_DATA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1167,6 +1110,15 @@ export default function BusinessRegisterPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [usageLoaded, setUsageLoaded] = useState(false);
+
+  // Step flow depends on the mode: events get an extra "Dates" step.
+  const steps = useMemo<StepDef[]>(
+    () => (isEventMode ? EVENT_STEPS : BUSINESS_STEPS),
+    [isEventMode],
+  );
+  const currentStep = steps[step - 1];
+  // Which plan resource gates this flow (events vs businesses).
+  const limitInfo = usage ? (isEventMode ? usage.events : usage.businesses) : null;
 
   // Require an authenticated session to register a business (RLS: owner insert
   // checks auth.uid() = owner_id). Redirect to login if signed out.
@@ -1196,7 +1148,7 @@ export default function BusinessRegisterPage() {
   }
 
   function handleNext() {
-    const errs = validateStep(step, data);
+    const errs = validateStep(currentStep.key, data);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -1211,12 +1163,6 @@ export default function BusinessRegisterPage() {
   }
 
   async function handleFinish() {
-    // Validate the optional event step before submitting.
-    const errs = validateStep(5, data);
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
     setErrors({});
     setSubmitting(true);
     setSubmitError(null);
@@ -1285,6 +1231,15 @@ export default function BusinessRegisterPage() {
           hours: data.hours as unknown as Json,
           status: "pending_verification",
           plan: "free",
+          is_temporary: isEventMode,
+          event_starts_at:
+            isEventMode && data.event_starts_at
+              ? new Date(data.event_starts_at).toISOString()
+              : null,
+          event_ends_at:
+            isEventMode && data.event_ends_at
+              ? new Date(data.event_ends_at).toISOString()
+              : null,
           stripe_account_id: data.stripe_account_id || null,
         })
         .select("id")
@@ -1309,52 +1264,7 @@ export default function BusinessRegisterPage() {
         console.error("Failed to create Main Room:", roomError.message);
       }
 
-      // 3) Optional opening event + its dedicated TTL chat room
-      if (data.create_event && data.event_name.trim() && data.event_starts_at) {
-        const startsAtIso = new Date(data.event_starts_at).toISOString();
-        const endsAtIso = data.event_ends_at
-          ? new Date(data.event_ends_at).toISOString()
-          : null;
-        // TTL = hours from now until the event ends (room auto-closes after).
-        const ttlHours = endsAtIso
-          ? Math.max(
-              1,
-              Math.ceil((new Date(endsAtIso).getTime() - Date.now()) / 3_600_000)
-            )
-          : null;
-
-        const { data: eventRoom, error: eventRoomError } = await supabase
-          .from("rooms")
-          .insert({
-            business_id: businessId,
-            name: data.event_name.trim(),
-            is_main: false,
-            chat_theme_id: 1,
-            slug: `${slug}-event-${Date.now().toString(36)}`,
-            ttl_hours: ttlHours,
-          })
-          .select("id")
-          .single();
-        if (eventRoomError) {
-          console.error("Failed to create event room:", eventRoomError.message);
-        }
-
-        const { error: eventError } = await supabase.from("events").insert({
-          owner_id: user.id,
-          business_id: businessId,
-          name: data.event_name.trim(),
-          description: data.event_description.trim() || null,
-          starts_at: startsAtIso,
-          ends_at: endsAtIso,
-          room_id: eventRoom?.id ?? null,
-          status: "upcoming",
-        });
-        if (eventError) {
-          console.error("Failed to create event:", eventError.message);
-        }
-      }
-
-      // 4) Redirect to verification with the real business UUID
+      // 3) Redirect to verification with the real business UUID
       router.push(`/business/verify?id=${businessId}`);
     } catch (err) {
       setSubmitError(
@@ -1364,19 +1274,11 @@ export default function BusinessRegisterPage() {
     }
   }
 
-  const stepTitles: Record<number, string> = {
-    1: "Tell us about your business",
-    2: "Where are you located?",
-    3: "When are you open?",
-    4: "Set up payments",
-    5: "Add an opening event",
-  };
-
-  // Plan limit gate (UX): if the user has hit their business limit, show a
-  // banner instead of the wizard. The DB trigger is the real lock; this just
-  // avoids letting them fill the whole form only to fail on submit. When usage
-  // is null (demo/no session) or still loading, the wizard renders as before.
-  if (usageLoaded && usage !== null && !usage.businesses.canCreate) {
+  // Plan limit gate (UX): if the user has hit the relevant limit (events in
+  // event mode, businesses otherwise), show a banner instead of the wizard.
+  // The DB trigger is the real lock; when usage is null (demo/no session) or
+  // still loading, the wizard renders as before.
+  if (usageLoaded && limitInfo !== null && !limitInfo.canCreate) {
     return (
       <div
         style={{
@@ -1421,7 +1323,7 @@ export default function BusinessRegisterPage() {
                 margin: "0 0 8px",
               }}
             >
-              Business limit reached
+              {isEventMode ? "Event limit reached" : "Business limit reached"}
             </h1>
             <p
               style={{
@@ -1431,9 +1333,9 @@ export default function BusinessRegisterPage() {
                 lineHeight: 1.5,
               }}
             >
-              Your current plan allows {usage.businesses.limit} business(es) and you
-              already have {usage.businesses.used}. Upgrade or request a custom plan
-              to add more.
+              Your current plan allows {limitInfo.limit}{" "}
+              {isEventMode ? "event(s)" : "business(es)"} and you already have{" "}
+              {limitInfo.used}. Upgrade or request a custom plan to add more.
             </p>
             <div
               style={{
@@ -1488,7 +1390,11 @@ export default function BusinessRegisterPage() {
               marginBottom: "14px",
             }}
           >
-            <IconBuilding size={24} color="var(--color-brand)" />
+            {isEventMode ? (
+              <IconCalendarEvent size={24} color="var(--color-brand)" />
+            ) : (
+              <IconBuilding size={24} color="var(--color-brand)" />
+            )}
           </div>
           <h1
             style={{
@@ -1498,15 +1404,17 @@ export default function BusinessRegisterPage() {
               margin: "0 0 6px",
             }}
           >
-            Register your business
+            {isEventMode ? "Create your event" : "Register your business"}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
-            Complete all steps to get listed on JChat.
+            {isEventMode
+              ? "Set up your temporary event — it works just like a business."
+              : "Complete all steps to get listed on JChat."}
           </p>
         </div>
 
         {/* Step indicator */}
-        <StepBar current={step} />
+        <StepBar steps={steps} current={step} />
 
         {/* Card */}
         <div
@@ -1525,27 +1433,27 @@ export default function BusinessRegisterPage() {
               margin: "0 0 20px",
             }}
           >
-            {stepTitles[step]}
+            {currentStep.title}
           </h2>
 
-          {/* Step content */}
-          {step === 1 && (
+          {/* Step content (rendered by the current step's key, order-agnostic) */}
+          {currentStep.key === "info" && (
             <StepInfo data={data} onChange={patch} errors={errors} />
           )}
-          {step === 2 && (
+          {currentStep.key === "dates" && (
+            <StepEventDates data={data} onChange={patch} errors={errors} />
+          )}
+          {currentStep.key === "location" && (
             <StepLocation data={data} onChange={patch} errors={errors} />
           )}
-          {step === 3 && (
+          {currentStep.key === "hours" && (
             <StepHours data={data} onChange={patch} />
           )}
-          {step === 4 && (
+          {currentStep.key === "stripe" && (
             <StepStripe
               data={data}
               onConnected={(accountId) => patch({ stripe_account_id: accountId })}
             />
-          )}
-          {step === 5 && (
-            <StepEvent data={data} onChange={patch} errors={errors} />
           )}
 
           {/* Global submit error */}
@@ -1583,7 +1491,7 @@ export default function BusinessRegisterPage() {
             {/* Back / Cancel */}
             {step === 1 ? (
               <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>
-                Step {step} of {STEPS.length}
+                Step {step} of {steps.length}
               </span>
             ) : (
               <button
@@ -1598,7 +1506,7 @@ export default function BusinessRegisterPage() {
             )}
 
             {/* Continue / Finish */}
-            {step < STEPS.length ? (
+            {step < steps.length ? (
               <button
                 type="button"
                 onClick={handleNext}
@@ -1618,7 +1526,13 @@ export default function BusinessRegisterPage() {
                   cursor: submitting ? "wait" : "pointer",
                 }}
               >
-                {submitting ? "Registering…" : "Complete Registration"}
+                {submitting
+                  ? isEventMode
+                    ? "Creating…"
+                    : "Registering…"
+                  : isEventMode
+                    ? "Create event"
+                    : "Complete Registration"}
                 {!submitting && <IconCheck size={15} />}
               </button>
             )}
@@ -1645,5 +1559,13 @@ export default function BusinessRegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function BusinessRegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <BusinessRegisterWizard />
+    </Suspense>
   );
 }
