@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/tokens/base.css">
+  <link rel="stylesheet" href="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/styles.css">
+  <script src="_ds/jchat-design-system-e950f031-1a9d-4162-90d4-d0edf55a2492/_ds_bundle.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Space+Grotesk:wght@400;500;700&display=swap">
+  <script>window.imgErr = function () {};</script>
+  <style>
+    body { margin: 0; background: #F7F8FA; }
+    [data-scroll] { scrollbar-width: none; }
+    [data-scroll]::-webkit-scrollbar { display: none; }
+    @keyframes jc-blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+    @keyframes jc-up { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  </style>
+</helmet>
+
+<div style="width:2760px;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,system-ui,sans-serif;color:#1A1A2E">
+
+  <!-- ============ BOARD HEADER ============ -->
+  <div style="background:#0D1B3E;padding:64px 64px 56px;display:flex;align-items:flex-end;justify-content:space-between;gap:40px">
+    <div style="display:flex;flex-direction:column;gap:14px;max-width:1400px">
+      <div style="font-size:12px;font-weight:900;letter-spacing:3px;color:#378ADD">JCHAT DESIGN EXPLORATION · MOBILE COMMERCE</div>
+      <div style="font-size:52px;font-weight:500;letter-spacing:-1.5px;color:#FFFFFF;line-height:1.05">20 mobile menu systems.<br>20 navigation philosophies.</div>
+      <div style="font-size:16px;line-height:1.6;color:rgba(255,255,255,.62);max-width:980px">An inspiration library for businesses that sell through an app — restaurants, cafés, bars, food trucks, bakeries, ice-cream shops, hotels, stadiums, cinemas. Each concept changes the information architecture, category model, product layout, cart behavior and gesture language — not just the visual theme.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;flex-shrink:0">
+      <div style="display:flex;gap:8px">
+        <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border:0.5px solid rgba(255,255,255,.22);padding:6px 12px;border-radius:999px">NAVIGATION</span>
+        <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border:0.5px solid rgba(255,255,255,.22);padding:6px 12px;border-radius:999px">CATEGORIES</span>
+        <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border:0.5px solid rgba(255,255,255,.22);padding:6px 12px;border-radius:999px">LAYOUT</span>
+        <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border:0.5px solid rgba(255,255,255,.22);padding:6px 12px;border-radius:999px">CART</span>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);max-width:360px;text-align:right">Everything is live — tap a category to filter, ♡ to favorite, “+” to add, the cart icon to open it, ⌕ to search. Screens scroll.</div>
+      <button onClick="{{ reset }}" style="margin-top:2px;background:rgba(255,255,255,.1);border:0.5px solid rgba(255,255,255,.28);color:#fff;font-size:11px;font-weight:900;letter-spacing:1.5px;padding:9px 16px;border-radius:999px;cursor:pointer">↺ RESET DEMO STATE</button>
+    </div>
+  </div>
+
+  <!-- ============ GRID ============ -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:40px;padding:56px 64px">
+
+    <!-- ================= 01 · TRADITIONAL BOTTOM NAV ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">01</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Traditional Bottom Navigation</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">The safe default, executed perfectly. Five persistent destinations in a tab bar, categories as scrollable chips, a two-column grid. Zero learning curve — every thumb already knows this map.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TAB BAR</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SCROLLING CHIPS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">2-COL GRID</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART TAB BADGE</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#F7F8FA">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#101323;border-radius:14px;z-index:60"></div>
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#0D1B3E"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 0">
+            <div>
+              <div style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:#9CA3AF">DELIVER TO</div>
+              <div style="font-size:15px;font-weight:600;color:#0D1B3E">Court St · Brooklyn ▾</div>
+            </div>
+            <div style="position:relative;width:38px;height:38px;border-radius:999px;background:#fff;border:0.5px solid #E0E2E7;display:flex;align-items:center;justify-content:center;font-size:16px;color:#0D1B3E">◌<span style="position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:99px;background:#E0353F"></span></div>
+          </div>
+          <div onClick="{{ c1.openSearch }}" style="margin:12px 20px 0;display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid #E0E2E7;border-radius:12px;padding:11px 14px;font-size:13px;color:#9CA3AF;cursor:pointer"><span style="font-weight:700;color:#6B7280">⌕</span> Search burgers, sides, shakes…</div>
+          <div data-scroll style="display:flex;gap:8px;overflow-x:auto;padding:12px 20px 4px">
+            <sc-for list="{{ c1.cats }}" as="cat" hint-placeholder-count="4">
+              <span onClick="{{ cat.onClick }}" style="{{ cat.style }}">{{ cat.emoji }} {{ cat.label }}</span>
+            </sc-for>
+          </div>
+          <div data-scroll style="position:absolute;top:222px;bottom:76px;left:0;right:0;overflow-y:auto;padding:8px 20px 20px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <sc-for list="{{ c1.items }}" as="item" hint-placeholder-count="4">
+                <div style="background:#fff;border:0.5px solid #E0E2E7;border-radius:16px;overflow:hidden;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+                  <div style="position:relative;height:104px;background:#EEF0F4">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;object-fit:cover;display:block" alt="{{ item.n }}">
+                    <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                    <span style="position:absolute;bottom:7px;left:7px;background:rgba(255,255,255,.92);border-radius:99px;font-size:10px;font-weight:700;color:#0D1B3E;padding:3px 7px">★ {{ item.r }}</span>
+                  </div>
+                  <div style="padding:10px 10px 12px;display:flex;flex-direction:column;gap:4px">
+                    <div style="font-size:13px;font-weight:600;color:#0D1B3E">{{ item.n }}</div>
+                    <div style="font-size:10.5px;line-height:1.35;color:#9CA3AF;height:28px;overflow:hidden">{{ item.d }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+                      <span style="font-size:14px;font-weight:700;color:#0D1B3E">{{ item.p }}</span>
+                      <button onClick="{{ item.add }}" style="width:30px;height:30px;border-radius:99px;background:#0D1B3E;color:#fff;border:none;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:76px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-top:0.5px solid #E0E2E7;display:flex;align-items:flex-start;padding-top:12px">
+            <div style="flex:1;text-align:center;color:#0D1B3E"><div style="font-size:18px;font-weight:700">⌂</div><div style="font-size:9px;font-weight:900;letter-spacing:0.5px">HOME</div></div>
+            <div onClick="{{ c1.openSearch }}" style="flex:1;text-align:center;color:#9CA3AF;cursor:pointer"><div style="font-size:18px;font-weight:700">⌕</div><div style="font-size:9px;font-weight:900;letter-spacing:0.5px">SEARCH</div></div>
+            <div style="flex:1;text-align:center;color:#9CA3AF"><div style="font-size:18px;font-weight:700">▦</div><div style="font-size:9px;font-weight:900;letter-spacing:0.5px">MENU</div></div>
+            <div onClick="{{ c1.openCart }}" style="flex:1;text-align:center;color:#9CA3AF;position:relative;cursor:pointer"><div style="font-size:18px;font-weight:700">◇</div><div style="font-size:9px;font-weight:900;letter-spacing:0.5px">CART</div><span style="position:absolute;top:-5px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:99px;background:#E0353F;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px">{{ c1.count }}</span></div>
+            <div style="flex:1;text-align:center;color:#9CA3AF"><div style="font-size:18px;font-weight:700">◎</div><div style="font-size:9px;font-weight:900;letter-spacing:0.5px">PROFILE</div></div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c1.open }}" mode="{{ c1.mode }}" items="{{ c1.overlayItems }}" query="{{ c1.query }}" on-search="{{ c1.onSearch }}" on-close="{{ c1.close }}" img-err="{{ imgErr }}" count="{{ c1.count }}" total="{{ c1.total }}" cta="{{ c1.cta }}" bg="{{ c1.theme.bg }}" text="{{ c1.theme.text }}" muted="{{ c1.theme.muted }}" card="{{ c1.theme.card }}" border="{{ c1.theme.border }}" accent="{{ c1.theme.accent }}" on-accent="{{ c1.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 02 · LEFT DRAWER ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">02</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Left Drawer Navigation</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Material-school hamburger drawer: the entire IA lives in one edge-swipe panel with item counts, so the menu itself stays a clean, dense list. Shown mid-gesture with the content dimmed behind.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">HAMBURGER DRAWER</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">VERTICAL LIST + COUNTS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">DENSE ROWS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TOP ICON CART</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FAF7F2">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#3C2A21"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px">
+            <span style="font-size:20px;font-weight:700;color:#3C2A21">☰&nbsp;&nbsp;<span style="font-weight:800;letter-spacing:-0.5px">Forno</span></span>
+            <div onClick="{{ c2.openCart }}" style="position:relative;width:38px;height:38px;border-radius:999px;background:#fff;border:0.5px solid #E7DFD3;display:flex;align-items:center;justify-content:center;font-size:16px;color:#3C2A21;cursor:pointer">◇<span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:#C2371F;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px;z-index:70">{{ c2.count }}</span></div>
+          </div>
+          <div data-scroll style="position:absolute;top:118px;bottom:0;left:0;right:0;overflow-y:auto;padding:0 16px 20px">
+            <sc-for list="{{ c2.items }}" as="item" hint-placeholder-count="5">
+              <div style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #E7DFD3;border-radius:14px;padding:10px;margin-bottom:10px">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:62px;height:62px;border-radius:10px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13.5px;font-weight:700;color:#3C2A21">{{ item.n }}</span><span style="font-size:11px;color:#C99B3F">★ {{ item.r }}</span></div>
+                  <div style="font-size:10.5px;color:#9C8E7B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                  <div style="font-size:13px;font-weight:800;color:#C2371F;margin-top:3px">{{ item.p }}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                  <span onClick="{{ item.favToggle }}" style="font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                  <button onClick="{{ item.add }}" style="width:32px;height:32px;border-radius:10px;background:#C2371F;color:#fff;border:none;font-size:17px;font-weight:700;cursor:pointer">+</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(30,15,8,.45);z-index:30"></div>
+          <div style="position:absolute;top:0;bottom:0;left:0;width:238px;background:#5E1A0E;z-index:40;padding:52px 0 20px;display:flex;flex-direction:column;box-shadow:8px 0 32px rgba(30,15,8,.4)">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 20px 18px;border-bottom:0.5px solid rgba(255,255,255,.14)">
+              <div style="width:42px;height:42px;border-radius:99px;background:linear-gradient(135deg,#E8814D,#C2371F);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff">M</div>
+              <div><div style="font-size:14px;font-weight:700;color:#fff">Ciao, Marco</div><div style="font-size:10px;color:rgba(255,255,255,.55)">Gold member · 240 pts</div></div>
+            </div>
+            <div style="padding:14px 12px;display:flex;flex-direction:column;gap:4px">
+              <sc-for list="{{ c2.cats }}" as="cat" hint-placeholder-count="3">
+                <div onClick="{{ cat.onClick }}" style="{{ cat.style }}"><span>{{ cat.emoji }}&nbsp; {{ cat.label }}</span><span style="font-size:10px;opacity:.7">{{ cat.count }}</span></div>
+              </sc-for>
+              <div style="height:0.5px;background:rgba(255,255,255,.14);margin:8px 12px"></div>
+              <div onClick="{{ c2.openSearch }}" style="padding:11px 12px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75);cursor:pointer">⌕&nbsp; Search</div>
+              <div style="padding:11px 12px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75)">♡&nbsp; Preferiti</div>
+              <div style="padding:11px 12px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75)">◎&nbsp; Profilo</div>
+            </div>
+            <div style="margin-top:auto;padding:0 20px;font-size:10px;color:rgba(255,255,255,.45)">Wood-fired since 1962 · Min. order €12</div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c2.open }}" mode="{{ c2.mode }}" items="{{ c2.overlayItems }}" query="{{ c2.query }}" on-search="{{ c2.onSearch }}" on-close="{{ c2.close }}" img-err="{{ imgErr }}" count="{{ c2.count }}" total="{{ c2.total }}" cta="{{ c2.cta }}" bg="{{ c2.theme.bg }}" text="{{ c2.theme.text }}" muted="{{ c2.theme.muted }}" card="{{ c2.theme.card }}" border="{{ c2.theme.border }}" accent="{{ c2.theme.accent }}" on-accent="{{ c2.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 03 · RIGHT RAIL / ICON SIDEBAR ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">03</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Right-Hand Icon Rail</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Categories live on a permanent thumb-side rail — built for one-handed use. The active icon glows; the list re-filters instantly with no page change. A docked mini-cart keeps the total in view.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">EDGE ICON RAIL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">THUMB-FIRST</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">DARK LIST CARDS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">DOCKED MINI-CART</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0B1020">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#fff"><span>9:41</span><span>5G ▮</span></div>
+          <div style="padding:8px 20px 0 20px">
+            <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;color:#fff">KAI <span style="font-weight:400;color:#4FD1C5">会</span></div>
+            <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:rgba(255,255,255,.4)">OMAKASE · ROLLS · IZAKAYA</div>
+          </div>
+          <div data-scroll style="position:absolute;top:118px;bottom:78px;left:0;right:66px;overflow-y:auto;padding:6px 12px 16px 16px">
+            <sc-for list="{{ c3.items }}" as="item" hint-placeholder-count="5">
+              <div style="display:flex;gap:12px;background:#141B33;border:0.5px solid rgba(255,255,255,.07);border-radius:16px;padding:10px;margin-bottom:10px">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:82px;height:82px;border-radius:12px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;font-weight:600;color:#fff">{{ item.n }}</span><span onClick="{{ item.favToggle }}" style="font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></div>
+                  <div style="font-size:10.5px;line-height:1.4;color:rgba(255,255,255,.45)">{{ item.d }}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto">
+                    <span style="font-size:11px;color:#F2C879">★ {{ item.r }} <span style="color:rgba(255,255,255,.55);font-weight:700;font-size:13px;margin-left:6px">{{ item.p }}</span></span>
+                    <button onClick="{{ item.add }}" style="width:28px;height:28px;border-radius:99px;background:transparent;color:#4FD1C5;border:1.5px solid #4FD1C5;font-size:15px;font-weight:700;cursor:pointer">+</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;top:110px;bottom:0;right:0;width:64px;background:#0E1428;border-left:0.5px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:14px">
+            <sc-for list="{{ c3.cats }}" as="cat" hint-placeholder-count="4">
+              <div onClick="{{ cat.onClick }}" style="{{ cat.style }}"><span style="font-size:17px">{{ cat.emoji }}</span><span style="font-size:7.5px;font-weight:900;letter-spacing:0.5px">{{ cat.label }}</span></div>
+            </sc-for>
+            <div style="margin-top:auto;padding-bottom:16px;display:flex;flex-direction:column;align-items:center;gap:10px">
+              <span onClick="{{ c3.openSearch }}" style="font-size:15px;color:rgba(255,255,255,.5);cursor:pointer">⌕</span>
+              <span style="font-size:15px;color:rgba(255,255,255,.5)">◎</span>
+            </div>
+          </div>
+          <div onClick="{{ c3.openCart }}" style="position:absolute;bottom:14px;left:16px;right:78px;background:#4FD1C5;border-radius:16px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 10px 24px rgba(79,209,197,.3);cursor:pointer">
+            <span style="font-size:13px;font-weight:800;color:#0B1020">◇ Cart · {{ c3.count }} items</span>
+            <span style="font-size:13px;font-weight:800;color:#0B1020">{{ c3.total }} →</span>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c3.open }}" mode="{{ c3.mode }}" items="{{ c3.overlayItems }}" query="{{ c3.query }}" on-search="{{ c3.onSearch }}" on-close="{{ c3.close }}" img-err="{{ imgErr }}" count="{{ c3.count }}" total="{{ c3.total }}" cta="{{ c3.cta }}" bg="{{ c3.theme.bg }}" text="{{ c3.theme.text }}" muted="{{ c3.theme.muted }}" card="{{ c3.theme.card }}" border="{{ c3.theme.border }}" accent="{{ c3.theme.accent }}" on-accent="{{ c3.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 04 · HORIZONTAL STICKY TABS ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">04</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Horizontal Sticky Tabs</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">One long page, sectioned. Tabs stay pinned under the header and track your scroll position — tap to jump, or just keep scrolling and the underline follows. Rows favor reading speed over imagery.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SCROLL-SPY TABS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">ONE LONG PAGE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">LIST ROWS + STEPPER</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">STICKY CART BAR</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FBF6EF">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#2E2317"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:8px 22px 0">
+            <div>
+              <div style="font-size:24px;font-weight:500;letter-spacing:-0.5px;color:#2E2317">Daily Grind</div>
+              <div style="font-size:11.5px;color:#A08F77">Brooklyn Roastery · Open until 6 pm</div>
+            </div>
+            <span onClick="{{ c4.openSearch }}" style="font-size:16px;color:#2E2317;padding-bottom:4px;cursor:pointer">⌕</span>
+          </div>
+          <div style="display:flex;gap:22px;padding:14px 22px 0;border-bottom:0.5px solid #E9DFD0;background:#FBF6EF">
+            <sc-for list="{{ c4.cats }}" as="cat" hint-placeholder-count="4">
+              <div onClick="{{ cat.onClick }}" style="{{ cat.style }}">{{ cat.label }}</div>
+            </sc-for>
+          </div>
+          <div data-scroll style="position:absolute;top:158px;bottom:86px;left:0;right:0;overflow-y:auto;padding:4px 22px 16px">
+            <div style="display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:0.5px solid #E9DFD0">
+              <img src="{{ c4hero.img }}" onError="{{ imgErr }}" style="width:74px;height:74px;border-radius:14px;object-fit:cover;flex-shrink:0" alt="{{ c4hero.n }}">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;gap:6px;align-items:center"><span style="font-size:14px;font-weight:600;color:#2E2317">{{ c4hero.n }}</span><span style="font-size:9px;font-weight:900;letter-spacing:1px;color:#8A6C3C;background:rgba(201,155,63,.15);padding:2px 6px;border-radius:99px">POPULAR</span></div>
+                <div style="font-size:11px;color:#A08F77">{{ c4hero.d }}</div>
+                <div style="font-size:11px;color:#C99B3F;margin-top:2px">★ {{ c4hero.r }} · <span style="color:#A08F77">♡ 1.2k saved</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+                <span style="font-size:14px;font-weight:700;color:#2E2317">{{ c4hero.p }}</span>
+                <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #D8CBB6;border-radius:99px;padding:5px 10px">
+                  <span style="font-size:14px;font-weight:700;color:#A08F77;cursor:pointer" onClick="{{ c4hero.dec }}">−</span>
+                  <span style="font-size:13px;font-weight:700;color:#2E2317">{{ c4hero.qty }}</span>
+                  <span onClick="{{ c4hero.add }}" style="font-size:14px;font-weight:700;color:#2E2317;cursor:pointer">+</span>
+                </div>
+              </div>
+            </div>
+            <sc-for list="{{ c4.items }}" as="item" hint-placeholder-count="5">
+              <div style="display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:0.5px solid #E9DFD0">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:74px;height:74px;border-radius:14px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;font-weight:600;color:#2E2317">{{ item.n }}</div>
+                  <div style="font-size:11px;color:#A08F77;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                  <div style="font-size:11px;color:#C99B3F;margin-top:2px">★ {{ item.r }} <span style="color:#D8CBB6;margin:0 4px">·</span> <span onClick="{{ item.favToggle }}" style="color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+                  <span style="font-size:14px;font-weight:700;color:#2E2317">{{ item.p }}</span>
+                  <button onClick="{{ item.add }}" style="width:30px;height:30px;border-radius:99px;background:#2E2317;color:#FBF6EF;border:none;font-size:16px;cursor:pointer">+</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ c4.openCart }}" style="position:absolute;bottom:16px;left:18px;right:18px;background:#2E2317;border-radius:16px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 12px 28px rgba(46,35,23,.35);cursor:pointer">
+            <span style="font-size:13.5px;font-weight:700;color:#FBF6EF">View cart · {{ c4.count }} items</span>
+            <span style="font-size:13.5px;font-weight:700;color:#F2C879">{{ c4.total }}</span>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c4.open }}" mode="{{ c4.mode }}" items="{{ c4.overlayItems }}" query="{{ c4.query }}" on-search="{{ c4.onSearch }}" on-close="{{ c4.close }}" img-err="{{ imgErr }}" count="{{ c4.count }}" total="{{ c4.total }}" cta="{{ c4.cta }}" bg="{{ c4.theme.bg }}" text="{{ c4.theme.text }}" muted="{{ c4.theme.muted }}" card="{{ c4.theme.card }}" border="{{ c4.theme.border }}" accent="{{ c4.theme.accent }}" on-accent="{{ c4.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 05 · VERTICAL CATEGORY SIDEBAR ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">05</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Vertical Category Sidebar</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Grocery-app pattern: a permanent left rail of illustrated categories, so category and product browsing happen in parallel panes. The cart clings to the right edge as a pull-tab — always one thumb away.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TWO-PANE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">LEFT ICON RAIL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">COMPACT CARDS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SIDE CART TAB</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FFFFFF">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#3A2E1F"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px;border-bottom:0.5px solid #EFE9DD">
+            <div style="font-size:15px;font-weight:900;letter-spacing:3px;color:#3A2E1F">GRAIN <span style="font-weight:400;letter-spacing:0;color:#B8A88C">— bakehouse</span></div>
+            <div style="display:flex;gap:14px;font-size:15px;color:#3A2E1F"><span onClick="{{ c5.openSearch }}" style="cursor:pointer">⌕</span><span>◎</span></div>
+          </div>
+          <div style="position:absolute;top:104px;bottom:0;left:0;width:86px;background:#F7F3EC;border-right:0.5px solid #EFE9DD;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:12px">
+            <sc-for list="{{ c5.cats }}" as="cat" hint-placeholder-count="4">
+              <div onClick="{{ cat.onClick }}" style="{{ cat.style }}"><span style="font-size:19px">{{ cat.emoji }}</span><span style="font-size:8.5px;font-weight:900;letter-spacing:0.5px">{{ cat.label }}</span></div>
+            </sc-for>
+          </div>
+          <div data-scroll style="position:absolute;top:104px;bottom:0;left:86px;right:0;overflow-y:auto;padding:14px 14px 20px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:#B8A88C;margin-bottom:10px">BREADS · BAKED TODAY</div>
+            <sc-for list="{{ c5.items }}" as="item" hint-placeholder-count="5">
+              <div style="position:relative;display:flex;gap:10px;background:#fff;border:0.5px solid #EFE9DD;border-radius:16px;padding:10px;margin-bottom:10px;box-shadow:0 2px 4px rgba(58,46,31,.04)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;font-weight:700;color:#3A2E1F">{{ item.n }}</span><span onClick="{{ item.favToggle }}" style="font-size:12px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></div>
+                  <div style="font-size:10.5px;line-height:1.4;color:#B8A88C">{{ item.d }}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:auto"><span style="font-size:13.5px;font-weight:800;color:#3A2E1F">{{ item.p }}</span><span style="font-size:10.5px;color:#D9A441">★ {{ item.r }}</span></div>
+                </div>
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:86px;height:86px;border-radius:12px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                <button onClick="{{ item.add }}" style="position:absolute;right:4px;bottom:4px;width:30px;height:30px;border-radius:99px;background:#3A2E1F;color:#fff;border:2px solid #fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 10px rgba(58,46,31,.25)">+</button>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ c5.openCart }}" style="position:absolute;right:0;top:44%;background:#3A2E1F;color:#fff;border-radius:14px 0 0 14px;padding:16px 10px;writing-mode:vertical-rl;font-size:11px;font-weight:900;letter-spacing:2px;box-shadow:-6px 4px 16px rgba(58,46,31,.25);cursor:pointer">CART · {{ c5.count }}</div>
+          <dc-import name="MenuOverlay" open="{{ c5.open }}" mode="{{ c5.mode }}" items="{{ c5.overlayItems }}" query="{{ c5.query }}" on-search="{{ c5.onSearch }}" on-close="{{ c5.close }}" img-err="{{ imgErr }}" count="{{ c5.count }}" total="{{ c5.total }}" cta="{{ c5.cta }}" bg="{{ c5.theme.bg }}" text="{{ c5.theme.text }}" muted="{{ c5.theme.muted }}" card="{{ c5.theme.card }}" border="{{ c5.theme.border }}" accent="{{ c5.theme.accent }}" on-accent="{{ c5.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 06 · FULL-SCREEN TYPOGRAPHIC MENU ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">06</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Full-Screen Menu Takeover</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">The menu IS the interface. Courses render as an oversized typographic index; tapping one expands its dishes in place as a horizontal shelf. No chrome, no tabs — pure editorial confidence for fine dining.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TYPOGRAPHIC INDEX</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">EXPAND IN PLACE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">HORIZONTAL SHELF</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">HAIRLINE CART PILL</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0C0A09;font-family:'Playfair Display',serif">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85);font-family:-apple-system,system-ui,sans-serif"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 24px 0">
+            <div style="font-family:-apple-system,system-ui,sans-serif"><span style="font-size:12px;font-weight:900;letter-spacing:5px;color:#C9A96A">EMBER</span><span style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.35)">&nbsp;&nbsp;TASTING · ATLANTA</span></div>
+            <div onClick="{{ c6.openCart }}" style="display:flex;align-items:center;gap:6px;border:0.5px solid rgba(255,255,255,.25);border-radius:99px;padding:6px 13px;font-family:-apple-system,system-ui,sans-serif;cursor:pointer"><span style="font-size:12px;color:rgba(255,255,255,.7)">◇</span><span style="font-size:12px;font-weight:700;color:#fff">{{ c6.count }}</span></div>
+          </div>
+          <div data-scroll style="position:absolute;top:110px;bottom:0;left:0;right:0;overflow-y:auto;padding:8px 0 28px">
+            <div style="display:flex;align-items:baseline;gap:14px;padding:18px 24px;opacity:.45"><span style="font-size:11px;font-family:-apple-system,system-ui,sans-serif;color:#C9A96A">01</span><span style="font-size:34px;font-weight:500;color:#fff">Snacks</span><span style="margin-left:auto;font-size:10px;letter-spacing:2px;font-family:-apple-system,system-ui,sans-serif;color:rgba(255,255,255,.5)">5 DISHES</span></div>
+            <div style="border-top:0.5px solid rgba(201,169,106,.35);border-bottom:0.5px solid rgba(201,169,106,.35);padding:18px 0 20px">
+              <div style="display:flex;align-items:baseline;gap:14px;padding:0 24px 14px"><span style="font-size:11px;font-family:-apple-system,system-ui,sans-serif;color:#C9A96A">02</span><span style="font-size:34px;font-weight:500;font-style:italic;color:#fff">{{ c6.activeLabel }}</span><span style="margin-left:auto;font-size:13px;color:#C9A96A">→</span></div>
+              <div data-scroll style="display:flex;gap:12px;overflow-x:auto;padding:0 24px">
+                <sc-for list="{{ c6.items }}" as="item" hint-placeholder-count="4">
+                  <div style="flex-shrink:0;width:148px;font-family:-apple-system,system-ui,sans-serif">
+                    <div style="position:relative">
+                      <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:148px;height:100px;border-radius:4px;object-fit:cover;display:block" alt="{{ item.n }}">
+                      <span onClick="{{ item.favToggle }}" style="position:absolute;top:6px;right:6px;font-size:12px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                      <button onClick="{{ item.add }}" style="position:absolute;right:6px;bottom:6px;width:26px;height:26px;border-radius:2px;background:#C9A96A;color:#0C0A09;border:none;font-size:15px;font-weight:700;cursor:pointer">+</button>
+                    </div>
+                    <div style="font-size:12.5px;font-weight:600;color:#fff;margin-top:8px">{{ item.n }}</div>
+                    <div style="font-size:10px;line-height:1.4;color:rgba(255,255,255,.4)">{{ item.d }}</div>
+                    <div style="font-size:11px;color:#C9A96A;margin-top:4px">{{ item.p }} · ★ {{ item.r }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div onClick="{{ c6.catClick.raw }}" style="display:flex;align-items:baseline;gap:14px;padding:18px 24px;opacity:.45;cursor:pointer"><span style="font-size:11px;font-family:-apple-system,system-ui,sans-serif;color:#C9A96A">03</span><span style="font-size:34px;font-weight:500;color:#fff">Raw bar</span><span style="margin-left:auto;font-size:10px;letter-spacing:2px;font-family:-apple-system,system-ui,sans-serif;color:rgba(255,255,255,.5)">4 DISHES</span></div>
+            <div onClick="{{ c6.catClick.cel }}" style="display:flex;align-items:baseline;gap:14px;padding:18px 24px;opacity:.45;cursor:pointer"><span style="font-size:11px;font-family:-apple-system,system-ui,sans-serif;color:#C9A96A">04</span><span style="font-size:34px;font-weight:500;color:#fff">Cellar</span><span style="margin-left:auto;font-size:10px;letter-spacing:2px;font-family:-apple-system,system-ui,sans-serif;color:rgba(255,255,255,.5)">12 POURS</span></div>
+            <div onClick="{{ c6.catClick.swe }}" style="display:flex;align-items:baseline;gap:14px;padding:18px 24px;opacity:.45;cursor:pointer"><span style="font-size:11px;font-family:-apple-system,system-ui,sans-serif;color:#C9A96A">05</span><span style="font-size:34px;font-weight:500;color:#fff">Sweet</span><span style="margin-left:auto;font-size:10px;letter-spacing:2px;font-family:-apple-system,system-ui,sans-serif;color:rgba(255,255,255,.5)">3 DISHES</span></div>
+            <div onClick="{{ c6.openSearch }}" style="padding:22px 24px 0;font-size:10px;letter-spacing:2px;font-family:-apple-system,system-ui,sans-serif;color:rgba(255,255,255,.3);cursor:pointer">TAP A COURSE — IT UNFOLDS IN PLACE · ⌕ SEARCH · ◎ PROFILE</div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c6.open }}" mode="{{ c6.mode }}" items="{{ c6.overlayItems }}" query="{{ c6.query }}" on-search="{{ c6.onSearch }}" on-close="{{ c6.close }}" img-err="{{ imgErr }}" count="{{ c6.count }}" total="{{ c6.total }}" cta="{{ c6.cta }}" bg="{{ c6.theme.bg }}" text="{{ c6.theme.text }}" muted="{{ c6.theme.muted }}" card="{{ c6.theme.card }}" border="{{ c6.theme.border }}" accent="{{ c6.theme.accent }}" on-accent="{{ c6.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 07 · FLOATING GLASS CHIPS ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">07</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Floating Category Chips</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Imagery goes edge-to-edge; all chrome floats above it on frosted glass. Category chips hover over the feed and blur whatever scrolls beneath. A single FAB is the only opaque element on screen.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">GLASSMORPHISM</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FLOATING CHIPS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FULL-BLEED GRID</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART FAB</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0E1B14">
+          <div data-scroll style="position:absolute;inset:0;overflow-y:auto">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:120px 3px 90px">
+              <sc-for list="{{ c7.items }}" as="item" hint-placeholder-count="6">
+                <div style="position:relative;height:172px;border-radius:14px;overflow:hidden;background:#16281E">
+                  <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;object-fit:cover;display:block" alt="{{ item.n }}">
+                  <span onClick="{{ item.favToggle }}" style="position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                  <span style="position:absolute;top:8px;left:8px;background:rgba(255,255,255,.25);backdrop-filter:blur(8px);border-radius:99px;font-size:9.5px;font-weight:800;color:#fff;padding:3px 7px">★ {{ item.r }}</span>
+                  <div style="position:absolute;left:0;right:0;bottom:0;padding:26px 10px 9px;background:linear-gradient(180deg,transparent,rgba(8,20,13,.88))">
+                    <div style="font-size:12.5px;font-weight:700;color:#fff">{{ item.n }}</div>
+                    <div style="font-size:9.5px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                      <span style="font-size:13px;font-weight:800;color:#B7F0C6">{{ item.p }}</span>
+                      <button onClick="{{ item.add }}" style="width:27px;height:27px;border-radius:99px;background:rgba(255,255,255,.92);color:#0E1B14;border:none;font-size:15px;font-weight:800;cursor:pointer">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;top:0;left:0;right:0;padding:44px 18px 12px;background:linear-gradient(180deg,rgba(8,20,13,.72),transparent);z-index:20">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:19px;font-weight:900;letter-spacing:4px;color:#fff">VERDE</span>
+              <div style="display:flex;gap:8px">
+                <span onClick="{{ c7.openSearch }}" style="width:34px;height:34px;border-radius:99px;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;cursor:pointer">⌕</span>
+                <span style="width:34px;height:34px;border-radius:99px;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">◎</span>
+              </div>
+            </div>
+            <div data-scroll style="display:flex;gap:8px;overflow-x:auto;margin-top:12px">
+              <sc-for list="{{ c7.cats }}" as="cat" hint-placeholder-count="4">
+                <span onClick="{{ cat.onClick }}" style="{{ cat.style }}">{{ cat.emoji }} {{ cat.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;right:16px;bottom:20px;z-index:20">
+            <div onClick="{{ c7.openCart }}" style="position:relative;width:58px;height:58px;border-radius:99px;background:#2E9E5B;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;box-shadow:0 14px 30px rgba(46,158,91,.5);cursor:pointer">◇<span style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:99px;background:#fff;color:#2E9E5B;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 2px 6px rgba(0,0,0,.2)">{{ c7.count }}</span></div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c7.open }}" mode="{{ c7.mode }}" items="{{ c7.overlayItems }}" query="{{ c7.query }}" on-search="{{ c7.onSearch }}" on-close="{{ c7.close }}" img-err="{{ imgErr }}" count="{{ c7.count }}" total="{{ c7.total }}" cta="{{ c7.cta }}" bg="{{ c7.theme.bg }}" text="{{ c7.theme.text }}" muted="{{ c7.theme.muted }}" card="{{ c7.theme.card }}" border="{{ c7.theme.border }}" accent="{{ c7.theme.accent }}" on-accent="{{ c7.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 08 · INFINITE VERTICAL FEED ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">08</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Infinite Vertical Feed</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Built for a stadium seat: no categories at all, just one loud, thumb-flick feed ranked by what's selling in your section right now. Every card is a full-width billboard with a giant add target.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">NO CATEGORIES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">RANKED FEED</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">BILLBOARD CARDS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">GRADIENT CART BAR</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0A0A0A;font-family:'Space Grotesk',sans-serif">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#fff"><span>9:41</span><span>5G ▮</span></div>
+          <div style="padding:8px 20px 12px;display:flex;align-items:flex-end;justify-content:space-between">
+            <div>
+              <div style="font-size:27px;font-weight:700;letter-spacing:-1px;color:#fff;line-height:1">SECTION 214</div>
+              <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,.5);margin-top:5px">In-seat delivery · <span style="color:#FFD60A">≈ 8 min</span> · <span style="display:inline-block;width:7px;height:7px;border-radius:99px;background:#3DDC64;animation:jc-blink 1.6s infinite"></span> live</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="background:#FFD60A;color:#0A0A0A;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;border-radius:8px">ROW F · SEAT 12</span>
+              <span style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff">◎</span>
+            </div>
+          </div>
+          <div data-scroll style="position:absolute;top:128px;bottom:0;left:0;right:0;overflow-y:auto;padding:0 16px 110px">
+            <div onClick="{{ c8.openSearch }}" style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.4);padding:4px 0 10px;cursor:pointer">SELLING FAST IN YOUR SECTION · ⌕ TAP TO SEARCH</div>
+            <sc-for list="{{ c8.items }}" as="item" hint-placeholder-count="4">
+              <div style="background:#141414;border:1px solid #232323;border-radius:20px;overflow:hidden;margin-bottom:14px">
+                <div style="position:relative;height:148px">
+                  <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;object-fit:cover;display:block" alt="{{ item.n }}">
+                  <span onClick="{{ item.favToggle }}" style="position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:8px;background:rgba(10,10,10,.6);display:flex;align-items:center;justify-content:center;font-size:14px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                  <span style="position:absolute;bottom:10px;left:10px;background:#FFD60A;color:#0A0A0A;font-size:10px;font-weight:700;padding:4px 8px;border-radius:6px">★ {{ item.r }}</span>
+                </div>
+                <div style="padding:14px 16px 16px;display:flex;align-items:center;gap:12px">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:19px;font-weight:700;letter-spacing:-0.5px;color:#fff;text-transform:uppercase">{{ item.n }}</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.5)">{{ item.d }}</div>
+                    <div style="font-size:18px;font-weight:700;color:#FFD60A;margin-top:6px">{{ item.p }}</div>
+                  </div>
+                  <button onClick="{{ item.add }}" style="width:52px;height:52px;border-radius:14px;background:#FFD60A;color:#0A0A0A;border:none;font-size:26px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 8px 20px rgba(255,214,10,.25)">+</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:40px 16px 18px;background:linear-gradient(180deg,transparent,rgba(10,10,10,.95) 55%)">
+            <div onClick="{{ c8.openCart }}" style="background:#FFD60A;border-radius:14px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+              <span style="font-size:14px;font-weight:700;color:#0A0A0A">CART ({{ c8.count }})</span>
+              <span style="font-size:14px;font-weight:700;color:#0A0A0A">{{ c8.total }} · TO SEAT →</span>
+            </div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c8.open }}" mode="{{ c8.mode }}" items="{{ c8.overlayItems }}" query="{{ c8.query }}" on-search="{{ c8.onSearch }}" on-close="{{ c8.close }}" img-err="{{ imgErr }}" count="{{ c8.count }}" total="{{ c8.total }}" cta="{{ c8.cta }}" bg="{{ c8.theme.bg }}" text="{{ c8.theme.text }}" muted="{{ c8.theme.muted }}" card="{{ c8.theme.card }}" border="{{ c8.theme.border }}" accent="{{ c8.theme.accent }}" on-accent="{{ c8.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 09 · HORIZONTAL CAROUSEL ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">09</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Horizontal Product Carousel</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">One product at a time, sideways. A snap carousel with peeking neighbors turns choosing dessert into flipping through a jukebox — perfect for short, joyful menus at an amusement park stand.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SNAP CAROUSEL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SEGMENTED CONTROL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">ONE-AT-A-TIME</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART BUBBLE</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FFF0F4">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#8A2B4A"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 22px 0">
+            <div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:-1px;color:#E85D8A">Swirl<span style="color:#F2A0BC">.</span></div>
+              <div style="font-size:10px;font-weight:900;letter-spacing:2px;color:#C98BA3">FUNLAND PIER · STAND 3</div>
+            </div>
+            <div onClick="{{ c9.openCart }}" style="position:relative;width:44px;height:44px;border-radius:99px;background:#fff;box-shadow:0 6px 16px rgba(232,93,138,.25);display:flex;align-items:center;justify-content:center;font-size:17px;color:#E85D8A;cursor:pointer">◇<span style="position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;border-radius:99px;background:#E85D8A;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px">{{ c9.count }}</span></div>
+          </div>
+          <div style="margin:16px 22px 0;display:flex;background:#fff;border:0.5px solid #F4D3DF;border-radius:99px;padding:4px">
+            <sc-for list="{{ c9.cats }}" as="cat" hint-placeholder-count="3">
+              <span onClick="{{ cat.onClick }}" style="{{ cat.style }}">{{ cat.emoji }} {{ cat.label }}</span>
+            </sc-for>
+          </div>
+          <div data-scroll style="position:absolute;top:210px;bottom:150px;left:0;right:0;overflow-x:auto;display:flex;gap:16px;padding:12px 70px 0;scroll-snap-type:x mandatory">
+            <sc-for list="{{ c9.items }}" as="item" hint-placeholder-count="3">
+              <div style="flex-shrink:0;width:250px;scroll-snap-align:center;background:#fff;border-radius:28px;padding:14px;box-shadow:0 18px 40px rgba(232,93,138,.18);display:flex;flex-direction:column">
+                <div style="position:relative">
+                  <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:230px;border-radius:20px;object-fit:cover;display:block" alt="{{ item.n }}">
+                  <span onClick="{{ item.favToggle }}" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:99px;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;font-size:15px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                  <span style="position:absolute;bottom:10px;left:10px;background:rgba(255,255,255,.92);border-radius:99px;font-size:11px;font-weight:800;color:#8A2B4A;padding:4px 9px">★ {{ item.r }}</span>
+                </div>
+                <div style="font-size:17px;font-weight:800;color:#8A2B4A;margin-top:12px">{{ item.n }}</div>
+                <div style="font-size:11.5px;line-height:1.45;color:#C98BA3">{{ item.d }}</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:12px">
+                  <span style="font-size:19px;font-weight:800;color:#E85D8A">{{ item.p }}</span>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span onClick="{{ item.dec }}" style="width:28px;height:28px;border-radius:99px;border:1.5px solid #F4D3DF;display:flex;align-items:center;justify-content:center;font-size:14px;color:#C98BA3;cursor:pointer">−</span>
+                    <button onClick="{{ item.add }}" style="width:40px;height:40px;border-radius:99px;background:linear-gradient(135deg,#F2A0BC,#E85D8A);color:#fff;border:none;font-size:20px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(232,93,138,.35)">+</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;bottom:96px;left:0;right:0;display:flex;justify-content:center;gap:6px">
+            <span style="width:20px;height:7px;border-radius:99px;background:#E85D8A"></span>
+            <span style="width:7px;height:7px;border-radius:99px;background:#F4D3DF"></span>
+            <span style="width:7px;height:7px;border-radius:99px;background:#F4D3DF"></span>
+            <span style="width:7px;height:7px;border-radius:99px;background:#F4D3DF"></span>
+            <span style="width:7px;height:7px;border-radius:99px;background:#F4D3DF"></span>
+          </div>
+          <div style="position:absolute;bottom:26px;left:0;right:0;display:flex;justify-content:center;gap:26px;font-size:11px;font-weight:800;color:#C98BA3">
+            <span style="color:#E85D8A">⌂ HOME</span><span onClick="{{ c9.openSearch }}" style="cursor:pointer">⌕ SEARCH</span><span>♡ SAVED</span><span>◎ PROFILE</span>
+          </div>
+          <div style="position:absolute;bottom:64px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:1.5px;color:#C98BA3">← SWIPE TO BROWSE ALL 20 →</div>
+          <dc-import name="MenuOverlay" open="{{ c9.open }}" mode="{{ c9.mode }}" items="{{ c9.overlayItems }}" query="{{ c9.query }}" on-search="{{ c9.onSearch }}" on-close="{{ c9.close }}" img-err="{{ imgErr }}" count="{{ c9.count }}" total="{{ c9.total }}" cta="{{ c9.cta }}" bg="{{ c9.theme.bg }}" text="{{ c9.theme.text }}" muted="{{ c9.theme.muted }}" card="{{ c9.theme.card }}" border="{{ c9.theme.border }}" accent="{{ c9.theme.accent }}" on-accent="{{ c9.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 10 · MASONRY / SEARCH FIRST ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">10</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Pinterest Masonry · Search First</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Discovery over navigation: a giant search prompt is the front door, and results pour into an uneven masonry wall you wander through. Categories exist only as removable filter tokens inside the search field.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SEARCH-FIRST IA</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FILTER TOKENS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">MASONRY WALL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">BLUR CART STRIP</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FAF9F7">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#1A1A2E"><span>9:41</span><span>5G ▮</span></div>
+          <div style="padding:12px 22px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:22px;font-weight:500;letter-spacing:-0.5px;color:#1A1A2E">What are you<br>craving today?</div>
+              <div style="width:40px;height:40px;border-radius:99px;background:linear-gradient(135deg,#378ADD,#534AB7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff">G</div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid #E5E7EB;border-radius:16px;padding:12px 14px;box-shadow:0 4px 12px rgba(13,27,62,.05)">
+              <span style="font-size:15px;font-weight:700;color:#6B7280">⌕</span>
+              <span style="display:flex;align-items:center;gap:5px;background:#F3F4F6;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:700;color:#1A1A2E">brunch <span style="color:#9CA3AF">×</span></span>
+              <span style="display:flex;align-items:center;gap:5px;background:#F3F4F6;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:700;color:#1A1A2E">under $15 <span style="color:#9CA3AF">×</span></span>
+              <input value="{{ c10.query }}" onInput="{{ c10.onSearch }}" placeholder="Add…" style="flex:1;min-width:40px;border:none;outline:none;background:transparent;font-size:12px;color:#1A1A2E">
+              <span style="margin-left:auto;font-size:15px;color:#378ADD">◉</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <span style="font-size:11px;font-weight:900;letter-spacing:1.5px;color:#9CA3AF">{{ c10.resultCount }} RESULTS · SORTED BY LOVED</span>
+              <span style="font-size:11px;font-weight:700;color:#378ADD">⇅ Sort</span>
+            </div>
+          </div>
+          <div data-scroll style="position:absolute;top:212px;bottom:0;left:0;right:0;overflow-y:auto;padding:12px 16px 96px">
+            <div style="columns:2;column-gap:12px">
+              <sc-for list="{{ c10.items }}" as="item" hint-placeholder-count="6">
+                <div style="break-inside:avoid;margin-bottom:12px;background:#fff;border:0.5px solid #E5E7EB;border-radius:18px;overflow:hidden;box-shadow:0 2px 4px rgba(13,27,62,.05)">
+                  <div style="position:relative">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:{{ item.h }};object-fit:cover;display:block" alt="{{ item.n }}">
+                    <span onClick="{{ item.favToggle }}" style="position:absolute;top:8px;right:8px;width:27px;height:27px;border-radius:99px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                  </div>
+                  <div style="padding:10px 11px 12px">
+                    <div style="font-size:13px;font-weight:600;color:#1A1A2E">{{ item.n }}</div>
+                    <div style="font-size:10.5px;line-height:1.4;color:#9CA3AF">{{ item.d }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+                      <span style="font-size:13.5px;font-weight:700;color:#1A1A2E">{{ item.p }} <span style="font-size:10px;font-weight:600;color:#C99B3F">★ {{ item.r }}</span></span>
+                      <button onClick="{{ item.add }}" style="width:28px;height:28px;border-radius:99px;background:#1A1A2E;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div onClick="{{ c10.openCart }}" style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);border-top:0.5px solid #E5E7EB;padding:12px 18px 22px;display:flex;align-items:center;gap:12px;cursor:pointer">
+            <div style="display:flex">
+              <img src="{{ c10.items.0.img }}" onError="{{ imgErr }}" style="width:32px;height:32px;border-radius:99px;object-fit:cover;border:2px solid #fff" alt="">
+              <img src="{{ c10.items.1.img }}" onError="{{ imgErr }}" style="width:32px;height:32px;border-radius:99px;object-fit:cover;border:2px solid #fff;margin-left:-10px" alt="">
+              <img src="{{ c10.items.2.img }}" onError="{{ imgErr }}" style="width:32px;height:32px;border-radius:99px;object-fit:cover;border:2px solid #fff;margin-left:-10px" alt="">
+            </div>
+            <span style="font-size:12.5px;font-weight:700;color:#1A1A2E">{{ c10.count }} items · {{ c10.total }}</span>
+            <span style="margin-left:auto;background:#0D1B3E;color:#fff;font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:99px">Checkout →</span>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c10.open }}" mode="{{ c10.mode }}" items="{{ c10.overlayItems }}" query="{{ c10.query }}" on-search="{{ c10.onSearch }}" on-close="{{ c10.close }}" img-err="{{ imgErr }}" count="{{ c10.count }}" total="{{ c10.total }}" cta="{{ c10.cta }}" bg="{{ c10.theme.bg }}" text="{{ c10.theme.text }}" muted="{{ c10.theme.muted }}" card="{{ c10.theme.card }}" border="{{ c10.theme.border }}" accent="{{ c10.theme.accent }}" on-accent="{{ c10.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 11 · MAGAZINE ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">11</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Magazine Layout</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">The menu as an editorial issue: a masthead, a numbered table of contents instead of tabs, one featured dish given a full spread, then two-column "articles" separated by rules. Browsing feels like reading.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TABLE OF CONTENTS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FEATURE SPREAD</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">EDITORIAL COLUMNS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TEXT BASKET LINK</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#F5F1E8">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#211D15"><span>9:41</span><span>5G ▮</span></div>
+          <div data-scroll style="position:absolute;top:54px;bottom:0;left:0;right:0;overflow-y:auto;padding:10px 24px 30px">
+            <div style="border-top:2.5px solid #211D15;border-bottom:0.5px solid #211D15;padding:12px 0;display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font-family:'Playfair Display',serif;font-size:30px;font-weight:600;letter-spacing:1px;color:#211D15">LA TABLE</span>
+              <span onClick="{{ c11.openCart }}" style="font-size:11px;font-weight:700;color:#211D15;text-decoration:underline;cursor:pointer">Basket ({{ c11.count }})</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #C9BFA8;font-size:9px;font-weight:900;letter-spacing:2px;color:#8C8064">
+              <span>MENU · No. 14</span><span onClick="{{ c11.openSearch }}" style="cursor:pointer">⌕ ÉTÉ 2026</span><span>BISTROT · LYON</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;padding:14px 0;border-bottom:0.5px solid #C9BFA8;font-size:11.5px;color:#211D15">
+              <span onClick="{{ c11.catClick.ent }}" style="display:flex;justify-content:space-between;cursor:pointer"><span style="font-style:italic;font-family:'Playfair Display',serif">I. Entrées</span><span style="color:#8C8064">p.1</span></span>
+              <span onClick="{{ c11.catClick.pla }}" style="display:flex;justify-content:space-between;cursor:pointer"><span style="font-style:italic;font-family:'Playfair Display',serif">II. Plats</span><span style="color:#8C8064">p.2</span></span>
+              <span onClick="{{ c11.catClick.des }}" style="display:flex;justify-content:space-between;cursor:pointer"><span style="font-style:italic;font-family:'Playfair Display',serif">III. Desserts</span><span style="color:#8C8064">p.3</span></span>
+              <span onClick="{{ c11.catClick.all }}" style="display:flex;justify-content:space-between;cursor:pointer"><span style="font-style:italic;font-family:'Playfair Display',serif">IV. Tout</span><span style="color:#8C8064">p.4</span></span>
+            </div>
+            <div style="padding:16px 0;border-bottom:0.5px solid #C9BFA8">
+              <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:#A33B2E">★ PLAT DU JOUR — {{ c11hero.r }} RATED</div>
+              <img src="{{ c11hero.img }}" onError="{{ imgErr }}" style="width:100%;height:170px;object-fit:cover;margin-top:10px;display:block" alt="{{ c11hero.n }}">
+              <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:600;color:#211D15;margin-top:12px;line-height:1.15">{{ c11hero.n }}</div>
+              <div style="font-size:12px;line-height:1.6;color:#5C5340;margin-top:6px">{{ c11hero.d }} — plated tableside, as the chef intended. Ask for the pairing.</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+                <span style="font-size:14px;font-weight:700;color:#211D15">{{ c11hero.p }} <span style="font-size:11px;color:#8C8064;font-weight:400">· ♡ save for later</span></span>
+                <button onClick="{{ c11hero.add }}" style="background:#211D15;color:#F5F1E8;border:none;font-size:11px;font-weight:800;letter-spacing:1.5px;padding:10px 16px;cursor:pointer">ADD TO BASKET +</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 20px;padding-top:18px">
+              <sc-for list="{{ c11.items }}" as="item" hint-placeholder-count="6">
+                <div style="border-bottom:0.5px solid #C9BFA8;padding-bottom:14px;position:relative">
+                  <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:96px;object-fit:cover;display:block" alt="{{ item.n }}">
+                  <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:#211D15;margin-top:8px;line-height:1.2">{{ item.n }}</div>
+                  <div style="font-size:10px;line-height:1.5;color:#8C8064;margin-top:3px">{{ item.d }}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+                    <span style="font-size:12px;font-weight:700;color:#211D15">{{ item.p }} <span style="font-size:9.5px;color:#A33B2E">★ {{ item.r }}</span> <span onClick="{{ item.favToggle }}" style="font-size:10px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></span>
+                    <button onClick="{{ item.add }}" style="width:26px;height:26px;border-radius:99px;background:transparent;color:#211D15;border:1px solid #211D15;font-size:14px;cursor:pointer">+</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c11.open }}" mode="{{ c11.mode }}" items="{{ c11.overlayItems }}" query="{{ c11.query }}" on-search="{{ c11.onSearch }}" on-close="{{ c11.close }}" img-err="{{ imgErr }}" count="{{ c11.count }}" total="{{ c11.total }}" cta="{{ c11.cta }}" bg="{{ c11.theme.bg }}" text="{{ c11.theme.text }}" muted="{{ c11.theme.muted }}" card="{{ c11.theme.card }}" border="{{ c11.theme.border }}" accent="{{ c11.theme.accent }}" on-accent="{{ c11.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 12 · APPLE-STORE SECTIONS ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">12</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Store-Style Sections</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Hotel room service, retail-grade: a calm greeting, then each category is a big self-contained card with its own headline, ETA and horizontal shelf of products. Generous whitespace does the wayfinding.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SECTION CARDS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">HEADLINE PER CATEGORY</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SHELF TILES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TOP BAG PILL</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#F5F5F7">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#1D1D1F"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 24px 0">
+            <span style="font-size:10px;font-weight:900;letter-spacing:2px;color:#86868B">THE ROWAN · ROOM 1204</span>
+            <span onClick="{{ c12.openCart }}" style="background:#fff;border:0.5px solid #E5E7EB;border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:#1D1D1F;box-shadow:0 2px 6px rgba(0,0,0,.04);cursor:pointer">Bag · {{ c12.count }}</span>
+          </div>
+          <div data-scroll style="position:absolute;top:96px;bottom:0;left:0;right:0;overflow-y:auto;padding:6px 18px 28px">
+            <div style="font-size:31px;font-weight:600;letter-spacing:-1px;color:#1D1D1F;padding:6px 6px 16px">Good evening.</div>
+            <div style="background:#fff;border-radius:24px;padding:20px 0 20px 20px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:16px">
+              <div style="padding-right:20px">
+                <div style="font-size:19px;font-weight:600;letter-spacing:-0.3px;color:#1D1D1F">Dinner. To your door.</div>
+                <div style="font-size:12px;color:#86868B;margin-top:2px">From the brasserie · about 35 minutes</div>
+              </div>
+              <div data-scroll style="display:flex;gap:12px;overflow-x:auto;margin-top:14px;padding-right:20px">
+                <sc-for list="{{ c12a }}" as="item" hint-placeholder-count="3">
+                  <div style="flex-shrink:0;width:148px">
+                    <div style="position:relative">
+                      <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:148px;height:108px;border-radius:16px;object-fit:cover;display:block" alt="{{ item.n }}">
+                      <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                    </div>
+                    <div style="font-size:12.5px;font-weight:600;color:#1D1D1F;margin-top:8px">{{ item.n }}</div>
+                    <div style="font-size:10px;color:#86868B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+                      <span style="font-size:12px;font-weight:600;color:#1D1D1F">{{ item.p }} <span style="font-size:9.5px;color:#86868B">★ {{ item.r }}</span></span>
+                      <button onClick="{{ item.add }}" style="width:26px;height:26px;border-radius:99px;background:#378ADD;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer">+</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:24px;padding:20px 0 20px 20px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:16px">
+              <div style="padding-right:20px">
+                <div style="font-size:19px;font-weight:600;letter-spacing:-0.3px;color:#1D1D1F">Café. Served all day.</div>
+                <div style="font-size:12px;color:#86868B;margin-top:2px">Espresso bar, lobby level · about 15 minutes</div>
+              </div>
+              <div data-scroll style="display:flex;gap:12px;overflow-x:auto;margin-top:14px;padding-right:20px">
+                <sc-for list="{{ c12b }}" as="item" hint-placeholder-count="3">
+                  <div style="flex-shrink:0;width:148px">
+                    <div style="position:relative">
+                      <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:148px;height:108px;border-radius:16px;object-fit:cover;display:block" alt="{{ item.n }}">
+                      <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;font-size:13px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span>
+                    </div>
+                    <div style="font-size:12.5px;font-weight:600;color:#1D1D1F;margin-top:8px">{{ item.n }}</div>
+                    <div style="font-size:10px;color:#86868B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+                      <span style="font-size:12px;font-weight:600;color:#1D1D1F">{{ item.p }} <span style="font-size:9.5px;color:#86868B">★ {{ item.r }}</span></span>
+                      <div style="display:flex;align-items:center;gap:6px;border:0.5px solid #E5E7EB;border-radius:99px;padding:3px 8px"><span onClick="{{ item.dec }}" style="font-size:12px;color:#86868B;cursor:pointer">−</span><span style="font-size:11px;font-weight:700;color:#1D1D1F">{{ item.qty }}</span><span onClick="{{ item.add }}" style="font-size:12px;color:#378ADD;font-weight:700;cursor:pointer">+</span></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;gap:24px;padding:8px 0;font-size:11px;font-weight:600;color:#86868B">
+              <span style="color:#1D1D1F">Menu</span><span onClick="{{ c12.openSearch }}" style="cursor:pointer">⌕ Search</span><span>◷ Orders</span><span>◎ Room</span>
+            </div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c12.open }}" mode="{{ c12.mode }}" items="{{ c12.overlayItems }}" query="{{ c12.query }}" on-search="{{ c12.onSearch }}" on-close="{{ c12.close }}" img-err="{{ imgErr }}" count="{{ c12.count }}" total="{{ c12.total }}" cta="{{ c12.cta }}" bg="{{ c12.theme.bg }}" text="{{ c12.theme.text }}" muted="{{ c12.theme.muted }}" card="{{ c12.theme.card }}" border="{{ c12.theme.border }}" accent="{{ c12.theme.accent }}" on-accent="{{ c12.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 13 · NETFLIX ROWS ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">13</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Streaming-Style Rows</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Cinema concessions browsed like a streaming catalog: categories are horizontal shelves with editorial names, ranked by context ("your movie starts in 14 minutes"). Vertical scroll switches genre, horizontal scroll digs deeper.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">2-AXIS BROWSING</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">NAMED SHELVES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">LANDSCAPE TILES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FLOATING CART</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0D0D0F">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#fff"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 4px">
+            <span style="font-size:20px;font-weight:900;letter-spacing:3px;color:#E0353F">MARQUEE</span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span onClick="{{ c13.openSearch }}" style="font-size:15px;color:rgba(255,255,255,.7);cursor:pointer">⌕</span>
+              <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#E0353F,#7A1030);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">J</div>
+            </div>
+          </div>
+          <div style="padding:2px 20px 8px;font-size:11px;color:rgba(255,255,255,.5)">Screen 6 · <span style="color:#E0353F;font-weight:700">Dune III starts in 14 min</span> · seat delivery on</div>
+          <div data-scroll style="position:absolute;top:128px;bottom:0;left:0;right:0;overflow-y:auto;padding:4px 0 30px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:10px 20px 10px"><span style="font-size:15px;font-weight:700;color:#fff">Before the trailers end</span><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4)">SEE ALL →</span></div>
+            <div data-scroll style="display:flex;gap:10px;overflow-x:auto;padding:0 20px">
+              <sc-for list="{{ c13a }}" as="item" hint-placeholder-count="3">
+                <div style="flex-shrink:0;width:190px">
+                  <div style="position:relative;border-radius:8px;overflow:hidden">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:190px;height:106px;object-fit:cover;display:block" alt="{{ item.n }}">
+                    <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.82))"></div>
+                    <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;font-size:13px;color:{{ item.heartColor }};cursor:pointer;z-index:2">{{ item.heart }}</span>
+                    <span style="position:absolute;top:7px;left:7px;background:rgba(0,0,0,.55);border-radius:4px;font-size:9px;font-weight:800;color:#F2C879;padding:2px 6px">★ {{ item.r }}</span>
+                    <div style="position:absolute;left:9px;right:9px;bottom:7px;display:flex;align-items:flex-end;justify-content:space-between">
+                      <div style="min-width:0"><div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.n }}</div><div style="font-size:9px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }} · {{ item.p }}</div></div>
+                      <button onClick="{{ item.add }}" style="width:28px;height:28px;border-radius:99px;background:#E0353F;color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;flex-shrink:0;margin-left:6px">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:20px 20px 10px"><span style="font-size:15px;font-weight:700;color:#fff">Popcorn &amp; classics</span><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4)">SEE ALL →</span></div>
+            <div data-scroll style="display:flex;gap:10px;overflow-x:auto;padding:0 20px">
+              <sc-for list="{{ c13b }}" as="item" hint-placeholder-count="3">
+                <div style="flex-shrink:0;width:190px">
+                  <div style="position:relative;border-radius:8px;overflow:hidden">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:190px;height:106px;object-fit:cover;display:block" alt="{{ item.n }}">
+                    <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.82))"></div>
+                    <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;font-size:13px;color:{{ item.heartColor }};cursor:pointer;z-index:2">{{ item.heart }}</span>
+                    <span style="position:absolute;top:7px;left:7px;background:rgba(0,0,0,.55);border-radius:4px;font-size:9px;font-weight:800;color:#F2C879;padding:2px 6px">★ {{ item.r }}</span>
+                    <div style="position:absolute;left:9px;right:9px;bottom:7px;display:flex;align-items:flex-end;justify-content:space-between">
+                      <div style="min-width:0"><div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.n }}</div><div style="font-size:9px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }} · {{ item.p }}</div></div>
+                      <button onClick="{{ item.add }}" style="width:28px;height:28px;border-radius:99px;background:#E0353F;color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;flex-shrink:0;margin-left:6px">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:20px 20px 10px"><span style="font-size:15px;font-weight:700;color:#fff">Sweet endings</span><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4)">SEE ALL →</span></div>
+            <div data-scroll style="display:flex;gap:10px;overflow-x:auto;padding:0 20px">
+              <sc-for list="{{ c13c }}" as="item" hint-placeholder-count="3">
+                <div style="flex-shrink:0;width:190px">
+                  <div style="position:relative;border-radius:8px;overflow:hidden">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:190px;height:106px;object-fit:cover;display:block" alt="{{ item.n }}">
+                    <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.82))"></div>
+                    <span onClick="{{ item.favToggle }}" style="position:absolute;top:7px;right:7px;font-size:13px;color:{{ item.heartColor }};cursor:pointer;z-index:2">{{ item.heart }}</span>
+                    <span style="position:absolute;top:7px;left:7px;background:rgba(0,0,0,.55);border-radius:4px;font-size:9px;font-weight:800;color:#F2C879;padding:2px 6px">★ {{ item.r }}</span>
+                    <div style="position:absolute;left:9px;right:9px;bottom:7px;display:flex;align-items:flex-end;justify-content:space-between">
+                      <div style="min-width:0"><div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.n }}</div><div style="font-size:9px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }} · {{ item.p }}</div></div>
+                      <button onClick="{{ item.add }}" style="width:28px;height:28px;border-radius:99px;background:#E0353F;color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;flex-shrink:0;margin-left:6px">+</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;right:16px;bottom:20px;z-index:20">
+            <div onClick="{{ c13.openCart }}" style="position:relative;width:54px;height:54px;border-radius:99px;background:#1A1A1D;border:1.5px solid #E0353F;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.5);cursor:pointer">◇<span style="position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;border-radius:99px;background:#E0353F;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px">{{ c13.count }}</span></div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c13.open }}" mode="{{ c13.mode }}" items="{{ c13.overlayItems }}" query="{{ c13.query }}" on-search="{{ c13.onSearch }}" on-close="{{ c13.close }}" img-err="{{ imgErr }}" count="{{ c13.count }}" total="{{ c13.total }}" cta="{{ c13.cta }}" bg="{{ c13.theme.bg }}" text="{{ c13.theme.text }}" muted="{{ c13.theme.muted }}" card="{{ c13.theme.card }}" border="{{ c13.theme.border }}" accent="{{ c13.theme.accent }}" on-accent="{{ c13.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 14 · TIMELINE ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">14</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Timeline Menu</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">The menu is organized by time, not type: a tasting evening plotted as a vertical itinerary. Each stop is a course with its serving hour; you compose your night top to bottom while a running total tracks along.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CHRONOLOGICAL IA</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">ITINERARY NODES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CONNECTOR LINE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">RUNNING TOTAL</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FCFBF9">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#1A1A2E"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 22px 0">
+            <div><div style="font-size:21px;font-weight:500;letter-spacing:-0.4px;color:#1A1A2E">Seven &amp; Co</div><div style="font-size:11px;color:#9CA3AF">Tasting evening · Sat, July 4 · 7:00 pm</div></div>
+            <div style="display:flex;gap:12px;font-size:15px;color:#1A1A2E"><span onClick="{{ c14.openSearch }}" style="cursor:pointer">⌕</span><span>◎</span></div>
+          </div>
+          <div onClick="{{ c14.openCart }}" style="margin:12px 18px 0;background:#0D1B3E;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+            <span style="font-size:12px;font-weight:700;color:#fff">Your evening · {{ c14.count }} courses selected</span>
+            <span style="font-size:12px;font-weight:800;color:#F2C879">{{ c14.total }} →</span>
+          </div>
+          <div data-scroll style="position:absolute;top:168px;bottom:0;left:0;right:0;overflow-y:auto;padding:16px 18px 26px 22px">
+            <div style="position:relative;padding-left:34px">
+              <div style="position:absolute;left:11px;top:8px;bottom:8px;width:1.5px;background:#E0E2E7"></div>
+              <sc-for list="{{ c14.items }}" as="item" hint-placeholder-count="4">
+                <div style="position:relative;margin-bottom:16px">
+                  <div style="position:absolute;left:-34px;top:14px;width:23px;height:23px;border-radius:99px;background:#fff;border:1.5px solid #0D1B3E;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:900;color:#0D1B3E">{{ item.no }}</div>
+                  <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#9CA3AF;margin-bottom:5px">{{ item.t }} PM</div>
+                  <div style="display:flex;gap:12px;background:#fff;border:0.5px solid #E0E2E7;border-radius:16px;padding:10px;box-shadow:0 2px 4px rgba(13,27,62,.05)">
+                    <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:64px;height:64px;border-radius:99px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                    <div style="flex:1;min-width:0">
+                      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:13.5px;font-weight:600;color:#1A1A2E">{{ item.n }}</span><span onClick="{{ item.favToggle }}" style="font-size:12px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></div>
+                      <div style="font-size:10.5px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.d }}</div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+                        <span style="font-size:12.5px;font-weight:700;color:#1A1A2E">{{ item.p }} <span style="font-size:10px;color:#C99B3F">★ {{ item.r }}</span></span>
+                        <button onClick="{{ item.add }}" style="height:26px;border-radius:99px;background:transparent;color:#0D1B3E;border:1.5px solid #0D1B3E;font-size:11px;font-weight:800;padding:0 12px;cursor:pointer">+ ADD</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c14.open }}" mode="{{ c14.mode }}" items="{{ c14.overlayItems }}" query="{{ c14.query }}" on-search="{{ c14.onSearch }}" on-close="{{ c14.close }}" img-err="{{ imgErr }}" count="{{ c14.count }}" total="{{ c14.total }}" cta="{{ c14.cta }}" bg="{{ c14.theme.bg }}" text="{{ c14.theme.text }}" muted="{{ c14.theme.muted }}" card="{{ c14.theme.card }}" border="{{ c14.theme.border }}" accent="{{ c14.theme.accent }}" on-accent="{{ c14.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 15 · STORY NAVIGATION ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">15</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Story Navigation</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">A cocktail list told like Instagram stories: categories are avatar rings, each drink gets a full-screen frame with progress segments, tap right to advance, swipe up to add. Zero density, maximum theatre.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">STORY RINGS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">TAP TO ADVANCE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">ONE FRAME = ONE ITEM</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SWIPE-UP ADD</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#000">
+          <img onClick="{{ c15.goNext }}" src="{{ c15hero.img }}" onError="{{ imgErr }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;cursor:pointer" alt="{{ c15hero.n }}">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.62) 0%,transparent 30%,transparent 52%,rgba(0,0,0,.85) 100%)"></div>
+          <div style="position:absolute;top:0;left:0;right:0;padding:46px 16px 0">
+            <div style="display:flex;gap:4px">
+              <span style="flex:1;height:2.5px;border-radius:99px;background:#fff"></span>
+              <span style="flex:1;height:2.5px;border-radius:99px;background:#fff"></span>
+              <span style="flex:1;height:2.5px;border-radius:99px;background:rgba(255,255,255,.9);position:relative;overflow:hidden"><span style="position:absolute;left:0;top:0;bottom:0;width:45%;background:#F2C879"></span></span>
+              <span style="flex:1;height:2.5px;border-radius:99px;background:rgba(255,255,255,.3)"></span>
+              <span style="flex:1;height:2.5px;border-radius:99px;background:rgba(255,255,255,.3)"></span>
+              <span style="flex:1;height:2.5px;border-radius:99px;background:rgba(255,255,255,.3)"></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <span style="font-size:15px;font-weight:900;letter-spacing:3px;color:#fff;text-transform:uppercase">{{ c15hero.n }}</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:11px;color:rgba(255,255,255,.7)">{{ c15.posLabel }}</span>
+                <div onClick="{{ c15.openCart }}" style="position:relative;width:32px;height:32px;border-radius:99px;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;cursor:pointer">◇<span style="position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:99px;background:#F2C879;color:#000;font-size:9.5px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px">{{ c15.count }}</span></div>
+              </div>
+            </div>
+            <div data-scroll style="display:flex;gap:12px;overflow-x:auto;margin-top:14px;padding-bottom:6px">
+              <div style="flex-shrink:0;text-align:center"><div style="width:50px;height:50px;border-radius:99px;background:linear-gradient(135deg,#F2C879,#E85D8A);padding:2.5px"><img src="{{ c15hero.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;border-radius:99px;object-fit:cover;border:2px solid #000" alt=""></div><div style="font-size:8.5px;font-weight:800;color:#fff;margin-top:4px">SIGNATURES</div></div>
+              <sc-for list="{{ c15rings }}" as="item" hint-placeholder-count="4">
+                <div onClick="{{ item.onClick }}" style="flex-shrink:0;text-align:center;opacity:.75;cursor:pointer"><div style="width:50px;height:50px;border-radius:99px;background:rgba(255,255,255,.35);padding:2.5px"><img src="{{ item.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;border-radius:99px;object-fit:cover;border:2px solid #000" alt="{{ item.n }}"></div><div style="font-size:8.5px;font-weight:800;color:#fff;margin-top:4px;letter-spacing:0.5px">{{ item.tag }}</div></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:0 22px 30px">
+            <div style="font-size:10px;font-weight:900;letter-spacing:2.5px;color:#F2C879">SIGNATURE · No. 03</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-top:6px">
+              <div style="font-size:30px;font-weight:700;letter-spacing:-0.5px;color:#fff;line-height:1.05">{{ c15hero.n }}</div>
+              <span onClick="{{ c15hero.favToggle }}" style="font-size:20px;color:{{ c15hero.heartColor }};margin-top:4px;cursor:pointer">{{ c15hero.heart }}</span>
+            </div>
+            <div style="font-size:12.5px;line-height:1.5;color:rgba(255,255,255,.75);margin-top:6px;max-width:270px">{{ c15hero.d }}</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><span style="font-size:17px;font-weight:800;color:#fff">{{ c15hero.p }}</span><span style="font-size:11px;color:#F2C879">★ {{ c15hero.r }} · loved 214×</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;margin-top:16px;animation:jc-up 2.2s ease-in-out infinite">
+              <span style="font-size:15px;color:#fff">⌃</span>
+              <button onClick="{{ c15hero.add }}" style="margin-top:2px;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);border:0.5px solid rgba(255,255,255,.4);border-radius:99px;color:#fff;font-size:11.5px;font-weight:800;letter-spacing:1.5px;padding:10px 22px;cursor:pointer">+ SWIPE UP TO ADD</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4)"><span onClick="{{ c15.goPrev }}" style="cursor:pointer">‹ TAP · BACK</span><span onClick="{{ c15.openSearch }}" style="cursor:pointer">⌕ SEARCH</span><span>◎ TAB</span><span onClick="{{ c15.goNext }}" style="cursor:pointer">TAP · NEXT ›</span></div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c15.open }}" mode="{{ c15.mode }}" items="{{ c15.overlayItems }}" query="{{ c15.query }}" on-search="{{ c15.onSearch }}" on-close="{{ c15.close }}" img-err="{{ imgErr }}" count="{{ c15.count }}" total="{{ c15.total }}" cta="{{ c15.cta }}" bg="{{ c15.theme.bg }}" text="{{ c15.theme.text }}" muted="{{ c15.theme.muted }}" card="{{ c15.theme.card }}" border="{{ c15.theme.border }}" accent="{{ c15.theme.accent }}" on-accent="{{ c15.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 16 · GESTURE-BASED ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">16</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Gesture-Based Navigation</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Almost no chrome: one dish on stage at a time. Horizontal swipes change category, vertical swipes change dish, and a long-press ring commits the add. Edge whispers teach the grammar, then disappear.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CHROME-FREE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SWIPE AXES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">LONG-PRESS ADD</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART DOT</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#FFFFFF">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#1A1A2E"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 26px 0">
+            <span style="font-size:13px;font-weight:900;letter-spacing:5px;color:#1A1A2E">SLRP</span>
+            <div onClick="{{ c16.openCart }}" style="display:flex;align-items:center;gap:6px;cursor:pointer"><span style="font-size:11px;font-weight:700;color:#9CA3AF">{{ c16.count }}</span><span style="width:9px;height:9px;border-radius:99px;background:#E0353F"></span></div>
+          </div>
+          <div style="position:absolute;top:96px;left:0;right:0;text-align:center">
+            <div style="font-size:10px;font-weight:900;letter-spacing:3px;color:#D1D5DB">{{ c16.activeLabel }} — {{ c16.resultCount }} DISHES</div>
+          </div>
+          <div style="position:absolute;top:150px;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding:0 40px;text-align:center">
+            <div style="position:relative">
+              <img src="{{ c16hero.img }}" onError="{{ imgErr }}" style="width:248px;height:248px;border-radius:99px;object-fit:cover;box-shadow:0 30px 60px rgba(26,26,46,.22)" alt="{{ c16hero.n }}">
+              <span onClick="{{ c16hero.favToggle }}" style="position:absolute;top:8px;right:14px;width:34px;height:34px;border-radius:99px;background:#fff;box-shadow:0 4px 12px rgba(26,26,46,.15);display:flex;align-items:center;justify-content:center;font-size:15px;color:{{ c16hero.heartColor }};cursor:pointer">{{ c16hero.heart }}</span>
+            </div>
+            <div style="font-size:24px;font-weight:500;letter-spacing:-0.5px;color:#1A1A2E;margin-top:22px">{{ c16hero.n }}</div>
+            <div style="font-size:12px;line-height:1.5;color:#9CA3AF;margin-top:4px">{{ c16hero.d }}</div>
+            <div style="font-size:12px;color:#C99B3F;margin-top:6px">★ {{ c16hero.r }}</div>
+            <div style="font-size:22px;font-weight:600;color:#1A1A2E;margin-top:8px">{{ c16hero.p }}</div>
+          </div>
+          <div onClick="{{ c16.catPrev }}" style="position:absolute;left:14px;top:46%;display:flex;flex-direction:column;align-items:center;gap:6px;color:#D1D5DB;cursor:pointer"><span style="font-size:16px">‹</span><span style="writing-mode:vertical-rl;font-size:9px;font-weight:900;letter-spacing:2px">PREV</span></div>
+          <div onClick="{{ c16.catNext }}" style="position:absolute;right:14px;top:46%;display:flex;flex-direction:column;align-items:center;gap:6px;color:#1A1A2E;cursor:pointer"><span style="font-size:16px">›</span><span style="writing-mode:vertical-rl;font-size:9px;font-weight:900;letter-spacing:2px">NEXT</span></div>
+          <div style="position:absolute;bottom:150px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <button onClick="{{ c16hero.add }}" style="position:relative;width:72px;height:72px;border-radius:99px;background:#1A1A2E;color:#fff;border:none;font-size:30px;font-weight:400;cursor:pointer;box-shadow:0 14px 30px rgba(26,26,46,.3)">+<span style="position:absolute;inset:-7px;border-radius:99px;border:2px dashed #D1D5DB"></span></button>
+            <span style="font-size:9.5px;font-weight:900;letter-spacing:2px;color:#9CA3AF">HOLD TO ADD</span>
+          </div>
+          <div data-scroll style="position:absolute;bottom:56px;left:0;right:0;display:flex;gap:10px;overflow-x:auto;padding:0 26px">
+            <sc-for list="{{ c16rest }}" as="item" hint-placeholder-count="5">
+              <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;border:0.5px solid #E5E7EB;border-radius:99px;padding:5px 12px 5px 5px">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:32px;height:32px;border-radius:99px;object-fit:cover" alt="{{ item.n }}">
+                <div><div style="font-size:10px;font-weight:700;color:#1A1A2E;white-space:nowrap">{{ item.n }}</div><div style="font-size:9px;color:#9CA3AF">{{ item.p }}</div></div>
+                <button onClick="{{ item.add }}" style="width:20px;height:20px;border-radius:99px;background:#F3F4F6;color:#1A1A2E;border:none;font-size:12px;font-weight:700;cursor:pointer">+</button>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ c16.openSearch }}" style="position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:2px;color:#D1D5DB;cursor:pointer">← CATEGORIES · ↕ DISHES · ⌕ TAP TO SEARCH · ◎</div>
+          <dc-import name="MenuOverlay" open="{{ c16.open }}" mode="{{ c16.mode }}" items="{{ c16.overlayItems }}" query="{{ c16.query }}" on-search="{{ c16.onSearch }}" on-close="{{ c16.close }}" img-err="{{ imgErr }}" count="{{ c16.count }}" total="{{ c16.total }}" cta="{{ c16.cta }}" bg="{{ c16.theme.bg }}" text="{{ c16.theme.text }}" muted="{{ c16.theme.muted }}" card="{{ c16.theme.card }}" border="{{ c16.theme.border }}" accent="{{ c16.theme.accent }}" on-accent="{{ c16.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 17 · CARD STACK ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">17</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Card Stack Navigation</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">A deck of 20, one decision at a time: swipe left to pass, right to add. No categories, no lists — the food truck's whole menu becomes a rapid-fire game you can finish in 40 seconds while in line.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SWIPE DECK</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">BINARY CHOICE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">DECK PROGRESS</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART CHIP</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#16130F;font-family:'Space Grotesk',sans-serif">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:#fff"><span>9:41</span><span>5G ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 22px 0">
+            <div><div style="font-size:21px;font-weight:700;letter-spacing:-0.5px;color:#fff">RUTA <span style="color:#F97316">▲</span></div><div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4)">TACO TRUCK · PIER 40</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span onClick="{{ c17.openSearch }}" style="font-size:15px;color:rgba(255,255,255,.5);cursor:pointer">⌕</span>
+              <span onClick="{{ c17.openCart }}" style="display:flex;align-items:center;gap:6px;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.5);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#F97316;cursor:pointer">◇ {{ c17.count }}</span>
+            </div>
+          </div>
+          <div style="margin:14px 22px 0;display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:5px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden"><div style="width:35%;height:100%;background:#F97316;border-radius:99px"></div></div>
+            <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.55)">{{ c17.posLabel }}</span>
+          </div>
+          <div style="position:absolute;top:170px;left:0;right:0;height:430px;display:flex;justify-content:center">
+            <div style="position:absolute;top:22px;width:274px;height:392px;border-radius:26px;background:#241E16;transform:rotate(6deg) scale(.94);overflow:hidden;opacity:.55"><img src="{{ c17c.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;object-fit:cover;opacity:.5" alt=""></div>
+            <div style="position:absolute;top:12px;width:274px;height:392px;border-radius:26px;background:#241E16;transform:rotate(-5deg) scale(.97);overflow:hidden;opacity:.75"><img src="{{ c17b.img }}" onError="{{ imgErr }}" style="width:100%;height:100%;object-fit:cover;opacity:.6" alt=""></div>
+            <div style="position:relative;width:290px;height:410px;border-radius:26px;background:#241E16;overflow:hidden;box-shadow:0 26px 56px rgba(0,0,0,.55)">
+              <img src="{{ c17a.img }}" onError="{{ imgErr }}" style="width:100%;height:62%;object-fit:cover;display:block" alt="{{ c17a.n }}">
+              <span style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,.55);border-radius:8px;font-size:10px;font-weight:700;color:#F2C879;padding:4px 8px">★ {{ c17a.r }}</span>
+              <span onClick="{{ c17a.favToggle }}" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:99px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:14px;color:{{ c17a.heartColor }};cursor:pointer">{{ c17a.heart }}</span>
+              <div style="padding:14px 16px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:20px;font-weight:700;color:#fff">{{ c17a.n }}</span><span style="font-size:18px;font-weight:700;color:#F97316">{{ c17a.p }}</span></div>
+                <div style="font-size:11.5px;line-height:1.5;color:rgba(255,255,255,.55);margin-top:4px">{{ c17a.d }}</div>
+                <div style="font-size:10px;letter-spacing:1.5px;color:rgba(255,255,255,.3);margin-top:10px">← PASS&nbsp;&nbsp;·&nbsp;&nbsp;ADD →</div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:44px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:22px">
+            <button onClick="{{ c17.swipePass }}" style="width:56px;height:56px;border-radius:99px;background:transparent;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.6);font-size:20px;cursor:pointer">✕</button>
+            <button onClick="{{ c17.swipeAdd }}" style="width:74px;height:74px;border-radius:99px;background:#F97316;border:none;color:#16130F;font-size:32px;font-weight:700;cursor:pointer;box-shadow:0 16px 36px rgba(249,115,22,.4)">+</button>
+            <button onClick="{{ c17a.favToggle }}" style="width:56px;height:56px;border-radius:99px;background:transparent;border:1.5px solid rgba(255,255,255,.25);color:#F2C879;font-size:18px;cursor:pointer">♡</button>
+          </div>
+          <div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.3)">PASS · ADD · SAVE — ◎ PROFILE IN CORNER MENU</div>
+          <dc-import name="MenuOverlay" open="{{ c17.open }}" mode="{{ c17.mode }}" items="{{ c17.overlayItems }}" query="{{ c17.query }}" on-search="{{ c17.onSearch }}" on-close="{{ c17.close }}" img-err="{{ imgErr }}" count="{{ c17.count }}" total="{{ c17.total }}" cta="{{ c17.cta }}" bg="{{ c17.theme.bg }}" text="{{ c17.theme.text }}" muted="{{ c17.theme.muted }}" card="{{ c17.theme.card }}" border="{{ c17.theme.border }}" accent="{{ c17.theme.accent }}" on-accent="{{ c17.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 18 · AI PERSONALIZED ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">18</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">AI-Personalized Menu</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">The menu re-ranks itself for each person. An assistant opens with a one-tap guess at your order; every card carries a match score and the reason it earned its position. Search is a conversation, not a field.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">RANKED-FOR-YOU IA</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">MATCH SCORES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">REASON MICROCOPY</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CART IN COMPOSER</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#F7F6FC">
+          <div style="background:linear-gradient(135deg,#378ADD,#534AB7);padding:14px 26px 18px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:#fff;padding-top:2px"><span>9:41</span><span>5G ▮</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+              <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#fff">Brew.ai</div><div style="font-size:11px;color:rgba(255,255,255,.7)">Tuesday · 8:04 AM · your 47th visit</div></div>
+              <div style="width:38px;height:38px;border-radius:99px;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff">A</div>
+            </div>
+          </div>
+          <div data-scroll style="position:absolute;top:128px;bottom:88px;left:0;right:0;overflow-y:auto;padding:16px 18px 10px">
+            <div style="background:#fff;border:0.5px solid #E5E7EB;border-radius:18px 18px 18px 4px;padding:14px 16px;box-shadow:0 4px 12px rgba(83,74,183,.08);max-width:300px">
+              <div style="font-size:13px;line-height:1.5;color:#1A1A2E">Morning, Ana ☕ It's 54° out — your usual oat flat white, but <b>iced</b> today?</div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button onClick="{{ c18.all.0.add }}" style="background:linear-gradient(135deg,#378ADD,#534AB7);color:#fff;border:none;border-radius:99px;font-size:11.5px;font-weight:700;padding:8px 14px;cursor:pointer">Yes — add it +</button>
+                <span style="border:0.5px solid #E5E7EB;border-radius:99px;font-size:11.5px;font-weight:600;color:#6B7280;padding:8px 14px">Show me new</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px">
+              <span style="font-size:10px;font-weight:900;letter-spacing:2px;color:#9CA3AF">RANKED FOR YOU · UPDATES LIVE</span>
+              <span style="font-size:10px;font-weight:700;color:#534AB7">Why these? ⓘ</span>
+            </div>
+            <sc-for list="{{ c18.items }}" as="item" hint-placeholder-count="4">
+              <div style="display:flex;gap:12px;background:#fff;border:0.5px solid #E5E7EB;border-radius:18px;padding:11px;margin-bottom:10px;box-shadow:0 2px 6px rgba(83,74,183,.05)">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:70px;height:70px;border-radius:14px;object-fit:cover;flex-shrink:0" alt="{{ item.n }}">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:7px"><span style="font-size:13.5px;font-weight:700;color:#1A1A2E">{{ item.n }}</span><span style="font-size:9px;font-weight:900;color:#534AB7;background:rgba(83,74,183,.1);border-radius:99px;padding:2px 7px">{{ item.m }}% MATCH</span></div>
+                  <div style="font-size:10.5px;font-style:italic;color:#9CA3AF;margin-top:2px">“{{ item.why }}”</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px">
+                    <span style="font-size:13px;font-weight:700;color:#1A1A2E">{{ item.p }} <span style="font-size:10px;color:#C99B3F;font-weight:600">★ {{ item.r }}</span> <span onClick="{{ item.favToggle }}" style="font-size:11px;color:{{ item.heartColor }};cursor:pointer">{{ item.heart }}</span></span>
+                    <button onClick="{{ item.add }}" style="width:30px;height:30px;border-radius:99px;background:linear-gradient(135deg,#378ADD,#534AB7);color:#fff;border:none;font-size:16px;font-weight:700;cursor:pointer">+</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-top:0.5px solid #E5E7EB;padding:12px 16px 24px;display:flex;align-items:center;gap:10px">
+            <div style="flex:1;display:flex;align-items:center;gap:8px;background:#F3F4F6;border-radius:99px;padding:11px 16px"><input value="{{ c18.query }}" onInput="{{ c18.onSearch }}" placeholder="Ask for anything… “something warm”" style="flex:1;border:none;outline:none;background:transparent;font-size:12.5px;color:#1A1A2E"></div>
+            <span style="width:38px;height:38px;border-radius:99px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:15px;color:#534AB7">◉</span>
+            <span onClick="{{ c18.openCart }}" style="position:relative;width:38px;height:38px;border-radius:99px;background:linear-gradient(135deg,#378ADD,#534AB7);display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;cursor:pointer">◇<span style="position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:99px;background:#0D1B3E;color:#fff;font-size:9.5px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px">{{ c18.count }}</span></span>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c18.open }}" mode="{{ c18.mode }}" items="{{ c18.overlayItems }}" query="{{ c18.query }}" on-search="{{ c18.onSearch }}" on-close="{{ c18.close }}" img-err="{{ imgErr }}" count="{{ c18.count }}" total="{{ c18.total }}" cta="{{ c18.cta }}" bg="{{ c18.theme.bg }}" text="{{ c18.theme.text }}" muted="{{ c18.theme.muted }}" card="{{ c18.theme.card }}" border="{{ c18.theme.border }}" accent="{{ c18.theme.accent }}" on-accent="{{ c18.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 19 · IMMERSIVE FULL-SCREEN ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">19</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Immersive Full-Screen</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Each dish owns the entire viewport in a snap-scrolling gallery; information sits on a frosted panel over the photography. Page dots track depth, translucent chips switch course. The food is the interface.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FULL-BLEED PAGES</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SNAP SCROLL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">FROSTED PANEL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">GLASS CART PILL</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#000">
+          <img src="{{ c19hero.img }}" onError="{{ imgErr }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="{{ c19hero.n }}">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 26%,transparent 55%,rgba(0,0,0,.4) 100%)"></div>
+          <div style="position:absolute;top:0;left:0;right:0;padding:46px 20px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:13px;font-weight:900;letter-spacing:4px;color:#fff">ASH &amp; OAK</span>
+              <div style="display:flex;gap:8px">
+                <span onClick="{{ c19.openSearch }}" style="width:34px;height:34px;border-radius:99px;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;cursor:pointer">⌕</span>
+                <span style="width:34px;height:34px;border-radius:99px;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff">◎</span>
+              </div>
+            </div>
+            <div data-scroll style="display:flex;gap:8px;overflow-x:auto;margin-top:12px">
+              <sc-for list="{{ c19.cats }}" as="cat" hint-placeholder-count="4">
+                <span onClick="{{ cat.onClick }}" style="{{ cat.style }}">{{ cat.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;right:12px;top:42%;display:flex;flex-direction:column;gap:7px">
+            <span style="width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,.4)"></span>
+            <span style="width:5px;height:18px;border-radius:99px;background:#fff"></span>
+            <span style="width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,.4)"></span>
+            <span style="width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,.4)"></span>
+            <span style="width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,.4)"></span>
+          </div>
+          <div data-scroll style="position:absolute;left:0;right:0;bottom:196px;display:flex;gap:8px;overflow-x:auto;padding:0 16px">
+            <sc-for list="{{ c19rest }}" as="item" hint-placeholder-count="5">
+              <div style="flex-shrink:0;position:relative">
+                <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,.35)" alt="{{ item.n }}">
+                <button onClick="{{ item.add }}" style="position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:99px;background:#fff;color:#000;border:none;font-size:12px;font-weight:800;cursor:pointer">+</button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:14px;right:14px;bottom:20px;background:rgba(12,12,12,.5);backdrop-filter:blur(18px);border:0.5px solid rgba(255,255,255,.14);border-radius:24px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:10px;font-weight:900;letter-spacing:2.5px;color:rgba(255,255,255,.5)">FROM THE FIRE · 02/05</span>
+              <span onClick="{{ c19hero.favToggle }}" style="font-size:16px;color:{{ c19hero.heartColor }};cursor:pointer">{{ c19hero.heart }}</span>
+            </div>
+            <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:500;color:#fff;margin-top:6px">{{ c19hero.n }}</div>
+            <div style="font-size:12px;line-height:1.5;color:rgba(255,255,255,.65);margin-top:4px">{{ c19hero.d }}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div><span style="font-size:19px;font-weight:700;color:#fff">{{ c19hero.p }}</span><span style="font-size:11px;color:#F2C879;margin-left:8px">★ {{ c19hero.r }}</span></div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span onClick="{{ c19.openCart }}" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:99px;padding:8px 13px;font-size:11.5px;font-weight:700;color:#fff;cursor:pointer">◇ {{ c19.count }} · {{ c19.total }}</span>
+                <button onClick="{{ c19hero.add }}" style="width:44px;height:44px;border-radius:99px;background:#fff;color:#000;border:none;font-size:21px;font-weight:600;cursor:pointer">+</button>
+              </div>
+            </div>
+          </div>
+          <dc-import name="MenuOverlay" open="{{ c19.open }}" mode="{{ c19.mode }}" items="{{ c19.overlayItems }}" query="{{ c19.query }}" on-search="{{ c19.onSearch }}" on-close="{{ c19.close }}" img-err="{{ imgErr }}" count="{{ c19.count }}" total="{{ c19.total }}" cta="{{ c19.cta }}" bg="{{ c19.theme.bg }}" text="{{ c19.theme.text }}" muted="{{ c19.theme.muted }}" card="{{ c19.theme.card }}" border="{{ c19.theme.border }}" accent="{{ c19.theme.accent }}" on-accent="{{ c19.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 20 · EXPERIMENTAL LUXURY ================= -->
+    <div style="background:#FFFFFF;border:0.5px solid #E0E2E7;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 2px 4px rgba(13,27,62,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:13px;background:#0D1B3E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">20</div>
+          <div style="font-size:20px;font-weight:500;letter-spacing:-0.4px;color:#0D1B3E">Experimental Luxury</div>
+        </div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;line-height:1.55;color:#6B7280">Anti-density as a statement: one numbered chapter rail, one object on a black stage, hairline gold rules and nothing else. Ordering is handed to a “concierge” orb. Built for a patisserie that sells four things, perfectly.</div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">NUMERAL RAIL</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">SINGLE OBJECT STAGE</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">HAIRLINE GOLD</span>
+          <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:#378ADD;background:rgba(55,138,221,.09);border:0.5px solid rgba(55,138,221,.25);padding:4px 9px;border-radius:999px">CONCIERGE ORB</span>
+        </div>
+      </div>
+      <div style="width:390px;height:812px;margin:0 auto;background:#101323;border-radius:52px;padding:11px;box-shadow:0 24px 48px rgba(13,27,62,.18)">
+        <div style="position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:#0B0B0C">
+          <div style="display:flex;justify-content:space-between;padding:16px 26px 4px;font-size:13px;font-weight:600;color:rgba(255,255,255,.7)"><span>9:41</span><span>5G ▮</span></div>
+          <div style="text-align:center;padding-top:14px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:7px;color:#C9A96A">MAISON OR</div>
+            <div style="width:44px;height:0.5px;background:rgba(201,169,106,.5);margin:10px auto 0"></div>
+          </div>
+          <div style="position:absolute;left:22px;top:170px;bottom:220px;display:flex;flex-direction:column;justify-content:center;gap:20px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.28)">
+            <sc-for list="{{ c20.chapters }}" as="ch" hint-placeholder-count="6">
+              <span onClick="{{ ch.onClick }}" style="{{ ch.style }}">{{ ch.label }}</span>
+            </sc-for>
+          </div>
+          <div style="position:absolute;top:120px;left:70px;right:40px;display:flex;flex-direction:column;align-items:center;text-align:center">
+            <div style="position:relative;padding:10px;border:0.5px solid rgba(201,169,106,.45)">
+              <img src="{{ c20hero.img }}" onError="{{ imgErr }}" style="width:212px;height:250px;object-fit:cover;display:block" alt="{{ c20hero.n }}">
+              <span onClick="{{ c20hero.favToggle }}" style="position:absolute;top:18px;right:18px;font-size:14px;color:{{ c20hero.heartColor }};cursor:pointer">{{ c20hero.heart }}</span>
+            </div>
+            <div style="font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-top:22px">CHAPITRE IV — LES DOUCEURS</div>
+            <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:27px;font-weight:500;color:#fff;margin-top:8px;line-height:1.15">{{ c20hero.n }}</div>
+            <div style="font-size:11px;line-height:1.7;color:rgba(255,255,255,.45);margin-top:8px;max-width:230px">{{ c20hero.d }}</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+              <span style="width:26px;height:0.5px;background:rgba(201,169,106,.5)"></span>
+              <span style="font-size:13px;letter-spacing:2px;color:#C9A96A">{{ c20hero.p }}</span>
+              <span style="font-size:10px;color:rgba(201,169,106,.8)">★ {{ c20hero.r }}</span>
+              <span style="width:26px;height:0.5px;background:rgba(201,169,106,.5)"></span>
+            </div>
+            <button onClick="{{ c20hero.add }}" style="margin-top:16px;background:transparent;border:0.5px solid #C9A96A;color:#C9A96A;font-size:10px;font-weight:600;letter-spacing:3px;padding:12px 26px;cursor:pointer">＋&nbsp; AJOUTER</button>
+          </div>
+          <div data-scroll style="position:absolute;left:0;right:0;bottom:104px;display:flex;gap:14px;overflow-x:auto;padding:0 70px 0 70px">
+            <sc-for list="{{ c20rest }}" as="item" hint-placeholder-count="4">
+              <div style="flex-shrink:0;text-align:center;width:64px">
+                <div style="position:relative">
+                  <img src="{{ item.img }}" onError="{{ imgErr }}" style="width:56px;height:56px;object-fit:cover;display:block;margin:0 auto;border:0.5px solid rgba(201,169,106,.35);padding:3px" alt="{{ item.n }}">
+                  <button onClick="{{ item.add }}" style="position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:99px;background:#C9A96A;color:#0B0B0C;border:none;font-size:11px;font-weight:700;cursor:pointer">+</button>
+                </div>
+                <div style="font-size:8px;letter-spacing:1px;color:rgba(255,255,255,.4);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.n }}</div>
+                <div style="font-size:8px;color:rgba(201,169,106,.7)">{{ item.p }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ c20.openCart }}" style="position:absolute;right:22px;bottom:26px;text-align:center;cursor:pointer">
+            <div style="position:relative;width:52px;height:52px;border-radius:99px;border:0.5px solid #C9A96A;display:flex;align-items:center;justify-content:center;font-size:15px;color:#C9A96A">{{ c20.count }}</div>
+            <div style="font-size:7.5px;letter-spacing:2px;color:rgba(201,169,106,.7);margin-top:6px">CONCIERGE</div>
+          </div>
+          <div style="position:absolute;left:22px;bottom:34px;display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.35)"><span onClick="{{ c20.openSearch }}" style="cursor:pointer">⌕</span><span>◎</span></div>
+          <dc-import name="MenuOverlay" open="{{ c20.open }}" mode="{{ c20.mode }}" items="{{ c20.overlayItems }}" query="{{ c20.query }}" on-search="{{ c20.onSearch }}" on-close="{{ c20.close }}" img-err="{{ imgErr }}" count="{{ c20.count }}" total="{{ c20.total }}" cta="{{ c20.cta }}" bg="{{ c20.theme.bg }}" text="{{ c20.theme.text }}" muted="{{ c20.theme.muted }}" card="{{ c20.theme.card }}" border="{{ c20.theme.border }}" accent="{{ c20.theme.accent }}" on-accent="{{ c20.theme.onAccent }}" hint-size="100%,100%" style="display:contents"></dc-import>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding:0 64px 72px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:12px;color:#9CA3AF">JChat Design Exploration · Menu Systems Library · July 2026</div>
+    <div style="font-size:12px;font-weight:900;letter-spacing:2px;color:#0D1B3E">CONNECT WHERE YOU ARE</div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 2760}, &quot;showNotes&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Board&quot;}, &quot;startCartsEmpty&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Board&quot;}}">
+class Component extends DCLogic {
+  state = this.initState();
+
+  initState() {
+    const cfg = this.cfgMap();
+    const zero = this.props.startCartsEmpty ?? false;
+    const cart = {};
+    if (!zero) {
+      for (const id of Object.keys(cfg)) {
+        const all = cfg[id].all;
+        cart[id] = {};
+        // seed the first couple of loop items so the cart isn't empty for testing
+        const seedIdx = cfg[id].heroFrom ? [1, 2] : [0, 1];
+        seedIdx.forEach((i) => { if (all[i]) cart[id][all[i].key] = 1; });
+      }
+    }
+    return { cart, fav: {}, cat: {}, q: {}, overlay: {}, idx: {}, item: {} };
+  }
+
+  money(str) {
+    const sym = (String(str).match(/[^\d.,\s]+/) || ['$'])[0];
+    const val = parseFloat(String(str).replace(/[^\d.]/g, '')) || 0;
+    return { sym, val };
+  }
+
+  addItem(cid, key) {
+    this.setState((st) => {
+      const c = { ...(st.cart[cid] || {}) };
+      c[key] = (c[key] || 0) + 1;
+      return { cart: { ...st.cart, [cid]: c } };
+    });
+  }
+  decItem(cid, key) {
+    this.setState((st) => {
+      const c = { ...(st.cart[cid] || {}) };
+      const n = (c[key] || 0) - 1;
+      if (n <= 0) delete c[key]; else c[key] = n;
+      return { cart: { ...st.cart, [cid]: c } };
+    });
+  }
+  removeItem(cid, key) {
+    this.setState((st) => {
+      const c = { ...(st.cart[cid] || {}) };
+      delete c[key];
+      return { cart: { ...st.cart, [cid]: c } };
+    });
+  }
+  toggleFav(cid, key) {
+    this.setState((st) => {
+      const f = { ...(st.fav[cid] || {}) };
+      if (f[key]) delete f[key]; else f[key] = true;
+      return { fav: { ...st.fav, [cid]: f } };
+    });
+  }
+  setCat(cid, k) { this.setState((st) => ({ cat: { ...st.cat, [cid]: k }, q: { ...st.q, [cid]: '' } })); }
+  setQuery(cid, v) { this.setState((st) => ({ q: { ...st.q, [cid]: v } })); }
+  setOverlay(cid, m) { this.setState((st) => ({ overlay: { ...st.overlay, [cid]: m } })); }
+  openItem(cid, key) { this.setState((st) => ({ overlay: { ...st.overlay, [cid]: 'item' }, item: { ...st.item, [cid]: key } })); }
+  setIdx(cid, i) { this.setState((st) => ({ idx: { ...st.idx, [cid]: i } })); }
+  bumpIdx(cid, d, len) {
+    this.setState((st) => {
+      const cur = st.idx[cid] || 0;
+      let n = cur + d; if (n < 0) n = len - 1; if (n >= len) n = 0;
+      return { idx: { ...st.idx, [cid]: n } };
+    });
+  }
+  resetAll() { this.setState(this.initState()); }
+
+  cfgMap() {
+    if (this._cfg) return this._cfg;
+    const p = this.pools();
+    const c = (a, b) => [...a, ...b];
+    const key = (id, arr) => arr.map((it, i) => ({ ...it, key: id + '-' + i }));
+    const C = (k, emoji, label, from, to) => ({ key: k, emoji, label, from, to });
+
+    // theme presets → chip on/off are full inline-style strings for that concept's rail
+    const pill = (on, onBg, offBg, offBd, offTx) => ({
+      chipOn: `flex-shrink:0;background:${onBg};color:${on};font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap`,
+      chipOff: `flex-shrink:0;background:${offBg};border:0.5px solid ${offBd};color:${offTx};font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap`,
+    });
+    const railV = (onBg, onBd, onTx, offTx) => ({
+      chipOn: `width:70px;padding:10px 0;border-radius:14px;background:${onBg};border:1px solid ${onBd};display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:${onTx}`,
+      chipOff: `width:70px;padding:10px 0;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;color:${offTx}`,
+    });
+
+    const def = (id, all, cats, theme, cta, opts) => ({ id, all: key(id, (opts && opts.deco) ? all.map(opts.deco) : all), cats, theme, cta, ...(opts || {}) });
+
+    const m = {};
+    // 01
+    m.c1 = def('c1', c(p.burgers, p.street),
+      [C('all', '', 'All', 0, 20), C('bur', '🍔', 'Burgers', 0, 6), C('sid', '🍟', 'Sides', 6, 10), C('str', '🌮', 'Street', 10, 20)],
+      { bg: '#F7F8FA', text: '#0D1B3E', muted: '#9CA3AF', card: '#fff', border: '#E0E2E7', accent: '#0D1B3E', onAccent: '#fff', heartOn: '#E0353F', heartRest: '#E0353F', ...pill('#fff', '#0D1B3E', '#fff', '#E0E2E7', '#6B7280') }, 'Checkout');
+    // 02
+    m.c2 = def('c2', c(p.pizza, p.bakery),
+      [C('all', '🍽️', 'Tutto', 0, 20), C('piz', '🍕', 'Pizze', 0, 10), C('dol', '🧁', 'Dolci', 10, 20)],
+      { bg: '#FAF7F2', text: '#3C2A21', muted: '#9C8E7B', card: '#fff', border: '#E7DFD3', accent: '#C2371F', onAccent: '#fff', heartOn: '#C2371F', heartRest: '#C7B9A5',
+        chipOn: 'display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.14);border-radius:12px;padding:11px 12px;cursor:pointer;color:#fff;font-size:13.5px;font-weight:700',
+        chipOff: 'display:flex;align-items:center;justify-content:space-between;padding:11px 12px;cursor:pointer;color:rgba(255,255,255,.75);font-size:13.5px;font-weight:600' }, 'Ordina');
+    // 03
+    m.c3 = def('c3', c(p.sushi, p.asian),
+      [C('nig', '🍣', 'NIGIRI', 0, 6), C('rol', '🍱', 'ROLLS', 6, 10), C('war', '🍜', 'WARM', 10, 16), C('swe', '🍡', 'SWEET', 16, 20)],
+      { bg: '#0B1020', text: '#fff', muted: 'rgba(255,255,255,.45)', card: '#141B33', border: 'rgba(255,255,255,.08)', accent: '#4FD1C5', onAccent: '#0B1020', heartOn: '#4FD1C5', heartRest: 'rgba(255,255,255,.35)',
+        chipOn: 'width:46px;height:56px;border-radius:14px;background:rgba(79,209,197,.14);border:1px solid #4FD1C5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:#4FD1C5',
+        chipOff: 'width:46px;height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;opacity:.6;color:rgba(255,255,255,.4)' }, 'Checkout');
+    // 04
+    m.c4 = def('c4', c(p.cafe, p.bakery),
+      [C('all', '', 'All', 1, 20), C('esp', '', 'Espresso', 1, 7), C('toa', '', 'Toasts', 7, 11), C('bak', '', 'Bakery', 11, 20)],
+      { bg: '#FBF6EF', text: '#2E2317', muted: '#A08F77', card: '#fff', border: '#E9DFD0', accent: '#2E2317', onAccent: '#FBF6EF', heartOn: '#C99B3F', heartRest: '#D8CBB6',
+        chipOn: 'font-size:13px;font-weight:700;color:#2E2317;padding-bottom:10px;border-bottom:2px solid #2E2317;cursor:pointer;white-space:nowrap',
+        chipOff: 'font-size:13px;font-weight:500;color:#A08F77;padding-bottom:10px;cursor:pointer;white-space:nowrap' }, 'View cart', { heroFrom: 1 });
+    // 05
+    m.c5 = def('c5', c(p.bakery, p.brunch),
+      [C('bre', '🥖', 'BREADS', 0, 6), C('cak', '🍰', 'CAKES', 6, 10), C('bru', '🍳', 'BRUNCH', 10, 16), C('cof', '☕', 'COFFEE', 16, 20)],
+      { bg: '#fff', text: '#3A2E1F', muted: '#B8A88C', card: '#fff', border: '#EFE9DD', accent: '#3A2E1F', onAccent: '#fff', heartOn: '#D9A441', heartRest: '#D9A441',
+        chipOn: 'width:70px;padding:10px 0;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(58,46,31,.1);border:1px solid #D9A441;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:#3A2E1F',
+        chipOff: 'width:70px;padding:10px 0;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;color:#3A2E1F' }, 'Checkout');
+    // 06
+    m.c6 = def('c6', c(p.fine, p.cocktails),
+      [C('fir', '02', 'From the fire', 0, 6), C('raw', '03', 'Raw bar', 6, 10), C('cel', '04', 'Cellar', 10, 16), C('swe', '05', 'Sweet', 16, 20)],
+      { bg: '#0C0A09', text: '#fff', muted: 'rgba(255,255,255,.4)', card: '#161311', border: 'rgba(201,169,106,.35)', accent: '#C9A96A', onAccent: '#0C0A09', heartOn: '#C9A96A', heartRest: 'rgba(255,255,255,.85)',
+        chipOn: 'cursor:pointer', chipOff: 'cursor:pointer;opacity:.45' }, 'Reserve');
+    // 07
+    m.c7 = def('c7', c(p.healthy, p.brunch),
+      [C('all', '', 'All', 0, 20), C('bow', '🥗', 'Bowls', 0, 6), C('smo', '🥤', 'Smoothies', 6, 10), C('toa', '🍞', 'Toasts', 10, 20)],
+      { bg: '#0E1B14', text: '#fff', muted: 'rgba(255,255,255,.65)', card: '#16281E', border: 'rgba(255,255,255,.12)', accent: '#2E9E5B', onAccent: '#fff', heartOn: '#B7F0C6', heartRest: '#fff',
+        chipOn: 'flex-shrink:0;background:#2E9E5B;color:#fff;font-size:11.5px;font-weight:800;padding:8px 14px;border-radius:999px;box-shadow:0 6px 16px rgba(46,158,91,.4);cursor:pointer;white-space:nowrap',
+        chipOff: 'flex-shrink:0;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);border:0.5px solid rgba(255,255,255,.3);color:#fff;font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap' }, 'Checkout');
+    // 08 (feed, no cat)
+    m.c8 = def('c8', c(p.street, p.burgers),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#0A0A0A', text: '#fff', muted: 'rgba(255,255,255,.5)', card: '#141414', border: '#232323', accent: '#FFD60A', onAccent: '#0A0A0A', heartOn: '#FFD60A', heartRest: '#fff', chipOn: '', chipOff: '' }, 'To seat');
+    // 09
+    m.c9 = def('c9', c(p.dessert, p.bakery),
+      [C('con', '🍦', 'Cones', 0, 7), C('sha', '🥤', 'Shakes', 7, 10), C('bak', '🧁', 'Bakes', 10, 20)],
+      { bg: '#FFF0F4', text: '#8A2B4A', muted: '#C98BA3', card: '#fff', border: '#F4D3DF', accent: '#E85D8A', onAccent: '#fff', heartOn: '#E85D8A', heartRest: '#E85D8A',
+        chipOn: 'flex:1;text-align:center;background:#E85D8A;color:#fff;font-size:12px;font-weight:800;padding:9px 0;border-radius:999px;cursor:pointer',
+        chipOff: 'flex:1;text-align:center;color:#C98BA3;font-size:12px;font-weight:700;padding:9px 0;cursor:pointer' }, 'Checkout');
+    // 10 (search first)
+    m.c10 = def('c10', c(p.brunch, p.healthy),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#FAF9F7', text: '#1A1A2E', muted: '#9CA3AF', card: '#fff', border: '#E5E7EB', accent: '#0D1B3E', onAccent: '#fff', heartOn: '#E0353F', heartRest: '#E0353F', chipOn: '', chipOff: '' }, 'Checkout',
+      { deco: (it) => it });
+    // 11 (magazine, hero)
+    m.c11 = def('c11', c(p.fine, p.brunch),
+      [C('all', '', 'All', 1, 20), C('ent', 'I', 'Entrées', 1, 7), C('pla', 'II', 'Plats', 7, 13), C('des', 'III', 'Desserts', 13, 20)],
+      { bg: '#F5F1E8', text: '#211D15', muted: '#8C8064', card: '#fff', border: '#C9BFA8', accent: '#211D15', onAccent: '#F5F1E8', heartOn: '#A33B2E', heartRest: '#C9BFA8',
+        chipOn: 'display:flex;justify-content:space-between;cursor:pointer;color:#211D15;font-weight:700',
+        chipOff: 'display:flex;justify-content:space-between;cursor:pointer;color:#211D15' }, 'Checkout', { heroFrom: 1 });
+    // 12 (store sections)
+    m.c12 = def('c12', c(p.fine, p.cafe),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#F5F5F7', text: '#1D1D1F', muted: '#86868B', card: '#fff', border: '#E5E7EB', accent: '#378ADD', onAccent: '#fff', heartOn: '#E0353F', heartRest: '#fff', chipOn: '', chipOff: '' }, 'Checkout');
+    // 13 (rows)
+    m.c13 = def('c13', c(p.street, p.dessert),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#0D0D0F', text: '#fff', muted: 'rgba(255,255,255,.55)', card: '#1A1A1D', border: 'rgba(255,255,255,.1)', accent: '#E0353F', onAccent: '#fff', heartOn: '#E0353F', heartRest: 'rgba(255,255,255,.8)', chipOn: '', chipOff: '' }, 'Checkout');
+    // 14 (timeline)
+    m.c14 = def('c14', c(p.fine, p.dessert).slice(0, 20),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#FCFBF9', text: '#1A1A2E', muted: '#9CA3AF', card: '#fff', border: '#E0E2E7', accent: '#0D1B3E', onAccent: '#fff', heartOn: '#E0353F', heartRest: '#D1D5DB', chipOn: '', chipOff: '' }, 'Reserve',
+      { deco: null });
+    // 15 (story) idx
+    m.c15 = def('c15', c(p.cocktails, p.dessert),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#000', text: '#fff', muted: 'rgba(255,255,255,.75)', card: '#111', border: 'rgba(255,255,255,.14)', accent: '#F2C879', onAccent: '#000', heartOn: '#F2C879', heartRest: 'rgba(255,255,255,.85)', chipOn: '', chipOff: '' }, 'Checkout', { idxNav: true });
+    // 16 (gesture) idx + cat via arrows
+    m.c16 = def('c16', c(p.asian, p.sushi),
+      [C('ram', '🍜', 'RAMEN', 0, 6), C('sid', '🥟', 'SIDES', 6, 10), C('mai', '🍱', 'MAINS', 10, 20)],
+      { bg: '#FFFFFF', text: '#1A1A2E', muted: '#9CA3AF', card: '#fff', border: '#E5E7EB', accent: '#1A1A2E', onAccent: '#fff', heartOn: '#E0353F', heartRest: '#E0353F', chipOn: '', chipOff: '' }, 'Checkout', { idxNav: true });
+    // 17 (stack) idx
+    m.c17 = def('c17', c(p.street, p.asian),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#16130F', text: '#fff', muted: 'rgba(255,255,255,.55)', card: '#241E16', border: 'rgba(255,255,255,.1)', accent: '#F97316', onAccent: '#16130F', heartOn: '#F2C879', heartRest: '#fff', chipOn: '', chipOff: '' }, 'Checkout', { idxNav: true });
+    // 18 (AI)
+    m.c18 = def('c18', c(p.cafe, p.healthy),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#F7F6FC', text: '#1A1A2E', muted: '#9CA3AF', card: '#fff', border: '#E5E7EB', accent: '#534AB7', onAccent: '#fff', heartOn: '#534AB7', heartRest: '#D1D5DB', chipOn: '', chipOff: '' }, 'Checkout',
+      { deco: null });
+    // 19 (immersive) cat chips control strip
+    m.c19 = def('c19', c(p.fine, p.cocktails),
+      [C('all', '', 'All', 1, 20), C('fir', '', 'Fire', 1, 7), C('raw', '', 'Raw', 7, 10), C('cel', '', 'Cellar', 10, 16), C('swe', '', 'Sweet', 16, 20)],
+      { bg: '#000', text: '#fff', muted: 'rgba(255,255,255,.65)', card: '#111', border: 'rgba(255,255,255,.14)', accent: '#fff', onAccent: '#000', heartOn: '#F2C879', heartRest: 'rgba(255,255,255,.85)',
+        chipOn: 'flex-shrink:0;background:rgba(255,255,255,.9);color:#000;font-size:11px;font-weight:800;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap',
+        chipOff: 'flex-shrink:0;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);border:0.5px solid rgba(255,255,255,.3);color:#fff;font-size:11px;font-weight:700;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap' }, 'Checkout', { heroFrom: 1 });
+    // 20 (luxury) idx
+    m.c20 = def('c20', c(p.dessert, p.cocktails),
+      [C('all', '', 'All', 0, 20)],
+      { bg: '#0B0B0C', text: '#fff', muted: 'rgba(255,255,255,.45)', card: '#151515', border: 'rgba(201,169,106,.45)', accent: '#C9A96A', onAccent: '#0B0B0C', heartOn: '#C9A96A', heartRest: 'rgba(255,255,255,.85)', chipOn: '', chipOff: '' }, 'Commander', { idxNav: true });
+
+    // decoration passes that need indices
+    const hs = [128, 176, 148, 200, 160, 136, 188, 152];
+    m.c10.all = m.c10.all.map((it, i) => ({ ...it, h: hs[i % hs.length] + 'px' }));
+    const times = ['7:00', '7:20', '7:45', '8:05', '8:30', '8:50', '9:10', '9:30'];
+    m.c14.all = m.c14.all.map((it, i) => ({ ...it, no: String(i + 1).padStart(2, '0'), t: times[i % times.length] }));
+    const whys = ['Because you like oat milk', 'You ordered this 6 times', 'Popular with your taste twins', 'Pairs with your last order', 'New — matches your profile', 'You favorite citrus flavors'];
+    m.c18.all = m.c18.all.map((it, i) => ({ ...it, m: String(97 - i * 2), why: whys[i % whys.length] }));
+
+    this._cfg = m;
+    return m;
+  }
+
+  build(cid) {
+    const cfg = this.cfgMap()[cid];
+    const st = this.state;
+    const t = cfg.theme;
+    const cart = st.cart[cid] || {};
+    const favs = st.fav[cid] || {};
+    const activeCat = st.cat[cid] || cfg.cats[0].key;
+    const query = st.q[cid] || '';
+    const overlay = st.overlay[cid] || null;
+    const idx = st.idx[cid] || 0;
+    const en = (it) => {
+      if (!it) return it;
+      const qty = cart[it.key] || 0;
+      const faved = !!favs[it.key];
+      return {
+        ...it, qty, hasQty: qty > 0, qtyLabel: qty > 0 ? String(qty) : '',
+        heart: faved ? '♥' : '♡', heartColor: faved ? t.heartOn : t.heartRest,
+        add: () => this.openItem(cid, it.key), inc: () => this.addItem(cid, it.key),
+        dec: () => this.decItem(cid, it.key), remove: () => this.removeItem(cid, it.key),
+        favToggle: () => this.toggleFav(cid, it.key),
+      };
+    };
+    const all = cfg.all.map(en);
+    const catObj = cfg.cats.find((x) => x.key === activeCat) || cfg.cats[0];
+    const inCat = all.slice(catObj.from, catObj.to);
+    const q = query.trim().toLowerCase();
+    const filtered = q ? all.filter((it) => (it.n + ' ' + it.d).toLowerCase().includes(q)) : inCat;
+    const cats = cfg.cats.map((x) => ({
+      key: x.key, emoji: x.emoji, label: x.label, active: x.key === activeCat,
+      onClick: () => this.setCat(cid, x.key), style: x.key === activeCat ? t.chipOn : t.chipOff,
+      count: (x.to == null ? all.length : x.to) - (x.from || 0),
+    }));
+    const cartItems = all.filter((it) => it.qty > 0);
+    const count = cartItems.reduce((s, it) => s + it.qty, 0);
+    const totalVal = cartItems.reduce((s, it) => s + this.money(it.p).val * it.qty, 0);
+    const sym = this.money((all[0] && all[0].p) || '$0').sym;
+    const total = sym + totalVal.toFixed(2);
+    const len = all.length;
+    const custKey = this.state.item[cid];
+    const custBase = overlay === 'item' && custKey != null ? all.find((x) => x.key === custKey) : null;
+    const custItem = custBase ? { ...en(custBase), confirm: (qty) => { for (let i = 0; i < (qty || 1); i++) this.addItem(cid, custBase.key); this.setOverlay(cid, null); } } : null;
+    return {
+      all, items: filtered, cats, count, total, activeCat, query,
+      empty: cartItems.length === 0, resultCount: filtered.length,
+      open: overlay != null, mode: overlay || 'none', isSearch: overlay === 'search',
+      openCart: () => this.setOverlay(cid, 'cart'),
+      openSearch: () => this.setOverlay(cid, 'search'),
+      close: () => this.setOverlay(cid, null),
+      onSearch: (e) => this.setQuery(cid, e.target ? e.target.value : ''),
+      overlayItems: overlay === 'search' ? filtered : overlay === 'item' ? (custItem ? [custItem] : []) : cartItems,
+      cartItems, theme: t, accent: t.accent, cta: cfg.cta,
+      activeLabel: catObj.label,
+      catClick: Object.fromEntries(cfg.cats.map((x) => [x.key, () => this.setCat(cid, x.key)])),
+      // idx navigation (story / gesture / stack / luxury)
+      idx, cur: en(all[idx % len]), nxt: en(all[(idx + 1) % len]), nxt2: en(all[(idx + 2) % len]),
+      posLabel: (idx % len + 1) + ' / ' + len,
+      goNext: () => this.bumpIdx(cid, 1, len), goPrev: () => this.bumpIdx(cid, -1, len),
+      swipeAdd: () => { this.addItem(cid, all[idx % len].key); this.bumpIdx(cid, 1, len); },
+      swipePass: () => this.bumpIdx(cid, 1, len),
+      chapters: cfg.all.slice(0, 6).map((it, i) => ({
+        label: String(i + 1).padStart(2, '0'),
+        onClick: () => this.setIdx(cid, i),
+        style: i === (idx % len) ? 'letter-spacing:2px;color:#C9A96A;cursor:pointer;font-weight:700' : 'letter-spacing:2px;color:rgba(255,255,255,.28);cursor:pointer',
+      })),
+      catNext: () => { const i = cfg.cats.findIndex((x) => x.key === activeCat); this.setCat(cid, cfg.cats[(i + 1) % cfg.cats.length].key); },
+      catPrev: () => { const i = cfg.cats.findIndex((x) => x.key === activeCat); this.setCat(cid, cfg.cats[(i - 1 + cfg.cats.length) % cfg.cats.length].key); },
+    };
+  }
+
+  pools() {
+    if (this._pools) return this._pools;
+    const U = (id) => `https://images.unsplash.com/photo-${id}?w=560&q=80&auto=format&fit=crop`;
+    const P = (n, d, p, r, id) => ({ n, d, p, r: r.toFixed(1), img: U(id) });
+    this._pools = {
+      burgers: [
+        P('Double Smash', 'Two smashed patties, aged cheddar', '$12.90', 4.8, '1568901346375-23c9450c58cd'),
+        P('Classic Stack', 'Lettuce, tomato, pickle, house sauce', '$10.50', 4.6, '1571091718767-18b5b1457add'),
+        P('Smoky BBQ', 'Brisket blend, crispy onions, glaze', '$13.40', 4.7, '1550547660-d9450f859349'),
+        P('Green Goddess', 'Grilled chicken, avocado, herb aioli', '$11.80', 4.5, '1551782450-a2132b4ba21d'),
+        P('Bacon Bleu', 'Smoked bacon, blue cheese crumble', '$13.90', 4.9, '1553979459-d2229ba7433b'),
+        P('Truffle Melt', 'Truffle mayo, swiss, caramel onion', '$14.50', 4.8, '1547584370-2cc98b8b8dc8'),
+        P('Crinkle Fries', 'Sea salt, double fried', '$4.20', 4.4, '1573080496219-bb080dd4f877'),
+        P('Loaded Fries', 'Cheese sauce, jalapeño, bacon', '$6.80', 4.6, '1585109649139-366815a0d713'),
+        P('Vanilla Shake', 'Madagascar vanilla, whipped cream', '$5.50', 4.7, '1572490122747-3968b75cc699'),
+        P('Onion Rings', 'Buttermilk battered, ranch dip', '$5.20', 4.3, '1639024471283-03518883512d'),
+      ],
+      pizza: [
+        P('Margherita DOP', 'San Marzano, fior di latte, basil', '$14.00', 4.9, '1574071318508-1cdbab80d002'),
+        P('Pepperoni Classica', 'Cup-and-char pepperoni, mozzarella', '$16.00', 4.8, '1628840042765-356cda07504e'),
+        P('Quattro Formaggi', 'Four cheeses, wild honey', '$17.50', 4.7, '1513104890138-7c749659a591'),
+        P('Diavola', 'Spicy salami, chili oil', '$16.50', 4.6, '1571407970349-bc81e7e96d47'),
+        P('Burrata Bianca', 'Burrata, lemon zest, olive oil', '$18.00', 4.8, '1593560708920-61dd98c46a4e'),
+        P('Funghi', 'Roast mushroom, taleggio, thyme', '$16.00', 4.5, '1565299624946-b28f40a0ae38'),
+        P('Garlic Knots', 'Parmesan, parsley butter', '$6.00', 4.4, '1504674900247-0877df9cc836'),
+        P('Caprese', 'Heirloom tomato, basil, balsamic', '$11.00', 4.5, '1608897013039-887f21d8c804'),
+        P('Tiramisu', 'Espresso-soaked, mascarpone', '$8.50', 4.9, '1571877227200-a0d98ea607e9'),
+        P('Cacio e Pepe', 'Pecorino, cracked pepper', '$15.00', 4.7, '1621996346565-e3dbc646d9a9'),
+      ],
+      sushi: [
+        P('Omakase 12', 'Chef selection nigiri', '$48.00', 4.9, '1579871494447-9811cf80d66c'),
+        P('Dragon Roll', 'Eel, avocado, tobiko', '$18.00', 4.8, '1553621042-f6e147245754'),
+        P('Salmon Nigiri', 'Ora King salmon, fresh wasabi', '$9.00', 4.7, '1617196034796-73dfa7b1fd56'),
+        P('Tuna Tataki', 'Seared bluefin, ponzu', '$16.00', 4.8, '1526318896980-cf78c088247c'),
+        P('Spicy Maki', 'Tuna, cucumber, togarashi', '$12.00', 4.5, '1611143669185-af224c5e3252'),
+        P('Hamachi Crudo', 'Yellowtail, yuzu kosho', '$17.00', 4.7, '1580822184713-fc5400e7fe10'),
+        P('Miso Soup', 'Wakame, silken tofu', '$4.50', 4.4, '1547592180-85f173990554'),
+        P('Edamame', 'Smoked salt', '$5.00', 4.3, '1564834724105-918b73d1b9e0'),
+        P('Gyoza ×5', 'Pork and chive, black vinegar', '$8.00', 4.6, '1496116218417-1a781b1c416c'),
+        P('Matcha Mochi', 'Made daily', '$6.50', 4.5, '1561845730-208ad5910553'),
+      ],
+      cafe: [
+        P('Oat Flat White', 'Double ristretto, oat milk', '$5.20', 4.8, '1541167760496-1628856ab772'),
+        P('Pour Over', 'Ethiopia Guji, floral and bright', '$6.00', 4.7, '1495474472287-4d71bcdd2085'),
+        P('Cold Brew', '18-hour steep, served black', '$5.50', 4.6, '1461023058943-07fcbe16d735'),
+        P('Espresso Tonic', 'Citrus, juniper tonic', '$6.50', 4.5, '1509042239860-f550ce710b93'),
+        P('Matcha Latte', 'Ceremonial grade, oat milk', '$6.00', 4.6, '1572442388796-11668a67e53d'),
+        P('Masala Chai', 'House spice blend, steamed milk', '$5.00', 4.4, '1571934811356-5cc061b6821f'),
+        P('Croissant', 'Laminated, 27 layers', '$4.50', 4.8, '1555507036-ab1f4038808a'),
+        P('Banana Bread', 'Brown butter, walnut', '$4.80', 4.5, '1509440159596-0249088772ff'),
+        P('Avocado Toast', 'Sourdough, chili crunch', '$9.50', 4.6, '1482049016688-2d3e1b311543'),
+        P('Ricotta Toast', 'Honey, thyme, lemon', '$8.50', 4.5, '1484980972926-edee96e0960d'),
+      ],
+      bakery: [
+        P('Country Loaf', '48-hour levain', '$8.00', 4.9, '1509440159596-0249088772ff'),
+        P('Pain au Chocolat', 'Valrhona batons', '$5.00', 4.8, '1555507036-ab1f4038808a'),
+        P('Morning Bun', 'Cardamom sugar', '$4.80', 4.6, '1558961363-fa8fdf82db35'),
+        P('Chocolate Cake', 'Dark 70%, espresso soak', '$7.50', 4.9, '1578985545062-69928b1d9587'),
+        P('Lemon Tart', 'Torched meringue', '$6.50', 4.7, '1488477181946-6428a0291777'),
+        P('Choc-Chip Cookie', 'Sea salt, rye flour', '$3.80', 4.8, '1486427944299-d1955d23e34d'),
+        P('Cinnamon Roll', 'Cream cheese glaze', '$5.20', 4.7, '1509365465985-25d11c17e812'),
+        P('Berry Cupcake', 'Vanilla bean frosting', '$4.50', 4.5, '1464349095431-e9a21285b5f3'),
+        P('Baguette', 'Baked at 3 pm daily', '$4.00', 4.6, '1517433670267-08bbd4be890f'),
+        P('Berry Danish', 'Seasonal fruit, custard', '$5.50', 4.6, '1551024506-0bccd828d307'),
+      ],
+      dessert: [
+        P('Sundae Royale', 'Three scoops, hot fudge', '$8.90', 4.9, '1563805042-7684c019e1cb'),
+        P('Waffle Cone', 'Two scoops, any flavor', '$6.50', 4.8, '1497034825429-c343d7c6a68f'),
+        P('Strawberry Soft', 'Fresh strawberry swirl', '$5.50', 4.7, '1565958011703-44f9829ba187'),
+        P('Basque Cheesecake', 'Burnt top, vanilla', '$7.90', 4.8, '1606755962773-d324e0a13086'),
+        P('Affogato', 'Espresso over fior di latte', '$6.00', 4.6, '1541167760496-1628856ab772'),
+        P('Malted Shake', 'Chocolate, whipped cream', '$6.80', 4.7, '1587223962930-cb7f31384c19'),
+        P('Panna Cotta', 'Vanilla bean, berry coulis', '$6.50', 4.5, '1488477181946-6428a0291777'),
+        P('Banana Split', 'Classic, three sauces', '$9.50', 4.6, '1514849302-984523450cf4'),
+        P('Macarons ×6', 'Assorted flavors', '$12.00', 4.7, '1569864358642-9d1684040f43'),
+        P('Warm Brownie', 'À la mode, salted caramel', '$7.50', 4.8, '1564355808539-22fda35bed7e'),
+      ],
+      healthy: [
+        P('Harvest Bowl', 'Quinoa, kale, tahini', '$12.50', 4.7, '1546069901-ba9599a7e63c'),
+        P('Green Salad', 'Avocado, cucumber, herbs', '$10.50', 4.5, '1512621776951-a57141f2eefd'),
+        P('Buddha Bowl', 'Roast veg, hummus, seeds', '$12.00', 4.6, '1540189549336-e6e99c3679fe'),
+        P('Poke Bowl', 'Ahi tuna, edamame, rice', '$14.50', 4.8, '1490645935967-10de6ba17061'),
+        P('Açaí Bowl', 'Granola, banana, coconut', '$11.00', 4.7, '1490474418585-ba9bad8fd0ea'),
+        P('Green Juice', 'Kale, apple, ginger', '$7.50', 4.4, '1610970881699-44a5587cabec'),
+        P('Cacao Smoothie', 'Peanut butter, oat milk', '$8.50', 4.6, '1553530666-ba11a7da3888'),
+        P('Halloumi Wrap', 'Grilled halloumi, pesto', '$10.00', 4.5, '1511690656952-34342bb7c2f2'),
+        P('Tomato Soup', 'Roast tomato, basil', '$7.00', 4.4, '1547592180-85f173990554'),
+        P('Grain Bowl', 'Farro, beet, goat cheese', '$12.00', 4.6, '1476224203421-9ac39bcb3327'),
+      ],
+      street: [
+        P('Stadium Dog', 'All beef, crispy onion', '$7.50', 4.5, '1619740455993-9e612b1af08a'),
+        P('Loaded Nachos', 'Queso, pico, jalapeño', '$9.50', 4.6, '1513456852971-30c0b8199d4d'),
+        P('Al Pastor Tacos', 'Pineapple, cilantro, onion', '$8.90', 4.8, '1551504734-5ee1c4a1479b'),
+        P('Fried Chicken', 'Buttermilk, hot honey', '$10.50', 4.7, '1562967914-608f82629710'),
+        P('Soft Pretzel', 'Beer cheese dip', '$6.00', 4.4, '1523986371872-9d3ba2e2a389'),
+        P('Craft Lager', 'Local draft, 16 oz', '$8.00', 4.5, '1535958636474-b021ee887b13'),
+        P('Buffalo Wings', 'Blue cheese, celery', '$11.00', 4.6, '1608039755401-742074f0548d'),
+        P('Quesadilla', 'Three cheese, salsa verde', '$8.50', 4.4, '1618040996337-56904b7850b9'),
+        P('Churros', 'Cinnamon sugar, chocolate', '$6.50', 4.7, '1624371414361-e670edf4898d'),
+        P('Fountain Soda', 'Bottomless refills', '$4.50', 4.2, '1581636625402-29b2a704ef13'),
+      ],
+      cocktails: [
+        P('Neon Palm', 'Mezcal, passionfruit, lime', '$15.00', 4.8, '1514362545857-3bc16c4c7d1b'),
+        P('Smoked Old Fashioned', 'Rye, cherrywood smoke', '$16.00', 4.9, '1470337458703-46ad1756a187'),
+        P('Yuzu Spritz', 'Prosecco, yuzu, shiso', '$14.00', 4.7, '1536935338788-846bb9981813'),
+        P('Espresso Martini', 'Vodka, cold brew, demerara', '$15.00', 4.8, '1551538827-9c037cb4f32a'),
+        P('Paloma Rosa', 'Tequila, pink grapefruit', '$14.00', 4.6, '1587888637140-849b25d80ef9'),
+        P('Negroni Bianco', 'Gin, bianco vermouth', '$15.00', 4.7, '1560512823-829485b8bf24'),
+        P('Zero Mojito', 'Mint, lime, soda', '$9.00', 4.4, '1546171753-97d7676e4602'),
+        P('Oysters ×6', 'Mignonette, lemon', '$21.00', 4.8, '1614707267537-b85aaf00c4b7'),
+        P('Truffle Popcorn', 'Parmesan, chive', '$7.00', 4.5, '1578849278619-e73505e9610f'),
+        P('Champagne Coupe', 'Grower champagne', '$18.00', 4.9, '1547595628-c61a29f496f0'),
+      ],
+      fine: [
+        P('Dry-Aged Ribeye', '45 days, bone-marrow jus', '$62.00', 4.9, '1600891964092-4316c288032e'),
+        P('Cedar Salmon', 'Miso glaze, charred leek', '$38.00', 4.8, '1467003909585-2f8a72700288'),
+        P('Short Rib', '12-hour braise, celeriac', '$44.00', 4.8, '1544025162-d76694265947'),
+        P('Hand-Cut Tagliatelle', 'Black truffle, 36-mo parmesan', '$34.00', 4.9, '1473093295043-cdd812d0e601'),
+        P('Garden Tasting', 'Seven vegetables, seven ways', '$29.00', 4.7, '1414235077428-338989a2e8c0'),
+        P('Scallop Crudo', 'Brown butter, finger lime', '$26.00', 4.8, '1551218808-94e220e084d2'),
+        P("Duck à l'Orange", 'Heritage duck, burnt citrus', '$46.00', 4.7, '1559339352-11d035aa65de'),
+        P('Lobster Thermidor', 'Half lobster, gruyère', '$54.00', 4.8, '1504674900247-0877df9cc836'),
+        P('Chocolate Soufflé', 'Twenty minutes — worth it', '$16.00', 4.9, '1578985545062-69928b1d9587'),
+        P('Cheese Course', 'Five farms, quince', '$22.00', 4.6, '1486297678162-eb2a19b0a32d'),
+      ],
+      brunch: [
+        P('Buttermilk Stack', 'Maple, whipped butter', '$13.50', 4.8, '1567620905732-2d1ec7ab7445'),
+        P('Eggs Benedict', 'Ham hock, hollandaise', '$15.00', 4.7, '1525351484163-7529414344d8'),
+        P('French Toast', 'Brioche, macerated berries', '$14.00', 4.8, '1484723091739-30a097e8f929'),
+        P('Full Breakfast', 'Eggs, bacon, sourdough', '$16.50', 4.6, '1504754524776-8f4f37790ca0'),
+        P('Shakshuka', 'Baked eggs, feta, zhoug', '$13.00', 4.6, '1590412200988-a436970781fa'),
+        P('Granola Bowl', 'Greek yogurt, honey', '$9.50', 4.5, '1493770348161-369560ae357d'),
+        P('Breakfast Burrito', 'Chorizo, egg, crema', '$12.50', 4.5, '1626700051175-6818013e1d4f'),
+        P('Mimosa', 'Fresh orange, cava', '$9.00', 4.4, '1560508180-03f285f67ded'),
+        P('Salmon Bagel', 'Everything spice, capers', '$13.00', 4.7, '1592767049184-0fda840ae4e7'),
+        P('Corn Fritters', 'Avocado, lime crema', '$12.00', 4.5, '1466978913421-dad2ebd01d17'),
+      ],
+      asian: [
+        P('Tonkotsu Ramen', '18-hour broth, chashu', '$16.50', 4.9, '1569718212165-3a8278d5f624'),
+        P('Spicy Miso Ramen', 'Chili crisp, soft egg', '$17.00', 4.8, '1591814468924-caf88d1232e1'),
+        P('Shoyu Classic', 'Clear broth, bamboo', '$15.50', 4.7, '1557872943-16a5ac26437e'),
+        P('Dan Dan Noodles', 'Sichuan pepper, pork', '$14.50', 4.7, '1585032226651-759b368d7246'),
+        P('Karaage', 'Japanese fried chicken', '$9.50', 4.6, '1562967914-608f82629710'),
+        P('Pad Thai', 'Tamarind, peanut, lime', '$14.00', 4.6, '1559314809-0d155014e29e'),
+        P('Bibimbap', 'Stone bowl, gochujang', '$15.00', 4.7, '1553163147-622ab57be1c7'),
+        P('Pork Bao ×2', 'Hoisin, pickled cucumber', '$8.50', 4.6, '1563245372-f21724e3856d'),
+        P('Veg Dumplings', 'Black vinegar, chili oil', '$8.00', 4.5, '1496116218417-1a781b1c416c'),
+        P('Thai Iced Tea', 'Condensed milk', '$5.00', 4.4, '1558857563-b371033873b8'),
+      ],
+    };
+    return this._pools;
+  }
+
+  renderVals() {
+    const c1 = this.build('c1'), c2 = this.build('c2'), c3 = this.build('c3'), c4 = this.build('c4');
+    const c5 = this.build('c5'), c6 = this.build('c6'), c7 = this.build('c7'), c8 = this.build('c8');
+    const c9 = this.build('c9'), c10 = this.build('c10'), c11 = this.build('c11'), c12 = this.build('c12');
+    const c13 = this.build('c13'), c14 = this.build('c14'), c15 = this.build('c15'), c16 = this.build('c16');
+    const c17 = this.build('c17'), c18 = this.build('c18'), c19 = this.build('c19'), c20 = this.build('c20');
+
+    // story rings for #15 — jump idx to a specific item
+    const ring = (i, tag) => ({ ...c15.all[i], tag, onClick: () => this.setIdx('c15', i) });
+
+    return {
+      showNotes: this.props.showNotes ?? true,
+      imgErr: (e) => {
+        const f = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=560&q=80&auto=format&fit=crop';
+        if (e.target.src !== f) e.target.src = f;
+      },
+      reset: () => this.resetAll(),
+      c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20,
+      c4hero: c4.all[0],
+      c11hero: c11.all[0],
+      c12a: c12.all.slice(0, 10),
+      c12b: c12.all.slice(10),
+      c13a: c13.all.slice(0, 7),
+      c13b: c13.all.slice(7, 14),
+      c13c: c13.all.slice(14),
+      c15hero: c15.cur,
+      c15rings: [ring(3, 'CLASSICS'), ring(10, 'ZERO PROOF'), ring(7, 'BITES'), ring(12, 'SWEET')],
+      c16hero: c16.items[0] || c16.all[0],
+      c16rest: c16.items.slice(1),
+      c19rest: c19.items,
+      c20rest: c20.all.filter((_, i) => i !== (c20.idx % c20.all.length)),
+      c17a: c17.cur, c17b: c17.nxt, c17c: c17.nxt2,
+      c19hero: c19.all[0],
+      c20hero: c20.cur,
+    };
+  }
+}
+</script>
+</body>
+</html>

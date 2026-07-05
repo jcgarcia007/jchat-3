@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;inset:0;z-index:95;display:{{ display }}">
+  <div onClick="{{ onClose }}" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;top:52px;background:{{ bg }};border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -14px 44px rgba(0,0,0,.4)">
+
+    <!-- header -->
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 10px">
+      <span onClick="{{ onBack }}" style="width:30px;height:30px;border-radius:99px;background:{{ card }};border:0.5px solid {{ border }};display:flex;align-items:center;justify-content:center;font-size:15px;color:{{ text }};cursor:pointer">{{ backGlyph }}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;color:{{ text }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ title }}</div>
+        <sc-if value="{{ showSteps }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin-top:1px">{{ stepLabel }}</div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ showSteps }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:5px;align-items:center">
+          <span style="width:{{ dot1w }};height:5px;border-radius:99px;background:{{ dot1 }}"></span>
+          <span style="width:{{ dot2w }};height:5px;border-radius:99px;background:{{ dot2 }}"></span>
+          <span style="width:{{ dot3w }};height:5px;border-radius:99px;background:{{ dot3 }}"></span>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- SEARCH bar -->
+    <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:0 18px 10px">
+        <div style="display:flex;align-items:center;gap:8px;background:{{ card }};border:0.5px solid {{ border }};border-radius:12px;padding:11px 14px">
+          <span style="font-size:14px;color:{{ muted }}">⌕</span>
+          <input value="{{ query }}" onInput="{{ onSearch }}" placeholder="Search dishes, drinks…" style="flex:1;border:none;outline:none;background:transparent;font-size:14px;color:{{ text }}">
+        </div>
+        <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin-top:10px">{{ resultLabel }}</div>
+      </div>
+    </sc-if>
+
+    <!-- scroll body -->
+    <div data-scroll style="flex:1;overflow-y:auto;padding:4px 14px 12px">
+
+      <!-- SEARCH rows -->
+      <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <sc-for list="{{ rows }}" as="it" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;align-items:center;background:{{ card }};border:0.5px solid {{ border }};border-radius:14px;padding:9px;margin-bottom:9px">
+              <img src="{{ it.img }}" onError="{{ imgErr }}" style="width:54px;height:54px;border-radius:10px;object-fit:cover;flex-shrink:0" alt="{{ it.n }}">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:{{ text }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.n }}</div>
+                <div style="font-size:11.5px;font-weight:700;color:{{ accent }};margin-top:2px">{{ it.p }}</div>
+              </div>
+              <button onClick="{{ it.add }}" style="width:34px;height:34px;border-radius:99px;background:{{ accent }};color:{{ onAccent }};border:none;font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0">+</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ITEM CUSTOMIZER -->
+      <sc-if value="{{ isItem }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <img src="{{ prod.img }}" onError="{{ imgErr }}" style="width:100%;height:180px;border-radius:16px;object-fit:cover;display:block" alt="{{ prod.n }}">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-top:14px">
+            <div style="flex:1;min-width:0;padding-right:12px">
+              <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:{{ text }}">{{ prod.n }}</div>
+              <div style="font-size:11px;font-weight:700;color:{{ accent }};margin-top:2px">★ {{ prod.r }} · {{ prod.p }}</div>
+            </div>
+            <span onClick="{{ prod.favToggle }}" style="font-size:20px;color:{{ prod.heartColor }};cursor:pointer">{{ prod.heart }}</span>
+          </div>
+          <div style="font-size:12.5px;line-height:1.55;color:{{ muted }};margin-top:8px">{{ prod.d }}</div>
+
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:20px 2px 9px">CHOOSE SIZE</div>
+          <div style="display:flex;gap:8px">
+            <sc-for list="{{ sizeOpts }}" as="sz" hint-placeholder-count="2">
+              <span onClick="{{ sz.onClick }}" style="flex:1;text-align:center;border-radius:12px;padding:12px 6px;font-size:12.5px;font-weight:700;cursor:pointer;{{ sz.style }}">{{ sz.label }}</span>
+            </sc-for>
+          </div>
+
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:20px 2px 9px">ADD EXTRAS</div>
+          <div>
+            <sc-for list="{{ extraOpts }}" as="ex" hint-placeholder-count="4">
+              <div onClick="{{ ex.onClick }}" style="display:flex;align-items:center;gap:12px;background:{{ card }};border:0.5px solid {{ border }};border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
+                <span style="width:22px;height:22px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;{{ ex.box }}">{{ ex.check }}</span>
+                <span style="flex:1;font-size:13px;font-weight:600;color:{{ text }}">{{ ex.label }}</span>
+                <span style="font-size:12px;font-weight:700;color:{{ muted }}">{{ ex.price }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:20px 2px 9px">SPECIAL REQUEST</div>
+          <input value="{{ note }}" onInput="{{ setNote }}" placeholder="e.g. no onions, allergies…" style="width:100%;box-sizing:border-box;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;font-size:13px;color:{{ text }};outline:none">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 4px">
+            <span style="font-size:13px;font-weight:700;color:{{ text }}">Quantity</span>
+            <div style="display:flex;align-items:center;gap:16px;border:0.5px solid {{ border }};border-radius:999px;padding:7px 16px">
+              <span onClick="{{ qtyDec }}" style="font-size:18px;font-weight:700;color:{{ muted }};cursor:pointer;line-height:1">−</span>
+              <span style="font-size:15px;font-weight:800;color:{{ text }};min-width:16px;text-align:center">{{ qty }}</span>
+              <span onClick="{{ qtyInc }}" style="font-size:18px;font-weight:700;color:{{ accent }};cursor:pointer;line-height:1">+</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- CART -->
+      <sc-if value="{{ isCart }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <sc-for list="{{ rows }}" as="it" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;align-items:center;background:{{ card }};border:0.5px solid {{ border }};border-radius:14px;padding:9px;margin-bottom:9px">
+              <img src="{{ it.img }}" onError="{{ imgErr }}" style="width:54px;height:54px;border-radius:10px;object-fit:cover;flex-shrink:0" alt="{{ it.n }}">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:{{ text }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.n }}</div>
+                <div style="font-size:11.5px;font-weight:700;color:{{ accent }};margin-top:2px">{{ it.p }}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="display:flex;align-items:center;gap:11px;border:0.5px solid {{ border }};border-radius:999px;padding:5px 11px">
+                  <span onClick="{{ it.dec }}" style="font-size:16px;font-weight:700;color:{{ muted }};cursor:pointer;line-height:1">−</span>
+                  <span style="font-size:13px;font-weight:800;color:{{ text }};min-width:12px;text-align:center">{{ it.qty }}</span>
+                  <span onClick="{{ it.inc }}" style="font-size:16px;font-weight:700;color:{{ accent }};cursor:pointer;line-height:1">+</span>
+                </div>
+                <span onClick="{{ it.remove }}" style="width:26px;height:26px;border-radius:99px;background:{{ bg }};border:0.5px solid {{ border }};display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ muted }};cursor:pointer">×</span>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="text-align:center;padding:56px 20px;color:{{ muted }}">
+              <div style="font-size:34px">◇</div>
+              <div style="font-size:14px;font-weight:700;color:{{ text }};margin-top:12px">Your cart is empty</div>
+              <div style="font-size:12px;margin-top:4px">Tap any “+” to add something.</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- DETAILS -->
+      <sc-if value="{{ isDetails }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:4px 2px 8px">HOW WOULD YOU LIKE IT?</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <span onClick="{{ setDelivery }}" style="flex:1;text-align:center;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;{{ mDelivery }}">🛵 Delivery</span>
+            <span onClick="{{ setPickup }}" style="flex:1;text-align:center;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;{{ mPickup }}">🥡 Pickup</span>
+          </div>
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:0 2px 8px">CONTACT</div>
+          <input value="{{ name }}" onInput="{{ setName }}" placeholder="Your name" style="width:100%;box-sizing:border-box;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;font-size:13px;color:{{ text }};outline:none;margin-bottom:9px">
+          <input value="{{ addr }}" onInput="{{ setAddr }}" placeholder="{{ addrPlaceholder }}" style="width:100%;box-sizing:border-box;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;font-size:13px;color:{{ text }};outline:none;margin-bottom:16px">
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:0 2px 8px">ADD A TIP</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <sc-for list="{{ tips }}" as="tp" hint-placeholder-count="4">
+              <span onClick="{{ tp.onClick }}" style="flex:1;text-align:center;border-radius:12px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;{{ tp.style }}">{{ tp.label }}</span>
+            </sc-for>
+          </div>
+          <div style="background:{{ card }};border:0.5px solid {{ border }};border-radius:14px;padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }};margin-bottom:7px"><span>Subtotal</span><span style="color:{{ text }};font-weight:600">{{ fSub }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }};margin-bottom:7px"><span>{{ feeLabel }}</span><span style="color:{{ text }};font-weight:600">{{ fFee }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }}"><span>Tip</span><span style="color:{{ text }};font-weight:600">{{ fTip }}</span></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- PAYMENT -->
+      <sc-if value="{{ isPayment }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex;gap:8px;margin:4px 0 14px">
+            <span style="border-radius:10px;padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer;background:{{ accent }};color:{{ onAccent }}">Card</span>
+            <span style="border-radius:10px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;background:{{ card }};border:0.5px solid {{ border }};color:{{ muted }}">Apple Pay</span>
+            <span style="border-radius:10px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;background:{{ card }};border:0.5px solid {{ border }};color:{{ muted }}">JChat Pay</span>
+          </div>
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }};margin:0 2px 8px">CARD NUMBER</div>
+          <div style="display:flex;align-items:center;gap:10px;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;margin-bottom:9px">
+            <span style="font-size:13px;color:{{ muted }}">▦</span>
+            <input value="{{ card4 }}" onInput="{{ setCard }}" placeholder="4242 4242 4242 4242" style="flex:1;border:none;outline:none;background:transparent;font-size:13px;letter-spacing:1px;color:{{ text }}">
+          </div>
+          <div style="display:flex;gap:9px;margin-bottom:16px">
+            <input value="{{ exp }}" onInput="{{ setExp }}" placeholder="MM / YY" style="flex:1;box-sizing:border-box;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;font-size:13px;color:{{ text }};outline:none">
+            <input value="{{ cvc }}" onInput="{{ setCvc }}" placeholder="CVC" style="width:96px;box-sizing:border-box;border:0.5px solid {{ border }};background:{{ card }};border-radius:12px;padding:13px 14px;font-size:13px;color:{{ text }};outline:none">
+          </div>
+          <div style="background:{{ card }};border:0.5px solid {{ border }};border-radius:14px;padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }};margin-bottom:7px"><span>Subtotal</span><span style="color:{{ text }};font-weight:600">{{ fSub }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }};margin-bottom:7px"><span>{{ feeLabel }}</span><span style="color:{{ text }};font-weight:600">{{ fFee }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:{{ muted }};margin-bottom:10px"><span>Tip</span><span style="color:{{ text }};font-weight:600">{{ fTip }}</span></div>
+            <div style="height:0.5px;background:{{ border }};margin-bottom:10px"></div>
+            <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:{{ text }}"><span>Total</span><span>{{ fGrand }}</span></div>
+          </div>
+          <div style="font-size:10.5px;color:{{ muted }};margin-top:12px;display:flex;align-items:center;gap:6px">🔒 Payments secured by Stripe · demo — no real charge.</div>
+        </div>
+      </sc-if>
+
+      <!-- DONE -->
+      <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align:center;padding:40px 24px 24px">
+          <div style="width:78px;height:78px;border-radius:99px;margin:0 auto;background:{{ accent }};color:{{ onAccent }};display:flex;align-items:center;justify-content:center;font-size:38px">✓</div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:{{ text }};margin-top:18px">Order confirmed</div>
+          <div style="font-size:13px;color:{{ muted }};margin-top:6px;line-height:1.5">{{ paidLine }}</div>
+          <div style="display:inline-flex;gap:24px;margin-top:22px;background:{{ card }};border:0.5px solid {{ border }};border-radius:16px;padding:16px 22px;text-align:left">
+            <div><div style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:{{ muted }}">ORDER</div><div style="font-size:15px;font-weight:700;color:{{ text }};margin-top:3px">{{ orderNum }}</div></div>
+            <div style="width:0.5px;background:{{ border }}"></div>
+            <div><div style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:{{ muted }}">ETA</div><div style="font-size:15px;font-weight:700;color:{{ text }};margin-top:3px">{{ eta }} min</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:26px;text-align:left">
+            <div style="display:flex;align-items:center;gap:12px;font-size:12.5px;font-weight:700;color:{{ text }}"><span style="width:22px;height:22px;border-radius:99px;background:{{ accent }};color:{{ onAccent }};display:flex;align-items:center;justify-content:center;font-size:11px">✓</span> Order received</div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:12.5px;font-weight:600;color:{{ muted }}"><span style="width:22px;height:22px;border-radius:99px;border:1.5px solid {{ border }};display:flex;align-items:center;justify-content:center;font-size:11px">2</span> Preparing your order</div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:12.5px;font-weight:600;color:{{ muted }}"><span style="width:22px;height:22px;border-radius:99px;border:1.5px solid {{ border }};display:flex;align-items:center;justify-content:center;font-size:11px">3</span> {{ lastStep }}</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- ITEM footer -->
+    <sc-if value="{{ isItem }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 16px 22px;border-top:0.5px solid {{ border }}">
+        <button onClick="{{ addToCart }}" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:{{ accent }};color:{{ onAccent }};font-size:14px;font-weight:800;padding:15px 20px;border:none;border-radius:14px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.18)">Add {{ qty }} to cart <span style="opacity:.85">·</span> {{ itemTotal }}</button>
+      </div>
+    </sc-if>
+
+    <!-- flow footer CTA -->
+    <sc-if value="{{ showCta }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:12px 16px 22px;border-top:0.5px solid {{ border }};display:flex;align-items:center;justify-content:space-between;gap:14px">
+        <div>
+          <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:{{ muted }}">{{ ctaSub }}</div>
+          <div style="font-size:19px;font-weight:800;letter-spacing:-0.5px;color:{{ text }}">{{ ctaAmount }}</div>
+        </div>
+        <button onClick="{{ ctaAction }}" style="flex:1;max-width:210px;background:{{ accent }};color:{{ onAccent }};font-size:14px;font-weight:800;padding:15px 20px;border:none;border-radius:14px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.18)">{{ ctaLabel }}</button>
+      </div>
+    </sc-if>
+
+    <!-- DONE footer -->
+    <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 16px 22px;border-top:0.5px solid {{ border }}">
+        <button onClick="{{ onClose }}" style="width:100%;background:{{ accent }};color:{{ onAccent }};font-size:14px;font-weight:800;padding:15px 20px;border:none;border-radius:14px;cursor:pointer">Back to menu</button>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 390, &quot;height&quot;: 720}, &quot;open&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true}, &quot;mode&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;cart&quot;, &quot;search&quot;, &quot;item&quot;], &quot;default&quot;: &quot;item&quot;}}">
+class Component extends DCLogic {
+  state = { step: 'cart', method: 'Delivery', tip: 15, name: '', addr: '', card: '', exp: '', cvc: '', orderNum: '', eta: 0, qty: 1, sizeIdx: 0, extras: {}, note: '' };
+
+  componentDidUpdate(prev) {
+    if ((this.props.open && !prev.open) || (this.props.mode !== prev.mode)) {
+      const patch = {};
+      if (this.state.step !== 'cart') patch.step = 'cart';
+      if (this.props.mode === 'item') { patch.qty = 1; patch.sizeIdx = 0; patch.extras = {}; patch.note = ''; }
+      if (Object.keys(patch).length) this.setState(patch);
+    }
+  }
+
+  money(s) {
+    const sym = (String(s).match(/[^\d.,\s]/) || ['$'])[0];
+    const val = parseFloat(String(s).replace(/[^\d.]/g, '')) || 0;
+    return { sym, val };
+  }
+
+  pay() {
+    (this.props.items || []).forEach((it) => it.remove && it.remove());
+    this.setState({ step: 'done', orderNum: 'JC-' + Math.floor(1000 + Math.random() * 9000), eta: Math.floor(15 + Math.random() * 21) });
+  }
+
+  back() {
+    const s = this.state.step;
+    if (this.props.mode === 'item') { (this.props.onClose || (() => {}))(); return; }
+    if (s === 'payment') this.setState({ step: 'details' });
+    else if (s === 'details') this.setState({ step: 'cart' });
+    else (this.props.onClose || (() => {}))();
+  }
+
+  renderVals() {
+    const p = this.props;
+    const st = this.state;
+    const open = !!p.open;
+    const isSearch = open && p.mode === 'search';
+    const isItem = open && p.mode === 'item';
+    const flow = open && p.mode === 'cart';
+    const step = st.step;
+    const isCart = flow && step === 'cart';
+    const isDetails = flow && step === 'details';
+    const isPayment = flow && step === 'payment';
+    const isDone = flow && step === 'done';
+    const rows = p.items || [];
+
+    const t = { bg: p.bg || '#fff', text: p.text || '#111', muted: p.muted || '#999', card: p.card || '#f5f5f5', border: p.border || '#e5e5e5', accent: p.accent || '#111', onAccent: p.onAccent || '#fff' };
+    const activeChip = `background:${t.accent};color:${t.onAccent};border:0.5px solid ${t.accent}`;
+    const idleChip = `background:${t.card};color:${t.muted};border:0.5px solid ${t.border}`;
+
+    const m = this.money(p.total);
+    const fmt = (n) => m.sym + n.toFixed(2);
+    const sub = m.val;
+    const fee = st.method === 'Pickup' ? 0 : 2.99;
+    const tipAmt = sub * st.tip / 100;
+    const grand = sub + fee + tipAmt;
+    const tips = [0, 10, 15, 20].map((v) => ({ label: v === 0 ? 'None' : v + '%', onClick: () => this.setState({ tip: v }), style: st.tip === v ? activeChip : idleChip }));
+    const set = (k) => (e) => this.setState({ [k]: e && e.target ? e.target.value : '' });
+
+    // customizer
+    const prod = rows[0] || {};
+    const pm = this.money(prod.p || '$0');
+    const sizesDef = [{ label: 'Regular', d: 0 }, { label: 'Large', d: 2.5 }];
+    const extrasDef = [{ k: 'combo', label: 'Make it a combo', d: 3.5 }, { k: 'portion', label: 'Extra portion', d: 2 }, { k: 'drink', label: 'Add a drink', d: 2.5 }, { k: 'sauce', label: 'Extra sauce', d: 0.8 }];
+    const sizeD = (sizesDef[st.sizeIdx] || {}).d || 0;
+    const extrasSum = extrasDef.reduce((s, e) => s + (st.extras[e.k] ? e.d : 0), 0);
+    const unit = pm.val + sizeD + extrasSum;
+    const qty = st.qty || 1;
+    const sizeOpts = sizesDef.map((s, i) => ({ label: s.d ? `${s.label} +${pm.sym}${s.d.toFixed(2)}` : s.label, onClick: () => this.setState({ sizeIdx: i }), style: st.sizeIdx === i ? activeChip : idleChip }));
+    const extraOpts = extrasDef.map((e) => {
+      const on = !!st.extras[e.k];
+      return { label: e.label, price: '+' + pm.sym + e.d.toFixed(2), onClick: () => this.setState((s) => ({ extras: { ...s.extras, [e.k]: !s.extras[e.k] } })), check: on ? '✓' : '', box: on ? `background:${t.accent};color:${t.onAccent};border:1px solid ${t.accent}` : `background:transparent;color:transparent;border:1px solid ${t.border}` };
+    });
+
+    const stepIndex = step === 'cart' ? 1 : step === 'details' ? 2 : 3;
+    const on = t.accent, off = t.border;
+
+    let showCta = false, ctaLabel = '', ctaAction = () => {}, ctaSub = '', ctaAmount = '';
+    if (isCart) { showCta = rows.length > 0; ctaLabel = 'Checkout →'; ctaAction = () => this.setState({ step: 'details' }); ctaSub = (p.count ?? 0) + ' ITEMS'; ctaAmount = fmt(sub); }
+    else if (isDetails) { showCta = true; ctaLabel = 'Continue to payment →'; ctaAction = () => this.setState({ step: 'payment' }); ctaSub = 'TOTAL'; ctaAmount = fmt(grand); }
+    else if (isPayment) { showCta = true; ctaLabel = 'Pay ' + fmt(grand); ctaAction = () => this.pay(); ctaSub = 'TOTAL'; ctaAmount = fmt(grand); }
+
+    const title = isSearch ? 'Search the menu' : isItem ? (prod.n || 'Customize') : isDetails ? 'Delivery details' : isPayment ? 'Payment' : isDone ? 'Thank you' : 'Your cart';
+
+    return {
+      display: open ? 'block' : 'none',
+      open, isSearch, isItem, isCart, isDetails, isPayment, isDone,
+      rows, prod,
+      showEmpty: isCart && rows.length === 0,
+      showSteps: flow && !isDone,
+      stepLabel: 'STEP ' + stepIndex + ' OF 3 · ' + (step === 'cart' ? 'REVIEW' : step === 'details' ? 'DETAILS' : 'PAYMENT'),
+      dot1: on, dot2: stepIndex >= 2 ? on : off, dot3: stepIndex >= 3 ? on : off,
+      dot1w: stepIndex === 1 ? '18px' : '6px', dot2w: stepIndex === 2 ? '18px' : '6px', dot3w: stepIndex === 3 ? '18px' : '6px',
+      title,
+      backGlyph: (isCart || isSearch) ? '×' : '‹',
+      onBack: () => this.back(),
+      onClose: () => { this.setState({ step: 'cart' }); (p.onClose || (() => {}))(); },
+      resultLabel: (p.query && p.query.trim() ? rows.length + ' results' : 'Type to filter · showing ' + rows.length),
+      query: p.query || '', onSearch: p.onSearch || (() => {}),
+      imgErr: p.imgErr || (() => {}),
+      ...t,
+      // customizer
+      sizeOpts, extraOpts, qty,
+      note: st.note, setNote: set('note'),
+      qtyInc: () => this.setState((s) => ({ qty: (s.qty || 1) + 1 })),
+      qtyDec: () => this.setState((s) => ({ qty: Math.max(1, (s.qty || 1) - 1) })),
+      itemTotal: fmt(unit * qty),
+      addToCart: () => { if (prod.confirm) prod.confirm(qty); },
+      // details
+      mDelivery: st.method === 'Delivery' ? activeChip : idleChip,
+      mPickup: st.method === 'Pickup' ? activeChip : idleChip,
+      setDelivery: () => this.setState({ method: 'Delivery' }),
+      setPickup: () => this.setState({ method: 'Pickup' }),
+      name: st.name, addr: st.addr, setName: set('name'), setAddr: set('addr'),
+      addrPlaceholder: st.method === 'Pickup' ? 'Pickup time (e.g. 7:30 pm)' : 'Delivery address',
+      tips,
+      feeLabel: st.method === 'Pickup' ? 'Pickup' : 'Delivery fee',
+      fSub: fmt(sub), fFee: fee === 0 ? 'Free' : fmt(fee), fTip: fmt(tipAmt), fGrand: fmt(grand),
+      // payment
+      card4: st.card, exp: st.exp, cvc: st.cvc, setCard: set('card'), setExp: set('exp'), setCvc: set('cvc'),
+      // cta
+      showCta, ctaLabel, ctaAction, ctaSub, ctaAmount,
+      // done
+      orderNum: st.orderNum, eta: st.eta,
+      paidLine: fmt(grand) + ' paid · ' + (st.method === 'Pickup' ? 'ready for pickup soon' : 'on its way to you'),
+      lastStep: st.method === 'Pickup' ? 'Ready for pickup' : 'Out for delivery',
+    };
+  }
+}
+</script>
+</body>
+</html>

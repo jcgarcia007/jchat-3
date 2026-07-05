@@ -1,0 +1,29 @@
+/* JChat — Fonts
+   JChat ships on Apple's SF Pro (the iOS/macOS system font). There is no
+   redistributable binary to bundle, so these @font-face rules bind the named
+   family to the LOCALLY installed SF Pro via local() sources only. On Apple
+   devices this resolves to the real SF Pro; everywhere else the family simply
+   falls through to the system stack declared in --jc-font-sans
+   (system-ui / Roboto / …). No url() targets = nothing to upload.
+
+   ▸ If you have a licensed SF Pro (or chosen alternative) webfont, drop the
+     files in assets/fonts/ and add `src: url("…") format("woff2"), <the local()
+     lines below>;` so it loads on every platform. */
+
+@font-face {
+  font-family: "SF Pro Text";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: local("SF Pro Text"), local("SFProText-Regular"),
+       local("-apple-system"), local("BlinkMacSystemFont"), local("system-ui");
+}
+
+@font-face {
+  font-family: "SF Pro Display";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: local("SF Pro Display"), local("SFProDisplay-Regular"),
+       local("-apple-system"), local("BlinkMacSystemFont"), local("system-ui");
+}

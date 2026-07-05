@@ -1,0 +1,52 @@
+/* JChat — Typography tokens
+   The app is Apple-inspired and ships on the system font (SF Pro on iOS,
+   Roboto on Android, system-ui on web). Titles use MEDIUM (500), not bold —
+   a deliberate calm, premium feel. Labels/eyebrows go heavy (800/900) +
+   uppercase + tracked-out. Source: src/constants/theme.ts (FontSize/FontWeight)
+   and every screen's StyleSheet. */
+
+:root {
+  /* ── Families ── */
+  --jc-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                  "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --jc-font-display: var(--jc-font-sans);
+  --jc-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── Sizes (px, from FontSize scale) ── */
+  --jc-fs-xs: 11px;
+  --jc-fs-sm: 13px;
+  --jc-fs-base: 15px;
+  --jc-fs-md: 16px;
+  --jc-fs-lg: 18px;
+  --jc-fs-xl: 20px;
+  --jc-fs-2xl: 24px;
+  --jc-fs-3xl: 28px;
+  --jc-fs-display: 34px;
+  --jc-fs-hero: 42px;
+
+  /* ── Weights ── */
+  --jc-fw-regular: 400;   /* @kind font */
+  --jc-fw-medium: 500;    /* @kind font */
+  --jc-fw-semibold: 600;  /* @kind font */
+  --jc-fw-bold: 700;      /* @kind font */
+  --jc-fw-heavy: 800;     /* @kind font */
+  --jc-fw-black: 900;     /* @kind font */
+
+  /* ── Line heights ── */
+  --jc-lh-tight: 1.05;    /* @kind other */
+  --jc-lh-snug: 1.2;      /* @kind other */
+  --jc-lh-normal: 1.4;    /* @kind other */
+  --jc-lh-relaxed: 1.5;   /* @kind other */
+
+  /* ── Letter spacing ── */
+  --jc-ls-tight: -0.5px;
+  --jc-ls-normal: 0;       /* @kind spacing */
+  --jc-ls-label: 0.6px;
+  --jc-ls-eyebrow: 1px;
+  --jc-ls-tagline: 2px;
+
+  /* ── Semantic aliases ── */
+  --font-body: var(--jc-font-sans);
+  --weight-title: var(--jc-fw-medium);
+  --weight-label: var(--jc-fw-black);
+}

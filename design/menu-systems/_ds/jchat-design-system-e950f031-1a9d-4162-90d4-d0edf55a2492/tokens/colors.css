@@ -1,0 +1,99 @@
+/* JChat — Color tokens
+   Source of truth: src/constants/colors.ts + JCHAT_SPEC.md §17.
+   Apple-inspired: deep navy surfaces, blue→purple brand gradient,
+   light neutral bodies, and a live "activity" heat scale. */
+
+:root {
+  /* ── Brand ── */
+  --jc-blue: #378ADD;          /* primary */
+  --jc-purple: #534AB7;        /* gradient end */
+  --jc-blue-dark: #2563EB;
+  --jc-blue-light: #60A5FA;
+  --jc-blue-300: #63B3ED;      /* light text on navy */
+  --jc-gradient: linear-gradient(135deg, #378ADD 0%, #534AB7 100%); /* @kind color */
+
+  /* ── Ink / navy surfaces ── */
+  --jc-navy: #0D1B3E;          /* primary dark surface (headers, splash) */
+  --jc-navy-900: #101B3D;
+  --jc-ink: #1A1A2E;           /* primary text on light */
+  --jc-card-dark: #1A1A2E;
+  --jc-surface-dark: #16213E;
+  --jc-input-dark: #1E2A45;
+
+  /* ── Neutrals (light mode) ── */
+  --jc-bg: #F7F8FA;            /* app body background */
+  --jc-bg-soft: #F8FAFC;
+  --jc-white: #FFFFFF;
+  --jc-panel: #FFFFFF;
+  --jc-tint-blue: #E6F1FB;     /* blue chip / soft fill */
+  --jc-tint-blue-2: #F0F7FF;
+  --jc-fill-100: #F3F4F6;      /* search bar / muted chip */
+
+  /* ── Text ── */
+  --jc-text: #1A1A2E;
+  --jc-text-strong: #0D1B3E;
+  --jc-text-medium: #374151;
+  --jc-text-secondary: #6B7280;
+  --jc-text-muted: #9CA3AF;
+  --jc-text-faint: #BBBBBB;
+  --jc-text-on-dark: #FFFFFF;
+  --jc-text-on-dark-60: rgba(255,255,255,0.6);
+  --jc-text-on-dark-45: rgba(255,255,255,0.45);
+  --jc-label: #888888;         /* uppercase form label */
+  --jc-link: #0C447C;          /* text on blue tint */
+
+  /* ── Lines & borders ── */
+  --jc-line: #E0E2E7;          /* primary hairline */
+  --jc-line-2: #E5E7EB;
+  --jc-line-3: #E8EAED;
+  --jc-line-soft: #F3F4F6;
+  --jc-border-on-dark: rgba(255,255,255,0.1);
+
+  /* ── Semantic status ── */
+  --jc-success: #22C55E;
+  --jc-success-deep: #1D9E75;
+  --jc-success-tint: #F0FDF4;
+  --jc-warning: #EF9F27;
+  --jc-warning-2: #F59E0B;
+  --jc-warning-tint: #FFF7E6;
+  --jc-danger: #E24B4A;
+  --jc-danger-2: #EF4444;
+  --jc-danger-tint: #FEF2F2;
+  --jc-info: #378ADD;
+
+  /* ── Live activity heat scale (map radius + trending bar) ── */
+  --jc-activity-low: #378ADD;     /* low / quiet */
+  --jc-activity-medium: #22C55E;  /* medium */
+  --jc-activity-high: #F97316;    /* high */
+  --jc-activity-max: #EF4444;     /* trending / max */
+  --jc-activity-yellow: #EAB308;  /* gradient mid (spec scale) */
+  --jc-activity-bar: linear-gradient(90deg, #22C55E 0%, #EAB308 38%, #F97316 70%, #EF4444 100%); /* @kind color */
+
+  /* ── Category accents ── */
+  --jc-cat-bar: #EF4444;
+  --jc-cat-cafe: #F97316;
+  --jc-cat-restaurant: #EAB308;
+  --jc-cat-gym: #22C55E;
+  --jc-cat-beauty: #A855F7;
+  --jc-cat-retail: #3B82F6;
+  --jc-cat-entertainment: #8B5CF6;
+  --jc-cat-hotel: #14B8A6;
+  --jc-cat-health: #10B981;
+  --jc-cat-other: #6B7280;
+
+  /* ── Subscription plans ── */
+  --jc-plan-basic: #22C55E;
+  --jc-plan-pro: #378ADD;
+  --jc-plan-business: #7C3AED;
+
+  /* ── Semantic aliases ── */
+  --surface-page: var(--jc-bg);
+  --surface-card: var(--jc-white);
+  --surface-header: var(--jc-navy);
+  --text-body: var(--jc-text);
+  --text-heading: var(--jc-text-strong);
+  --text-subtle: var(--jc-text-secondary);
+  --border-hairline: var(--jc-line);
+  --accent-primary: var(--jc-blue);
+  --online-dot: var(--jc-success);
+}

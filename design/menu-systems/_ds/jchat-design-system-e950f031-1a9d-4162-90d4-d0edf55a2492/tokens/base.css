@@ -1,0 +1,44 @@
+/* JChat base layer — minimal global defaults that consume the tokens.
+   Kept tiny on purpose: the design system ships tokens + components, not a
+   page framework. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  font-family: var(--jc-font-sans);
+  background: var(--jc-bg);
+  color: var(--jc-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body { font-size: var(--jc-fs-base); line-height: var(--jc-lh-normal); }
+
+a { color: var(--jc-blue); text-decoration: none; }
+
+::selection { background: rgba(55,138,221,0.22); }
+
+/* Reusable surface helpers (optional convenience classes) */
+.jc-card {
+  background: var(--jc-white);
+  border: var(--jc-hairline) solid var(--jc-line);
+  border-radius: var(--jc-radius-xl);
+  box-shadow: var(--jc-shadow-sm);
+}
+
+.jc-eyebrow {
+  font-size: var(--jc-fs-xs);
+  font-weight: var(--jc-fw-heavy);
+  letter-spacing: var(--jc-ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--jc-text-secondary);
+}
+
+/* Live "active now" blink — used on activity dots */
+@keyframes jc-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.jc-live-dot { animation: jc-blink 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .jc-live-dot { animation: none; } }

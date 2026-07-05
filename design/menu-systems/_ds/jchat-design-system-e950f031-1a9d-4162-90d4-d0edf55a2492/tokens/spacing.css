@@ -1,0 +1,49 @@
+/* JChat — Spacing, radii, shadows
+   Source: src/constants/theme.ts (Spacing / BorderRadius / Shadows) and the
+   real screen StyleSheets (sheets, cards, pills). */
+
+:root {
+  /* ── Spacing scale (px) ── */
+  --jc-space-xs: 4px;
+  --jc-space-sm: 8px;
+  --jc-space-md: 12px;
+  --jc-space-lg: 16px;
+  --jc-space-xl: 20px;
+  --jc-space-2xl: 24px;
+  --jc-space-3xl: 32px;
+  --jc-space-huge: 48px;
+
+  /* ── Radii ── */
+  --jc-radius-sm: 8px;
+  --jc-radius-md: 12px;     /* inputs */
+  --jc-radius-lg: 14px;     /* buttons, list cards */
+  --jc-radius-xl: 16px;     /* content cards */
+  --jc-radius-2xl: 20px;
+  --jc-radius-sheet: 22px;  /* bottom sheet */
+  --jc-radius-form: 28px;   /* light form panel top corners */
+  --jc-radius-full: 999px;  /* pills, chips, avatars */
+
+  /* ── Hairline border ── */
+  --jc-hairline: 0.5px;
+  --jc-border: 1px;
+
+  /* ── Shadows (soft, navy-tinted — subtle Apple elevation) ── */
+  --jc-shadow-sm: 0 2px 4px rgba(13,27,62,0.06);
+  --jc-shadow-md: 0 4px 8px rgba(13,27,62,0.08);
+  --jc-shadow-lg: 0 12px 30px rgba(13,27,62,0.10);
+  --jc-shadow-sheet: 0 -4px 14px rgba(0,0,0,0.14);
+  --jc-shadow-marker: 0 2px 4px rgba(0,0,0,0.2);
+  --jc-shadow-primary: 0 4px 12px rgba(55,138,221,0.4);
+
+  /* ── Motion ── */
+  --jc-ease: cubic-bezier(0.22, 1, 0.36, 1);  /* @kind other */
+  --jc-dur-fast: 160ms;   /* @kind other */
+  --jc-dur-base: 220ms;   /* @kind other */
+  --jc-dur-slow: 400ms;   /* @kind other */
+
+  /* ── Semantic aliases ── */
+  --radius-card: var(--jc-radius-xl);
+  --radius-pill: var(--jc-radius-full);
+  --shadow-card: var(--jc-shadow-sm);
+  --gap-card: var(--jc-space-md);
+}
