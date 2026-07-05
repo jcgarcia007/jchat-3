@@ -1525,15 +1525,37 @@ export default function MenuPageClient({
   const cartTotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
 
   return (
-    <main
-      data-theme="dark"
+    // Responsive shell: on desktop the menu is a centered ~480px "app column"
+    // with the palette bg extending to the sides; on mobile it's full width.
+    // The inner shell has a `transform`, which makes every position:fixed float
+    // inside the templates (carts, FABs, drawers, sheet backdrops) anchor to the
+    // column instead of the window — and since the shell is its own 100dvh
+    // scroll container, those floats stay pinned to the column's bottom while the
+    // content scrolls. No per-template positioning changes needed.
+    <div
       style={{
-        background: "var(--bg-base)",
-        minHeight: "100vh",
-        color: "var(--text-primary)",
-        paddingBottom: cartCount > 0 ? 96 : 32,
+        background: palette.bg,
+        minHeight: "100dvh",
+        display: "flex",
+        justifyContent: "center",
       }}
     >
+      <main
+        data-theme="dark"
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          height: "100dvh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          position: "relative",
+          transform: "translateZ(0)",
+          WebkitOverflowScrolling: "touch",
+          background: palette.bg,
+          color: "var(--text-primary)",
+          paddingBottom: cartCount > 0 ? 96 : 32,
+        }}
+      >
       {showBusinessHeader && <BusinessHeader biz={business} />}
 
       <MenuTemplateRenderer
@@ -1604,6 +1626,7 @@ export default function MenuPageClient({
           }}
         />
       )}
-    </main>
+      </main>
+    </div>
   );
 }
