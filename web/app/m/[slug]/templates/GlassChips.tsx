@@ -121,6 +121,12 @@ export default function GlassChips({
 
   return (
     <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "100vh" }}>
+      {/* Header */}
+      <div style={{ padding: "16px 16px 4px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
+          {business.name}
+        </h1>
+      </div>
       {/* Floating glassmorphism chips */}
       <div
         style={{

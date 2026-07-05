@@ -4,6 +4,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * CategorySidebar (#05 Vertical Category Sidebar). Grocery-app pattern: a
@@ -16,6 +17,9 @@ import { EmptyMenu } from "./shared/EmptyMenu";
  * Note: MenuPageClient suppresses the shared CartFAB for this template (the
  * pull-tab is its cart affordance).
  */
+const P = MENU_PALETTES["category-sidebar"]!;
+const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
+
 export default function CategorySidebar({
   business,
   categories,
@@ -34,13 +38,13 @@ export default function CategorySidebar({
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", background: P.bg, minHeight: "100vh" }}>
       <div style={{ padding: "14px 16px 8px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.4px" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
           {business.name}
         </h1>
         {business.category && (
-          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{business.category}</div>
+          <div style={{ fontSize: 12, color: P.textMuted, marginTop: 2 }}>{business.category}</div>
         )}
       </div>
 
@@ -58,7 +62,7 @@ export default function CategorySidebar({
             alignItems: "center",
             gap: 6,
             padding: "8px 0",
-            borderRight: "0.5px solid var(--border-subtle)",
+            borderRight: `0.5px solid ${P.border}`,
           }}
         >
           {nonEmpty.map((cat) => {
@@ -78,9 +82,9 @@ export default function CategorySidebar({
                   width: 76,
                   padding: "10px 4px",
                   borderRadius: 14,
-                  border: active ? "1px solid var(--color-gold)" : "1px solid transparent",
-                  background: active ? "rgba(217,119,6,0.15)" : "transparent",
-                  color: active ? "var(--color-gold)" : "var(--text-secondary)",
+                  border: active ? `1px solid ${P.accent}` : "1px solid transparent",
+                  background: active ? P.accentSoft : "transparent",
+                  color: active ? P.accent : P.textMuted,
                   cursor: "pointer",
                   transition: "background 0.15s, color 0.15s, border-color 0.15s",
                 }}
@@ -127,13 +131,13 @@ export default function CategorySidebar({
               style={{ scrollMarginTop: 16 }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 12px 10px" }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{cat.name}</h2>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: P.text, margin: 0 }}>{cat.name}</h2>
                 <span
                   style={{
                     fontSize: 11,
-                    color: "var(--text-tertiary)",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-subtle)",
+                    color: P.textFaint,
+                    background: P.surface,
+                    border: `1px solid ${P.border}`,
                     borderRadius: 10,
                     padding: "1px 7px",
                   }}
@@ -143,7 +147,7 @@ export default function CategorySidebar({
               </div>
               <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 10 }}>
                 {cat.items.map((item) => (
-                  <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} />
+                  <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} palette={ROW_PALETTE} />
                 ))}
               </div>
             </section>
@@ -166,8 +170,8 @@ export default function CategorySidebar({
           padding: "16px 8px",
           border: "none",
           borderRadius: "12px 0 0 12px",
-          background: "var(--color-gold)",
-          color: "#1a1206",
+          background: P.accent,
+          color: P.accentText,
           fontSize: 12,
           fontWeight: 800,
           letterSpacing: "1px",

@@ -1368,12 +1368,12 @@ export default function MenuPageClient({
   const palette = resolvePalette(business.menu_template_id);
   // These templates render their own header with the business name (in their
   // palette), so the generic dark BusinessHeader is suppressed to avoid a
-  // duplicate. Templates not listed (classic, bottom-nav, glass-chips,
-  // immersive, masonry-search, or any unported slug → Classic) keep it.
+  // duplicate. Only classic (and bottom-nav / any unported slug → Classic) keeps it.
   const showBusinessHeader = ![
     "left-drawer", "icon-rail", "sticky-tabs", "category-sidebar", "store-sections",
     "infinite-feed", "magazine", "streaming-rows", "timeline", "carousel", "stories",
     "card-stack", "gesture", "ai-personalized", "luxury", "fullscreen-type",
+    "glass-chips", "immersive", "masonry-search",
   ].includes(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)

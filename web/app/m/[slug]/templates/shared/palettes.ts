@@ -257,8 +257,79 @@ const GESTURE_PALETTE: MenuPalette = {
   overlay: "rgba(26,26,46,0.45)",
 };
 
+// #12 "THE ROWAN" room service — light retail: light-grey bg, white cards, blue accent.
+const STORE_SECTIONS_PALETTE: MenuPalette = {
+  bg: "#F5F5F7", surface: "#FFFFFF", surfaceElevated: "#FFFFFF",
+  text: "#1D1D1F", textMuted: "#4B4B4F", textFaint: "#86868B",
+  border: "#E5E7EB", accent: "#2563EB", accentText: "#FFFFFF",
+  accentSoft: "rgba(37,99,235,0.10)", price: "#1D1D1F",
+  danger: "var(--color-danger)", overlay: "rgba(0,0,0,0.4)",
+};
+
+// #06 "EMBER" fine dining — black editorial, amber-gold accent, hairlines.
+const FULLSCREEN_TYPE_PALETTE: MenuPalette = {
+  bg: "#0C0A09", surface: "#161311", surfaceElevated: "#1C1815",
+  text: "#FFFFFF", textMuted: "rgba(255,255,255,0.7)", textFaint: "rgba(255,255,255,0.45)",
+  border: "rgba(201,169,106,0.25)", accent: "#C9A96A", accentText: "#0C0A09",
+  accentSoft: "rgba(201,169,106,0.14)", price: "#C9A96A",
+  danger: "var(--color-danger)", overlay: "rgba(0,0,0,0.72)",
+};
+
+// #14 "Seven & Co" tasting — light elegant cream, gold nodes/accent.
+const TIMELINE_PALETTE: MenuPalette = {
+  bg: "#FCFBF9", surface: "#FFFFFF", surfaceElevated: "#F5F3EF",
+  text: "#1A1A2E", textMuted: "#5A5A6E", textFaint: "#9CA3AF",
+  border: "#E7E3DC", accent: "#C99B3F", accentText: "#FFFFFF",
+  accentSoft: "rgba(201,155,63,0.12)", price: "#C99B3F",
+  danger: "var(--color-danger)", overlay: "rgba(26,26,46,0.4)",
+};
+
+// #10 "search first" — light, indigo accent, gold price.
+const MASONRY_SEARCH_PALETTE: MenuPalette = {
+  bg: "#FAF9F7", surface: "#FFFFFF", surfaceElevated: "#F3F4F6",
+  text: "#1A1A2E", textMuted: "#5A5A6E", textFaint: "#9CA3AF",
+  border: "#E5E7EB", accent: "#534AB7", accentText: "#FFFFFF",
+  accentSoft: "rgba(83,74,183,0.10)", price: "#C99B3F",
+  danger: "var(--color-danger)", overlay: "rgba(26,26,46,0.4)",
+};
+
+// #18 "Brew.ai" — light with blue→indigo gradient header, indigo accent.
+const AI_PERSONALIZED_PALETTE: MenuPalette = {
+  bg: "#F7F6FC", surface: "#FFFFFF", surfaceElevated: "#F3F4F6",
+  text: "#1A1A2E", textMuted: "#5A5A6E", textFaint: "#9CA3AF",
+  border: "#E5E7EB", accent: "#534AB7", accentText: "#FFFFFF",
+  accentSoft: "rgba(83,74,183,0.10)", price: "#C99B3F",
+  danger: "var(--color-danger)", overlay: "rgba(26,26,46,0.4)",
+  accentGradient: "linear-gradient(135deg, #378ADD, #534AB7)",
+};
+
+// #19 "ASH & OAK" — dark cinematic, gold accent, frosted panels.
+const IMMERSIVE_PALETTE: MenuPalette = {
+  bg: "#000000", surface: "#141414", surfaceElevated: "#1C1C1C",
+  text: "#FFFFFF", textMuted: "rgba(255,255,255,0.75)", textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.14)", accent: "#F2C879", accentText: "#1A1206",
+  accentSoft: "rgba(242,200,121,0.16)", price: "#F2C879",
+  danger: "var(--color-danger)", overlay: "rgba(0,0,0,0.72)",
+};
+
+// #05 "GRAIN bakehouse" — light bakery: cream, brown text, amber accent.
+const CATEGORY_SIDEBAR_PALETTE: MenuPalette = {
+  bg: "#FFFFFF", surface: "#FFFFFF", surfaceElevated: "#F7F3EC",
+  text: "#3A2E1F", textMuted: "#6E5E49", textFaint: "#B8A88C",
+  border: "#EFE9DD", accent: "#D9A441", accentText: "#3A2E1F",
+  accentSoft: "rgba(217,164,65,0.15)", price: "#D9A441",
+  danger: "var(--color-danger)", overlay: "rgba(58,46,31,0.4)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
+  "store-sections": STORE_SECTIONS_PALETTE,
+  "fullscreen-type": FULLSCREEN_TYPE_PALETTE,
+  timeline: TIMELINE_PALETTE,
+  "masonry-search": MASONRY_SEARCH_PALETTE,
+  "ai-personalized": AI_PERSONALIZED_PALETTE,
+  immersive: IMMERSIVE_PALETTE,
+  "category-sidebar": CATEGORY_SIDEBAR_PALETTE,
   carousel: CAROUSEL_PALETTE,
   stories: STORIES_PALETTE,
   "card-stack": CARD_STACK_PALETTE,

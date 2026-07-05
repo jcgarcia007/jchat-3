@@ -3,6 +3,7 @@
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * Timeline (#14 Timeline Menu). The menu organized by time, not type: a tasting
@@ -27,6 +28,8 @@ function servingTime(index: number): string {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+const P = MENU_PALETTES["timeline"]!;
+
 export default function Timeline({
   business,
   categories,
@@ -42,13 +45,13 @@ export default function Timeline({
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 32px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "12px 16px 32px" }}>
       {/* Header */}
       <div style={{ padding: "4px 2px 12px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.4px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
           {business.name}
         </h1>
-        <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 3 }}>
+        <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>
           Velada de degustación · itinerario
         </div>
       </div>
@@ -65,16 +68,16 @@ export default function Timeline({
           gap: 12,
           padding: "12px 16px",
           borderRadius: 14,
-          border: "1px solid var(--border-subtle)",
-          background: "var(--bg-elevated)",
+          border: `1px solid ${P.border}`,
+          background: P.surfaceElevated,
           cursor: "pointer",
           marginBottom: 18,
         }}
       >
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
           Tu velada · {cartCount} {cartCount === 1 ? "platillo" : "platillos"}
         </span>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--color-gold)" }}>{fmtPrice(cartTotal)} →</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: P.accent }}>{fmtPrice(cartTotal)} →</span>
       </button>
 
       {/* Vertical itinerary */}
@@ -86,7 +89,7 @@ export default function Timeline({
             <div key={item.id} style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
               {/* Left rail: time + node + connector */}
               <div style={{ width: 58, flexShrink: 0, position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: "1px", color: "var(--text-tertiary)", marginBottom: 6, textAlign: "center" }}>
+                <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: "1px", color: P.textFaint, marginBottom: 6, textAlign: "center" }}>
                   {servingTime(i)}
                 </div>
                 <div
@@ -96,14 +99,14 @@ export default function Timeline({
                     width: 26,
                     height: 26,
                     borderRadius: "50%",
-                    background: "var(--bg-base)",
-                    border: "1.5px solid var(--color-gold)",
+                    background: P.bg,
+                    border: `1.5px solid ${P.accent}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 10,
                     fontWeight: 900,
-                    color: "var(--color-gold)",
+                    color: P.accent,
                   }}
                 >
                   {String(i + 1).padStart(2, "0")}
@@ -117,7 +120,7 @@ export default function Timeline({
                       left: "50%",
                       transform: "translateX(-50%)",
                       width: 2,
-                      background: "var(--border-subtle)",
+                      background: P.border,
                     }}
                   />
                 )}
@@ -130,8 +133,8 @@ export default function Timeline({
                   minWidth: 0,
                   display: "flex",
                   gap: 12,
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--border-subtle)",
+                  background: P.surfaceElevated,
+                  border: `1px solid ${P.border}`,
                   borderRadius: 16,
                   padding: 10,
                   marginBottom: 18,
@@ -141,17 +144,17 @@ export default function Timeline({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.photo_url} alt={item.name} style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
                 ) : (
-                  <div style={{ width: 64, height: 64, borderRadius: 10, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍽️</div>
+                  <div style={{ width: 64, height: 64, borderRadius: 10, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍽️</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{item.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: P.text }}>{item.name}</div>
                   {item.description && (
-                    <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 11, color: P.textFaint, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.description}
                     </div>
                   )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--color-gold)" }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: P.accent }}>
                       {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
                     </span>
                     <button
@@ -159,9 +162,9 @@ export default function Timeline({
                       onClick={() => !soldOut && onItemAdd(item)}
                       disabled={soldOut}
                       style={{
-                        border: "1px solid var(--color-gold)",
+                        border: `1px solid ${P.accent}`,
                         background: "transparent",
-                        color: "var(--color-gold)",
+                        color: P.accent,
                         borderRadius: 999,
                         padding: "5px 14px",
                         fontSize: 12,

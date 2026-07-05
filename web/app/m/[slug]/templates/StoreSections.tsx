@@ -4,6 +4,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * StoreSections (#12 Store-Style Sections). Retail / hotel room-service feel: a
@@ -40,7 +41,7 @@ function ShelfTile({
             width: 148,
             height: 108,
             borderRadius: 16,
-            background: "var(--bg-surface)",
+            background: P.surface,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -56,7 +57,7 @@ function ShelfTile({
             style={{
               fontSize: 13,
               fontWeight: 600,
-              color: "var(--text-primary)",
+              color: P.text,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -64,7 +65,7 @@ function ShelfTile({
           >
             {item.name}
           </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-gold)", marginTop: 2 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: P.price, marginTop: 2 }}>
             {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
           </div>
         </div>
@@ -79,7 +80,7 @@ function ShelfTile({
             height: 28,
             borderRadius: "50%",
             border: "none",
-            background: soldOut ? "var(--bg-surface)" : "var(--color-brand)",
+            background: soldOut ? P.surface : P.accent,
             color: "#fff",
             fontSize: 18,
             fontWeight: 700,
@@ -97,6 +98,8 @@ function ShelfTile({
   );
 }
 
+const P = MENU_PALETTES["store-sections"]!;
+
 export default function StoreSections({
   business,
   categories,
@@ -112,10 +115,10 @@ export default function StoreSections({
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "8px 16px 32px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "8px 16px 32px" }}>
       {/* Top bar: business + bag pill */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "6px 2px 4px" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-tertiary)", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", color: P.textFaint, textTransform: "uppercase" }}>
           {business.name}
         </span>
         <button
@@ -127,9 +130,9 @@ export default function StoreSections({
             gap: 6,
             padding: "6px 14px",
             borderRadius: 999,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--bg-surface)",
-            color: "var(--text-primary)",
+            border: `1px solid ${P.border}`,
+            background: P.surface,
+            color: P.text,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: "pointer",
@@ -140,7 +143,7 @@ export default function StoreSections({
       </div>
 
       {/* Greeting */}
-      <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-1px", color: "var(--text-primary)", padding: "10px 2px 18px" }}>
+      <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-1px", color: P.text, padding: "10px 2px 18px" }}>
         Bienvenido.
       </div>
 
@@ -155,18 +158,18 @@ export default function StoreSections({
           }}
           style={{
             scrollMarginTop: 16,
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-subtle)",
+            background: P.surfaceElevated,
+            border: `1px solid ${P.border}`,
             borderRadius: 20,
             padding: "18px 0 18px 18px",
             marginBottom: 16,
           }}
         >
           <div style={{ paddingRight: 18 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.3px", color: "var(--text-primary)", margin: 0 }}>
+            <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.3px", color: P.text, margin: 0 }}>
               {cat.name}
             </h2>
-            <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 2 }}>
+            <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 2 }}>
               {cat.items.length} {cat.items.length === 1 ? "platillo" : "platillos"}
             </div>
           </div>

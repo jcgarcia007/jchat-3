@@ -5,6 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * MasonrySearch (#10 Pinterest Masonry · Search First). Discovery over
@@ -31,8 +32,8 @@ function MasonryCard({
       style={{
         breakInside: "avoid",
         marginBottom: 12,
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        background: P.surfaceElevated,
+        border: `1px solid ${P.border}`,
         borderRadius: 16,
         overflow: "hidden",
       }}
@@ -41,12 +42,12 @@ function MasonryCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "auto", display: "block" }} />
       ) : (
-        <div style={{ width: "100%", height: 120, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
+        <div style={{ width: "100%", height: 120, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
       )}
       <div style={{ padding: "10px 12px 12px" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{item.name}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: P.text, lineHeight: 1.3 }}>{item.name}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--color-gold)" }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: P.price }}>
             {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
           </span>
           <button
@@ -59,7 +60,7 @@ function MasonryCard({
               height: 28,
               borderRadius: "50%",
               border: "none",
-              background: soldOut ? "var(--bg-surface)" : "var(--color-brand)",
+              background: soldOut ? P.surface : P.accent,
               color: "#fff",
               fontSize: 17,
               lineHeight: 1,
@@ -77,6 +78,8 @@ function MasonryCard({
     </div>
   );
 }
+
+const P = MENU_PALETTES["masonry-search"]!;
 
 export default function MasonrySearch({
   business,
@@ -103,19 +106,24 @@ export default function MasonrySearch({
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 16px 96px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "14px 16px 96px" }}>
       {/* Prompt + avatar */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <h1 style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.5px", color: "var(--text-primary)", margin: 0, lineHeight: 1.15 }}>
-          ¿Qué se te antoja hoy?
-        </h1>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", color: P.textFaint, marginBottom: 4 }}>
+            {business.name}
+          </div>
+          <h1 style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.5px", color: P.text, margin: 0, lineHeight: 1.15 }}>
+            ¿Qué se te antoja hoy?
+          </h1>
+        </div>
         <div
           style={{
             width: 40,
             height: 40,
             flexShrink: 0,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, var(--color-brand), var(--color-gold))",
+            background: `linear-gradient(135deg, ${P.accent}, ${P.price})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -135,21 +143,21 @@ export default function MasonrySearch({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border-subtle)",
+          background: P.surfaceElevated,
+          border: `1px solid ${P.border}`,
           borderRadius: 14,
           padding: "10px 14px",
         }}
       >
-        <span style={{ fontSize: 16, color: "var(--text-tertiary)" }}>⌕</span>
+        <span style={{ fontSize: 16, color: P.textFaint }}>⌕</span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar platillos…"
-          style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--text-primary)", fontSize: 14 }}
+          style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: P.text, fontSize: 14 }}
         />
         {query && (
-          <button type="button" onClick={() => setQuery("")} aria-label="Limpiar" style={{ background: "none", border: "none", color: "var(--text-tertiary)", cursor: "pointer", fontSize: 16 }}>
+          <button type="button" onClick={() => setQuery("")} aria-label="Limpiar" style={{ background: "none", border: "none", color: P.textFaint, cursor: "pointer", fontSize: 16 }}>
             ×
           </button>
         )}
@@ -168,13 +176,13 @@ export default function MasonrySearch({
         ))}
       </div>
 
-      <div style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "12px 0 14px" }}>
+      <div style={{ fontSize: 12, color: P.textFaint, margin: "12px 0 14px" }}>
         {results.length} {results.length === 1 ? "resultado" : "resultados"}
       </div>
 
       {/* Masonry wall */}
       {results.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 14 }}>
+        <div style={{ textAlign: "center", padding: "40px 0", color: P.textFaint, fontSize: 14 }}>
           Sin resultados.
         </div>
       ) : (
@@ -201,12 +209,12 @@ export default function MasonrySearch({
             gap: 12,
             padding: "12px 16px",
             borderRadius: 16,
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
+            background: P.surface,
+            border: `1px solid ${P.border}`,
             boxShadow: "0 12px 28px rgba(0,0,0,0.4)",
           }}
         >
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
             {cartCount} {cartCount === 1 ? "artículo" : "artículos"} · {fmtPrice(cartTotal)}
           </span>
           <button
@@ -214,7 +222,7 @@ export default function MasonrySearch({
             onClick={onOpenCart}
             style={{
               marginLeft: "auto",
-              background: "var(--color-brand)",
+              background: P.accent,
               color: "#fff",
               border: "none",
               fontSize: 12.5,
@@ -241,9 +249,9 @@ function FilterToken({ label, active, onClick }: { label: string; active: boolea
         flexShrink: 0,
         padding: "6px 14px",
         borderRadius: 999,
-        border: active ? "1px solid var(--color-gold)" : "1px solid var(--border-subtle)",
-        background: active ? "rgba(217,119,6,0.15)" : "var(--bg-elevated)",
-        color: active ? "var(--color-gold)" : "var(--text-secondary)",
+        border: active ? `1px solid ${P.accent}` : `1px solid ${P.border}`,
+        background: active ? P.accentSoft : P.surfaceElevated,
+        color: active ? P.accent : P.textMuted,
         fontSize: 13,
         fontWeight: active ? 700 : 500,
         whiteSpace: "nowrap",

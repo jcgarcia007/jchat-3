@@ -4,6 +4,7 @@ import { useState, useRef, useMemo } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * Immersive (#19 Immersive Full-Screen). Each dish owns the entire viewport in a
@@ -14,6 +15,8 @@ import { fmtPrice } from "./shared/format";
  * Note: MenuPageClient suppresses the shared CartFAB — the glass cart pill is
  * this template's cart affordance.
  */
+const P = MENU_PALETTES["immersive"]!;
+
 export default function Immersive({
   business,
   categories,
@@ -58,7 +61,7 @@ export default function Immersive({
   };
 
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#000" }}>
+    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: P.bg }}>
       {/* Translucent category chips */}
       <div
         style={{
@@ -73,6 +76,9 @@ export default function Immersive({
           padding: "12px 14px",
         }}
       >
+        <span style={{ flexShrink: 0, alignSelf: "center", fontSize: 13, fontWeight: 800, letterSpacing: "0.3px", color: "#fff", marginRight: 4, textShadow: "0 1px 4px rgba(0,0,0,0.5)", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {business.name}
+        </span>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
           {nonEmpty.map((c) => {
             const on = c.id === activeCatId;
@@ -85,11 +91,11 @@ export default function Immersive({
                   flexShrink: 0,
                   padding: "6px 14px",
                   borderRadius: 999,
-                  border: on ? "1px solid var(--color-gold)" : "1px solid rgba(255,255,255,0.2)",
-                  background: on ? "var(--color-gold)" : "rgba(255,255,255,0.14)",
+                  border: on ? `1px solid ${P.accent}` : "1px solid rgba(255,255,255,0.2)",
+                  background: on ? P.accent : "rgba(255,255,255,0.14)",
                   backdropFilter: "blur(10px)",
                   WebkitBackdropFilter: "blur(10px)",
-                  color: on ? "#1a1206" : "#fff",
+                  color: on ? P.accentText : "#fff",
                   fontSize: 12.5,
                   fontWeight: on ? 700 : 500,
                   whiteSpace: "nowrap",
@@ -135,7 +141,7 @@ export default function Immersive({
               width: 5,
               height: i === page ? 16 : 5,
               borderRadius: 999,
-              background: i === page ? "var(--color-gold)" : "rgba(255,255,255,0.4)",
+              background: i === page ? P.accent : "rgba(255,255,255,0.4)",
             }}
           />
         ))}
@@ -155,7 +161,7 @@ export default function Immersive({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.photo_url} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <div style={{ position: "absolute", inset: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🍽️</div>
+                <div style={{ position: "absolute", inset: 0, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🍽️</div>
               )}
 
               {/* Frosted info panel */}
@@ -178,7 +184,7 @@ export default function Immersive({
                   <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 8, lineHeight: 1.5 }}>{item.description}</div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14 }}>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: "var(--color-gold)" }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: P.price }}>
                     {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
                   </span>
                   <button
@@ -191,8 +197,8 @@ export default function Immersive({
                       height: 48,
                       borderRadius: "50%",
                       border: "none",
-                      background: soldOut ? "rgba(255,255,255,0.2)" : "var(--color-gold)",
-                      color: "#1a1206",
+                      background: soldOut ? "rgba(255,255,255,0.2)" : P.accent,
+                      color: P.accentText,
                       fontSize: 24,
                       fontWeight: 700,
                       lineHeight: 1,
