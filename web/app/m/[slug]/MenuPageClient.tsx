@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
 import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
@@ -1268,7 +1269,13 @@ function Backdrop({
     };
   }, []);
 
-  return (
+  // Rendered via a portal to document.body so the fixed overlay anchors to the
+  // real viewport. The responsive menu shell (<main> with transform:
+  // translateZ(0)) establishes a containing block for position:fixed, which
+  // would otherwise pin the sheet to the scrolled shell instead of the screen.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -1283,7 +1290,8 @@ function Backdrop({
       }}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
