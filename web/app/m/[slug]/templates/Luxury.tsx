@@ -16,7 +16,7 @@ import { fmtPrice } from "./shared/format";
  * template's cart affordance.
  */
 
-const SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif";
+const SERIF = "var(--font-playfair), Georgia, 'Times New Roman', serif";
 const GOLD = "var(--color-gold)";
 
 export default function Luxury({

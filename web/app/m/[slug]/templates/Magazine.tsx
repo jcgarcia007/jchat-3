@@ -15,7 +15,7 @@ import { fmtPrice } from "./shared/format";
  * link is this template's cart affordance.
  */
 
-const SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif";
+const SERIF = "var(--font-playfair), Georgia, 'Times New Roman', serif";
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
 
 // A compact two-column "article" tile: small photo, serif name, price + add.
