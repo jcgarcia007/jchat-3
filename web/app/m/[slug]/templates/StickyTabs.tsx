@@ -17,6 +17,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  * sticky bottom cart bar is the only cart affordance.
  */
 const P = MENU_PALETTES["sticky-tabs"]!;
+const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
 
 export default function StickyTabs({
   business,
@@ -124,7 +125,7 @@ export default function StickyTabs({
           </div>
           <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
             {cat.items.map((item) => (
-              <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} />
+              <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} palette={ROW_PALETTE} />
             ))}
           </div>
         </section>

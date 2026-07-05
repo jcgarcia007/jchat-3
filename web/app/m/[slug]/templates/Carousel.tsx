@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * Carousel (#09 Horizontal Product Carousel). One product at a time, sideways: a
@@ -14,6 +15,8 @@ import { fmtPrice } from "./shared/format";
  * Note: MenuPageClient suppresses the shared CartFAB — the header "◇ N" bubble
  * is this template's cart affordance.
  */
+const P = MENU_PALETTES["carousel"]!;
+
 export default function Carousel({
   business,
   categories,
@@ -46,14 +49,14 @@ export default function Carousel({
   };
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", paddingBottom: 24 }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", paddingBottom: 24 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "14px 20px 4px" }}>
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.4px" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
             {business.name}
           </h1>
-          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 3 }}>Elige tu antojo</div>
+          <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>Elige tu antojo</div>
         </div>
         <button
           type="button"
@@ -65,9 +68,9 @@ export default function Carousel({
             gap: 6,
             padding: "6px 14px",
             borderRadius: 999,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--bg-elevated)",
-            color: "var(--text-primary)",
+            border: `1px solid ${P.border}`,
+            background: P.surfaceElevated,
+            color: P.text,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: "pointer",
@@ -79,7 +82,7 @@ export default function Carousel({
       </div>
 
       {/* Segmented control */}
-      <div style={{ margin: "14px 20px 0", display: "flex", gap: 4, background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", borderRadius: 999, padding: 4, overflowX: "auto", scrollbarWidth: "none" }}>
+      <div style={{ margin: "14px 20px 0", display: "flex", gap: 4, background: P.surfaceElevated, border: `1px solid ${P.border}`, borderRadius: 999, padding: 4, overflowX: "auto", scrollbarWidth: "none" }}>
         {nonEmpty.map((c) => {
           const on = c.id === cat.id;
           return (
@@ -93,8 +96,8 @@ export default function Carousel({
                 borderRadius: 999,
                 border: "none",
                 cursor: "pointer",
-                background: on ? "var(--color-gold)" : "transparent",
-                color: on ? "#1a1206" : "var(--text-secondary)",
+                background: on ? P.accent : "transparent",
+                color: on ? P.accentText : P.textMuted,
                 fontSize: 13,
                 fontWeight: on ? 700 : 500,
                 whiteSpace: "nowrap",
@@ -129,8 +132,8 @@ export default function Carousel({
                 flex: "0 0 82%",
                 maxWidth: 340,
                 scrollSnapAlign: "center",
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border-subtle)",
+                background: P.surfaceElevated,
+                border: `1px solid ${P.border}`,
                 borderRadius: 24,
                 padding: 14,
                 display: "flex",
@@ -142,14 +145,14 @@ export default function Carousel({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 16, display: "block" }} />
               ) : (
-                <div style={{ width: "100%", height: 220, borderRadius: 16, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
+                <div style={{ width: "100%", height: 220, borderRadius: 16, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
               )}
-              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginTop: 14 }}>{item.name}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: P.text, marginTop: 14 }}>{item.name}</div>
               {item.description && (
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5, minHeight: 38 }}>{item.description}</div>
+                <div style={{ fontSize: 13, color: P.textMuted, marginTop: 6, lineHeight: 1.5, minHeight: 38 }}>{item.description}</div>
               )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14 }}>
-                <span style={{ fontSize: 20, fontWeight: 800, color: "var(--color-gold)" }}>
+                <span style={{ fontSize: 20, fontWeight: 800, color: P.price }}>
                   {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
                 </span>
                 <button
@@ -161,7 +164,7 @@ export default function Carousel({
                     height: 46,
                     borderRadius: 16,
                     border: "none",
-                    background: soldOut ? "var(--bg-surface)" : "var(--color-brand)",
+                    background: soldOut ? P.surface : P.accent,
                     color: "#fff",
                     fontSize: 24,
                     fontWeight: 700,
@@ -191,13 +194,13 @@ export default function Carousel({
                 width: i === scrollIndex ? 18 : 6,
                 height: 6,
                 borderRadius: 999,
-                background: i === scrollIndex ? "var(--color-gold)" : "var(--border-subtle)",
+                background: i === scrollIndex ? P.accent : P.border,
                 transition: "background 0.2s",
               }}
             />
           ))}
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>← Desliza para ver los {items.length} →</div>
+        <div style={{ fontSize: 11, color: P.textFaint }}>← Desliza para ver los {items.length} →</div>
       </div>
     </div>
   );

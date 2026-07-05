@@ -5,6 +5,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * Stories (#15 Story Navigation). The menu told like Instagram stories:
@@ -15,6 +16,8 @@ import { fmtPrice } from "./shared/format";
  * Web adaptation: taps on left/right zones + ‹ › buttons (no real drag gestures).
  * MenuPageClient suppresses the shared CartFAB — the header "◇ N" is the cart.
  */
+const P = MENU_PALETTES["stories"]!;
+
 export default function Stories({
   business,
   categories,
@@ -49,7 +52,7 @@ export default function Stories({
   const prev = () => setCurrent((c) => Math.max(c - 1, 0));
 
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#000" }}>
+    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: P.bg }}>
       {/* Photo */}
       {item.photo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -87,7 +90,7 @@ export default function Stories({
                   width: 44,
                   height: 44,
                   borderRadius: "50%",
-                  border: on ? "2px solid var(--color-gold)" : "2px solid rgba(255,255,255,0.4)",
+                  border: on ? `2px solid ${P.accent}` : "2px solid rgba(255,255,255,0.4)",
                   background: "rgba(255,255,255,0.12)",
                   color: "#fff",
                   display: "flex",
@@ -126,7 +129,7 @@ export default function Stories({
           <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", marginTop: 8, lineHeight: 1.5 }}>{item.description}</div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: "var(--color-gold)" }}>
+          <span style={{ fontSize: 22, fontWeight: 800, color: P.price }}>
             {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
           </span>
         </div>
@@ -141,8 +144,8 @@ export default function Stories({
               padding: "13px 18px",
               borderRadius: 14,
               border: "none",
-              background: soldOut ? "rgba(255,255,255,0.2)" : "var(--color-gold)",
-              color: "#1a1206",
+              background: soldOut ? "rgba(255,255,255,0.2)" : P.accent,
+              color: P.accentText,
               fontSize: 14,
               fontWeight: 800,
               cursor: soldOut ? "not-allowed" : "pointer",

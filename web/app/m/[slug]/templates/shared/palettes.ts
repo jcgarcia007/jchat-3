@@ -189,8 +189,80 @@ const STICKY_TABS_PALETTE: MenuPalette = {
   overlay: "rgba(46,35,23,0.5)",
 };
 
+// #09 "Swirl" — light pink, magenta accent, white cards.
+const CAROUSEL_PALETTE: MenuPalette = {
+  bg: "#FFF0F4",
+  surface: "#FFFFFF",
+  surfaceElevated: "#FFFFFF",
+  text: "#8A2B4A",
+  textMuted: "#A9557A",
+  textFaint: "#C98BA3",
+  border: "#F4D3DF",
+  accent: "#E85D8A",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(232,93,138,0.14)",
+  price: "#E85D8A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(138,43,74,0.4)",
+};
+
+// #15 "Neon Palm" — black full-bleed frames, gold accent (rings/progress).
+const STORIES_PALETTE: MenuPalette = {
+  bg: "#000000",
+  surface: "#141414",
+  surfaceElevated: "#1C1C1C",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.75)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.16)",
+  accent: "#F2C879",
+  accentText: "#1A1206",
+  accentSoft: "rgba(242,200,121,0.16)",
+  price: "#F2C879",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.7)",
+};
+
+// #17 "RUTA" taco truck — warm black + orange, gold prices.
+const CARD_STACK_PALETTE: MenuPalette = {
+  bg: "#16130F",
+  surface: "#241E16",
+  surfaceElevated: "#2E2619",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.72)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.12)",
+  accent: "#F97316",
+  accentText: "#1A1206",
+  accentSoft: "rgba(249,115,22,0.16)",
+  price: "#F2C879",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.7)",
+};
+
+// #16 "SLRP" ramen — near-white minimal, near-black accent, subtle gold price.
+const GESTURE_PALETTE: MenuPalette = {
+  bg: "#FFFFFF",
+  surface: "#F3F4F6",
+  surfaceElevated: "#F3F4F6",
+  text: "#1A1A2E",
+  textMuted: "#4B5563",
+  textFaint: "#9CA3AF",
+  border: "#E5E7EB",
+  accent: "#1A1A2E",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(26,26,46,0.08)",
+  price: "#C99B3F",
+  danger: "var(--color-danger)",
+  overlay: "rgba(26,26,46,0.45)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
+  carousel: CAROUSEL_PALETTE,
+  stories: STORIES_PALETTE,
+  "card-stack": CARD_STACK_PALETTE,
+  gesture: GESTURE_PALETTE,
   "left-drawer": LEFT_DRAWER_PALETTE,
   "icon-rail": ICON_RAIL_PALETTE,
   magazine: MAGAZINE_PALETTE,

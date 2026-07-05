@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * CardStack (#17 Card Stack Navigation). The food truck's whole menu as a deck:
@@ -15,6 +16,8 @@ import { fmtPrice } from "./shared/format";
  * save, each advancing the deck. MenuPageClient suppresses the shared CartFAB —
  * the header "◇ N" and the buttons are the affordances.
  */
+const P = MENU_PALETTES["card-stack"]!;
+
 export default function CardStack({
   business,
   categories,
@@ -38,48 +41,48 @@ export default function CardStack({
   };
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 16px 24px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "14px 16px 24px" }}>
       {/* Header + progress */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.3px" }}>{business.name}</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.3px" }}>{business.name}</h1>
         <button
           type="button"
           onClick={onOpenCart}
           aria-label={`Ver carrito, ${cartCount} artículos`}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: "1px solid var(--border-subtle)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1px solid ${P.border}`, background: P.surfaceElevated, color: P.text, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
         >
           ◇ {cartCount}
         </button>
       </div>
-      <div style={{ marginTop: 12, height: 4, borderRadius: 999, background: "var(--bg-elevated)", overflow: "hidden" }}>
+      <div style={{ marginTop: 12, height: 4, borderRadius: 999, background: P.surfaceElevated, overflow: "hidden" }}>
         <div
           style={{
             height: "100%",
             width: "100%",
-            background: "var(--color-gold)",
+            background: P.accent,
             transformOrigin: "left",
             transform: `scaleX(${Math.min(index, items.length) / items.length})`,
             transition: "transform 0.25s",
           }}
         />
       </div>
-      <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6, textAlign: "center" }}>
+      <div style={{ fontSize: 11, color: P.textFaint, marginTop: 6, textAlign: "center" }}>
         {done ? `${items.length}/${items.length}` : `${index + 1}/${items.length}`}
       </div>
 
       {done ? (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>¡Los viste todos!</div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: P.text }}>¡Los viste todos!</div>
+          <div style={{ fontSize: 13, color: P.textMuted, marginTop: 6 }}>
             {cartCount > 0 ? `Tienes ${cartCount} en tu carrito.` : "No agregaste nada aún."}
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
-            <button type="button" onClick={() => setIndex(0)} style={{ padding: "11px 20px", borderRadius: 999, border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            <button type="button" onClick={() => setIndex(0)} style={{ padding: "11px 20px", borderRadius: 999, border: `1px solid ${P.border}`, background: "transparent", color: P.text, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               ↺ Reiniciar
             </button>
             {cartCount > 0 && (
-              <button type="button" onClick={onOpenCart} style={{ padding: "11px 20px", borderRadius: 999, border: "none", background: "var(--color-gold)", color: "#1a1206", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              <button type="button" onClick={onOpenCart} style={{ padding: "11px 20px", borderRadius: 999, border: "none", background: P.accent, color: P.accentText, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 Ver carrito →
               </button>
             )}
@@ -108,8 +111,8 @@ export default function CardStack({
                       transformOrigin: "center top",
                       opacity: depth === 0 ? 1 : 0.6 - depth * 0.15,
                       zIndex: 30 - depth,
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--border-subtle)",
+                      background: P.surfaceElevated,
+                      border: `1px solid ${P.border}`,
                       borderRadius: 24,
                       overflow: "hidden",
                       boxShadow: depth === 0 ? "0 20px 44px rgba(0,0,0,0.45)" : "none",
@@ -121,17 +124,17 @@ export default function CardStack({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       ) : (
-                        <div style={{ width: "100%", height: "100%", background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46 }}>🍽️</div>
+                        <div style={{ width: "100%", height: "100%", background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46 }}>🍽️</div>
                       )}
                     </div>
                     <div style={{ padding: "14px 16px" }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{item.name}</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: P.text }}>{item.name}</div>
                       {item.description && (
-                        <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 6, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {item.description}
                         </div>
                       )}
-                      <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-gold)", marginTop: 10 }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: P.price, marginTop: 10 }}>
                         {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
                       </div>
                     </div>
@@ -143,9 +146,9 @@ export default function CardStack({
 
           {/* Decision buttons */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 28, marginTop: 26 }}>
-            <DeckButton onClick={advance} label="PASAR" glyph="✕" color="var(--text-secondary)" border="var(--border-subtle)" />
-            <DeckButton onClick={add} label="AGREGAR" glyph="+" color="#fff" bg="var(--color-brand)" border="var(--color-brand)" big />
-            <DeckButton onClick={advance} label="GUARDAR" glyph="♡" color="var(--color-gold)" border="var(--color-gold)" />
+            <DeckButton onClick={advance} label="PASAR" glyph="✕" color={P.textMuted} border={P.border} />
+            <DeckButton onClick={add} label="AGREGAR" glyph="+" color="#fff" bg={P.accent} border={P.accent} big />
+            <DeckButton onClick={advance} label="GUARDAR" glyph="♡" color={P.price} border={P.price} />
           </div>
         </>
       )}
@@ -194,7 +197,7 @@ function DeckButton({
       >
         {glyph}
       </button>
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "var(--text-tertiary)" }}>{label}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: P.textFaint }}>{label}</span>
     </div>
   );
 }
