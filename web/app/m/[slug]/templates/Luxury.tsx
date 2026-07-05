@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Luxury (#20 Experimental Luxury). Anti-density as a statement: one numbered
@@ -20,8 +20,6 @@ import { MENU_PALETTES } from "./shared/palettes";
 
 const SERIF = "var(--font-playfair), Georgia, 'Times New Roman', serif";
 // MAISON OR palette — semantic colors from the single source.
-const P = MENU_PALETTES.luxury!;
-const GOLD = P.accent;
 
 export default function Luxury({
   business,
@@ -30,6 +28,8 @@ export default function Luxury({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
+  const GOLD = P.accent;
   const items = categories.flatMap((c) => c.items);
   const [activeIndex, setActiveIndex] = useState(0);
 

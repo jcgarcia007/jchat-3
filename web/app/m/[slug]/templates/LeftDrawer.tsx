@@ -6,7 +6,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * LeftDrawer (#02 Left Drawer Navigation). A hamburger opens a slide-in left
@@ -17,15 +17,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  */
 
 // Board #02 "Forno" palette — semantic colors from the single source.
-const P = MENU_PALETTES["left-drawer"]!;
-const CREAM = P.bg;
-const PANEL = "#5E1A0E"; // bespoke chrome: dark-brown drawer (not a semantic field)
-const RED = P.accent;
-const INK = P.text;
-const MUTED = P.textFaint;
-const BORDER = P.border;
-const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
-
 export default function LeftDrawer({
   business,
   categories,
@@ -36,6 +27,14 @@ export default function LeftDrawer({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
+  const CREAM = P.bg;
+  const PANEL = "#5E1A0E"; // bespoke chrome: dark-brown drawer (not a semantic field)
+  const RED = P.accent;
+  const INK = P.text;
+  const MUTED = P.textFaint;
+  const BORDER = P.border;
+  const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
   const [open, setOpen] = useState(false);
 
   const nonEmpty = categories.filter((c) => c.items.length > 0);

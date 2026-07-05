@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Gesture (#16 Gesture-Based Navigation). Almost no chrome: one dish on stage at
@@ -17,7 +17,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * (no long-press). MenuPageClient suppresses the shared CartFAB — the header
  * the header cart-icon pill and the central button are the affordances.
  */
-const P = MENU_PALETTES["gesture"]!;
 
 export default function Gesture({
   business,
@@ -26,6 +25,18 @@ export default function Gesture({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
+  const stepBtn: React.CSSProperties = {
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    border: `1px solid ${P.border}`,
+    background: P.surfaceElevated,
+    color: P.textMuted,
+    fontSize: 18,
+    lineHeight: 1,
+    cursor: "pointer",
+  };
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [catIdx, setCatIdx] = useState(0);
   const [itemIdx, setItemIdx] = useState(0);
@@ -128,15 +139,3 @@ export default function Gesture({
     </div>
   );
 }
-
-const stepBtn: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: "50%",
-  border: `1px solid ${P.border}`,
-  background: P.surfaceElevated,
-  color: P.textMuted,
-  fontSize: 18,
-  lineHeight: 1,
-  cursor: "pointer",
-};

@@ -5,7 +5,7 @@ import { useState, useRef, useMemo } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Immersive (#19 Immersive Full-Screen). Each dish owns the entire viewport in a
@@ -16,7 +16,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Note: MenuPageClient suppresses the shared CartFAB — the glass cart pill is
  * this template's cart affordance.
  */
-const P = MENU_PALETTES["immersive"]!;
 
 export default function Immersive({
   business,
@@ -25,6 +24,7 @@ export default function Immersive({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);

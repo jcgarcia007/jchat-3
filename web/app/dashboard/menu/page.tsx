@@ -52,6 +52,7 @@ import {
   IconGripVertical,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
 import { resolveActiveBusiness } from "@/lib/business";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -2659,8 +2660,11 @@ export default function MenuPage() {
   const [menuTemplate, setMenuTemplate] = useState<string>("classic");
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
+  const [menuPalette, setMenuPalette] = useState<string | null>(null);
+  const [savingPalette, setSavingPalette] = useState<string | null>(null);
   // Collapsible sections — closed by default for a cleaner dashboard.
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showPalettes, setShowPalettes] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2716,6 +2720,7 @@ export default function MenuPage() {
       setUrlInput(extUrl);
       setCardEffect((res.business as unknown as { menu_card_effect?: string }).menu_card_effect ?? "lift");
       setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "classic");
+      setMenuPalette((res.business as unknown as { menu_palette_id?: string | null }).menu_palette_id ?? null);
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
 
       const [catsResult, itemsResult] = await Promise.all([
@@ -3027,6 +3032,28 @@ export default function MenuPage() {
         setError("Error al guardar la plantilla.");
       } finally {
         setSavingTemplate(null);
+      }
+    },
+    [businessId],
+  );
+
+  const handleSavePalette = useCallback(
+    async (slug: string | null) => {
+      if (!isSupabaseConfigured || !businessId) return;
+      // Sentinel for the "original" option so the saving state can key on it.
+      setSavingPalette(slug ?? "__original__");
+      try {
+        const { error: err } = await supabase
+          .from("businesses")
+          .update({ menu_palette_id: slug } as never)
+          .eq("id", businessId);
+        if (err) throw err;
+        setMenuPalette(slug);
+        setSuccess(slug ? "Paleta guardada." : "Paleta original restaurada.");
+      } catch {
+        setError("Error al guardar la paleta.");
+      } finally {
+        setSavingPalette(null);
       }
     },
     [businessId],
@@ -3869,6 +3896,270 @@ export default function MenuPage() {
             </div>
           )}
           </>
+          )}
+        </div>
+      )}
+
+      {/* ── Paleta de colores ──────────────────────────────────────────────── */}
+      {menuMode === "web" && (
+        <div
+          style={{
+            background: "var(--db-bg-card)",
+            border: "1px solid var(--db-border)",
+            borderRadius: 12,
+            padding: "20px 24px",
+            marginBottom: 24,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowPalettes((v) => !v)}
+            aria-expanded={showPalettes}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              width: "100%",
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                Paleta de colores
+              </h2>
+              {showPalettes ? (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Reemplaza los colores de la plantilla por una de 40 paletas. La
+                  tipografía no cambia. Elige &ldquo;Original de la plantilla&rdquo; para volver.
+                </p>
+              ) : (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Paleta activa ·{" "}
+                  <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
+                    {menuPalette
+                      ? (COLOR_PALETTES_BY_SLUG[menuPalette]?.name ?? menuPalette)
+                      : "Original de la plantilla"}
+                  </strong>
+                </p>
+              )}
+            </div>
+            <IconChevronDown
+              size={20}
+              style={{
+                flexShrink: 0,
+                marginTop: 2,
+                color: "var(--db-text-tertiary)",
+                transform: showPalettes ? "rotate(0deg)" : "rotate(-90deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+          </button>
+
+          {showPalettes && (
+          <div style={{ marginTop: 16 }}>
+            {/* Volver a la paleta original de la plantilla */}
+            <button
+              type="button"
+              onClick={() => void handleSavePalette(null)}
+              disabled={savingPalette !== null}
+              aria-pressed={menuPalette === null}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                width: "100%",
+                padding: "12px 14px",
+                marginBottom: 20,
+                borderRadius: 10,
+                textAlign: "left",
+                border: menuPalette === null
+                  ? "2px solid var(--db-accent)"
+                  : "1px solid var(--db-border)",
+                boxShadow: menuPalette === null ? "0 0 0 3px var(--db-accent-bg)" : "none",
+                background: "var(--db-bg-elevated)",
+                cursor: savingPalette !== null ? "wait" : "pointer",
+              }}
+            >
+              <span style={{ fontSize: 18, flexShrink: 0 }}>↺</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--db-text-primary)" }}>
+                  Original de la plantilla
+                </div>
+                <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 1 }}>
+                  Usa los colores originales de{" "}
+                  {MENU_TEMPLATE_OPTIONS.find((o) => o.id === menuTemplate)?.name ?? "la plantilla"}.
+                </div>
+              </div>
+              {menuPalette === null && (
+                <IconCheck size={16} style={{ color: "var(--db-accent)", flexShrink: 0 }} />
+              )}
+            </button>
+
+            {/* Paletas agrupadas por familia */}
+            {PALETTE_FAMILIES.map((fam) => {
+              const palettes = COLOR_PALETTES.filter((p) => p.family === fam.key);
+              if (palettes.length === 0) return null;
+              return (
+                <div key={fam.key} style={{ marginBottom: 20 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "var(--db-text-tertiary)",
+                      marginBottom: 10,
+                    }}
+                  >
+                    {fam.label}
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    {palettes.map((p) => {
+                      const active = menuPalette === p.slug;
+                      const saving = savingPalette === p.slug;
+                      return (
+                        <button
+                          key={p.slug}
+                          type="button"
+                          onClick={() => void handleSavePalette(p.slug)}
+                          disabled={savingPalette !== null}
+                          aria-pressed={active}
+                          title={p.name}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            padding: 6,
+                            textAlign: "left",
+                            borderRadius: 12,
+                            border: active
+                              ? "2px solid var(--db-accent)"
+                              : "1px solid var(--db-border)",
+                            boxShadow: active ? "0 0 0 3px var(--db-accent-bg)" : "none",
+                            background: "var(--db-bg-elevated)",
+                            cursor: savingPalette !== null ? "wait" : "pointer",
+                            opacity: savingPalette !== null && !saving && !active ? 0.6 : 1,
+                            transition: "border-color 0.15s, box-shadow 0.15s",
+                          }}
+                        >
+                          {/* Mini-preview con la paleta real */}
+                          <div
+                            style={{
+                              position: "relative",
+                              background: p.bg,
+                              borderRadius: 8,
+                              padding: 8,
+                              height: 70,
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {/* fila "tarjeta" con surface + nombre falso */}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                background: p.surface,
+                                borderRadius: 6,
+                                padding: "5px 7px",
+                              }}
+                            >
+                              <span style={{ width: 26, height: 5, borderRadius: 3, background: p.text, opacity: 0.85, flexShrink: 0 }} />
+                              <span style={{ width: 14, height: 5, borderRadius: 3, background: p.textMuted, opacity: 0.7 }} />
+                            </div>
+                            {/* fila precio (accent) + botón + */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: p.price }}>$12.00</span>
+                              <span
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  borderRadius: 999,
+                                  background: p.accent,
+                                  color: p.accentText,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 13,
+                                  fontWeight: 900,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                +
+                              </span>
+                            </div>
+                            {saving && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  background: "rgba(0,0,0,0.45)",
+                                  color: "#fff",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Guardando…
+                              </div>
+                            )}
+                          </div>
+                          {/* Nombre + check */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 2px" }}>
+                            <span
+                              style={{
+                                fontSize: 11.5,
+                                fontWeight: 600,
+                                color: "var(--db-text-primary)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                minWidth: 0,
+                              }}
+                            >
+                              {p.name}
+                            </span>
+                            {active && (
+                              <IconCheck size={12} style={{ color: "var(--db-accent)", flexShrink: 0, marginLeft: "auto" }} />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {bizSlug && (
+              <div style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>
+                <a
+                  href={`/m/${bizSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
+                >
+                  Ver menú público →
+                </a>
+                {" "}para ver la paleta aplicada.
+              </div>
+            )}
+          </div>
           )}
         </div>
       )}

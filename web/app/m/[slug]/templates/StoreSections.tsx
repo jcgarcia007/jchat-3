@@ -5,7 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * StoreSections (#12 Store-Style Sections). Retail / hotel room-service feel: a
@@ -26,6 +26,7 @@ function ShelfTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div style={{ flexShrink: 0, width: 148 }}>
@@ -99,7 +100,6 @@ function ShelfTile({
   );
 }
 
-const P = MENU_PALETTES["store-sections"]!;
 
 export default function StoreSections({
   business,
@@ -109,6 +109,7 @@ export default function StoreSections({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   if (nonEmpty.length === 0) {

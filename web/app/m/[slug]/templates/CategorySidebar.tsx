@@ -5,7 +5,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * CategorySidebar (#05 Vertical Category Sidebar). Grocery-app pattern: a
@@ -18,9 +18,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Note: MenuPageClient suppresses the shared CartFAB for this template (the
  * pull-tab is its cart affordance).
  */
-const P = MENU_PALETTES["category-sidebar"]!;
-const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
-
 export default function CategorySidebar({
   business,
   categories,
@@ -31,6 +28,8 @@ export default function CategorySidebar({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
+  const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const RAIL_W = 88;
 

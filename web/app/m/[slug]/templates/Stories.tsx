@@ -6,7 +6,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Stories (#15 Story Navigation). The menu told like Instagram stories:
@@ -17,7 +17,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Web adaptation: taps on left/right zones + ‹ › buttons (no real drag gestures).
  * MenuPageClient suppresses the shared CartFAB — the header cart-icon pill is the cart.
  */
-const P = MENU_PALETTES["stories"]!;
 
 export default function Stories({
   business,
@@ -26,6 +25,7 @@ export default function Stories({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [current, setCurrent] = useState(0);
 

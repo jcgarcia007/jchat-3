@@ -4,7 +4,7 @@ import { IconShoppingCart } from "@tabler/icons-react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Timeline (#14 Timeline Menu). The menu organized by time, not type: a tasting
@@ -29,7 +29,6 @@ function servingTime(index: number): string {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-const P = MENU_PALETTES["timeline"]!;
 
 export default function Timeline({
   business,
@@ -39,6 +38,7 @@ export default function Timeline({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
 
   if (items.length === 0) {

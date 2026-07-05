@@ -5,7 +5,7 @@ import { useState, useRef } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Carousel (#09 Horizontal Product Carousel). One product at a time, sideways: a
@@ -16,7 +16,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Note: MenuPageClient suppresses the shared CartFAB — the header cart-icon bubble
  * is this template's cart affordance.
  */
-const P = MENU_PALETTES["carousel"]!;
 
 export default function Carousel({
   business,
@@ -25,6 +24,7 @@ export default function Carousel({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [activeCat, setActiveCat] = useState<string>(nonEmpty[0]?.id ?? "");
   const [scrollIndex, setScrollIndex] = useState(0);

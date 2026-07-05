@@ -6,7 +6,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * AiPersonalized (#18 AI-Personalized Menu). The menu re-ranks itself per person:
@@ -28,7 +28,6 @@ const REASONS = [
   "Muy pedido a esta hora",
 ];
 
-const P = MENU_PALETTES["ai-personalized"]!;
 
 export default function AiPersonalized({
   business,
@@ -37,6 +36,7 @@ export default function AiPersonalized({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const items = useMemo(() => categories.flatMap((c) => c.items), [categories]);
 
   if (items.length === 0) {
@@ -123,6 +123,7 @@ function RankedCard({
   reason: string;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div style={{ display: "flex", gap: 12, background: P.surfaceElevated, border: `1px solid ${P.border}`, borderRadius: 16, padding: 10 }}>

@@ -5,7 +5,8 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
+import type { MenuPalette } from "./shared/palettes";
 
 /**
  * GlassChips (#07 Floating Category Chips). Imagery goes edge-to-edge in a
@@ -19,7 +20,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  */
 
 // A full-bleed card: the photo IS the card, with info over a bottom gradient.
-const P = MENU_PALETTES["glass-chips"]!;
 
 function FullBleedCard({
   item,
@@ -28,6 +28,7 @@ function FullBleedCard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div
@@ -114,6 +115,7 @@ export default function GlassChips({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   if (nonEmpty.length === 0) {
@@ -147,7 +149,7 @@ export default function GlassChips({
           <button
             type="button"
             onClick={() => scrollToCategory(nonEmpty[0].id)}
-            style={chipStyle(false)}
+            style={chipStyle(false, P)}
           >
             Todo
           </button>
@@ -156,7 +158,7 @@ export default function GlassChips({
               key={cat.id}
               type="button"
               onClick={() => scrollToCategory(cat.id)}
-              style={chipStyle(cat.id === activeCategory)}
+              style={chipStyle(cat.id === activeCategory, P)}
             >
               {cat.name}
             </button>
@@ -239,7 +241,7 @@ export default function GlassChips({
   );
 }
 
-function chipStyle(active: boolean): React.CSSProperties {
+function chipStyle(active: boolean, P: MenuPalette): React.CSSProperties {
   return {
     flexShrink: 0,
     padding: "6px 14px",

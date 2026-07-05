@@ -5,7 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * InfiniteFeed (#08 Infinite Vertical Feed). Built for a stadium seat: NO
@@ -19,7 +19,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * the gradient bottom bar is this template's cart affordance.
  */
 
-const P = MENU_PALETTES["infinite-feed"]!;
 
 function Billboard({
   item,
@@ -28,6 +27,7 @@ function Billboard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div
@@ -123,6 +123,7 @@ export default function InfiniteFeed({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
 
   if (items.length === 0) {

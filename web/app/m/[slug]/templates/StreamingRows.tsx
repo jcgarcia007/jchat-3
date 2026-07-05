@@ -5,7 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * StreamingRows (#13 Streaming-Style Rows). Concessions browsed like a streaming
@@ -19,7 +19,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  */
 
 // A landscape (16:9-ish) tile with title/price over a bottom gradient.
-const P = MENU_PALETTES["streaming-rows"]!;
 
 function LandscapeTile({
   item,
@@ -28,6 +27,7 @@ function LandscapeTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div style={{ flexShrink: 0, width: 200 }}>
@@ -95,6 +95,7 @@ export default function StreamingRows({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   if (nonEmpty.length === 0) {

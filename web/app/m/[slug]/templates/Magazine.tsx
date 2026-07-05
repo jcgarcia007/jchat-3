@@ -5,7 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * Magazine (#11 Magazine Layout). The menu as an editorial issue: a masthead, a
@@ -19,7 +19,6 @@ import { MENU_PALETTES } from "./shared/palettes";
 
 const SERIF = "var(--font-playfair), Georgia, 'Times New Roman', serif";
 // LA TABLE palette — semantic colors from the single source.
-const P = MENU_PALETTES.magazine!;
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
 
 // A compact two-column "article" tile: small photo, serif name, price + add.
@@ -30,6 +29,7 @@ function ArticleItem({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div>
@@ -90,6 +90,7 @@ export default function Magazine({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   if (nonEmpty.length === 0) {

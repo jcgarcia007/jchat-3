@@ -88,6 +88,7 @@ export interface PublicBusiness {
   icon_emoji: string | null;
   menu_card_effect: string;
   menu_template_id: string;
+  menu_palette_id: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -122,7 +123,7 @@ async function getMenuData(slug: string): Promise<{
 
   const { data: biz, error: bizErr } = await supabase
     .from("businesses")
-    .select("id, slug, name, category, description, cover_url, icon_emoji, menu_card_effect, menu_template_id")
+    .select("id, slug, name, category, description, cover_url, icon_emoji, menu_card_effect, menu_template_id, menu_palette_id")
     .eq("slug", slug)
     .single();
 
@@ -138,6 +139,7 @@ async function getMenuData(slug: string): Promise<{
     icon_emoji: biz.icon_emoji ?? null,
     menu_card_effect: biz.menu_card_effect ?? "lift",
     menu_template_id: (biz.menu_template_id as string) ?? "classic",
+    menu_palette_id: (biz.menu_palette_id as string | null) ?? null,
   };
 
   // Published categories ordered by sort
@@ -366,11 +368,14 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
     );
   }
 
-  // Preview override: ?preview_template=<slug> forces a template for capture/preview
-  // without changing the business's saved menu_template_id.
+  // Preview override: ?preview_template=<slug> forces a template, and
+  // ?preview_palette=<slug> forces a color palette — both for capture/preview
+  // without changing the business's saved menu_template_id / menu_palette_id.
   const sp = searchParams ? await searchParams : undefined;
   const preview = typeof sp?.preview_template === "string" ? sp.preview_template : undefined;
   if (preview) data.business.menu_template_id = preview;
+  const previewPalette = typeof sp?.preview_palette === "string" ? sp.preview_palette : undefined;
+  if (previewPalette) data.business.menu_palette_id = previewPalette;
 
   return (
     <MenuPageClient

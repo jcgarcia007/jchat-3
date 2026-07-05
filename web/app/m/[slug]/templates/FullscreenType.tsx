@@ -6,7 +6,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * FullscreenType (#06 Full-Screen Menu Takeover). The menu IS the interface:
@@ -27,6 +27,7 @@ function CourseTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div style={{ flexShrink: 0, width: 150 }}>
@@ -71,7 +72,6 @@ function CourseTile({
 
 const NUM = (i: number) => String(i + 1).padStart(2, "0");
 
-const P = MENU_PALETTES["fullscreen-type"]!;
 
 export default function FullscreenType({
   business,
@@ -80,6 +80,7 @@ export default function FullscreenType({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [expanded, setExpanded] = useState<string | null>(nonEmpty[0]?.id ?? null);
 

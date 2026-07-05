@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * CardStack (#17 Card Stack Navigation). The food truck's whole menu as a deck:
@@ -17,7 +17,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * save, each advancing the deck. MenuPageClient suppresses the shared CartFAB —
  * the header cart-icon pill and the buttons are the affordances.
  */
-const P = MENU_PALETTES["card-stack"]!;
 
 export default function CardStack({
   business,
@@ -26,6 +25,7 @@ export default function CardStack({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
   const [index, setIndex] = useState(0);
 
@@ -174,6 +174,7 @@ function DeckButton({
   border: string;
   big?: boolean;
 }) {
+  const P = useMenuPalette();
   const size = big ? 68 : 54;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>

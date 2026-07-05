@@ -6,7 +6,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * MasonrySearch (#10 Pinterest Masonry · Search First). Discovery over
@@ -27,6 +27,7 @@ function MasonryCard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
     <div
@@ -80,7 +81,6 @@ function MasonryCard({
   );
 }
 
-const P = MENU_PALETTES["masonry-search"]!;
 
 export default function MasonrySearch({
   business,
@@ -90,6 +90,7 @@ export default function MasonrySearch({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -242,6 +243,7 @@ export default function MasonrySearch({
 }
 
 function FilterToken({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  const P = useMenuPalette();
   return (
     <button
       type="button"

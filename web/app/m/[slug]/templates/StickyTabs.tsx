@@ -5,7 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
-import { MENU_PALETTES } from "./shared/palettes";
+import { useMenuPalette } from "./shared/paletteContext";
 
 /**
  * StickyTabs (#04 Horizontal Sticky Tabs). One long sectioned page; the tabs pin
@@ -17,9 +17,6 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Note: MenuPageClient suppresses the shared CartFAB for this template so the
  * sticky bottom cart bar is the only cart affordance.
  */
-const P = MENU_PALETTES["sticky-tabs"]!;
-const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
-
 export default function StickyTabs({
   business,
   categories,
@@ -31,6 +28,8 @@ export default function StickyTabs({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const P = useMenuPalette();
+  const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   if (nonEmpty.length === 0) {

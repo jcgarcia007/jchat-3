@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
 import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
+import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
+import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import type {
   PublicBusiness,
@@ -1367,7 +1369,13 @@ export default function MenuPageClient({
   categories: PublicMenuCategory[];
 }) {
   const cardEffect = business.menu_card_effect ?? "lift";
-  const palette = resolvePalette(business.menu_template_id);
+  // Resolve the active palette: a business-chosen custom palette (from the
+  // 40-palette catalog) overrides the template's original board palette;
+  // null / unknown slug falls back to the board palette.
+  const boardPalette = resolvePalette(business.menu_template_id);
+  const palette: MenuPalette = business.menu_palette_id
+    ? (COLOR_PALETTES_BY_SLUG[business.menu_palette_id] ?? boardPalette)
+    : boardPalette;
   // These templates render their own header with the business name (in their
   // palette), so the generic dark BusinessHeader is suppressed to avoid a
   // duplicate. Only classic (and bottom-nav / any unported slug → Classic) keeps it.
@@ -1560,6 +1568,7 @@ export default function MenuPageClient({
       >
       {showBusinessHeader && <BusinessHeader biz={business} />}
 
+      <MenuPaletteContext.Provider value={palette}>
       <MenuTemplateRenderer
         templateId={business.menu_template_id}
         business={business}
@@ -1578,6 +1587,7 @@ export default function MenuPageClient({
         onCardLeave={handleCardLeave}
         onCardMove={handleCardMove}
       />
+      </MenuPaletteContext.Provider>
 
       {/* Templates that render their own docked cart bar suppress the shared FAB. */}
       {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized"].includes(business.menu_template_id) && (
