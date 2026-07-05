@@ -8,6 +8,8 @@ import CategorySidebar from "./CategorySidebar";
 import StoreSections from "./StoreSections";
 import GlassChips from "./GlassChips";
 import InfiniteFeed from "./InfiniteFeed";
+import Magazine from "./Magazine";
+import StreamingRows from "./StreamingRows";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -35,6 +37,10 @@ export default function MenuTemplateRenderer({
       return <GlassChips {...props} />;
     case "infinite-feed":
       return <InfiniteFeed {...props} />;
+    case "magazine":
+      return <Magazine {...props} />;
+    case "streaming-rows":
+      return <StreamingRows {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
