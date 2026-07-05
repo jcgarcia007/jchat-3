@@ -16,6 +16,8 @@ import Timeline from "./Timeline";
 import Luxury from "./Luxury";
 import Carousel from "./Carousel";
 import Immersive from "./Immersive";
+import Stories from "./Stories";
+import CardStack from "./CardStack";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -59,6 +61,10 @@ export default function MenuTemplateRenderer({
       return <Carousel {...props} />;
     case "immersive":
       return <Immersive {...props} />;
+    case "stories":
+      return <Stories {...props} />;
+    case "card-stack":
+      return <CardStack {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
