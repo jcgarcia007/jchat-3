@@ -9,13 +9,13 @@ import type { PublicMenuCategory, PublicMenuItem } from "../../page";
 // Item-card rendering system — moved verbatim from MenuPageClient.
 // Reused by every category-based template.
 
-const BADGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
+export const BADGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   best_seller: { label: "⭐ Más vendido", bg: "#D97706", color: "#fff" },
   new: { label: "✨ Nuevo", bg: "#059669", color: "#fff" },
   hot: { label: "🌶️ Hot", bg: "#DC2626", color: "#fff" },
 };
 
-const DIETARY_LABELS: Record<string, string> = {
+export const DIETARY_LABELS: Record<string, string> = {
   vegetarian: "🌱 Vegetal",
   vegan: "🌿 Vegano",
   gluten_free: "🌾 Sin gluten",

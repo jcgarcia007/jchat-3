@@ -137,7 +137,7 @@ async function getMenuData(slug: string): Promise<{
     cover_url: biz.cover_url ?? null,
     icon_emoji: biz.icon_emoji ?? null,
     menu_card_effect: biz.menu_card_effect ?? "lift",
-    menu_template_id: (biz.menu_template_id as string) ?? "bottom-nav",
+    menu_template_id: (biz.menu_template_id as string) ?? "classic",
   };
 
   // Published categories ordered by sort

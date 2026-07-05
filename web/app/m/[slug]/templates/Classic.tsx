@@ -8,7 +8,7 @@ import type { CardEffect } from "./shared/effects";
 import { CategorySection } from "./shared/CategorySection";
 import { EmptyMenu } from "./shared/EmptyMenu";
 
-// CategoryNav — sticky top chips. Bottom-nav specific (moved verbatim).
+// CategoryNav — sticky top chips. Classic-template specific (moved verbatim).
 function CategoryNav({
   categories,
   activeId,
@@ -106,10 +106,11 @@ function CategoryNav({
 }
 
 /**
- * BottomNav — the default template. Renders exactly the original menu body:
- * sticky category chips + category sections of item cards. Zero visual change.
+ * Classic — JChat's current (default) menu template: sticky category chips +
+ * category sections of item cards with hover effects. This is the layout the
+ * public menu has always shipped, extracted verbatim.
  */
-export default function BottomNav({
+export default function Classic({
   business,
   categories,
   activeCategory,

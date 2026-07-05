@@ -2617,7 +2617,7 @@ export default function MenuPage() {
   const [savingMode, setSavingMode] = useState(false);
   const [cardEffect, setCardEffect] = useState<string>("lift");
   const [savingEffect, setSavingEffect] = useState(false);
-  const [menuTemplate, setMenuTemplate] = useState<string>("bottom-nav");
+  const [menuTemplate, setMenuTemplate] = useState<string>("classic");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2672,7 +2672,7 @@ export default function MenuPage() {
       setExternalMenuUrl(extUrl);
       setUrlInput(extUrl);
       setCardEffect((res.business as unknown as { menu_card_effect?: string }).menu_card_effect ?? "lift");
-      setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "bottom-nav");
+      setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "classic");
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
 
       const [catsResult, itemsResult] = await Promise.all([
@@ -3669,6 +3669,7 @@ export default function MenuPage() {
             }}
           >
             {([
+              { id: "classic",         name: "Clásica (actual)",      desc: "El diseño de menú actual de JChat — chips de categoría + grid de tarjetas con efectos.", emoji: "⭐" },
               { id: "bottom-nav",      name: "Barra inferior",        desc: "Pestañas abajo + cuadrícula",  emoji: "📱" },
               { id: "left-drawer",     name: "Cajón lateral",         desc: "Menú hamburguesa",             emoji: "☰" },
               { id: "icon-rail",       name: "Riel de iconos",        desc: "Categorías al lado del pulgar", emoji: "🎚️" },
