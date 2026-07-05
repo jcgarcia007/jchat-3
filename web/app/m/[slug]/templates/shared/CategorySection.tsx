@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { IconPlus } from "@tabler/icons-react";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import { buildEffectStyles, type CardEffect } from "./effects";
 import { fmtPrice } from "./format";
@@ -36,7 +37,7 @@ function AddButton({
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   floating?: boolean;
 }) {
-  const label = hasOptions ? "⚙" : justAdded ? "✓" : "+";
+  const label = justAdded ? "✓" : <IconPlus size={18} />;
   const bg = justAdded ? "#059669" : "var(--color-brand)";
   return (
     <button
