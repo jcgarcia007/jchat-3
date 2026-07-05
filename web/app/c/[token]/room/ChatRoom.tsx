@@ -153,10 +153,26 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachPanelRef = useRef<HTMLDivElement>(null);
+  // Scroll container + guards for the "keep pinned to bottom" behavior. During
+  // the initial-load window we re-anchor to the bottom whenever a message image
+  // finishes loading (its height was unknown → the list grew after the first
+  // snap). We stop as soon as the user scrolls up to read history.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const initialScrollWindowRef = useRef(false);
+  const userScrolledUpRef = useRef(false);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
+
+  // Mark that the user scrolled away from the bottom (reading older messages),
+  // which disables the initial-load auto-follow so we never yank them down.
+  const handleListScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+    if (distanceFromBottom > 300) userScrolledUpRef.current = true;
   }, []);
 
   // Fetch a single message with users join (used after realtime INSERT)
@@ -222,11 +238,23 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     };
   }, [roomId, userId]);
 
-  // Auto-scroll on initial load
+  // Auto-scroll on initial load. Open a short "initial window" during which
+  // image onLoad handlers re-anchor to the bottom (heights become known after
+  // the first snap). Double rAF gives the first layout pass time to run.
   useEffect(() => {
-    if (loadState === "ok") {
-      scrollToBottom("instant" as ScrollBehavior);
-    }
+    if (loadState !== "ok") return;
+    initialScrollWindowRef.current = true;
+    userScrolledUpRef.current = false;
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollToBottom("instant" as ScrollBehavior));
+    });
+    const closeWindow = setTimeout(() => {
+      initialScrollWindowRef.current = false;
+    }, 2000);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(closeWindow);
+    };
   }, [loadState, scrollToBottom]);
 
   // Load role map once on entry — roles change infrequently
@@ -491,9 +519,29 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       const ext = fileExt(file);
       const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-      const { error: uploadErr } = await supabase.storage
-        .from("post-media")
-        .upload(path, file, { contentType: file.type, upsert: false });
+      // Capture the image's natural dimensions in parallel with the upload so
+      // the render can reserve the exact height (aspect-ratio) and the layout
+      // never jumps when the photo loads.
+      const dimsPromise = new Promise<{ width: number; height: number } | null>((res) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          res({ width: img.naturalWidth, height: img.naturalHeight });
+          URL.revokeObjectURL(url);
+        };
+        img.onerror = () => {
+          res(null);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      });
+
+      const [{ error: uploadErr }, dims] = await Promise.all([
+        supabase.storage
+          .from("post-media")
+          .upload(path, file, { contentType: file.type, upsert: false }),
+        dimsPromise,
+      ]);
 
       if (uploadErr) throw uploadErr;
 
@@ -507,6 +555,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         body: "",
         type: "photo",
         media_url: urlData.publicUrl,
+        metadata: dims ? { width: dims.width, height: dims.height } : {},
       });
 
       if (msgErr) throw msgErr;
@@ -796,7 +845,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       </div>
 
       {/* Message list */}
-      <div style={s.msgList}>
+      <div ref={scrollContainerRef} onScroll={handleListScroll} style={s.msgList}>
         {messages.length === 0 && (
           <div
             style={{
@@ -836,6 +885,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           const incognito = isIncognito(msg);
           const authorRole = incognito ? null : (roleMap.get(msg.user_id) ?? null);
           const isImage = (msg.type === "photo" || msg.type === "image") && !!msg.media_url;
+          // Stored natural dimensions (photos sent after this fix) let us reserve
+          // the exact height via aspect-ratio so the layout never jumps.
+          const imgW = typeof msg.metadata?.width === "number" ? msg.metadata.width : undefined;
+          const imgH = typeof msg.metadata?.height === "number" ? msg.metadata.height : undefined;
 
           return (
             <div
@@ -918,11 +971,20 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   <img
                     src={msg.media_url!}
                     alt="Imagen enviada"
+                    onLoad={() => {
+                      // Safety net for legacy photos with no stored dims: while
+                      // the list is still settling on entry and the user hasn't
+                      // scrolled up, re-anchor to the bottom after the image grows.
+                      if (initialScrollWindowRef.current && !userScrolledUpRef.current) {
+                        scrollToBottom("instant" as ScrollBehavior);
+                      }
+                    }}
                     style={{
                       display: "block",
                       maxWidth: 220,
                       width: "100%",
                       height: "auto",
+                      ...(imgW && imgH ? { aspectRatio: `${imgW} / ${imgH}` } : {}),
                     }}
                   />
                   {msg.body && (
