@@ -4,6 +4,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * GlassChips (#07 Floating Category Chips). Imagery goes edge-to-edge in a
@@ -17,6 +18,8 @@ import { fmtPrice } from "./shared/format";
  */
 
 // A full-bleed card: the photo IS the card, with info over a bottom gradient.
+const P = MENU_PALETTES["glass-chips"]!;
+
 function FullBleedCard({
   item,
   onItemAdd,
@@ -32,7 +35,7 @@ function FullBleedCard({
         aspectRatio: "3 / 4",
         borderRadius: 16,
         overflow: "hidden",
-        background: "var(--bg-surface)",
+        background: P.surface,
       }}
     >
       {item.photo_url ? (
@@ -67,7 +70,7 @@ function FullBleedCard({
           <div style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {item.name}
           </div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--color-gold)", marginTop: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: P.price, marginTop: 2 }}>
             {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
           </div>
         </div>
@@ -82,7 +85,7 @@ function FullBleedCard({
             height: 30,
             borderRadius: "50%",
             border: "none",
-            background: soldOut ? "rgba(255,255,255,0.2)" : "var(--color-brand)",
+            background: soldOut ? "rgba(255,255,255,0.2)" : P.accent,
             color: "#fff",
             fontSize: 18,
             fontWeight: 700,
@@ -117,7 +120,7 @@ export default function GlassChips({
   }
 
   return (
-    <div style={{ position: "relative", paddingBottom: 32 }}>
+    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "100vh" }}>
       {/* Floating glassmorphism chips */}
       <div
         style={{
@@ -165,7 +168,7 @@ export default function GlassChips({
           }}
           style={{ scrollMarginTop: 64 }}
         >
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-tertiary)", padding: "16px 12px 8px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: P.textFaint, padding: "16px 12px 8px" }}>
             {cat.name}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, padding: "0 12px" }}>
@@ -190,8 +193,8 @@ export default function GlassChips({
           height: 58,
           borderRadius: "50%",
           border: "none",
-          background: "var(--color-gold)",
-          color: "#1a1206",
+          background: P.accent,
+          color: P.accentText,
           fontSize: 22,
           cursor: "pointer",
           display: "flex",
@@ -210,7 +213,7 @@ export default function GlassChips({
               minWidth: 20,
               height: 20,
               borderRadius: 99,
-              background: "var(--color-brand)",
+              background: P.accent,
               color: "#fff",
               fontSize: 11,
               fontWeight: 900,
@@ -218,7 +221,7 @@ export default function GlassChips({
               alignItems: "center",
               justifyContent: "center",
               padding: "0 5px",
-              border: "2px solid var(--bg-base)",
+              border: `2px solid ${P.bg}`,
             }}
           >
             {cartCount}
@@ -234,9 +237,9 @@ function chipStyle(active: boolean): React.CSSProperties {
     flexShrink: 0,
     padding: "6px 14px",
     borderRadius: 999,
-    border: active ? "1px solid var(--color-gold)" : "1px solid rgba(255,255,255,0.18)",
-    background: active ? "var(--color-gold)" : "rgba(255,255,255,0.1)",
-    color: active ? "#1a1206" : "var(--text-primary)",
+    border: active ? `1px solid ${P.accent}` : "1px solid rgba(255,255,255,0.18)",
+    background: active ? P.accent : "rgba(255,255,255,0.1)",
+    color: active ? P.accentText : P.text,
     fontSize: 13,
     fontWeight: active ? 700 : 500,
     whiteSpace: "nowrap",

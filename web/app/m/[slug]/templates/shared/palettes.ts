@@ -121,12 +121,84 @@ const LUXURY_PALETTE: MenuPalette = {
   overlay: "rgba(0,0,0,0.72)",
 };
 
+// #07 "VERDE" — deep green-black, green accent (single opaque FAB), mint price.
+const GLASS_CHIPS_PALETTE: MenuPalette = {
+  bg: "#0E1B14",
+  surface: "#16281E",
+  surfaceElevated: "#1E3328",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.72)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.10)",
+  accent: "#2E9E5B",
+  accentText: "#04140B",
+  accentSoft: "rgba(46,158,91,0.16)",
+  price: "#B7F0C6",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.66)",
+};
+
+// #08 "SECTION 214" — stadium black + yellow (price and actions both yellow).
+const INFINITE_FEED_PALETTE: MenuPalette = {
+  bg: "#0A0A0A",
+  surface: "#141414",
+  surfaceElevated: "#1C1C1C",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.72)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "#232323",
+  accent: "#FFD60A",
+  accentText: "#1A1206",
+  accentSoft: "rgba(255,214,10,0.16)",
+  price: "#FFD60A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.7)",
+};
+
+// #13 "MARQUEE" — cinema black, red accent, gold prices.
+const STREAMING_ROWS_PALETTE: MenuPalette = {
+  bg: "#0D0D0F",
+  surface: "#1A1A1D",
+  surfaceElevated: "#232327",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.7)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.10)",
+  accent: "#E0353F",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(224,53,63,0.16)",
+  price: "#F2C879",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.7)",
+};
+
+// #04 "Daily Grind" — light café: cream paper, espresso text/accent, coffee gold.
+const STICKY_TABS_PALETTE: MenuPalette = {
+  bg: "#FBF6EF",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F1E9DC",
+  text: "#2E2317",
+  textMuted: "#6E5E49",
+  textFaint: "#A08F77",
+  border: "#E9DFD0",
+  accent: "#2E2317",
+  accentText: "#FBF6EF",
+  accentSoft: "rgba(46,35,23,0.10)",
+  price: "#8A6C3C",
+  danger: "var(--color-danger)",
+  overlay: "rgba(46,35,23,0.5)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
   "left-drawer": LEFT_DRAWER_PALETTE,
   "icon-rail": ICON_RAIL_PALETTE,
   magazine: MAGAZINE_PALETTE,
   luxury: LUXURY_PALETTE,
+  "glass-chips": GLASS_CHIPS_PALETTE,
+  "infinite-feed": INFINITE_FEED_PALETTE,
+  "streaming-rows": STREAMING_ROWS_PALETTE,
+  "sticky-tabs": STICKY_TABS_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

@@ -4,6 +4,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * InfiniteFeed (#08 Infinite Vertical Feed). Built for a stadium seat: NO
@@ -17,6 +18,8 @@ import { fmtPrice } from "./shared/format";
  * the gradient bottom bar is this template's cart affordance.
  */
 
+const P = MENU_PALETTES["infinite-feed"]!;
+
 function Billboard({
   item,
   onItemAdd,
@@ -28,8 +31,8 @@ function Billboard({
   return (
     <div
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        background: P.surfaceElevated,
+        border: `1px solid ${P.border}`,
         borderRadius: 20,
         overflow: "hidden",
         marginBottom: 14,
@@ -44,7 +47,7 @@ function Billboard({
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, background: "var(--bg-surface)" }}>
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, background: P.surface }}>
             🍽️
           </div>
         )}
@@ -70,14 +73,14 @@ function Billboard({
       </div>
 
       <div style={{ padding: "14px 16px 16px" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>{item.name}</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: P.text }}>{item.name}</div>
         {item.description && (
-          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
+          <div style={{ fontSize: 13, color: P.textMuted, marginTop: 4, lineHeight: 1.45 }}>
             {item.description}
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
-          <span style={{ fontSize: 18, fontWeight: 800, color: "var(--color-gold)" }}>
+          <span style={{ fontSize: 18, fontWeight: 800, color: P.accent }}>
             {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
           </span>
           <button
@@ -90,8 +93,8 @@ function Billboard({
               height: 48,
               borderRadius: 16,
               border: "none",
-              background: soldOut ? "var(--bg-surface)" : "var(--color-gold)",
-              color: "#1a1206",
+              background: soldOut ? P.surface : P.accent,
+              color: P.accentText,
               fontSize: 26,
               fontWeight: 700,
               lineHeight: 1,
@@ -100,7 +103,7 @@ function Billboard({
               justifyContent: "center",
               cursor: soldOut ? "not-allowed" : "pointer",
               flexShrink: 0,
-              boxShadow: soldOut ? "none" : "0 8px 20px rgba(217,119,6,0.3)",
+              boxShadow: soldOut ? "none" : "0 8px 20px rgba(255,214,10,0.3)",
             }}
           >
             +
@@ -126,13 +129,13 @@ export default function InfiniteFeed({
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 96px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "12px 16px 96px" }}>
       {/* Header */}
       <div style={{ padding: "6px 2px 16px" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.5px" }}>
           {business.name}
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3 }}>
+        <div style={{ fontSize: 13, color: P.textMuted, marginTop: 3 }}>
           Entrega a tu mesa · lo más pedido
         </div>
       </div>
@@ -151,7 +154,7 @@ export default function InfiniteFeed({
           bottom: 0,
           zIndex: 30,
           padding: "40px 16px 18px",
-          background: "linear-gradient(180deg, transparent, var(--bg-base) 55%)",
+          background: `linear-gradient(180deg, transparent, ${P.bg} 55%)`,
           pointerEvents: "none",
         }}
       >
@@ -171,9 +174,9 @@ export default function InfiniteFeed({
             borderRadius: 14,
             border: "none",
             cursor: "pointer",
-            background: "var(--color-gold)",
-            color: "#1a1206",
-            boxShadow: "0 10px 26px rgba(217,119,6,0.35)",
+            background: P.accent,
+            color: P.accentText,
+            boxShadow: "0 10px 26px rgba(255,214,10,0.35)",
           }}
         >
           <span style={{ fontSize: 14, fontWeight: 800 }}>Carrito ({cartCount})</span>

@@ -4,6 +4,7 @@ import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * StreamingRows (#13 Streaming-Style Rows). Concessions browsed like a streaming
@@ -17,6 +18,8 @@ import { fmtPrice } from "./shared/format";
  */
 
 // A landscape (16:9-ish) tile with title/price over a bottom gradient.
+const P = MENU_PALETTES["streaming-rows"]!;
+
 function LandscapeTile({
   item,
   onItemAdd,
@@ -32,7 +35,7 @@ function LandscapeTile({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.photo_url} alt={item.name} style={{ width: 200, height: 112, objectFit: "cover", display: "block" }} />
         ) : (
-          <div style={{ width: 200, height: 112, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
+          <div style={{ width: 200, height: 112, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
         )}
         <div
           style={{
@@ -49,7 +52,7 @@ function LandscapeTile({
             {item.name}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--color-gold)" }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: P.price }}>
               {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
             </span>
             <button
@@ -62,7 +65,7 @@ function LandscapeTile({
                 height: 28,
                 borderRadius: "50%",
                 border: "none",
-                background: soldOut ? "rgba(255,255,255,0.25)" : "var(--color-brand)",
+                background: soldOut ? "rgba(255,255,255,0.25)" : P.accent,
                 color: "#fff",
                 fontSize: 17,
                 lineHeight: 1,
@@ -98,13 +101,13 @@ export default function StreamingRows({
   }
 
   return (
-    <div style={{ position: "relative", paddingBottom: 32 }}>
+    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "100vh" }}>
       {/* Marquee header */}
       <div style={{ padding: "14px 16px 8px" }}>
-        <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "0.5px", color: "var(--color-brand)", margin: 0, textTransform: "uppercase" }}>
+        <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "0.5px", color: P.accent, margin: 0, textTransform: "uppercase" }}>
           {business.name}
         </h1>
-        <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 3 }}>
+        <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>
           {business.category ? `${business.category} · ` : ""}Entrega en tu asiento
         </div>
       </div>
@@ -135,8 +138,8 @@ export default function StreamingRows({
               cursor: "pointer",
             }}
           >
-            <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{cat.name}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)" }}>VER TODO →</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: P.text }}>{cat.name}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: P.textFaint }}>VER TODO →</span>
           </button>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px" }}>
             {cat.items.map((item) => (
@@ -160,7 +163,7 @@ export default function StreamingRows({
           height: 54,
           borderRadius: "50%",
           border: "none",
-          background: "var(--color-brand)",
+          background: P.accent,
           color: "#fff",
           fontSize: 22,
           cursor: "pointer",
@@ -180,7 +183,7 @@ export default function StreamingRows({
               minWidth: 20,
               height: 20,
               borderRadius: 99,
-              background: "var(--color-gold)",
+              background: P.price,
               color: "#1a1206",
               fontSize: 11,
               fontWeight: 900,
@@ -188,7 +191,7 @@ export default function StreamingRows({
               alignItems: "center",
               justifyContent: "center",
               padding: "0 5px",
-              border: "2px solid var(--bg-base)",
+              border: `2px solid ${P.bg}`,
             }}
           >
             {cartCount}

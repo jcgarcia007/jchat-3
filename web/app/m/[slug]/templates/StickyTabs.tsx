@@ -4,6 +4,7 @@ import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * StickyTabs (#04 Horizontal Sticky Tabs). One long sectioned page; the tabs pin
@@ -15,6 +16,8 @@ import { fmtPrice } from "./shared/format";
  * Note: MenuPageClient suppresses the shared CartFAB for this template so the
  * sticky bottom cart bar is the only cart affordance.
  */
+const P = MENU_PALETTES["sticky-tabs"]!;
+
 export default function StickyTabs({
   business,
   categories,
@@ -33,14 +36,14 @@ export default function StickyTabs({
   }
 
   return (
-    <div style={{ paddingBottom: 84 }}>
+    <div style={{ background: P.bg, minHeight: "100vh", paddingBottom: 84 }}>
       {/* Header */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 16px 10px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.5px" }}>
           {business.name}
         </h1>
         {business.category && (
-          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 3 }}>{business.category}</div>
+          <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>{business.category}</div>
         )}
       </div>
 
@@ -50,8 +53,8 @@ export default function StickyTabs({
           position: "sticky",
           top: 0,
           zIndex: 20,
-          background: "var(--bg-base)",
-          borderBottom: "1px solid var(--border-subtle)",
+          background: P.bg,
+          borderBottom: `1px solid ${P.border}`,
         }}
       >
         <div
@@ -79,8 +82,8 @@ export default function StickyTabs({
                   padding: "0 0 10px",
                   fontSize: 14,
                   fontWeight: active ? 700 : 500,
-                  color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                  borderBottom: `2px solid ${active ? "var(--color-gold)" : "transparent"}`,
+                  color: active ? P.text : P.textMuted,
+                  borderBottom: `2px solid ${active ? P.accent : "transparent"}`,
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                   transition: "color 0.15s, border-color 0.15s",
@@ -105,13 +108,13 @@ export default function StickyTabs({
           style={{ scrollMarginTop: 52 }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "18px 16px 10px", maxWidth: 680, margin: "0 auto" }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{cat.name}</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: P.text, margin: 0 }}>{cat.name}</h2>
             <span
               style={{
                 fontSize: 11,
-                color: "var(--text-tertiary)",
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
+                color: P.textFaint,
+                background: P.surface,
+                border: `1px solid ${P.border}`,
                 borderRadius: 10,
                 padding: "1px 7px",
               }}
@@ -147,12 +150,12 @@ export default function StickyTabs({
           borderRadius: 16,
           border: "none",
           cursor: "pointer",
-          background: "var(--bg-surface)",
+          background: P.surface,
           boxShadow: "0 12px 28px rgba(0,0,0,0.4)",
         }}
       >
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>Ver carrito · {cartCount}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-gold)" }}>{fmtPrice(cartTotal)}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.text }}>Ver carrito · {cartCount}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.price }}>{fmtPrice(cartTotal)}</span>
       </button>
     </div>
   );
