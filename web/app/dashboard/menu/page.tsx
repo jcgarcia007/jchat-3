@@ -175,6 +175,45 @@ const BADGE_OPTIONS: { value: Badge; label: string }[] = [
   { value: "hot", label: "Hot" },
 ];
 
+// Menu template options — shared by the selector grid and the collapsed summary.
+const MENU_TEMPLATE_OPTIONS = [
+  { id: "classic",         name: "Clásica (actual)",      desc: "El diseño de menú actual de JChat — chips de categoría + grid de tarjetas con efectos.", emoji: "⭐" },
+  { id: "bottom-nav",      name: "Barra inferior",        desc: "Pestañas abajo + cuadrícula",  emoji: "📱" },
+  { id: "left-drawer",     name: "Cajón lateral",         desc: "Menú hamburguesa",             emoji: "☰" },
+  { id: "icon-rail",       name: "Riel de iconos",        desc: "Categorías al lado del pulgar", emoji: "🎚️" },
+  { id: "sticky-tabs",     name: "Pestañas fijas",        desc: "Una página con scroll-spy",    emoji: "📑" },
+  { id: "category-sidebar",name: "Barra de categorías",   desc: "Dos paneles paralelos",        emoji: "🗂️" },
+  { id: "fullscreen-type", name: "Tipográfico",           desc: "Índice editorial a pantalla",  emoji: "🅰️" },
+  { id: "glass-chips",     name: "Chips de cristal",      desc: "Fotos con chrome esmerilado",  emoji: "🫧" },
+  { id: "infinite-feed",   name: "Feed infinito",         desc: "Sin categorías, todo scroll",  emoji: "♾️" },
+  { id: "carousel",        name: "Carrusel",              desc: "Un platillo a la vez",         emoji: "🎠" },
+  { id: "masonry-search",  name: "Mosaico + búsqueda",    desc: "Descubrir buscando",           emoji: "🔎" },
+  { id: "magazine",        name: "Revista",               desc: "Portada y artículos",          emoji: "📰" },
+  { id: "store-sections",  name: "Secciones tipo tienda", desc: "Tarjetas grandes por categoría", emoji: "🏬" },
+  { id: "streaming-rows",  name: "Filas de streaming",    desc: "Estanterías horizontales",     emoji: "🎬" },
+  { id: "timeline",        name: "Línea de tiempo",       desc: "Menú por horario",             emoji: "⏱️" },
+  { id: "stories",         name: "Historias",             desc: "Estilo stories a pantalla",    emoji: "⭕" },
+  { id: "gesture",         name: "Gestos",                desc: "Navegación por deslizar",      emoji: "👆" },
+  { id: "card-stack",      name: "Baraja",                desc: "Deslizar para elegir",         emoji: "🃏" },
+  { id: "ai-personalized", name: "IA personalizada",      desc: "Se reordena por cliente",      emoji: "🤖" },
+  { id: "immersive",       name: "Inmersivo",             desc: "Cada platillo a pantalla completa", emoji: "🖼️" },
+  { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
+] as const;
+
+// Card hover-effect options — shared by the selector grid and the collapsed summary.
+const CARD_EFFECT_OPTIONS = [
+  { id: "lift",      name: "Elevar + Zoom",  desc: "Levanta y acerca",      emoji: "⬆️" },
+  { id: "reveal",    name: "Revelar",         desc: "Texto sobre la foto",   emoji: "👁️" },
+  { id: "tilt",      name: "Inclinación 3D",  desc: "Sigue el cursor",       emoji: "🎲" },
+  { id: "spotlight", name: "Reflector",       desc: "Luz dorada",            emoji: "✨" },
+  { id: "duotone",   name: "Duotono",         desc: "Grises → color",        emoji: "🎨" },
+  { id: "glass",     name: "Cristal",         desc: "Panel esmerilado",      emoji: "🪟" },
+  { id: "shine",     name: "Destello",        desc: "Brillo diagonal",       emoji: "💫" },
+  { id: "focus",     name: "Enfoque",         desc: "Desenfocado → nítido",  emoji: "🔍" },
+  { id: "neon",      name: "Marco Neón",      desc: "Borde brillante",       emoji: "🌆" },
+  { id: "polaroid",  name: "Polaroid",        desc: "Foto inclinada",        emoji: "📷" },
+] as const;
+
 const EMPTY_CATEGORY_FORM: CategoryForm = { name: "", icon: "", icon_url: null };
 
 const EMPTY_ITEM_FORM: ItemForm = {
@@ -2620,6 +2659,9 @@ export default function MenuPage() {
   const [menuTemplate, setMenuTemplate] = useState<string>("classic");
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
+  // Collapsible sections — closed by default for a cleaner dashboard.
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3654,44 +3696,63 @@ export default function MenuPage() {
             marginBottom: 24,
           }}
         >
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-            Plantilla de menú
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-            Elige cómo navegan tus clientes tu menú web. Cada plantilla cambia la
-            estructura, las categorías y la forma de explorar los platillos.
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowTemplates((v) => !v)}
+            aria-expanded={showTemplates}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              width: "100%",
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                Plantilla de menú
+              </h2>
+              {showTemplates ? (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Elige cómo navegan tus clientes tu menú web. Cada plantilla cambia la
+                  estructura, las categorías y la forma de explorar los platillos.
+                </p>
+              ) : (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Plantilla activa ·{" "}
+                  <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
+                    {MENU_TEMPLATE_OPTIONS.find((o) => o.id === menuTemplate)?.name ?? menuTemplate}
+                  </strong>
+                </p>
+              )}
+            </div>
+            <IconChevronDown
+              size={20}
+              style={{
+                flexShrink: 0,
+                marginTop: 2,
+                color: "var(--db-text-tertiary)",
+                transform: showTemplates ? "rotate(0deg)" : "rotate(-90deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+          </button>
 
+          {showTemplates && (
+          <>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
               gap: 16,
+              marginTop: 16,
             }}
           >
-            {([
-              { id: "classic",         name: "Clásica (actual)",      desc: "El diseño de menú actual de JChat — chips de categoría + grid de tarjetas con efectos.", emoji: "⭐" },
-              { id: "bottom-nav",      name: "Barra inferior",        desc: "Pestañas abajo + cuadrícula",  emoji: "📱" },
-              { id: "left-drawer",     name: "Cajón lateral",         desc: "Menú hamburguesa",             emoji: "☰" },
-              { id: "icon-rail",       name: "Riel de iconos",        desc: "Categorías al lado del pulgar", emoji: "🎚️" },
-              { id: "sticky-tabs",     name: "Pestañas fijas",        desc: "Una página con scroll-spy",    emoji: "📑" },
-              { id: "category-sidebar",name: "Barra de categorías",   desc: "Dos paneles paralelos",        emoji: "🗂️" },
-              { id: "fullscreen-type", name: "Tipográfico",           desc: "Índice editorial a pantalla",  emoji: "🅰️" },
-              { id: "glass-chips",     name: "Chips de cristal",      desc: "Fotos con chrome esmerilado",  emoji: "🫧" },
-              { id: "infinite-feed",   name: "Feed infinito",         desc: "Sin categorías, todo scroll",  emoji: "♾️" },
-              { id: "carousel",        name: "Carrusel",              desc: "Un platillo a la vez",         emoji: "🎠" },
-              { id: "masonry-search",  name: "Mosaico + búsqueda",    desc: "Descubrir buscando",           emoji: "🔎" },
-              { id: "magazine",        name: "Revista",               desc: "Portada y artículos",          emoji: "📰" },
-              { id: "store-sections",  name: "Secciones tipo tienda", desc: "Tarjetas grandes por categoría", emoji: "🏬" },
-              { id: "streaming-rows",  name: "Filas de streaming",    desc: "Estanterías horizontales",     emoji: "🎬" },
-              { id: "timeline",        name: "Línea de tiempo",       desc: "Menú por horario",             emoji: "⏱️" },
-              { id: "stories",         name: "Historias",             desc: "Estilo stories a pantalla",    emoji: "⭕" },
-              { id: "gesture",         name: "Gestos",                desc: "Navegación por deslizar",      emoji: "👆" },
-              { id: "card-stack",      name: "Baraja",                desc: "Deslizar para elegir",         emoji: "🃏" },
-              { id: "ai-personalized", name: "IA personalizada",      desc: "Se reordena por cliente",      emoji: "🤖" },
-              { id: "immersive",       name: "Inmersivo",             desc: "Cada platillo a pantalla completa", emoji: "🖼️" },
-              { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
-            ] as const).map((opt) => {
+            {MENU_TEMPLATE_OPTIONS.map((opt) => {
               const active = menuTemplate === opt.id;
               const saving = savingTemplate === opt.id;
               const hovered = hoveredTemplate === opt.id;
@@ -3807,6 +3868,8 @@ export default function MenuPage() {
               {" "}para ver la plantilla aplicada.
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
@@ -3821,32 +3884,62 @@ export default function MenuPage() {
             marginBottom: 24,
           }}
         >
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-            Efecto de tarjetas
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-            Elige la animación que verán tus clientes al pasar el cursor sobre cada platillo.
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowEffects((v) => !v)}
+            aria-expanded={showEffects}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              width: "100%",
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                Efecto de tarjetas
+              </h2>
+              {showEffects ? (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Elige la animación que verán tus clientes al pasar el cursor sobre cada platillo.
+                </p>
+              ) : (
+                <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                  Efecto activo ·{" "}
+                  <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
+                    {CARD_EFFECT_OPTIONS.find((o) => o.id === cardEffect)?.name ?? cardEffect}
+                  </strong>
+                </p>
+              )}
+            </div>
+            <IconChevronDown
+              size={20}
+              style={{
+                flexShrink: 0,
+                marginTop: 2,
+                color: "var(--db-text-tertiary)",
+                transform: showEffects ? "rotate(0deg)" : "rotate(-90deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+          </button>
 
+          {showEffects && (
+          <>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
               gap: 8,
+              marginTop: 16,
             }}
           >
-            {([
-              { id: "lift",      name: "Elevar + Zoom",  desc: "Levanta y acerca",      emoji: "⬆️" },
-              { id: "reveal",    name: "Revelar",         desc: "Texto sobre la foto",   emoji: "👁️" },
-              { id: "tilt",      name: "Inclinación 3D",  desc: "Sigue el cursor",       emoji: "🎲" },
-              { id: "spotlight", name: "Reflector",       desc: "Luz dorada",            emoji: "✨" },
-              { id: "duotone",   name: "Duotono",         desc: "Grises → color",        emoji: "🎨" },
-              { id: "glass",     name: "Cristal",         desc: "Panel esmerilado",      emoji: "🪟" },
-              { id: "shine",     name: "Destello",        desc: "Brillo diagonal",       emoji: "💫" },
-              { id: "focus",     name: "Enfoque",         desc: "Desenfocado → nítido",  emoji: "🔍" },
-              { id: "neon",      name: "Marco Neón",      desc: "Borde brillante",       emoji: "🌆" },
-              { id: "polaroid",  name: "Polaroid",        desc: "Foto inclinada",        emoji: "📷" },
-            ] as const).map((opt) => {
+            {CARD_EFFECT_OPTIONS.map((opt) => {
               const active = cardEffect === opt.id;
               return (
                 <label
@@ -3899,6 +3992,8 @@ export default function MenuPage() {
               </a>
               {" "}para ver el efecto aplicado.
             </div>
+          )}
+          </>
           )}
         </div>
       )}
