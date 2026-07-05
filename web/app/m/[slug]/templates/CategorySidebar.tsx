@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
@@ -179,7 +180,7 @@ export default function CategorySidebar({
           boxShadow: "-6px 0 18px rgba(0,0,0,0.35)",
         }}
       >
-        CARRITO · {cartCount}
+        <IconShoppingCart size={15} style={{ marginBottom: 6 }} />CARRITO · {cartCount}
       </button>
     </div>
   );

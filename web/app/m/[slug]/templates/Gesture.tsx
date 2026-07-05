@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -14,7 +15,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  *
  * Web adaptation: the gestures become tap zones / arrows and a normal tap adds
  * (no long-press). MenuPageClient suppresses the shared CartFAB — the header
- * "◇ N" and the central button are the affordances.
+ * the header cart-icon pill and the central button are the affordances.
  */
 const P = MENU_PALETTES["gesture"]!;
 
@@ -60,7 +61,7 @@ export default function Gesture({
           aria-label={`Ver carrito, ${cartCount} artículos`}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: `1px solid ${P.border}`, background: P.surfaceElevated, color: P.text, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useMemo } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -101,7 +102,7 @@ export default function AiPersonalized({
           aria-label={`Ver carrito, ${cartCount} artículos`}
           style={{ position: "relative", width: 40, height: 40, borderRadius: "50%", border: "none", background: (P.accentGradient ?? P.accent), color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
-          🛒
+          <IconShoppingCart size={18} />
           {cartCount > 0 && (
             <span style={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 99, background: P.accent, color: P.accentText, fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", border: `2px solid ${P.bg}` }}>{cartCount}</span>
           )}

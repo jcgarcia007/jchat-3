@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
@@ -110,7 +111,7 @@ export default function Magazine({
             onClick={onOpenCart}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF, color: P.textMuted, whiteSpace: "nowrap", paddingTop: 6 }}
           >
-            Cesta ({cartCount})
+            <IconShoppingCart size={13} style={{ verticalAlign: "-2px", marginRight: 3 }} />Cesta ({cartCount})
           </button>
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: P.textFaint, marginTop: 6 }}>

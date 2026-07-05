@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -14,7 +15,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  *
  * Web adaptation: tap the round buttons (no real swipe gestures) to pass / add /
  * save, each advancing the deck. MenuPageClient suppresses the shared CartFAB —
- * the header "◇ N" and the buttons are the affordances.
+ * the header cart-icon pill and the buttons are the affordances.
  */
 const P = MENU_PALETTES["card-stack"]!;
 
@@ -51,7 +52,7 @@ export default function CardStack({
           aria-label={`Ver carrito, ${cartCount} artículos`}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1px solid ${P.border}`, background: P.surfaceElevated, color: P.text, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
       <div style={{ marginTop: 12, height: 4, borderRadius: 999, background: P.surfaceElevated, overflow: "hidden" }}>

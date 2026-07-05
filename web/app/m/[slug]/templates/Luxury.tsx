@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -199,7 +200,7 @@ export default function Luxury({
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
         }}
       >
-        <span style={{ fontSize: 16, lineHeight: 1 }}>◇</span>
+        <IconShoppingCart size={18} />
         <span style={{ fontSize: 10, fontWeight: 800 }}>{cartCount}</span>
       </button>
     </div>

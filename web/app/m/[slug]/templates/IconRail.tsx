@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
@@ -210,7 +211,7 @@ export default function IconRail({
           boxShadow: "0 10px 24px rgba(79,209,197,0.3)",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 800 }}>🛒 Carrito · {cartCount}</span>
+        <span style={{ fontSize: 13, fontWeight: 800 }}><IconShoppingCart size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />Carrito · {cartCount}</span>
         <span style={{ fontSize: 13, fontWeight: 800 }}>{fmtPrice(cartTotal)} →</span>
       </button>
     </div>

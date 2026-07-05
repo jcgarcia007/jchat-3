@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
@@ -173,7 +174,7 @@ export default function StreamingRows({
           boxShadow: "0 10px 26px rgba(0,0,0,0.45)",
         }}
       >
-        🛒
+        <IconShoppingCart size={22} />
         {cartCount > 0 && (
           <span
             style={{

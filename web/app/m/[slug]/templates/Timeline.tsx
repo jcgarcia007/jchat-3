@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -75,7 +76,7 @@ export default function Timeline({
         }}
       >
         <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
-          Tu velada · {cartCount} {cartCount === 1 ? "platillo" : "platillos"}
+          <IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />Tu velada · {cartCount} {cartCount === 1 ? "platillo" : "platillos"}
         </span>
         <span style={{ fontSize: 12.5, fontWeight: 800, color: P.accent }}>{fmtPrice(cartTotal)} →</span>
       </button>

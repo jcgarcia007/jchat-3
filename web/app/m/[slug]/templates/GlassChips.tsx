@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
@@ -209,7 +210,7 @@ export default function GlassChips({
           boxShadow: "0 10px 26px rgba(217,119,6,0.4)",
         }}
       >
-        🛒
+        <IconShoppingCart size={24} />
         {cartCount > 0 && (
           <span
             style={{

@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
@@ -138,7 +139,7 @@ export default function StoreSections({
             cursor: "pointer",
           }}
         >
-          🛍️ Bolsa · {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 4 }} />Bolsa · {cartCount}
         </button>
       </div>
 

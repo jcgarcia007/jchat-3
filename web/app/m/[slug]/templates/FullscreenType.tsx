@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -14,7 +15,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  * chrome, no tabs — pure editorial confidence for fine dining. Ported from the
  * Menu Systems Board #06 mock, themed with public-menu tokens.
  *
- * Note: MenuPageClient suppresses the shared CartFAB — the header "◇ N" pill is
+ * Note: MenuPageClient suppresses the shared CartFAB — the header cart-icon pill is
  * this template's cart affordance.
  */
 
@@ -111,7 +112,7 @@ export default function FullscreenType({
             cursor: "pointer",
           }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
 

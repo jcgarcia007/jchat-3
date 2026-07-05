@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useRef, useMemo } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -128,7 +129,7 @@ export default function Immersive({
             cursor: "pointer",
           }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
 

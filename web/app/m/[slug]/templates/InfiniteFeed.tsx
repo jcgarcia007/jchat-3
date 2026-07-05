@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
@@ -179,7 +180,7 @@ export default function InfiniteFeed({
             boxShadow: "0 10px 26px rgba(255,214,10,0.35)",
           }}
         >
-          <span style={{ fontSize: 14, fontWeight: 800 }}>Carrito ({cartCount})</span>
+          <span style={{ fontSize: 14, fontWeight: 800 }}><IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />Carrito ({cartCount})</span>
           <span style={{ fontSize: 14, fontWeight: 800 }}>{fmtPrice(cartTotal)} · A tu mesa →</span>
         </button>
       </div>

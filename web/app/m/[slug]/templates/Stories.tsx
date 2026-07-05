@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useMemo } from "react";
 import { getCategoryIcon } from "@/lib/categoryIcons";
@@ -14,7 +15,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  * Ported from the Menu Systems Board #15 mock, themed with public-menu tokens.
  *
  * Web adaptation: taps on left/right zones + ‹ › buttons (no real drag gestures).
- * MenuPageClient suppresses the shared CartFAB — the header "◇ N" is the cart.
+ * MenuPageClient suppresses the shared CartFAB — the header cart-icon pill is the cart.
  */
 const P = MENU_PALETTES["stories"]!;
 
@@ -118,7 +119,7 @@ export default function Stories({
           aria-label={`Ver carrito, ${cartCount} artículos`}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.14)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
 

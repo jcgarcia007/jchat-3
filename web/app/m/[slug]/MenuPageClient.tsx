@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
 import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
+import { IconShoppingCart } from "@tabler/icons-react";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -704,9 +705,9 @@ function CartSheet({
           }}
         >
           <h2
-            style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0 }}
+            style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0, display: "flex", alignItems: "center", gap: 8 }}
           >
-            🛒 Tu carrito
+            <IconShoppingCart size={20} style={{ color: palette.accent }} />Tu carrito
           </h2>
           <button
             onClick={onClose}
@@ -733,7 +734,7 @@ function CartSheet({
                 fontSize: 14,
               }}
             >
-              <div style={{ fontSize: 36, marginBottom: 8 }}>🛒</div>
+              <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><IconShoppingCart size={40} style={{ color: palette.textFaint }} /></div>
               Tu carrito está vacío
             </div>
           ) : (
@@ -1350,6 +1351,7 @@ function CartFAB({
       >
         {count}
       </span>
+      <IconShoppingCart size={20} style={{ marginRight: -4 }} />
       Ver carrito · {fmtPrice(total)}
     </button>
   );

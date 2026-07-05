@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import { getCategoryIcon } from "@/lib/categoryIcons";
@@ -108,7 +109,7 @@ export default function LeftDrawer({
             flexShrink: 0,
           }}
         >
-          🛒
+          <IconShoppingCart size={18} />
           {cartCount > 0 && (
             <span
               style={{

@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useRef } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -12,7 +13,7 @@ import { MENU_PALETTES } from "./shared/palettes";
  * jukebox. A segmented control switches category. Ported from the Menu Systems
  * Board #09 mock, themed with public-menu tokens.
  *
- * Note: MenuPageClient suppresses the shared CartFAB — the header "◇ N" bubble
+ * Note: MenuPageClient suppresses the shared CartFAB — the header cart-icon bubble
  * is this template's cart affordance.
  */
 const P = MENU_PALETTES["carousel"]!;
@@ -77,7 +78,7 @@ export default function Carousel({
             flexShrink: 0,
           }}
         >
-          ◇ {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
         </button>
       </div>
 

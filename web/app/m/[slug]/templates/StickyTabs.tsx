@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
@@ -155,7 +156,7 @@ export default function StickyTabs({
           boxShadow: "0 12px 28px rgba(0,0,0,0.4)",
         }}
       >
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.text }}>Ver carrito · {cartCount}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.text }}><IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />Ver carrito · {cartCount}</span>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: P.price }}>{fmtPrice(cartTotal)}</span>
       </button>
     </div>

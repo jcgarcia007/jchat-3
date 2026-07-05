@@ -1,4 +1,5 @@
 "use client";
+import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useMemo } from "react";
 import type { MenuTemplateProps } from "./types";
@@ -215,7 +216,7 @@ export default function MasonrySearch({
           }}
         >
           <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
-            {cartCount} {cartCount === 1 ? "artículo" : "artículos"} · {fmtPrice(cartTotal)}
+<IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />{cartCount} {cartCount === 1 ? "artículo" : "artículos"} · {fmtPrice(cartTotal)}
           </span>
           <button
             type="button"
