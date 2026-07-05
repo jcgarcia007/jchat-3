@@ -6,6 +6,8 @@ import IconRail from "./IconRail";
 import StickyTabs from "./StickyTabs";
 import CategorySidebar from "./CategorySidebar";
 import StoreSections from "./StoreSections";
+import GlassChips from "./GlassChips";
+import InfiniteFeed from "./InfiniteFeed";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -29,6 +31,10 @@ export default function MenuTemplateRenderer({
       return <CategorySidebar {...props} />;
     case "store-sections":
       return <StoreSections {...props} />;
+    case "glass-chips":
+      return <GlassChips {...props} />;
+    case "infinite-feed":
+      return <InfiniteFeed {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
