@@ -5,6 +5,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * LeftDrawer (#02 Left Drawer Navigation). A hamburger opens a slide-in left
@@ -14,14 +15,15 @@ import { EmptyMenu } from "./shared/EmptyMenu";
  * palette: cream content area, dark-brown drawer, red accent.
  */
 
-// Board #02 "Forno" palette.
-const CREAM = "#FAF7F2";
-const PANEL = "#5E1A0E";
-const RED = "#C2371F";
-const INK = "#3C2A21";
-const MUTED = "#9C8E7B";
-const BORDER = "#E7DFD3";
-const ROW_PALETTE = { card: "#FFFFFF", border: BORDER, name: INK, muted: MUTED, price: RED, accent: RED };
+// Board #02 "Forno" palette — semantic colors from the single source.
+const P = MENU_PALETTES["left-drawer"]!;
+const CREAM = P.bg;
+const PANEL = "#5E1A0E"; // bespoke chrome: dark-brown drawer (not a semantic field)
+const RED = P.accent;
+const INK = P.text;
+const MUTED = P.textFaint;
+const BORDER = P.border;
+const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
 
 export default function LeftDrawer({
   business,

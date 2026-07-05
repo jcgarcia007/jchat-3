@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * Luxury (#20 Experimental Luxury). Anti-density as a statement: one numbered
@@ -17,7 +18,9 @@ import { fmtPrice } from "./shared/format";
  */
 
 const SERIF = "var(--font-playfair), Georgia, 'Times New Roman', serif";
-const GOLD = "#C9A96A";
+// MAISON OR palette — semantic colors from the single source.
+const P = MENU_PALETTES.luxury!;
+const GOLD = P.accent;
 
 export default function Luxury({
   business,
@@ -38,7 +41,7 @@ export default function Luxury({
   const heroSoldOut = hero.stock_count !== null && hero.stock_count === 0;
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", paddingBottom: 96, background: "#0B0B0C" }}>
+    <div style={{ position: "relative", minHeight: "100vh", paddingBottom: 96, background: P.bg }}>
       {/* Maison header */}
       <div style={{ textAlign: "center", padding: "16px 24px 0" }}>
         <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: "7px", textTransform: "uppercase", color: GOLD, fontFamily: SERIF }}>
@@ -79,7 +82,7 @@ export default function Luxury({
                   fontSize: 11,
                   letterSpacing: "2px",
                   fontWeight: on ? 900 : 400,
-                  color: on ? GOLD : "rgba(244,239,231,0.4)",
+                  color: on ? GOLD : P.textFaint,
                   opacity: on ? 1 : 0.5,
                   transition: "color 0.2s, opacity 0.2s",
                 }}
@@ -97,18 +100,18 @@ export default function Luxury({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={hero.photo_url} alt={hero.name} style={{ width: "100%", height: 240, objectFit: "cover", borderRadius: 8, display: "block" }} />
             ) : (
-              <div style={{ width: "100%", height: 240, borderRadius: 8, background: "#1A150F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🍽️</div>
+              <div style={{ width: "100%", height: 240, borderRadius: 8, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🍽️</div>
             )}
           </div>
 
-          <div style={{ fontSize: 9, letterSpacing: "3px", color: "rgba(244,239,231,0.4)", marginTop: 22, textTransform: "uppercase" }}>
+          <div style={{ fontSize: 9, letterSpacing: "3px", color: P.textFaint, marginTop: 22, textTransform: "uppercase" }}>
             Capítulo {String(active + 1).padStart(2, "0")}
           </div>
-          <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 27, fontWeight: 500, color: "#F4EFE7", marginTop: 8, lineHeight: 1.15 }}>
+          <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 27, fontWeight: 500, color: P.text, marginTop: 8, lineHeight: 1.15 }}>
             {hero.name}
           </div>
           {hero.description && (
-            <div style={{ fontSize: 11.5, lineHeight: 1.7, color: "rgba(244,239,231,0.6)", marginTop: 10, maxWidth: 300 }}>
+            <div style={{ fontSize: 11.5, lineHeight: 1.7, color: P.textMuted, marginTop: 10, maxWidth: 300 }}>
               {hero.description}
             </div>
           )}
@@ -160,9 +163,9 @@ export default function Luxury({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={it.photo_url} alt={it.name} style={{ width: 66, height: 66, objectFit: "cover", borderRadius: 6, display: "block", opacity: 0.75 }} />
               ) : (
-                <div style={{ width: 66, height: 66, borderRadius: 6, background: "#1A150F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🍽️</div>
+                <div style={{ width: 66, height: 66, borderRadius: 6, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🍽️</div>
               )}
-              <div style={{ fontSize: 8, letterSpacing: "1px", color: "rgba(244,239,231,0.4)", marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 8, letterSpacing: "1px", color: P.textFaint, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {it.name}
               </div>
               <div style={{ fontSize: 8, color: "rgba(201,169,106,0.7)" }}>{fmtPrice(it.price_cents)}</div>
@@ -185,7 +188,7 @@ export default function Luxury({
           height: 58,
           borderRadius: "50%",
           border: `1px solid ${GOLD}`,
-          background: "#0B0B0C",
+          background: P.bg,
           color: GOLD,
           cursor: "pointer",
           display: "flex",

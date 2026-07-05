@@ -1,0 +1,135 @@
+/**
+ * Menu palette system (single source of truth for template + sheet colors).
+ *
+ * Each template_id maps to a semantic palette. The shared sheets (customizer,
+ * cart, pickup, success) and the board-faithful templates read their colors from
+ * here so the whole flow — browse + modals — matches the template's original
+ * board look. Templates not listed fall back to DEFAULT_PALETTE (= the current
+ * dark design tokens), so they render identically to before.
+ *
+ * Only 13 SEMANTIC fields live here. Truly structural chrome that a single
+ * template needs (e.g. the Forno drawer brown, the KAI navy rail) stays local to
+ * that template.
+ */
+export interface MenuPalette {
+  bg: string; // page / deepest background
+  surface: string; // sheet panel + cards
+  surfaceElevated: string; // nested rows / inputs / chips
+  text: string; // primary text
+  textMuted: string; // secondary text
+  textFaint: string; // tertiary text
+  border: string; // hairlines / dividers
+  accent: string; // primary action / + / selected
+  accentText: string; // text/icon on top of accent
+  accentSoft: string; // translucent accent tint (selected option bg)
+  price: string; // price emphasis
+  danger: string; // remove / destructive
+  overlay: string; // modal backdrop scrim
+  accentGradient?: string; // optional CTA gradient (classic only)
+}
+
+// Green success and red danger stay semantic constants (not per-template).
+export const SUCCESS_GREEN = "#059669";
+
+/** Current dark design tokens — keeps classic and non-recolored templates identical. */
+export const DEFAULT_PALETTE: MenuPalette = {
+  bg: "var(--bg-base)",
+  surface: "var(--bg-surface)",
+  surfaceElevated: "var(--bg-elevated)",
+  text: "var(--text-primary)",
+  textMuted: "var(--text-secondary)",
+  textFaint: "var(--text-tertiary)",
+  border: "var(--border-subtle)",
+  accent: "var(--color-brand)",
+  accentText: "#fff",
+  accentSoft: "rgba(79,70,229,0.12)",
+  price: "var(--color-gold)",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.6)",
+};
+
+const CLASSIC_PALETTE: MenuPalette = {
+  ...DEFAULT_PALETTE,
+  accentGradient: "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+};
+
+// #02 "Forno" — cream content, dark-brown drawer (chrome stays local), red accent.
+const LEFT_DRAWER_PALETTE: MenuPalette = {
+  bg: "#FAF7F2",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F4ECE0",
+  text: "#3C2A21",
+  textMuted: "#6E5B4E",
+  textFaint: "#9C8E7B",
+  border: "#E7DFD3",
+  accent: "#C2371F",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(194,55,31,0.12)",
+  price: "#C2371F",
+  danger: "var(--color-danger)",
+  overlay: "rgba(30,15,8,0.5)",
+};
+
+// #03 "KAI" — deep navy stage, teal accent, gold prices.
+const ICON_RAIL_PALETTE: MenuPalette = {
+  bg: "#0B1020",
+  surface: "#141B33",
+  surfaceElevated: "#1B2542",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.7)",
+  textFaint: "rgba(255,255,255,0.5)",
+  border: "rgba(255,255,255,0.10)",
+  accent: "#4FD1C5",
+  accentText: "#08131A",
+  accentSoft: "rgba(79,209,197,0.14)",
+  price: "#F2C879",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.66)",
+};
+
+// #11 "LA TABLE" — paper cream, ink text, burgundy accent.
+const MAGAZINE_PALETTE: MenuPalette = {
+  bg: "#F5F1E8",
+  surface: "#FFFFFF",
+  surfaceElevated: "#EFE9DB",
+  text: "#211D15",
+  textMuted: "#5C5340",
+  textFaint: "#8C8064",
+  border: "#C9BFA8",
+  accent: "#A33B2E",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(163,59,46,0.12)",
+  price: "#A33B2E",
+  danger: "var(--color-danger)",
+  overlay: "rgba(33,29,21,0.5)",
+};
+
+// #20 "MAISON OR" — black stage, gold everything, cream text.
+const LUXURY_PALETTE: MenuPalette = {
+  bg: "#0B0B0C",
+  surface: "#141210",
+  surfaceElevated: "#1A150F",
+  text: "#F4EFE7",
+  textMuted: "rgba(244,239,231,0.6)",
+  textFaint: "rgba(244,239,231,0.4)",
+  border: "rgba(201,169,106,0.25)",
+  accent: "#C9A96A",
+  accentText: "#1A1206",
+  accentSoft: "rgba(201,169,106,0.14)",
+  price: "#C9A96A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,0.72)",
+};
+
+export const MENU_PALETTES: Record<string, MenuPalette> = {
+  classic: CLASSIC_PALETTE,
+  "left-drawer": LEFT_DRAWER_PALETTE,
+  "icon-rail": ICON_RAIL_PALETTE,
+  magazine: MAGAZINE_PALETTE,
+  luxury: LUXURY_PALETTE,
+};
+
+/** Resolve a template's palette, falling back to the default dark tokens. */
+export function resolvePalette(templateId: string): MenuPalette {
+  return MENU_PALETTES[templateId] ?? DEFAULT_PALETTE;
+}

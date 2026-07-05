@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
+import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -165,10 +166,12 @@ function BusinessHeader({ biz }: { biz: PublicBusiness }) {
 // ── Customizer Sheet ──────────────────────────────────────────────────────────
 
 function CustomizerSheet({
+  palette,
   item,
   onClose,
   onAddToCart,
 }: {
+  palette: MenuPalette;
   item: PublicMenuItem;
   onClose: () => void;
   onAddToCart: (
@@ -242,9 +245,9 @@ function CustomizerSheet({
     width: "100%",
     padding: "10px 12px",
     borderRadius: 10,
-    border: "1.5px solid var(--border-subtle)",
-    background: "var(--bg-surface)",
-    color: "var(--text-primary)",
+    border: `1.5px solid ${palette.border}`,
+    background: palette.surface,
+    color: palette.text,
     fontSize: 14,
     outline: "none",
     fontFamily: "inherit",
@@ -252,11 +255,11 @@ function CustomizerSheet({
   };
 
   return (
-    <Backdrop onClose={onClose}>
+    <Backdrop onClose={onClose} palette={palette}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--bg-elevated)",
+          background: palette.surfaceElevated,
           borderRadius: "20px 20px 0 0",
           overflow: "hidden",
           maxHeight: "85vh",
@@ -284,7 +287,7 @@ function CustomizerSheet({
                   width: "100%",
                   height: "100%",
                   background:
-                    "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+                    (palette.accentGradient ?? palette.accent),
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -305,7 +308,7 @@ function CustomizerSheet({
                 borderRadius: "50%",
                 background: "rgba(0,0,0,0.55)",
                 border: "none",
-                color: "#fff",
+                color: palette.accentText,
                 fontSize: 18,
                 cursor: "pointer",
                 display: "flex",
@@ -327,7 +330,7 @@ function CustomizerSheet({
                 gap: 8,
                 padding: "10px 16px",
                 overflowX: "auto",
-                background: "var(--bg-elevated)",
+                background: palette.surfaceElevated,
               }}
             >
               {allUrls.map((url, i) => (
@@ -345,7 +348,7 @@ function CustomizerSheet({
                     flexShrink: 0,
                     cursor: "pointer",
                     border: i === photoIdx
-                      ? "2.5px solid var(--color-gold)"
+                      ? `2.5px solid ${palette.price}`
                       : "2px solid transparent",
                     opacity: i === photoIdx ? 1 : 0.65,
                     transition: "opacity .15s, border-color .15s",
@@ -371,7 +374,7 @@ function CustomizerSheet({
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: "var(--text-primary)",
+                color: palette.text,
                 margin: 0,
                 flex: 1,
                 paddingRight: 12,
@@ -383,7 +386,7 @@ function CustomizerSheet({
               style={{
                 fontSize: 16,
                 fontWeight: 700,
-                color: "var(--color-gold)",
+                color: palette.price,
                 flexShrink: 0,
               }}
             >
@@ -394,7 +397,7 @@ function CustomizerSheet({
             <p
               style={{
                 fontSize: 13,
-                color: "var(--text-secondary)",
+                color: palette.textMuted,
                 lineHeight: 1.6,
                 margin: "0 0 18px",
               }}
@@ -415,7 +418,7 @@ function CustomizerSheet({
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: "var(--text-secondary)",
+                    color: palette.textMuted,
                     textTransform: "uppercase",
                     letterSpacing: "0.06em",
                     marginBottom: 10,
@@ -426,12 +429,12 @@ function CustomizerSheet({
                 >
                   {group.label}
                   {group.type === "multi" && group.max_select < group.choices.length && (
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
+                    <span style={{ fontSize: 11, color: palette.textFaint, textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
                       · hasta {group.max_select}
                     </span>
                   )}
                   {group.type === "multi" && group.min_select > 0 && (
-                    <span style={{ fontSize: 11, color: "var(--color-danger)", textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+                    <span style={{ fontSize: 11, color: palette.danger, textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
                       · mín {group.min_select}
                     </span>
                   )}
@@ -450,12 +453,12 @@ function CustomizerSheet({
                             padding: "8px 14px",
                             borderRadius: 10,
                             border: active
-                              ? "2px solid var(--color-gold)"
-                              : "1.5px solid var(--border-subtle)",
+                              ? `2px solid ${palette.price}`
+                              : `1.5px solid ${palette.border}`,
                             background: active
-                              ? "rgba(217,119,6,0.12)"
-                              : "var(--bg-surface)",
-                            color: active ? "var(--color-gold)" : "var(--text-primary)",
+                              ? palette.accentSoft
+                              : palette.surface,
+                            color: active ? palette.price : palette.text,
                             fontWeight: active ? 600 : 400,
                             fontSize: 13.5,
                             cursor: "pointer",
@@ -468,7 +471,7 @@ function CustomizerSheet({
                         >
                           <span>{choice.label}</span>
                           {choice.price_cents !== 0 && (
-                            <span style={{ fontSize: 11, color: active ? "var(--color-gold)" : "var(--text-secondary)", fontWeight: 500 }}>
+                            <span style={{ fontSize: 11, color: active ? palette.price : palette.textMuted, fontWeight: 500 }}>
                               {choice.price_cents > 0 ? "+" : "−"}{fmtPrice(Math.abs(choice.price_cents))}
                             </span>
                           )}
@@ -496,7 +499,7 @@ function CustomizerSheet({
                             padding: "10px 4px",
                             borderRadius: 10,
                             border: "none",
-                            background: active ? "rgba(217,119,6,0.07)" : "transparent",
+                            background: active ? palette.accentSoft : "transparent",
                             cursor: disabled ? "not-allowed" : "pointer",
                             opacity: disabled ? 0.4 : 1,
                             width: "100%",
@@ -508,8 +511,8 @@ function CustomizerSheet({
                               width: 22,
                               height: 22,
                               borderRadius: 6,
-                              border: active ? "none" : "2px solid var(--border-subtle)",
-                              background: active ? "var(--color-gold)" : "transparent",
+                              border: active ? "none" : `2px solid ${palette.border}`,
+                              background: active ? palette.price : "transparent",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -517,13 +520,13 @@ function CustomizerSheet({
                               transition: "background .15s",
                             }}
                           >
-                            {active && <span style={{ color: "#fff", fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>}
+                            {active && <span style={{ color: palette.accentText, fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>}
                           </span>
-                          <span style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontWeight: active ? 500 : 400 }}>
+                          <span style={{ flex: 1, fontSize: 14, color: palette.text, fontWeight: active ? 500 : 400 }}>
                             {choice.label}
                           </span>
                           {choice.price_cents > 0 && (
-                            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500, paddingRight: 4 }}>
+                            <span style={{ fontSize: 13, color: palette.textMuted, fontWeight: 500, paddingRight: 4 }}>
                               +{fmtPrice(choice.price_cents)}
                             </span>
                           )}
@@ -538,7 +541,7 @@ function CustomizerSheet({
 
           {/* Notes */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               Notas para la cocina
             </div>
             <textarea
@@ -559,8 +562,8 @@ function CustomizerSheet({
           style={{
             padding: "12px 16px",
             paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-            background: "var(--bg-elevated)",
-            borderTop: "1px solid var(--border-subtle)",
+            background: palette.surfaceElevated,
+            borderTop: `1px solid ${palette.border}`,
             display: "flex",
             gap: 12,
             alignItems: "center",
@@ -574,7 +577,7 @@ function CustomizerSheet({
               alignItems: "center",
               borderRadius: 12,
               overflow: "hidden",
-              border: "1.5px solid var(--border-subtle)",
+              border: `1.5px solid ${palette.border}`,
               flexShrink: 0,
             }}
           >
@@ -584,8 +587,8 @@ function CustomizerSheet({
                 width: 38,
                 height: 42,
                 border: "none",
-                background: "var(--bg-surface)",
-                color: "var(--text-primary)",
+                background: palette.surface,
+                color: palette.text,
                 fontSize: 20,
                 cursor: "pointer",
                 fontWeight: 700,
@@ -602,8 +605,8 @@ function CustomizerSheet({
                 textAlign: "center",
                 fontWeight: 700,
                 fontSize: 15,
-                color: "var(--text-primary)",
-                background: "var(--bg-elevated)",
+                color: palette.text,
+                background: palette.surfaceElevated,
               }}
             >
               {qty}
@@ -614,8 +617,8 @@ function CustomizerSheet({
                 width: 38,
                 height: 42,
                 border: "none",
-                background: "var(--bg-surface)",
-                color: "var(--text-primary)",
+                background: palette.surface,
+                color: palette.text,
                 fontSize: 20,
                 cursor: "pointer",
                 fontWeight: 700,
@@ -636,8 +639,8 @@ function CustomizerSheet({
               padding: "12px 14px",
               borderRadius: 12,
               border: "none",
-              background: "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
-              color: "#fff",
+              background: (palette.accentGradient ?? palette.accent),
+              color: palette.accentText,
               fontSize: 14,
               fontWeight: 700,
               cursor: "pointer",
@@ -658,12 +661,14 @@ function CustomizerSheet({
 // ── Cart Sheet ────────────────────────────────────────────────────────────────
 
 function CartSheet({
+  palette,
   cartItems,
   onClose,
   onUpdateQty,
   onRemove,
   onContinue,
 }: {
+  palette: MenuPalette;
   cartItems: CartItem[];
   onClose: () => void;
   onUpdateQty: (cartId: string, delta: number) => void;
@@ -673,11 +678,11 @@ function CartSheet({
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
 
   return (
-    <Backdrop onClose={onClose}>
+    <Backdrop onClose={onClose} palette={palette}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--bg-elevated)",
+          background: palette.surfaceElevated,
           borderRadius: "20px 20px 0 0",
           maxHeight: "85vh",
           display: "flex",
@@ -694,12 +699,12 @@ function CartSheet({
             alignItems: "center",
             justifyContent: "space-between",
             padding: "16px 16px 12px",
-            borderBottom: "1px solid var(--border-subtle)",
+            borderBottom: `1px solid ${palette.border}`,
             flexShrink: 0,
           }}
         >
           <h2
-            style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}
+            style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0 }}
           >
             🛒 Tu carrito
           </h2>
@@ -708,7 +713,7 @@ function CartSheet({
             style={{
               background: "none",
               border: "none",
-              color: "var(--text-tertiary)",
+              color: palette.textFaint,
               fontSize: 16,
               cursor: "pointer",
               padding: 4,
@@ -724,7 +729,7 @@ function CartSheet({
               style={{
                 textAlign: "center",
                 padding: "40px 0",
-                color: "var(--text-tertiary)",
+                color: palette.textFaint,
                 fontSize: 14,
               }}
             >
@@ -737,10 +742,10 @@ function CartSheet({
                 <div
                   key={ci.cartId}
                   style={{
-                    background: "var(--bg-surface)",
+                    background: palette.surface,
                     borderRadius: 12,
                     padding: "12px 14px",
-                    border: "1px solid var(--border-subtle)",
+                    border: `1px solid ${palette.border}`,
                   }}
                 >
                   <div
@@ -755,7 +760,7 @@ function CartSheet({
                       style={{
                         fontSize: 14,
                         fontWeight: 600,
-                        color: "var(--text-primary)",
+                        color: palette.text,
                         flex: 1,
                         paddingRight: 8,
                       }}
@@ -767,7 +772,7 @@ function CartSheet({
                       style={{
                         background: "none",
                         border: "none",
-                        color: "var(--color-danger)",
+                        color: palette.danger,
                         cursor: "pointer",
                         fontSize: 14,
                         padding: 0,
@@ -784,7 +789,7 @@ function CartSheet({
                     <div
                       style={{
                         fontSize: 11,
-                        color: "var(--text-tertiary)",
+                        color: palette.textFaint,
                         marginBottom: ci.notes ? 4 : 8,
                         lineHeight: 1.5,
                       }}
@@ -805,7 +810,7 @@ function CartSheet({
                     <div
                       style={{
                         fontSize: 11,
-                        color: "var(--text-tertiary)",
+                        color: palette.textFaint,
                         fontStyle: "italic",
                         marginBottom: 8,
                         lineHeight: 1.5,
@@ -825,7 +830,7 @@ function CartSheet({
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <button
                         onClick={() => onUpdateQty(ci.cartId, -1)}
-                        style={smallQtyBtnStyle}
+                        style={smallQtyBtnStyle(palette)}
                       >
                         −
                       </button>
@@ -833,7 +838,7 @@ function CartSheet({
                         style={{
                           fontSize: 14,
                           fontWeight: 600,
-                          color: "var(--text-primary)",
+                          color: palette.text,
                           minWidth: 20,
                           textAlign: "center",
                         }}
@@ -842,13 +847,13 @@ function CartSheet({
                       </span>
                       <button
                         onClick={() => onUpdateQty(ci.cartId, 1)}
-                        style={smallQtyBtnStyle}
+                        style={smallQtyBtnStyle(palette)}
                       >
                         +
                       </button>
                     </div>
                     <span
-                      style={{ fontSize: 14, fontWeight: 700, color: "var(--color-gold)" }}
+                      style={{ fontSize: 14, fontWeight: 700, color: palette.price }}
                     >
                       {fmtPrice(ci.lineTotalCents)}
                     </span>
@@ -862,7 +867,7 @@ function CartSheet({
         <div
           style={{
             padding: "12px 16px 24px",
-            borderTop: "1px solid var(--border-subtle)",
+            borderTop: `1px solid ${palette.border}`,
             flexShrink: 0,
           }}
         >
@@ -874,10 +879,10 @@ function CartSheet({
               marginBottom: 14,
             }}
           >
-            <span style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500 }}>
+            <span style={{ fontSize: 14, color: palette.textMuted, fontWeight: 500 }}>
               Subtotal
             </span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: palette.text }}>
               {fmtPrice(subtotal)}
             </span>
           </div>
@@ -891,9 +896,9 @@ function CartSheet({
               border: "none",
               background:
                 cartItems.length > 0
-                  ? "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)"
-                  : "var(--bg-surface)",
-              color: cartItems.length > 0 ? "#fff" : "var(--text-tertiary)",
+                  ? (palette.accentGradient ?? palette.accent)
+                  : palette.surface,
+              color: cartItems.length > 0 ? palette.accentText : palette.textFaint,
               fontSize: 15,
               fontWeight: 700,
               cursor: cartItems.length > 0 ? "pointer" : "not-allowed",
@@ -910,10 +915,12 @@ function CartSheet({
 // ── Pickup Sheet ──────────────────────────────────────────────────────────────
 
 function PickupSheet({
+  palette,
   cartItems,
   onBack,
   onConfirm,
 }: {
+  palette: MenuPalette;
   cartItems: CartItem[];
   onBack: () => void;
   onConfirm: (type: PickupType, tableNumber: string) => void;
@@ -924,11 +931,11 @@ function PickupSheet({
   const canConfirm = pickupType === "counter" || tableNumber.trim().length > 0;
 
   return (
-    <Backdrop onClose={onBack}>
+    <Backdrop onClose={onBack} palette={palette}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--bg-elevated)",
+          background: palette.surfaceElevated,
           borderRadius: "20px 20px 0 0",
           maxHeight: "90vh",
           display: "flex",
@@ -945,7 +952,7 @@ function PickupSheet({
             alignItems: "center",
             gap: 12,
             padding: "16px 16px 12px",
-            borderBottom: "1px solid var(--border-subtle)",
+            borderBottom: `1px solid ${palette.border}`,
             flexShrink: 0,
           }}
         >
@@ -954,7 +961,7 @@ function PickupSheet({
             style={{
               background: "none",
               border: "none",
-              color: "var(--text-secondary)",
+              color: palette.textMuted,
               cursor: "pointer",
               fontSize: 20,
               padding: 0,
@@ -964,7 +971,7 @@ function PickupSheet({
             ←
           </button>
           <h2
-            style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}
+            style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0 }}
           >
             ¿Cómo quieres recibir tu pedido?
           </h2>
@@ -995,9 +1002,9 @@ function PickupSheet({
                     padding: "14px 16px",
                     borderRadius: 14,
                     border: active
-                      ? "2px solid var(--color-brand)"
-                      : "1px solid var(--border-subtle)",
-                    background: active ? "rgba(79,70,229,0.1)" : "var(--bg-surface)",
+                      ? `2px solid ${palette.accent}`
+                      : `1px solid ${palette.border}`,
+                    background: active ? palette.accentSoft : palette.surface,
                     cursor: "pointer",
                     textAlign: "left",
                     width: "100%",
@@ -1007,13 +1014,13 @@ function PickupSheet({
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: active ? "var(--color-brand)" : "var(--text-primary)",
+                      color: active ? palette.accent : palette.text,
                       marginBottom: 3,
                     }}
                   >
                     {label}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{desc}</div>
+                  <div style={{ fontSize: 12, color: palette.textFaint }}>{desc}</div>
                 </button>
               );
             })}
@@ -1025,7 +1032,7 @@ function PickupSheet({
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "var(--text-secondary)",
+                  color: palette.textMuted,
                   display: "block",
                   marginBottom: 8,
                 }}
@@ -1042,9 +1049,9 @@ function PickupSheet({
                   width: "100%",
                   padding: "12px 14px",
                   borderRadius: 12,
-                  border: "1px solid var(--border-subtle)",
-                  background: "var(--bg-surface)",
-                  color: "var(--text-primary)",
+                  border: `1px solid ${palette.border}`,
+                  background: palette.surface,
+                  color: palette.text,
                   fontSize: 15,
                   outline: "none",
                   boxSizing: "border-box",
@@ -1055,17 +1062,17 @@ function PickupSheet({
 
           <div
             style={{
-              background: "var(--bg-surface)",
+              background: palette.surface,
               borderRadius: 14,
               padding: "14px 16px",
-              border: "1px solid var(--border-subtle)",
+              border: `1px solid ${palette.border}`,
             }}
           >
             <div
               style={{
                 fontSize: 12,
                 fontWeight: 600,
-                color: "var(--text-tertiary)",
+                color: palette.textFaint,
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
                 marginBottom: 10,
@@ -1084,7 +1091,7 @@ function PickupSheet({
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1 }}>
+                  <span style={{ fontSize: 13, color: palette.textMuted, flex: 1 }}>
                     {ci.quantity}× {ci.name}
                     {ci.groupSelections.length > 0
                       ? ` (${ci.groupSelections.flatMap((gs) => gs.choices.map((c) => c.label)).join(", ")})`
@@ -1093,7 +1100,7 @@ function PickupSheet({
                       : ""}
                   </span>
                   <span
-                    style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}
+                    style={{ fontSize: 13, fontWeight: 600, color: palette.text, flexShrink: 0 }}
                   >
                     {fmtPrice(ci.lineTotalCents)}
                   </span>
@@ -1102,7 +1109,7 @@ function PickupSheet({
             </div>
             <div
               style={{
-                borderTop: "1px solid var(--border-subtle)",
+                borderTop: `1px solid ${palette.border}`,
                 marginTop: 10,
                 paddingTop: 10,
                 display: "flex",
@@ -1110,10 +1117,10 @@ function PickupSheet({
                 alignItems: "center",
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>
                 Total
               </span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--color-gold)" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: palette.price }}>
                 {fmtPrice(subtotal)}
               </span>
             </div>
@@ -1123,7 +1130,7 @@ function PickupSheet({
         <div
           style={{
             padding: "12px 16px 24px",
-            borderTop: "1px solid var(--border-subtle)",
+            borderTop: `1px solid ${palette.border}`,
             flexShrink: 0,
           }}
         >
@@ -1137,8 +1144,8 @@ function PickupSheet({
               border: "none",
               background: canConfirm
                 ? "linear-gradient(135deg, #059669 0%, #0d9488 100%)"
-                : "var(--bg-surface)",
-              color: canConfirm ? "#fff" : "var(--text-tertiary)",
+                : palette.surface,
+              color: canConfirm ? palette.accentText : palette.textFaint,
               fontSize: 15,
               fontWeight: 700,
               cursor: canConfirm ? "pointer" : "not-allowed",
@@ -1150,7 +1157,7 @@ function PickupSheet({
             <p
               style={{
                 fontSize: 11,
-                color: "var(--color-danger)",
+                color: palette.danger,
                 textAlign: "center",
                 margin: "8px 0 0",
               }}
@@ -1167,20 +1174,22 @@ function PickupSheet({
 // ── Success Sheet ─────────────────────────────────────────────────────────────
 
 function SuccessSheet({
+  palette,
   pickupType,
   tableNumber,
   onDone,
 }: {
+  palette: MenuPalette;
   pickupType: PickupType;
   tableNumber: string;
   onDone: () => void;
 }) {
   return (
-    <Backdrop onClose={onDone}>
+    <Backdrop onClose={onDone} palette={palette}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--bg-elevated)",
+          background: palette.surfaceElevated,
           borderRadius: "20px 20px 0 0",
           padding: "32px 24px 40px",
           textAlign: "center",
@@ -1195,7 +1204,7 @@ function SuccessSheet({
           style={{
             fontSize: 20,
             fontWeight: 700,
-            color: "var(--text-primary)",
+            color: palette.text,
             margin: "0 0 10px",
           }}
         >
@@ -1204,7 +1213,7 @@ function SuccessSheet({
         <p
           style={{
             fontSize: 14,
-            color: "var(--text-secondary)",
+            color: palette.textMuted,
             lineHeight: 1.6,
             margin: "0 0 8px",
           }}
@@ -1213,7 +1222,7 @@ function SuccessSheet({
             ? "Recoge tu pedido en la barra cuando esté listo."
             : `Te lo llevamos a la mesa ${tableNumber}.`}
         </p>
-        <p style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "0 0 28px" }}>
+        <p style={{ fontSize: 12, color: palette.textFaint, margin: "0 0 28px" }}>
           Pago próximamente — esto es una demo del flujo.
         </p>
         <button
@@ -1224,8 +1233,8 @@ function SuccessSheet({
             borderRadius: 14,
             border: "none",
             background:
-              "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
-            color: "#fff",
+              (palette.accentGradient ?? palette.accent),
+            color: palette.accentText,
             fontSize: 15,
             fontWeight: 700,
             cursor: "pointer",
@@ -1243,9 +1252,11 @@ function SuccessSheet({
 function Backdrop({
   children,
   onClose,
+  palette,
 }: {
   children: React.ReactNode;
   onClose: () => void;
+  palette: MenuPalette;
 }) {
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -1261,7 +1272,7 @@ function Backdrop({
         position: "fixed",
         inset: 0,
         zIndex: 50,
-        background: "rgba(0,0,0,0.6)",
+        background: palette.overlay,
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
@@ -1275,29 +1286,13 @@ function Backdrop({
 
 // ── Shared button styles ──────────────────────────────────────────────────────
 
-const qtyBtnStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: "50%",
-  border: "1px solid var(--border-subtle)",
-  background: "var(--bg-surface)",
-  color: "var(--text-primary)",
-  fontSize: 20,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 700,
-  lineHeight: 1,
-};
-
-const smallQtyBtnStyle: React.CSSProperties = {
+const smallQtyBtnStyle = (palette: MenuPalette): React.CSSProperties => ({
   width: 28,
   height: 28,
   borderRadius: "50%",
-  border: "1px solid var(--border-subtle)",
-  background: "var(--bg-surface)",
-  color: "var(--text-primary)",
+  border: `1px solid ${palette.border}`,
+  background: palette.surface,
+  color: palette.text,
   fontSize: 16,
   cursor: "pointer",
   display: "flex",
@@ -1305,7 +1300,7 @@ const smallQtyBtnStyle: React.CSSProperties = {
   justifyContent: "center",
   fontWeight: 700,
   lineHeight: 1,
-};
+});
 
 // ── Cart FAB ──────────────────────────────────────────────────────────────────
 
@@ -1370,6 +1365,7 @@ export default function MenuPageClient({
   categories: PublicMenuCategory[];
 }) {
   const cardEffect = business.menu_card_effect ?? "lift";
+  const palette = resolvePalette(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
@@ -1557,6 +1553,7 @@ export default function MenuPageClient({
 
       {customizerItem && (
         <CustomizerSheet
+          palette={palette}
           item={customizerItem}
           onClose={() => setCustomizerItem(null)}
           onAddToCart={addToCart}
@@ -1565,6 +1562,7 @@ export default function MenuPageClient({
 
       {step === "cart" && (
         <CartSheet
+          palette={palette}
           cartItems={cartItems}
           onClose={() => setStep("menu")}
           onUpdateQty={updateQty}
@@ -1575,6 +1573,7 @@ export default function MenuPageClient({
 
       {step === "pickup" && (
         <PickupSheet
+          palette={palette}
           cartItems={cartItems}
           onBack={() => setStep("cart")}
           onConfirm={(type, table) => {
@@ -1587,6 +1586,7 @@ export default function MenuPageClient({
 
       {step === "success" && (
         <SuccessSheet
+          palette={palette}
           pickupType={pickupType}
           tableNumber={pickupTable}
           onDone={() => {

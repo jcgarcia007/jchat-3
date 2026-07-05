@@ -5,6 +5,7 @@ import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
+import { MENU_PALETTES } from "./shared/palettes";
 
 /**
  * IconRail (#03 Right-Hand Icon Rail). Categories live on a permanent thumb-side
@@ -17,14 +18,15 @@ import { fmtPrice } from "./shared/format";
  * docked mini-cart is the only cart affordance.
  */
 
-// Board #03 "KAI" palette.
-const NAVY = "#0B1020";
-const CARD = "#141B33";
-const TEAL = "#4FD1C5";
-const GOLD = "#F2C879";
-const HAIR = "rgba(255,255,255,0.10)";
-const MUTED = "rgba(255,255,255,0.55)";
-const ROW_PALETTE = { card: CARD, border: HAIR, name: "#FFFFFF", muted: MUTED, price: GOLD, accent: TEAL };
+// Board #03 "KAI" palette — semantic colors from the single source.
+const P = MENU_PALETTES["icon-rail"]!;
+const NAVY = P.bg;
+const CARD = P.surface;
+const TEAL = P.accent;
+const GOLD = P.price;
+const HAIR = P.border;
+const MUTED = P.textFaint;
+const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
 
 export default function IconRail({
   business,
