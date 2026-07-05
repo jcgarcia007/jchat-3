@@ -1366,6 +1366,15 @@ export default function MenuPageClient({
 }) {
   const cardEffect = business.menu_card_effect ?? "lift";
   const palette = resolvePalette(business.menu_template_id);
+  // These templates render their own header with the business name (in their
+  // palette), so the generic dark BusinessHeader is suppressed to avoid a
+  // duplicate. Templates not listed (classic, bottom-nav, glass-chips,
+  // immersive, masonry-search, or any unported slug → Classic) keep it.
+  const showBusinessHeader = ![
+    "left-drawer", "icon-rail", "sticky-tabs", "category-sidebar", "store-sections",
+    "infinite-feed", "magazine", "streaming-rows", "timeline", "carousel", "stories",
+    "card-stack", "gesture", "ai-personalized", "luxury", "fullscreen-type",
+  ].includes(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
@@ -1525,7 +1534,7 @@ export default function MenuPageClient({
         paddingBottom: cartCount > 0 ? 96 : 32,
       }}
     >
-      <BusinessHeader biz={business} />
+      {showBusinessHeader && <BusinessHeader biz={business} />}
 
       <MenuTemplateRenderer
         templateId={business.menu_template_id}
