@@ -1550,7 +1550,10 @@ export default function MenuPageClient({
         onCardMove={handleCardMove}
       />
 
-      <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
+      {/* Templates that render their own docked cart bar suppress the shared FAB. */}
+      {!["icon-rail", "sticky-tabs"].includes(business.menu_template_id) && (
+        <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
+      )}
 
       {customizerItem && (
         <CustomizerSheet
