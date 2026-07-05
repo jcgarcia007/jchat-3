@@ -303,7 +303,10 @@ async function getMenuData(slug: string): Promise<{
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 
-type PageProps = { params: Promise<{ slug: string }> };
+type PageProps = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -337,7 +340,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function MenuPublicPage({ params }: PageProps) {
+export default async function MenuPublicPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const data = await getMenuData(slug);
 
@@ -362,6 +365,12 @@ export default async function MenuPublicPage({ params }: PageProps) {
       </main>
     );
   }
+
+  // Preview override: ?preview_template=<slug> forces a template for capture/preview
+  // without changing the business's saved menu_template_id.
+  const sp = searchParams ? await searchParams : undefined;
+  const preview = typeof sp?.preview_template === "string" ? sp.preview_template : undefined;
+  if (preview) data.business.menu_template_id = preview;
 
   return (
     <MenuPageClient
