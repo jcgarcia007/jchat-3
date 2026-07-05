@@ -18,6 +18,8 @@ import Carousel from "./Carousel";
 import Immersive from "./Immersive";
 import Stories from "./Stories";
 import CardStack from "./CardStack";
+import Gesture from "./Gesture";
+import AiPersonalized from "./AiPersonalized";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -65,6 +67,10 @@ export default function MenuTemplateRenderer({
       return <Stories {...props} />;
     case "card-stack":
       return <CardStack {...props} />;
+    case "gesture":
+      return <Gesture {...props} />;
+    case "ai-personalized":
+      return <AiPersonalized {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
