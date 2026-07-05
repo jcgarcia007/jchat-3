@@ -2618,7 +2618,8 @@ export default function MenuPage() {
   const [cardEffect, setCardEffect] = useState<string>("lift");
   const [savingEffect, setSavingEffect] = useState(false);
   const [menuTemplate, setMenuTemplate] = useState<string>("classic");
-  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
+  const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2971,7 +2972,7 @@ export default function MenuPage() {
   const handleSaveTemplate = useCallback(
     async (tpl: string) => {
       if (!isSupabaseConfigured || !businessId) return;
-      setSavingTemplate(true);
+      setSavingTemplate(tpl);
       try {
         const { error: err } = await supabase
           .from("businesses")
@@ -2983,7 +2984,7 @@ export default function MenuPage() {
       } catch {
         setError("Error al guardar la plantilla.");
       } finally {
-        setSavingTemplate(false);
+        setSavingTemplate(null);
       }
     },
     [businessId],
@@ -3664,8 +3665,8 @@ export default function MenuPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 8,
+              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+              gap: 16,
             }}
           >
             {([
@@ -3692,41 +3693,103 @@ export default function MenuPage() {
               { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
             ] as const).map((opt) => {
               const active = menuTemplate === opt.id;
+              const saving = savingTemplate === opt.id;
+              const hovered = hoveredTemplate === opt.id;
               return (
-                <label
+                <button
                   key={opt.id}
+                  type="button"
+                  onClick={() => void handleSaveTemplate(opt.id)}
+                  onMouseEnter={() => setHoveredTemplate(opt.id)}
+                  onMouseLeave={() => setHoveredTemplate((h) => (h === opt.id ? null : h))}
+                  disabled={savingTemplate !== null}
+                  aria-pressed={active}
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: `2px solid ${active ? "var(--db-accent)" : "var(--db-border)"}`,
-                    background: active ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
-                    cursor: savingTemplate ? "wait" : "pointer",
-                    transition: "border-color 0.15s",
-                    opacity: savingTemplate && !active ? 0.7 : 1,
+                    flexDirection: "column",
+                    gap: 8,
+                    padding: 8,
+                    textAlign: "left",
+                    borderRadius: 12,
+                    border: active
+                      ? "2px solid var(--db-accent)"
+                      : `1px solid ${hovered ? "var(--db-accent)" : "var(--db-border)"}`,
+                    boxShadow: active ? "0 0 0 3px var(--db-accent-bg)" : "none",
+                    background: "var(--db-bg-elevated)",
+                    cursor: savingTemplate !== null ? "wait" : "pointer",
+                    opacity: savingTemplate !== null && !saving && !active ? 0.6 : 1,
+                    transition: "border-color 0.15s, box-shadow 0.15s",
                   }}
                 >
-                  <input
-                    type="radio"
-                    name="menu_template"
-                    value={opt.id}
-                    checked={active}
-                    disabled={savingTemplate}
-                    onChange={() => void handleSaveTemplate(opt.id)}
-                    style={{ accentColor: "var(--db-accent)", width: 15, height: 15, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{opt.emoji}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--db-text-primary)" }}>
-                      {opt.name}
+                  {/* Miniatura de teléfono */}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "3 / 4",
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      background: "var(--db-bg-elevated)",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/menu-templates/${opt.id}.png`}
+                      alt={`Vista previa: ${opt.name}`}
+                      loading="lazy"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "top",
+                        display: "block",
+                      }}
+                    />
+                    {saving && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "rgba(0,0,0,0.45)",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Guardando…
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nombre + descripción */}
+                  <div style={{ minWidth: 0, padding: "0 2px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "var(--db-text-primary)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {opt.name}
+                      </span>
+                      {active && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--db-accent)", flexShrink: 0 }}>
+                          ✓ Activa
+                        </span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--db-text-secondary)" }}>
+                    <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 2, lineHeight: 1.35 }}>
                       {opt.desc}
                     </div>
                   </div>
-                </label>
+                </button>
               );
             })}
           </div>
