@@ -1,6 +1,7 @@
 "use client";
 
 import Classic from "./Classic";
+import LeftDrawer from "./LeftDrawer";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -14,6 +15,8 @@ export default function MenuTemplateRenderer({
   switch (templateId) {
     case "classic":
       return <Classic {...props} />;
+    case "left-drawer":
+      return <LeftDrawer {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
