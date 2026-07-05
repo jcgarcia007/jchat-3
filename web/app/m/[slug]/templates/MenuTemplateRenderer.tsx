@@ -12,6 +12,8 @@ import Magazine from "./Magazine";
 import StreamingRows from "./StreamingRows";
 import MasonrySearch from "./MasonrySearch";
 import FullscreenType from "./FullscreenType";
+import Timeline from "./Timeline";
+import Luxury from "./Luxury";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -47,6 +49,10 @@ export default function MenuTemplateRenderer({
       return <MasonrySearch {...props} />;
     case "fullscreen-type":
       return <FullscreenType {...props} />;
+    case "timeline":
+      return <Timeline {...props} />;
+    case "luxury":
+      return <Luxury {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
