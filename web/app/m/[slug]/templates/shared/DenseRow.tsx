@@ -7,18 +7,41 @@ import { BADGE_CONFIG, DIETARY_LABELS } from "./CategorySection";
 import type { PublicMenuItem } from "../../page";
 
 /**
+ * Optional per-template color overrides. Any field left undefined falls back to
+ * the public-menu design tokens, so templates that don't pass a palette keep the
+ * default look. Board-faithful templates (e.g. #02 Forno, #03 KAI) pass their
+ * own colors here.
+ */
+export interface DenseRowPalette {
+  card?: string;
+  border?: string;
+  name?: string;
+  muted?: string;
+  price?: string;
+  accent?: string;
+}
+
+/**
  * A dense horizontal item row (thumbnail + info + add), the item archetype for
- * list-based templates like #02 Left Drawer. Ported from the Menu Systems Board
- * #02 mock but themed with the public-menu design tokens (--color-* and --bg-*),
- * not the mock's cream palette.
+ * list-based templates like #02 Left Drawer. Colors default to the public-menu
+ * design tokens but can be overridden per template via `palette`.
  */
 export function DenseRow({
   item,
   onItemAdd,
+  palette,
 }: {
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
+  palette?: DenseRowPalette;
 }) {
+  const card = palette?.card ?? "var(--bg-surface)";
+  const border = palette?.border ?? "var(--border-subtle)";
+  const name = palette?.name ?? "var(--text-primary)";
+  const muted = palette?.muted ?? "var(--text-tertiary)";
+  const price = palette?.price ?? "var(--color-gold)";
+  const accent = palette?.accent ?? "var(--color-brand)";
+
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   const hasOptions = item.groups.length > 0;
   const badge = item.badge ? BADGE_CONFIG[item.badge] : null;
@@ -43,8 +66,8 @@ export function DenseRow({
         display: "flex",
         gap: 12,
         alignItems: "center",
-        background: "var(--bg-surface)",
-        border: "0.5px solid var(--border-subtle)",
+        background: card,
+        border: `0.5px solid ${border}`,
         borderRadius: 14,
         padding: 10,
         opacity: soldOut ? 0.55 : 1,
@@ -89,7 +112,7 @@ export function DenseRow({
             style={{
               fontSize: 13.5,
               fontWeight: 700,
-              color: "var(--text-primary)",
+              color: name,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -118,7 +141,7 @@ export function DenseRow({
           <div
             style={{
               fontSize: 11,
-              color: "var(--text-tertiary)",
+              color: muted,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -149,7 +172,7 @@ export function DenseRow({
           </div>
         )}
 
-        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--color-gold)", marginTop: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: price, marginTop: 3 }}>
           {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
         </div>
       </div>
@@ -167,7 +190,7 @@ export function DenseRow({
             fontSize: 15,
             lineHeight: 1,
             padding: 0,
-            color: faved ? "var(--color-brand)" : "var(--text-tertiary)",
+            color: faved ? accent : muted,
           }}
         >
           {faved ? "♥" : "♡"}
@@ -181,7 +204,7 @@ export function DenseRow({
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: soldOut ? "var(--bg-elevated)" : justAdded ? "#059669" : "var(--color-brand)",
+            background: soldOut ? "var(--bg-elevated)" : justAdded ? "#059669" : accent,
             color: "#fff",
             border: "none",
             fontSize: 17,

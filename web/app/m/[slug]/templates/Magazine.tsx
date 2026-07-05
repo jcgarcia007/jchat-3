@@ -37,15 +37,15 @@ function ArticleItem({
           style={{ width: "100%", height: 92, objectFit: "cover", borderRadius: 4, display: "block" }}
         />
       ) : (
-        <div style={{ width: "100%", height: 92, borderRadius: 4, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>
+        <div style={{ width: "100%", height: 92, borderRadius: 4, background: "#E9E2D2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>
           🍽️
         </div>
       )}
-      <div style={{ fontSize: 14, fontStyle: "italic", fontFamily: SERIF, color: "var(--text-primary)", marginTop: 6, lineHeight: 1.25 }}>
+      <div style={{ fontSize: 14, fontStyle: "italic", fontFamily: SERIF, color: "#211D15", marginTop: 6, lineHeight: 1.25 }}>
         {item.name}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-gold)" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#A33B2E" }}>
           {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
         </span>
         <button
@@ -57,9 +57,9 @@ function ArticleItem({
             width: 26,
             height: 26,
             borderRadius: "50%",
-            border: "1px solid var(--border-subtle)",
+            border: "1px solid #C9BFA8",
             background: "transparent",
-            color: "var(--text-primary)",
+            color: "#211D15",
             fontSize: 16,
             lineHeight: 1,
             cursor: soldOut ? "not-allowed" : "pointer",
@@ -95,29 +95,29 @@ export default function Magazine({
   const featured = nonEmpty[0].items[0];
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "10px 18px 40px" }}>
+    <div style={{ background: "#F5F1E8", minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "10px 18px 40px" }}>
       {/* Masthead */}
-      <div style={{ borderBottom: "2px solid var(--text-primary)", paddingBottom: 10, marginBottom: 4 }}>
+      <div style={{ borderBottom: "2px solid #211D15", paddingBottom: 10, marginBottom: 4 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <h1 style={{ fontSize: 34, fontWeight: 600, fontFamily: SERIF, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px", lineHeight: 1 }}>
+          <h1 style={{ fontSize: 34, fontWeight: 600, fontFamily: SERIF, color: "#211D15", margin: 0, letterSpacing: "-0.5px", lineHeight: 1 }}>
             {business.name}
           </h1>
           <button
             type="button"
             onClick={onOpenCart}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF, color: "var(--text-secondary)", whiteSpace: "nowrap", paddingTop: 6 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF, color: "#5C5340", whiteSpace: "nowrap", paddingTop: 6 }}
           >
             Cesta ({cartCount})
           </button>
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "var(--text-tertiary)", marginTop: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#8C8064", marginTop: 6 }}>
           Menú · Nº 1 · {nonEmpty.length} {nonEmpty.length === 1 ? "sección" : "secciones"}
           {business.category ? ` · ${business.category}` : ""}
         </div>
       </div>
 
       {/* Table of contents */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 20px", padding: "14px 0", borderBottom: "0.5px solid var(--border-subtle)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 20px", padding: "14px 0", borderBottom: "0.5px solid #C9BFA8" }}>
         {nonEmpty.map((cat, i) => {
           const active = cat.id === activeCategory;
           return (
@@ -134,44 +134,44 @@ export default function Magazine({
                 cursor: "pointer",
                 padding: 0,
                 textAlign: "left",
-                color: active ? "var(--color-gold)" : "var(--text-primary)",
+                color: active ? "#A33B2E" : "#211D15",
               }}
             >
               <span style={{ fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {ROMAN[i] ?? i + 1}. {cat.name}
               </span>
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}>{cat.items.length}</span>
+              <span style={{ fontSize: 11, color: "#8C8064", flexShrink: 0 }}>{cat.items.length}</span>
             </button>
           );
         })}
       </div>
 
       {/* Feature spread */}
-      <div style={{ padding: "20px 0", borderBottom: "0.5px solid var(--border-subtle)" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", color: "var(--color-gold)", marginBottom: 8 }}>
+      <div style={{ padding: "20px 0", borderBottom: "0.5px solid #C9BFA8" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", color: "#A33B2E", marginBottom: 8 }}>
           El plato de la casa
         </div>
         {featured.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={featured.photo_url} alt={featured.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 6, display: "block" }} />
         ) : (
-          <div style={{ width: "100%", height: 220, borderRadius: 6, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
+          <div style={{ width: "100%", height: 220, borderRadius: 6, background: "#E9E2D2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
         )}
-        <h2 style={{ fontSize: 26, fontWeight: 600, fontFamily: SERIF, color: "var(--text-primary)", margin: "14px 0 0", lineHeight: 1.1 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 600, fontFamily: SERIF, color: "#211D15", margin: "14px 0 0", lineHeight: 1.1 }}>
           {featured.name}
         </h2>
         {featured.description && (
-          <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6, margin: "8px 0 0" }}>{featured.description}</p>
+          <p style={{ fontSize: 13.5, color: "#5C5340", lineHeight: 1.6, margin: "8px 0 0" }}>{featured.description}</p>
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14 }}>
-          <span style={{ fontSize: 20, fontWeight: 700, fontFamily: SERIF, color: "var(--color-gold)" }}>{fmtPrice(featured.price_cents)}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, fontFamily: SERIF, color: "#A33B2E" }}>{fmtPrice(featured.price_cents)}</span>
           <button
             type="button"
             onClick={() => onItemAdd(featured)}
             style={{
-              border: "1px solid var(--text-primary)",
+              border: "1px solid #211D15",
               background: "transparent",
-              color: "var(--text-primary)",
+              color: "#211D15",
               borderRadius: 999,
               padding: "9px 20px",
               fontSize: 12.5,
@@ -198,9 +198,9 @@ export default function Magazine({
               if (el) sectionRefs.current.set(cat.id, el);
               else sectionRefs.current.delete(cat.id);
             }}
-            style={{ scrollMarginTop: 16, padding: "18px 0", borderBottom: "0.5px solid var(--border-subtle)" }}
+            style={{ scrollMarginTop: 16, padding: "18px 0", borderBottom: "0.5px solid #C9BFA8" }}
           >
-            <h3 style={{ fontSize: 18, fontWeight: 600, fontFamily: SERIF, color: "var(--text-primary)", margin: "0 0 14px" }}>{cat.name}</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, fontFamily: SERIF, color: "#211D15", margin: "0 0 14px" }}>{cat.name}</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 18px" }}>
               {items.map((item) => (
                 <ArticleItem key={item.id} item={item} onItemAdd={onItemAdd} />

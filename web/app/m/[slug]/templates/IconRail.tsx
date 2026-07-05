@@ -10,12 +10,22 @@ import { fmtPrice } from "./shared/format";
  * IconRail (#03 Right-Hand Icon Rail). Categories live on a permanent thumb-side
  * rail on the RIGHT (one-handed use); the active icon glows and the list filters
  * by scroll. A docked mini-cart keeps the total in view. Items render as a dense
- * list. Ported from the Menu Systems Board #03 mock, themed with public-menu
- * tokens (not the mock's palette).
+ * list. Ported from the Menu Systems Board #03 mock ("KAI") with its original
+ * palette: deep-navy stage, teal accent, gold prices.
  *
  * Note: MenuPageClient suppresses the shared CartFAB for this template so the
  * docked mini-cart is the only cart affordance.
  */
+
+// Board #03 "KAI" palette.
+const NAVY = "#0B1020";
+const CARD = "#141B33";
+const TEAL = "#4FD1C5";
+const GOLD = "#F2C879";
+const HAIR = "rgba(255,255,255,0.10)";
+const MUTED = "rgba(255,255,255,0.55)";
+const ROW_PALETTE = { card: CARD, border: HAIR, name: "#FFFFFF", muted: MUTED, price: GOLD, accent: TEAL };
+
 export default function IconRail({
   business,
   categories,
@@ -37,12 +47,12 @@ export default function IconRail({
   const tagline = nonEmpty.map((c) => c.name).join(" · ");
 
   return (
-    <div style={{ position: "relative", paddingBottom: 84 }}>
+    <div style={{ position: "relative", paddingBottom: 84, background: NAVY, minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "flex-start", maxWidth: 680, margin: "0 auto" }}>
         {/* Body */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ padding: "14px 16px 6px" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF", margin: 0, letterSpacing: "-0.5px" }}>
               {business.name}
             </h1>
             <div
@@ -50,7 +60,7 @@ export default function IconRail({
                 fontSize: 10.5,
                 fontWeight: 800,
                 letterSpacing: "1px",
-                color: "var(--text-tertiary)",
+                color: TEAL,
                 textTransform: "uppercase",
                 marginTop: 4,
                 overflow: "hidden",
@@ -73,13 +83,13 @@ export default function IconRail({
               style={{ scrollMarginTop: 16 }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 12px 10px" }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{cat.name}</h2>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "#FFFFFF", margin: 0 }}>{cat.name}</h2>
                 <span
                   style={{
                     fontSize: 11,
-                    color: "var(--text-tertiary)",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-subtle)",
+                    color: MUTED,
+                    background: CARD,
+                    border: `1px solid ${HAIR}`,
                     borderRadius: 10,
                     padding: "1px 7px",
                   }}
@@ -89,7 +99,7 @@ export default function IconRail({
               </div>
               <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 10 }}>
                 {cat.items.map((item) => (
-                  <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} />
+                  <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} palette={ROW_PALETTE} />
                 ))}
               </div>
             </section>
@@ -110,7 +120,7 @@ export default function IconRail({
             gap: 6,
             padding: "10px 0",
             marginLeft: 4,
-            borderLeft: "0.5px solid var(--border-subtle)",
+            borderLeft: `0.5px solid ${HAIR}`,
           }}
         >
           {nonEmpty.map((cat) => {
@@ -133,9 +143,9 @@ export default function IconRail({
                   borderRadius: 12,
                   border: "none",
                   cursor: "pointer",
-                  background: active ? "rgba(217,119,6,0.15)" : "transparent",
-                  color: active ? "var(--color-gold)" : "var(--text-tertiary)",
-                  boxShadow: active ? "0 0 0 1px var(--color-gold), 0 6px 16px rgba(217,119,6,0.25)" : "none",
+                  background: active ? "rgba(79,209,197,0.14)" : "transparent",
+                  color: active ? TEAL : MUTED,
+                  boxShadow: active ? `0 0 0 1px ${TEAL}, 0 6px 16px rgba(79,209,197,0.3)` : "none",
                   transition: "background 0.15s, color 0.15s, box-shadow 0.15s",
                 }}
               >
@@ -193,9 +203,9 @@ export default function IconRail({
           borderRadius: 16,
           border: "none",
           cursor: "pointer",
-          background: "var(--color-gold)",
-          color: "#1a1206",
-          boxShadow: "0 10px 24px rgba(217,119,6,0.3)",
+          background: TEAL,
+          color: NAVY,
+          boxShadow: "0 10px 24px rgba(79,209,197,0.3)",
         }}
       >
         <span style={{ fontSize: 13, fontWeight: 800 }}>🛒 Carrito · {cartCount}</span>

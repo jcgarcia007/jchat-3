@@ -10,9 +10,19 @@ import { EmptyMenu } from "./shared/EmptyMenu";
  * LeftDrawer (#02 Left Drawer Navigation). A hamburger opens a slide-in left
  * panel that holds the whole category IA with per-category counts; the menu
  * body itself is a clean dense list (shared DenseRow), not the card grid.
- * Ported from the Menu Systems Board #02 mock but themed with the public-menu
- * design tokens, not the mock's warm cream palette.
+ * Ported from the Menu Systems Board #02 mock ("Forno") with its original warm
+ * palette: cream content area, dark-brown drawer, red accent.
  */
+
+// Board #02 "Forno" palette.
+const CREAM = "#FAF7F2";
+const PANEL = "#5E1A0E";
+const RED = "#C2371F";
+const INK = "#3C2A21";
+const MUTED = "#9C8E7B";
+const BORDER = "#E7DFD3";
+const ROW_PALETTE = { card: "#FFFFFF", border: BORDER, name: INK, muted: MUTED, price: RED, accent: RED };
+
 export default function LeftDrawer({
   business,
   categories,
@@ -28,7 +38,7 @@ export default function LeftDrawer({
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   return (
-    <>
+    <div style={{ background: CREAM, minHeight: "100vh" }}>
       {/* ── Top bar: hamburger + name · cart ─────────────────────────────── */}
       <div
         style={{
@@ -40,9 +50,9 @@ export default function LeftDrawer({
           justifyContent: "space-between",
           gap: 12,
           padding: "10px 16px",
-          background: "var(--bg-base)",
-          borderBottom: "1px solid var(--border-subtle)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          background: CREAM,
+          borderBottom: `1px solid ${BORDER}`,
+          boxShadow: "0 2px 8px rgba(60,42,33,0.08)",
         }}
       >
         <button
@@ -57,7 +67,7 @@ export default function LeftDrawer({
             border: "none",
             cursor: "pointer",
             padding: 0,
-            color: "var(--text-primary)",
+            color: INK,
             minWidth: 0,
           }}
         >
@@ -85,13 +95,13 @@ export default function LeftDrawer({
             width: 38,
             height: 38,
             borderRadius: 999,
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
+            background: "#FFFFFF",
+            border: `1px solid ${BORDER}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 16,
-            color: "var(--text-primary)",
+            color: INK,
             cursor: "pointer",
             flexShrink: 0,
           }}
@@ -106,7 +116,7 @@ export default function LeftDrawer({
                 minWidth: 18,
                 height: 18,
                 borderRadius: 99,
-                background: "var(--color-brand)",
+                background: RED,
                 color: "#fff",
                 fontSize: 10,
                 fontWeight: 900,
@@ -146,8 +156,8 @@ export default function LeftDrawer({
           left: 0,
           width: 260,
           zIndex: 201,
-          background: "var(--bg-surface)",
-          boxShadow: "8px 0 32px rgba(0,0,0,0.45)",
+          background: PANEL,
+          boxShadow: "8px 0 32px rgba(30,15,8,0.45)",
           transform: open ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.28s cubic-bezier(.22,1,.36,1)",
           display: "flex",
@@ -158,13 +168,13 @@ export default function LeftDrawer({
         <div
           style={{
             padding: "20px 20px 16px",
-            borderBottom: "1px solid var(--border-subtle)",
+            borderBottom: "1px solid rgba(255,255,255,0.14)",
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: CREAM }}>
             {business.name}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
             Categorías
           </div>
         </div>
@@ -188,9 +198,9 @@ export default function LeftDrawer({
                   width: "100%",
                   padding: "11px 12px",
                   borderRadius: 10,
-                  border: active ? "1px solid var(--color-gold)" : "1px solid transparent",
-                  background: active ? "rgba(217,119,6,0.15)" : "transparent",
-                  color: active ? "var(--color-gold)" : "var(--text-secondary)",
+                  border: active ? "1px solid rgba(255,255,255,0.35)" : "1px solid transparent",
+                  background: active ? "rgba(255,255,255,0.12)" : "transparent",
+                  color: active ? CREAM : "rgba(255,255,255,0.72)",
                   fontSize: 13.5,
                   fontWeight: active ? 700 : 500,
                   cursor: "pointer",
@@ -261,23 +271,23 @@ export default function LeftDrawer({
                         borderRadius: "50%",
                         objectFit: "cover",
                         flexShrink: 0,
-                        border: "1.5px solid rgba(217,119,6,0.5)",
+                        border: `1.5px solid ${RED}`,
                       }}
                     />
                   ) : TablerIcon ? (
-                    <TablerIcon size={22} stroke={1.5} color="var(--color-gold)" />
+                    <TablerIcon size={22} stroke={1.5} color={RED} />
                   ) : cat.icon ? (
                     <span style={{ fontSize: 20 }}>{cat.icon}</span>
                   ) : null}
-                  <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 700, color: INK, margin: 0 }}>
                     {cat.name}
                   </h2>
                   <span
                     style={{
                       fontSize: 11,
-                      color: "var(--text-tertiary)",
-                      background: "var(--bg-surface)",
-                      border: "1px solid var(--border-subtle)",
+                      color: MUTED,
+                      background: "#FFFFFF",
+                      border: `1px solid ${BORDER}`,
                       borderRadius: 10,
                       padding: "1px 7px",
                     }}
@@ -297,7 +307,7 @@ export default function LeftDrawer({
                   }}
                 >
                   {cat.items.map((item) => (
-                    <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} />
+                    <DenseRow key={item.id} item={item} onItemAdd={onItemAdd} palette={ROW_PALETTE} />
                   ))}
                 </div>
               </section>
@@ -305,6 +315,6 @@ export default function LeftDrawer({
           })}
         </div>
       )}
-    </>
+    </div>
   );
 }
