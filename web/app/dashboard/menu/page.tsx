@@ -3457,35 +3457,6 @@ export default function MenuPage() {
               When on, customers see your menu icon in the venue chat.
             </span>
           </div>
-
-          {!showCatForm && (
-            <button
-              onClick={() => {
-                setShowCatForm(true);
-                setEditingCatId(null);
-                setCatFormInitial(EMPTY_CATEGORY_FORM);
-                setError(null);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "9px 18px",
-                borderRadius: "8px",
-                border: "none",
-                background: "var(--db-accent)",
-                color: "var(--db-accent-text)",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-                flexShrink: 0,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <IconPlus size={16} />
-              New Category
-            </button>
-          )}
         </div>
       </div>
 
@@ -4288,6 +4259,55 @@ export default function MenuPage() {
           )}
         </div>
       )}
+
+      {/* ── Categorías del menú (encabezado + acción) ─────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+            Categorías del menú
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
+            Organiza tu menú en secciones.
+          </p>
+        </div>
+
+        {!showCatForm && (
+          <button
+            onClick={() => {
+              setShowCatForm(true);
+              setEditingCatId(null);
+              setCatFormInitial(EMPTY_CATEGORY_FORM);
+              setError(null);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 18px",
+              borderRadius: "8px",
+              border: "none",
+              background: "var(--db-accent)",
+              color: "var(--db-accent-text)",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <IconPlus size={16} />
+            Nueva categoría
+          </button>
+        )}
+      </div>
 
       {/* New / edit category form */}
       {showCatForm && (
