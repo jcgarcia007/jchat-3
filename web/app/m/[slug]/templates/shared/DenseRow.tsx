@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { IconPlus } from "@tabler/icons-react";
 import { fmtPrice } from "./format";
 import { BADGE_CONFIG, DIETARY_LABELS } from "./CategorySection";
 import type { PublicMenuItem } from "../../page";
@@ -193,7 +194,7 @@ export function DenseRow({
             transition: "transform .18s cubic-bezier(.22,1,.36,1), background .2s ease",
           }}
         >
-          {soldOut ? "×" : hasOptions ? "⚙" : justAdded ? "✓" : "+"}
+          {soldOut ? "×" : justAdded ? "✓" : <IconPlus size={18} />}
         </button>
       </div>
     </div>
