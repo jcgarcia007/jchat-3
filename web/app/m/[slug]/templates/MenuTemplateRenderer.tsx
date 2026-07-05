@@ -4,6 +4,8 @@ import Classic from "./Classic";
 import LeftDrawer from "./LeftDrawer";
 import IconRail from "./IconRail";
 import StickyTabs from "./StickyTabs";
+import CategorySidebar from "./CategorySidebar";
+import StoreSections from "./StoreSections";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -23,6 +25,10 @@ export default function MenuTemplateRenderer({
       return <IconRail {...props} />;
     case "sticky-tabs":
       return <StickyTabs {...props} />;
+    case "category-sidebar":
+      return <CategorySidebar {...props} />;
+    case "store-sections":
+      return <StoreSections {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
