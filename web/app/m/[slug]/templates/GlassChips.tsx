@@ -188,16 +188,26 @@ export default function GlassChips({
         </section>
       ))}
 
-      {/* Single opaque cart FAB (bottom-right) */}
+      {/* Single opaque cart FAB (bottom-right) — sticky wrapper pins it to the
+          column's bottom-right while scrolling (shell transform breaks fixed). */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 20,
+          zIndex: 30,
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingRight: 16,
+          pointerEvents: "none",
+        }}
+      >
       <button
         type="button"
         onClick={onOpenCart}
         aria-label={`Ver carrito, ${cartCount} artículos`}
         style={{
-          position: "fixed",
-          right: 16,
-          bottom: 20,
-          zIndex: 30,
+          position: "relative",
+          pointerEvents: "auto",
           width: 58,
           height: 58,
           borderRadius: "50%",
@@ -237,6 +247,7 @@ export default function GlassChips({
           </span>
         )}
       </button>
+      </div>
     </div>
   );
 }

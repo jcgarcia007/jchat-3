@@ -46,7 +46,7 @@ export default function AiPersonalized({
   const first = items[0];
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", paddingBottom: 90 }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", paddingBottom: 16 }}>
       {/* Gradient header */}
       <div style={{ background: (P.accentGradient ?? P.accent), color: "#fff", padding: "18px 20px 20px", borderRadius: "0 0 22px 22px" }}>
         <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.3px" }}>{business.name}</div>
@@ -91,7 +91,7 @@ export default function AiPersonalized({
       </div>
 
       {/* Composer bar */}
-      <div style={{ position: "fixed", left: "50%", bottom: 14, transform: "translateX(-50%)", width: "calc(100% - 24px)", maxWidth: 656, zIndex: 30, display: "flex", alignItems: "center", gap: 8, padding: "8px 8px 8px 16px", borderRadius: 999, background: P.surfaceElevated, border: `1px solid ${P.border}`, boxShadow: "0 12px 28px rgba(0,0,0,0.4)" }}>
+      <div style={{ position: "sticky", bottom: 14, margin: "0 auto", width: "calc(100% - 24px)", maxWidth: 656, zIndex: 30, display: "flex", alignItems: "center", gap: 8, padding: "8px 8px 8px 16px", borderRadius: 999, background: P.surfaceElevated, border: `1px solid ${P.border}`, boxShadow: "0 12px 28px rgba(0,0,0,0.4)" }}>
         <input
           placeholder="Pídeme lo que sea… «algo caliente»"
           style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: P.text, fontSize: 13 }}

@@ -37,7 +37,7 @@ export default function StickyTabs({
   }
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", paddingBottom: 84 }}>
+    <div style={{ background: P.bg, minHeight: "100vh", paddingBottom: 16 }}>
       {/* Header */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 16px 10px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.5px" }}>
@@ -136,10 +136,9 @@ export default function StickyTabs({
         type="button"
         onClick={onOpenCart}
         style={{
-          position: "fixed",
+          position: "sticky",
           bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
+          margin: "0 auto",
           width: "calc(100% - 32px)",
           maxWidth: 648,
           zIndex: 30,

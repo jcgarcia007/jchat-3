@@ -150,10 +150,9 @@ export default function InfiniteFeed({
       {/* Gradient cart bar */}
       <div
         style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
+          position: "sticky",
           bottom: 0,
+          width: "100%",
           zIndex: 30,
           padding: "40px 16px 18px",
           background: `linear-gradient(180deg, transparent, ${P.bg} 55%)`,

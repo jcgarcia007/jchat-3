@@ -175,16 +175,26 @@ export default function Luxury({
         })}
       </div>
 
-      {/* Concierge orb */}
+      {/* Concierge orb — sticky wrapper pins it to the column's bottom-right
+          while scrolling (shell transform breaks fixed). */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 26,
+          zIndex: 30,
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingRight: 22,
+          pointerEvents: "none",
+        }}
+      >
       <button
         type="button"
         onClick={onOpenCart}
         aria-label={`Concierge · carrito, ${cartCount} artículos`}
         style={{
-          position: "fixed",
-          right: 22,
-          bottom: 26,
-          zIndex: 30,
+          position: "relative",
+          pointerEvents: "auto",
           width: 58,
           height: 58,
           borderRadius: "50%",
@@ -203,6 +213,7 @@ export default function Luxury({
         <IconShoppingCart size={18} />
         <span style={{ fontSize: 10, fontWeight: 800 }}>{cartCount}</span>
       </button>
+      </div>
     </div>
   );
 }

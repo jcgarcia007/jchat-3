@@ -1330,10 +1330,11 @@ function CartFAB({
     <button
       onClick={onClick}
       style={{
-        position: "fixed",
+        position: "sticky",
         bottom: 24,
-        left: "50%",
-        transform: "translateX(-50%)",
+        marginLeft: "auto",
+        marginRight: "auto",
+        width: "fit-content",
         zIndex: 30,
         background:
           "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
@@ -1571,7 +1572,7 @@ export default function MenuPageClient({
           WebkitOverflowScrolling: "touch",
           background: palette.bg,
           color: "var(--text-primary)",
-          paddingBottom: cartCount > 0 ? 96 : 32,
+          paddingBottom: 16,
         }}
       >
       {showBusinessHeader && <BusinessHeader biz={business} />}

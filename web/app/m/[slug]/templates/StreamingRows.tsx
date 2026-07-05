@@ -151,16 +151,26 @@ export default function StreamingRows({
         </section>
       ))}
 
-      {/* Floating cart FAB */}
+      {/* Floating cart FAB — sticky wrapper pins it to the column's
+          bottom-right while scrolling (shell transform breaks fixed). */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 20,
+          zIndex: 30,
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingRight: 16,
+          pointerEvents: "none",
+        }}
+      >
       <button
         type="button"
         onClick={onOpenCart}
         aria-label={`Ver carrito, ${cartCount} artículos`}
         style={{
-          position: "fixed",
-          right: 16,
-          bottom: 20,
-          zIndex: 30,
+          position: "relative",
+          pointerEvents: "auto",
           width: 54,
           height: 54,
           borderRadius: "50%",
@@ -200,6 +210,7 @@ export default function StreamingRows({
           </span>
         )}
       </button>
+      </div>
     </div>
   );
 }

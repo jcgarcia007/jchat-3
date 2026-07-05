@@ -108,7 +108,7 @@ export default function MasonrySearch({
   }
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "14px 16px 96px" }}>
+    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "14px 16px 24px" }}>
       {/* Prompt + avatar */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
@@ -199,10 +199,10 @@ export default function MasonrySearch({
       {cartCount > 0 && (
         <div
           style={{
-            position: "fixed",
-            left: "50%",
+            position: "sticky",
             bottom: 16,
-            transform: "translateX(-50%)",
+            marginLeft: "auto",
+            marginRight: "auto",
             width: "calc(100% - 32px)",
             maxWidth: 648,
             zIndex: 30,

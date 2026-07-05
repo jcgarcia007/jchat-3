@@ -1,5 +1,6 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
+import { createPortal } from "react-dom";
 
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
@@ -155,32 +156,38 @@ export default function CategorySidebar({
         </div>
       </div>
 
-      {/* Right-edge cart pull-tab */}
-      <button
-        type="button"
-        onClick={onOpenCart}
-        aria-label={`Ver carrito, ${cartCount} artículos`}
-        style={{
-          position: "fixed",
-          right: 0,
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: 30,
-          writingMode: "vertical-rl",
-          padding: "16px 8px",
-          border: "none",
-          borderRadius: "12px 0 0 12px",
-          background: P.accent,
-          color: P.accentText,
-          fontSize: 12,
-          fontWeight: 800,
-          letterSpacing: "1px",
-          cursor: "pointer",
-          boxShadow: "-6px 0 18px rgba(0,0,0,0.35)",
-        }}
-      >
-        <IconShoppingCart size={15} style={{ marginBottom: 6 }} />CARRITO · {cartCount}
-      </button>
+      {/* Right-edge cart pull-tab — portaled to <body> so it stays pinned to
+          the viewport (shell transform breaks fixed). Anchored to the menu
+          column's right edge via min(): full-width on mobile, 480px column on
+          desktop. */}
+      {typeof document !== "undefined" && createPortal(
+        <button
+          type="button"
+          onClick={onOpenCart}
+          aria-label={`Ver carrito, ${cartCount} artículos`}
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "calc(50% + min(240px, 50vw))",
+            transform: "translate(-100%, -50%)",
+            zIndex: 30,
+            writingMode: "vertical-rl",
+            padding: "16px 8px",
+            border: "none",
+            borderRadius: "12px 0 0 12px",
+            background: P.accent,
+            color: P.accentText,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: "1px",
+            cursor: "pointer",
+            boxShadow: "-6px 0 18px rgba(0,0,0,0.35)",
+          }}
+        >
+          <IconShoppingCart size={15} style={{ marginBottom: 6 }} />CARRITO · {cartCount}
+        </button>,
+        document.body,
+      )}
     </div>
   );
 }

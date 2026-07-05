@@ -49,7 +49,7 @@ export default function IconRail({
   const tagline = nonEmpty.map((c) => c.name).join(" · ");
 
   return (
-    <div style={{ position: "relative", paddingBottom: 84, background: NAVY, minHeight: "100vh" }}>
+    <div style={{ position: "relative", paddingBottom: 16, background: NAVY, minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "flex-start", maxWidth: 680, margin: "0 auto" }}>
         {/* Body */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -190,10 +190,9 @@ export default function IconRail({
         type="button"
         onClick={onOpenCart}
         style={{
-          position: "fixed",
+          position: "sticky",
           bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
+          margin: "0 auto",
           width: "calc(100% - 32px)",
           maxWidth: 648,
           zIndex: 30,

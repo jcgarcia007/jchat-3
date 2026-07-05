@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
@@ -134,6 +135,10 @@ export default function LeftDrawer({
         </button>
       </div>
 
+      {/* Backdrop + drawer are portaled to <body> so they cover the real
+          viewport — the responsive shell's transform breaks position:fixed. */}
+      {typeof document !== "undefined" && createPortal(
+        <>
       {/* ── Backdrop ─────────────────────────────────────────────────────── */}
       <div
         onClick={() => setOpen(false)}
@@ -234,6 +239,9 @@ export default function LeftDrawer({
           })}
         </nav>
       </aside>
+        </>,
+        document.body,
+      )}
 
       {/* ── Body: dense list per section (scroll-spy via sectionRefs) ────── */}
       {nonEmpty.length === 0 ? (
