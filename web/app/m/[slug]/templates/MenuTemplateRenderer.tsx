@@ -10,6 +10,8 @@ import GlassChips from "./GlassChips";
 import InfiniteFeed from "./InfiniteFeed";
 import Magazine from "./Magazine";
 import StreamingRows from "./StreamingRows";
+import MasonrySearch from "./MasonrySearch";
+import FullscreenType from "./FullscreenType";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -41,6 +43,10 @@ export default function MenuTemplateRenderer({
       return <Magazine {...props} />;
     case "streaming-rows":
       return <StreamingRows {...props} />;
+    case "masonry-search":
+      return <MasonrySearch {...props} />;
+    case "fullscreen-type":
+      return <FullscreenType {...props} />;
     case "bottom-nav":
       // TODO: portar bottom-nav real del board (#01)
       return <Classic {...props} />;
