@@ -929,7 +929,7 @@ function PickupSheet({
   onBack: () => void;
   onConfirm: (type: PickupType, tableNumber: string) => void;
 }) {
-  const [pickupType, setPickupType] = useState<PickupType>("counter");
+  const [pickupType, setPickupType] = useState<PickupType>("table");
   const [tableNumber, setTableNumber] = useState("");
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
   const canConfirm = pickupType === "counter" || tableNumber.trim().length > 0;
@@ -986,14 +986,14 @@ function PickupSheet({
             {(
               [
                 {
-                  type: "counter" as PickupType,
-                  label: "🍽️ En la barra",
-                  desc: "Recoge en el counter cuando esté listo",
-                },
-                {
                   type: "table" as PickupType,
                   label: "🪑 En mi mesa",
                   desc: "Te lo llevamos a tu mesa",
+                },
+                {
+                  type: "counter" as PickupType,
+                  label: "🍽️ En la barra",
+                  desc: "Recoge en el counter cuando esté listo",
                 },
               ] as const
             ).map(({ type, label, desc }) => {
