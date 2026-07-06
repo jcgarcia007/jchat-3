@@ -35,6 +35,28 @@ interface PresenceUser {
   isIncognito: boolean;
 }
 
+// Presence payload tracked on every channel this user is present in.
+interface PresencePayload {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_incognito: boolean;
+  nickname: string | null;
+}
+
+// A room of the current business, for the sub-chats bar + navigation.
+interface RoomSummary {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  is_main: boolean;
+  is_password_protected: boolean;
+  parent_room_id: string | null;
+  chat_theme_id: number;
+  sort: number;
+}
+
 interface ChatMessage {
   id: string;
   room_id: string;
@@ -113,6 +135,29 @@ function buildPresentUsers(state: Record<string, unknown[]>): PresenceUser[] {
   return result;
 }
 
+// Subscribe + track presence on a single room channel. The caller owns the
+// returned channel (untrack + removeChannel on cleanup). `onState` is called
+// with the room id and its live present-user list on every sync/join/leave.
+function subscribePresence(
+  roomId: string,
+  userId: string,
+  payload: PresencePayload,
+  onState: (roomId: string, users: PresenceUser[]) => void,
+): RealtimeChannel {
+  const ch = supabase.channel(`presence:${roomId}`, {
+    config: { presence: { key: userId } },
+  });
+  const sync = () =>
+    onState(roomId, buildPresentUsers(ch.presenceState() as Record<string, unknown[]>));
+  ch.on("presence", { event: "sync" }, sync)
+    .on("presence", { event: "join" }, sync)
+    .on("presence", { event: "leave" }, sync)
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") void ch.track(payload);
+    });
+  return ch;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -126,7 +171,12 @@ interface Props {
 }
 
 export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
-  const theme = getChatTheme(chatThemeId);
+  // The room being viewed. Starts at the QR-resolved room (prop) and changes
+  // in-place as the user taps sub-chats — no page reload.
+  const [activeRoomId, setActiveRoomId] = useState(roomId);
+  // Anchor = the QR entry room. Constant for the whole session (presence §2.5).
+  const anchorRoomId = roomId;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
@@ -135,7 +185,21 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [showAttachPanel, setShowAttachPanel] = useState(false);
-  const [presentUsers, setPresentUsers] = useState<PresenceUser[]>([]);
+
+  // Sub-chats bar + navigation
+  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  // Password-protected rooms the user has unlocked this session (skip re-prompt).
+  const [unlockedRooms, setUnlockedRooms] = useState<Set<string>>(new Set());
+
+  // Presence: one entry per room this user is present in (main + anchor + visited).
+  const [presenceByRoom, setPresenceByRoom] = useState<Record<string, PresenceUser[]>>({});
+  const [presencePayload, setPresencePayload] = useState<PresencePayload | null>(null);
+
+  // Password modal for a locked room the user tapped.
+  const [passwordRoom, setPasswordRoom] = useState<RoomSummary | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
   // ── Waiter call state ─────────────────────────────────────────────────────────
   const [showWaiterSheet, setShowWaiterSheet] = useState(false);
@@ -149,7 +213,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+  // Presence channels: main + anchor are permanent; visited rotates (§2.5).
+  const mainPresenceRef = useRef<RealtimeChannel | null>(null);
+  const anchorPresenceRef = useRef<RealtimeChannel | null>(null);
+  const visitedPresenceRef = useRef<RealtimeChannel | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachPanelRef = useRef<HTMLDivElement>(null);
@@ -160,6 +227,22 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollWindowRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+
+  // ── Derived values ─────────────────────────────────────────────────────────────
+  const mainRoomId = rooms.find((r) => r.is_main)?.id;
+  const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? null;
+  // Theme + header follow the active room once the rooms list resolves; props are
+  // only the first-paint fallback (the QR entry room).
+  const theme = getChatTheme(activeRoom?.chat_theme_id ?? chatThemeId);
+  const headerName = activeRoom?.name ?? roomName;
+  // Visited (rotating) presence channel: only when the active room is neither the
+  // main nor the anchor (those are covered by the permanent channels).
+  const visitedRoomId =
+    activeRoomId !== mainRoomId && activeRoomId !== anchorRoomId ? activeRoomId : null;
+  // The "online" bar shows the presence of the room currently on screen.
+  const presentUsers: PresenceUser[] = isSupabaseConfigured
+    ? (presenceByRoom[activeRoomId] ?? [])
+    : [{ userId, displayName: "Tú (demo)", avatarUrl: null, isIncognito: false }];
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -188,7 +271,34 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     []
   );
 
-  // ── Initial load ─────────────────────────────────────────────────────────────
+  // ── Load the business's rooms (sub-chats bar) ────────────────────────────────
+  // RLS on `rooms` allows any authenticated user to read, so a direct query is
+  // enough. is_main is forced first, then the rest by `sort`.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("rooms")
+        .select(
+          "id, name, icon, color, is_main, is_password_protected, parent_room_id, chat_theme_id, sort"
+        )
+        .eq("business_id", businessId)
+        .eq("is_active", true)
+        .order("sort", { ascending: true });
+      if (cancelled || !data) return;
+      const list = (data as unknown as RoomSummary[]).slice().sort((a, b) => {
+        if (a.is_main !== b.is_main) return a.is_main ? -1 : 1;
+        return a.sort - b.sort;
+      });
+      setRooms(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
+
+  // ── Initial load (messages) for the active room ──────────────────────────────
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoadState("ok");
@@ -197,30 +307,33 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
     let cancelled = false;
 
+    // Reset immediately so the previous room's messages never show under the new
+    // header while the switch is in flight.
+    setMessages([]);
+    setLoadState("loading");
+    userScrolledUpRef.current = false;
+
     async function load() {
-      const [{ data: membership }, { data: msgs, error: msgsErr }] =
-        await Promise.all([
-          supabase
-            .from("room_members")
-            .select("expires_at")
-            .eq("room_id", roomId)
-            .eq("user_id", userId)
-            .gt("expires_at", new Date().toISOString())
-            .maybeSingle(),
-          supabase
-            .from("messages")
-            .select(MSG_SELECT)
-            .eq("room_id", roomId)
-            .order("created_at", { ascending: false })
-            .limit(PAGE_SIZE),
-        ]);
-
+      // Gate on can_access_room (matches the messages RLS): password-free rooms
+      // are accessible without a room_members row, so this correctly opens
+      // sibling sub-rooms that have no password.
+      const { data: canAccess } = await supabase.rpc("can_access_room", {
+        _room_id: activeRoomId,
+      });
       if (cancelled) return;
-
-      if (!membership) {
+      if (!canAccess) {
         setLoadState("no_access");
         return;
       }
+
+      const { data: msgs, error: msgsErr } = await supabase
+        .from("messages")
+        .select(MSG_SELECT)
+        .eq("room_id", activeRoomId)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (cancelled) return;
 
       if (msgsErr) {
         setLoadState("error");
@@ -236,7 +349,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     return () => {
       cancelled = true;
     };
-  }, [roomId, userId]);
+  }, [activeRoomId, userId]);
 
   // Auto-scroll on initial load. Open a short "initial window" during which
   // image onLoad handlers re-anchor to the bottom (heights become known after
@@ -268,14 +381,14 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     if (loadState !== "ok" || !isSupabaseConfigured) return;
 
     channelRef.current = supabase
-      .channel(`room-messages:${roomId}`)
+      .channel(`room-messages:${activeRoomId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `room_id=eq.${roomId}`,
+          filter: `room_id=eq.${activeRoomId}`,
         },
         async (payload) => {
           const newId = (payload.new as { id: string }).id;
@@ -296,86 +409,88 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         channelRef.current = null;
       }
     };
-  }, [loadState, roomId, fetchMessage, scrollToBottom]);
+  }, [loadState, activeRoomId, fetchMessage, scrollToBottom]);
 
-  // ── Presence subscription ────────────────────────────────────────────────────
+  // ── Presence: fetch the user's profile once → the payload tracked everywhere ──
   useEffect(() => {
-    if (loadState !== "ok") return;
-
-    if (!isSupabaseConfigured) {
-      // Demo mode: show the current user as sole presence
-      setPresentUsers([{ userId, displayName: "Tú (demo)", avatarUrl: null, isIncognito: false }]);
-      return;
-    }
-
-    let isMounted = true;
-
-    async function setupPresence() {
-      // Fetch current user profile for the presence payload
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    void (async () => {
       const { data: profile } = await supabase
         .from("users")
         .select("display_name, username, avatar_url")
         .eq("id", userId)
         .maybeSingle();
-
-      if (!isMounted) return;
-
-      const p = profile as { display_name?: string | null; username?: string | null; avatar_url?: string | null } | null;
-      const displayName = p?.display_name?.trim() || p?.username?.trim() || "Usuario";
-      const avatarUrl = p?.avatar_url ?? null;
-
-      const trackPayload = {
+      if (cancelled) return;
+      const p = profile as
+        | { display_name?: string | null; username?: string | null; avatar_url?: string | null }
+        | null;
+      setPresencePayload({
         user_id: userId,
-        display_name: displayName,
-        avatar_url: avatarUrl,
+        display_name: p?.display_name?.trim() || p?.username?.trim() || "Usuario",
+        avatar_url: p?.avatar_url ?? null,
         // Debt: web has no per-user incognito state — always false for own presence.
         // Other users' incognito flag is honoured via their own payload.
         is_incognito: false,
-        nickname: null as string | null,
-      };
-
-      const ch = supabase.channel(`presence:${roomId}`, {
-        config: { presence: { key: userId } },
+        nickname: null,
       });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
-      presenceChannelRef.current = ch;
+  // ── Presence PERMANENT channels: MAIN (always) + ANCHOR (if ≠ main) ───────────
+  // Deps intentionally exclude activeRoomId: these must NOT re-mount on navigation
+  // (otherwise main/anchor would flicker join/leave every time you switch rooms).
+  useEffect(() => {
+    if (!isSupabaseConfigured || !presencePayload || !mainRoomId) return;
 
-      // Immediately clean up if unmounted between async operations
-      if (!isMounted) {
-        void supabase.removeChannel(ch);
-        presenceChannelRef.current = null;
-        return;
-      }
+    const onState = (rid: string, users: PresenceUser[]) =>
+      setPresenceByRoom((prev) => ({ ...prev, [rid]: users }));
 
-      function handleSync() {
-        if (!isMounted) return;
-        setPresentUsers(buildPresentUsers(ch.presenceState() as Record<string, unknown[]>));
-      }
+    const channels: RealtimeChannel[] = [];
 
-      ch
-        .on("presence", { event: "sync" }, handleSync)
-        .on("presence", { event: "join" }, handleSync)
-        .on("presence", { event: "leave" }, handleSync)
-        .subscribe(async (status) => {
-          if (status === "SUBSCRIBED" && isMounted) {
-            await ch.track(trackPayload);
-          }
-        });
+    const main = subscribePresence(mainRoomId, userId, presencePayload, onState);
+    mainPresenceRef.current = main;
+    channels.push(main);
+
+    if (anchorRoomId !== mainRoomId) {
+      const anchor = subscribePresence(anchorRoomId, userId, presencePayload, onState);
+      anchorPresenceRef.current = anchor;
+      channels.push(anchor);
     }
 
-    void setupPresence();
-
     return () => {
-      isMounted = false;
-      const ch = presenceChannelRef.current;
-      if (ch) {
+      for (const ch of channels) {
         void ch.untrack().finally(() => {
           void supabase.removeChannel(ch);
         });
-        presenceChannelRef.current = null;
       }
+      mainPresenceRef.current = null;
+      anchorPresenceRef.current = null;
     };
-  }, [loadState, roomId, userId]);
+  }, [mainRoomId, anchorRoomId, userId, presencePayload]);
+
+  // ── Presence ROTATING channel: the currently VISITED sub-chat (one at a time) ─
+  // visitedRoomId is null when the active room is main/anchor (already covered by
+  // a permanent channel) → no extra channel, no duplicate presence.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !presencePayload || !visitedRoomId) return;
+
+    const onState = (rid: string, users: PresenceUser[]) =>
+      setPresenceByRoom((prev) => ({ ...prev, [rid]: users }));
+
+    const ch = subscribePresence(visitedRoomId, userId, presencePayload, onState);
+    visitedPresenceRef.current = ch;
+
+    return () => {
+      void ch.untrack().finally(() => {
+        void supabase.removeChannel(ch);
+      });
+      visitedPresenceRef.current = null;
+    };
+  }, [visitedRoomId, userId, presencePayload]);
 
   // ── Send text message ──────────────────────────────────────────────────────────
   async function handleSend() {
@@ -385,7 +500,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     setSendError(null);
 
     const { error } = await supabase.from("messages").insert({
-      room_id: roomId,
+      room_id: activeRoomId,
       user_id: userId,
       body,
       type: "text",
@@ -407,6 +522,67 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       e.preventDefault();
       void handleSend();
     }
+  }
+
+  // ── Sub-chat navigation (in-place) ──────────────────────────────────────────────
+  async function onTapRoom(room: RoomSummary) {
+    if (room.id === activeRoomId) return;
+
+    // No password → RLS already allows reading; switch straight in.
+    if (!room.is_password_protected || unlockedRooms.has(room.id)) {
+      setActiveRoomId(room.id);
+      return;
+    }
+
+    // Password-protected: maybe the user already has a live membership (e.g. the
+    // QR they entered by granted it) — check before prompting.
+    const { data: canAccess } = await supabase.rpc("can_access_room", {
+      _room_id: room.id,
+    });
+    if (canAccess) {
+      setUnlockedRooms((prev) => new Set(prev).add(room.id));
+      setActiveRoomId(room.id);
+      return;
+    }
+
+    // Needs the password → open the modal.
+    setPasswordInput("");
+    setPasswordError(null);
+    setPasswordRoom(room);
+  }
+
+  async function handleVerifyPassword() {
+    if (!passwordRoom || passwordSubmitting) return;
+    setPasswordSubmitting(true);
+    setPasswordError(null);
+
+    const { data, error } = await supabase.rpc("verify_room_password", {
+      room_id: passwordRoom.id,
+      password: passwordInput,
+    });
+
+    setPasswordSubmitting(false);
+
+    if (error) {
+      const msg = (error as { message?: string }).message ?? "";
+      setPasswordError(
+        msg.includes("locked_out")
+          ? "Demasiados intentos, intenta en unos minutos."
+          : "No se pudo verificar. Intenta de nuevo."
+      );
+      return;
+    }
+
+    if (data === true) {
+      const rid = passwordRoom.id;
+      setUnlockedRooms((prev) => new Set(prev).add(rid));
+      setActiveRoomId(rid);
+      setPasswordRoom(null);
+      setPasswordInput("");
+      return;
+    }
+
+    setPasswordError("Contraseña incorrecta");
   }
 
   // ── Waiter cooldown countdown ─────────────────────────────────────────────────
@@ -550,7 +726,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         .getPublicUrl(path);
 
       const { error: msgErr } = await supabase.from("messages").insert({
-        room_id: roomId,
+        room_id: activeRoomId,
         user_id: userId,
         body: "",
         type: "photo",
@@ -743,7 +919,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               textOverflow: "ellipsis",
             }}
           >
-            {roomName}
+            {headerName}
           </div>
           <div
             style={{
@@ -759,6 +935,58 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           </div>
         </div>
       </div>
+
+      {/* Sub-chats bar — horizontal chips, one per room. Hidden if the business
+          has only the main room (nothing to navigate). */}
+      {rooms.length > 1 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 12px",
+            background: theme.topBg,
+            borderBottom: `1px solid ${theme.border}`,
+            overflowX: "auto",
+            flexShrink: 0,
+            scrollbarWidth: "none",
+          }}
+        >
+          {rooms.map((room) => {
+            const isActive = room.id === activeRoomId;
+            const showLock = room.is_password_protected && !unlockedRooms.has(room.id);
+            return (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => void onTapRoom(room)}
+                title={room.name}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexShrink: 0,
+                  padding: "7px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${isActive ? theme.accent : theme.border}`,
+                  background: isActive ? theme.accent : theme.bubbleInBg,
+                  color: isActive ? theme.bubbleOutText : theme.bubbleInText,
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  opacity: isActive ? 1 : 0.85,
+                  transition: "background 0.15s, opacity 0.15s",
+                }}
+              >
+                {room.icon && <span style={{ fontSize: 14 }}>{room.icon}</span>}
+                <span>{room.name}</span>
+                {showLock && <span style={{ fontSize: 11 }}>🔒</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Presence bar — horizontal avatar strip under header */}
       <div
@@ -1289,6 +1517,101 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           )}
         </button>
       </div>
+
+      {/* ── Password sheet — unlock a protected sub-chat ────────────────────── */}
+      {passwordRoom && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Contraseña de ${passwordRoom.name}`}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            zIndex: 60,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPasswordRoom(null);
+          }}
+        >
+          <div
+            style={{
+              background: theme.topBg,
+              borderRadius: "20px 20px 0 0",
+              padding: "20px 20px 32px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🔒</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: theme.bubbleInText }}>
+                {passwordRoom.name}
+              </span>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 13, color: theme.bubbleInText, opacity: 0.6 }}>
+              Esta sala está protegida. Ingresa la contraseña para entrar.
+            </p>
+
+            <input
+              type="password"
+              autoFocus
+              placeholder="Contraseña"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleVerifyPassword();
+                }
+              }}
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                border: `1px solid ${theme.border}`,
+                background: theme.inputBg,
+                color: theme.bubbleInText,
+                fontSize: 15,
+                outline: "none",
+                fontFamily: "inherit",
+              }}
+            />
+
+            {passwordError && (
+              <div style={{ fontSize: 13, color: "var(--color-danger)" }}>{passwordError}</div>
+            )}
+
+            <button
+              onClick={() => void handleVerifyPassword()}
+              disabled={!passwordInput.trim() || passwordSubmitting}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                padding: "13px 16px",
+                borderRadius: 12,
+                border: "none",
+                background: theme.accent,
+                color: theme.bubbleOutText,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: !passwordInput.trim() || passwordSubmitting ? "default" : "pointer",
+                opacity: !passwordInput.trim() || passwordSubmitting ? 0.6 : 1,
+                transition: "opacity 0.15s",
+              }}
+            >
+              {passwordSubmitting && <IconLoader2 size={18} className="spin" />}
+              {passwordSubmitting ? "Verificando…" : "Entrar"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Waiter sheet (bottom-sheet overlay) ─────────────────────────────── */}
       {showWaiterSheet && (

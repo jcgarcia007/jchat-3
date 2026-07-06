@@ -259,7 +259,7 @@ Entre el HEADER (`ChatRoom.tsx:715-761`) y la PRESENCE BAR (`:763-845`). Nuevo b
   - Estado **activo** (`room.id === activeRoomId`): resaltado (fondo `theme.accent` / texto `theme.bubbleOutText`,
     o borde de acento). Inactivo: fondo `theme.bubbleInBg` tenue.
   - `onClick → onTapRoom(room)` (§2.4).
-- **Orden:** `is_main` primero, luego el resto por `sort`. **Barra siempre visible** (aunque haya 1 sola sala).
+- **Orden:** `is_main` primero, luego el resto por `sort`. **Oculta si `rooms.length <= 1`** (solo main, sin sub-chats).
 
 ### Modal de contraseña (mini bottom-sheet)
 Reutilizar el patrón de **bottom-sheet** ya existente (Waiter sheet, `:1293-1489`) para coherencia visual:
@@ -286,7 +286,7 @@ Reutilizar el patrón de **bottom-sheet** ya existente (Waiter sheet, `:1293-148
    - refs separados por canal; la barra "en línea" lee la presencia del canal de `activeRoomId`.
 5. **Gate de acceso**: reemplazar la query de `room_members` en la carga por `can_access_room`; añadir `unlockedRooms: Set`.
 6. **Handler `onTapRoom`** con lógica password/`can_access_room`/`verify_room_password`.
-7. **Componente barra de sub-chats** entre header y presence bar (**siempre visible**, `is_main` primero).
+7. **Componente barra de sub-chats** entre header y presence bar (`is_main` primero; **oculta si `rooms.length <= 1`**).
 8. **Mini-modal de contraseña** (patrón bottom-sheet).
 
 ## Riesgos (priorizados)
@@ -303,6 +303,6 @@ Reutilizar el patrón de **bottom-sheet** ya existente (Waiter sheet, `:1293-148
 
 ## Decisiones resueltas (2026-07-05)
 - **Orden:** la sala **principal** (`is_main`) va **siempre primera**, luego el resto por `sort`.
-- **Barra siempre visible:** se muestra **aunque el negocio tenga solo la sala principal** (no se oculta con ≤1 sala).
-  → Anula la nota de §1 y §3 sobre "ocultar si `rooms.length <= 1`".
+- **Barra oculta si ≤1 sala:** si el negocio solo tiene la sala principal (0 sub-chats), `rooms.length <= 1` →
+  **no se renderiza** la barra (no hay nada que navegar). (Decisión final; restaura la nota original de §1/§3.)
 - **Password UI:** **mini-modal** (patrón bottom-sheet, estilo Waiter sheet). No `prompt()`.
