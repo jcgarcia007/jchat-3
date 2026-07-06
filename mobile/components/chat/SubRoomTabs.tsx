@@ -36,6 +36,8 @@ export interface SubRoom {
   is_main: boolean;
   is_password_protected: boolean;
   sort: number;
+  /** Per-room chat theme; drives the active theme when this sub-room is selected. */
+  chat_theme_id: number;
 }
 
 export interface SubRoomTabsProps {

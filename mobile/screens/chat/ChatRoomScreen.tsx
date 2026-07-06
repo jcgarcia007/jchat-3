@@ -75,6 +75,7 @@ import { ServiceCallSheet } from '../../components/chat/ServiceCallSheet';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
+import { usePresenceChannels } from './usePresenceChannels';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
@@ -106,9 +107,9 @@ const DEMO_BUSINESS: BusinessSummary = {
 };
 
 const DEMO_ROOMS: SubRoom[] = [
-  { id: 'demo-main', name: 'Main', is_main: true, is_password_protected: false, sort: 0 },
-  { id: 'demo-vip', name: 'VIP Lounge', is_main: false, is_password_protected: true, sort: 1 },
-  { id: 'demo-bar', name: 'Bar', is_main: false, is_password_protected: false, sort: 2 },
+  { id: 'demo-main', name: 'Main', is_main: true, is_password_protected: false, sort: 0, chat_theme_id: 1 },
+  { id: 'demo-vip', name: 'VIP Lounge', is_main: false, is_password_protected: true, sort: 1, chat_theme_id: 4 },
+  { id: 'demo-bar', name: 'Bar', is_main: false, is_password_protected: false, sort: 2, chat_theme_id: 1 },
 ];
 
 const DEMO_USERS: UserSummary[] = [
@@ -211,15 +212,11 @@ export default function ChatRoomScreen() {
   // Cache user_id → display name to resolve sender_name for realtime messages
   const userNameCacheRef = useRef<Map<string, string>>(new Map());
   const flatListRef = useRef<FlatList>(null);
+  // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
-  const pendingInitialScrollRef = useRef(false);
-  const scrollFrameRef = useRef<number | null>(null);
-  const hasDoneInitialScrollRef = useRef(false);
-  const initialScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Users in room
-  const [usersInRoom, setUsersInRoom] = useState<UserSummary[]>([]);
-  const [activeCount, setActiveCount] = useState(0);
+  // Users optimistically hidden after remove/ban (presence sync catches up).
+  const [hiddenUserIds, setHiddenUserIds] = useState<Set<string>>(new Set());
 
   // UserActionSheet
   const [userSheet, setUserSheet] = useState<{
@@ -230,77 +227,32 @@ export default function ChatRoomScreen() {
 
   // Loading state
   const [initialLoading, setInitialLoading] = useState(true);
-  // True once the first scroll-to-bottom completes; gates maintainVisibleContentPosition
-  // so the anchor doesn't fight the initial snap (see FlatList prop below).
-  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
-  // ── Theme ──────────────────────────────────────────────────────────────────
+  // ── Theme (follows the active sub-room) ─────────────────────────────────────
 
-  const chatTheme = getChatTheme(room?.chat_theme_id ?? 1);
+  const activeSubRoomData = subRooms.find((r) => r.id === activeRoomId) ?? null;
+  const chatTheme = getChatTheme(activeSubRoomData?.chat_theme_id ?? room?.chat_theme_id ?? 1);
 
-  const scrollToEndAfterRender = useCallback((animated: boolean) => {
-    if (scrollFrameRef.current !== null) {
-      cancelAnimationFrame(scrollFrameRef.current);
-    }
+  // ── Multi-room presence (main + anchor + visited) ───────────────────────────
 
-    scrollFrameRef.current = requestAnimationFrame(() => {
-      scrollFrameRef.current = null;
-      flatListRef.current?.scrollToEnd({ animated });
-    });
-  }, []);
+  const anchorRoomId = rootRoomId;
+  const mainRoomId = subRooms.find((r) => r.is_main)?.id;
 
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current !== null) {
-        cancelAnimationFrame(scrollFrameRef.current);
-      }
-      if (initialScrollTimerRef.current !== null) {
-        clearTimeout(initialScrollTimerRef.current);
-      }
-    };
-  }, []);
+  const { presenceByRoom } = usePresenceChannels({
+    mainRoomId,
+    anchorRoomId,
+    activeRoomId,
+    user,
+    enteredIncognito,
+    entryVisible,
+  });
 
-  // Initial scroll: when messages first arrive (empty → populated), snap to the
-  // bottom WITHOUT animation.
-  //
-  // Three retries cover the nested-KAV settling sequence:
-  //   ~0 ms  — first render
-  //  150 ms  — most item heights resolved
-  //  400 ms  — outer KAV has redistributed height after the input bar
-  //             (ChatInput's inner KAV) finishes measuring; this is the source
-  //             of the constant "~3 messages short" regression from commit 86e3d4b.
-  //
-  // hasDoneInitialScrollRef is marked true only at the 400 ms boundary so that
-  // handleContentSizeChange (which guards on that ref) doesn't prematurely fire
-  // an animated scroll while the layout is still settling.
-  useEffect(() => {
-    if (messages.length === 0 || hasDoneInitialScrollRef.current) return;
-    let midTimer: ReturnType<typeof setTimeout> | null = null;
-    const frame = requestAnimationFrame(() => {
-      flatListRef.current?.scrollToEnd({ animated: false }); // attempt 1
-      midTimer = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false }); // attempt 2
-        midTimer = null;
-      }, 150);
-      initialScrollTimerRef.current = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false }); // attempt 3 — final
-        hasDoneInitialScrollRef.current = true;
-        setInitialScrollDone(true);
-        initialScrollTimerRef.current = null;
-      }, 400);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      if (midTimer !== null) {
-        clearTimeout(midTimer);
-        midTimer = null;
-      }
-      if (initialScrollTimerRef.current !== null) {
-        clearTimeout(initialScrollTimerRef.current);
-        initialScrollTimerRef.current = null;
-      }
-    };
-  }, [messages.length]);
+  // The online row shows the room on screen; demo mode falls back to demo users.
+  const liveUsers = presenceByRoom[activeRoomId] ?? [];
+  const usersInRoom = (isSupabaseConfigured ? liveUsers : DEMO_USERS).filter(
+    (u) => !hiddenUserIds.has(u.id),
+  );
+  const activeCount = usersInRoom.length;
 
   // ── Hide native header (we render our own ChatTopBar) ─────────────────────
 
@@ -327,10 +279,8 @@ export default function ChatRoomScreen() {
       });
       setBusiness(DEMO_BUSINESS);
       setSubRooms(DEMO_ROOMS);
-      setUsersInRoom(DEMO_USERS);
-      setActiveCount(DEMO_USERS.length);
-      pendingInitialScrollRef.current = true;
-      setMessages(DEMO_MESSAGES);
+      // Inverted list: newest first (demo data is oldest→newest, so reverse once).
+      setMessages([...DEMO_MESSAGES].reverse());
       setInitialLoading(false);
       return;
     }
@@ -365,16 +315,21 @@ export default function ChatRoomScreen() {
           setBusiness(bizData as BusinessSummary);
         }
 
-        // Load sub-rooms (siblings + this room's children if main)
-        const parentId = typedRoom.is_main ? typedRoom.id : (typedRoom.parent_room_id ?? typedRoom.id);
+        // Load all the business's rooms (main + sub-rooms). RLS allows any
+        // authenticated user to read rooms. Aligned with web (DISENO_SUBCHATS §1).
         const { data: subData } = await supabase
           .from('rooms')
-          .select('id, name, is_main, is_password_protected, sort')
-          .or(`id.eq.${parentId},parent_room_id.eq.${parentId}`)
-          .order('sort');
+          .select('id, name, is_main, is_password_protected, sort, chat_theme_id')
+          .eq('business_id', typedRoom.business_id)
+          .eq('is_active', true)
+          .order('sort', { ascending: true });
 
         if (subData) {
-          setSubRooms(subData as SubRoom[]);
+          // is_main first, then by sort.
+          const list = (subData as SubRoom[]).slice().sort((a, b) =>
+            a.is_main !== b.is_main ? (a.is_main ? -1 : 1) : a.sort - b.sort,
+          );
+          setSubRooms(list);
         }
 
         setInitialLoading(false);
@@ -417,15 +372,16 @@ export default function ChatRoomScreen() {
       });
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
+        // msgs is DESC (newest→oldest); the last element is the oldest of the page.
         oldestTimestampRef.current = msgs[msgs.length - 1]?.created_at ?? null;
       }
 
+      // Inverted list keeps messages in DESC order (index 0 = newest = bottom).
       if (before) {
-        // Prepend older messages
-        setMessages((prev) => [...msgs.reverse(), ...prev]);
+        // Older page → append at the END (older side, visually the top).
+        setMessages((prev) => [...prev, ...msgs]);
       } else {
-        pendingInitialScrollRef.current = true;
-        setMessages(msgs.reverse());
+        setMessages(msgs);
       }
     } finally {
       setLoadingMessages(false);
@@ -457,12 +413,13 @@ export default function ChatRoomScreen() {
           const senderName = userNameCacheRef.current.get(raw.user_id);
           const newMsg: ChatMessage = senderName ? { ...raw, sender_name: senderName } : raw;
           setMessages((prev) => {
-            // Avoid duplicates
+            // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
             if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
+            return [newMsg, ...prev];
           });
-          // Auto-scroll is handled by onContentSizeChange, gated on isNearBottomRef:
-          // grows content only scrolls down if the user was already near the bottom.
+          // With the inverted list a new message at index 0 appears at the bottom
+          // automatically: if the user is at the bottom they see it; if they
+          // scrolled up to read history, they are not yanked down.
         },
       )
       .subscribe();
@@ -472,69 +429,7 @@ export default function ChatRoomScreen() {
     };
   }, [activeRoomId, entryVisible]);
 
-  // ── Realtime Presence (who is in the room) ────────────────────────────────
-
-  interface PresencePayload {
-    user_id: string;
-    display_name: string;
-    avatar_url: string | null;
-    is_incognito: boolean;
-    nickname: string | null;
-  }
-
-  useEffect(() => {
-    if (!isSupabaseConfigured || entryVisible || !user) return;
-
-    const incognito = enteredIncognito;
-    const displayName = incognito?.enabled
-      ? (incognito.nickname ?? 'Anonymous')
-      : ((user.user_metadata?.username as string | undefined) ?? user.email ?? 'User');
-    const avatarUrl = incognito?.enabled
-      ? null
-      : ((user.user_metadata?.avatar_url as string | undefined) ?? null);
-
-    const presencePayload: PresencePayload = {
-      user_id: user.id,
-      display_name: displayName,
-      avatar_url: avatarUrl,
-      is_incognito: incognito?.enabled ?? false,
-      nickname: incognito?.nickname ?? null,
-    };
-
-    const presenceChannel = supabase.channel(`presence:${activeRoomId}`, {
-      config: { presence: { key: user.id } },
-    });
-
-    const rebuildUsers = () => {
-      const state = presenceChannel.presenceState<PresencePayload>();
-      const users: UserSummary[] = Object.values(state)
-        .flat()
-        .filter((p, i, arr) => arr.findIndex((x) => x.user_id === p.user_id) === i)
-        .map((p) => ({
-          id: p.user_id,
-          display_name: p.display_name,
-          avatar_url: p.avatar_url,
-          is_incognito: p.is_incognito,
-          nickname: p.nickname ?? undefined,
-        }));
-      setUsersInRoom(users);
-      setActiveCount(users.length);
-    };
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, rebuildUsers)
-      .on('presence', { event: 'join' }, rebuildUsers)
-      .on('presence', { event: 'leave' }, rebuildUsers)
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track(presencePayload);
-        }
-      });
-
-    return () => {
-      void presenceChannel.untrack().then(() => supabase.removeChannel(presenceChannel));
-    };
-  }, [activeRoomId, entryVisible, user, enteredIncognito]);
+  // Presence (main + anchor + visited) is owned by usePresenceChannels above.
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -591,10 +486,11 @@ export default function ChatRoomScreen() {
           : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
       };
 
-      setMessages((prev) => [...prev, optimistic]);
-      // Sender always jumps to the bottom regardless of prior scroll position.
+      // Inverted list → prepend (index 0 = newest = bottom).
+      setMessages((prev) => [optimistic, ...prev]);
+      // Sender always jumps to the bottom (offset 0 in an inverted list).
       isNearBottomRef.current = true;
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
 
       if (!isSupabaseConfigured) return;
 
@@ -654,10 +550,11 @@ export default function ChatRoomScreen() {
           : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
       };
 
-      setMessages((prev) => [...prev, optimistic]);
-      // Sender always jumps to the bottom regardless of prior scroll position.
+      // Inverted list → prepend (index 0 = newest = bottom).
+      setMessages((prev) => [optimistic, ...prev]);
+      // Sender always jumps to the bottom (offset 0 in an inverted list).
       isNearBottomRef.current = true;
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
 
       if (!isSupabaseConfigured) return;
 
@@ -704,9 +601,6 @@ export default function ChatRoomScreen() {
     setActiveRoomId(subRoom.id);
     oldestTimestampRef.current = null;
     isNearBottomRef.current = true;
-    pendingInitialScrollRef.current = true;
-    hasDoneInitialScrollRef.current = false;
-    setInitialScrollDone(false);
     setMessages([]);
     setHasMore(true);
   }, []);
@@ -788,9 +682,9 @@ export default function ChatRoomScreen() {
     [subRooms],
   );
 
-  // ── Infinite scroll (load older on reaching top) ───────────────────────────
+  // ── Infinite scroll — load older on reaching the end (top, inverted) ───────
 
-  const handleScrollTop = useCallback(() => {
+  const handleLoadOlder = useCallback(() => {
     if (!hasMore || loadingMessages || !isSupabaseConfigured) return;
     const before = oldestTimestampRef.current;
     if (before) {
@@ -800,32 +694,12 @@ export default function ChatRoomScreen() {
 
   const handleMessageListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-      const distanceFromBottom =
-        contentSize.height - (contentOffset.y + layoutMeasurement.height);
-      isNearBottomRef.current = distanceFromBottom <= AUTOSCROLL_BOTTOM_THRESHOLD;
+      // Inverted list: offset 0 is the bottom (newest). Near the bottom = small offset.
+      isNearBottomRef.current =
+        event.nativeEvent.contentOffset.y <= AUTOSCROLL_BOTTOM_THRESHOLD;
     },
     [],
   );
-
-  const handleContentSizeChange = useCallback(() => {
-    // Initial room load: snap to the bottom without animation.
-    if (pendingInitialScrollRef.current) {
-      pendingInitialScrollRef.current = false;
-      isNearBottomRef.current = true;
-      scrollToEndAfterRender(false);
-      return;
-    }
-    // While the initial layout is still settling (multiline bubbles / photos
-    // re-measure), the dedicated initial-scroll effect owns the scroll — never
-    // animate here, or it feels like a journey instead of "already at bottom".
-    if (!hasDoneInitialScrollRef.current) return;
-    // Content grew (new message). Only follow it down if the user was near the
-    // bottom — never yank them away from older history they scrolled up to read.
-    if (isNearBottomRef.current) {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [scrollToEndAfterRender]);
 
   // ── FlatList key extractor + render ───────────────────────────────────────
 
@@ -932,7 +806,7 @@ export default function ChatRoomScreen() {
 
   // ── Main chat UI ───────────────────────────────────────────────────────────
 
-  const activeSubRoomData = subRooms.find((r) => r.id === activeRoomId) ?? null;
+  // activeSubRoomData is derived near the top (drives the theme). Reuse it here.
   const isMainRoom = activeSubRoomData?.is_main ?? room?.is_main ?? true;
 
   return (
@@ -940,7 +814,7 @@ export default function ChatRoomScreen() {
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <ChatTopBar
         business={business ?? DEMO_BUSINESS}
-        activeCount={activeCount > 0 ? activeCount : usersInRoom.length}
+        activeCount={activeCount}
         theme={chatTheme}
         usersInRoom={usersInRoom}
         onBack={handleBack}
@@ -975,33 +849,24 @@ export default function ChatRoomScreen() {
       >
         <FlatList
           ref={flatListRef}
+          inverted
           data={messages}
           keyExtractor={keyExtractor}
           renderItem={renderMessage}
           contentContainerStyle={chatStyles.listContent}
-          maintainVisibleContentPosition={initialScrollDone ? { minIndexForVisible: 0 } : undefined}
           showsVerticalScrollIndicator={false}
-          onLayout={() => {
-            // Fire scrollToEnd on every layout change while the initial scroll
-            // hasn't been marked done (400 ms window). This catches any KAV
-            // resize that happens AFTER the pendingInitialScrollRef path has
-            // already cleared but before the 400 ms timer fires.
-            if (pendingInitialScrollRef.current || !hasDoneInitialScrollRef.current) {
-              scrollToEndAfterRender(false);
-            }
-          }}
-          onContentSizeChange={handleContentSizeChange}
           onScroll={handleMessageListScroll}
           scrollEventThrottle={16}
           onScrollToIndexFailed={() => {
             // Safe no-op: we never call scrollToIndex, but guard against crashes.
           }}
           keyboardShouldPersistTaps="handled"
-          // Newest at bottom — we render in ascending order
-          // When list reaches the top (index 0 visible), load more
-          onStartReached={handleScrollTop}
-          onStartReachedThreshold={0.2}
-          ListHeaderComponent={
+          // Inverted: data is DESC (index 0 = newest = bottom). The "end" of the
+          // list is the top (older messages) → load older on onEndReached.
+          onEndReached={handleLoadOlder}
+          onEndReachedThreshold={0.2}
+          // Inverted → the footer renders at the TOP, where older pages appear.
+          ListFooterComponent={
             loadingMessages ? (
               <View style={chatStyles.loadingHeader}>
                 <ActivityIndicator size="small" color={chatTheme.accent} />
@@ -1072,10 +937,11 @@ export default function ChatRoomScreen() {
           Alert.alert('DM', `Open DM with ${userId}`); // TODO(i18n)
         }}
         onRemove={(userId) => {
-          setUsersInRoom((prev) => prev.filter((u) => u.id !== userId));
+          // Optimistically hide; presence sync catches up when they leave.
+          setHiddenUserIds((prev) => new Set(prev).add(userId));
         }}
         onBanned={(userId) => {
-          setUsersInRoom((prev) => prev.filter((u) => u.id !== userId));
+          setHiddenUserIds((prev) => new Set(prev).add(userId));
         }}
         onClose={handleCloseUserSheet}
       />
