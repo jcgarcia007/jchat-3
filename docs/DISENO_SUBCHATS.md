@@ -204,7 +204,8 @@ Reutilizar el patrón de **bottom-sheet** ya existente (Waiter sheet, `:1293-148
 4. **Mensajes obsoletos** de la sala anterior visibles durante el switch → reset inmediato de `messages`/`loadState`.
 5. **Tema/nombre** deben derivar de `activeRoom`, no de las props, tras el primer switch.
 
-## Preguntas abiertas (para aprobar)
-- ¿La sala **principal** siempre debe ir primera aunque el `sort` diga otra cosa? (propongo: sí, forzar `is_main` al frente).
-- ¿Ocultar la barra si el negocio tiene **solo** la sala principal? (propongo: sí).
-- ¿Mini-modal de contraseña (recomendado) o `prompt()` para v1?
+## Decisiones resueltas (2026-07-05)
+- **Orden:** la sala **principal** (`is_main`) va **siempre primera**, luego el resto por `sort`.
+- **Barra siempre visible:** se muestra **aunque el negocio tenga solo la sala principal** (no se oculta con ≤1 sala).
+  → Anula la nota de §1 y §3 sobre "ocultar si `rooms.length <= 1`".
+- **Password UI:** **mini-modal** (patrón bottom-sheet, estilo Waiter sheet). No `prompt()`.
