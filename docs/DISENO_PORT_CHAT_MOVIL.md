@@ -341,6 +341,11 @@ El "estar al fondo" es la posición natural al montar → **desaparece** toda la
 - `onStartReached`→`onEndReached`; `ListHeaderComponent`→`ListFooterComponent` (spinner de viejos arriba).
 - `handleMessageListScroll` recalculado para inverted; emisor usa `scrollToOffset({offset:0})`.
 
+**Pieza 4 — Query de sub-rooms alineada + tema por sala:**
+- Query: `.eq('business_id', …).eq('is_active', true).order('sort')` + `chat_theme_id` en el select; ordenar
+  `is_main` primero en cliente.
+- `SubRoom` gana `chat_theme_id: number`; derivar `chatTheme` del sub-room ACTIVO (fallback al de entrada).
+
 ## Riesgos globales (priorizados)
 1. **Presencia múltiple + AppState** (socket caído en background): mitigado por el híbrido re-track/rebuild;
    **requiere prueba en dispositivo real** (background prolongado) y verificar `.state` en la versión de supabase-js.
@@ -348,9 +353,59 @@ El "estar al fondo" es la posición natural al montar → **desaparece** toda la
 3. **Invertir Header/Footer y auto-scroll**: detalles fáciles de olvidar (spinner arriba, `scrollToOffset(0)`).
 4. **Android inverted (scaleY) + KAV**: validación visual en Pixel_8.
 
-## Preguntas abiertas (para aprobar)
-- ¿Alinear la **query de sub-rooms** con web (traer `chat_theme_id` para cambiar tema al saltar; scope
-  `business_id` vs subárbol actual)? — fuera del alcance estricto de estas 3 piezas; propongo dejarlo para un
-  paso aparte salvo que quieras incluirlo.
-- ¿Añadir `can_access_room` como red de seguridad en la carga (como web)? — el móvil hoy confía en tabs +
-  password sheet; propongo **no** añadirlo ahora para no ampliar alcance.
+## Decisiones resueltas (2026-07-05)
+- **Alinear la query de sub-rooms: SÍ** (ver Pieza 4). Traer `chat_theme_id` (tema por sala al saltar) y alinear
+  el scope con web (`business_id` + `is_active`, `is_main` primero).
+- **`can_access_room` en la carga: NO.** El móvil sigue confiando en `SubRoomTabs` + `PasswordEntrySheet`. No se
+  añade el RPC (mantiene el alcance).
+
+---
+
+## 4) Alinear la query de sub-rooms con web (+ tema por sala)
+
+### Query — de subárbol a `business_id` (como web)
+- **Hoy** (`ChatRoomScreen.tsx:368-378`): scope al subárbol de un parent, sin `chat_theme_id`:
+  ```ts
+  const parentId = typedRoom.is_main ? typedRoom.id : (typedRoom.parent_room_id ?? typedRoom.id);
+  supabase.from('rooms')
+    .select('id, name, is_main, is_password_protected, sort')
+    .or(`id.eq.${parentId},parent_room_id.eq.${parentId}`)
+    .order('sort');
+  ```
+- **Nuevo** (alineado con `DISENO_SUBCHATS.md §1`):
+  ```ts
+  supabase.from('rooms')
+    .select('id, name, is_main, is_password_protected, sort, chat_theme_id')
+    .eq('business_id', typedRoom.business_id)
+    .eq('is_active', true)
+    .order('sort', { ascending: true });
+  ```
+  Luego ordenar en cliente **`is_main` primero**, resto por `sort` (igual que web):
+  ```ts
+  const list = (data as SubRoom[]).slice().sort((a, b) =>
+    a.is_main !== b.is_main ? (a.is_main ? -1 : 1) : a.sort - b.sort);
+  setSubRooms(list);
+  ```
+- **`icon`/`color`**: NO se traen — los tabs de `SubRoomTabs` muestran **solo texto** (no icono), a diferencia de
+  los chips de web. Si en el futuro se quieren iconos en los tabs, se añaden entonces.
+
+### Tema por sala (cambia con la sala activa)
+- **Hoy** el tema sale del room de ENTRADA y no cambia al navegar:
+  `const chatTheme = getChatTheme(room?.chat_theme_id ?? 1);` (`:239`).
+- **Nuevo**: derivar del sub-room ACTIVO (ya se calcula `activeSubRoomData` en `:935`), con fallback al de entrada:
+  ```ts
+  const activeSubRoomData = subRooms.find(r => r.id === activeRoomId) ?? null;
+  const chatTheme = getChatTheme(activeSubRoomData?.chat_theme_id ?? room?.chat_theme_id ?? 1);
+  ```
+  (Mover `activeSubRoomData` arriba, antes de `chatTheme`, ya que hoy se define en el render.)
+
+### Cambio de tipo
+- `SubRoom` (exportado en `components/chat/SubRoomTabs.tsx:33-39`) gana **`chat_theme_id: number`**.
+- `SubRoomTabs` no usa `chat_theme_id` (solo texto) → sin cambios de render allí; solo el tipo.
+
+### Riesgos — pieza 4
+1. **Scope `business_id`**: si un negocio tuviera salas de varios subárboles, ahora aparecen todas (web ya lo
+   hace así). Esperado. `is_active` filtra inactivas (hoy el móvil no filtraba → posible cambio de salas visibles).
+2. **`chat_theme_id` faltante** en filas antiguas: default `1` vía `?? 1`. OK.
+3. **Tema cambia al saltar**: verificar que `SubRoomTabs`/`ChatTopBar`/burbujas re-renderizan bien con el nuevo
+   `chatTheme` (ya reciben `theme` por prop). Bajo riesgo.
