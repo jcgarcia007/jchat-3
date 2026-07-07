@@ -6,9 +6,18 @@ This /docs/ folder is the durable knowledge base for JChat 3.0 so work continues
 
 ## Read these in order
 1. PROJECT_STATUS.md — Where the project is right now, what's deployed, the prioritized plan. Read first when resuming.
-2. DECISIONS.md — Every significant technical/product decision and why.
-3. PROJECT_ORIGIN.md — Founding definitions: what JChat is, stack, markets, business model.
-4. design-references.md — Reference designs as SVG/HTML.
+2. SPEC.md — Product spec: flows, screens, business rules (converted from MASTER_SPEC.docx).
+3. DESIGN_SYSTEM.md — Colors, themes, tokens, components (converted from DESIGN_SYSTEM.docx).
+4. ARCHITECTURE.md — Reusable technical patterns (menu device-frame, chat scroll web/mobile, multi-presence, sub-chats, image viewer, iOS/Android fixes).
+5. BACKLOG.md — Unified prioritized backlog (chat + POS + web Fase 3).
+6. DECISIONS.md — Every significant technical/product decision and why.
+7. PROJECT_ORIGIN.md — Founding definitions: what JChat is, stack, markets, business model.
+8. DEPLOYMENT_CHECKLIST.md — Launch runbook (10 phases).
+9. design-references.md — Reference designs as SVG/HTML.
+
+**Archived in `docs/archive/` (historical, read only if needed):** DEV_PLAN (68 tasks done),
+the resolved chat diagnostics / inventories / designs, the two original backlogs,
+WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 
 ## How Claude should resume a session
 1. Read PROJECT_STATUS.md to load current state + next steps.
@@ -25,4 +34,4 @@ This /docs/ folder is the durable knowledge base for JChat 3.0 so work continues
 - Audit every Claude Code diff: it sometimes adds unrequested features (e.g. gift toggle) or drops safety nets (min-validation). Flag deviations.
 - Keep this /docs/ set updated as milestones complete.
 
-Last updated: 2026-06-29
+Last updated: 2026-07-06

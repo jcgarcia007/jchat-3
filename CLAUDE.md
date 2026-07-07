@@ -197,15 +197,23 @@ ALTERNATIVA DENTRO DEL SPEC: [cómo resolverlo sin cambiar el spec]
 
 ---
 
-## 📂 Documentos de referencia (en la RAÍZ del proyecto, no en /docs/)
+## 📂 Documentos de referencia (todos en `docs/`)
 
-Leer en este orden:
+Leer en este orden (los `.docx` se convirtieron a `.md`, FASE B jul-2026):
 
 | # | Archivo | Contiene |
 |---|---------|----------|
-| 1 | `JCHAT_3.0_MASTER_SPEC.docx`   | Producto: flujos, pantallas, reglas de negocio |
-| 2 | `JCHAT_3.0_DESIGN_SYSTEM.docx` | Colores exactos, temas, tokens, componentes |
-| 3 | `JCHAT_3.0_DEV_PLAN.docx`      | 68 tareas atómicas con checklists |
+| 1 | `docs/PROJECT_STATUS.md`   | Estado actual, deployado, plan priorizado. **Leer primero.** |
+| 2 | `docs/SPEC.md`             | Producto: flujos, pantallas, reglas de negocio (era MASTER_SPEC.docx) |
+| 3 | `docs/DESIGN_SYSTEM.md`    | Colores exactos, temas, tokens, componentes (era DESIGN_SYSTEM.docx) |
+| 4 | `docs/ARCHITECTURE.md`     | Patrones técnicos reutilizables (menú device-frame, scroll chat, presencia, visor imágenes, fixes de plataforma) |
+| 5 | `docs/BACKLOG.md`          | Backlog unificado y priorizado (chat + POS + web Fase 3) |
+| 6 | `docs/DECISIONS.md`        | Decisiones técnicas/producto y su porqué |
+| 7 | `docs/DEPLOYMENT_CHECKLIST.md` | Runbook de lanzamiento (10 fases) |
+
+**Histórico en `docs/archive/`:** `DEV_PLAN` (68 tareas hechas), los diagnósticos/
+inventarios/diseños de chat ya resueltos, los 2 backlogs originales, `WEB_CLIENT_PLAN`,
+y los `.docx` originales de cada spec + la guía de deployment.
 
 Ver también `CLAUDE_CODE_INSTRUCTIONS.md` (protocolo de sesión por tarea).
 

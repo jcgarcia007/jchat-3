@@ -11,6 +11,25 @@
 
 ---
 
+## Phase time estimates (rough)
+
+| Phase | Est. |
+|---|---|
+| 1 — Env vars | ~30 min |
+| 2 — Supabase (DB / Auth / Storage) | ~45 min |
+| 3 — Stripe (Payments + Connect) | ~60 min |
+| 4 — Google Maps | ~20 min |
+| 5 — Firebase (Push) | ~30 min |
+| 6 — Twilio (SMS) | ~20 min |
+| 7 — Vercel (Web) | ~30 min |
+| 8 — Expo EAS (stores) | ~2–4 h |
+| 9 — Smoke tests | ~2–3 h |
+| 10 — Pending TODOs | variable |
+
+~70+ steps across 10 phases; each depends on the previous.
+
+---
+
 ## 1. Environment variables (`.env`)
 
 Create `.env` from `.env.example`. Keys are split by where they run. **Never commit `.env`** (already in `.gitignore`).
@@ -101,7 +120,9 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
       in `payments/index.ts`)
 - [ ] Wire the payout-schedule update (`// TODO(payouts)` in `stripe-connect`) for the
       Configuration → Payout Frequency setting (Task 2.16)
-- [ ] Test in **test mode** with Stripe test cards before going live (see §9)
+- [ ] Test in **test mode** with Stripe test cards before going live (see §9). Key cards:
+      `4242 4242 4242 4242` (success), `4000 0025 0000 3155` (requires 3D Secure),
+      `4000 0000 0000 9995` (declined — insufficient funds). CVV: any 3 digits; exp: any future date.
 
 ---
 
@@ -113,7 +134,9 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
       later) **Geocoding API**
 - [ ] Set `GOOGLE_MAPS_KEY` — `mobile/app.config.ts` injects it into
       `ios.config.googleMapsApiKey` and `android.config.googleMaps.apiKey` (never hardcoded)
-- [ ] Add billing to the GCP project (Maps requires it)
+- [ ] Add billing to the GCP project (Maps requires it). Set a **budget with alerts** —
+      $200 (the free monthly credit), alerts at **50% / 90% / 100%**; action at 100% = email,
+      **do not** auto-cut the service
 - [ ] Verify map renders with A2 Pastel (light) / dark style and pins/heatmap appear
 
 ---
@@ -128,6 +151,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 - [ ] Upload the **FCM server key / service account** to Expo (EAS) credentials so Expo
       Push can deliver to Android
 - [ ] iOS: configure an **APNs key** in the Apple Developer account and add it to EAS
+      (the `.p8` file can be **downloaded only once** — store it safely)
 - [ ] Implement the server-side senders that are stubbed `// TODO(push)`:
       order ready (KDS/webhook), new DM/follower/like/comment, work alerts, gift received,
       reservation status, proximity (client-local already works) — typically a Supabase
@@ -140,7 +164,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 
 ## 6. Twilio — SMS (business verification, Task 2.2)
 
-- [ ] Create a Twilio account; buy/verify a sender phone number
+- [ ] Create a Twilio account; buy/verify a sender phone number (US +1, SMS-capable, ~$1.15/mo)
 - [ ] Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` as secrets
 - [ ] Replace the SMS stub (`// TODO(Twilio)`) in the verification flow with a real Twilio
       send (the API route already generates/stores the 6-digit code with 10-min expiry)
@@ -179,6 +203,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
       `app.config.ts`; add camera/photos via plugins)
 - [ ] Android extras: Play Console app, `google-services.json`, Google Pay, signing
 - [ ] Submit: `eas submit --platform ios` / `--platform android`
+      (plan ahead: Apple review ~1–3 days, Google Play ~1–7 days)
 
 ---
 
@@ -243,5 +268,21 @@ Run in **Stripe test mode** with test cards, on a real device build.
 
 ---
 
+## Launch-readiness ladder
+
+What you can launch as each dependency comes online:
+
+| When you have… | You can launch… |
+|---|---|
+| `.env` + Supabase + Vercel | Business-owner web dashboard |
+| + Stripe configured | Real order payments |
+| + Firebase + Expo build | iOS & Android apps |
+| + Google Maps key | Native map (heatmap + pins) |
+| + P0 TODOs done | Full public launch |
+
+---
+
 *JChat 3.0 — generated after Stage 0–4 completion (68/68 tasks). Migrations 001–008;
-Edge Functions: payments, stripe-connect, stripe-webhook, subscriptions.*
+Edge Functions: payments, stripe-connect, stripe-webhook, subscriptions. The Spanish
+deployment-guide `.docx` was merged into this file and archived in `docs/archive/`
+(FASE B consolidation, July 2026).*
