@@ -65,6 +65,7 @@ import type { SubRoom } from '../../components/chat/SubRoomTabs';
 import { ChatInput } from '../../components/chat/ChatInput';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import type { ChatMessage } from '../../components/chat/MessageBubble';
+import ImageView from 'react-native-image-viewing';
 import { IncognitoToggle, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
 import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
@@ -212,6 +213,8 @@ export default function ChatRoomScreen() {
   // Cache user_id → display name to resolve sender_name for realtime messages
   const userNameCacheRef = useRef<Map<string, string>>(new Map());
   const flatListRef = useRef<FlatList>(null);
+  // Fullscreen photo viewer: the tapped image's URL (null = closed).
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
   // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
 
@@ -729,6 +732,7 @@ export default function ChatRoomScreen() {
         authorRole={roleMap.get(item.user_id) ?? null}
         onLongPressUser={handleUserLongPress}
         onLongPressMessage={handleLongPressMessage}
+        onImagePress={setViewerImage}
       />
     ),
     [user?.id, chatTheme, roleMap, handleUserLongPress, handleLongPressMessage],
@@ -932,6 +936,14 @@ export default function ChatRoomScreen() {
           onClose={handlePasswordClose}
         />
       )}
+
+      {/* ── Fullscreen image viewer (pinch-to-zoom + swipe-to-close) ──────── */}
+      <ImageView
+        images={viewerImage ? [{ uri: viewerImage }] : []}
+        imageIndex={0}
+        visible={viewerImage != null}
+        onRequestClose={() => setViewerImage(null)}
+      />
 
       {/* ── UserActionSheet ───────────────────────────────────────────────── */}
       <UserActionSheet

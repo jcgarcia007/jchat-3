@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconSend, IconArrowLeft, IconLoader2, IconCamera, IconToolsKitchen2, IconBell, IconHeart, IconX, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
@@ -184,6 +185,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // Fullscreen image lightbox: the tapped photo's URL (null = closed).
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showAttachPanel, setShowAttachPanel] = useState(false);
 
   // Sub-chats bar + navigation
@@ -1237,11 +1240,13 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                         scrollToBottom("smooth");
                       }
                     }}
+                    onClick={() => setLightboxUrl(msg.media_url)}
                     style={{
                       display: "block",
                       maxWidth: 220,
                       width: "100%",
                       height: "auto",
+                      cursor: "pointer",
                       ...(imgW && imgH ? { aspectRatio: `${imgW} / ${imgH}` } : {}),
                     }}
                   />
@@ -1843,6 +1848,95 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           </div>
         </div>
       )}
+
+      <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
+  );
+}
+
+// ── Fullscreen image lightbox (portal to <body>, over the app shell) ──────────
+function Lightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
+  const [zoomed, setZoomed] = useState(false);
+
+  useEffect(() => {
+    if (!url) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    // Lock body scroll while the lightbox is open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [url, onClose]);
+
+  // Reset zoom whenever the image changes or the lightbox closes.
+  useEffect(() => {
+    setZoomed(false);
+  }, [url]);
+
+  if (!url) return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        background: "rgba(0,0,0,0.9)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "auto",
+      }}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          zIndex: 1001,
+          width: 40,
+          height: 40,
+          borderRadius: 999,
+          border: "none",
+          background: "rgba(0,0,0,0.5)",
+          color: "#fff",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <IconX size={22} />
+      </button>
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="Imagen ampliada"
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setZoomed((z) => !z);
+        }}
+        style={{
+          maxWidth: "92vw",
+          maxHeight: "92vh",
+          objectFit: "contain",
+          transform: zoomed ? "scale(2)" : "scale(1)",
+          transition: "transform 0.2s ease",
+          cursor: zoomed ? "zoom-out" : "zoom-in",
+        }}
+      />
+    </div>,
+    document.body,
   );
 }

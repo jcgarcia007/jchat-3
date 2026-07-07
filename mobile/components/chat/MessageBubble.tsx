@@ -65,6 +65,8 @@ export interface MessageBubbleProps {
   onLongPressUser?: (userId: string, displayName: string) => void;
   /** Called when the message bubble itself is long-pressed (e.g. to pin). */
   onLongPressMessage?: (message: ChatMessage) => void;
+  /** Called with a photo message's media_url when its image is tapped. */
+  onImagePress?: (url: string) => void;
 }
 
 /** Build an Offer object from an offer message's metadata snapshot (Task 2.6). */
@@ -111,9 +113,10 @@ interface BubbleContentProps {
   message: ChatMessage;
   isOwn: boolean;
   theme: ChatTheme;
+  onImagePress?: (url: string) => void;
 }
 
-function BubbleContent({ message, isOwn, theme }: BubbleContentProps) {
+function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentProps) {
   const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
 
   switch (message.type) {
@@ -128,12 +131,18 @@ function BubbleContent({ message, isOwn, theme }: BubbleContentProps) {
       return (
         <View>
           {message.media_url ? (
-            <Image
-              source={{ uri: message.media_url }}
-              style={styles.photoImage}
-              resizeMode="cover"
-              accessibilityLabel="Photo message" // TODO(i18n)
-            />
+            <Pressable
+              onPress={() => onImagePress?.(message.media_url!)}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="Open photo fullscreen" // TODO(i18n)
+            >
+              <Image
+                source={{ uri: message.media_url }}
+                style={styles.photoImage}
+                resizeMode="cover"
+                accessibilityLabel="Photo message" // TODO(i18n)
+              />
+            </Pressable>
           ) : (
             <View style={styles.mediaPlaceholder}>
               <IconPhoto size={28} color={textColor} />
@@ -204,6 +213,7 @@ export function MessageBubble({
   authorRole,
   onLongPressUser,
   onLongPressMessage,
+  onImagePress,
 }: MessageBubbleProps) {
   const displayName = resolveDisplayName(message);
   const incognito = isIncognito(message);
@@ -297,10 +307,10 @@ export function MessageBubble({
         {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
         <Pressable onLongPress={handleLongPressMessage} delayLongPress={400}>
           {isOffer ? (
-            <BubbleContent message={message} isOwn={isOwn} theme={theme} />
+            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} />
           ) : (
             <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-              <BubbleContent message={message} isOwn={isOwn} theme={theme} />
+              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} />
             </View>
           )}
         </Pressable>
