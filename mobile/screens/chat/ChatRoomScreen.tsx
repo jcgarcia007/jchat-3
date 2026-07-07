@@ -42,11 +42,13 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { IconX } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -216,6 +218,10 @@ export default function ChatRoomScreen() {
   const flatListRef = useRef<FlatList>(null);
   // Fullscreen photo viewer: the tapped image's URL (null = closed).
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+  // Read once in the screen tree (under the app's SafeAreaProvider) and close
+  // over it in the viewer's HeaderComponent — calling the hook inside the
+  // library's Modal can return 0 on Android.
+  const insets = useSafeAreaInsets();
   // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
 
@@ -945,7 +951,17 @@ export default function ChatRoomScreen() {
         visible={viewerImage != null}
         onRequestClose={() => setViewerImage(null)}
         HeaderComponent={() => (
-          <SafeAreaView style={{ alignItems: 'flex-end' }}>
+          <View
+            style={{
+              alignItems: 'flex-end',
+              // react-native core SafeAreaView doesn't respect the Android status
+              // bar; compute the top inset per-platform so the X never gets cut.
+              paddingTop:
+                Platform.OS === 'android'
+                  ? (StatusBar.currentHeight ?? 24) + 8
+                  : insets.top || 50,
+            }}
+          >
             <Pressable
               onPress={() => setViewerImage(null)}
               hitSlop={10}
@@ -965,7 +981,7 @@ export default function ChatRoomScreen() {
             >
               <IconX size={20} color="#fff" />
             </Pressable>
-          </SafeAreaView>
+          </View>
         )}
       />
 
