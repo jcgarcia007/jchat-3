@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JChat 3.0 — Status Report</title>
+<style>
+  :root{
+    --bg:#0B0F14; --surface:#12181F; --surface2:#1A222C; --border:#1F2A36;
+    --text:#E8EAF0; --muted:#8B95A5; --faint:#5A6675;
+    --blue:#0071E3; --green:#34C759; --amber:#F59E0B; --red:#FF3B30; --purple:#8B5CF6;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.6;padding-bottom:80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+  /* Hero */
+  header{background:linear-gradient(160deg,#0071E3 0%,#8B5CF6 100%);padding:56px 0 44px;margin-bottom:32px}
+  header .wrap{display:flex;flex-direction:column;gap:6px}
+  .logo{font-size:15px;font-weight:800;letter-spacing:3px;opacity:.9;text-transform:uppercase}
+  h1{font-size:38px;font-weight:800;letter-spacing:-1px}
+  .sub{font-size:16px;opacity:.92;max-width:640px}
+  .updated{margin-top:14px;font-size:13px;opacity:.8;font-weight:600}
+
+  /* Metrics */
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:-56px 0 36px;position:relative;z-index:2}
+  .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .metric .n{font-size:30px;font-weight:800;line-height:1}
+  .metric .l{font-size:12px;color:var(--muted);margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+  /* Nav */
+  nav{position:sticky;top:0;background:rgba(11,15,20,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:50;padding:12px 0}
+  nav .wrap{display:flex;gap:8px;flex-wrap:wrap}
+  nav a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:600;padding:6px 12px;border-radius:20px;transition:.15s}
+  nav a:hover{color:var(--text);background:var(--surface2)}
+
+  section{margin:44px 0}
+  h2{font-size:24px;font-weight:800;margin-bottom:6px;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
+  h2 .dot{width:10px;height:10px;border-radius:50%}
+  .section-desc{color:var(--muted);font-size:14px;margin-bottom:22px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:14px}
+  .card h3{font-size:17px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h3 .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+  .b-done{background:rgba(52,199,89,.15);color:#5FD77F}
+  .b-prog{background:rgba(245,158,11,.15);color:#FBbf47}
+  .b-todo{background:rgba(139,146,165,.15);color:#A9B3C2}
+  .b-block{background:rgba(255,59,48,.15);color:#FF6B62}
+
+  ul.items{list-style:none;display:flex;flex-direction:column;gap:8px}
+  ul.items li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#D4D9E1}
+  ul.items li .ic{flex-shrink:0;width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-top:2px}
+  .ic-ok{background:rgba(52,199,89,.2);color:#5FD77F}
+  .ic-wip{background:rgba(245,158,11,.2);color:#FBbf47}
+  .ic-no{background:rgba(139,146,165,.2);color:#A9B3C2}
+  .ic-x{background:rgba(255,59,48,.2);color:#FF6B62}
+  ul.items li b{color:var(--text)}
+  ul.items li small{color:var(--faint);font-size:12.5px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}h1{font-size:30px}.metrics{margin-top:-40px}}
+
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:var(--surface2);color:var(--muted);margin-left:6px}
+  .rec{border-left:3px solid var(--blue);padding-left:14px;margin-bottom:16px}
+  .rec h4{font-size:15px;font-weight:700;margin-bottom:3px}
+  .rec p{font-size:13.5px;color:var(--muted)}
+  .rec .src{font-size:11px;color:var(--faint);margin-top:3px}
+  .prio{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px;margin-right:6px}
+  .p-hi{background:rgba(255,59,48,.15);color:#FF6B62}
+  .p-md{background:rgba(245,158,11,.15);color:#FBbf47}
+  .p-lo{background:rgba(52,199,89,.15);color:#5FD77F}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td code{background:var(--surface2);padding:1px 6px;border-radius:5px;font-size:12px;color:#9FD0FF}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:18px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .footer{text-align:center;color:var(--faint);font-size:12.5px;margin-top:50px;padding-top:20px;border-top:1px solid var(--border)}
+  .barwrap{background:var(--surface2);border-radius:10px;height:10px;overflow:hidden;margin-top:4px}
+  .bar{height:100%;border-radius:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">JChat 3.0</div>
+    <h1>Status Report</h1>
+    <div class="sub">Plataforma social basada en ubicación + comercio ligero. Chats de proximidad atados a lugares físicos, pedidos en el venue vía Stripe, mapa como interfaz, y suscripciones de negocio por tiers.</div>
+    <div class="updated">📅 Actualizado: 6 julio 2026 &nbsp;·&nbsp; Rama: main &nbsp;·&nbsp; Último commit auditado: 67de6a2</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="metrics">
+    <div class="metric"><div class="n">21</div><div class="l">Plantillas de menú</div></div>
+    <div class="metric"><div class="n">40</div><div class="l">Paletas de color</div></div>
+    <div class="metric"><div class="n">3</div><div class="l">Plataformas (web/iOS/Android)</div></div>
+    <div class="metric"><div class="n">~47</div><div class="l">Tablas Supabase</div></div>
+    <div class="metric"><div class="n">2</div><div class="l">Blockers P0 producción</div></div>
+  </div>
+
+  <nav>
+    <div class="wrap">
+      <a href="#resumen">Resumen</a>
+      <a href="#producto">Producto</a>
+      <a href="#tecnico">Técnico</a>
+      <a href="#seguridad">Seguridad</a>
+      <a href="#falta">Qué falta</a>
+      <a href="#mejorar">Mejoras (research)</a>
+      <a href="#roadmap">Roadmap</a>
+    </div>
+  </nav>
+
+  <!-- RESUMEN -->
+  <section id="resumen">
+    <h2><span class="dot" style="background:var(--blue)"></span>Resumen ejecutivo</h2>
+    <div class="section-desc">Dónde está JChat 3.0 hoy, en una vista.</div>
+    <div class="card">
+      <p style="font-size:14.5px;color:#D4D9E1">
+      JChat 3.0 tiene un <b>producto funcional y pulido en las 3 plataformas</b>. El sistema de menús (web) está completo:
+      21 plantillas de diseño, 40 paletas de color aplicables por negocio, responsive, y modales que heredan el tema.
+      El sistema de chat de proximidad funciona en web, iOS y Android con <b>sub-chats, presencia múltiple, y scroll robusto</b>.
+      La app móvil, el dashboard de negocio y el cliente web-por-QR están operativos.
+      <br><br>
+      <b style="color:#FBbf47">Lo que bloquea el lanzamiento a producción con pagos reales</b> son dos temas de seguridad (P0-2 y P0-3):
+      los totales de pedido no se recalculan en el servidor, y las Edge Functions confían en IDs del cliente. Además, la red de
+      seguridad de tipos de TypeScript está apagada (<code>ignoreBuildErrors</code>), lo que ya causó un bug oculto.
+      <br><br>
+      <b>En una frase:</b> el producto está listo para demos y pruebas reales; falta cerrar la capa de seguridad de dinero
+      y algunas features de retención (no leídos, TTL de mensajes) antes de cobrar de verdad.
+      </p>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>💪 Fortalezas</h3>
+        <ul class="items">
+          <li><span class="ic ic-ok">✓</span><span>Diferenciador único: <b>POS ligero dentro de un chat social de proximidad</b> — nadie en el mercado lo tiene</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Modelo <b>subscription-only sin comisión</b> por transacción (Toast cobra 2.49%+)</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Sistema de menús de nivel producto: 21 plantillas × 40 paletas</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Chat funcionando en las 3 plataformas con presencia múltiple</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>⚠️ Riesgos actuales</h3>
+        <ul class="items">
+          <li><span class="ic ic-x">!</span><span><b>P0-2 / P0-3</b>: dinero no validado server-side — bloqueante para cobrar</span></li>
+          <li><span class="ic ic-x">!</span><span><b>ignoreBuildErrors ON</b>: sin red de tipos, ya ocultó un bug real</span></li>
+          <li><span class="ic ic-wip">~</span><span>Geo-verificación server-side (regla de oro del producto) aún por implementar</span></li>
+          <li><span class="ic ic-wip">~</span><span>Varias copias del repo local → riesgo de trabajar en la equivocada</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCTO -->
+  <section id="producto">
+    <h2><span class="dot" style="background:var(--green)"></span>Estado de producto</h2>
+    <div class="section-desc">Qué features existen y funcionan, por área.</div>
+    <div class="legend">
+      <span><span class="ic ic-ok">✓</span> Hecho y verificado</span>
+      <span><span class="ic ic-wip">~</span> Parcial / en progreso</span>
+      <span><span class="ic ic-no">·</span> Pendiente</span>
+      <span><span class="ic ic-x">!</span> Bloqueante</span>
+    </div>
+
+    <div class="card">
+      <h3>Sistema de Menús (web) <span class="badge b-done">Completo</span></h3>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span><b>21 plantillas de menú</b> portadas a React, cada una un arquetipo distinto (grid, drawer, editorial, streaming, stories, luxury, etc.)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>40 paletas de color</b> aplicables por negocio/evento + "volver a original"; tipografía siempre fija</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Paleta + tipografía originales del board por plantilla (Playfair, Space Grotesk)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Modales/sheets heredan la paleta activa; responsive (columna centrada tipo app)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Grupos de modificadores estilo Uber-Eats (single/multi, min/max, precio en vivo)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Multi-foto por ítem, 51 iconos de categoría, 10 efectos de tarjeta, selector colapsable</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Carritos unificados, sheet de recogida ("En mi mesa" primero + número de mesa)</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Chat de proximidad <span class="badge b-done">Funcional 3 plataformas</span></h3>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span><b>Sub-chats</b>: navegación in-place entre salas del negocio (web + móvil), sin recargar</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Presencia múltiple</b>: Main (todos) + ancla del QR (fijo) + sub-chat visitado (rotativo)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Scroll robusto</b>: web (aspect-ratio + re-scroll), móvil (FlatList inverted), al entrar y al enviar</span></li>
+        <li><span class="ic ic-ok">✓</span><span>AppState en móvil (re-track al volver de background)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Realtime de mensajes, fotos, 15 temas, modo incógnito, roles, llamar al mesero</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Salas con password (candado + verificación), QR por sala, membresía temporal 24h</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Pickers de foto (galería legacy Android + cámara con manejo de errores)</span></li>
+        <li><span class="ic ic-no">·</span><span><b>TTL 24h / purga de mensajes</b> (Fase 2) — diseñado, no implementado</span></li>
+        <li><span class="ic ic-no">·</span><span><b>No leídos por usuario</b> (Fase 3) — badges + "leído al verlo en pantalla"</span></li>
+        <li><span class="ic ic-no">·</span><span>Reacciones, reply, menciones @, voz, GIFs, editar/borrar — en backlog</span></li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Mapa & Ubicación <span class="badge b-prog">Parcial</span></h3>
+        <ul class="items">
+          <li><span class="ic ic-ok">✓</span><span>Mapas en 3 plataformas (iOS/Android/web) resueltos</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Controles: zoom, recenter, safe-area</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Geofence 50m canónico (enforce en BD, migración 021)</span></li>
+          <li><span class="ic ic-no">·</span><span>Geo-verificación server-side (regla de oro) pendiente</span></li>
+          <li><span class="ic ic-no">·</span><span>Heatmap / pulse dots diferidos (bug iOS de Heatmap)</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Cliente web-por-QR <span class="badge b-done">Operativo</span></h3>
+        <ul class="items">
+          <li><span class="ic ic-ok">✓</span><span><code>/c/[token]</code> → welcome → login → RoomHub</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Menú · Llamar servicio · Entrar al chat</span></li>
+          <li><span class="ic ic-ok">✓</span><span>join_room_via_qr, tokens firmados por sala</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Fix de zoom iOS (input font-size 16px)</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Dashboard de negocio <span class="badge b-prog">Operativo, con huecos</span></h3>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span>Editor de menú completo (categorías, ítems, fotos, modificadores, plantilla, paleta, efecto)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Room Manager con QR, password, TTL, notify por sala</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Modo del menú (link propio / menú web / quitar)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Room Manager usa <code>PLACEHOLDER_BUSINESS_ID</code> en un punto — fix pendiente</span></li>
+        <li><span class="ic ic-no">·</span><span>Split checks, propinas, QR por mesa, floor plan, export CSV/PDF — backlog POS</span></li>
+        <li><span class="ic ic-no">·</span><span>Centro de alertas por fases, KDS, reservas, loyalty — spec, no implementado</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- TECNICO -->
+  <section id="tecnico">
+    <h2><span class="dot" style="background:var(--purple)"></span>Estado técnico</h2>
+    <div class="section-desc">Stack, arquitectura, y deuda técnica.</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Stack</h3>
+        <ul class="items">
+          <li><span class="ic ic-no">·</span><span><b>Móvil:</b> React Native (Expo SDK 56, React 19), React Navigation v7</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Web:</b> Next.js 16.2.9 (Turbopack), Vercel</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Backend:</b> Supabase (Postgres, Edge Functions, Storage, Realtime, RLS), ~47 tablas</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Pagos:</b> Stripe Connect &nbsp;·&nbsp; <b>Mapas:</b> Apple/Google</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Builds:</b> EAS &nbsp;·&nbsp; <code>com.juangarciacruz.jchatapp</code></span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Workflow (dual-Claude)</h3>
+        <ul class="items">
+          <li><span class="ic ic-no">·</span><span>Planning Claude (web): lee vía GitHub MCP, aplica migraciones vía Supabase MCP, audita SHAs</span></li>
+          <li><span class="ic ic-no">·</span><span>Claude Code CLI: ejecuta, commitea, buildea (GitHub write da 403 al planner)</span></li>
+          <li><span class="ic ic-no">·</span><span>Docs en <code>/docs</code> para continuidad entre sesiones</span></li>
+          <li><span class="ic ic-no">·</span><span>Reportes largos → archivo .md en repo → leído desde GitHub</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Deuda técnica <span class="badge b-prog">A vigilar</span></h3>
+      <ul class="items">
+        <li><span class="ic ic-x">!</span><span><b style="color:#FF6B62">ignoreBuildErrors: true</b> activo en <code>next.config.ts</code> — red de tipos APAGADA. Ya ocultó un <code>database.types.ts</code> corrupto. <b>Máxima prioridad:</b> arreglar ~33 errores de tipo y quitarlo</span></li>
+        <li><span class="ic ic-wip">~</span><span>Migraciones 030/031 no registradas en <code>schema_migrations</code> (desync de registro)</span></li>
+        <li><span class="ic ic-wip">~</span><span><code>menu_items</code> tiene 2 columnas de foto legacy (<code>image_url</code> + <code>photo_url</code>)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Varias copias del repo local (con/sin espacios) → riesgo de commit en la equivocada</span></li>
+        <li><span class="ic ic-wip">~</span><span>Working tree con archivos sueltos en <code>design/</code>; falta limpiar</span></li>
+        <li><span class="ic ic-no">·</span><span>expo-updates (OTA) no configurado; re-habilitar "Confirm email" en Supabase</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SEGURIDAD -->
+  <section id="seguridad">
+    <h2><span class="dot" style="background:var(--red)"></span>Seguridad</h2>
+    <div class="section-desc">Estado de los blockers P0 y la postura general.</div>
+    <div class="card">
+      <table>
+        <tr><th>ID</th><th>Tema</th><th>Estado</th></tr>
+        <tr><td><code>P0-1</code></td><td>Salas privadas legibles por cualquier usuario autenticado</td><td><span class="prio p-lo">Cerrado</span> migraciones 019-020</td></tr>
+        <tr><td><code>P0-4</code></td><td>RLS de users</td><td><span class="prio p-lo">Cerrado</span> migración 018</td></tr>
+        <tr><td><code>P0-2</code></td><td>Totales de pedido no recalculados server-side</td><td><span class="prio p-hi">Abierto</span> bloquea producción</td></tr>
+        <tr><td><code>P0-3</code></td><td>Edge Functions confían en IDs del cliente (service_role)</td><td><span class="prio p-hi">Abierto</span> bloquea producción</td></tr>
+      </table>
+      <p style="font-size:13.5px;color:var(--muted);margin-top:14px">
+      La pantalla de pagos/gifting está <b>diferida hasta cerrar P0-2 y P0-3</b>. Todo cálculo de dinero nuevo
+      (modificadores, split, propina) debe recalcularse en el servidor. Es el mismo principio: nunca confiar en montos del cliente.
+      </p>
+    </div>
+  </section>
+
+  <!-- QUE FALTA -->
+  <section id="falta">
+    <h2><span class="dot" style="background:var(--amber)"></span>Qué falta (backlog priorizado)</h2>
+    <div class="section-desc">Lo pendiente, ordenado por prioridad.</div>
+    <div class="card">
+      <ul class="items">
+        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>Seguridad de dinero</b> (P0-2 + P0-3) — recálculo server-side antes de cobrar</span></li>
+        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>Re-habilitar TypeScript estricto</b> — arreglar ~33 errores, quitar ignoreBuildErrors</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Chat Fase 2 — TTL 24h</b>: purga de mensajes (por-usuario al salir + global 24h, pg_cron/edge)</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Chat Fase 3 — No leídos por usuario</b>: tabla de lectura, badges bidireccionales, "leído al ver"</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Comprar (Stripe web checkout)</b>: el menú "comprar" sigue placeholder</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Geo-verificación server-side</b>: la regla de oro del producto (PostGIS/Edge)</span></li>
+        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span>Fix Room Manager (PLACEHOLDER_BUSINESS_ID), limpiar working tree, consolidar copias del repo</span></li>
+        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span><code>/pricing</code>, gate super_admin, i18n bilingüe (textos sueltos en inglés), badge de plan real</span></li>
+        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span>POS: split checks, propinas, QR por mesa, floor plan, export CSV/PDF, centro de alertas</span></li>
+        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P3</span>Chat social: reacciones, reply, menciones @, voz, GIFs, encuestas, moderación IA</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- MEJORAR -->
+  <section id="mejorar">
+    <h2><span class="dot" style="background:var(--blue)"></span>Mejoras recomendadas (investigación 2026)</h2>
+    <div class="section-desc">Basado en mejores prácticas actuales de la industria. Priorizadas.</div>
+
+    <div class="card">
+      <h3>⚡ Realtime a escala (Supabase)</h3>
+      <div class="rec">
+        <h4><span class="prio p-hi">Alta</span>Vigilar fugas de canales</h4>
+        <p>Los canales sin cerrar son la causa #1 de topar límites de conexión. Ya cuidamos <code>removeChannel</code> en el port móvil — mantenerlo como regla en todo canal nuevo (especialmente con presencia múltiple = 3 canales por usuario).</p>
+        <div class="src">Fuente: Supabase Realtime in Production (2026)</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-md">Media</span>Presencia obsoleta tras cambio de visibilidad</h4>
+        <p>Presence se pone "stale" tras cambios de visibilidad de pestaña/app. El AppState que agregamos en móvil ataca esto; conviene una defensa equivalente en web (re-sync al volver a la pestaña).</p>
+        <div class="src">Fuente: Supabase Realtime in Production (2026)</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-lo">Futuro</span>Broadcast-from-Database si crece la escala</h4>
+        <p>Hoy el chat usa <code>postgres_changes</code> (~50-200ms), correcto para persistencia. Si superan ~500 conexiones concurrentes o el CPU de la BD sube, migrar a "Broadcast from Database" (un trigger difunde a un canal en vez de que cada cliente escuche la tabla). No urgente ahora.</p>
+        <div class="src">Fuente: Supabase docs / TechLead 2026</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>💳 Seguridad de pagos (Stripe)</h3>
+      <div class="rec">
+        <h4><span class="prio p-hi">Alta</span>Idempotency keys en todo POST</h4>
+        <p>Añadir un idempotency key (UUID o customerID+orderID) a cada request de pago, para reintentar sin cobrar doble. Directamente aplicable al implementar el checkout.</p>
+        <div class="src">Fuente: Stripe Server-side integration (2026)</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-hi">Alta</span>Webhooks como fuente de verdad, no el cliente</h4>
+        <p>Nunca confiar solo en la confirmación del cliente — verificar el estado del pago vía webhook (con verificación de firma). Hacer los handlers idempotentes (guardar <code>event.id</code>, saltar duplicados). Esto refuerza P0-2/P0-3.</p>
+        <div class="src">Fuente: Stripe Integration Guide 2026</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-md">Media</span>Apple Pay / Google Pay para conversión</h4>
+        <p>Los wallets suben conversión y son de los métodos más seguros (el número de tarjeta nunca sale del dispositivo). Buen encaje para el flujo móvil de pedido-en-mesa.</p>
+        <div class="src">Fuente: Stripe payments security (2026)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏗️ Arquitectura & proceso</h3>
+      <div class="rec">
+        <h4><span class="prio p-hi">Alta</span>Quitar ignoreBuildErrors ya</h4>
+        <p>La comunidad Supabase/Next 2026 es enfática: mantener el schema y los tipos en control de versiones y con el type-check activo evita el incidente clásico "funcionó en dev, cayó en prod". JChat ya vivió el riesgo (tipos corruptos ocultos).</p>
+        <div class="src">Fuente: Supabase Production Architecture 2026</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-md">Media</span>Pooler en modo transacción para Vercel</h4>
+        <p>Como el web corre en Vercel (function-per-request), usar la URL del pooler en modo transacción y desactivar prepared statements — previene el incidente de conexiones más común de Supabase en producción.</p>
+        <div class="src">Fuente: Supabase Production Architecture 2026</div>
+      </div>
+      <div class="rec">
+        <h4><span class="prio p-md">Media</span>Consolidar las copias del repo</h4>
+        <p>Trabajar siempre en <code>/Users/jcgarcia/Projects/JchatVer3.0</code>. Archivar/borrar las otras copias (con espacios, jchat-main) para no commitear en la equivocada ni perder trabajo.</p>
+        <div class="src">Observado esta sesión</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap">
+    <h2><span class="dot" style="background:var(--green)"></span>Roadmap sugerido</h2>
+    <div class="section-desc">Orden recomendado para llegar a producción.</div>
+    <div class="card">
+      <h3>🥇 Antes de cobrar dinero real</h3>
+      <ul class="items">
+        <li><span class="ic ic-x">!</span><span>Cerrar P0-2 + P0-3 (recálculo server-side + Edge Functions que no confían en el cliente)</span></li>
+        <li><span class="ic ic-x">!</span><span>Quitar ignoreBuildErrors (arreglar ~33 errores de tipo)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Implementar checkout Stripe con idempotency + webhooks como fuente de verdad</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🥈 Retención & núcleo del producto</h3>
+      <ul class="items">
+        <li><span class="ic ic-wip">~</span><span>Chat Fase 2 (TTL 24h) y Fase 3 (no leídos por usuario)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Geo-verificación server-side (la regla de oro que define a JChat)</span></li>
+        <li><span class="ic ic-no">·</span><span>i18n bilingüe completo (mercado USA + RD)</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🥉 Crecimiento POS & social</h3>
+      <ul class="items">
+        <li><span class="ic ic-no">·</span><span>Split checks, propinas, QR por mesa, floor plan, export de reportes</span></li>
+        <li><span class="ic ic-no">·</span><span>Chat social: reacciones, reply, menciones, voz, GIFs</span></li>
+        <li><span class="ic ic-no">·</span><span>Heatmap / pulse dots en el mapa</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="footer">
+    JChat 3.0 — Status Report · Generado por Planning Claude · Actualizado 6 jul 2026<br>
+    Para actualizar: pídelo en chat ("actualiza el status") y se regenera leyendo el repo + commits.
+  </div>
+
+</div>
+</body>
+</html>
