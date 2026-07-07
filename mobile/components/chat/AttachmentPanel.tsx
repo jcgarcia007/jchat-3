@@ -128,10 +128,15 @@ export function AttachmentPanel({
         return;
       }
       // SDK 56: MediaTypeOptions is deprecated → mediaTypes accepts string[].
+      // legacy:true forces the classic Android picker (ACTION_GET_CONTENT)
+      // instead of the Android 13+ Photo Picker (PICK_IMAGES), which throws
+      // ActivityNotFoundException on devices/emulators without the Photo Picker
+      // module (non-GMS images).
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.85,
+        legacy: true,
       });
       if (!result.canceled && result.assets.length > 0) {
         const uri = result.assets[0]?.uri;
