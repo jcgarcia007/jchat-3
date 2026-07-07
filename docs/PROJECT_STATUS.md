@@ -1,6 +1,26 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-06-29
+Last updated: 2026-07-06
+
+---
+
+## Sesión julio 2026 — completado
+
+### Sistema de menús (web) — COMPLETO
+- 21 plantillas de menú portadas a React (arquetipos del board + classic).
+- 40 paletas de color aplicables por negocio (menu_palette_id, migración 034) + botón "volver a original"; tipografía fija (Playfair/Space Grotesk); colorPalettes.ts en templates/shared/.
+- Paletas originales del board por plantilla (MENU_PALETTES); modales/sheets heredan la paleta activa.
+- Responsive: shell columna centrada max-width 480px (transform device-frame); carritos unificados IconShoppingCart; sheets vía createPortal.
+- Selector dashboard colapsable (plantilla/paleta/efecto); sheet recogida "En mi mesa" primero.
+
+### Sistema de chat (web + iOS + Android)
+- Sub-chats: navegación in-place entre salas del negocio (query por business_id, gate can_access_room, candado+password verify_room_password).
+- Presencia múltiple: main permanente + ancla del QR permanente + subchat visitado rotativo (hook usePresenceChannels en móvil, con AppState re-track al foreground).
+- Scroll robusto: web (aspect-ratio en fotos guardando dims en metadata + re-scroll onLoad) y móvil (FlatList inverted, eliminó timers).
+- Fixes de envío: foto iOS baja tras picker, web texto/foto baja (doble rAF), teclado/zoom web iOS (input font-size 16px), Android galería legacy:true + try/catch cámara.
+- Visor de imágenes: web (lightbox portal, X en esquina de imagen, cierra click-fuera/Esc/X, zoom doble-clic) + móvil (react-native-image-viewing, pinch-zoom, X con safe-area, swipe-to-close).
+
+---
 
 ## What JChat 3.0 is
 Location-based social + commerce mobile app. Proximity group chats tied to physical venues, in-venue ordering/gifting via Stripe, map-first UI, three-tier business subscriptions. Launch markets: USA + Dominican Republic.
@@ -21,7 +41,7 @@ Location-based social + commerce mobile app. Proximity group chats tied to physi
 | Resource | Value |
 |---|---|
 | Supabase project | klfsgcfoahdtkojyqspd |
-| Vercel project | prj_sGiwIjcnfUbrdzuITqY7ikEMI9tI (team team_eD4O1D2IRdcSlfIJxPhdyegy) |
+| Vercel project | prj_sGiwIjcnfUbrdzuITqY7ikEMI9tI (team team_eD4O1D2IRdcSlfIJxPhdyegy; CLI scope slug: carlos0cruz007-3843s-projects) |
 | Google Cloud project | JChat (jchat-497118) |
 | Test business | Bar XZX — slug bar-xzx-omd2, id 0478b8d5-5217-4369-9fa2-128dbe5b38f8 (Plantation FL), menu_mode 'web' |
 
@@ -81,7 +101,7 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 ---
 
 ## DEBT (technical debt — carried)
-- 🔴 ignoreBuildErrors:true ACTIVE in web/next.config.ts — type-safety net OFF. This session PROVED the risk: database.types.ts was corrupt (JSON-wrapped) and undetected until PASO 4. HIGHEST priority: fix 33 type-errors then remove ignoreBuildErrors. Likely-real bug at analytics/page.tsx:1440 (order_items.name doesn't exist).
+- ✅ RESUELTO (julio 2026): ignoreBuildErrors + eslint.ignoreDuringBuilds REMOVIDOS de web/next.config.ts. Los 33+ errores de tsc arreglados en lotes 1/1.1/2/3 + cierre; `npx tsc --noEmit` = 0 y `next build` pasa con type-checking real. El bug de analytics/page.tsx (order_items.name inexistente) fue uno de los corregidos. Varias features super-admin (ban/trial/resolver-logs/announcements status) quedaron STUB porque sus columnas no existen en el schema — con TODO en el código.
 - 🟡 Migrations 030/031 NOT registered in schema_migrations (applied via execute_sql) — registry desync.
 - 🟡 menu_items has TWO legacy photo columns (image_url + photo_url) — consolidate someday.
 - 🟡 Date.now() overflows Postgres int — use bigint/sequence for sort fields (was a runtime bug in migration 029).
@@ -93,13 +113,13 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 ---
 
 ## What's next — prioritized
-1. 🔴 Re-enable TypeScript strict: fix 33 type-errors, remove ignoreBuildErrors (senior strongly recommends BEFORE more features — this session proved the risk).
+1. ✅ HECHO (julio 2026) — TypeScript strict re-activado: 33 errores corregidos, ignoreBuildErrors removido.
 2. 🔴 Security P0-2 + P0-3 before any real payments.
 3. Fase 3 — comprar (Stripe web checkout). Menú "comprar" still placeholder; gifting deferred here.
-4. Web chat live presence bar (maqueta approved): port mobile presence, incognito 🎭, "N en línea", verify 2 tabs.
-5. Sub-room tabs (web) — membership-gated; sub-room QR grants membership in sub+parent.
-6. Tanda 2 — DMChatScreen (dm_conversations/dm_messages exist).
-7. Tanda 3 — UserProfileScreen + users.cover_url + full emoji picker + user_personal_mutes.
+4. ✅ HECHO (julio 2026) — Presencia web en vivo + sub-chats in-place (usePresenceChannels: main + ancla + visitado rotativo). Ver "Sesión julio 2026" arriba.
+5. Tanda 2 — DMChatScreen (dm_conversations/dm_messages exist).
+6. Tanda 3 — UserProfileScreen + users.cover_url + full emoji picker + user_personal_mutes.
+7. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (dominio ya en el team; pendiente decisión www redirect vs apex).
 
 ---
 
