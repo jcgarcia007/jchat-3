@@ -50,3 +50,4 @@ yarn-error.log*
 # Root-anchored so mobile/AGENTS.md and web/AGENTS.md stay tracked.
 .codex/
 /AGENTS.md
+web/Template/
