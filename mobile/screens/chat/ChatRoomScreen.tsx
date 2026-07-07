@@ -554,7 +554,14 @@ export default function ChatRoomScreen() {
       setMessages((prev) => [optimistic, ...prev]);
       // Sender always jumps to the bottom (offset 0 in an inverted list).
       isNearBottomRef.current = true;
-      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
+      // The photo comes from a native picker/camera modal that is still
+      // dismissing when we get here; a single 50ms scroll fires too early and is
+      // lost. Fire it across a couple of frames AND after the dismiss settles
+      // (~350ms) so the list actually lands on the new photo.
+      const scrollPhotoToBottom = () =>
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      requestAnimationFrame(() => requestAnimationFrame(scrollPhotoToBottom));
+      setTimeout(scrollPhotoToBottom, 350);
 
       if (!isSupabaseConfigured) return;
 
@@ -585,6 +592,14 @@ export default function ChatRoomScreen() {
               .filter((m) => m.id !== confirmed.id)
               .map((m) => (m.id === optimisticId ? confirmed : m)),
           );
+          // Upload + insert done (the remote image swaps in here). Re-pin to the
+          // newest message if the sender was still at the bottom, so the photo
+          // lands even if the earlier scroll raced the picker dismissal.
+          if (isNearBottomRef.current) {
+            requestAnimationFrame(() =>
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true }),
+            );
+          }
         } else {
           setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         }

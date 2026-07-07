@@ -227,6 +227,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollWindowRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+  // Timestamp of the last message WE sent — lets a freshly-sent own photo re-pin
+  // to the bottom when its <img> finishes decoding and grows.
+  const justSentRef = useRef(0);
 
   // ── Derived values ─────────────────────────────────────────────────────────────
   const mainRoomId = rooms.find((r) => r.is_main)?.id;
@@ -398,7 +401,15 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             if (prev.some((m) => m.id === full.id)) return prev;
             return [...prev, full];
           });
-          scrollToBottom();
+          // Scroll AFTER the new message paints (double rAF). Own message always
+          // follows; others only when the user is near the bottom (respect a
+          // manual scroll-up).
+          const isOwnMsg = full.user_id === userId;
+          if (isOwnMsg || !userScrolledUpRef.current) {
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => scrollToBottom("smooth")),
+            );
+          }
         }
       )
       .subscribe();
@@ -409,7 +420,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         channelRef.current = null;
       }
     };
-  }, [loadState, activeRoomId, fetchMessage, scrollToBottom]);
+  }, [loadState, activeRoomId, fetchMessage, scrollToBottom, userId]);
 
   // ── Presence: fetch the user's profile once → the payload tracked everywhere ──
   useEffect(() => {
@@ -515,6 +526,14 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
     setInputText("");
     inputRef.current?.focus();
+
+    // Own message always scrolls to bottom, even if the user had scrolled up.
+    // Double rAF runs after the realtime-inserted message commits to the DOM
+    // (the realtime handler's own scroll otherwise fires before the paint).
+    justSentRef.current = Date.now();
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => scrollToBottom("smooth")),
+    );
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -735,7 +754,13 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       });
 
       if (msgErr) throw msgErr;
-      // Message appears via realtime subscription
+      // Message appears via realtime subscription. Own message: pin to bottom
+      // after paint (double rAF); the <img> onLoad re-scroll below handles the
+      // image growing once it decodes.
+      justSentRef.current = Date.now();
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => scrollToBottom("smooth")),
+      );
     } catch {
       setSendError("No se pudo enviar la imagen. Intenta de nuevo.");
     } finally {
@@ -1205,6 +1230,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       // scrolled up, re-anchor to the bottom after the image grows.
                       if (initialScrollWindowRef.current && !userScrolledUpRef.current) {
                         scrollToBottom("instant" as ScrollBehavior);
+                      }
+                      // Just-sent OWN photo: once it decodes and grows, re-pin to
+                      // the bottom (not gated to the initial-load window).
+                      if (isOwn && Date.now() - justSentRef.current < 3000) {
+                        scrollToBottom("smooth");
                       }
                     }}
                     style={{
