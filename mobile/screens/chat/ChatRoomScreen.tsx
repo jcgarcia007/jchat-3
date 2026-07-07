@@ -46,6 +46,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { IconX } from '@tabler/icons-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -943,6 +944,29 @@ export default function ChatRoomScreen() {
         imageIndex={0}
         visible={viewerImage != null}
         onRequestClose={() => setViewerImage(null)}
+        HeaderComponent={() => (
+          <SafeAreaView style={{ alignItems: 'flex-end' }}>
+            <Pressable
+              onPress={() => setViewerImage(null)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Close image" // TODO(i18n)
+              style={{
+                margin: 12,
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                borderWidth: 2,
+                borderColor: 'rgba(255,255,255,0.5)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconX size={20} color="#fff" />
+            </Pressable>
+          </SafeAreaView>
+        )}
       />
 
       {/* ── UserActionSheet ───────────────────────────────────────────────── */}
