@@ -98,24 +98,34 @@ export function ChatInput({
 
   const handleCamera = useCallback(async () => {
     setAttachmentOpen(false);
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        'Permission required', // TODO(i18n)
-        'Allow camera access to take photos in chat.',
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0]?.uri;
-      if (uri) {
-        onSendPhoto(uri);
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permiso requerido', // TODO(i18n)
+          'Permite el acceso a la cámara para tomar fotos en el chat.',
+        );
+        return;
       }
+      // SDK 56: MediaTypeOptions is deprecated → mediaTypes accepts string[].
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0]?.uri;
+        if (uri) {
+          onSendPhoto(uri);
+        }
+      }
+    } catch (err) {
+      // Don't fail silently — surface a clear message and log for debugging.
+      console.error('[ChatInput] launchCameraAsync failed:', err);
+      Alert.alert(
+        'Cámara no disponible', // TODO(i18n)
+        'No se pudo abrir la cámara. Verifica los permisos.',
+      );
     }
   }, [onSendPhoto]);
 
