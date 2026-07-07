@@ -1894,48 +1894,57 @@ function Lightbox({ url, onClose }: { url: string | null; onClose: () => void })
         overflow: "auto",
       }}
     >
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        aria-label="Cerrar"
-        style={{
-          position: "fixed",
-          top: 16,
-          right: 16,
-          zIndex: 1001,
-          width: 40,
-          height: 40,
-          borderRadius: 999,
-          border: "none",
-          background: "rgba(0,0,0,0.5)",
-          color: "#fff",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <IconX size={22} />
-      </button>
-
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt="Imagen ampliada"
+      {/* Image wrapper: shrinks to the image so the close button can anchor to
+          the image's top-right corner (not the screen corner). stopPropagation
+          so clicking the image/wrapper never closes — only the overlay does. */}
+      <div
         onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          setZoomed((z) => !z);
-        }}
-        style={{
-          maxWidth: "92vw",
-          maxHeight: "92vh",
-          objectFit: "contain",
-          transform: zoomed ? "scale(2)" : "scale(1)",
-          transition: "transform 0.2s ease",
-          cursor: zoomed ? "zoom-out" : "zoom-in",
-        }}
-      />
+        style={{ position: "relative", display: "inline-block", lineHeight: 0 }}
+      >
+        {/* Close button — top-right corner of the image, high-contrast over any photo. */}
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            zIndex: 1,
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            border: "2px solid rgba(255,255,255,0.5)",
+            background: "rgba(0,0,0,0.6)",
+            color: "#fff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          }}
+        >
+          <IconX size={20} />
+        </button>
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Imagen ampliada"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setZoomed((z) => !z);
+          }}
+          style={{
+            display: "block",
+            maxWidth: "92vw",
+            maxHeight: "92vh",
+            objectFit: "contain",
+            transform: zoomed ? "scale(2)" : "scale(1)",
+            transition: "transform 0.2s ease",
+            cursor: zoomed ? "zoom-out" : "zoom-in",
+          }}
+        />
+      </div>
     </div>,
     document.body,
   );
