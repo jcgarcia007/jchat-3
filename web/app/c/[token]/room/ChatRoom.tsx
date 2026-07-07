@@ -1511,7 +1511,9 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             border: `1px solid ${theme.border}`,
             background: theme.inputBg,
             color: theme.bubbleInText,
-            fontSize: 14,
+            // 16px min: iOS Safari/Chrome auto-zooms into inputs with a smaller
+            // font, which then leaves the chat misaligned with the viewport.
+            fontSize: 16,
             lineHeight: 1.4,
             outline: "none",
             fontFamily: "inherit",
@@ -1606,7 +1608,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 border: `1px solid ${theme.border}`,
                 background: theme.inputBg,
                 color: theme.bubbleInText,
-                fontSize: 15,
+                // 16px min → avoid iOS input auto-zoom (same as the message box).
+                fontSize: 16,
                 outline: "none",
                 fontFamily: "inherit",
               }}
