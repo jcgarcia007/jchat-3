@@ -118,27 +118,37 @@ export function AttachmentPanel({
   canCreateOffer,
 }: AttachmentPanelProps) {
   const handlePhoto = useCallback(async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        'Permission required', // TODO(i18n)
-        'Allow photo library access to send images.',
-      );
-      onClose();
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0]?.uri;
-      if (uri) {
-        onPhoto(uri);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permiso requerido', // TODO(i18n)
+          'Permite el acceso a tus fotos para enviar imágenes.',
+        );
+        return;
       }
+      // SDK 56: MediaTypeOptions is deprecated → mediaTypes accepts string[].
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0]?.uri;
+        if (uri) {
+          onPhoto(uri);
+        }
+      }
+    } catch (err) {
+      // Don't fail silently — surface a clear message and log for debugging.
+      console.error('[AttachmentPanel] launchImageLibraryAsync failed:', err);
+      Alert.alert(
+        'Galería no disponible', // TODO(i18n)
+        'No se pudo abrir la galería. Verifica los permisos.',
+      );
+    } finally {
+      onClose();
     }
-    onClose();
   }, [onPhoto, onClose]);
 
   const handleMenu = useCallback(() => {
