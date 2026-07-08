@@ -10,6 +10,7 @@
  *   .web.tsx    — pass-through (stripe-react-native is native-only)
  */
 
+import './i18n'; // must be first — initialises i18next before any component renders
 import React from 'react';
 import StripeRoot from './components/StripeRoot';
 import { AuthProvider } from './context/AuthContext';

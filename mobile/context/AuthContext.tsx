@@ -16,6 +16,8 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { changeAppLanguage } from '../i18n';
+import type { SupportedLanguage } from '../i18n';
 
 interface AuthContextValue {
   session: Session | null;
@@ -50,6 +52,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Sync i18n language with the user's DB preference after login / session restore.
+  // The DB (users.language) takes priority over the device locale. Runs once when
+  // session.user.id becomes available — a single-field, single-row query.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    void supabase
+      .from('users')
+      .select('language')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.language && (data.language === 'en' || data.language === 'es')) {
+          changeAppLanguage(data.language as SupportedLanguage);
+        }
+      });
+  }, [session?.user?.id]);
 
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {

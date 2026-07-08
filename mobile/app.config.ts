@@ -73,6 +73,7 @@ const config: ExpoConfig = {
       },
     ],
     'expo-web-browser',
+    'expo-localization',
     '@react-native-community/datetimepicker',
     [
       'expo-location',

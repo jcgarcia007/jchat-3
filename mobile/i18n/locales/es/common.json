@@ -1,0 +1,21 @@
+{
+  "appName": "JChat",
+  "actions": {
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "confirm": "Confirmar"
+  },
+  "state": {
+    "loading": "Cargando…",
+    "error": "Algo salió mal",
+    "empty": "Aún no hay nada"
+  },
+  "language": {
+    "en": "Inglés",
+    "es": "Español"
+  }
+}
