@@ -66,6 +66,54 @@ function errorResponse(message: string, status = 400): Response {
   return jsonResponse({ error: message }, status);
 }
 
+// ── Auth (P0-3) ─────────────────────────────────────────────────────────────
+// Same JWT-verification pattern as payments/index.ts. The client calls this
+// function via supabase.functions.invoke(), which forwards the user's JWT in the
+// Authorization header. We read it, verify it, and use ONLY the verified user id.
+
+/** Verify the caller's JWT. Returns { authUserId } or a 401 Response. */
+async function verifyCaller(req: Request): Promise<{ authUserId: string } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return errorResponse("Missing or invalid Authorization header", 401);
+  }
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!anonKey || !supabaseUrl) {
+    console.error("[stripe-connect] SUPABASE_ANON_KEY or SUPABASE_URL not set");
+    return errorResponse("Internal server error", 500);
+  }
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error: authError } = await userClient.auth.getUser();
+  if (authError || !user) return errorResponse("Unauthorized", 401);
+  return { authUserId: user.id };
+}
+
+/** Assert the caller owns the business (or is a platform admin). null = OK; Response = 403/404. */
+async function assertOwnerOrAdmin(
+  db: ReturnType<typeof getAdminClient>,
+  authUserId: string,
+  businessId: string,
+): Promise<Response | null> {
+  const { data: biz, error } = await db
+    .from("businesses")
+    .select("owner_id")
+    .eq("id", businessId)
+    .maybeSingle();
+  if (error) return errorResponse(`DB error: ${error.message}`, 500);
+  if (!biz) return errorResponse("Business not found", 404);
+  if (biz.owner_id === authUserId) return null;
+  const { data: admin } = await db
+    .from("admin_roles")
+    .select("user_id")
+    .eq("user_id", authUserId)
+    .maybeSingle();
+  if (admin) return null;
+  return errorResponse("Forbidden: not the owner of this business", 403);
+}
+
 // ── Action: create_connect_account ────────────────────────────────────────────
 // Idempotent: if business already has stripe_account_id, creates a new account
 // link (re-starts onboarding if not fully completed) rather than a new account.
@@ -115,7 +163,7 @@ async function handleCreateConnectAccount(
         card_payments: { requested: true },
         transfers: { requested: true },
       },
-    });
+    }, { idempotencyKey: `connect:${businessId}` });
 
     accountId = account.id;
 
@@ -237,6 +285,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const action = typeof body.action === "string" ? body.action : null;
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+
+  // ── P0-3: verify the caller's JWT + business ownership BEFORE any action ──
+  const auth = await verifyCaller(req);
+  if (auth instanceof Response) return auth;
+  const ownerCheck = await assertOwnerOrAdmin(getAdminClient(), auth.authUserId, businessId);
+  if (ownerCheck) return ownerCheck;
 
   try {
     switch (action) {
