@@ -1,6 +1,23 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
+
+---
+
+## Pruebas manuales pendientes
+
+### PENDIENTE DE PROBAR — Fix #6 (cobro de modificadores)
+Commits `995fcbe` (server payments v11) + `85297c8` (cliente móvil). Estado: **aplicado,
+pendiente de verificación manual en dispositivo**. Pasos:
+- Recargar Metro (`npx expo start --dev-client --clear`).
+- Pedir un ítem con tamaño (ej. "Doble +$5") y/o un extra desde el menú.
+- Ir al checkout y confirmar que el total mostrado incluye los modificadores.
+- Pagar con tarjeta de prueba `4242 4242 4242 4242`.
+- Verificar en el dashboard de Stripe (test mode) que el monto **cobrado = base + tamaño +
+  extras + tax** (antes solo cobraba la base).
+- Requiere un ítem con `menu_items.options` (sistema legacy sizes/extras) configurado; si
+  Bar XZX no tiene uno, crear un ítem de prueba con modificadores.
+- Objetivo: confirmar que el usuario ve X y Stripe cobra X (sin discrepancia).
 
 ---
 
