@@ -104,6 +104,45 @@ async function handleEnsureCustomer(authUserId: string): Promise<Response> {
 }
 
 /**
+ * FIX #6: resolve the DB price of a line's selected modifiers (size + extras),
+ * reading prices from the server-owned menu_items.options jsonb — never the client.
+ * Legacy shape: { sizes: [{label, price_cents}], extras: [{label, price_cents}] }.
+ * Returns { cents } to add to the line, or { error } for a 400.
+ *
+ * Backward-compat: the client currently sends options:{} (Part B will send
+ * { size, extras }). With an empty selection this returns { cents: 0 } → the
+ * line price is unchanged (base only), so no current payment changes.
+ */
+function resolveModifierCents(
+  // deno-lint-ignore no-explicit-any
+  row: any,
+  options: Record<string, unknown> | undefined,
+  itemName: string,
+): { cents: number } | { error: string } {
+  const sel = options ?? {};
+  const sizes = (row.options?.sizes ?? []) as Array<{ label?: string; price_cents?: number }>;
+  const extras = (row.options?.extras ?? []) as Array<{ label?: string; price_cents?: number }>;
+  let cents = 0;
+
+  const selSize = typeof sel.size === "string" ? sel.size : null;
+  if (selSize) {
+    const match = sizes.find((s) => s.label === selSize);
+    if (!match) return { error: `Invalid size "${selSize}" for ${itemName}` };
+    cents += typeof match.price_cents === "number" ? match.price_cents : 0;
+  }
+
+  const selExtras = Array.isArray(sel.extras) ? sel.extras : [];
+  for (const label of selExtras) {
+    if (typeof label !== "string") continue;
+    const match = extras.find((e) => e.label === label);
+    if (!match) return { error: `Invalid extra "${label}" for ${itemName}` };
+    cents += typeof match.price_cents === "number" ? match.price_cents : 0;
+  }
+
+  return { cents };
+}
+
+/**
  * authUserId: JWT-verified caller identity from Deno.serve — never use body.user_id
  * for authentication or DB lookups. body.user_id is kept as a trace field only.
  */
@@ -175,7 +214,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const itemIds = [...new Set(items.map((it) => it.menu_item_id))];
   const { data: dbItems, error: itemsErr } = await db
     .from("menu_items")
-    .select("id, price_cents, is_available, business_id, name")
+    .select("id, price_cents, is_available, business_id, name, options")
     .in("id", itemIds);
   if (itemsErr) return errorResponse(`DB error fetching items: ${itemsErr.message}`, 500);
 
@@ -189,11 +228,20 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     if (!row.is_available)               return errorResponse(`Item not available: ${row.name}`);
   }
 
-  // ── Server-side recalculation (P0-2) ──────────────────────────────────────
-  // Uses DB price per item; client price_cents is ignored.
-  // Duplicate cart lines (same menu_item_id appearing twice) are both summed.
+  // ── Server-side recalculation (P0-2 + FIX #6 modifiers) ───────────────────
+  // Uses DB base price per item AND DB modifier prices (size/extras read from
+  // menu_items.options); the client's price_cents and any prices in it.options
+  // are ignored. Duplicate cart lines (same menu_item_id twice) are both summed.
+  // lineUnitCents[idx] = DB base + DB modifiers for items[idx].
+  const lineUnitCents: number[] = [];
+  for (const it of items) {
+    const row = dbMap.get(it.menu_item_id)!;
+    const mod = resolveModifierCents(row, it.options, row.name as string);
+    if ("error" in mod) return errorResponse(mod.error);
+    lineUnitCents.push((row.price_cents as number) + mod.cents);
+  }
   const serverSubtotalCents = items.reduce(
-    (sum, it) => sum + (dbMap.get(it.menu_item_id)!.price_cents as number) * it.qty,
+    (sum, it, idx) => sum + lineUnitCents[idx] * it.qty,
     0,
   );
 
@@ -217,12 +265,13 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // stripe-webhook reads these fields from paymentIntent.metadata and writes
   // them verbatim to the orders row. By populating them here from server values,
   // the webhook stays correct without any changes.
-  // item `p` uses DB price so order_items.price_cents snapshots are trustworthy.
+  // item `p` uses the DB line unit (base + modifiers) so the webhook writes a
+  // trustworthy order_items.price_cents snapshot — not the client's price.
   const itemsMeta = JSON.stringify(
-    items.map((it) => ({
+    items.map((it, idx) => ({
       m: it.menu_item_id,
       q: it.qty,
-      p: dbMap.get(it.menu_item_id)!.price_cents as number, // DB price, not client
+      p: lineUnitCents[idx], // DB base + DB modifiers, not client
       ...(it.options ? { o: it.options } : {}),
       ...(it.special_instructions ? { s: it.special_instructions } : {}),
     })),
