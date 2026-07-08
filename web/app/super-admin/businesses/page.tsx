@@ -171,10 +171,12 @@ export default function SuperAdminBusinessesPage() {
       const newStatus: BusinessStatus = actionType === "suspend" ? "suspended" : "closed";
 
       if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from("businesses")
-          .update({ status: newStatus })
-          .eq("id", actionBiz.id);
+        // businesses.status is not client-writable (RLS/column privileges); the
+        // SECURITY DEFINER RPC gates the change on is_platform_admin().
+        const { error } = await supabase.rpc("admin_set_business_status", {
+          p_business_id: actionBiz.id,
+          p_status: newStatus,
+        });
         if (error) {
           setSaveError(error.message);
           setSaving(false);

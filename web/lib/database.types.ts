@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_roles: {
@@ -3043,6 +3018,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_business_status: {
+        Args: { p_business_id: string; p_status: string }
+        Returns: undefined
+      }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
       generate_room_qr_token: {
         Args: { _business_id: string; _is_sub_room: boolean }
@@ -3205,9 +3184,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

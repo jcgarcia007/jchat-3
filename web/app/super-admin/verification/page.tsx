@@ -176,11 +176,12 @@ export default function SuperAdminVerificationPage() {
         return;
       }
 
-      // Update business status
-      const { error: bizErr } = await supabase
-        .from("businesses")
-        .update({ status: bizStatus })
-        .eq("id", reviewItem.business_id);
+      // Update business status via the admin RPC (status is not client-writable;
+      // the RPC gates the change on is_platform_admin()).
+      const { error: bizErr } = await supabase.rpc("admin_set_business_status", {
+        p_business_id: reviewItem.business_id,
+        p_status: bizStatus,
+      });
       if (bizErr) {
         setSaveError(bizErr.message);
         setSaving(false);
