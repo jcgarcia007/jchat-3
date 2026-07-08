@@ -13,16 +13,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
-  followUser,
   unfollowUser,
-  requestFollow,
   isFollowing as checkIsFollowing,
   getFollowerCount,
   getFollowingCount,
-  blockUser,
   reportUser,
   type FollowState,
 } from '../services/users';
+import { requestOrFollow } from '../services/follows';
+import { blockUser } from '../services/blocks';
 
 // ── Public interface ────────────────────────────────────────────────────────
 
@@ -178,16 +177,16 @@ export function useFollowSystem(
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const follow = useCallback(
-    async (options?: { isPrivate?: boolean }) => {
+    async (_options?: { isPrivate?: boolean }) => {
       if (!user?.id || !targetUserId) return;
       setLoading(true);
       try {
-        if (options?.isPrivate) {
-          // Private account — send a follow request (pending).
-          await requestFollow(user.id, targetUserId);
+        // The server (request_or_follow RPC) decides: public → direct follow,
+        // private → pending request. No need to know is_private on the client.
+        const result = await requestOrFollow(targetUserId);
+        if (result === 'requested') {
           setFollowState('pending');
         } else {
-          await followUser(user.id, targetUserId);
           setFollowState('following');
           // Optimistic count bump; Realtime will correct if needed.
           setFollowerCount((c) => c + 1);
@@ -216,7 +215,7 @@ export function useFollowSystem(
     if (!user?.id || !targetUserId) return;
     setLoading(true);
     try {
-      await blockUser(user.id, targetUserId);
+      await blockUser(targetUserId);
       // After blocking, current user is no longer following the target.
       setFollowState('none');
       setFollowerCount((c) => Math.max(0, c - 1));

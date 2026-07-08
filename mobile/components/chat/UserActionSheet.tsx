@@ -69,7 +69,9 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
-import { blockUser, reportUser, followUser } from '../../services/users';
+import { reportUser } from '../../services/users';
+import { requestOrFollow } from '../../services/follows';
+import { blockUser } from '../../services/blocks';
 import {
   banUser,
   muteInRoom,
@@ -324,10 +326,17 @@ export function UserActionSheet({
   const handleFollow = useCallback(async () => {
     if (!user) return;
     await run('follow', async () => {
-      await followUser(user.id, targetUserId);
+      // Server decides public (direct follow) vs private (pending request).
+      const result = await requestOrFollow(targetUserId);
+      Alert.alert(
+        result === 'requested' ? 'Request sent' : 'Following', // TODO(i18n)
+        result === 'requested'
+          ? 'This account is private. They will review your request.'
+          : `You are now following ${targetName}.`,
+      );
       onClose();
     });
-  }, [user, run, targetUserId, onClose]);
+  }, [user, run, targetUserId, targetName, onClose]);
 
   const handlePersonalMute = useCallback(() => {
     // Personal mute: hide user's messages in the viewer's own feed only.
@@ -361,7 +370,7 @@ export function UserActionSheet({
           style: 'destructive',
           onPress: async () => {
             await run('block', async () => {
-              await blockUser(user.id, targetUserId);
+              await blockUser(targetUserId);
               onClose();
             });
           },

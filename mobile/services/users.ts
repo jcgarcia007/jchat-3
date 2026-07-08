@@ -203,82 +203,9 @@ export async function getFollowingCount(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-// ── Follow Requests (private accounts) ─────────────────────────────────────
-
-/**
- * Send a follow request to a private-account user.
- *
- * TODO(schema): This function targets a `follow_requests` table that does not
- * yet exist in 001_initial_schema.sql. Until the table is added, calling this
- * function will return a Supabase error at runtime. The types are correct so
- * the rest of the codebase can reference `requestFollow` without type errors.
- *
- * When the schema is ready, also trigger a notification (type: 'follow') for
- * the target user via the Edge Function or service_role insert into `notifications`.
- */
-export async function requestFollow(
-  currentUserId: string,
-  targetId: string,
-): Promise<void> {
-  // TODO(schema): add follow_requests table — see FollowState type above
-  const { error } = await supabase
-    .from('follow_requests' as 'follows') // cast keeps tsc happy until table exists
-    .upsert(
-      { requester_id: currentUserId, target_id: targetId } as unknown as {
-        follower_id: string;
-        following_id: string;
-      },
-      { onConflict: 'requester_id,target_id' } as { onConflict: string },
-    );
-  if (error) throw error;
-}
-
-// ── Block / Unblock ─────────────────────────────────────────────────────────
-
-/**
- * Block a user.
- * Per spec: removes follow relationships in BOTH directions, then inserts a
- * block record so their content is hidden.
- */
-export async function blockUser(
-  currentUserId: string,
-  targetId: string,
-): Promise<void> {
-  // 1 — Remove follows in both directions (fire-and-forget; both may not exist)
-  await supabase
-    .from('follows')
-    .delete()
-    .eq('follower_id', currentUserId)
-    .eq('following_id', targetId);
-
-  await supabase
-    .from('follows')
-    .delete()
-    .eq('follower_id', targetId)
-    .eq('following_id', currentUserId);
-
-  // 2 — Insert block record
-  const { error } = await supabase
-    .from('blocks')
-    .upsert(
-      { blocker_id: currentUserId, blocked_id: targetId },
-      { onConflict: 'blocker_id,blocked_id' },
-    );
-  if (error) throw error;
-}
-
-/** Unblock a user. */
-export async function unblockUser(
-  currentUserId: string,
-  targetId: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('blocks')
-    .delete()
-    .eq('blocker_id', currentUserId)
-    .eq('blocked_id', targetId);
-  if (error) throw error;
-}
+// Follow requests + block/unblock moved to services/follows.ts and
+// services/blocks.ts (RPC-backed, migration 040). See requestOrFollow /
+// acceptRequest / rejectRequest / cancelRequest and blockUser / unblockUser there.
 
 // ── Reports ─────────────────────────────────────────────────────────────────
 
