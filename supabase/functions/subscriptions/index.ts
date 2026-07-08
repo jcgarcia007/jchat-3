@@ -294,9 +294,29 @@ async function handleWebhook(req: Request): Promise<Response> {
     return errorResponse("Invalid webhook signature", 400);
   }
 
-  console.log(`[subscriptions webhook] event: ${event.type}`);
+  console.log(`[subscriptions webhook] event: ${event.type} id=${event.id}`);
 
-  switch (event.type) {
+  // ── Idempotency guard (FIX #5): INSERT-FIRST + DELETE-ON-ERROR ─────────────
+  // Insert event.id first (atomic dedup). If it already exists (23505 = re-delivery
+  // of the SAME event), return 200 without reprocessing — this is what prevents the
+  // grace_day +1 from double-counting on webhook re-delivery. Genuine cobro retries
+  // arrive as DISTINCT event.ids and are still counted. Any other DB error → 500 so
+  // Stripe retries. If a handler throws, we DELETE the marker before 500 so the retry
+  // reprocesses.
+  const { error: dedupErr } = await db
+    .from("processed_stripe_events")
+    .insert({ event_id: event.id, type: event.type });
+  if (dedupErr) {
+    if ((dedupErr as { code?: string }).code === "23505") {
+      console.log(`[subscriptions webhook] duplicate event ${event.id} — skipping`);
+      return jsonResponse({ received: true, duplicate: true });
+    }
+    console.error(`[subscriptions webhook] dedup insert failed for ${event.id}:`, dedupErr);
+    return errorResponse("Internal server error", 500);
+  }
+
+  try {
+    switch (event.type) {
     // ── Checkout completed → subscription activated ──────────────────────────
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -547,6 +567,12 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     default:
       console.log(`[subscriptions webhook] unhandled event type: ${event.type}`);
+    }
+  } catch (err) {
+    console.error(`[subscriptions webhook] handler error for ${event.type}:`, err);
+    // Roll back the dedup marker so Stripe's retry reprocesses this event.
+    await db.from("processed_stripe_events").delete().eq("event_id", event.id);
+    return errorResponse("Internal server error", 500);
   }
 
   return jsonResponse({ received: true });

@@ -149,6 +149,15 @@ async function handlePaymentSucceeded(
     .single();
 
   if (orderErr) {
+    // FIX #8: unique partial index on orders.stripe_pi_id. A concurrent delivery
+    // already inserted this order (won the race past the SELECT-guard above).
+    // Treat as already-processed → return cleanly instead of throwing a 500.
+    if ((orderErr as { code?: string }).code === "23505") {
+      console.log(
+        `[stripe-webhook] order already exists (unique PI ${paymentIntent.id}) — skipping`,
+      );
+      return;
+    }
     console.error(`[stripe-webhook] failed to insert order for PI ${paymentIntent.id}:`, orderErr);
     throw orderErr;
   }
@@ -241,6 +250,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   console.log(`[stripe-webhook] event: ${event.type} id=${event.id}`);
 
+  // ── Idempotency guard (FIX #5): INSERT-FIRST + DELETE-ON-ERROR ─────────────
+  // Insert the event.id first (atomic dedup, no race). If it already exists
+  // (23505 = re-delivery of the SAME event), return 200 without reprocessing.
+  // Any other DB error → 500 so Stripe retries. If the handler below throws,
+  // we DELETE the marker before returning 500 so Stripe's retry reprocesses it.
+  const db = getAdminClient();
+  const { error: dedupErr } = await db
+    .from("processed_stripe_events")
+    .insert({ event_id: event.id, type: event.type });
+  if (dedupErr) {
+    if ((dedupErr as { code?: string }).code === "23505") {
+      console.log(`[stripe-webhook] duplicate event ${event.id} — skipping`);
+      return jsonResponse({ received: true, duplicate: true });
+    }
+    console.error(`[stripe-webhook] dedup insert failed for ${event.id}:`, dedupErr);
+    return errorResponse("Internal server error", 500);
+  }
+
   try {
     switch (event.type) {
       case "payment_intent.succeeded":
@@ -257,6 +284,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   } catch (err) {
     console.error(`[stripe-webhook] handler error for ${event.type}:`, err);
+    // Roll back the dedup marker so Stripe's retry reprocesses this event.
+    await db.from("processed_stripe_events").delete().eq("event_id", event.id);
     // Return 500 so Stripe retries the event
     return errorResponse("Internal server error", 500);
   }

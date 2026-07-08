@@ -11,12 +11,13 @@
  * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  *   EXPO_PUBLIC_STRIPE_PK (returned to client). See README.md.
  *
- * Security (P0-2, P0-3 — 2026-06-24):
- *   create_payment_intent verifies the caller's JWT and recalculates all order
- *   amounts from the DB. The client-supplied total/subtotal/tax/discount are
- *   ignored; only tip_cents comes from the client (validated + capped at 200%
- *   of server subtotal). discount_cents is forced to 0 until a promo-code table
- *   exists (TODO: Task 3.5).
+ * Security (P0-2, P0-3 — 2026-06-24; FIX #7 — 2026-07-08):
+ *   ALL three actions verify the caller's JWT (verifyCaller) and operate on the
+ *   verified authUserId — never body.user_id. create_payment_intent also
+ *   recalculates all order amounts from the DB. The client-supplied
+ *   total/subtotal/tax/discount are ignored; only tip_cents comes from the client
+ *   (validated + capped at 200% of server subtotal). discount_cents is forced to 0
+ *   until a promo-code table exists (TODO: Task 3.5).
  *
  * NOTE: user email is read from auth.users via the admin API (public.users has
  * no email column).
@@ -55,6 +56,30 @@ function errorResponse(message: string, status = 400): Response {
   return jsonResponse({ error: message }, status);
 }
 
+/**
+ * Verify the caller's JWT (FIX #7). Returns { authUserId } or a 401/500 Response.
+ * Same pattern as subscriptions/index.ts. authUserId is the ONLY trusted user
+ * identity — body.user_id must never be used for auth or DB lookups.
+ */
+async function verifyCaller(req: Request): Promise<{ authUserId: string } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return errorResponse("Missing or invalid Authorization header", 401);
+  }
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!anonKey || !supabaseUrl) {
+    console.error("[payments] SUPABASE_ANON_KEY or SUPABASE_URL not set");
+    return errorResponse("Internal server error", 500);
+  }
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error: authError } = await userClient.auth.getUser();
+  if (authError || !user) return errorResponse("Unauthorized", 401);
+  return { authUserId: user.id };
+}
+
 interface CartItem { menu_item_id: string; name: string; qty: number; price_cents: number; options?: Record<string, unknown>; special_instructions?: string | null; }
 interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; items: CartItem[]; }
 
@@ -64,17 +89,16 @@ async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string):
   return data.user?.email ?? undefined;
 }
 
-async function handleEnsureCustomer(body: Record<string, unknown>): Promise<Response> {
-  const userId = typeof body.user_id === "string" ? body.user_id : null;
-  if (!userId) return errorResponse("user_id is required");
+// FIX #7: operates on the JWT-verified caller (authUserId); body.user_id is ignored.
+async function handleEnsureCustomer(authUserId: string): Promise<Response> {
   const db = getAdminClient();
   const stripe = getStripe();
-  const { data: user, error: userErr } = await db.from("users").select("id, display_name, stripe_customer_id").eq("id", userId).maybeSingle();
+  const { data: user, error: userErr } = await db.from("users").select("id, display_name, stripe_customer_id").eq("id", authUserId).maybeSingle();
   if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
   if (!user) return errorResponse("User not found", 404);
   if (user.stripe_customer_id) return jsonResponse({ customer_id: user.stripe_customer_id });
-  const customer = await stripe.customers.create({ email: await userEmail(db, userId), name: user.display_name ?? undefined, metadata: { supabase_user_id: userId } });
-  const { error: updateErr } = await db.from("users").update({ stripe_customer_id: customer.id }).eq("id", userId);
+  const customer = await stripe.customers.create({ email: await userEmail(db, authUserId), name: user.display_name ?? undefined, metadata: { supabase_user_id: authUserId } });
+  const { error: updateErr } = await db.from("users").update({ stripe_customer_id: customer.id }).eq("id", authUserId);
   if (updateErr) console.error("[payments] failed to save stripe_customer_id:", updateErr);
   return jsonResponse({ customer_id: customer.id });
 }
@@ -278,21 +302,20 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   });
 }
 
-async function handleCreateSetupIntent(body: Record<string, unknown>): Promise<Response> {
-  const userId = typeof body.user_id === "string" ? body.user_id : null;
-  if (!userId) return errorResponse("user_id is required");
+// FIX #7: operates on the JWT-verified caller (authUserId); body.user_id is ignored.
+async function handleCreateSetupIntent(authUserId: string): Promise<Response> {
   const db = getAdminClient();
   const stripe = getStripe();
-  const { data: user, error: userErr } = await db.from("users").select("id, display_name, stripe_customer_id").eq("id", userId).maybeSingle();
+  const { data: user, error: userErr } = await db.from("users").select("id, display_name, stripe_customer_id").eq("id", authUserId).maybeSingle();
   if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
   if (!user) return errorResponse("User not found", 404);
   let customerId = user.stripe_customer_id as string | null;
   if (!customerId) {
-    const customer = await stripe.customers.create({ email: await userEmail(db, userId), name: user.display_name ?? undefined, metadata: { supabase_user_id: userId } });
+    const customer = await stripe.customers.create({ email: await userEmail(db, authUserId), name: user.display_name ?? undefined, metadata: { supabase_user_id: authUserId } });
     customerId = customer.id;
-    await db.from("users").update({ stripe_customer_id: customerId }).eq("id", userId);
+    await db.from("users").update({ stripe_customer_id: customerId }).eq("id", authUserId);
   }
-  const setupIntent = await stripe.setupIntents.create({ customer: customerId, automatic_payment_methods: { enabled: true }, metadata: { supabase_user_id: userId } });
+  const setupIntent = await stripe.setupIntents.create({ customer: customerId, automatic_payment_methods: { enabled: true }, metadata: { supabase_user_id: authUserId } });
   const ephemeralKey = await stripe.ephemeralKeys.create({ customer: customerId }, { apiVersion: "2024-06-20" });
   const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
   return jsonResponse({ clientSecret: setupIntent.client_secret, ephemeralKey: ephemeralKey.secret, customer: customerId, publishableKey });
@@ -306,38 +329,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try { body = await req.json(); } catch { return errorResponse("Invalid JSON body"); }
   const action = typeof body.action === "string" ? body.action : null;
 
-  // ── JWT verification (P0-3) ───────────────────────────────────────────────
-  // Required for create_payment_intent. ensure_customer and create_setup_intent
-  // are follow-up work (TODO: P0-3 partial).
-  let authUserId: string | null = null;
-  if (action === "create_payment_intent") {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Missing or invalid Authorization header", 401);
-    }
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    if (!anonKey || !supabaseUrl) {
-      console.error("[payments] SUPABASE_ANON_KEY or SUPABASE_URL not set");
-      return errorResponse("Internal server error", 500);
-    }
-    // User-scoped client validates the JWT; getUser() fails if token is expired
-    // or forged. authUserId is the only trusted user identity downstream.
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
-      return errorResponse("Unauthorized", 401);
-    }
-    authUserId = user.id;
-  }
+  // ── JWT verification (P0-3 / FIX #7) ──────────────────────────────────────
+  // ALL three actions operate on the authenticated caller's own identity.
+  // verifyCaller validates the token; authUserId is the only trusted user id.
+  // body.user_id is never used for auth or DB lookups (was an IDOR on the
+  // Stripe customer in ensure_customer / create_setup_intent before this fix).
+  const auth = await verifyCaller(req);
+  if (auth instanceof Response) return auth;
+  const authUserId = auth.authUserId;
 
   try {
     switch (action) {
-      case "ensure_customer":       return await handleEnsureCustomer(body);
-      case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId!);
-      case "create_setup_intent":   return await handleCreateSetupIntent(body);
+      case "ensure_customer":       return await handleEnsureCustomer(authUserId);
+      case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId);
+      case "create_setup_intent":   return await handleCreateSetupIntent(authUserId);
       default: return errorResponse(`Unknown action: ${action ?? "(none)"}`);
     }
   } catch (err) {
