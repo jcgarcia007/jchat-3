@@ -1,10 +1,10 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ---
 
-## Sesión julio 2026 — completado
+## Estado julio 2026 — completado
 
 ### Sistema de menús (web) — COMPLETO
 - 21 plantillas de menú portadas a React (arquetipos del board + classic).
@@ -19,6 +19,19 @@ Last updated: 2026-07-06
 - Scroll robusto: web (aspect-ratio en fotos guardando dims en metadata + re-scroll onLoad) y móvil (FlatList inverted, eliminó timers).
 - Fixes de envío: foto iOS baja tras picker, web texto/foto baja (doble rAF), teclado/zoom web iOS (input font-size 16px), Android galería legacy:true + try/catch cámara.
 - Visor de imágenes: web (lightbox portal, X en esquina de imagen, cierra click-fuera/Esc/X, zoom doble-clic) + móvil (react-native-image-viewing, pinch-zoom, X con safe-area, swipe-to-close).
+
+### Seguridad de tipos (web + móvil)
+- `ignoreBuildErrors` + `eslint.ignoreDuringBuilds` **removidos** de `web/next.config.ts`.
+- Los 33+ errores de tsc arreglados (lotes 1-3 + cierre). **Web y móvil en 0 errores de tipo**; `next build` con type-check real. `database.types.ts` sano (sin la corrupción del wrapper JSON).
+
+### Seguridad de pagos — los 4 huecos P0 CERRADOS (Tandas 1+2)
+- **P0-2 / orders:** solo el webhook (service_role) crea órdenes (migr. 033, drop policy customer insert + revoke insert); orders UPDATE owner-only (035). El PaymentIntent ya recalculaba server-side.
+- **Columnas financieras de businesses:** `plan/tax_rate/stripe_account_id/status/owner_id` ya no escribibles por el cliente (migr. 034/036, revoke + grant allow-list de 40 cols) + RPC `admin_set_business_status` para super-admin.
+- **P0-3 / Edge Functions:** `stripe-connect` verifica propiedad (verifyCaller + assertOwnerOrAdmin, v9); `subscriptions.create_checkout` autentica+autoriza en el path app (Opción B, webhook intacto). Verificado en vivo: llamadas anónimas → 401.
+- **Quedan P1 de integridad** (no bloqueantes): idempotencia de webhooks, recalcular modificadores, UNIQUE en orders.stripe_pi_id, proteger is_verified. Ver `docs/SECURITY_AUDIT.md`.
+
+### Docs consolidados (Fase A + B)
+- Specs `.docx` → `.md`: `docs/SPEC.md`, `docs/DESIGN_SYSTEM.md`. Patrones técnicos → `docs/ARCHITECTURE.md`. Backlogs unidos → `docs/BACKLOG.md`. Diagnósticos resueltos, DEV_PLAN y `.docx` originales → `docs/archive/`. `CONTINUITY.md` + `CLAUDE.md` actualizados.
 
 ---
 
@@ -113,13 +126,15 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 ---
 
 ## What's next — prioritized
-1. ✅ HECHO (julio 2026) — TypeScript strict re-activado: 33 errores corregidos, ignoreBuildErrors removido.
-2. 🔴 Security P0-2 + P0-3 before any real payments.
-3. Fase 3 — comprar (Stripe web checkout). Menú "comprar" still placeholder; gifting deferred here.
-4. ✅ HECHO (julio 2026) — Presencia web en vivo + sub-chats in-place (usePresenceChannels: main + ancla + visitado rotativo). Ver "Sesión julio 2026" arriba.
-5. Tanda 2 — DMChatScreen (dm_conversations/dm_messages exist).
-6. Tanda 3 — UserProfileScreen + users.cover_url + full emoji picker + user_personal_mutes.
-7. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (dominio ya en el team; pendiente decisión www redirect vs apex).
+1. ✅ HECHO (julio) — TypeScript strict re-activado (33 errores, ignoreBuildErrors removido) + presencia web/sub-chats + los 4 P0 de pagos cerrados.
+2. **Tanda 3 seguridad — P1 de integridad de pagos:** idempotencia de webhooks (tabla `processed_stripe_events`), recalcular modificadores en `payments`, `ensure_customer`/`create_setup_intent` sin JWT, `UNIQUE` en `orders.stripe_pi_id`, proteger `businesses.is_verified`.
+3. **Chat Fase 2 — TTL configurable por sala** (24h negocio / 2h evento; el cron de limpieza lee el TTL por sala).
+4. **Chat Fase 3 — badge de "no leídos" por usuario/sala** (mensajes nuevos no expirados).
+5. **Checkout web (Fase 3 del web client):** menú + carrito + checkout de Stripe en web. Prerrequisito: los P0 de pagos ya están cerrados (crear la orden SOLO por el webhook, nunca desde el cliente).
+6. **Geo-verificación:** presencia física server-side (PostGIS / Edge Function) como núcleo del acceso al chat (regla de oro del producto — ver `docs/BACKLOG.md`).
+7. Tanda 2 — DMChatScreen (dm_conversations/dm_messages exist).
+8. Tanda 3 — UserProfileScreen + users.cover_url + full emoji picker + user_personal_mutes.
+9. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (ya en el team; pendiente decisión www redirect vs apex).
 
 ---
 

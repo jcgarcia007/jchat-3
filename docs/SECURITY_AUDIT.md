@@ -26,29 +26,45 @@ verificada.
 **Verificación:** con el anon key de un usuario que NO entró a la sala, un
 SELECT a `messages` de esa sala debe devolver 0 filas.
 
-### P0-2 · Precios de orden no se recalculan en el servidor [POR VERIFICAR en código, CONFIRMADO en esquema]
-**Dónde:** `mobile/services/stripe.ts:92`, `supabase/functions/payments/index.ts:74`,
-tabla `orders` (acepta `total_cents` del insert del cliente).
-**Problema:** el cliente envía subtotal/tax/tip/discount/total y precios de ítem;
-el server crea el PaymentIntent con esos valores. Un atacante paga $0.01 por una
-cuenta de $100.
-**Fix:** la Edge Function debe (1) verificar el JWT y derivar `user_id` del token,
-(2) leer `menu_items.price_cents` desde la BD por cada ítem, (3) validar
-disponibilidad/oferta, (4) calcular tax/fees/total server-side, (5) recién
-entonces crear el PaymentIntent. Nunca confiar en montos del cliente.
-**Verificación:** manipular el total en la request y confirmar que el server
-cobra el precio correcto de la BD, no el enviado.
+### P0-2 · Recálculo server-side de montos de orden — ✅ CERRADO (julio 2026)
+**Estado:** el `create_payment_intent` de `payments` ya recalculaba todo el monto
+desde la BD (`menu_items.price_cents`, tax por negocio, tip validado+capado,
+discount=0), ignorando los montos del cliente. El hueco real era **paralelo**: el
+cliente podía **insertar órdenes `confirmed` directo por RLS** saltándose Stripe.
+**Cierre:** migración **033** — `drop policy "orders: customer insert"` + `revoke
+insert on orders, order_items from authenticated, anon`. Ahora **solo el webhook
+(service_role) crea órdenes**. + migración **035**: `orders` UPDATE owner-only (el
+customer no puede mutar `total_cents`/`status`).
+**Pendiente P1 (no bloqueante):** recalcular el precio de **modificadores**
+(`modifier_options`) en `payments` — hoy el subtotal server omite su costo (subcobro).
+**Ref:** `docs/DIAGNOSTICO_PAGOS.md`, `docs/DISENO_FIX_RLS_PAGOS.md`.
 
-### P0-3 · Edge Functions confían en identificadores del cliente con service_role [POR VERIFICAR]
-**Dónde:** `payments/index.ts:71` (`order.user_id`, `business_id`),
-`stripe-connect/index.ts:73` (`business_id`), `subscriptions/index.ts:132`
-(`business_id`, downgrades directos).
-**Problema:** corren con `service_role` (saltan RLS) pero confían en IDs del
-cliente. Permite actuar en nombre de otro usuario/negocio.
-**Fix:** verificar el JWT de Supabase en cada función, derivar `user_id` del
-token, confirmar ownership del negocio server-side antes de cualquier acción.
-**Verificación:** llamar la función con un `business_id` ajeno y confirmar
-rechazo.
+### P0-3 · Edge Functions no confían en IDs del cliente — ✅ CERRADO (julio 2026)
+**Estado previo:** `stripe-connect` (verify_jwt=true pero sin check de propiedad →
+IDOR, login link al Stripe de otro negocio) y `subscriptions.create_checkout`
+(verify_jwt=false, sin auth → downgrade anónimo del plan de cualquier negocio).
+**Cierre (Tanda 2):**
+- `stripe-connect` (v9): `verifyCaller` (verifica JWT) + `assertOwnerOrAdmin`
+  (auth.uid() = businesses.owner_id o platform admin) **antes de las 3 acciones**
+  + idempotency key en `accounts.create`. `verify_jwt` sigue `true`.
+- `subscriptions.create_checkout` (Opción B): en el path app (sin `stripe-signature`)
+  verifica JWT + ownership **antes** de crear checkout o hacer el downgrade. El path
+  webhook (verificación de firma) queda intacto; `verify_jwt` sigue `false`.
+**Verificado en vivo (test mode):** `create_login_link` y `create_checkout` anónimos
+→ **401**; el plan de un negocio ajeno NO se degrada.
+**Ref:** `docs/DISENO_FIX_EDGE_AUTH.md`, `docs/SECURITY_BEST_PRACTICES.md`.
+
+### P0-2b · Columnas financieras de `businesses` escribibles por el cliente — ✅ CERRADO (julio 2026)
+**Problema:** el dueño podía auto-cambiar `plan`/`tax_rate`/`stripe_account_id`/
+`status`/`owner_id` por UPDATE directo (auto-upgrade, redirigir payouts, etc.).
+**Cierre:** migración **034** (RPC `admin_set_business_status`, SECURITY DEFINER,
+guard `is_platform_admin()`) + **036** (`revoke update on businesses` a nivel de
+tabla + `grant update` de la **allow-list de 40 columnas** no financieras — el
+revoke por columna solo no basta por el grant de tabla de Supabase). Las páginas
+super-admin usan la RPC. Los cambios legítimos van por service_role (subscriptions →
+plan, stripe-connect → stripe_account_id, /api/verify + RPC → status).
+**Pendiente P1:** proteger también `businesses.is_verified` (badge de verificado).
+**Ref:** `docs/DISENO_FIX_RLS_PAGOS.md`.
 
 ### P0-4 · RLS `users` expone push_token a todos [CONFIRMADO]
 **Dónde:** `001_initial_schema.sql` — `users: select own or public` con
@@ -63,6 +79,28 @@ una vista pública con solo columnas no sensibles, y restringir el SELECT direct
 a la tabla a `auth.uid() = id`. O quitar `or true` y exponer perfiles vía RPC
 controlado.
 **Verificación:** un SELECT de `push_token` de otro usuario debe fallar/0 filas.
+
+---
+
+## Follow-ups P1 de pagos (integridad — no bloqueantes, tras cerrar los P0)
+
+Los 4 huecos P0 de pagos quedaron cerrados (Tandas 1+2, julio 2026). Estos son de
+integridad/robustez, no de explotación directa:
+
+- **Idempotencia de webhooks:** crear `processed_stripe_events(event_id text UNIQUE)`
+  y chequearla al inicio de ambos webhooks; volver `grace_day` **derivable** (no
+  `+1` ciego) para que la reentrega de `invoice.payment_failed` no suspenda de más.
+- **Recalcular modificadores en `payments`:** sumar el precio de `modifier_options`
+  al subtotal server (hoy se omite → subcobro si un ítem tiene modificadores con costo).
+- **`payments` `ensure_customer` / `create_setup_intent`:** aún usan `body.user_id`
+  sin verificar el JWT → aplicar el mismo `verifyCaller` (IDOR menor sobre el customer de Stripe).
+- **`UNIQUE` en `orders.stripe_pi_id`:** endurece el guard de idempotencia del webhook
+  de órdenes (hoy es un SELECT-guard con ventana de carrera).
+- **Proteger `businesses.is_verified`:** columna de autoridad aún escribible por el
+  cliente; sumarla al patrón de las columnas financieras (revoke + allow-list) tras
+  verificar quién la escribe para no romper el flujo de verificación.
+
+**Ref:** `docs/DIAGNOSTICO_PAGOS.md` (§ lista priorizada), `docs/SECURITY_BEST_PRACTICES.md`.
 
 ---
 
@@ -122,8 +160,9 @@ sesiones previas).
 ---
 
 ## Orden de ejecución recomendado
-1. P0-1 (salas privadas) y P0-4 (users push_token) — son RLS, cambio acotado.
-2. P0-2 + P0-3 (pagos / Edge Functions) — el bloque de dinero, el más delicado.
+1. ✅ P0-1 (salas privadas, migr. 019-020) y P0-4 (users push_token, migr. 018) — CERRADOS.
+2. ✅ P0-2 + P0-3 (pagos / Edge Functions) — el bloque de dinero — **CERRADOS (Tandas 1+2, julio 2026)**.
+   Quedan los follow-ups P1 de integridad (ver sección arriba).
 3. P1-1, P1-3, P1-4 (RLS/storage restantes).
 4. P1-2, P1-5, P1-6 (stubs, admin gating, env + rotar Maps key).
 5. P2 según roadmap.
