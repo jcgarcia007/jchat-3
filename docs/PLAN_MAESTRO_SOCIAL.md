@@ -378,12 +378,18 @@ las mismas RPC/RLS (la autoridad está en BD, no en el cliente).
   TTL: tras ella, la Edge Function de purga borra objetos de `post-media` sin tocar posts ni
   fotos de DM. Ver `docs/DIAGNOSTICO_TTL_CHAT.md`.
 
-## Decisiones abiertas para el usuario
-1. **"Followers only" en DM** = "mis seguidores pueden escribirme" (interpretación Instagram
-   propuesta) vs. "solo a quienes yo sigo". Confirmar semántica.
-2. **Bloqueo**: soft-hide de DMs (recomendado, conserva historial) vs. borrado duro.
-3. **Tabs del perfil v1**: ¿ocultar Stories/Reels hasta su fase y dejar Posts/Places/Gifts/
-   Saved? (el código tiene `reels`, el spec dice `stories`).
-4. **Bucket de fotos de DM**: reusar `profile-media` vs. bucket propio `dm-media` (privado).
-5. `posts.visibility` por-post (override) — ¿lo incluimos en v1 o solo el setting global?
-6. **Contadores**: confirmar count-queries en v1 (denormalización diferida).
+## Decisiones cerradas (confirmadas por el usuario 2026-07-08)
+1. ✅ **RESUELTO — "Followers only" en DM** = **"mis seguidores pueden escribirme"**
+   (interpretación Instagram estándar). El gate `whoCanDMMe='followers'` permite escribir solo
+   a quienes siguen (aceptado) al receptor.
+2. ✅ **RESUELTO — Bloqueo = SOFT-HIDE de DMs.** Oculta la conversación/mensajes pero **conserva
+   el historial**; **reaparece al desbloquear**. NO borrado duro. (Los DMs tampoco se borran por
+   unfollow — decisión #4 de producto.)
+3. ✅ **RESUELTO — Tabs del perfil v1** = **Posts / Places / Gifts / Saved** activos.
+   **Stories/Reels ocultos** hasta su fase.
+4. ✅ **RESUELTO — Bucket de fotos de DM** = **bucket PROPIO `dm-media` PRIVADO** (los DMs son
+   privados, no van al bucket público de posts `profile-media`).
+5. ✅ **RESUELTO — `posts.visibility` por-post = NO en v1.** Solo el setting global
+   `whoSeesMyPosts`. El override por-post se añade después sin rediseñar.
+6. ✅ **RESUELTO — Contadores = count-queries en v1.** Denormalización
+   (`followers_count`/`following_count` por trigger) **diferida** hasta que el perfil sea hot.

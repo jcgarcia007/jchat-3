@@ -11,9 +11,10 @@ This /docs/ folder is the durable knowledge base for JChat 3.0 so work continues
 4. ARCHITECTURE.md — Reusable technical patterns (menu device-frame, chat scroll web/mobile, multi-presence, sub-chats, image viewer, iOS/Android fixes).
 5. BACKLOG.md — Unified prioritized backlog (chat + POS + web Fase 3).
 6. DECISIONS.md — Every significant technical/product decision and why.
-7. PROJECT_ORIGIN.md — Founding definitions: what JChat is, stack, markets, business model.
-8. DEPLOYMENT_CHECKLIST.md — Launch runbook (10 phases).
-9. design-references.md — Reference designs as SVG/HTML.
+7. PLAN_MAESTRO_SOCIAL.md — Social system design (Stage 1, Instagram-style): follow / private accounts, profile + privacy, posts + feed, DM gate. Audit of existing scaffolding + 4-module plan.
+8. PROJECT_ORIGIN.md — Founding definitions: what JChat is, stack, markets, business model.
+9. DEPLOYMENT_CHECKLIST.md — Launch runbook (10 phases).
+10. design-references.md — Reference designs as SVG/HTML.
 
 **Archived in `docs/archive/` (historical, read only if needed):** DEV_PLAN (68 tasks done),
 the resolved chat diagnostics / inventories / designs, the two original backlogs,
@@ -34,4 +35,4 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - Audit every Claude Code diff: it sometimes adds unrequested features (e.g. gift toggle) or drops safety nets (min-validation). Flag deviations.
 - Keep this /docs/ set updated as milestones complete.
 
-Last updated: 2026-07-06
+Last updated: 2026-07-08
