@@ -61,6 +61,8 @@ import {
   listMessages,
   markRead,
   sendMessage,
+  uploadDmPhoto,
+  resolveDmMediaUrl,
   type DmMessageRow,
 } from '../../services/dms';
 import type { DMStackParamList } from '../../navigation/DMStack';
@@ -98,6 +100,22 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
   const bg = isOwn ? bubbleOutBg : bubbleInBg;
   const textColor = isOwn ? bubbleOutText : bubbleInText;
 
+  // dm-media is private → resolve the stored path to a short-lived signed URL.
+  // Legacy/demo values that already carry a scheme are returned as-is.
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const raw = message.media_url;
+    if (raw == null) {
+      setMediaUri(null);
+      return;
+    }
+    resolveDmMediaUrl(raw)
+      .then((u) => { if (alive) setMediaUri(u); })
+      .catch(() => { if (alive) setMediaUri(null); });
+    return () => { alive = false; };
+  }, [message.media_url]);
+
   return (
     <View
       style={[
@@ -119,10 +137,10 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
           </Text>
         )}
 
-        {/* Media image */}
-        {message.media_url != null && (
+        {/* Media image (signed URL resolved from the private dm-media bucket) */}
+        {mediaUri != null && (
           <Image
-            source={{ uri: message.media_url }}
+            source={{ uri: mediaUri }}
             style={styles.bubbleImage}
             resizeMode="cover"
           />
@@ -291,13 +309,14 @@ export default function DMChatScreen() {
     if (result.canceled || result.assets.length === 0) return;
 
     const asset = result.assets[0];
-    // TODO(storage): upload asset.uri to Supabase Storage and get a public URL,
-    // then pass mediaUrl to sendMessage. For now send the local URI directly.
+    // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
+    // (resolved to a signed URL on render). Path: {conversationId}/{uid}/{ts}_{rand}.jpg
     try {
+      const path = await uploadDmPhoto(conversationId, user.id, asset.uri);
       await sendMessage({
         conversationId,
         senderId: user.id,
-        mediaUrl: asset.uri,
+        mediaUrl: path,
       });
     } catch (err) {
       console.warn('[DMChat] photo send error', err);

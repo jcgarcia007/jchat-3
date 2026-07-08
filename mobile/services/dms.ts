@@ -10,7 +10,22 @@
  * Every function guards against unconfigured Supabase with isSupabaseConfigured.
  */
 
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { supabase, isSupabaseConfigured } from './supabase';
+
+// ─── DM gate error ─────────────────────────────────────────────────────────────
+
+/** Error thrown when the DM gate (start_dm RPC) blocks the conversation. */
+export class DmGateError extends Error {
+  constructor(
+    public readonly reason: 'blocked' | 'nobody' | 'not_follower',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'DmGateError';
+  }
+}
 
 // ─── Co-located types ─────────────────────────────────────────────────────────
 
@@ -144,8 +159,11 @@ export async function listConversations(
 // ─── getOrCreateConversation ──────────────────────────────────────────────────
 
 /**
- * Return an existing conversation between userId and otherUserId, or create one.
- * user_a is always the lexicographically smaller id to avoid duplicates.
+ * Return an existing conversation with otherUserId, or create one — via the
+ * start_dm RPC (Fase D). The RPC enforces the gate server-side: block check +
+ * the target's whoCanDMMe setting (everyone / followers / nobody). Direct
+ * INSERTs into dm_conversations are denied by RLS (deny-by-default), so this
+ * RPC is the only path. On a gated failure it throws DmGateError with a reason.
  */
 export async function getOrCreateConversation(
   userId: string,
@@ -162,29 +180,28 @@ export async function getOrCreateConversation(
     };
   }
 
-  const [userA, userB] =
-    userId < otherUserId ? [userId, otherUserId] : [otherUserId, userId];
+  const { data, error } = await supabase.rpc('start_dm', {
+    p_target_id: otherUserId,
+  });
 
-  // Try to find existing
-  const { data: existing, error: findErr } = await supabase
-    .from('dm_conversations')
-    .select('*')
-    .eq('user_a', userA)
-    .eq('user_b', userB)
-    .maybeSingle();
+  if (error) {
+    // Map the RPC's Postgres error codes to friendly, actionable messages.
+    if (error.code === 'P0002') {
+      throw new DmGateError('blocked', 'No puedes enviar mensajes a este usuario.');
+    }
+    if (error.code === 'P0003') {
+      throw new DmGateError('nobody', 'Este usuario no acepta mensajes directos.');
+    }
+    if (error.code === 'P0004') {
+      throw new DmGateError(
+        'not_follower',
+        'Debes seguir a este usuario para enviarle un mensaje.',
+      );
+    }
+    throw error;
+  }
 
-  if (findErr) throw findErr;
-  if (existing) return existing as DmConversationRow;
-
-  // Create new
-  const { data: created, error: createErr } = await supabase
-    .from('dm_conversations')
-    .insert({ user_a: userA, user_b: userB })
-    .select('*')
-    .single();
-
-  if (createErr) throw createErr;
-  return created as DmConversationRow;
+  return data as DmConversationRow;
 }
 
 // ─── listMessages ─────────────────────────────────────────────────────────────
@@ -270,6 +287,53 @@ export async function markRead(
     .is('read_at', null);
 
   if (error) throw error;
+}
+
+// ─── DM media (private dm-media bucket, Fase D) ────────────────────────────────
+
+/**
+ * Upload a DM photo to the PRIVATE `dm-media` bucket. Returns the storage PATH
+ * (not a URL) — the path is stored in dm_messages.media_url and resolved to a
+ * short-lived signed URL on read (resolveDmMediaUrl). Path pattern enforced by
+ * Storage RLS: {conversation_id}/{sender_uid}/{file}. In demo mode returns the
+ * local uri unchanged so the UI still works.
+ *
+ * Reads the file as base64 → ArrayBuffer (React Native / Hermes can't build a
+ * Blob from fetch()), matching services/storage.ts.
+ */
+export async function uploadDmPhoto(
+  conversationId: string,
+  userId: string,
+  localUri: string,
+): Promise<string> {
+  if (!isSupabaseConfigured) return localUri;
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const arrayBuffer = decode(base64);
+  const rand = Math.random().toString(36).slice(2, 8);
+  const path = `${conversationId}/${userId}/${Date.now()}_${rand}.jpg`;
+  const { error } = await supabase.storage
+    .from('dm-media')
+    .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+/**
+ * Resolve a display URL for a dm_messages.media_url. dm-media is private, so a
+ * stored PATH (no URI scheme) gets a signed URL (1h). Anything already carrying
+ * a scheme (http/https/file/content — legacy or demo local uris) is returned
+ * as-is for backward compatibility.
+ */
+export async function resolveDmMediaUrl(mediaUrl: string): Promise<string> {
+  if (/^(https?|file|content|data):/i.test(mediaUrl)) return mediaUrl;
+  if (!isSupabaseConfigured) return mediaUrl;
+  const { data, error } = await supabase.storage
+    .from('dm-media')
+    .createSignedUrl(mediaUrl, 3600);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 // ─── getTotalUnread ───────────────────────────────────────────────────────────
