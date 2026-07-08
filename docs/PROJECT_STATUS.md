@@ -32,6 +32,48 @@ pendiente de verificación manual en dispositivo**. Pasos:
 
 ---
 
+## Sesión 2026-07-08 — completado
+
+### Seguridad de pagos — CERRADA COMPLETA (P0 + P1 integridad)
+- **Tanda 1 (P0):** `orders` solo por webhook (migr 033/035) + columnas financieras de
+  `businesses` protegidas (034/036, revoke + allow-list) + RPC `admin_set_business_status`.
+  Verificado en BD.
+- **Tanda 2 (P0):** `stripe-connect` verifica propiedad/IDOR (verifyCaller + assertOwnerOrAdmin,
+  v9) + `subscriptions.create_checkout` autentica en el path app (v10→v11). Verificado (anónimo → 401).
+- **Tanda 3 (P1 integridad):** #8 `UNIQUE` parcial `orders.stripe_pi_id` (migr 037) · #9 proteger
+  `businesses.is_verified` (038) · #7 JWT en `payments` `ensure_customer`/`create_setup_intent`
+  (v10) · #5 idempotencia de webhooks insert-first + delete-on-error (039 + `stripe-webhook` v9 +
+  `subscriptions` v11). Verificado en BD (helpers, RPCs, índice parcial, tabla `processed_stripe_events`).
+- **Fix #6 modificadores:** server `payments` v11 recalcula size/extras desde
+  `menu_items.options` (995fcbe) + cliente envía labels (85297c8). **PENDIENTE prueba manual
+  móvil** (anotada arriba).
+- **Estado funciones Edge:** `payments` v11 (jwt=true) · `stripe-connect` v9 (jwt=true) ·
+  `stripe-webhook` v9 (jwt=false) · `subscriptions` v11 (jwt=false).
+
+### Sistema social (Stage 1, estilo Instagram) — Fases A+B+C aplicadas
+- **Plan maestro** completo en `docs/PLAN_MAESTRO_SOCIAL.md` (6 decisiones cerradas, D-13 en
+  DECISIONS.md). Hallazgo clave: el social estaba **~70% andamiado pero SIN aplicar** (RLS de
+  lectura en `true`); el trabajo fue aplicar privacidad + cablear, no reconstruir.
+- **Fase A+B** (BD `96dc2bf` + móvil `56efb33`): columna `users.is_private`; helpers SECURITY
+  DEFINER `is_blocked` / `can_view_profile` / `can_view_user_content`; 5 RPCs
+  `request_or_follow` / `accept_follow_request` / `remove_follower` / `block_user` /
+  `unblock_user`; RLS de `follows` aplica privacidad; servicios `follows.ts` / `blocks.ts`;
+  `FriendsScreen` reconstruida (3 tabs: Seguidores/Siguiendo/Solicitudes); botón seguir con
+  estado (público→Siguiendo / privado→Solicitado) en `useFollowSystem` + `UserActionSheet`.
+  Verificado en BD. **PENDIENTE prueba manual móvil** (anotada arriba).
+- **Fase C** (`2dbc46b`, migr 041): bucket **`profile-media`** (público) separado del
+  **`post-media`** efímero del chat; `posts.ts:uploadPostMedia` repuntado; RLS `posts_read` /
+  `comments_read` / `post_likes_read` pasan de `true` a aplicar `whoSeesMyPosts` + bloqueo
+  (via `can_view_user_content`). Write policies intactas. Verificado en BD.
+
+### Otros
+- **ESLint Tanda A** (`f129184`): 73→47 avisos (limpieza de imports/vars sin usar + entidades JSX).
+- **Docs de diseño creados** (diseñados, NO implementados salvo donde se indica):
+  `DIAGNOSTICO_TTL_CHAT.md` (purga chat + unfriend/DMs), `DISENO_FIX_INTEGRIDAD_PAGOS.md`,
+  `DISENO_FIX_*` de pagos, `PLAN_MAESTRO_SOCIAL.md`.
+
+---
+
 ## Estado julio 2026 — completado
 
 ### Sistema de menús (web) — COMPLETO
@@ -56,7 +98,7 @@ pendiente de verificación manual en dispositivo**. Pasos:
 - **P0-2 / orders:** solo el webhook (service_role) crea órdenes (migr. 033, drop policy customer insert + revoke insert); orders UPDATE owner-only (035). El PaymentIntent ya recalculaba server-side.
 - **Columnas financieras de businesses:** `plan/tax_rate/stripe_account_id/status/owner_id` ya no escribibles por el cliente (migr. 034/036, revoke + grant allow-list de 40 cols) + RPC `admin_set_business_status` para super-admin.
 - **P0-3 / Edge Functions:** `stripe-connect` verifica propiedad (verifyCaller + assertOwnerOrAdmin, v9); `subscriptions.create_checkout` autentica+autoriza en el path app (Opción B, webhook intacto). Verificado en vivo: llamadas anónimas → 401.
-- **Quedan P1 de integridad** (no bloqueantes): idempotencia de webhooks, recalcular modificadores, UNIQUE en orders.stripe_pi_id, proteger is_verified. Ver `docs/SECURITY_AUDIT.md`.
+- **P1 de integridad — TAMBIÉN CERRADOS (Tanda 3, 2026-07-08):** idempotencia de webhooks (039), modificadores recalculados (Fix #6), UNIQUE en orders.stripe_pi_id (037), is_verified protegido (038), JWT en ensure_customer/setup_intent. Ver "Sesión 2026-07-08" arriba y `docs/DISENO_FIX_INTEGRIDAD_PAGOS.md`.
 
 ### Docs consolidados (Fase A + B)
 - Specs `.docx` → `.md`: `docs/SPEC.md`, `docs/DESIGN_SYSTEM.md`. Patrones técnicos → `docs/ARCHITECTURE.md`. Backlogs unidos → `docs/BACKLOG.md`. Diagnósticos resueltos, DEV_PLAN y `.docx` originales → `docs/archive/`. `CONTINUITY.md` + `CLAUDE.md` actualizados.
@@ -131,13 +173,13 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 
 ---
 
-## Security — P0 status
+## Security — status (todos los P0 + P1 de pagos CERRADOS)
 - P0-1 (private rooms readable by any authed user) — CLOSED (migrations 019-020).
 - P0-4 (users RLS) — CLOSED (migration 018, public_profiles view, username_available RPC).
-- P0-2 (order totals not recalculated server-side) — OPEN. Production blocker.
-- P0-3 (Edge Functions trust client IDs with service_role) — OPEN. Production blocker.
-- Gifting/payment screen deferred until P0-2/P0-3 resolved.
-- See SECURITY_AUDIT.md / SECURITY_AUDIT2.md before tackling P0-2/P0-3.
+- P0-2 (order totals not recalculated server-side) — **CLOSED** (recálculo server + orders solo por webhook, migr 033/035; Fix #6 modificadores).
+- P0-3 (Edge Functions trust client IDs with service_role) — **CLOSED** (Tanda 2: stripe-connect ownership + subscriptions auth; Tanda 3 #7 JWT en payments).
+- P1 integridad de pagos (idempotencia webhooks, UNIQUE stripe_pi_id, is_verified) — **CLOSED** (Tanda 3, migr 037-039). Ver "Sesión 2026-07-08".
+- Los pagos reales siguen en Stripe **test mode**. Ver SECURITY_AUDIT.md / DISENO_FIX_INTEGRIDAD_PAGOS.md.
 
 ---
 
@@ -154,15 +196,22 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 ---
 
 ## What's next — prioritized
-1. ✅ HECHO (julio) — TypeScript strict re-activado (33 errores, ignoreBuildErrors removido) + presencia web/sub-chats + los 4 P0 de pagos cerrados.
-2. **Tanda 3 seguridad — P1 de integridad de pagos:** idempotencia de webhooks (tabla `processed_stripe_events`), recalcular modificadores en `payments`, `ensure_customer`/`create_setup_intent` sin JWT, `UNIQUE` en `orders.stripe_pi_id`, proteger `businesses.is_verified`.
-3. **Chat Fase 2 — TTL configurable por sala** (24h negocio / 2h evento; el cron de limpieza lee el TTL por sala).
-4. **Chat Fase 3 — badge de "no leídos" por usuario/sala** (mensajes nuevos no expirados).
-5. **Checkout web (Fase 3 del web client):** menú + carrito + checkout de Stripe en web. Prerrequisito: los P0 de pagos ya están cerrados (crear la orden SOLO por el webhook, nunca desde el cliente).
-6. **Geo-verificación:** presencia física server-side (PostGIS / Edge Function) como núcleo del acceso al chat (regla de oro del producto — ver `docs/BACKLOG.md`).
-7. Tanda 2 — DMChatScreen (dm_conversations/dm_messages exist).
-8. Tanda 3 — UserProfileScreen + users.cover_url + full emoji picker + user_personal_mutes.
-9. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (ya en el team; pendiente decisión www redirect vs apex).
+1. **Fase D social — gate de DM** (`whoCanDMMe`: Everyone/Followers/Nobody) + **bloqueo soft-hide**
+   de conversaciones (conserva historial, reaparece al desbloquear) + **bucket `dm-media` privado**
+   para fotos de DM. Diseñada en `docs/PLAN_MAESTRO_SOCIAL.md` módulo D. Enganche: RPC `start_dm`
+   + RLS `dm_conversations`/`dm_messages`.
+2. **Chat Fase 2 — purga TTL 24h** (Edge Function + cron / Scheduled Function). Diseñada en
+   `docs/DIAGNOSTICO_TTL_CHAT.md`. **Ahora es SEGURA** porque el bucket ya está separado (Fase C):
+   `post-media` quedó exclusivo del chat efímero, no toca posts permanentes (`profile-media`).
+3. **Pruebas manuales pendientes** (ver sección arriba): Fix #6 modificadores + Fase A+B social.
+4. **Fase C pendiente (opcional):** tabla `saved_posts` + tab Saved en el perfil (diferido, no bloqueante).
+5. **Chat Fase 3** (badge de "no leídos" por usuario/sala), **checkout web** (menú+carrito+Stripe;
+   P0 de pagos ya cerrados → orden SOLO por webhook), **geo-verificación** (presencia física
+   server-side PostGIS/Edge — regla de oro del producto, ver `docs/BACKLOG.md`).
+6. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (ya en el team; pendiente www vs apex).
+
+> Nota: los 4 P0 + los P1 de integridad de pagos quedaron CERRADOS el 2026-07-08 (ver arriba).
+> El sistema social A+B+C está aplicado; falta la Fase D (DM gate) para completar Stage 1 social.
 
 ---
 
