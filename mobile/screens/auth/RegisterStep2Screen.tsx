@@ -52,6 +52,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
+import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
 // ---------------------------------------------------------------------------
 // Screen-local color constants — only values not already in palette/tokens
@@ -132,7 +133,9 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   const [dobTouched, setDobTouched] = useState(false);
 
   // ── Language selector ──────────────────────────────────────────────────────
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(
+    (i18n.language === 'es' ? 'es' : 'en') as Language,
+  );
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   // ── Username ───────────────────────────────────────────────────────────────
@@ -526,6 +529,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                     ]}
                     onPress={() => {
                       setLanguage(opt.value);
+                      changeAppLanguage(opt.value as SupportedLanguage);
                       setShowLanguagePicker(false);
                     }}
                     activeOpacity={0.75}

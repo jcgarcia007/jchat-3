@@ -56,6 +56,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -534,7 +535,7 @@ export default function SettingsScreen() {
               value={settings.language}
               onChange={(v) => {
                 patch({ language: v });
-                // TODO(i18n): apply language across app immediately
+                changeAppLanguage(v as SupportedLanguage);
               }}
               labelMap={LANGUAGE_LABELS}
             />
