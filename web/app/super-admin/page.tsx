@@ -27,7 +27,6 @@ import {
   IconX,
   IconArrowRight,
   IconChartBar,
-  IconClipboardList,
   IconBell,
   IconUserCheck,
   IconBroadcast,

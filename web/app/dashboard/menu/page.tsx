@@ -25,7 +25,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import {
   IconAlertCircle,
@@ -49,7 +49,6 @@ import {
   IconAlertTriangle,
   IconFish,
   IconAdjustments,
-  IconGripVertical,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
@@ -1190,7 +1189,6 @@ const reorderBtnStyle: React.CSSProperties = {
 
 function ItemEditorModal({
   item,
-  categoryId,
   businessId,
   itemId,
   onSave,
@@ -2935,7 +2933,7 @@ export default function MenuPage() {
           .update({ menu_enabled: next })
           .eq("id", businessId);
         if (err) throw err;
-      } catch (e: unknown) {
+      } catch {
         setMenuEnabled(!next); // revert
         setError("Failed to update menu visibility.");
       } finally {
@@ -2967,7 +2965,7 @@ export default function MenuPage() {
           setMenuMode("external");
           setExternalMenuUrl(trimmed);
           setSuccess("Modo de menú guardado.");
-        } catch (e: unknown) {
+        } catch {
           setError("Error al guardar el modo de menú.");
         } finally {
           setSavingMode(false);
@@ -2985,7 +2983,7 @@ export default function MenuPage() {
           setExternalMenuUrl("");
           setUrlInput("");
           setSuccess("Modo de menú actualizado.");
-        } catch (e: unknown) {
+        } catch {
           setError("Error al guardar el modo de menú.");
         } finally {
           setSavingMode(false);

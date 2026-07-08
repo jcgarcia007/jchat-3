@@ -35,7 +35,6 @@ export default function IconRail({
   const NAVY = P.bg;
   const CARD = P.surface;
   const TEAL = P.accent;
-  const GOLD = P.price;
   const HAIR = P.border;
   const MUTED = P.textFaint;
   const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };

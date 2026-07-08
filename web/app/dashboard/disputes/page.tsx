@@ -519,7 +519,7 @@ export default function DisputesPage() {
               maxWidth: "360px",
             }}
           >
-            Your customers haven't opened any disputes. Keep up the great
+            Your customers haven&apos;t opened any disputes. Keep up the great
             service!
           </div>
         </div>

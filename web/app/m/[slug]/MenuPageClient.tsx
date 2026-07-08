@@ -13,7 +13,6 @@ import type {
   PublicMenuCategory,
   PublicMenuItem,
   MenuItemOption,
-  ModifierGroup,
   ModifierChoice,
 } from "./page";
 

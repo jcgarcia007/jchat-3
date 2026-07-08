@@ -878,7 +878,7 @@ function EmptyState() {
       </p>
       <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", maxWidth: 340, margin: "0 auto" }}>
         To add a team member, long-press their message or avatar in the business
-        chat room on the JChat mobile app and select "Add as employee".
+        chat room on the JChat mobile app and select &quot;Add as employee&quot;.
       </p>
     </div>
   );

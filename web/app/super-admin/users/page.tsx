@@ -25,7 +25,6 @@ import {
   IconCheck,
   IconBan,
   IconPlayerPlay,
-  IconAlertTriangle,
   IconUser,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -366,8 +365,6 @@ export default function SuperAdminUsersPage() {
 function UserRow({
   user: u,
   isLast,
-  onBan,
-  onTrial,
 }: {
   user: UserRow;
   isLast: boolean;

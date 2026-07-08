@@ -22,7 +22,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -32,7 +32,6 @@ import {
   Cell,
   Legend,
   Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -40,7 +39,6 @@ import {
   YAxis,
 } from "recharts";
 import {
-  IconAlertCircle,
   IconApi,
   IconArrowUpRight,
   IconBolt,
@@ -50,7 +48,6 @@ import {
   IconCoin,
   IconCopy,
   IconCrown,
-  IconDownload,
   IconFileSpreadsheet,
   IconFileTypePdf as IconFilePdf,
   IconFlame,

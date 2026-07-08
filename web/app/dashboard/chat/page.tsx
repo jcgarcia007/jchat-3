@@ -25,7 +25,6 @@ import { useSearchParams } from "next/navigation";
 import {
   IconAlertCircle,
   IconCheck,
-  IconChevronDown,
   IconChevronUp,
   IconEdit,
   IconHash,
@@ -957,7 +956,7 @@ function DeleteConfirmModal({
             color: "var(--db-text-primary)",
           }}
         >
-          Delete "{room.name}"?
+          Delete &quot;{room.name}&quot;?
         </h2>
         <p style={{ margin: 0, fontSize: 14, color: "var(--db-text-secondary)" }}>
           This will permanently remove the room and all its messages. This action

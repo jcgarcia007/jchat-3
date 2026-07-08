@@ -15,7 +15,6 @@ import {
   IconBottle,
   IconBottleFilled,
   IconBeerFilled,
-  IconGlassFilled,
   IconCup,
   IconGlass,
   IconLemon,

@@ -181,8 +181,6 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
   // ── Derived: menu button state ────────────────────────────────────────────────
   const menuIsExternal = menuMode === "external" && !!externalMenuUrl;
   const menuIsWeb = menuMode === "web" && !!bizSlug;
-  const menuIsActive = menuIsExternal || menuIsWeb;
-  const menuIsComingSoon = !menuIsActive;
 
   // ── Hub ───────────────────────────────────────────────────────────────────────
   return (
