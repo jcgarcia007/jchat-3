@@ -30,6 +30,26 @@ pendiente de verificación manual en dispositivo**. Pasos:
   Bar XZX no tiene uno, crear un ítem de prueba con modificadores.
 - Objetivo: confirmar que el usuario ve X y Stripe cobra X (sin discrepancia).
 
+### PENDIENTE DE PROBAR — Fase D (gate de DM + bloqueo)
+Commits `670e82e` (BD) + `c06fde7` (Send DM). Estado: **aplicado, pendiente de verificación
+manual en dispositivo**. Requiere 2 usuarios. Pasos:
+- Desde una lista de miembros de sala (UserActionSheet) → **Send DM** a un usuario que acepta DMs
+  (`whoCanDMMe='everyone'`) → abre DMChat.
+- Poner el receptor en `whoCanDMMe='followers'` (PrivacyScreen) y NO seguirlo → Send DM debe mostrar
+  Alert "Debes seguir a este usuario…"; seguirlo → ya abre DMChat.
+- Poner el receptor en `nobody` → Alert "no acepta mensajes directos" (salvo conversación previa).
+- Enviar una foto en un DM → sube a `dm-media` (privado) y se ve vía signed URL.
+- Bloquear al otro → la conversación desaparece de la lista (soft-hide); desbloquear → reaparece con historial.
+
+### PENDIENTE DE PROBAR — Chat Fase 2 (purga TTL 24h)
+Commit `c63479c` (migr 043). Estado: **aplicado y probado en BD (191→0); pendiente verificación
+en app**. Pasos:
+- Enviar mensajes a una sala; confirmar que a las +24h (o forzando el cron / `select
+  purge_expired_messages()`) desaparecen al reabrir la sala.
+- Anclar (pin) un mensaje viejo → NO debe borrarse.
+- (Conocido/diferido) las **fotos** de mensajes purgados quedan huérfanas en `post-media` — GC vía
+  Storage API pendiente (ver "What's next" + D-14).
+
 ---
 
 ## Sesión 2026-07-08 — completado
@@ -66,11 +86,23 @@ pendiente de verificación manual en dispositivo**. Pasos:
   `comments_read` / `post_likes_read` pasan de `true` a aplicar `whoSeesMyPosts` + bloqueo
   (via `can_view_user_content`). Write policies intactas. Verificado en BD.
 
-### Otros
-- **ESLint Tanda A** (`f129184`): 73→47 avisos (limpieza de imports/vars sin usar + entidades JSX).
-- **Docs de diseño creados** (diseñados, NO implementados salvo donde se indica):
-  `DIAGNOSTICO_TTL_CHAT.md` (purga chat + unfriend/DMs), `DISENO_FIX_INTEGRIDAD_PAGOS.md`,
-  `DISENO_FIX_*` de pagos, `PLAN_MAESTRO_SOCIAL.md`.
+### Fase D — gate de DM + bloqueo soft-hide + bucket dm-media (aplicada)
+- **BD+móvil `670e82e`** + **cableado Send DM `c06fde7`**: RPC `start_dm` (SECURITY DEFINER) aplica
+  el gate `whoCanDMMe` (everyone/followers/nobody) + bloqueo antes de crear la conversación; RLS de
+  `dm_conversations`/`dm_messages` reescrita con **soft-hide** de bloqueados (no borra, reaparece al
+  desbloquear) + INSERT deny-by-default (solo el RPC crea). Bucket **`dm-media` privado** (upload +
+  signed URLs). "Send DM" (UserActionSheet→ChatRoom) navega a DMChat vía `getOrCreateConversation`/
+  `start_dm`, con `DmGateError`→Alert. Verificado en BD. **PENDIENTE prueba manual móvil** (anotada arriba).
+
+### Chat Fase 2 — purga TTL 24h de mensajes de sala (aplicada)
+- **`c63479c`, migr 043**: `pg_cron` (1.6.4) + función `purge_expired_messages()` cada 15 min borra
+  mensajes de sala con +24h (excluye anclados; `reply_to`→SET NULL). Probada en vivo: **191→0 mensajes**.
+  **Fotos DIFERIDAS (Option C)**: Supabase bloquea el `DELETE` directo sobre `storage.objects`
+  (`protect_delete`), así que el borrado de binarios se omite con gracia (log + continúa) — quedan
+  huérfanos en `post-media` hasta una limpieza vía Storage API. Ver D-14.
+
+**Otros (housekeeping):** ESLint Tanda A (`f129184`, 73→47 avisos); docs de diseño creados
+(`DIAGNOSTICO_TTL_CHAT.md`, `DISENO_FIX_INTEGRIDAD_PAGOS.md`, `PLAN_MAESTRO_SOCIAL.md`).
 
 ---
 
@@ -196,28 +228,29 @@ Reusable option groups with min/max rules. Migration 032: modifier_groups (id, b
 ---
 
 ## What's next — prioritized
-1. **Fase D social — gate de DM** (`whoCanDMMe`: Everyone/Followers/Nobody) + **bloqueo soft-hide**
-   de conversaciones (conserva historial, reaparece al desbloquear) + **bucket `dm-media` privado**
-   para fotos de DM. Diseñada en `docs/PLAN_MAESTRO_SOCIAL.md` módulo D. Enganche: RPC `start_dm`
-   + RLS `dm_conversations`/`dm_messages`.
-2. **Chat Fase 2 — purga TTL 24h** (Edge Function + cron / Scheduled Function). Diseñada en
-   `docs/DIAGNOSTICO_TTL_CHAT.md`. **Ahora es SEGURA** porque el bucket ya está separado (Fase C):
-   `post-media` quedó exclusivo del chat efímero, no toca posts permanentes (`profile-media`).
-3. **Pruebas manuales pendientes** (ver sección arriba): Fix #6 modificadores + Fase A+B social.
-4. **Fase C pendiente (opcional):** tabla `saved_posts` + tab Saved en el perfil (diferido, no bloqueante).
-5. **Chat Fase 3** (badge de "no leídos" por usuario/sala), **checkout web** (menú+carrito+Stripe;
+1. **Pruebas manuales pendientes en dispositivo** (ver sección arriba, 4 bloques): Fase A+B social,
+   Fix #6 modificadores, Fase D (gate de DM), Chat Fase 2 (TTL).
+2. **GC de fotos huérfanas de `post-media`** — la purga TTL borra las filas de mensajes pero NO los
+   binarios (Supabase bloquea el `DELETE` directo sobre `storage.objects`). Implementar limpieza vía
+   Storage API (Scheduled Edge Function) cuando el costo de storage lo amerite. Ver D-14.
+3. **Fase C pendiente (opcional):** tabla `saved_posts` + tab Saved en el perfil (diferido, no bloqueante).
+4. **Chat Fase 3** (badge de "no leídos" por usuario/sala), **checkout web** (menú+carrito+Stripe;
    P0 de pagos ya cerrados → orden SOLO por webhook), **geo-verificación** (presencia física
    server-side PostGIS/Edge — regla de oro del producto, ver `docs/BACKLOG.md`).
-6. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (ya en el team; pendiente www vs apex).
+5. Conectar dominio jchat.cloud al proyecto Vercel jchat-3 (ya en el team; pendiente www vs apex).
 
-> Nota: los 4 P0 + los P1 de integridad de pagos quedaron CERRADOS el 2026-07-08 (ver arriba).
-> El sistema social A+B+C está aplicado; falta la Fase D (DM gate) para completar Stage 1 social.
+> Nota: los 4 P0 + los P1 de integridad de pagos quedaron CERRADOS el 2026-07-08. **Stage 1 social
+> (Fases A+B+C+D) COMPLETO** a nivel código/BD y **Chat Fase 2 (TTL) aplicada** — solo faltan las
+> pruebas manuales en dispositivo.
 
 ---
 
 ## Recent commits (newest first, all on main)
 | Commit | Description |
 |---|---|
+| c63479c | Chat Fase 2 — purga TTL 24h de mensajes de sala vía pg_cron (excluye pinned; fotos diferidas por storage.protect_delete) |
+| c06fde7 | Social Fase D — cablea Send DM (UserActionSheet→ChatRoom) vía start_dm + nav anidada a DMChat + Alert en DmGateError |
+| 670e82e | Social Fase D — gate de DM (start_dm RPC + whoCanDMMe) + soft-hide en RLS dm_* + bucket dm-media privado |
 | 9f70a0b | Menu web: tap-to-open customizer, width-cap, thumbnails, defaults, notes (also added gift toggle — REMOVED next, and dropped min-validation — left simple per owner) |
 | cc04bc0 | PASO 4 — dashboard modifier groups editor + database.types.ts un-corrupt |
 | 2ff672a | PASO 3 — modifier options seed for Bar XZX |
