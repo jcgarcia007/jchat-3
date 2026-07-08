@@ -470,7 +470,8 @@ export default function CheckoutScreen() {
             menuItemId: l.item.id,
             qty: l.qty,
             priceCents: l.unitPriceCents,
-            options: {},
+            // Fix #6: forward selected modifier LABELS only; server prices them.
+            options: { size: l.size?.label ?? null, extras: (l.extras ?? []).map((e) => e.label) },
             specialInstructions: l.specialInstructions ?? null,
           })),
         });
@@ -530,7 +531,9 @@ export default function CheckoutScreen() {
         name: l.item.name,
         qty: l.qty,
         priceCents: l.unitPriceCents,
-        options: {},
+        // Fix #6: forward selected modifier LABELS only; the server resolves their
+        // price from menu_items.options server-side (never trust client prices).
+        options: { size: l.size?.label ?? null, extras: (l.extras ?? []).map((e) => e.label) },
         specialInstructions: l.specialInstructions ?? null,
       })),
     };
