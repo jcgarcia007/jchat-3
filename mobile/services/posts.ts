@@ -94,8 +94,13 @@ export async function createPost(input: CreatePostInput): Promise<PostRow> {
 
 /**
  * Upload a local image to Supabase Storage and return its public URL.
- * Bucket `post-media` must exist (create in Stage 2/dashboard). Returns the
- * input uri unchanged when Supabase isn't configured so the UI still works.
+ *
+ * Posts are PERMANENT, so they live in the `profile-media` bucket — SEPARATE from
+ * `post-media`, which is now exclusive to the ephemeral venue chat (24h TTL purge).
+ * Keeping them apart means the chat purge never touches permanent post photos
+ * (Fase C / decision D-13). Path stays `{userId}/{ts}.jpg`; the first folder = the
+ * uploader's uid, which the Storage RLS enforces on insert.
+ * Returns the input uri unchanged when Supabase isn't configured so the UI works.
  */
 export async function uploadPostMedia(
   userId: string,
@@ -106,10 +111,10 @@ export async function uploadPostMedia(
   if (!isSupabaseConfigured) return localUri;
   const path = `${userId}/${Date.now()}.jpg`;
   const { error } = await supabase.storage
-    .from('post-media')
+    .from('profile-media')
     .upload(path, fileBody, { contentType, upsert: false });
   if (error) throw error;
-  const { data } = supabase.storage.from('post-media').getPublicUrl(path);
+  const { data } = supabase.storage.from('profile-media').getPublicUrl(path);
   return data.publicUrl;
 }
 

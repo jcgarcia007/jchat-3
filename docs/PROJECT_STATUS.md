@@ -6,6 +6,17 @@ Last updated: 2026-07-08
 
 ## Pruebas manuales pendientes
 
+### PENDIENTE DE PROBAR — Fase A+B social (follow / privacidad)
+Commits `96dc2bf` (BD) + `56efb33` (móvil). Estado: **aplicado, pendiente de verificación
+manual en dispositivo**. Requiere 2 usuarios (usar `jcgarcia007@icloud.com` + una cuenta seed
+`userNN@seed.jchat.test` / `SeedPass123!`). Pasos:
+- Recargar Metro. Seguir a un usuario desde una lista de miembros de sala (UserActionSheet) →
+  debe cambiar a "Siguiendo" (cuenta pública) o "Solicitado" (cuenta privada).
+- Abrir FriendsScreen → ver 3 tabs (Seguidores / Siguiendo / Solicitudes).
+- Poner la cuenta propia como privada (PrivacyScreen); que otro usuario pida seguir → aparece
+  en Solicitudes → Aceptar/Rechazar.
+- Bloquear a alguien → corta el follow en ambos sentidos.
+
 ### PENDIENTE DE PROBAR — Fix #6 (cobro de modificadores)
 Commits `995fcbe` (server payments v11) + `85297c8` (cliente móvil). Estado: **aplicado,
 pendiente de verificación manual en dispositivo**. Pasos:
