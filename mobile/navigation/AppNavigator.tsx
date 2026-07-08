@@ -10,6 +10,7 @@
 
 import React from 'react';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import {
   createNativeStackNavigator,
   NativeStackNavigationOptions,
@@ -17,6 +18,7 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 import BottomTabs from './tabs/BottomTabs';
+import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -48,7 +50,7 @@ export type AuthStackParamList = {
 
 /** Tabs are nested under BottomTabs — only ChatRoom is a "push" screen here */
 export type MainStackParamList = {
-  Tabs: undefined;
+  Tabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   ChatRoom: { id: string };
   /**
    * Onboarding — 4-screen flow for brand-new users.

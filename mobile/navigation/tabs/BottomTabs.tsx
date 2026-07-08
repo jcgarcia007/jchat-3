@@ -10,6 +10,7 @@
 import React from 'react';
 import { useColorScheme } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import {
   IconMap,
   IconBuildingStore,
@@ -24,7 +25,7 @@ import { palette } from '../../theme/tokens';
 import MapScreen from '../../screens/map/MapScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
 // Task 1.12: DMsScreen placeholder replaced by the real DMStack navigator
-import DMStack from '../DMStack';
+import DMStack, { type DMStackParamList } from '../DMStack';
 import FriendsScreen from '../../screens/friends/FriendsScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
 
@@ -35,7 +36,7 @@ import ProfileScreen from '../../screens/profile/ProfileScreen';
 export type BottomTabParamList = {
   Map: undefined;
   Nearby: undefined;
-  DMs: undefined;
+  DMs: NavigatorScreenParams<DMStackParamList>;
   Friends: undefined;
   Profile: undefined;
 };

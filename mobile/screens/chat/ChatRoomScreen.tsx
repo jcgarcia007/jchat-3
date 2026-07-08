@@ -80,6 +80,7 @@ import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
 import { usePresenceChannels } from './usePresenceChannels';
+import { getOrCreateConversation, DmGateError } from '../../services/dms';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
@@ -998,10 +999,28 @@ export default function ChatRoomScreen() {
           // TODO: navigate to UserProfile screen
           Alert.alert('Profile', `View profile of ${userId}`); // TODO(i18n)
         }}
-        onDM={(userId) => {
+        onDM={async (userId) => {
           handleCloseUserSheet();
-          // TODO: navigate to DM screen
-          Alert.alert('DM', `Open DM with ${userId}`); // TODO(i18n)
+          if (!user) return;
+          try {
+            // start_dm RPC applies the gate (block + whoCanDMMe) server-side.
+            const conv = await getOrCreateConversation(user.id, userId);
+            // Cross-stack: ChatRoom (MainStack) → Tabs → DMs (DMStack) → DMChat.
+            navigation.navigate('Tabs', {
+              screen: 'DMs',
+              params: {
+                screen: 'DMChat',
+                params: { conversationId: conv.id, otherUserId: userId },
+              },
+            });
+          } catch (err) {
+            if (err instanceof DmGateError) {
+              Alert.alert('Mensaje directo', err.message); // gated: blocked / nobody / not-follower
+              return;
+            }
+            console.warn('[ChatRoom] start DM error', err);
+            Alert.alert('Error', 'No se pudo abrir el mensaje directo.'); // TODO(i18n)
+          }
         }}
         onRemove={(userId) => {
           // Optimistically hide; presence sync catches up when they leave.
