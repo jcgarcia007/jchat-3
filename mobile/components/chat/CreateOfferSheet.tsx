@@ -23,7 +23,6 @@
  *   - Owner gating lives in the parent; this component renders unconditionally.
  *   - Colors: useThemeColors() only — no hardcoded hex.
  *   - Icons: @tabler/icons-react-native.
- *   - // TODO(i18n)
  */
 
 import React, {
@@ -32,6 +31,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -92,21 +92,36 @@ export interface CreateOfferSheetProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+type OfferTypeLabelKey =
+  | 'offerCreate.typeDiscount'
+  | 'offerCreate.typeBundle'
+  | 'offerCreate.typeHappyHour'
+  | 'offerCreate.typeFreeItem';
+
 interface OfferTypeOption {
   value: OfferType;
-  label: string;   // TODO(i18n)
+  labelKey: OfferTypeLabelKey;
   emoji: string;
 }
 
 const OFFER_TYPES: OfferTypeOption[] = [
-  { value: 'discount',    label: 'Discount',    emoji: '%'  },
-  { value: 'bundle',      label: '2×1 Bundle',  emoji: '🎁' },
-  { value: 'happy_hour',  label: 'Happy Hour',  emoji: '🍺' },
-  { value: 'free_item',   label: 'Free Item',   emoji: '🎉' },
+  { value: 'discount',    labelKey: 'offerCreate.typeDiscount',   emoji: '%'  },
+  { value: 'bundle',      labelKey: 'offerCreate.typeBundle',     emoji: '🎁' },
+  { value: 'happy_hour',  labelKey: 'offerCreate.typeHappyHour',  emoji: '🍺' },
+  { value: 'free_item',   labelKey: 'offerCreate.typeFreeItem',   emoji: '🎉' },
 ];
 
+type DurationLabelKey =
+  | 'offerCreate.dur1h'
+  | 'offerCreate.dur2h'
+  | 'offerCreate.durTonight'
+  | 'offerCreate.durCustom';
+
 interface DurationOption {
-  label: string;  // TODO(i18n)
+  /** Stable identifier (also used for the list key + Tonight logic). */
+  label: string;
+  /** i18n key resolved at render time. */
+  labelKey: DurationLabelKey;
   /** Duration in hours. 0 = no expiry / no pin. */
   hours: number;
   /** Sentinel for custom date-picker (not yet wired — Stage 3). */
@@ -114,10 +129,10 @@ interface DurationOption {
 }
 
 const DURATION_OPTIONS: DurationOption[] = [
-  { label: '1 hour',   hours: 1  },
-  { label: '2 hours',  hours: 2  },
-  { label: 'Tonight',  hours: 8  },
-  { label: 'Custom',   hours: 0, custom: true },
+  { label: '1 hour',   labelKey: 'offerCreate.dur1h',      hours: 1  },
+  { label: '2 hours',  labelKey: 'offerCreate.dur2h',      hours: 2  },
+  { label: 'Tonight',  labelKey: 'offerCreate.durTonight', hours: 8  },
+  { label: 'Custom',   labelKey: 'offerCreate.durCustom',  hours: 0, custom: true },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -152,6 +167,7 @@ export function CreateOfferSheet({
   onCreated,
 }: CreateOfferSheetProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
   const s = useMemo(() => makeStyles(c), [c]);
 
   // ── Form state ──────────────────────────────────────────────────────────────
@@ -198,11 +214,11 @@ export function CreateOfferSheet({
     if (loading) return;
 
     if (!title.trim()) {
-      setErrorMsg('Please add a title for the offer.'); // TODO(i18n)
+      setErrorMsg(t('offerCreate.validationTitle'));
       return;
     }
     if (selectedRooms.size === 0) {
-      setErrorMsg('Select at least one room.'); // TODO(i18n)
+      setErrorMsg(t('offerCreate.validationRooms'));
       return;
     }
 
@@ -245,7 +261,7 @@ export function CreateOfferSheet({
         .single();
 
       if (offerErr || !offerRow) {
-        throw new Error(offerErr?.message ?? 'Failed to create offer.');
+        throw new Error(offerErr?.message ?? t('offerCreate.failedCreate'));
       }
 
       const offerId: string = offerRow.id as string;
@@ -305,14 +321,14 @@ export function CreateOfferSheet({
 
       onCreated();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong.'); // TODO(i18n)
+      setErrorMsg(err instanceof Error ? err.message : t('offerCreate.errorGeneric'));
     } finally {
       setLoading(false);
     }
   }, [
     loading, title, discount, minPurchase, description,
     durationIdx, selectedRooms, businessId, roomId, offerType, createdBy,
-    onCreated,
+    onCreated, t,
   ]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -344,13 +360,13 @@ export function CreateOfferSheet({
             <View style={s.headerIconWrap}>
               <IconTag size={20} color={c.brand} />
             </View>
-            <Text style={s.headerTitle}>Create Offer</Text>{/* TODO(i18n) */}
+            <Text style={s.headerTitle}>{t('offerCreate.header')}</Text>
             <Pressable
               onPress={onClose}
               hitSlop={10}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel="Close" // TODO(i18n)
+              accessibilityLabel={t('actions.close', { ns: 'common' })}
               style={({ pressed }) => [s.closeBtn, pressed && s.closeBtnPressed]}
             >
               <IconX size={20} color={c.textSecondary} />
@@ -363,7 +379,7 @@ export function CreateOfferSheet({
             contentContainerStyle={s.scrollContent}
           >
             {/* ── Offer type grid (2×2) ── */}
-            <Text style={s.sectionLabel}>Offer type</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionType')}</Text>
             <View style={s.typeGrid}>
               {OFFER_TYPES.map((opt) => {
                 const active = offerType === opt.value;
@@ -373,7 +389,7 @@ export function CreateOfferSheet({
                     onPress={() => setOfferType(opt.value)}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: active }}
-                    accessibilityLabel={opt.label}
+                    accessibilityLabel={t(opt.labelKey)}
                     style={({ pressed }) => [
                       s.typeCell,
                       active && s.typeCellActive,
@@ -382,7 +398,7 @@ export function CreateOfferSheet({
                   >
                     <Text style={s.typeEmoji}>{opt.emoji}</Text>
                     <Text style={[s.typeLabel, active && s.typeLabelActive]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {active && (
                       <View style={s.typeCheckDot}>
@@ -395,26 +411,26 @@ export function CreateOfferSheet({
             </View>
 
             {/* ── Title ── */}
-            <Text style={s.sectionLabel}>Title</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionTitle')}</Text>
             <TextInput
               style={s.textInput}
               value={title}
               onChangeText={(v) => { setTitle(v); setErrorMsg(null); }}
-              placeholder="e.g. Happy Hour 2×1 Drinks" // TODO(i18n)
+              placeholder={t('offerCreate.titlePlaceholder')}
               placeholderTextColor={c.textTertiary}
               returnKeyType="next"
               maxLength={80}
             />
 
             {/* ── Discount ── */}
-            <Text style={s.sectionLabel}>Discount</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionDiscount')}</Text>
             <View style={s.inputRow}>
               <IconPercentage size={16} color={c.textSecondary} style={s.inputRowIcon} />
               <TextInput
                 style={[s.textInput, s.inputRowField]}
                 value={discount}
                 onChangeText={setDiscount}
-                placeholder="e.g. 20%, $5 off, Buy 1 Get 1" // TODO(i18n)
+                placeholder={t('offerCreate.discountPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 returnKeyType="next"
                 maxLength={40}
@@ -422,12 +438,12 @@ export function CreateOfferSheet({
             </View>
 
             {/* ── Min purchase ── */}
-            <Text style={s.sectionLabel}>Min. purchase (optional)</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionMinPurchase')}</Text>
             <TextInput
               style={s.textInput}
               value={minPurchase}
               onChangeText={setMinPurchase}
-              placeholder="e.g. $15.00" // TODO(i18n)
+              placeholder={t('offerCreate.minPurchasePlaceholder')}
               placeholderTextColor={c.textTertiary}
               keyboardType="decimal-pad"
               returnKeyType="next"
@@ -435,12 +451,12 @@ export function CreateOfferSheet({
             />
 
             {/* ── Description ── */}
-            <Text style={s.sectionLabel}>Description (optional)</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionDescription')}</Text>
             <TextInput
               style={[s.textInput, s.textArea]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Any extra details, exclusions or conditions…" // TODO(i18n)
+              placeholder={t('offerCreate.descriptionPlaceholder')}
               placeholderTextColor={c.textTertiary}
               multiline
               numberOfLines={3}
@@ -449,7 +465,7 @@ export function CreateOfferSheet({
             />
 
             {/* ── Duration ── */}
-            <Text style={s.sectionLabel}>Duration</Text>{/* TODO(i18n) */}
+            <Text style={s.sectionLabel}>{t('offerCreate.sectionDuration')}</Text>
             <View style={s.chipRow}>
               {DURATION_OPTIONS.map((opt, idx) => {
                 const active = durationIdx === idx;
@@ -473,7 +489,7 @@ export function CreateOfferSheet({
                       />
                     )}
                     <Text style={[s.chipLabel, active && s.chipLabelActive]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                   </Pressable>
                 );
@@ -481,15 +497,14 @@ export function CreateOfferSheet({
             </View>
             {DURATION_OPTIONS[durationIdx]?.custom && (
               <Text style={s.customNote}>
-                {/* TODO(i18n) */}
-                Custom date-picker coming in Stage 3.
+                {t('offerCreate.customNote')}
               </Text>
             )}
 
             {/* ── Room selector ── */}
             {rooms.length > 1 && (
               <>
-                <Text style={s.sectionLabel}>Post to rooms</Text>{/* TODO(i18n) */}
+                <Text style={s.sectionLabel}>{t('offerCreate.sectionPostToRooms')}</Text>
                 <View style={s.roomList}>
                   {rooms.map((room) => {
                     const checked = selectedRooms.has(room.id);
@@ -545,7 +560,7 @@ export function CreateOfferSheet({
               onPress={handlePost}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel="Post offer" // TODO(i18n)
+              accessibilityLabel={t('offerCreate.postA11y')}
               accessibilityState={{ disabled: loading }}
               style={({ pressed }) => [
                 s.postBtn,
@@ -556,7 +571,7 @@ export function CreateOfferSheet({
               {loading ? (
                 <ActivityIndicator size="small" color={c.bgSurface} />
               ) : (
-                <Text style={s.postBtnLabel}>Post Offer</Text>
+                <Text style={s.postBtnLabel}>{t('offerCreate.postButton')}</Text>
               )}
             </Pressable>
 
@@ -568,8 +583,7 @@ export function CreateOfferSheet({
               accessibilityRole="button"
               style={s.cancelWrap}
             >
-              {/* TODO(i18n) */}
-              <Text style={s.cancelText}>Cancel</Text>
+              <Text style={s.cancelText}>{t('actions.cancel', { ns: 'common' })}</Text>
             </Pressable>
           </ScrollView>
         </View>

@@ -19,8 +19,6 @@
  * // TODO(Task 2.5): PinMessageSheet — long-press message options.
  * // TODO(Task 2.6): OfferCard in MessageBubble (type === 'offer').
  * // TODO(Task 2.6): CreateOfferSheet — from AttachmentPanel Offer button.
- *
- * // TODO(i18n)
  */
 
 import React, {
@@ -48,6 +46,7 @@ import {
   View,
 } from 'react-native';
 import { IconX } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -186,6 +185,7 @@ export default function ChatRoomScreen() {
   const navigation = useNavigation<ChatRoomNav>();
   const { user } = useAuth();
   const themeColors = useThemeColors();
+  const { t } = useTranslation('chat');
 
   const rootRoomId = route.params.id;
 
@@ -306,7 +306,7 @@ export default function ChatRoomScreen() {
           .single();
 
         if (roomErr || !roomData) {
-          Alert.alert('Error', 'Room not found.'); // TODO(i18n)
+          Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.roomNotFound'));
           navigation.goBack();
           return;
         }
@@ -349,7 +349,7 @@ export default function ChatRoomScreen() {
         setInitialLoading(false);
       }
     })();
-  }, [rootRoomId, navigation]);
+  }, [rootRoomId, navigation, t]);
 
   // ── Load messages (initial page) ───────────────────────────────────────────
 
@@ -447,13 +447,13 @@ export default function ChatRoomScreen() {
   /** Called when the user confirms entry (after incognito selection). */
   const handleEnter = useCallback(() => {
     if (!isIncognitoValid(incognitoState)) {
-      setIncognitoError('Please enter a nickname to continue.'); // TODO(i18n)
+      setIncognitoError(t('chatRoom.nicknameRequired'));
       return;
     }
     setIncognitoError(undefined);
     setEnteredIncognito(incognitoState);
     setEntryVisible(false);
-  }, [incognitoState]);
+  }, [incognitoState, t]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -527,13 +527,13 @@ export default function ChatRoomScreen() {
         } else {
           // Remove optimistic on failure
           setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
-          Alert.alert('Error', 'Message failed to send.'); // TODO(i18n)
+          Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.messageFailed'));
         }
       } catch {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       }
     },
-    [user, activeRoomId, enteredIncognito],
+    [user, activeRoomId, enteredIncognito, t],
   );
 
   const handleSendPhoto = useCallback(
@@ -766,11 +766,10 @@ export default function ChatRoomScreen() {
               {/* Business name / room title */}
               <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
                 {business?.icon_emoji ?? '🏪'}{' '}
-                {business?.name ?? 'Chat Room'}
+                {business?.name ?? t('chatRoom.chatRoomFallback')}
               </Text>
               <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
-                {/* TODO(i18n) */}
-                Choose how you want to appear before entering.
+                {t('chatRoom.gateSubtitle')}
               </Text>
 
               {/* IncognitoToggle */}
@@ -784,7 +783,7 @@ export default function ChatRoomScreen() {
               <Pressable
                 onPress={handleEnter}
                 accessibilityRole="button"
-                accessibilityLabel="Enter room" // TODO(i18n)
+                accessibilityLabel={t('chatRoom.enterRoomA11y')}
                 style={({ pressed }) => [
                   gateStyles.enterBtn,
                   { backgroundColor: themeColors.brand },
@@ -792,7 +791,7 @@ export default function ChatRoomScreen() {
                 ]}
               >
                 <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
-                  Enter Room {/* TODO(i18n) */}
+                  {t('chatRoom.enterRoom')}
                 </Text>
               </Pressable>
 
@@ -804,7 +803,7 @@ export default function ChatRoomScreen() {
                 style={gateStyles.cancelWrap}
               >
                 <Text style={[gateStyles.cancelText, { color: themeColors.textSecondary }]}>
-                  Cancel {/* TODO(i18n) */}
+                  {t('actions.cancel', { ns: 'common' })}
                 </Text>
               </Pressable>
             </View>
@@ -904,8 +903,7 @@ export default function ChatRoomScreen() {
             !loadingMessages ? (
               <View style={chatStyles.emptyState}>
                 <Text style={[chatStyles.emptyText, { color: chatTheme.tabInactive }]}>
-                  {/* TODO(i18n) */}
-                  No messages yet. Say hi! 👋
+                  {t('chatRoom.emptyState')}
                 </Text>
               </View>
             ) : null
@@ -967,7 +965,7 @@ export default function ChatRoomScreen() {
               onPress={() => setViewerImage(null)}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Close image" // TODO(i18n)
+              accessibilityLabel={t('chatRoom.closeImageA11y')}
               style={{
                 margin: 12,
                 width: 36,
@@ -997,7 +995,7 @@ export default function ChatRoomScreen() {
         onViewProfile={(userId) => {
           handleCloseUserSheet();
           // TODO: navigate to UserProfile screen
-          Alert.alert('Profile', `View profile of ${userId}`); // TODO(i18n)
+          Alert.alert(t('chatRoom.profileTitle'), t('chatRoom.viewProfileOf', { userId }));
         }}
         onDM={async (userId) => {
           handleCloseUserSheet();
@@ -1015,11 +1013,11 @@ export default function ChatRoomScreen() {
             });
           } catch (err) {
             if (err instanceof DmGateError) {
-              Alert.alert('Mensaje directo', err.message); // gated: blocked / nobody / not-follower
+              Alert.alert(t('chatRoom.dmTitle'), err.message); // gated: blocked / nobody / not-follower
               return;
             }
             console.warn('[ChatRoom] start DM error', err);
-            Alert.alert('Error', 'No se pudo abrir el mensaje directo.'); // TODO(i18n)
+            Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.dmOpenError'));
           }
         }}
         onRemove={(userId) => {
