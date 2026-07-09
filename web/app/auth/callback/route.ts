@@ -9,11 +9,14 @@
 
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isSafeRedirectPath } from '@/lib/redirect';
 
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
+  // Validate ?next= as a safe internal path (rejects //evil.com, schemes) — open-redirect (W2).
+  const rawNext = searchParams.get('next');
+  const next = isSafeRedirectPath(rawNext) ? rawNext : '/dashboard';
 
   if (code) {
     const supabase = await createSupabaseServerClient();

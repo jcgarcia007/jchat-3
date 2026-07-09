@@ -10,6 +10,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { isSafeRedirectPath } from "@/lib/redirect";
 import {
   IconMail,
   IconLock,
@@ -25,10 +26,10 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Accept ?next= (dashboard flow) or ?redirect= (QR flow). Validate: must be
-  // an internal relative path (starts with '/') to prevent open-redirect attacks.
+  // Accept ?next= (dashboard flow) or ?redirect= (QR flow). Validate: must be a safe
+  // internal relative path (rejects //evil.com, /\evil.com, schemes) — open-redirect (W2).
   const rawNext = searchParams.get("next") ?? searchParams.get("redirect") ?? "/dashboard";
-  const next = rawNext.startsWith("/") ? rawNext : "/dashboard";
+  const next = isSafeRedirectPath(rawNext) ? rawNext : "/dashboard";
   const oauthError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
