@@ -112,9 +112,11 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
   - `subscriptions` → events: `checkout.session.completed`, `customer.subscription.updated`,
     `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.payment_succeeded`,
     `customer.subscription.trial_will_end`
-- [ ] **⚠️ Enable webhook signature verification** — it is stubbed (`// TODO(security)`) in
-      `stripe-webhook/index.ts` and `subscriptions/index.ts`. Uncomment `constructEventAsync`
-      before accepting real traffic. **Do not launch payments without this.**
+- [x] **✅ Webhook signature verification — ACTIVE (verified 2026-07-09).** `constructEventAsync`
+      is live and rejects with HTTP 400 in **both** `stripe-webhook/index.ts` (line 245) and
+      `subscriptions/index.ts` (line 290). The earlier note that it was "stubbed (`// TODO(security)`)"
+      became stale after the 2026-07-08 payment-security work. Evidence:
+      `docs/AUDITORIA_SEGURIDAD_ESCALABILIDAD_2026.md`.
 - [ ] Confirm the Connect flow: business onboarding via `stripe-connect` saves
       `businesses.stripe_account_id`; payouts go to the business (platform fee configured
       in `payments/index.ts`)

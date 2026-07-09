@@ -1,6 +1,11 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
+
+> **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
+> web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
+> **`docs/PLAN_LANZAMIENTO.md`**; los 3 informes de evidencia y los prompts de remediación
+> están en `docs/AUDITORIA_*_2026.md` + `docs/PROMPT_CLAUDE_CODE_seguridad.md`.
 
 ---
 

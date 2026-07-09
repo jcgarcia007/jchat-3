@@ -15,6 +15,7 @@ This /docs/ folder is the durable knowledge base for JChat 3.0 so work continues
 8. PROJECT_ORIGIN.md — Founding definitions: what JChat is, stack, markets, business model.
 9. DEPLOYMENT_CHECKLIST.md — Launch runbook (10 phases).
 10. design-references.md — Reference designs as SVG/HTML.
+11. **PLAN_LANZAMIENTO.md — Hoja de ruta ACTIVA hacia el lanzamiento (fases 0-6, 3 escenarios A/B/C, quién hace qué).** Es el mapa de trabajo actual. Evidencia: los 3 informes de la auditoría senior 2026-07-09 — `AUDITORIA_SEGURIDAD_ESCALABILIDAD_2026.md`, `AUDITORIA_MOVIL_2026.md`, `AUDITORIA_WEB_POS_MAPA_2026.md` (prompts de remediación en `PROMPT_CLAUDE_CODE_seguridad.md`).
 
 **Archived in `docs/archive/` (historical, read only if needed):** DEV_PLAN (68 tasks done),
 the resolved chat diagnostics / inventories / designs, the two original backlogs,
@@ -35,4 +36,4 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - Audit every Claude Code diff: it sometimes adds unrequested features (e.g. gift toggle) or drops safety nets (min-validation). Flag deviations.
 - Keep this /docs/ set updated as milestones complete.
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
