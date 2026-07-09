@@ -15,8 +15,6 @@
  *
  * Colors come exclusively from the ProfileTheme object — no hardcoded hex.
  * Icons: @tabler/icons-react-native only.
- *
- * TODO(i18n): replace English strings with translation keys
  */
 
 import React from 'react';
@@ -29,6 +27,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   IconCamera,
   IconCircleCheckFilled,
@@ -130,13 +129,14 @@ export default function ProfileHeader({
   onSignOut,
   theme,
 }: ProfileHeaderProps) {
+  const { t } = useTranslation('profile');
   const name = displayName ?? username;
   const bioTruncated = bio ? bio.slice(0, 150) : null;
 
   // ── Label for follow button ────────────────────────────────────────────────
-  let followLabel = 'Follow';
-  if (isPending) followLabel = 'Requested';
-  else if (isFollowing) followLabel = 'Following';
+  let followLabel = t('header.follow');
+  if (isPending) followLabel = t('header.requested');
+  else if (isFollowing) followLabel = t('header.following');
 
   return (
     <View style={[styles.container, { backgroundColor: theme.statsBg }]}>
@@ -148,7 +148,7 @@ export default function ProfileHeader({
             source={{ uri: coverUrl }}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
-            accessibilityLabel={`${name}'s cover photo`}
+            accessibilityLabel={t('header.coverPhotoA11y', { name })}
           />
         ) : (
           <View
@@ -162,7 +162,7 @@ export default function ProfileHeader({
             style={[styles.coverEditBtn, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
             onPress={onEditCover}
             accessibilityRole="button"
-            accessibilityLabel="Change cover photo"
+            accessibilityLabel={t('header.changeCoverA11y')}
           >
             <IconCamera size={16} color="#ffffff" />
           </TouchableOpacity>
@@ -196,7 +196,7 @@ export default function ProfileHeader({
                 },
               ]}
               resizeMode="cover"
-              accessibilityLabel={`${name}'s avatar`}
+              accessibilityLabel={t('header.avatarA11y', { name })}
             />
           ) : (
             <View
@@ -231,7 +231,7 @@ export default function ProfileHeader({
               size={16}
               color={theme.avatarBorder}
               style={styles.verifiedIcon}
-              accessibilityLabel="Verified"
+              accessibilityLabel={t('header.verifiedA11y')}
             />
           )}
         </View>
@@ -254,11 +254,11 @@ export default function ProfileHeader({
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
       <View style={[styles.statsRow, { borderTopColor: theme.statsBorder, borderBottomColor: theme.statsBorder }]}>
-        <StatItem label="Posts" value={postCount} theme={theme} />
+        <StatItem label={t('header.posts')} value={postCount} theme={theme} />
         <View style={[styles.statDivider, { backgroundColor: theme.statsBorder }]} />
-        <StatItem label="Followers" value={followerCount} theme={theme} />
+        <StatItem label={t('header.followers')} value={followerCount} theme={theme} />
         <View style={[styles.statDivider, { backgroundColor: theme.statsBorder }]} />
-        <StatItem label="Following" value={followingCount} theme={theme} />
+        <StatItem label={t('header.following')} value={followingCount} theme={theme} />
       </View>
 
       {/* ── Action buttons ─────────────────────────────────────────────────── */}
@@ -269,11 +269,11 @@ export default function ProfileHeader({
             style={[styles.btnPrimary, { backgroundColor: theme.btn1Bg }]}
             onPress={onEditProfile}
             accessibilityRole="button"
-            accessibilityLabel="Edit profile"
+            accessibilityLabel={t('header.editProfileA11y')}
           >
             <IconPencil size={15} color={theme.btn1Color} />
             <Text style={[styles.btnLabel, { color: theme.btn1Color }]}>
-              Edit Profile {/* TODO(i18n) */}
+              {t('header.editProfile')}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -305,7 +305,7 @@ export default function ProfileHeader({
                     { color: isFollowing || isPending ? theme.btn2Color : theme.btn1Color },
                   ]}
                 >
-                  {followLabel} {/* TODO(i18n) */}
+                  {followLabel}
                 </Text>
               )}
             </TouchableOpacity>
@@ -318,11 +318,11 @@ export default function ProfileHeader({
               ]}
               onPress={onMessage}
               accessibilityRole="button"
-              accessibilityLabel={`Message ${name}`}
+              accessibilityLabel={t('header.messageA11y', { name })}
             >
               <IconMessage size={15} color={theme.btn2Color} />
               <Text style={[styles.btnLabel, { color: theme.btn2Color }]}>
-                Message {/* TODO(i18n) */}
+                {t('header.message')}
               </Text>
             </TouchableOpacity>
           </>
@@ -335,10 +335,10 @@ export default function ProfileHeader({
           style={styles.signOutBtn}
           onPress={onSignOut}
           accessibilityRole="button"
-          accessibilityLabel="Sign out"
+          accessibilityLabel={t('header.signOutA11y')}
         >
           <Text style={[styles.signOutLabel, { color: theme.nameColor !== '#ffffff' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)' }]}>
-            Sign Out {/* TODO(i18n) */}
+            {t('header.signOut')}
           </Text>
         </TouchableOpacity>
       )}

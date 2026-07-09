@@ -66,5 +66,22 @@
     "emptyTitle": "Aún no hay regalos",
     "emptySubtitle": "Los regalos que recibas de otros usuarios aparecerán aquí.",
     "loadError": "No se pudieron cargar los regalos."
+  },
+  "header": {
+    "posts": "Publicaciones",
+    "followers": "Seguidores",
+    "following": "Siguiendo",
+    "follow": "Seguir",
+    "requested": "Solicitado",
+    "coverPhotoA11y": "Foto de portada de {{name}}",
+    "changeCoverA11y": "Cambiar foto de portada",
+    "avatarA11y": "Avatar de {{name}}",
+    "verifiedA11y": "Verificado",
+    "editProfileA11y": "Editar perfil",
+    "editProfile": "Editar perfil",
+    "messageA11y": "Enviar mensaje a {{name}}",
+    "message": "Mensaje",
+    "signOutA11y": "Cerrar sesión",
+    "signOut": "Cerrar sesión"
   }
 }

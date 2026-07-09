@@ -23,6 +23,8 @@ import chatEn from './locales/en/chat.json';
 import chatEs from './locales/es/chat.json';
 import profileEn from './locales/en/profile.json';
 import profileEs from './locales/es/profile.json';
+import settingsEn from './locales/en/settings.json';
+import settingsEs from './locales/es/settings.json';
 
 export type SupportedLanguage = 'en' | 'es';
 
@@ -30,8 +32,8 @@ const SUPPORTED: readonly SupportedLanguage[] = ['en', 'es'];
 const FALLBACK: SupportedLanguage = 'en';
 
 export const resources = {
-  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn },
-  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs },
+  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn },
+  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs },
 } as const;
 
 /** Device language clamped to a supported one (expo-localization, SDK 56 API). */
@@ -46,7 +48,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: FALLBACK,
-  ns: ['common', 'auth', 'chat', 'profile'],
+  ns: ['common', 'auth', 'chat', 'profile', 'settings'],
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,

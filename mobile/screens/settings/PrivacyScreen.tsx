@@ -8,7 +8,6 @@
  *  - No real-time location is ever exposed to other users.
  *  - All non-location settings persist to users.privacy_settings (JSONB).
  *
- * TODO(i18n) — all user-facing strings are English for now.
  * TODO(schema): add users.privacy_settings jsonb default '{}'
  */
 
@@ -24,6 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -255,6 +255,8 @@ interface SelectRowProps extends RowBaseProps {
   onSelect: (v: string) => void;
   labelColor: string;
   valueColor: string;
+  /** Maps each option value to its localized display label. */
+  displayMap: Record<string, string>;
 }
 function SelectRow({
   icon,
@@ -268,7 +270,10 @@ function SelectRow({
   isLast,
   labelColor,
   valueColor,
+  displayMap,
 }: SelectRowProps) {
+  const { t } = useTranslation('settings');
+
   function cycleOption() {
     const idx = options.indexOf(value);
     const next = options[(idx + 1) % options.length];
@@ -278,7 +283,8 @@ function SelectRow({
   }
 
   const displayValue =
-    value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ');
+    displayMap[value] ??
+    (value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' '));
 
   return (
     <TouchableOpacity
@@ -291,7 +297,7 @@ function SelectRow({
         !isLast && styles.rowBorderBottom,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, current value: ${displayValue}. Tap to change.`}
+      accessibilityLabel={t('privacy.selectRowA11y', { label, value: displayValue })}
     >
       {icon != null && <View style={styles.rowIcon}>{icon}</View>}
       <View style={styles.rowContent}>
@@ -374,6 +380,7 @@ function InfoRow({
 
 export default function PrivacyScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const navigation = useNavigation<PrivacyNavProp>();
 
@@ -442,13 +449,13 @@ export default function PrivacyScreen() {
           .eq('id', user.id);
         if (error) {
           console.warn('[PrivacyScreen] Could not save privacy_settings:', error.message);
-          Alert.alert('Save failed', 'Your settings could not be saved. Please try again.');
+          Alert.alert(t('privacy.saveFailedTitle'), t('privacy.saveFailedMessage'));
         }
       } finally {
         setSaving(false);
       }
     },
-    [user],
+    [user, t],
   );
 
   function updateSettings(patch: Partial<PrivacySettings>) {
@@ -474,7 +481,7 @@ export default function PrivacyScreen() {
   function handleManageBlocked() {
     // TODO(BlockedUsersScreen): implement and register BlockedUsers in MainStackParamList.
     // navigation.navigate('BlockedUsers');
-    Alert.alert('Coming soon', 'Blocked Users management will be available in a future update.');
+    Alert.alert(t('privacy.blockedComingSoonTitle'), t('privacy.blockedComingSoonMessage'));
   }
 
   // ── Shared row colors ──────────────────────────────────────────────────────
@@ -487,6 +494,17 @@ export default function PrivacyScreen() {
 
   const VISIBILITY_OPTIONS: readonly VisibilityOption[] = ['everyone', 'followers', 'nobody'];
   const ACCOUNT_VIS_OPTIONS: readonly AccountVisibility[] = ['public', 'private'];
+
+  // Localized display labels for the cycling SelectRows.
+  const VIS_LABELS: Record<string, string> = {
+    everyone: t('privacy.visEveryone'),
+    followers: t('privacy.visFollowers'),
+    nobody: t('privacy.visNobody'),
+  };
+  const ACC_LABELS: Record<string, string> = {
+    public: t('privacy.accPublic'),
+    private: t('privacy.accPrivate'),
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) {
@@ -514,37 +532,36 @@ export default function PrivacyScreen() {
           },
         ]}
         accessibilityRole="text"
-        accessibilityLabel="Location privacy notice"
+        accessibilityLabel={t('privacy.bannerA11y')}
       >
         <IconShieldLock size={20} color={palette.danger} strokeWidth={2} />
         <Text style={[styles.locationBannerText, { color: palette.danger }]}>
-          {/* TODO(i18n) */}
-          Your real-time location is never shared — this cannot be changed.
+          {t('privacy.bannerText')}
         </Text>
       </View>
 
       {saving && (
         <View style={styles.savingRow}>
           <ActivityIndicator size="small" color={palette.brand} />
-          {/* TODO(i18n) */}
-          <Text style={[styles.savingText, { color: c.textTertiary }]}>Saving…</Text>
+          <Text style={[styles.savingText, { color: c.textTertiary }]}>{t('privacy.saving')}</Text>
         </View>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 1 — Profile
          ══════════════════════════════════════════════════════════════════════ */}
-      <SectionHeader title="Profile" textColor={c.textTertiary} />
+      <SectionHeader title={t('privacy.sectionProfile')} textColor={c.textTertiary} />
       <View style={styles.card}>
         {/* Account visibility: Public / Private */}
         <SelectRow
           icon={<IconUserCircle size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Account visibility" // TODO(i18n)
+          label={t('privacy.accountVisibility')}
           options={ACCOUNT_VIS_OPTIONS}
           value={settings.accountVisibility}
           onSelect={(v) =>
             updateSettings({ accountVisibility: v as AccountVisibility })
           }
+          displayMap={ACC_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           isFirst
@@ -555,8 +572,8 @@ export default function PrivacyScreen() {
         {/* City of residence: Show / Hide (manual text — never GPS) */}
         <ToggleRow
           icon={<IconMapPin size={20} color={iconColor} strokeWidth={1.5} />}
-          label="City of residence" // TODO(i18n)
-          subLabel="Manual text only — never your GPS location" // TODO(i18n)
+          label={t('privacy.cityOfResidence')}
+          subLabel={t('privacy.cityOfResidenceSub')}
           value={settings.showCity}
           onValueChange={(v) => updateSettings({ showCity: v })}
           bgColor={rowBg}
@@ -568,8 +585,8 @@ export default function PrivacyScreen() {
         {/* Active status: Show / Hide */}
         <ToggleRow
           icon={<IconEye size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Active status" // TODO(i18n)
-          subLabel="Show when you were last active" // TODO(i18n)
+          label={t('privacy.activeStatus')}
+          subLabel={t('privacy.activeStatusSub')}
           value={settings.showActiveStatus}
           onValueChange={(v) => updateSettings({ showActiveStatus: v })}
           bgColor={rowBg}
@@ -581,8 +598,8 @@ export default function PrivacyScreen() {
         {/* Offline mode toggle */}
         <ToggleRow
           icon={<IconGhost size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Offline mode" // TODO(i18n)
-          subLabel="Appear offline while you're active" // TODO(i18n)
+          label={t('privacy.offlineMode')}
+          subLabel={t('privacy.offlineModeSub')}
           value={settings.offlineMode}
           onValueChange={(v) => updateSettings({ offlineMode: v })}
           bgColor={rowBg}
@@ -596,15 +613,16 @@ export default function PrivacyScreen() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 2 — Content
          ══════════════════════════════════════════════════════════════════════ */}
-      <SectionHeader title="Content" textColor={c.textTertiary} />
+      <SectionHeader title={t('privacy.sectionContent')} textColor={c.textTertiary} />
       <View style={styles.card}>
         {/* Who sees my posts */}
         <SelectRow
           icon={<IconPhoto size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Who sees my posts" // TODO(i18n)
+          label={t('privacy.whoSeesPosts')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoSeesMyPosts}
           onSelect={(v) => updateSettings({ whoSeesMyPosts: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           isFirst
@@ -615,10 +633,11 @@ export default function PrivacyScreen() {
         {/* Who sees my stories */}
         <SelectRow
           icon={<IconEye size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Who sees my stories" // TODO(i18n)
+          label={t('privacy.whoSeesStories')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoSeesMyStories}
           onSelect={(v) => updateSettings({ whoSeesMyStories: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           labelColor={labelColor}
@@ -628,10 +647,11 @@ export default function PrivacyScreen() {
         {/* Places visited tab (NO timestamps ever) */}
         <SelectRow
           icon={<IconMapPin size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Places visited tab" // TODO(i18n)
+          label={t('privacy.placesVisitedTab')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoSeesPlacesTab}
           onSelect={(v) => updateSettings({ whoSeesPlacesTab: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           labelColor={labelColor}
@@ -641,10 +661,11 @@ export default function PrivacyScreen() {
         {/* Gifts received tab */}
         <SelectRow
           icon={<IconStar size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Gifts received tab" // TODO(i18n)
+          label={t('privacy.giftsReceivedTab')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoSeesGiftsTab}
           onSelect={(v) => updateSettings({ whoSeesGiftsTab: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           labelColor={labelColor}
@@ -654,8 +675,8 @@ export default function PrivacyScreen() {
         {/* Geotag on posts & stories — OFF by default, manual text only, NEVER GPS */}
         <ToggleRow
           icon={<IconMapPin size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Geotag on posts & stories" // TODO(i18n)
-          subLabel="Manual text only — never your GPS coordinates" // TODO(i18n)
+          label={t('privacy.geotag')}
+          subLabel={t('privacy.geotagSub')}
           value={settings.geotagEnabled}
           onValueChange={(v) => updateSettings({ geotagEnabled: v })}
           bgColor={rowBg}
@@ -666,7 +687,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Posts */}
         <ToggleRow
-          label="Show Posts tab on profile" // TODO(i18n)
+          label={t('privacy.showPostsTab')}
           value={settings.tabPosts}
           onValueChange={(v) => updateSettings({ tabPosts: v })}
           bgColor={rowBg}
@@ -677,7 +698,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Stories */}
         <ToggleRow
-          label="Show Stories tab on profile" // TODO(i18n)
+          label={t('privacy.showStoriesTab')}
           value={settings.tabStories}
           onValueChange={(v) => updateSettings({ tabStories: v })}
           bgColor={rowBg}
@@ -688,7 +709,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Places */}
         <ToggleRow
-          label="Show Places tab on profile" // TODO(i18n)
+          label={t('privacy.showPlacesTab')}
           value={settings.tabPlaces}
           onValueChange={(v) => updateSettings({ tabPlaces: v })}
           bgColor={rowBg}
@@ -699,7 +720,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Gifts */}
         <ToggleRow
-          label="Show Gifts tab on profile" // TODO(i18n)
+          label={t('privacy.showGiftsTab')}
           value={settings.tabGifts}
           onValueChange={(v) => updateSettings({ tabGifts: v })}
           bgColor={rowBg}
@@ -710,7 +731,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Saved */}
         <ToggleRow
-          label="Show Saved tab on profile" // TODO(i18n)
+          label={t('privacy.showSavedTab')}
           value={settings.tabSaved}
           onValueChange={(v) => updateSettings({ tabSaved: v })}
           bgColor={rowBg}
@@ -724,15 +745,16 @@ export default function PrivacyScreen() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 3 — Messages & Chat
          ══════════════════════════════════════════════════════════════════════ */}
-      <SectionHeader title="Messages & Chat" textColor={c.textTertiary} />
+      <SectionHeader title={t('privacy.sectionMessages')} textColor={c.textTertiary} />
       <View style={styles.card}>
         {/* Who can DM me */}
         <SelectRow
           icon={<IconMessage size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Who can DM me" // TODO(i18n)
+          label={t('privacy.whoCanDM')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoCanDMMe}
           onSelect={(v) => updateSettings({ whoCanDMMe: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           isFirst
@@ -743,8 +765,8 @@ export default function PrivacyScreen() {
         {/* Read receipts */}
         <ToggleRow
           icon={<IconEyeOff size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Read receipts" // TODO(i18n)
-          subLabel="Let others see when you've read their messages" // TODO(i18n)
+          label={t('privacy.readReceipts')}
+          subLabel={t('privacy.readReceiptsSub')}
           value={settings.showReadReceipts}
           onValueChange={(v) => updateSettings({ showReadReceipts: v })}
           bgColor={rowBg}
@@ -756,10 +778,11 @@ export default function PrivacyScreen() {
         {/* Who can mention me */}
         <SelectRow
           icon={<IconUsers size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Who can mention me (@)" // TODO(i18n)
+          label={t('privacy.whoCanMention')}
           options={VISIBILITY_OPTIONS}
           value={settings.whoCanMentionMe}
           onSelect={(v) => updateSettings({ whoCanMentionMe: v as VisibilityOption })}
+          displayMap={VIS_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           isLast
@@ -772,7 +795,7 @@ export default function PrivacyScreen() {
           SECTION 4 — Location (LOCKED)
           PRIVACY: location is permanently locked — never render a toggle here
          ══════════════════════════════════════════════════════════════════════ */}
-      <SectionHeader title="Location" textColor={c.textTertiary} />
+      <SectionHeader title={t('privacy.sectionLocation')} textColor={c.textTertiary} />
       <View style={styles.card}>
         {/* PRIVACY: location is permanently locked — never render a toggle here */}
         <InfoRow
@@ -780,7 +803,7 @@ export default function PrivacyScreen() {
             // Icon in danger (red) as per spec
             <IconShieldLock size={20} color={palette.danger} strokeWidth={1.5} />
           }
-          label="Real-time location sharing" // TODO(i18n)
+          label={t('privacy.realtimeLocation')}
           bgColor={rowBg}
           borderColor={rowBorder}
           isFirst
@@ -795,10 +818,9 @@ export default function PrivacyScreen() {
                 { backgroundColor: `${palette.danger}18`, borderColor: `${palette.danger}44` },
               ]}
             >
-              {/* TODO(i18n) */}
               <IconLock size={11} color={palette.danger} strokeWidth={2.5} />
               <Text style={[styles.lockedBadgeText, { color: palette.danger }]}>
-                Always off — Locked
+                {t('privacy.alwaysOffLocked')}
               </Text>
             </View>
           }
@@ -808,12 +830,12 @@ export default function PrivacyScreen() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 5 — Blocked Users
          ══════════════════════════════════════════════════════════════════════ */}
-      <SectionHeader title="Blocked Users" textColor={c.textTertiary} />
+      <SectionHeader title={t('privacy.sectionBlocked')} textColor={c.textTertiary} />
       <View style={styles.card}>
         <InfoRow
           icon={<IconUsers size={20} color={iconColor} strokeWidth={1.5} />}
-          label="Blocked users" // TODO(i18n)
-          value={blockedCount > 0 ? String(blockedCount) : 'None'} // TODO(i18n)
+          label={t('privacy.blockedUsers')}
+          value={blockedCount > 0 ? String(blockedCount) : t('privacy.none')}
           onPress={handleManageBlocked}
           bgColor={rowBg}
           borderColor={rowBorder}

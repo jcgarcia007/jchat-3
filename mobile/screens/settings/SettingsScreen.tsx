@@ -13,7 +13,6 @@
  *
  * TODOs
  * ─────
- * TODO(i18n): apply language across app immediately after persisting
  * TODO(ThemeContext): apply appearance override without restart
  * TODO: change-password flow (supabase.auth.updateUser or resetPasswordForEmail)
  * TODO(server): schedule account deletion with 24h delay
@@ -37,6 +36,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
@@ -121,7 +121,6 @@ async function persistUserSettings(
   const updates: Record<string, unknown> = {};
   if (language !== undefined) {
     updates.language = language;
-    // TODO(i18n): apply language across app immediately
   }
   if (Object.keys(rest).length > 0) {
     // Merge into existing JSONB via a read-modify-write approach.
@@ -256,6 +255,7 @@ function SegmentedPicker<T extends string>({
 
 export default function SettingsScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('settings');
   const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>>();
@@ -300,32 +300,32 @@ export default function SettingsScreen() {
   // ── Sign out ───────────────────────────────────────────────────────────────
   const handleSignOut = useCallback(() => {
     Alert.alert(
-      'Sign out', // TODO(i18n)
-      'Are you sure you want to sign out?', // TODO(i18n)
+      t('alerts.signOutTitle'),
+      t('alerts.signOutMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Sign out', // TODO(i18n)
+          text: t('alerts.signOutConfirm'),
           style: 'destructive',
           onPress: () => {
             signOut().catch(() => {
-              Alert.alert('Error', 'Could not sign out. Please try again.');
+              Alert.alert(t('alerts.signOutErrorTitle'), t('alerts.signOutError'));
             });
           },
         },
       ],
     );
-  }, [signOut]);
+  }, [signOut, t]);
 
   // ── Delete account ─────────────────────────────────────────────────────────
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
-      'Delete account', // TODO(i18n)
-      'Your account will be permanently deleted after a 24-hour grace period. This action cannot be undone.', // TODO(i18n)
+      t('alerts.deleteTitle'),
+      t('alerts.deleteMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Delete my account', // TODO(i18n)
+          text: t('alerts.deleteConfirm'),
           style: 'destructive',
           onPress: () => {
             // TODO(server): schedule account deletion with 24h delay
@@ -334,11 +334,11 @@ export default function SettingsScreen() {
             //   2. Schedules a job to permanently delete after 24h
             //   3. Signs the user out immediately
             Alert.alert(
-              'Request received', // TODO(i18n)
-              'Your account will be deleted within 24 hours. You have been signed out.', // TODO(i18n)
+              t('alerts.deleteReceivedTitle'),
+              t('alerts.deleteReceivedMessage'),
               [
                 {
-                  text: 'OK',
+                  text: t('actions.ok', { ns: 'common' }),
                   onPress: () => {
                     signOut().catch(() => null);
                   },
@@ -349,15 +349,15 @@ export default function SettingsScreen() {
         },
       ],
     );
-  }, [signOut]);
+  }, [signOut, t]);
 
   // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = useCallback(() => {
     // TODO: implement change-password flow
     // Option A: supabase.auth.updateUser({ password: newPassword }) for logged-in users
     // Option B: supabase.auth.resetPasswordForEmail(user.email, { redirectTo: 'jchat://reset' })
-    Alert.alert('Coming soon', 'Password change is not yet available.'); // TODO(i18n)
-  }, []);
+    Alert.alert(t('alerts.comingSoonTitle'), t('alerts.changePasswordSoon'));
+  }, [t]);
 
   // ── Privacy navigation ─────────────────────────────────────────────────────
   const handlePrivacy = useCallback(() => {
@@ -367,10 +367,10 @@ export default function SettingsScreen() {
   // ── Proximity mode options ─────────────────────────────────────────────────
   const PROXIMITY_OPTIONS: ProximityMode[] = ['all', 'favorites', 'visited', 'off'];
   const PROXIMITY_LABELS: Record<ProximityMode, string> = {
-    all: 'All', // TODO(i18n)
-    favorites: 'Favorites', // TODO(i18n)
-    visited: 'Visited', // TODO(i18n)
-    off: 'Off', // TODO(i18n)
+    all: t('main.proxAll'),
+    favorites: t('main.proxFavorites'),
+    visited: t('main.proxVisited'),
+    off: t('main.proxOff'),
   };
 
   // ── Language options ───────────────────────────────────────────────────────
@@ -383,9 +383,9 @@ export default function SettingsScreen() {
   // ── Appearance options ─────────────────────────────────────────────────────
   const APPEARANCE_OPTIONS: AppearancePref[] = ['dark', 'light', 'system'];
   const APPEARANCE_LABELS: Record<AppearancePref, string> = {
-    dark: 'Dark', // TODO(i18n)
-    light: 'Light', // TODO(i18n)
-    system: 'System', // TODO(i18n)
+    dark: t('main.appearanceDark'),
+    light: t('main.appearanceLight'),
+    system: t('main.appearanceSystem'),
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -400,8 +400,7 @@ export default function SettingsScreen() {
           { paddingTop: insets.top + 12, backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle },
         ]}
       >
-        {/* TODO(i18n) */}
-        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('main.title')}</Text>
       </View>
 
       <ScrollView
@@ -409,13 +408,12 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── 1. ACCOUNT ──────────────────────────────────────────────────── */}
-        {/* TODO(i18n) */}
-        <SectionHeader label="Account" />
+        <SectionHeader label={t('main.sectionAccount')} />
 
         {/* Email (display only) */}
         <SettingsRow
           icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
-          label="Email" // TODO(i18n)
+          label={t('main.email')}
           sublabel={user?.email ?? '—'}
         />
 
@@ -424,7 +422,7 @@ export default function SettingsScreen() {
         {/* Change password */}
         <SettingsRow
           icon={<IconLock size={20} color={c.brand} strokeWidth={2} />}
-          label="Change Password" // TODO(i18n)
+          label={t('main.changePassword')}
           onPress={handleChangePassword}
           right={<ChevronRight />}
         />
@@ -434,7 +432,7 @@ export default function SettingsScreen() {
         {/* @username (display only) */}
         <SettingsRow
           icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
-          label="Username" // TODO(i18n)
+          label={t('main.username')}
           // TODO(schema): surface user_metadata.username or users.username
           sublabel={
             (() => {
@@ -448,21 +446,20 @@ export default function SettingsScreen() {
         <View style={styles.sectionGap} />
 
         {/* ── 2. NOTIFICATIONS ─────────────────────────────────────────────── */}
-        {/* TODO(i18n) */}
-        <SectionHeader label="Notifications" />
+        <SectionHeader label={t('main.sectionNotifications')} />
 
         {/* Work notifications toggle */}
         <SettingsRow
           icon={<IconBell size={20} color={c.brand} strokeWidth={2} />}
-          label={loadingSettings ? 'Work' : 'Work'} // TODO(i18n)
-          sublabel="Shifts, check-ins, offers" // TODO(i18n)
+          label={t('main.work')}
+          sublabel={t('main.workSub')}
           right={
             <Switch
               value={settings.notifWork}
               onValueChange={(v) => patch({ notifWork: v })}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
               thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
-              accessibilityLabel="Work notifications" // TODO(i18n)
+              accessibilityLabel={t('main.workA11y')}
             />
           }
         />
@@ -472,15 +469,15 @@ export default function SettingsScreen() {
         {/* Social notifications toggle */}
         <SettingsRow
           icon={<IconBell size={20} color={c.brand} strokeWidth={2} />}
-          label="Social" // TODO(i18n)
-          sublabel="Follows, reactions, messages" // TODO(i18n)
+          label={t('main.social')}
+          sublabel={t('main.socialSub')}
           right={
             <Switch
               value={settings.notifSocial}
               onValueChange={(v) => patch({ notifSocial: v })}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
               thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
-              accessibilityLabel="Social notifications" // TODO(i18n)
+              accessibilityLabel={t('main.socialA11y')}
             />
           }
         />
@@ -494,11 +491,9 @@ export default function SettingsScreen() {
               <IconWifi size={20} color={c.brand} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              {/* TODO(i18n) */}
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>Proximity Alerts</Text>
-              {/* TODO(i18n) */}
+              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.proximityAlerts')}</Text>
               <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
-                Notify when venues nearby
+                {t('main.proximitySub')}
               </Text>
             </View>
           </View>
@@ -516,8 +511,7 @@ export default function SettingsScreen() {
         <View style={styles.sectionGap} />
 
         {/* ── 3. LANGUAGE ──────────────────────────────────────────────────── */}
-        {/* TODO(i18n) */}
-        <SectionHeader label="Language" />
+        <SectionHeader label={t('main.sectionLanguage')} />
 
         <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
           <View style={styles.row}>
@@ -525,8 +519,7 @@ export default function SettingsScreen() {
               <IconLanguage size={20} color={c.brand} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              {/* TODO(i18n) */}
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>Language</Text>
+              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.language')}</Text>
             </View>
           </View>
           <View style={styles.pickerPad}>
@@ -546,8 +539,7 @@ export default function SettingsScreen() {
         <View style={styles.sectionGap} />
 
         {/* ── 4. APPEARANCE ────────────────────────────────────────────────── */}
-        {/* TODO(i18n) */}
-        <SectionHeader label="Appearance" />
+        <SectionHeader label={t('main.sectionAppearance')} />
 
         <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
           <View style={styles.row}>
@@ -555,11 +547,10 @@ export default function SettingsScreen() {
               <IconMoon size={20} color={c.brand} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              {/* TODO(i18n) */}
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>Theme</Text>
+              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.theme')}</Text>
               {/* TODO(ThemeContext): apply appearance override without restart */}
               <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
-                Follows OS until ThemeContext is wired
+                {t('main.themeSub')}
               </Text>
             </View>
           </View>
@@ -580,12 +571,11 @@ export default function SettingsScreen() {
         <View style={styles.sectionGap} />
 
         {/* ── 5. PRIVACY & SECURITY ────────────────────────────────────────── */}
-        {/* TODO(i18n) */}
-        <SectionHeader label="Privacy & Security" />
+        <SectionHeader label={t('main.sectionPrivacy')} />
 
         <SettingsRow
           icon={<IconShield size={20} color={c.brand} strokeWidth={2} />}
-          label="Privacy Settings" // TODO(i18n)
+          label={t('main.privacySettings')}
           onPress={handlePrivacy}
           right={<ChevronRight />}
         />
@@ -596,7 +586,7 @@ export default function SettingsScreen() {
         {/* ── 6. SIGN OUT ──────────────────────────────────────────────────── */}
         <SettingsRow
           icon={<IconLock size={20} color={c.danger} strokeWidth={2} />}
-          label="Sign Out" // TODO(i18n)
+          label={t('main.signOut')}
           onPress={handleSignOut}
           destructive
         />
@@ -607,8 +597,8 @@ export default function SettingsScreen() {
         {/* ── 7. DELETE ACCOUNT ────────────────────────────────────────────── */}
         <SettingsRow
           icon={<IconTrash size={20} color={c.danger} strokeWidth={2} />}
-          label="Delete Account" // TODO(i18n)
-          sublabel="24-hour grace period before permanent deletion" // TODO(i18n)
+          label={t('main.deleteAccount')}
+          sublabel={t('main.deleteAccountSub')}
           onPress={handleDeleteAccount}
           destructive
         />

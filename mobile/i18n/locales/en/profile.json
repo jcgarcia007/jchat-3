@@ -66,5 +66,22 @@
     "emptyTitle": "No gifts yet",
     "emptySubtitle": "Gifts you receive from other users will appear here.",
     "loadError": "Failed to load gifts."
+  },
+  "header": {
+    "posts": "Posts",
+    "followers": "Followers",
+    "following": "Following",
+    "follow": "Follow",
+    "requested": "Requested",
+    "coverPhotoA11y": "{{name}}'s cover photo",
+    "changeCoverA11y": "Change cover photo",
+    "avatarA11y": "{{name}}'s avatar",
+    "verifiedA11y": "Verified",
+    "editProfileA11y": "Edit profile",
+    "editProfile": "Edit Profile",
+    "messageA11y": "Message {{name}}",
+    "message": "Message",
+    "signOutA11y": "Sign out",
+    "signOut": "Sign Out"
   }
 }
