@@ -13,7 +13,6 @@
  * CommentSheet: TODO stub — onOpenComments triggers an Alert placeholder until Task 2.x.
  *
  * Colors: useThemeColors() only. Icons: @tabler/icons-react-native only.
- * // TODO(i18n): all strings are English; wire to i18n once the layer is set up.
  */
 
 import React, {
@@ -33,6 +32,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconUsers } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
@@ -76,6 +76,7 @@ const FOOTER_HEIGHT = 56;
 
 export default function FeedScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('feed');
   const { user } = useAuth();
 
   const [posts, setPosts] = useState<PostRow[]>([]);
@@ -117,7 +118,7 @@ export default function FeedScreen() {
       })
       .catch((err: Error) => {
         console.warn('[FeedScreen] initial load error:', err.message);
-        setInitError('Could not load feed. Pull down to retry.');
+        setInitError(t('list.loadError'));
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,10 +255,10 @@ export default function FeedScreen() {
   const handleOpenComments = useCallback((post: PostRow) => {
     // TODO(comments): replace with real CommentSheet (Task 1.x / 2.x)
     Alert.alert(
-      'Comments',
-      `${post.comment_count ?? 0} comment(s) on this post.\nComment sheet coming soon.`,
+      t('list.commentsTitle'),
+      t('list.commentsStub', { count: post.comment_count ?? 0 }),
     );
-  }, []);
+  }, [t]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -280,11 +281,10 @@ export default function FeedScreen() {
       <View style={styles.empty}>
         <IconUsers size={48} color={c.textTertiary} />
         <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
-          Nothing here yet
+          {t('state.empty', { ns: 'common' })}
         </Text>
         <Text style={[styles.emptyBody, { color: c.textSecondary }]}>
-          Follow people to see their posts.{'\n'}
-          Find them inside business chats.
+          {t('list.emptyBody')}
         </Text>
         {initError ? (
           <Text style={[styles.errorText, { color: c.danger }]}>
@@ -293,7 +293,7 @@ export default function FeedScreen() {
         ) : null}
       </View>
     );
-  }, [loading, c, initError]);
+  }, [loading, c, initError, t]);
 
   const ListFooterComponent = useMemo(() => {
     if (!loadingMore) return null;

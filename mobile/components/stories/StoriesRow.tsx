@@ -24,7 +24,6 @@
  * Unsubscribes on unmount.
  *
  * // TODO(video): expo-av not installed; video stories not supported yet.
- * // TODO(i18n): all strings English.
  *
  * Colors: useThemeColors() + palette only. Icons: @tabler/icons-react-native.
  */
@@ -47,6 +46,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { IconPlus } from '@tabler/icons-react-native';
 
@@ -82,6 +82,7 @@ export default function StoriesRow({
   currentUserAvatarUrl,
 }: StoriesRowProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('feed');
 
   // Stories state.
   const [userStoriesList, setUserStoriesList] = useState<UserStories[]>([]);
@@ -154,8 +155,8 @@ export default function StoriesRow({
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permission required',
-        'Allow photo access in Settings to add a story.',
+        t('create.permissionTitle'),
+        t('storiesRow.storyPermission'),
       );
       setCreatingStory(false);
       return;
@@ -180,15 +181,15 @@ export default function StoriesRow({
     // 3. Ask for optional text overlay.
     if (Platform.OS === 'ios') {
       Alert.prompt(
-        'Add text (optional)',
-        'This text will appear on your story.',
+        t('storiesRow.addTextTitle'),
+        t('storiesRow.addTextMessage'),
         [
           {
-            text: 'Skip',
+            text: t('storiesRow.skip'),
             onPress: () => void uploadAndCreate(localUri, null),
           },
           {
-            text: 'Add',
+            text: t('storiesRow.add'),
             onPress: (text: string | undefined) => void uploadAndCreate(localUri, text ?? null),
           },
         ],
@@ -200,7 +201,7 @@ export default function StoriesRow({
       setTextInput('');
       setShowTextModal(true);
     }
-  }, [creatingStory, uploading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [creatingStory, uploading, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Upload media + create DB row, then refresh. */
   const uploadAndCreate = useCallback(
@@ -231,12 +232,12 @@ export default function StoriesRow({
         await loadStories();
       } catch (err) {
         console.warn('[StoriesRow] uploadAndCreate error:', err);
-        Alert.alert('Error', 'Could not create your story. Please try again.');
+        Alert.alert(t('storiesRow.errorTitle'), t('storiesRow.createError'));
       } finally {
         setUploading(false);
       }
     },
-    [currentUserId, loadStories],
+    [currentUserId, loadStories, t],
   );
 
   // Android text modal confirm.
@@ -274,7 +275,7 @@ export default function StoriesRow({
               style={styles.item}
               onPress={handleCreateStory}
               disabled={uploading}
-              accessibilityLabel="Add your story"
+              accessibilityLabel={t('storiesRow.addYourStoryA11y')}
             >
               <View
                 style={[
@@ -311,7 +312,7 @@ export default function StoriesRow({
                 style={[styles.label, { color: c.textSecondary }]}
                 numberOfLines={1}
               >
-                Your Story
+                {t('storiesRow.yourStory')}
               </Text>
             </TouchableOpacity>
           }
@@ -323,7 +324,7 @@ export default function StoriesRow({
               <TouchableOpacity
                 style={styles.item}
                 onPress={() => openViewer(index)}
-                accessibilityLabel={`View ${item.displayName ?? item.username ?? 'story'}`}
+                accessibilityLabel={t('storiesRow.viewA11y', { name: item.displayName ?? item.username ?? t('storiesRow.storyFallback') })}
               >
                 <View
                   style={[
@@ -346,7 +347,7 @@ export default function StoriesRow({
                   style={[styles.label, { color: c.textSecondary }]}
                   numberOfLines={1}
                 >
-                  {item.displayName ?? item.username ?? 'User'}
+                  {item.displayName ?? item.username ?? t('storiesRow.userFallback')}
                 </Text>
               </TouchableOpacity>
             );
@@ -372,14 +373,14 @@ export default function StoriesRow({
         <View style={styles.textModalBackdrop}>
           <View style={[styles.textModalCard, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.textModalTitle, { color: c.textPrimary }]}>
-              Add text (optional)
+              {t('storiesRow.addTextTitle')}
             </Text>
             <TextInput
               style={[
                 styles.textModalInput,
                 { color: c.textPrimary, borderColor: c.borderSubtle },
               ]}
-              placeholder="Type something…"
+              placeholder={t('storiesRow.typeSomething')}
               placeholderTextColor={c.textTertiary}
               value={textInput}
               onChangeText={setTextInput}
@@ -392,7 +393,7 @@ export default function StoriesRow({
                 onPress={() => handleAndroidTextConfirm(true)}
               >
                 <Text style={[styles.textModalBtnLabel, { color: c.textSecondary }]}>
-                  Skip
+                  {t('storiesRow.skip')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -400,7 +401,7 @@ export default function StoriesRow({
                 onPress={() => handleAndroidTextConfirm(false)}
               >
                 <Text style={[styles.textModalBtnLabel, { color: palette.textPrimary }]}>
-                  Add
+                  {t('storiesRow.add')}
                 </Text>
               </TouchableOpacity>
             </View>

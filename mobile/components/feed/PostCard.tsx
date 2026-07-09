@@ -28,6 +28,8 @@ import {
   IconMessageCircle,
   IconShare,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useThemeColors } from '../../theme/colors';
 import type { PostRow } from '../../services/posts';
 
@@ -37,15 +39,15 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const MEDIA_H = 280;
 
 /** Format a UTC ISO string as a relative human label ("2h ago", "3d ago"). */
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: TFunction<'feed'>): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('post.justNow');
+  if (mins < 60) return t('post.minAgo', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('post.hourAgo', { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t('post.dayAgo', { count: days });
   return new Date(iso).toLocaleDateString();
 }
 
@@ -67,6 +69,7 @@ export default function PostCard({
   onOpenComments,
 }: PostCardProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('feed');
 
   // Animated heart scale — pulses when liked.
   const heartScale = useRef(new Animated.Value(1)).current;
@@ -113,7 +116,7 @@ export default function PostCard({
   }, [post.liked_by_me, heartScale]);
 
   const authorName =
-    post.author?.display_name ?? post.author?.username ?? 'Unknown';
+    post.author?.display_name ?? post.author?.username ?? t('post.unknownAuthor');
   const initials = authorName.slice(0, 2).toUpperCase();
   const likeCount = post.like_count ?? 0;
   const commentCount = post.comment_count ?? 0;
@@ -131,7 +134,7 @@ export default function PostCard({
           <Image
             source={{ uri: post.author.avatar_url }}
             style={[styles.avatar, { backgroundColor: c.bgOverlay }]}
-            accessibilityLabel={`${authorName}'s avatar`}
+            accessibilityLabel={t('post.avatarA11y', { name: authorName })}
           />
         ) : (
           <View
@@ -150,7 +153,7 @@ export default function PostCard({
             {authorName}
           </Text>
           <Text style={[styles.timestamp, { color: c.textTertiary }]}>
-            {relativeTime(post.created_at)}
+            {relativeTime(post.created_at, t)}
           </Text>
         </View>
       </View>
@@ -176,7 +179,7 @@ export default function PostCard({
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           style={styles.mediaScroll}
-          accessibilityLabel="Post photos"
+          accessibilityLabel={t('post.photosA11y')}
         >
           {post.media_urls.map((url, idx) => (
             <Image
@@ -184,7 +187,7 @@ export default function PostCard({
               source={{ uri: url }}
               style={[styles.mediaImage, { backgroundColor: c.bgOverlay }]}
               resizeMode="cover"
-              accessibilityLabel={`Photo ${idx + 1} of ${post.media_urls.length}`}
+              accessibilityLabel={t('post.photoA11y', { index: idx + 1, total: post.media_urls.length })}
             />
           ))}
         </ScrollView>
@@ -197,7 +200,7 @@ export default function PostCard({
           style={styles.action}
           onPress={handleToggleLike}
           accessibilityRole="button"
-          accessibilityLabel={post.liked_by_me ? 'Unlike post' : 'Like post'}
+          accessibilityLabel={post.liked_by_me ? t('post.unlikeA11y') : t('post.likeA11y')}
           accessibilityState={{ selected: !!post.liked_by_me }}
         >
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
@@ -224,7 +227,7 @@ export default function PostCard({
           style={styles.action}
           onPress={() => onOpenComments(post)}
           accessibilityRole="button"
-          accessibilityLabel={`View comments (${commentCount})`}
+          accessibilityLabel={t('post.commentsA11y', { count: commentCount })}
         >
           <IconMessageCircle size={22} color={c.textSecondary} />
           {commentCount > 0 ? (
@@ -241,7 +244,7 @@ export default function PostCard({
             // TODO(share): open native share sheet for this post
           }}
           accessibilityRole="button"
-          accessibilityLabel="Share post"
+          accessibilityLabel={t('post.shareA11y')}
         >
           <IconShare size={22} color={c.textSecondary} />
         </TouchableOpacity>

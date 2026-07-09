@@ -15,7 +15,6 @@
  *  - Timer cleanup on unmount
  *
  * // TODO(video): expo-av is not installed; video stories are photo-only for now.
- * // TODO(i18n): all strings are English.
  *
  * Colors: useThemeColors() + palette only. Icons: @tabler/icons-react-native.
  */
@@ -45,6 +44,8 @@ import {
   IconEye,
   IconX,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -84,6 +85,7 @@ export default function StoryViewerScreen({
   onClose,
 }: StoryViewerProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('feed');
 
   // Current position.
   const [userIdx, setUserIdx] = useState(startUserIndex);
@@ -325,10 +327,10 @@ export default function StoryViewerScreen({
               <View style={[styles.authorAvatar, styles.avatarPlaceholder]} />
             )}
             <Text style={styles.authorName} numberOfLines={1}>
-              {currentGroup.displayName ?? currentGroup.username ?? 'Unknown'}
+              {currentGroup.displayName ?? currentGroup.username ?? t('post.unknownAuthor')}
             </Text>
             <Text style={styles.timeAgo}>
-              {formatTimeAgo(currentStory.created_at)}
+              {formatTimeAgo(currentStory.created_at, t)}
             </Text>
 
             {/* Close button */}
@@ -336,7 +338,7 @@ export default function StoryViewerScreen({
               onPress={onClose}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={styles.closeBtn}
-              accessibilityLabel="Close stories"
+              accessibilityLabel={t('storyViewer.closeA11y')}
             >
               <IconX size={22} color={palette.textPrimary} />
             </TouchableOpacity>
@@ -349,13 +351,13 @@ export default function StoryViewerScreen({
             style={styles.tapLeft}
             onPress={goPrev}
             activeOpacity={1}
-            accessibilityLabel="Previous story"
+            accessibilityLabel={t('storyViewer.prevA11y')}
           />
           <TouchableOpacity
             style={styles.tapRight}
             onPress={goNext}
             activeOpacity={1}
-            accessibilityLabel="Next story"
+            accessibilityLabel={t('storyViewer.nextA11y')}
           />
         </View>
 
@@ -377,10 +379,10 @@ export default function StoryViewerScreen({
               style={[styles.viewersBtn, { backgroundColor: palette.bgOverlay }]}
               onPress={openViewers}
               activeOpacity={0.8}
-              accessibilityLabel="See who viewed this story"
+              accessibilityLabel={t('storyViewer.viewersBtnA11y')}
             >
               <IconEye size={18} color={palette.textPrimary} />
-              <Text style={styles.viewersBtnText}>Viewers</Text>
+              <Text style={styles.viewersBtnText}>{t('storyViewer.viewers')}</Text>
             </TouchableOpacity>
           </SafeAreaView>
         ) : null}
@@ -396,17 +398,17 @@ export default function StoryViewerScreen({
                 <IconChevronLeft size={20} color={c.textPrimary} />
               </TouchableOpacity>
               <Text style={[styles.viewersSheetTitle, { color: c.textPrimary }]}>
-                Viewers
+                {t('storyViewer.viewers')}
               </Text>
             </View>
 
             {loadingViewers ? (
               <Text style={[styles.viewersLoading, { color: c.textSecondary }]}>
-                Loading…
+                {t('state.loading', { ns: 'common' })}
               </Text>
             ) : viewers.length === 0 ? (
               <Text style={[styles.viewersLoading, { color: c.textSecondary }]}>
-                No views yet.
+                {t('storyViewer.noViews')}
               </Text>
             ) : (
               <FlatList
@@ -431,12 +433,12 @@ export default function StoryViewerScreen({
                       <Text style={[styles.viewerName, { color: c.textPrimary }]}>
                         {item.viewer?.display_name ??
                           item.viewer?.username ??
-                          'Unknown'}
+                          t('post.unknownAuthor')}
                       </Text>
                       <Text
                         style={[styles.viewerTime, { color: c.textSecondary }]}
                       >
-                        {formatTimeAgo(item.created_at)}
+                        {formatTimeAgo(item.created_at, t)}
                       </Text>
                     </View>
                   </View>
@@ -453,10 +455,10 @@ export default function StoryViewerScreen({
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-function formatTimeAgo(iso: string): string {
+function formatTimeAgo(iso: string, t: TFunction<'feed'>): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return 'just now';
+  if (diffMins < 1) return t('post.justNow');
   if (diffMins < 60) return `${diffMins}m`;
   const diffH = Math.floor(diffMins / 60);
   if (diffH < 24) return `${diffH}h`;

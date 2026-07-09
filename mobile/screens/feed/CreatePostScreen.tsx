@@ -34,6 +34,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { IconPhoto, IconCamera, IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
@@ -58,27 +59,21 @@ interface SelectedAsset {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-/** Request camera-roll permission and, if denied, show an alert. */
-async function requestMediaPermission(): Promise<boolean> {
+/** Request camera-roll permission and, if denied, show an alert (localized strings passed in). */
+async function requestMediaPermission(title: string, message: string): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert(
-      'Permission required', // TODO(i18n)
-      'Please allow photo access in Settings to pick images.',
-    );
+    Alert.alert(title, message);
     return false;
   }
   return true;
 }
 
-/** Request camera permission and, if denied, show an alert. */
-async function requestCameraPermission(): Promise<boolean> {
+/** Request camera permission and, if denied, show an alert (localized strings passed in). */
+async function requestCameraPermission(title: string, message: string): Promise<boolean> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert(
-      'Permission required', // TODO(i18n)
-      'Please allow camera access in Settings to take photos.',
-    );
+    Alert.alert(title, message);
     return false;
   }
   return true;
@@ -98,6 +93,7 @@ async function uriToArrayBuffer(uri: string): Promise<ArrayBuffer> {
 
 export default function CreatePostScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('feed');
   const navigation = useNavigation();
   const { user } = useAuth();
 
@@ -117,12 +113,12 @@ export default function CreatePostScreen() {
   // ── image picking ──────────────────────────────────────────────────────────
 
   const pickFromGallery = useCallback(async () => {
-    const allowed = await requestMediaPermission();
+    const allowed = await requestMediaPermission(t('create.permissionTitle'), t('create.galleryPermission'));
     if (!allowed) return;
 
     const remaining = MAX_IMAGES - assets.length;
     if (remaining <= 0) {
-      Alert.alert('Limit reached', `You can attach up to ${MAX_IMAGES} photos.`); // TODO(i18n)
+      Alert.alert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
       return;
     }
 
@@ -141,14 +137,14 @@ export default function CreatePostScreen() {
       uri: a.uri,
     }));
     setAssets((prev) => [...prev, ...newAssets].slice(0, MAX_IMAGES));
-  }, [assets.length]);
+  }, [assets.length, t]);
 
   const pickFromCamera = useCallback(async () => {
-    const allowed = await requestCameraPermission();
+    const allowed = await requestCameraPermission(t('create.permissionTitle'), t('create.cameraPermission'));
     if (!allowed) return;
 
     if (assets.length >= MAX_IMAGES) {
-      Alert.alert('Limit reached', `You can attach up to ${MAX_IMAGES} photos.`); // TODO(i18n)
+      Alert.alert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
       return;
     }
 
@@ -164,7 +160,7 @@ export default function CreatePostScreen() {
     setAssets((prev) =>
       [...prev, { key: `${a.uri}-${Date.now()}`, uri: a.uri }].slice(0, MAX_IMAGES),
     );
-  }, [assets.length]);
+  }, [assets.length, t]);
 
   const removeAsset = useCallback((key: string) => {
     setAssets((prev) => prev.filter((a) => a.key !== key));
@@ -178,25 +174,25 @@ export default function CreatePostScreen() {
       return;
     }
     Alert.alert(
-      'Discard post?', // TODO(i18n)
-      'Your draft will not be saved.',
+      t('create.discardTitle'),
+      t('create.discardMessage'),
       [
-        { text: 'Keep editing', style: 'cancel' },
+        { text: t('create.keepEditing'), style: 'cancel' },
         {
-          text: 'Discard',
+          text: t('create.discard'),
           style: 'destructive',
           onPress: () => navigation.goBack(),
         },
       ],
     );
-  }, [hasContent, navigation]);
+  }, [hasContent, navigation, t]);
 
   // ── submit ─────────────────────────────────────────────────────────────────
 
   const handlePost = useCallback(async () => {
     if (!canPost) return;
     if (!user) {
-      Alert.alert('Not signed in', 'Please sign in to post.'); // TODO(i18n)
+      Alert.alert(t('create.notSignedInTitle'), t('create.notSignedInMessage'));
       return;
     }
 
@@ -220,12 +216,12 @@ export default function CreatePostScreen() {
 
       navigation.goBack();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.';
-      Alert.alert('Could not post', message); // TODO(i18n)
+      const message = err instanceof Error ? err.message : t('create.genericError');
+      Alert.alert(t('create.couldNotPost'), message);
     } finally {
       setPosting(false);
     }
-  }, [canPost, user, assets, caption, geotag, navigation]);
+  }, [canPost, user, assets, caption, geotag, navigation, t]);
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -237,16 +233,16 @@ export default function CreatePostScreen() {
           onPress={handleCancel}
           hitSlop={styles.hitSlop}
           accessibilityRole="button"
-          accessibilityLabel="Cancel" // TODO(i18n)
+          accessibilityLabel={t('actions.cancel', { ns: 'common' })}
           disabled={posting}
         >
           <Text style={[styles.headerAction, { color: c.textSecondary }]}>
-            Cancel {/* TODO(i18n) */}
+            {t('actions.cancel', { ns: 'common' })}
           </Text>
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-          New Post {/* TODO(i18n) */}
+          {t('create.title')}
         </Text>
 
         <TouchableOpacity
@@ -254,7 +250,7 @@ export default function CreatePostScreen() {
           disabled={!canPost}
           hitSlop={styles.hitSlop}
           accessibilityRole="button"
-          accessibilityLabel="Post" // TODO(i18n)
+          accessibilityLabel={t('create.postA11y')}
         >
           {posting ? (
             <ActivityIndicator size="small" color={palette.brand} />
@@ -266,7 +262,7 @@ export default function CreatePostScreen() {
                 { color: canPost ? palette.brand : c.textTertiary },
               ]}
             >
-              Post {/* TODO(i18n) */}
+              {t('create.post')}
             </Text>
           )}
         </TouchableOpacity>
@@ -304,7 +300,7 @@ export default function CreatePostScreen() {
                     onPress={() => removeAsset(asset.key)}
                     hitSlop={styles.hitSlop}
                     accessibilityRole="button"
-                    accessibilityLabel="Remove photo" // TODO(i18n)
+                    accessibilityLabel={t('create.removePhotoA11y')}
                   >
                     <IconX size={14} color={c.textPrimary} strokeWidth={2.5} />
                   </TouchableOpacity>
@@ -320,11 +316,11 @@ export default function CreatePostScreen() {
               onPress={pickFromGallery}
               disabled={posting || assets.length >= MAX_IMAGES}
               accessibilityRole="button"
-              accessibilityLabel="Pick from gallery" // TODO(i18n)
+              accessibilityLabel={t('create.galleryA11y')}
             >
               <IconPhoto size={22} color={palette.brand} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
-                Gallery {/* TODO(i18n) */}
+                {t('create.gallery')}
               </Text>
             </TouchableOpacity>
 
@@ -333,11 +329,11 @@ export default function CreatePostScreen() {
               onPress={pickFromCamera}
               disabled={posting || assets.length >= MAX_IMAGES}
               accessibilityRole="button"
-              accessibilityLabel="Open camera" // TODO(i18n)
+              accessibilityLabel={t('create.cameraA11y')}
             >
               <IconCamera size={22} color={palette.brand} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
-                Camera {/* TODO(i18n) */}
+                {t('create.camera')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -346,7 +342,7 @@ export default function CreatePostScreen() {
           <View style={[styles.fieldCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <TextInput
               style={[styles.captionInput, { color: c.textPrimary }]}
-              placeholder="Write a caption…" // TODO(i18n)
+              placeholder={t('create.captionPlaceholder')}
               placeholderTextColor={c.textTertiary}
               value={caption}
               onChangeText={setCaption}
@@ -354,8 +350,8 @@ export default function CreatePostScreen() {
               maxLength={CAPTION_LIMIT + 20} // allow slight overtype for UX; button still disabled
               textAlignVertical="top"
               editable={!posting}
-              accessibilityLabel="Caption" // TODO(i18n)
-              accessibilityHint={`Up to ${CAPTION_LIMIT} characters`}
+              accessibilityLabel={t('create.captionA11y')}
+              accessibilityHint={t('create.captionHint', { max: CAPTION_LIMIT })}
             />
             <Text
               style={[
@@ -375,18 +371,18 @@ export default function CreatePostScreen() {
            */}
           <View style={[styles.fieldCard, styles.fieldCardRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>
-              Location {/* TODO(i18n) */}
+              {t('create.locationLabel')}
             </Text>
             <TextInput
               style={[styles.geotagInput, { color: c.textPrimary }]}
-              placeholder="Add a place (optional)" // TODO(i18n)
+              placeholder={t('create.locationPlaceholder')}
               placeholderTextColor={c.textTertiary}
               value={geotag}
               onChangeText={setGeotag}
               returnKeyType="done"
               editable={!posting}
-              accessibilityLabel="Location tag (manual text)" // TODO(i18n)
-              accessibilityHint="Type a place name. Location is never detected automatically."
+              accessibilityLabel={t('create.locationA11y')}
+              accessibilityHint={t('create.locationHint')}
             />
           </View>
 
