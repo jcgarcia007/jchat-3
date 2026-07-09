@@ -1,0 +1,88 @@
+{
+  "input": {
+    "placeholder": "Mensaje…",
+    "a11yInput": "Campo de mensaje",
+    "openAttachment": "Abrir panel de adjuntos",
+    "closeAttachment": "Cerrar panel de adjuntos",
+    "takePhoto": "Tomar una foto",
+    "send": "Enviar mensaje",
+    "voiceComingSoonA11y": "Mensaje de voz (próximamente)",
+    "cameraPermissionTitle": "Permiso requerido",
+    "cameraPermissionMessage": "Permite el acceso a la cámara para tomar fotos en el chat.",
+    "cameraErrorTitle": "Cámara no disponible",
+    "cameraErrorMessage": "No se pudo abrir la cámara. Verifica los permisos.",
+    "voiceComingSoonTitle": "Próximamente",
+    "voiceComingSoonMessage": "Los mensajes de voz estarán disponibles pronto."
+  },
+  "attachment": {
+    "photo": "Foto",
+    "menu": "Menú",
+    "service": "Servicio",
+    "match": "Match",
+    "soon": "pronto",
+    "offer": "Oferta",
+    "matchA11y": "Match — Próximamente",
+    "matchComingSoonTitle": "Próximamente",
+    "matchComingSoonMessage": "Match estará disponible pronto.",
+    "photoPermissionTitle": "Permiso requerido",
+    "photoPermissionMessage": "Permite el acceso a tus fotos para enviar imágenes.",
+    "galleryErrorTitle": "Galería no disponible",
+    "galleryErrorMessage": "No se pudo abrir la galería. Verifica los permisos."
+  },
+  "topBar": {
+    "back": "Volver",
+    "openMenu": "Abrir menú",
+    "peopleList": "Personas en esta sala",
+    "peopleHere_one": "{{count}} persona aquí",
+    "peopleHere_other": "{{count}} personas aquí",
+    "userLongPressA11y": "Mantén presionado para ver acciones de {{name}}"
+  },
+  "subRoom": {
+    "tabLockedA11y": "{{name}} — protegido con contraseña"
+  },
+  "bubble": {
+    "openPhotoA11y": "Abrir foto en pantalla completa",
+    "photoA11y": "Mensaje con foto",
+    "photo": "Foto",
+    "gifA11y": "Mensaje con GIF",
+    "gif": "GIF",
+    "voiceNote": "Nota de voz",
+    "offerFallback": "Oferta",
+    "unknownUser": "Desconocido",
+    "roleOwner": "Dueño",
+    "roleStaff": "Staff",
+    "userLongPressA11y": "Mantén presionado para ver acciones de {{name}}"
+  },
+  "checkIn": {
+    "labelCheckIn": "Registrarme",
+    "labelCheckedIn": "Registrado",
+    "a11yCheckIn": "Registrarme",
+    "a11yCheckedIn": "Registrado",
+    "notSignedInTitle": "No has iniciado sesión",
+    "notSignedInMessage": "Inicia sesión para registrarte.",
+    "successTitle": "¡Registrado!",
+    "successMessage": "Tu registro fue guardado.",
+    "alreadyTitle": "Ya te registraste",
+    "alreadyMessage": "Solo puedes registrarte una vez cada 24 horas en este lugar.",
+    "tooFarTitle": "Estás muy lejos",
+    "tooFarMessage": "Debes estar dentro del lugar para registrarte.",
+    "unavailableTitle": "No disponible",
+    "unavailableMessage": "Los registros no están disponibles en este momento.",
+    "errorTitle": "Algo salió mal",
+    "tryAgain": "Inténtalo de nuevo."
+  },
+  "incognito": {
+    "title": "Modo incógnito",
+    "subtitle": "Entra a esta sala sin revelar tu identidad",
+    "toggleA11y": "Activar modo incógnito",
+    "nicknameLabel": "Apodo",
+    "nicknamePlaceholder": "Elige un apodo…",
+    "nicknameA11y": "Apodo de incógnito",
+    "hint": "Los demás solo verán este apodo, no tu nombre real ni tu foto."
+  },
+  "mapReaction": {
+    "reactWith": "Reaccionar con {{emoji}}",
+    "closePicker": "Cerrar selector de reacciones",
+    "sendReaction": "Enviar una reacción"
+  }
+}

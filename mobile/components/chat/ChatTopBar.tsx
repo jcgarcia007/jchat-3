@@ -20,8 +20,6 @@
  *   onMenuPress    — called when the menu icon is pressed
  *   onUserLongPress — called when an avatar in the row is long-pressed
  *   children       — SubRoomTabs (rendered between top bar and avatar row)
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -39,6 +37,7 @@ import {
   IconUser,
 } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -80,6 +79,7 @@ interface UserAvatarProps {
 }
 
 function UserAvatar({ user, theme, onLongPress }: UserAvatarProps) {
+  const { t } = useTranslation('chat');
   const displayName =
     user.is_incognito && user.nickname ? user.nickname : user.display_name;
 
@@ -92,7 +92,7 @@ function UserAvatar({ user, theme, onLongPress }: UserAvatarProps) {
       onLongPress={handleLongPress}
       delayLongPress={400}
       accessibilityRole="button"
-      accessibilityLabel={`Long press for actions on ${displayName}`} // TODO(i18n)
+      accessibilityLabel={t('topBar.userLongPressA11y', { name: displayName })}
       style={avatarStyles.wrap}
     >
       {!user.is_incognito && user.avatar_url ? (
@@ -143,6 +143,7 @@ export function ChatTopBar({
   onUserLongPress,
   children,
 }: ChatTopBarProps) {
+  const { t } = useTranslation('chat');
   const insets = useSafeAreaInsets();
 
   return (
@@ -153,7 +154,7 @@ export function ChatTopBar({
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
-          accessibilityLabel="Go back" // TODO(i18n)
+          accessibilityLabel={t('topBar.back')}
           hitSlop={10}
           style={({ pressed }) => [topBarStyles.backBtn, pressed && topBarStyles.btnPressed]}
         >
@@ -170,8 +171,7 @@ export function ChatTopBar({
               {business.name}
             </Text>
             <Text style={[topBarStyles.activeCount, { color: theme.tabInactive }]}>
-              {/* TODO(i18n) */}
-              {activeCount} {activeCount === 1 ? 'person' : 'people'} here
+              {t('topBar.peopleHere', { count: activeCount })}
             </Text>
           </View>
         </View>
@@ -182,7 +182,7 @@ export function ChatTopBar({
             <Pressable
               onPress={onMenuPress}
               accessibilityRole="button"
-              accessibilityLabel="Open menu" // TODO(i18n)
+              accessibilityLabel={t('topBar.openMenu')}
               hitSlop={10}
               style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
             >
@@ -203,7 +203,7 @@ export function ChatTopBar({
           contentContainerStyle={topBarStyles.avatarsContent}
           style={[topBarStyles.avatarsScroll, { borderBottomColor: theme.border }]}
           accessibilityRole="list"
-          accessibilityLabel="People in this room" // TODO(i18n)
+          accessibilityLabel={t('topBar.peopleList')}
         >
           {usersInRoom.map((u) => (
             <UserAvatar

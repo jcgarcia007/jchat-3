@@ -23,8 +23,6 @@
  *   - Icon: IconMapPin from @tabler/icons-react-native
  *   - Shows loading indicator while the check-in call is in-flight
  *   - Success / blocked reason surfaced via Alert
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback, useState } from 'react';
@@ -39,6 +37,7 @@ import {
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { checkIn } from '../../services/checkIn';
 import type { CheckInParams } from '../../services/checkIn';
 
@@ -69,32 +68,26 @@ export interface CheckInButtonProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function blockedReasonMessage(
+// Returns i18n keys (resolved with t() at the call site) so this can stay at
+// module scope. Keys map to the `chat` namespace's `checkIn.*` block.
+type CheckInErrorKey =
+  | 'checkIn.alreadyTitle' | 'checkIn.alreadyMessage'
+  | 'checkIn.tooFarTitle' | 'checkIn.tooFarMessage'
+  | 'checkIn.unavailableTitle' | 'checkIn.unavailableMessage'
+  | 'checkIn.errorTitle' | 'checkIn.tryAgain';
+
+function blockedReasonKeys(
   reason: 'already_checked_in_24h' | 'outside_radius' | 'not_configured' | 'db_error',
-  extra?: string,
-): { title: string; message: string } {
-  // TODO(i18n)
+): { titleKey: CheckInErrorKey; messageKey: CheckInErrorKey } {
   switch (reason) {
     case 'already_checked_in_24h':
-      return {
-        title: 'Already Checked In',
-        message: 'You can only check in once every 24 hours at this location.',
-      };
+      return { titleKey: 'checkIn.alreadyTitle', messageKey: 'checkIn.alreadyMessage' };
     case 'outside_radius':
-      return {
-        title: 'Too Far Away',
-        message: 'You must be inside the venue to check in.',
-      };
+      return { titleKey: 'checkIn.tooFarTitle', messageKey: 'checkIn.tooFarMessage' };
     case 'not_configured':
-      return {
-        title: 'Unavailable',
-        message: 'Check-ins are not available right now.',
-      };
+      return { titleKey: 'checkIn.unavailableTitle', messageKey: 'checkIn.unavailableMessage' };
     case 'db_error':
-      return {
-        title: 'Something Went Wrong',
-        message: extra ?? 'Please try again.',
-      };
+      return { titleKey: 'checkIn.errorTitle', messageKey: 'checkIn.tryAgain' };
   }
 }
 
@@ -109,13 +102,13 @@ export function CheckInButton({
 }: CheckInButtonProps) {
   const c = useThemeColors();
   const { user } = useAuth();
+  const { t } = useTranslation('chat');
   const [loading, setLoading] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const handlePress = useCallback(async () => {
     if (!user) {
-      // TODO(i18n)
-      Alert.alert('Not Signed In', 'Please sign in to check in.');
+      Alert.alert(t('checkIn.notSignedInTitle'), t('checkIn.notSignedInMessage'));
       return;
     }
 
@@ -135,20 +128,16 @@ export function CheckInButton({
       if (result.ok) {
         setCheckedIn(true);
         onSuccess?.(result.checkInId);
-        // TODO(i18n)
-        Alert.alert('Checked In!', 'Your check-in was recorded.');
+        Alert.alert(t('checkIn.successTitle'), t('checkIn.successMessage'));
       } else {
-        const { title, message } = blockedReasonMessage(
-          result.reason,
-          result.reason === 'db_error' ? result.message : undefined,
-        );
-        Alert.alert(title, message);
+        const { titleKey, messageKey } = blockedReasonKeys(result.reason);
+        const dynamicMessage = result.reason === 'db_error' ? result.message : undefined;
+        Alert.alert(t(titleKey), dynamicMessage ?? t(messageKey));
       }
     } catch (err) {
-      // TODO(i18n)
       Alert.alert(
-        'Something Went Wrong',
-        err instanceof Error ? err.message : 'Please try again.',
+        t('checkIn.errorTitle'),
+        err instanceof Error ? err.message : t('checkIn.tryAgain'),
       );
     } finally {
       setLoading(false);
@@ -165,7 +154,7 @@ export function CheckInButton({
       onPress={handlePress}
       disabled={loading || checkedIn}
       accessibilityRole="button"
-      accessibilityLabel={checkedIn ? 'Checked in' : 'Check in'} // TODO(i18n)
+      accessibilityLabel={checkedIn ? t('checkIn.a11yCheckedIn') : t('checkIn.a11yCheckIn')}
       accessibilityState={{ disabled: loading || checkedIn }}
       style={({ pressed }) => [
         styles.button,
@@ -186,8 +175,7 @@ export function CheckInButton({
             color={checkedIn ? c.success : c.bgSurface}
           />
           <Text style={[styles.label, checkedIn && styles.labelCheckedIn]}>
-            {checkedIn ? 'Checked In' : 'Check In'}
-            {/* TODO(i18n) */}
+            {checkedIn ? t('checkIn.labelCheckedIn') : t('checkIn.labelCheckIn')}
           </Text>
         </View>
       )}

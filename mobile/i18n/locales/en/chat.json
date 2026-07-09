@@ -1,0 +1,88 @@
+{
+  "input": {
+    "placeholder": "Message…",
+    "a11yInput": "Message input",
+    "openAttachment": "Open attachment panel",
+    "closeAttachment": "Close attachment panel",
+    "takePhoto": "Take a photo",
+    "send": "Send message",
+    "voiceComingSoonA11y": "Voice message (coming soon)",
+    "cameraPermissionTitle": "Permission required",
+    "cameraPermissionMessage": "Allow camera access to take photos in chat.",
+    "cameraErrorTitle": "Camera unavailable",
+    "cameraErrorMessage": "Could not open the camera. Check permissions.",
+    "voiceComingSoonTitle": "Coming soon",
+    "voiceComingSoonMessage": "Voice messages will be available soon."
+  },
+  "attachment": {
+    "photo": "Photo",
+    "menu": "Menu",
+    "service": "Service",
+    "match": "Match",
+    "soon": "soon",
+    "offer": "Offer",
+    "matchA11y": "Match — Coming soon",
+    "matchComingSoonTitle": "Coming soon",
+    "matchComingSoonMessage": "Match will be available soon.",
+    "photoPermissionTitle": "Permission required",
+    "photoPermissionMessage": "Allow access to your photos to send images.",
+    "galleryErrorTitle": "Gallery unavailable",
+    "galleryErrorMessage": "Could not open the gallery. Check permissions."
+  },
+  "topBar": {
+    "back": "Go back",
+    "openMenu": "Open menu",
+    "peopleList": "People in this room",
+    "peopleHere_one": "{{count}} person here",
+    "peopleHere_other": "{{count}} people here",
+    "userLongPressA11y": "Long press for actions on {{name}}"
+  },
+  "subRoom": {
+    "tabLockedA11y": "{{name}} — password protected"
+  },
+  "bubble": {
+    "openPhotoA11y": "Open photo fullscreen",
+    "photoA11y": "Photo message",
+    "photo": "Photo",
+    "gifA11y": "GIF message",
+    "gif": "GIF",
+    "voiceNote": "Voice note",
+    "offerFallback": "Offer",
+    "unknownUser": "Unknown",
+    "roleOwner": "Owner",
+    "roleStaff": "Staff",
+    "userLongPressA11y": "Long press for actions on {{name}}"
+  },
+  "checkIn": {
+    "labelCheckIn": "Check In",
+    "labelCheckedIn": "Checked In",
+    "a11yCheckIn": "Check in",
+    "a11yCheckedIn": "Checked in",
+    "notSignedInTitle": "Not Signed In",
+    "notSignedInMessage": "Please sign in to check in.",
+    "successTitle": "Checked In!",
+    "successMessage": "Your check-in was recorded.",
+    "alreadyTitle": "Already Checked In",
+    "alreadyMessage": "You can only check in once every 24 hours at this location.",
+    "tooFarTitle": "Too Far Away",
+    "tooFarMessage": "You must be inside the venue to check in.",
+    "unavailableTitle": "Unavailable",
+    "unavailableMessage": "Check-ins are not available right now.",
+    "errorTitle": "Something Went Wrong",
+    "tryAgain": "Please try again."
+  },
+  "incognito": {
+    "title": "Incognito Mode",
+    "subtitle": "Enter this room without revealing your identity",
+    "toggleA11y": "Toggle incognito mode",
+    "nicknameLabel": "Nickname",
+    "nicknamePlaceholder": "Choose a nickname…",
+    "nicknameA11y": "Incognito nickname",
+    "hint": "Others will only see this nickname — not your real name or photo."
+  },
+  "mapReaction": {
+    "reactWith": "React with {{emoji}}",
+    "closePicker": "Close reaction picker",
+    "sendReaction": "Send a reaction"
+  }
+}

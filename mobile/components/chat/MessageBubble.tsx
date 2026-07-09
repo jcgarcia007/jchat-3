@@ -14,7 +14,6 @@
  *
  * // TODO(Task 2.5): pinned banner is rendered by PinnedBanner, not here.
  * // TODO(Task 2.6): offer type renders OfferCard placeholder below.
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -30,6 +29,7 @@ import {
   IconGif,
   IconPhoto,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
 import { OfferCard } from './OfferCard';
@@ -70,11 +70,11 @@ export interface MessageBubbleProps {
 }
 
 /** Build an Offer object from an offer message's metadata snapshot (Task 2.6). */
-function offerFromMessage(message: ChatMessage): Offer {
+function offerFromMessage(message: ChatMessage, fallbackTitle: string): Offer {
   const meta = message.metadata;
   return {
     id: typeof meta.offer_id === 'string' ? meta.offer_id : message.id,
-    title: typeof meta.title === 'string' ? meta.title : message.body ?? 'Offer',
+    title: typeof meta.title === 'string' ? meta.title : message.body ?? fallbackTitle,
     discount: typeof meta.discount === 'string' ? meta.discount : null,
     description: typeof meta.description === 'string' ? meta.description : null,
     expires_at: typeof meta.expires_at === 'string' ? meta.expires_at : null,
@@ -95,12 +95,12 @@ function formatTime(iso: string): string {
   return `${h}:${m}`;
 }
 
-function resolveDisplayName(message: ChatMessage): string {
+function resolveDisplayName(message: ChatMessage, unknownName: string): string {
   const meta = message.metadata;
   if (meta.incognito === true && typeof meta.nickname === 'string' && meta.nickname.trim()) {
     return meta.nickname.trim();
   }
-  return message.sender_name ?? 'Unknown';
+  return message.sender_name ?? unknownName;
 }
 
 function isIncognito(message: ChatMessage): boolean {
@@ -117,6 +117,7 @@ interface BubbleContentProps {
 }
 
 function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentProps) {
+  const { t } = useTranslation('chat');
   const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
 
   switch (message.type) {
@@ -134,19 +135,19 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
             <Pressable
               onPress={() => onImagePress?.(message.media_url!)}
               accessibilityRole="imagebutton"
-              accessibilityLabel="Open photo fullscreen" // TODO(i18n)
+              accessibilityLabel={t('bubble.openPhotoA11y')}
             >
               <Image
                 source={{ uri: message.media_url }}
                 style={styles.photoImage}
                 resizeMode="cover"
-                accessibilityLabel="Photo message" // TODO(i18n)
+                accessibilityLabel={t('bubble.photoA11y')}
               />
             </Pressable>
           ) : (
             <View style={styles.mediaPlaceholder}>
               <IconPhoto size={28} color={textColor} />
-              <Text style={[styles.mediaLabel, { color: textColor }]}>Photo</Text>
+              <Text style={[styles.mediaLabel, { color: textColor }]}>{t('bubble.photo')}</Text>
             </View>
           )}
           {message.body ? (
@@ -165,12 +166,12 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
               source={{ uri: message.media_url }}
               style={styles.gifImage}
               resizeMode="cover"
-              accessibilityLabel="GIF message" // TODO(i18n)
+              accessibilityLabel={t('bubble.gifA11y')}
             />
           ) : (
             <View style={styles.mediaPlaceholder}>
               <IconGif size={28} color={textColor} />
-              <Text style={[styles.mediaLabel, { color: textColor }]}>GIF</Text>
+              <Text style={[styles.mediaLabel, { color: textColor }]}>{t('bubble.gif')}</Text>
             </View>
           )}
         </View>
@@ -182,7 +183,7 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
         <View style={styles.voiceRow}>
           <IconMicrophone size={18} color={textColor} />
           <Text style={[styles.bodyText, { color: textColor }]}>
-            Voice note
+            {t('bubble.voiceNote')}
             {typeof message.metadata.duration_s === 'number'
               ? ` · ${Math.round(message.metadata.duration_s as number)}s`
               : ''}
@@ -191,7 +192,7 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
       );
 
     case 'offer':
-      return <OfferCard offer={offerFromMessage(message)} theme={theme} />;
+      return <OfferCard offer={offerFromMessage(message, t('bubble.offerFallback'))} theme={theme} />;
 
     case 'system':
     default:
@@ -215,7 +216,8 @@ export function MessageBubble({
   onLongPressMessage,
   onImagePress,
 }: MessageBubbleProps) {
-  const displayName = resolveDisplayName(message);
+  const { t } = useTranslation('chat');
+  const displayName = resolveDisplayName(message, t('bubble.unknownUser'));
   const incognito = isIncognito(message);
   const isOffer = message.type === 'offer';
 
@@ -250,7 +252,7 @@ export function MessageBubble({
           onLongPress={handleLongPressUser}
           delayLongPress={400}
           accessibilityRole="button"
-          accessibilityLabel={`Long press for actions on ${displayName}`} // TODO(i18n)
+          accessibilityLabel={t('bubble.userLongPressA11y', { name: displayName })}
           style={styles.avatarWrap}
         >
           {!incognito && message.sender_avatar ? (
@@ -297,7 +299,7 @@ export function MessageBubble({
                       : styles.roleBadgeTextStaff,
                   ]}
                 >
-                  {authorRole === 'owner' ? 'Dueño' : 'Staff'}
+                  {authorRole === 'owner' ? t('bubble.roleOwner') : t('bubble.roleStaff')}
                 </Text>
               </View>
             )}

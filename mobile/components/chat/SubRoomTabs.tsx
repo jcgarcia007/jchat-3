@@ -13,8 +13,6 @@
  *   onSelect         — called when a non-protected room tab is tapped
  *   onSelectProtected — called when a password-protected room is tapped;
  *                       parent should show PasswordEntrySheet then call onSelect
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -26,6 +24,7 @@ import {
   View,
 } from 'react-native';
 import { IconLock } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -60,6 +59,7 @@ export function SubRoomTabs({
   onSelect,
   onSelectProtected,
 }: SubRoomTabsProps) {
+  const { t } = useTranslation('chat');
   const handlePress = useCallback(
     (room: SubRoom) => {
       if (room.id === activeRoomId) return;
@@ -98,7 +98,7 @@ export function SubRoomTabs({
             key={room.id}
             onPress={() => handlePress(room)}
             accessibilityRole="tab"
-            accessibilityLabel={`${room.name}${locked ? ' — password protected' : ''}`} // TODO(i18n)
+            accessibilityLabel={locked ? t('subRoom.tabLockedA11y', { name: room.name }) : room.name}
             accessibilityState={{ selected: isActive }}
             style={({ pressed }) => [
               tabStyles.tab,

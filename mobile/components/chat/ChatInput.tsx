@@ -15,8 +15,6 @@
  * Dynamic mic/send button:
  *   text is empty  → microphone icon (tapping shows "coming soon" alert)
  *   text has chars → send icon (tapping sends the message)
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -37,6 +35,7 @@ import {
   IconX,
 } from '@tabler/icons-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
 import type { ChatTheme } from '../../theme/chatThemes';
 
@@ -66,6 +65,7 @@ export function ChatInput({
   canCreateOffer = false,
   disabled = false,
 }: ChatInputProps) {
+  const { t } = useTranslation('chat');
   const [text, setText] = useState('');
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -102,8 +102,8 @@ export function ChatInput({
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          'Permiso requerido', // TODO(i18n)
-          'Permite el acceso a la cámara para tomar fotos en el chat.',
+          t('input.cameraPermissionTitle'),
+          t('input.cameraPermissionMessage'),
         );
         return;
       }
@@ -123,15 +123,15 @@ export function ChatInput({
       // Don't fail silently — surface a clear message and log for debugging.
       console.error('[ChatInput] launchCameraAsync failed:', err);
       Alert.alert(
-        'Cámara no disponible', // TODO(i18n)
-        'No se pudo abrir la cámara. Verifica los permisos.',
+        t('input.cameraErrorTitle'),
+        t('input.cameraErrorMessage'),
       );
     }
   }, [onSendPhoto]);
 
   const handleMicPress = useCallback(() => {
     // TODO(audio): implement voice recording in a future tanda
-    Alert.alert('Coming soon', 'Voice messages will be available soon.'); // TODO(i18n)
+    Alert.alert(t('input.voiceComingSoonTitle'), t('input.voiceComingSoonMessage'));
   }, []);
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ export function ChatInput({
           onPress={handleToggleAttachment}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel={attachmentOpen ? 'Close attachment panel' : 'Open attachment panel'} // TODO(i18n)
+          accessibilityLabel={attachmentOpen ? t('input.closeAttachment') : t('input.openAttachment')}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: attachmentOpen ? theme.accent : theme.inputBg, borderColor: theme.border },
@@ -184,14 +184,14 @@ export function ChatInput({
           ]}
           value={text}
           onChangeText={setText}
-          placeholder="Message…" // TODO(i18n)
+          placeholder={t('input.placeholder')}
           placeholderTextColor={theme.tabInactive}
           multiline
           maxLength={4000}
           returnKeyType="default"
           editable={!disabled}
           onFocus={() => setAttachmentOpen(false)}
-          accessibilityLabel="Message input" // TODO(i18n)
+          accessibilityLabel={t('input.a11yInput')}
         />
 
         {/* Camera — quick photo without opening panel */}
@@ -199,7 +199,7 @@ export function ChatInput({
           onPress={() => void handleCamera()}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Take a photo" // TODO(i18n)
+          accessibilityLabel={t('input.takePhoto')}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: theme.inputBg, borderColor: theme.border },
@@ -214,7 +214,7 @@ export function ChatInput({
         <Pressable
           onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
-          accessibilityLabel={canSend ? 'Send message' : 'Voice message (coming soon)'} // TODO(i18n)
+          accessibilityLabel={canSend ? t('input.send') : t('input.voiceComingSoonA11y')}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: canSend ? theme.accent : theme.inputBg, borderColor: theme.border },

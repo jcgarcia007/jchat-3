@@ -33,8 +33,6 @@
  *   - Icon: IconMoodSmile from @tabler/icons-react-native (opens picker)
  *   - Platform: mobile only (no .web.tsx split needed — button lives in chat)
  *   - Guard: isSupabaseConfigured (sendMapReaction handles it internally)
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -49,6 +47,7 @@ import { IconMoodSmile } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { sendMapReaction } from '../../services/mapReactions';
+import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -81,6 +80,7 @@ export function MapReactionButton({
 }: MapReactionButtonProps) {
   const c = useThemeColors();
   const { user } = useAuth();
+  const { t } = useTranslation('chat');
 
   // Whether the emoji picker panel is open.
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -172,7 +172,7 @@ export function MapReactionButton({
               key={emoji}
               onPress={() => handleEmojiPress(emoji)}
               accessibilityRole="button"
-              accessibilityLabel={`React with ${emoji}`} // TODO(i18n)
+              accessibilityLabel={t('mapReaction.reactWith', { emoji })}
               style={({ pressed }) => [
                 styles.emojiButton,
                 pressed && styles.emojiButtonPressed,
@@ -192,8 +192,8 @@ export function MapReactionButton({
           accessibilityRole="button"
           accessibilityLabel={
             pickerOpen
-              ? 'Close reaction picker' // TODO(i18n)
-              : 'Send a reaction'        // TODO(i18n)
+              ? t('mapReaction.closePicker')
+              : t('mapReaction.sendReaction')
           }
           accessibilityState={{ disabled: onCooldown }}
           style={({ pressed }) => [

@@ -19,8 +19,6 @@
  *   onOffer         — called when user taps Offer (optional; CreateOfferSheet)
  *   onClose         — called after any action or dismiss
  *   canCreateOffer  — hides Offer button when false (offers_manage permission gate)
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -39,6 +37,7 @@ import {
   IconTag,
 } from '@tabler/icons-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -117,13 +116,14 @@ export function AttachmentPanel({
   onClose,
   canCreateOffer,
 }: AttachmentPanelProps) {
+  const { t } = useTranslation('chat');
   const handlePhoto = useCallback(async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          'Permiso requerido', // TODO(i18n)
-          'Permite el acceso a tus fotos para enviar imágenes.',
+          t('attachment.photoPermissionTitle'),
+          t('attachment.photoPermissionMessage'),
         );
         return;
       }
@@ -148,8 +148,8 @@ export function AttachmentPanel({
       // Don't fail silently — surface a clear message and log for debugging.
       console.error('[AttachmentPanel] launchImageLibraryAsync failed:', err);
       Alert.alert(
-        'Galería no disponible', // TODO(i18n)
-        'No se pudo abrir la galería. Verifica los permisos.',
+        t('attachment.galleryErrorTitle'),
+        t('attachment.galleryErrorMessage'),
       );
     } finally {
       onClose();
@@ -186,7 +186,7 @@ export function AttachmentPanel({
         <OptionButton
           theme={theme}
           icon={<IconCamera size={24} color={theme.accent} />}
-          label="Photo" // TODO(i18n)
+          label={t('attachment.photo')}
           onPress={handlePhoto}
         />
 
@@ -194,7 +194,7 @@ export function AttachmentPanel({
         <OptionButton
           theme={theme}
           icon={<IconToolsKitchen2 size={24} color={theme.accent} />}
-          label="Menú" // TODO(i18n)
+          label={t('attachment.menu')}
           onPress={handleMenu}
         />
 
@@ -202,16 +202,16 @@ export function AttachmentPanel({
         <OptionButton
           theme={theme}
           icon={<IconBell size={24} color={theme.accent} />}
-          label="Servicio" // TODO(i18n)
+          label={t('attachment.service')}
           onPress={handleServiceCall}
         />
 
         {/* Match — disabled / coming soon */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Match — Próximamente" // TODO(i18n)
+          accessibilityLabel={t('attachment.matchA11y')}
           accessibilityState={{ disabled: true }}
-          onPress={() => Alert.alert('Próximamente', 'Match estará disponible pronto.')} // TODO(i18n)
+          onPress={() => Alert.alert(t('attachment.matchComingSoonTitle'), t('attachment.matchComingSoonMessage'))}
           style={[
             optStyles.btn,
             { backgroundColor: theme.inputBg, borderColor: theme.border, opacity: 0.4 },
@@ -219,10 +219,10 @@ export function AttachmentPanel({
         >
           <IconHeart size={24} color={theme.accent} />
           <Text style={[optStyles.label, { color: theme.bubbleInText }]}>
-            Match
+            {t('attachment.match')}
           </Text>
           <Text style={[panelStyles.pronto, { color: theme.accent }]}>
-            pronto
+            {t('attachment.soon')}
           </Text>
         </Pressable>
 
@@ -231,7 +231,7 @@ export function AttachmentPanel({
           <OptionButton
             theme={theme}
             icon={<IconTag size={24} color={theme.accent} />}
-            label="Offer" // TODO(i18n)
+            label={t('attachment.offer')}
             onPress={handleOffer}
           />
         )}

@@ -18,8 +18,6 @@
  *   value     — current IncognitoState ({ enabled, nickname })
  *   onChange  — called with the next full IncognitoState on any change
  *   error     — optional validation message displayed below the nickname field
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -31,6 +29,7 @@ import {
   View,
 } from 'react-native';
 import { IconMask } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 
@@ -75,6 +74,7 @@ export function isIncognitoValid(state: IncognitoState): boolean {
 
 export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
 
   const handleToggle = useCallback(
     (next: boolean) => {
@@ -100,12 +100,10 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
           <IconMask size={20} color={c.brand} />
           <View style={styles.labelText}>
             <Text style={styles.label}>
-              Incognito Mode
-              {/* TODO(i18n) */}
+              {t('incognito.title')}
             </Text>
             <Text style={styles.sublabel}>
-              Enter this room without revealing your identity
-              {/* TODO(i18n) */}
+              {t('incognito.subtitle')}
             </Text>
           </View>
         </View>
@@ -116,7 +114,7 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
           trackColor={{ false: c.bgOverlay, true: c.brand }}
           thumbColor={palette.bgSurfaceLight}
           ios_backgroundColor={c.bgOverlay}
-          accessibilityLabel="Toggle incognito mode" // TODO(i18n)
+          accessibilityLabel={t('incognito.toggleA11y')}
           accessibilityRole="switch"
           accessibilityState={{ checked: value.enabled }}
         />
@@ -126,8 +124,7 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
       {value.enabled && (
         <View style={styles.nicknameSection}>
           <Text style={styles.nicknameLabel}>
-            Nickname
-            {/* TODO(i18n) */}
+            {t('incognito.nicknameLabel')}
             <Text style={styles.required}> *</Text>
           </Text>
 
@@ -138,13 +135,13 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
             ]}
             value={value.nickname}
             onChangeText={handleNicknameChange}
-            placeholder="Choose a nickname…" // TODO(i18n)
+            placeholder={t('incognito.nicknamePlaceholder')}
             placeholderTextColor={c.textTertiary}
             autoCorrect={false}
             autoCapitalize="none"
             maxLength={32}
             returnKeyType="done"
-            accessibilityLabel="Incognito nickname" // TODO(i18n)
+            accessibilityLabel={t('incognito.nicknameA11y')}
           />
 
           {error != null && (
@@ -152,8 +149,7 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
           )}
 
           <Text style={styles.hint}>
-            Others will only see this nickname — not your real name or photo.
-            {/* TODO(i18n) */}
+            {t('incognito.hint')}
           </Text>
         </View>
       )}
