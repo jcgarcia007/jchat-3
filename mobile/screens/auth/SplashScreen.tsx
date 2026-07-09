@@ -25,6 +25,7 @@ import Svg, {
 import { IconMapPin } from '@tabler/icons-react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
 import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
@@ -268,6 +269,7 @@ function LoadingDots() {
 // ---------------------------------------------------------------------------
 export default function SplashScreen() {
   const navigation = useNavigation<SplashNav>();
+  const { t } = useTranslation('auth');
 
   // Map subtle fade-in animation
   const mapOpacity = useRef(new Animated.Value(0)).current;
@@ -330,13 +332,11 @@ export default function SplashScreen() {
           />
         </View>
 
-        {/* Wordmark */}
-        {/* TODO(i18n): localize "JChat" if brand name changes per locale */}
-        <Text style={styles.wordmark}>JChat</Text>
+        {/* Wordmark (brand name lives in common) */}
+        <Text style={styles.wordmark}>{t('appName', { ns: 'common' })}</Text>
 
-        {/* Tagline */}
-        {/* TODO(i18n): localize tagline */}
-        <Text style={styles.tagline}>WHERE YOU ARE</Text>
+        {/* Tagline (style upper-cases it) */}
+        <Text style={styles.tagline}>{t('splash.tagline')}</Text>
 
         {/* Loading dots */}
         <LoadingDots />

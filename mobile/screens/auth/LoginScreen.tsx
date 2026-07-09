@@ -21,6 +21,7 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconBrandApple,
@@ -37,7 +38,7 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
 // Screen-local brand gradient hexes (login header background).
-// All surface / text colors come from useThemeColors() / palette. // TODO(i18n)
+// All surface / text colors come from useThemeColors() / palette.
 // ---------------------------------------------------------------------------
 const LOGIN_COLORS = {
   gradientCardTop: '#0d1235',   // top of biometric card (dark)
@@ -59,6 +60,7 @@ const INPUT_HEIGHT = 52;
 export default function LoginScreen() {
   const c = useThemeColors();
   const navigation = useNavigation<LoginNav>();
+  const { t } = useTranslation('auth');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,20 +71,20 @@ export default function LoginScreen() {
   async function handleBiometric() {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     if (!hasHardware) {
-      Alert.alert('Not supported', 'This device does not support biometric authentication.');
+      Alert.alert(t('login.alerts.notSupportedTitle'), t('login.alerts.notSupportedMessage'));
       return;
     }
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
     if (!isEnrolled) {
       Alert.alert(
-        'No biometrics enrolled',
-        'Please set up Face ID or Touch ID in your device settings first.',
+        t('login.alerts.noBiometricsTitle'),
+        t('login.alerts.noBiometricsMessage'),
       );
       return;
     }
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Sign in to JChat',
-      fallbackLabel: 'Use password',
+      promptMessage: t('login.biometricPrompt'),
+      fallbackLabel: t('login.biometricFallback'),
     });
     if (result.success) {
       // TODO: resume an existing Supabase session here.
@@ -90,23 +92,23 @@ export default function LoginScreen() {
       // listener will already have picked it up and isAuthenticated will be true.
       // If no stored session, show an error directing the user to sign in with email.
       Alert.alert(
-        'Biometric verified',
-        'No stored session found. Please sign in with your email first.',
+        t('login.alerts.biometricVerifiedTitle'),
+        t('login.alerts.biometricVerifiedMessage'),
       );
     } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-      Alert.alert('Authentication failed', 'Biometric verification was not successful.');
+      Alert.alert(t('login.alerts.authFailedTitle'), t('login.alerts.authFailedMessage'));
     }
   }
 
   // ── Social OAuth ──────────────────────────────────────────────────────────
   async function handleOAuth(provider: 'google' | 'apple') {
     if (!isSupabaseConfigured) {
-      Alert.alert('Not configured', 'Supabase is not configured. Add credentials to .env.');
+      Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
     const { data, error } = await supabase.auth.signInWithOAuth({ provider });
     if (error) {
-      Alert.alert('Sign-in error', error.message);
+      Alert.alert(t('login.alerts.signInErrorTitle'), error.message);
       return;
     }
     if (data.url) {
@@ -123,11 +125,11 @@ export default function LoginScreen() {
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
+      Alert.alert(t('login.alerts.missingFieldsTitle'), t('login.alerts.missingFieldsMessage'));
       return;
     }
     if (!isSupabaseConfigured) {
-      Alert.alert('Not configured', 'Supabase is not configured. Add credentials to .env.');
+      Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
 
@@ -140,7 +142,7 @@ export default function LoginScreen() {
 
     if (error) {
       // AuthContext session listener handles successful sign-in automatically.
-      Alert.alert('Sign-in failed', error.message);
+      Alert.alert(t('login.alerts.signInFailedTitle'), error.message);
     }
     // On success: AuthContext onAuthStateChange fires → isAuthenticated flips →
     // AppNavigator switches to MainStack. No explicit navigation call needed.
@@ -150,7 +152,7 @@ export default function LoginScreen() {
   function handleForgotPassword() {
     // TODO: password reset flow — navigate to a ForgotPasswordScreen that calls
     // supabase.auth.resetPasswordForEmail(email, { redirectTo: 'jchat://reset' })
-    Alert.alert('Coming soon', 'Password reset is not yet available.');
+    Alert.alert(t('login.alerts.comingSoonTitle'), t('login.alerts.passwordResetMessage'));
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -167,10 +169,9 @@ export default function LoginScreen() {
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          {/* TODO(i18n) */}
-          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>Welcome back</Text>
+          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('login.title')}</Text>
           <Text style={[styles.headerSub, { color: c.textSecondary }]}>
-            Sign in to your JChat account
+            {t('login.subtitle')}
           </Text>
         </View>
 
@@ -180,13 +181,12 @@ export default function LoginScreen() {
           onPress={handleBiometric}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Sign in with Face ID or Touch ID" // TODO(i18n)
+          accessibilityLabel={t('login.biometricA11y')}
         >
           <IconFaceId size={36} color={LOGIN_COLORS.onBrand} strokeWidth={1.5} />
           <View style={styles.biometricText}>
-            {/* TODO(i18n) */}
-            <Text style={styles.biometricTitle}>Use Face ID / Touch ID</Text>
-            <Text style={styles.biometricSub}>Sign in instantly with biometrics</Text>
+            <Text style={styles.biometricTitle}>{t('login.biometricTitle')}</Text>
+            <Text style={styles.biometricSub}>{t('login.biometricSub')}</Text>
           </View>
         </TouchableOpacity>
 
@@ -200,11 +200,10 @@ export default function LoginScreen() {
             onPress={() => handleOAuth('google')}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="Sign in with Google" // TODO(i18n)
+            accessibilityLabel={t('login.googleA11y')}
           >
             <IconBrandGoogle size={22} color={c.textPrimary} strokeWidth={1.5} />
-            {/* TODO(i18n) */}
-            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>Google</Text>
+            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>{t('login.google')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -215,20 +214,18 @@ export default function LoginScreen() {
             onPress={() => handleOAuth('apple')}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="Sign in with Apple" // TODO(i18n)
+            accessibilityLabel={t('login.appleA11y')}
           >
             <IconBrandApple size={22} color={c.textPrimary} strokeWidth={1.5} />
-            {/* TODO(i18n) */}
-            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>Apple</Text>
+            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>{t('login.apple')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Divider ─────────────────────────────────────────────────────── */}
         <View style={styles.dividerRow}>
           <View style={[styles.dividerLine, { backgroundColor: c.borderSubtle }]} />
-          {/* TODO(i18n) */}
           <Text style={[styles.dividerLabel, { color: c.textTertiary }]}>
-            or continue with email
+            {t('login.divider')}
           </Text>
           <View style={[styles.dividerLine, { backgroundColor: c.borderSubtle }]} />
         </View>
@@ -239,14 +236,14 @@ export default function LoginScreen() {
             style={[styles.input, { color: c.textPrimary }]}
             value={email}
             onChangeText={setEmail}
-            placeholder="Email" // TODO(i18n)
+            placeholder={t('login.emailPlaceholder')}
             placeholderTextColor={c.textTertiary}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             textContentType="emailAddress"
             returnKeyType="next"
-            accessibilityLabel="Email address" // TODO(i18n)
+            accessibilityLabel={t('login.emailA11y')}
           />
         </View>
 
@@ -262,7 +259,7 @@ export default function LoginScreen() {
             style={[styles.input, styles.inputFlex, { color: c.textPrimary }]}
             value={password}
             onChangeText={setPassword}
-            placeholder="Password" // TODO(i18n)
+            placeholder={t('login.passwordPlaceholder')}
             placeholderTextColor={c.textTertiary}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
@@ -270,13 +267,13 @@ export default function LoginScreen() {
             textContentType="password"
             returnKeyType="done"
             onSubmitEditing={handleSignIn}
-            accessibilityLabel="Password" // TODO(i18n)
+            accessibilityLabel={t('login.passwordA11y')}
           />
           <TouchableOpacity
             onPress={() => setShowPassword((v) => !v)}
             style={styles.eyeBtn}
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} // TODO(i18n)
+            accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {showPassword ? (
@@ -292,10 +289,9 @@ export default function LoginScreen() {
           onPress={handleForgotPassword}
           style={styles.forgotWrap}
           accessibilityRole="button"
-          accessibilityLabel="Forgot password?" // TODO(i18n)
+          accessibilityLabel={t('login.forgot')}
         >
-          {/* TODO(i18n) */}
-          <Text style={[styles.forgotText, { color: palette.brand }]}>Forgot password?</Text>
+          <Text style={[styles.forgotText, { color: palette.brand }]}>{t('login.forgot')}</Text>
         </TouchableOpacity>
 
         {/* ── Sign in button ──────────────────────────────────────────────── */}
@@ -309,25 +305,22 @@ export default function LoginScreen() {
           disabled={loading}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Sign in" // TODO(i18n)
+          accessibilityLabel={t('login.signIn')}
         >
-          {/* TODO(i18n) */}
-          <Text style={styles.signInBtnText}>{loading ? 'Signing in…' : 'Sign in'}</Text>
+          <Text style={styles.signInBtnText}>{loading ? t('login.signingIn') : t('login.signIn')}</Text>
         </TouchableOpacity>
 
         {/* ── Sign up link ────────────────────────────────────────────────── */}
         <View style={styles.signUpRow}>
-          {/* TODO(i18n) */}
           <Text style={[styles.signUpLabel, { color: c.textSecondary }]}>
-            Don't have an account?{' '}
+            {t('login.noAccount')}
           </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('RegisterStep1')}
             accessibilityRole="button"
-            accessibilityLabel="Sign up" // TODO(i18n)
+            accessibilityLabel={t('login.signUp')}
           >
-            {/* TODO(i18n) */}
-            <Text style={[styles.signUpLink, { color: palette.brand }]}>Sign up</Text>
+            <Text style={[styles.signUpLink, { color: palette.brand }]}>{t('login.signUp')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

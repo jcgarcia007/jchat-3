@@ -28,6 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -61,26 +62,37 @@ type RegisterStep1Nav = NativeStackNavigationProp<AuthStackParamList, 'RegisterS
 // ---------------------------------------------------------------------------
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function validateName(v: string): string | null {
-  if (!v.trim()) return 'Full name is required'; // TODO(i18n)
+// Validators return i18n keys (resolved with t() at render) so they can stay at
+// module scope. Keys map to the `auth` namespace's `validation.*` block.
+type ValidationErrorKey =
+  | 'validation.nameRequired'
+  | 'validation.emailRequired'
+  | 'validation.emailInvalid'
+  | 'validation.passwordRequired'
+  | 'validation.passwordTooShort'
+  | 'validation.confirmRequired'
+  | 'validation.passwordsMismatch';
+
+function validateName(v: string): ValidationErrorKey | null {
+  if (!v.trim()) return 'validation.nameRequired';
   return null;
 }
 
-function validateEmail(v: string): string | null {
-  if (!v.trim()) return 'Email is required'; // TODO(i18n)
-  if (!EMAIL_REGEX.test(v.trim())) return 'Enter a valid email address'; // TODO(i18n)
+function validateEmail(v: string): ValidationErrorKey | null {
+  if (!v.trim()) return 'validation.emailRequired';
+  if (!EMAIL_REGEX.test(v.trim())) return 'validation.emailInvalid';
   return null;
 }
 
-function validatePassword(v: string): string | null {
-  if (!v) return 'Password is required'; // TODO(i18n)
-  if (v.length < 8) return 'Password must be at least 8 characters'; // TODO(i18n)
+function validatePassword(v: string): ValidationErrorKey | null {
+  if (!v) return 'validation.passwordRequired';
+  if (v.length < 8) return 'validation.passwordTooShort';
   return null;
 }
 
-function validateConfirmPassword(password: string, confirm: string): string | null {
-  if (!confirm) return 'Please confirm your password'; // TODO(i18n)
-  if (password !== confirm) return 'Passwords do not match'; // TODO(i18n)
+function validateConfirmPassword(password: string, confirm: string): ValidationErrorKey | null {
+  if (!confirm) return 'validation.confirmRequired';
+  if (password !== confirm) return 'validation.passwordsMismatch';
   return null;
 }
 
@@ -90,6 +102,7 @@ function validateConfirmPassword(password: string, confirm: string): string | nu
 export default function RegisterStep1Screen() {
   const c = useThemeColors();
   const navigation = useNavigation<RegisterStep1Nav>();
+  const { t } = useTranslation('auth');
 
   // Form state
   const [name, setName] = useState('');
@@ -186,17 +199,17 @@ export default function RegisterStep1Screen() {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Progress dots ──────────────────────────────────────────── */}
-          <View style={styles.dotsRow} accessibilityLabel="Step 1 of 2">
+          <View style={styles.dotsRow} accessibilityLabel={t('register.step1Indicator')}>
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
             <View style={[styles.dot, { backgroundColor: c.borderSubtle }]} />
           </View>
 
           {/* ── Title ──────────────────────────────────────────────────── */}
           <Text style={[styles.title, { color: c.textPrimary }]}>
-            Create account {/* TODO(i18n) */}
+            {t('register.step1Title')}
           </Text>
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            Join local conversations and discover what{'’'}s happening nearby. {/* TODO(i18n) */}
+            {t('register.step1Subtitle')}
           </Text>
 
           {/* ── Social buttons ─────────────────────────────────────────── */}
@@ -206,7 +219,7 @@ export default function RegisterStep1Screen() {
               onPress={handleGoogleSignUp}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel="Sign up with Google" // TODO(i18n)
+              accessibilityLabel={t('register.googleA11y')}
             >
               <IconBrandGoogle
                 size={22}
@@ -220,7 +233,7 @@ export default function RegisterStep1Screen() {
               onPress={handleAppleSignUp}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel="Sign up with Apple" // TODO(i18n)
+              accessibilityLabel={t('register.appleA11y')}
             >
               <IconBrandApple
                 size={22}
@@ -234,7 +247,7 @@ export default function RegisterStep1Screen() {
               onPress={handleFacebookSignUp}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel="Sign up with Facebook" // TODO(i18n)
+              accessibilityLabel={t('register.facebookA11y')}
             >
               <IconBrandFacebook
                 size={22}
@@ -248,7 +261,7 @@ export default function RegisterStep1Screen() {
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: LOCAL_COLORS.dividerLine }]} />
             <Text style={[styles.dividerText, { color: c.textTertiary }]}>
-              or with email {/* TODO(i18n) */}
+              {t('register.divider')}
             </Text>
             <View style={[styles.dividerLine, { backgroundColor: LOCAL_COLORS.dividerLine }]} />
           </View>
@@ -258,7 +271,7 @@ export default function RegisterStep1Screen() {
           {/* Full name */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Full name {/* TODO(i18n) */}
+              {t('register.nameLabel')}
             </Text>
             <TextInput
               style={[
@@ -269,7 +282,7 @@ export default function RegisterStep1Screen() {
                   color: c.textPrimary,
                 },
               ]}
-              placeholder="Your full name" // TODO(i18n)
+              placeholder={t('register.namePlaceholder')}
               placeholderTextColor={c.textTertiary}
               autoCapitalize="words"
               autoCorrect={false}
@@ -277,11 +290,11 @@ export default function RegisterStep1Screen() {
               value={name}
               onChangeText={setName}
               onBlur={() => markTouched('name')}
-              accessibilityLabel="Full name"
+              accessibilityLabel={t('register.nameA11y')}
             />
             {errors.name ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                {errors.name}
+                {t(errors.name)}
               </Text>
             ) : null}
           </View>
@@ -289,7 +302,7 @@ export default function RegisterStep1Screen() {
           {/* Email */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Email {/* TODO(i18n) */}
+              {t('register.emailLabel')}
             </Text>
             <TextInput
               style={[
@@ -300,7 +313,7 @@ export default function RegisterStep1Screen() {
                   color: c.textPrimary,
                 },
               ]}
-              placeholder="you@example.com" // TODO(i18n)
+              placeholder={t('register.emailPlaceholder')}
               placeholderTextColor={c.textTertiary}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -309,11 +322,11 @@ export default function RegisterStep1Screen() {
               value={email}
               onChangeText={setEmail}
               onBlur={() => markTouched('email')}
-              accessibilityLabel="Email address"
+              accessibilityLabel={t('register.emailA11y')}
             />
             {errors.email ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                {errors.email}
+                {t(errors.email)}
               </Text>
             ) : null}
           </View>
@@ -321,7 +334,7 @@ export default function RegisterStep1Screen() {
           {/* Password */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Password {/* TODO(i18n) */}
+              {t('register.passwordLabel')}
             </Text>
             <View style={styles.inputRow}>
               <TextInput
@@ -334,7 +347,7 @@ export default function RegisterStep1Screen() {
                     color: c.textPrimary,
                   },
                 ]}
-                placeholder="Min. 8 characters" // TODO(i18n)
+                placeholder={t('register.passwordPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -343,13 +356,13 @@ export default function RegisterStep1Screen() {
                 value={password}
                 onChangeText={setPassword}
                 onBlur={() => markTouched('password')}
-                accessibilityLabel="Password"
+                accessibilityLabel={t('register.passwordA11y')}
               />
               <Pressable
                 style={styles.eyeButton}
                 onPress={() => setShowPassword((v) => !v)}
                 accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} // TODO(i18n)
+                accessibilityLabel={showPassword ? t('register.hidePassword') : t('register.showPassword')}
                 hitSlop={8}
               >
                 {showPassword ? (
@@ -361,7 +374,7 @@ export default function RegisterStep1Screen() {
             </View>
             {errors.password ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                {errors.password}
+                {t(errors.password)}
               </Text>
             ) : null}
           </View>
@@ -369,7 +382,7 @@ export default function RegisterStep1Screen() {
           {/* Confirm password */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Confirm password {/* TODO(i18n) */}
+              {t('register.confirmLabel')}
             </Text>
             <View style={styles.inputRow}>
               <TextInput
@@ -382,7 +395,7 @@ export default function RegisterStep1Screen() {
                     color: c.textPrimary,
                   },
                 ]}
-                placeholder="Repeat your password" // TODO(i18n)
+                placeholder={t('register.confirmPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 secureTextEntry={!showConfirm}
                 autoCapitalize="none"
@@ -392,13 +405,13 @@ export default function RegisterStep1Screen() {
                 onChangeText={setConfirmPassword}
                 onBlur={() => markTouched('confirmPassword')}
                 onSubmitEditing={handleContinue}
-                accessibilityLabel="Confirm password"
+                accessibilityLabel={t('register.confirmA11y')}
               />
               <Pressable
                 style={styles.eyeButton}
                 onPress={() => setShowConfirm((v) => !v)}
                 accessibilityRole="button"
-                accessibilityLabel={showConfirm ? 'Hide confirm password' : 'Show confirm password'} // TODO(i18n)
+                accessibilityLabel={showConfirm ? t('register.hideConfirm') : t('register.showConfirm')}
                 hitSlop={8}
               >
                 {showConfirm ? (
@@ -410,7 +423,7 @@ export default function RegisterStep1Screen() {
             </View>
             {errors.confirmPassword ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                {errors.confirmPassword}
+                {t(errors.confirmPassword)}
               </Text>
             ) : null}
           </View>
@@ -421,26 +434,26 @@ export default function RegisterStep1Screen() {
             onPress={handleContinue}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel="Continue" // TODO(i18n)
+            accessibilityLabel={t('register.continue')}
           >
             <Text style={styles.continueButtonText}>
-              Continue {/* TODO(i18n) */}
+              {t('register.continue')}
             </Text>
           </TouchableOpacity>
 
           {/* ── Already have an account ───────────────────────────────── */}
           <View style={styles.loginRow}>
             <Text style={[styles.loginPrompt, { color: c.textSecondary }]}>
-              Already have an account?{' '} {/* TODO(i18n) */}
+              {t('register.haveAccount')}
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('Login')}
               accessibilityRole="link"
-              accessibilityLabel="Log in" // TODO(i18n)
+              accessibilityLabel={t('register.login')}
               hitSlop={8}
             >
               <Text style={[styles.loginLink, { color: palette.brand }]}>
-                Log in {/* TODO(i18n) */}
+                {t('register.login')}
               </Text>
             </TouchableOpacity>
           </View>

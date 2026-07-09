@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconBrandPagekit } from '@tabler/icons-react-native';
 
@@ -24,7 +25,7 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
 // Design-System gradient / border hexes specific to this screen.
-// All other colors come from palette / useThemeColors(). // TODO(i18n)
+// All other colors come from palette / useThemeColors().
 // ---------------------------------------------------------------------------
 const WELCOME_COLORS = {
   gradientStart: '#060810',   // splash gradient top
@@ -44,6 +45,7 @@ const BUTTON_HEIGHT = 44;
 export default function WelcomeScreen() {
   const c = useThemeColors();
   const navigation = useNavigation<WelcomeNav>();
+  const { t } = useTranslation('auth');
 
   return (
     <LinearGradient
@@ -66,20 +68,16 @@ export default function WelcomeScreen() {
         </View>
 
         {/* Tagline */}
-        {/* TODO(i18n) */}
-        <Text style={styles.title}>
-          The people around you are waiting
-        </Text>
+        <Text style={styles.title}>{t('welcome.title')}</Text>
 
         {/* Subtitle */}
-        {/* TODO(i18n) */}
         <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-          Discover local hangouts, connect with the crowd, and join the conversation in real time.
+          {t('welcome.subtitle')}
         </Text>
       </View>
 
       {/* ── Navigation dots ── */}
-      <View style={styles.dotsRow} accessibilityLabel="Step 1 of 4">
+      <View style={styles.dotsRow} accessibilityLabel={t('welcome.stepIndicator')}>
         {[0, 1, 2, 3].map((i) => (
           <View
             key={i}
@@ -101,10 +99,9 @@ export default function WelcomeScreen() {
           onPress={() => navigation.navigate('RegisterStep1')}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Get started"  // TODO(i18n)
+          accessibilityLabel={t('welcome.getStarted')}
         >
-          {/* TODO(i18n) */}
-          <Text style={styles.primaryButtonText}>Get started</Text>
+          <Text style={styles.primaryButtonText}>{t('welcome.getStarted')}</Text>
         </TouchableOpacity>
 
         {/* Ghost — Log in */}
@@ -113,11 +110,10 @@ export default function WelcomeScreen() {
           onPress={() => navigation.navigate('Login')}
           activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel="Log in"  // TODO(i18n)
+          accessibilityLabel={t('welcome.login')}
         >
-          {/* TODO(i18n) */}
           <Text style={[styles.ghostButtonText, { color: c.textPrimary }]}>
-            Log in
+            {t('welcome.login')}
           </Text>
         </TouchableOpacity>
       </View>

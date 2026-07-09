@@ -39,6 +39,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
+import { useTranslation } from 'react-i18next';
 import {
   IconAt,
   IconCheck,
@@ -107,10 +108,12 @@ function isAtLeast18(dob: Date): boolean {
   return dob <= eighteenYearsAgo;
 }
 
-function validateUsername(v: string): string | null {
-  if (!v.trim()) return 'Username is required'; // TODO(i18n)
-  if (!USERNAME_REGEX.test(v.trim()))
-    return 'Username must be 3–30 chars: lowercase letters, numbers, underscores'; // TODO(i18n)
+// Returns an i18n key (resolved with t() at render / in the alert). Keys map to
+// the `auth` namespace's `validation.*` block.
+type UsernameErrorKey = 'validation.usernameRequired' | 'validation.usernameFormat';
+function validateUsername(v: string): UsernameErrorKey | null {
+  if (!v.trim()) return 'validation.usernameRequired';
+  if (!USERNAME_REGEX.test(v.trim())) return 'validation.usernameFormat';
   return null;
 }
 
@@ -124,6 +127,7 @@ type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 // ---------------------------------------------------------------------------
 export default function RegisterStep2Screen({ route, navigation }: Props) {
   const c = useThemeColors();
+  const { t } = useTranslation('auth');
   const { name = '', email = '', password = '' } = route.params ?? {};
 
   // ── Date of birth ──────────────────────────────────────────────────────────
@@ -156,7 +160,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------------
   const dobError: string | null =
     dobTouched && !isAtLeast18(dob)
-      ? 'You must be at least 18 years old to create an account' // TODO(i18n)
+      ? t('register.dobError')
       : null;
 
   const usernameFormatError: string | null = usernameTouched
@@ -165,7 +169,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
 
   const termsError: string | null =
     termsTouched && !termsAccepted
-      ? 'You must accept the Terms to continue' // TODO(i18n)
+      ? t('register.termsError')
       : null;
 
   // ---------------------------------------------------------------------------
@@ -256,42 +260,42 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
     // ── Client-side validation ────────────────────────────────────────────
     if (!isAtLeast18(dob)) {
       Alert.alert(
-        'Age requirement', // TODO(i18n)
-        'You must be at least 18 years old to create a JChat account.',
+        t('register.alerts.ageTitle'),
+        t('register.alerts.ageMessage'),
       );
       return;
     }
 
     const formatErr = validateUsername(username);
     if (formatErr) {
-      Alert.alert('Invalid username', formatErr); // TODO(i18n)
+      Alert.alert(t('register.alerts.invalidUsernameTitle'), t(formatErr));
       return;
     }
 
     if (availability !== 'available') {
       if (availability === 'taken') {
-        Alert.alert('Username taken', 'Please choose a different username.'); // TODO(i18n)
+        Alert.alert(t('register.alerts.usernameTakenTitle'), t('register.alerts.usernameTakenMessage'));
       } else if (availability === 'checking') {
-        Alert.alert('Please wait', 'Checking username availability…'); // TODO(i18n)
+        Alert.alert(t('register.alerts.pleaseWaitTitle'), t('register.alerts.pleaseWaitMessage'));
       } else {
         // idle or error — re-trigger a check
-        Alert.alert('Check username', 'Please wait for the username check to complete.'); // TODO(i18n)
+        Alert.alert(t('register.alerts.checkUsernameTitle'), t('register.alerts.checkUsernameMessage'));
       }
       return;
     }
 
     if (!termsAccepted) {
       Alert.alert(
-        'Terms required', // TODO(i18n)
-        'Please accept the Terms of Service and Privacy Policy.',
+        t('register.alerts.termsRequiredTitle'),
+        t('register.alerts.termsRequiredMessage'),
       );
       return;
     }
 
     if (!email || !password) {
       Alert.alert(
-        'Missing data', // TODO(i18n)
-        'Account info from Step 1 is missing. Please go back and try again.',
+        t('register.alerts.missingDataTitle'),
+        t('register.alerts.missingDataMessage'),
       );
       return;
     }
@@ -302,8 +306,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // ── Guard: no real backend configured ────────────────────────────────
       if (!isSupabaseConfigured) {
         Alert.alert(
-          'Demo mode', // TODO(i18n)
-          'Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+          t('register.alerts.demoModeTitle'),
+          t('register.alerts.demoModeMessage'),
         );
         setSubmitting(false);
         return;
@@ -316,7 +320,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       });
 
       if (signUpError) {
-        Alert.alert('Sign up failed', signUpError.message); // TODO(i18n)
+        Alert.alert(t('register.alerts.signUpFailedTitle'), signUpError.message);
         setSubmitting(false);
         return;
       }
@@ -324,8 +328,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       const userId = authData.user?.id;
       if (!userId) {
         Alert.alert(
-          'Sign up error', // TODO(i18n)
-          'Could not retrieve your account ID. Please try again.',
+          t('register.alerts.signUpErrorTitle'),
+          t('register.alerts.signUpErrorMessage'),
         );
         setSubmitting(false);
         return;
@@ -351,8 +355,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // detects the new session and flips isAuthenticated → AppNavigator renders
       // MainStack (BottomTabs) automatically — no explicit navigation needed here.
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
-      Alert.alert('Error', message); // TODO(i18n)
+      const message = err instanceof Error ? err.message : t('register.alerts.unexpectedError');
+      Alert.alert(t('register.alerts.errorTitle'), message);
       setSubmitting(false);
     }
   }, [dob, username, availability, termsAccepted, email, password, name, language]);
@@ -384,23 +388,23 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Progress dots — both filled ─────────────────────────────── */}
-          <View style={styles.dotsRow} accessibilityLabel="Step 2 of 2">
+          <View style={styles.dotsRow} accessibilityLabel={t('register.step2Indicator')}>
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
           </View>
 
           {/* ── Title ────────────────────────────────────────────────────── */}
           <Text style={[styles.title, { color: c.textPrimary }]}>
-            Almost there! {/* TODO(i18n) */}
+            {t('register.step2Title')}
           </Text>
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            Just a few more details to set up your profile. {/* TODO(i18n) */}
+            {t('register.step2Subtitle')}
           </Text>
 
           {/* ── Date of birth ─────────────────────────────────────────────── */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Date of birth {/* TODO(i18n) */}
+              {t('register.dobLabel')}
             </Text>
             <TouchableOpacity
               style={[
@@ -417,7 +421,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               }}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel="Select date of birth" // TODO(i18n)
+              accessibilityLabel={t('register.dobA11y')}
             >
               <IconCalendar size={18} color={c.textTertiary} strokeWidth={1.75} />
               <Text
@@ -430,7 +434,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                   },
                 ]}
               >
-                {dobTouched ? formatDate(dob) : 'Select your date of birth'}{/* TODO(i18n) */}
+                {dobTouched ? formatDate(dob) : t('register.dobPlaceholder')}
               </Text>
             </TouchableOpacity>
             {dobError ? (
@@ -461,7 +465,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                 onPress={() => setShowDatePicker(false)}
               >
                 <Text style={[styles.iosDoneText, { color: palette.brand }]}>
-                  Done {/* TODO(i18n) */}
+                  {t('register.dobDone')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -481,7 +485,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           {/* ── Language selector ─────────────────────────────────────────── */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Language {/* TODO(i18n) */}
+              {t('register.languageLabel')}
             </Text>
             <TouchableOpacity
               style={[
@@ -492,7 +496,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               onPress={() => setShowLanguagePicker(true)}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel="Select language" // TODO(i18n)
+              accessibilityLabel={t('register.languageA11y')}
             >
               <Text style={[styles.selectorText, { color: c.textPrimary }]}>
                 {selectedLanguage.flag}{'  '}{selectedLanguage.label}
@@ -552,7 +556,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           {/* ── @username ─────────────────────────────────────────────────── */}
           <View style={styles.fieldWrap}>
             <Text style={[styles.label, { color: c.textSecondary }]}>
-              Username {/* TODO(i18n) */}
+              {t('register.usernameLabel')}
             </Text>
             <View
               style={[
@@ -573,7 +577,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
 
               <TextInput
                 style={[styles.usernameInput, { color: c.textPrimary }]}
-                placeholder="your_username" // TODO(i18n)
+                placeholder={t('register.usernamePlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -584,7 +588,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                   setUsername(v.toLowerCase());
                 }}
                 onBlur={() => setUsernameTouched(true)}
-                accessibilityLabel="Username"
+                accessibilityLabel={t('register.usernameA11y')}
               />
 
               {/* Availability indicator */}
@@ -604,19 +608,19 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             {/* Inline status messages */}
             {usernameFormatError && usernameTouched ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                {usernameFormatError}
+                {t(usernameFormatError)}
               </Text>
             ) : availability === 'taken' ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
-                This username is already taken. {/* TODO(i18n) */}
+                {t('register.usernameTaken')}
               </Text>
             ) : availability === 'available' && !usernameFormatError ? (
               <Text style={[styles.statusText, { color: palette.success }]}>
-                Username is available! {/* TODO(i18n) */}
+                {t('register.usernameAvailable')}
               </Text>
             ) : availability === 'error' ? (
               <Text style={[styles.errorText, { color: palette.warning }]}>
-                Couldn't verify username — please try again. {/* TODO(i18n) */}
+                {t('register.usernameCheckError')}
               </Text>
             ) : null}
           </View>
@@ -632,7 +636,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               activeOpacity={0.75}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: termsAccepted }}
-              accessibilityLabel="Accept Terms of Service and Privacy Policy" // TODO(i18n)
+              accessibilityLabel={t('register.termsA11y')}
             >
               {/* Checkbox */}
               <View
@@ -656,7 +660,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               {/* Label with tappable links */}
               <View style={styles.termsTextWrap}>
                 <Text style={[styles.termsText, { color: c.textSecondary }]}>
-                  {'I agree to the '}{/* TODO(i18n) */}
+                  {t('register.termsAgree')}
                 </Text>
                 <TouchableOpacity
                   onPress={(e) => {
@@ -666,11 +670,11 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                   hitSlop={6}
                 >
                   <Text style={[styles.termsLink, { color: palette.brand }]}>
-                    Terms of Service{/* TODO(i18n) */}
+                    {t('register.termsOfService')}
                   </Text>
                 </TouchableOpacity>
                 <Text style={[styles.termsText, { color: c.textSecondary }]}>
-                  {' and '}{/* TODO(i18n) */}
+                  {t('register.termsAnd')}
                 </Text>
                 <TouchableOpacity
                   onPress={(e) => {
@@ -680,7 +684,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                   hitSlop={6}
                 >
                   <Text style={[styles.termsLink, { color: palette.brand }]}>
-                    Privacy Policy{/* TODO(i18n) */}
+                    {t('register.privacyPolicy')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -705,13 +709,13 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             activeOpacity={0.85}
             disabled={submitting}
             accessibilityRole="button"
-            accessibilityLabel="Create my account" // TODO(i18n)
+            accessibilityLabel={t('register.createA11y')}
           >
             {submitting ? (
               <ActivityIndicator color={LOCAL_COLORS.onBrand} />
             ) : (
               <Text style={styles.createButtonText}>
-                Create my account 🎉{/* TODO(i18n) */}
+                {t('register.createButton')}
               </Text>
             )}
           </TouchableOpacity>
@@ -722,10 +726,10 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.75}
             accessibilityRole="button"
-            accessibilityLabel="Go back to Step 1" // TODO(i18n)
+            accessibilityLabel={t('register.backA11y')}
           >
             <Text style={[styles.backText, { color: c.textTertiary }]}>
-              ← Back {/* TODO(i18n) */}
+              {t('register.back')}
             </Text>
           </TouchableOpacity>
         </ScrollView>
