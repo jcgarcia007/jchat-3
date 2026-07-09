@@ -21,8 +21,6 @@
  *   visible  — controls Modal visibility (parent manages state).
  *   onSuccess — called after successful verification.
  *   onClose  — called when the user dismisses without entering.
- *
- * // TODO(i18n)
  */
 
 import React, {
@@ -44,6 +42,7 @@ import {
   View,
 } from 'react-native';
 import { IconEye, IconEyeOff, IconLock } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -92,6 +91,7 @@ export function PasswordEntrySheet({
 }: PasswordEntrySheetProps) {
   const c = useThemeColors();
   const { user } = useAuth();
+  const { t } = useTranslation('chat');
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -187,8 +187,7 @@ export function PasswordEntrySheet({
       }
 
       if (result.error === 'not_configured') {
-        // TODO(i18n)
-        setErrorMsg('Service unavailable. Please try again later.');
+        setErrorMsg(t('password.errorNotConfigured'));
         return;
       }
 
@@ -200,11 +199,10 @@ export function PasswordEntrySheet({
         const mins = result.lockedUntil
           ? Math.max(1, Math.ceil((new Date(result.lockedUntil).getTime() - Date.now()) / 60_000))
           : null;
-        // TODO(i18n)
         setErrorMsg(
           mins !== null
-            ? `Too many attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`
-            : 'Too many attempts. Please try again later.',
+            ? t('password.tooManyMinutes', { count: mins })
+            : t('password.tooManyGeneric'),
         );
         return;
       }
@@ -216,22 +214,19 @@ export function PasswordEntrySheet({
         setLocked(true);
         setLockedUntil(nextState.lockedUntil);
         setPassword('');
-        // TODO(i18n)
         setErrorMsg(
-          `Too many failed attempts. Locked for ${LOCKOUT_MS / 60_000} minutes.`,
+          t('password.lockedFor', { minutes: LOCKOUT_MS / 60_000 }),
         );
       } else {
         const remaining = MAX_ATTEMPTS - nextState.failCount;
-        // TODO(i18n)
         setErrorMsg(
           remaining > 0
-            ? `Incorrect password. ${remaining} attempt${remaining === 1 ? '' : 's'} left.`
-            : 'Incorrect password.',
+            ? t('password.incorrectRemaining', { count: remaining })
+            : t('password.incorrect'),
         );
       }
     } catch {
-      // TODO(i18n)
-      setErrorMsg('Something went wrong. Please try again.');
+      setErrorMsg(t('password.errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -268,10 +263,9 @@ export function PasswordEntrySheet({
             <View style={s.lockIconWrap}>
               <IconLock size={22} color={c.brand} />
             </View>
-            {/* TODO(i18n) */}
-            <Text style={s.title}>This room is members-only</Text>
+            <Text style={s.title}>{t('password.title')}</Text>
             <Text style={s.subtitle}>
-              Enter the room password to join the conversation.
+              {t('password.subtitle')}
             </Text>
           </View>
 
@@ -291,7 +285,7 @@ export function PasswordEntrySheet({
                 setPassword(v);
                 if (errorMsg) setErrorMsg(null);
               }}
-              placeholder={locked ? 'Room is locked' : 'Room password'} // TODO(i18n)
+              placeholder={locked ? t('password.lockedPlaceholder') : t('password.placeholder')}
               placeholderTextColor={c.textTertiary}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
@@ -299,14 +293,14 @@ export function PasswordEntrySheet({
               returnKeyType="go"
               onSubmitEditing={handleSubmit}
               editable={!locked && !loading}
-              accessibilityLabel="Room password" // TODO(i18n)
+              accessibilityLabel={t('password.a11y')}
             />
             {/* Show / hide toggle */}
             <Pressable
               onPress={() => setShowPassword((v) => !v)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} // TODO(i18n)
+              accessibilityLabel={showPassword ? t('password.hidePassword') : t('password.showPassword')}
               disabled={locked}
             >
               {showPassword ? (
@@ -327,8 +321,7 @@ export function PasswordEntrySheet({
           {/* Lockout countdown */}
           {locked && lockedUntil !== null && (
             <Text style={s.lockoutText} accessibilityRole="text">
-              {/* TODO(i18n) */}
-              Try again in {timeRemaining || formatTimeRemaining(lockedUntil)}
+              {t('password.tryAgainIn', { time: timeRemaining || formatTimeRemaining(lockedUntil) })}
             </Text>
           )}
 
@@ -337,7 +330,7 @@ export function PasswordEntrySheet({
             onPress={handleSubmit}
             disabled={locked || loading || !password.trim()}
             accessibilityRole="button"
-            accessibilityLabel="Enter room" // TODO(i18n)
+            accessibilityLabel={t('password.enterRoom')}
             accessibilityState={{ disabled: locked || loading || !password.trim() }}
             style={({ pressed }) => [
               s.button,
@@ -348,8 +341,7 @@ export function PasswordEntrySheet({
             {loading ? (
               <ActivityIndicator size="small" color={c.bgSurface} />
             ) : (
-              // TODO(i18n)
-              <Text style={s.buttonLabel}>Enter room</Text>
+              <Text style={s.buttonLabel}>{t('password.enterRoom')}</Text>
             )}
           </Pressable>
 
@@ -360,8 +352,7 @@ export function PasswordEntrySheet({
             accessibilityRole="button"
             style={s.cancelWrap}
           >
-            {/* TODO(i18n) */}
-            <Text style={s.cancelText}>Cancel</Text>
+            <Text style={s.cancelText}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

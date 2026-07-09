@@ -15,8 +15,6 @@
  *   userId      — current authenticated user
  *   theme       — active ChatTheme (for colors)
  *   onClose     — called after dismiss or successful call
- *
- * // TODO(i18n)
  */
 
 import React, {
@@ -40,6 +38,7 @@ import {
 } from 'react-native';
 import { IconBell } from '@tabler/icons-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
@@ -107,6 +106,7 @@ export function ServiceCallSheet({
   onClose,
 }: ServiceCallSheetProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
 
   const [tableLabel, setTableLabel] = useState('');
   const [notes, setNotes] = useState('');
@@ -203,7 +203,7 @@ export function ServiceCallSheet({
       if (error) {
         // Server-side cooldown trigger raises 'service_call_cooldown'
         if (error.message?.includes('service_call_cooldown')) {
-          setErrorMsg('Ya llamaste hace poco. Espera unos minutos antes de volver a llamar.'); // TODO(i18n)
+          setErrorMsg(t('service.errorCooldown'));
           // Restore client-side cooldown so the UI stays consistent
           const last = await getLastCallTime(roomId);
           if (last !== null) {
@@ -212,7 +212,7 @@ export function ServiceCallSheet({
           }
           return;
         }
-        setErrorMsg('No se pudo enviar la llamada. Intenta de nuevo.'); // TODO(i18n)
+        setErrorMsg(t('service.errorSend'));
         return;
       }
 
@@ -221,10 +221,10 @@ export function ServiceCallSheet({
       onClose();
       // Brief delay so the sheet closes before the alert appears
       setTimeout(() => {
-        Alert.alert('Mesero llamado', 'Tu llamada fue enviada. El personal estará contigo pronto.'); // TODO(i18n)
+        Alert.alert(t('service.successTitle'), t('service.successMessage'));
       }, 300);
     } catch {
-      setErrorMsg('Error de conexión. Intenta de nuevo.'); // TODO(i18n)
+      setErrorMsg(t('service.errorConnection'));
     } finally {
       setLoading(false);
     }
@@ -262,10 +262,9 @@ export function ServiceCallSheet({
             <View style={[s.iconWrap, { backgroundColor: theme.bg }]}>
               <IconBell size={22} color={theme.accent} />
             </View>
-            {/* TODO(i18n) */}
-            <Text style={s.title}>Llamar al mesero</Text>
+            <Text style={s.title}>{t('service.callWaiter')}</Text>
             <Text style={s.subtitle}>
-              Recibiremos tu llamada y el personal vendrá pronto.
+              {t('service.subtitle')}
             </Text>
           </View>
 
@@ -275,12 +274,12 @@ export function ServiceCallSheet({
               style={s.input}
               value={tableLabel}
               onChangeText={setTableLabel}
-              placeholder="Mesa o ubicación (opcional)" // TODO(i18n)
+              placeholder={t('service.tablePlaceholder')}
               placeholderTextColor={c.textTertiary}
               autoCapitalize="words"
               returnKeyType="next"
               editable={!isDisabled}
-              accessibilityLabel="Mesa o ubicación" // TODO(i18n)
+              accessibilityLabel={t('service.tableA11y')}
             />
           </View>
 
@@ -290,13 +289,13 @@ export function ServiceCallSheet({
               style={[s.input, s.inputMultiline]}
               value={notes}
               onChangeText={setNotes}
-              placeholder="Notas para el mesero (opcional)" // TODO(i18n)
+              placeholder={t('service.notesPlaceholder')}
               placeholderTextColor={c.textTertiary}
               multiline
               numberOfLines={3}
               returnKeyType="done"
               editable={!isDisabled}
-              accessibilityLabel="Notas para el mesero" // TODO(i18n)
+              accessibilityLabel={t('service.notesA11y')}
             />
           </View>
 
@@ -311,8 +310,7 @@ export function ServiceCallSheet({
           {cooldownUntil !== null && (
             <View style={s.cooldownRow}>
               <Text style={s.cooldownText} accessibilityRole="text">
-                {/* TODO(i18n) */}
-                Espera {timeLeft || '…'} antes de volver a llamar
+                {t('service.cooldown', { time: timeLeft || '…' })}
               </Text>
             </View>
           )}
@@ -322,7 +320,7 @@ export function ServiceCallSheet({
             onPress={() => void handleSubmit()}
             disabled={isDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Llamar al mesero" // TODO(i18n)
+            accessibilityLabel={t('service.callWaiter')}
             accessibilityState={{ disabled: isDisabled }}
             style={({ pressed }) => [
               s.button,
@@ -334,8 +332,7 @@ export function ServiceCallSheet({
             {loading ? (
               <ActivityIndicator size="small" color={c.bgSurface} />
             ) : (
-              // TODO(i18n)
-              <Text style={s.buttonLabel}>Llamar al mesero</Text>
+              <Text style={s.buttonLabel}>{t('service.callWaiter')}</Text>
             )}
           </Pressable>
 
@@ -346,8 +343,7 @@ export function ServiceCallSheet({
             accessibilityRole="button"
             style={s.cancelWrap}
           >
-            {/* TODO(i18n) */}
-            <Text style={s.cancelText}>Cancelar</Text>
+            <Text style={s.cancelText}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

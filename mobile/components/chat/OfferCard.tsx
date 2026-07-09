@@ -28,7 +28,6 @@
  *   - Renders in both dark and light themes via useThemeColors().
  *     The gradient header stays branded regardless of theme.
  *   - Icons: @tabler/icons-react-native.
- *   - // TODO(i18n)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -46,6 +45,7 @@ import {
   IconShoppingBag,
   IconTag,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import type { ThemeColors } from '../../theme/colors';
@@ -105,21 +105,25 @@ function formatCountdown(expiresAt: string): string | null {
   return `${secs}s`;
 }
 
-function offerTypeLabel(type: OfferType | null): string {
-  // TODO(i18n)
+// Returns an i18n key (resolved with t() at render) so this stays at module scope.
+type OfferTypeKey =
+  | 'offer.typeDiscount' | 'offer.typeBundle' | 'offer.typeHappyHour'
+  | 'offer.typeFreeItem' | 'offer.typeGeneric';
+function offerTypeLabelKey(type: OfferType | null): OfferTypeKey {
   switch (type) {
-    case 'discount':   return 'DISCOUNT';
-    case 'bundle':     return '2×1 BUNDLE';
-    case 'happy_hour': return 'HAPPY HOUR';
-    case 'free_item':  return 'FREE ITEM';
-    default:           return 'OFFER';
+    case 'discount':   return 'offer.typeDiscount';
+    case 'bundle':     return 'offer.typeBundle';
+    case 'happy_hour': return 'offer.typeHappyHour';
+    case 'free_item':  return 'offer.typeFreeItem';
+    default:           return 'offer.typeGeneric';
   }
 }
 
-function formatMinPurchase(cents: number | null): string | null {
+/** Returns just the formatted currency amount (e.g. "$5") or null. */
+function formatMinPurchaseAmount(cents: number | null): string | null {
   if (!cents || cents <= 0) return null;
   const dollars = cents / 100;
-  return `Min. purchase $${dollars % 1 === 0 ? dollars.toFixed(0) : dollars.toFixed(2)}`;
+  return `$${dollars % 1 === 0 ? dollars.toFixed(0) : dollars.toFixed(2)}`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -130,6 +134,7 @@ export function OfferCard({
   onShare,
 }: OfferCardProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
   const s = makeStyles(c);
 
   // ── Live countdown ──────────────────────────────────────────────────────────
@@ -176,7 +181,7 @@ export function OfferCard({
     // RN Share fallback
     const discount = offer.discount ? ` — ${offer.discount}` : '';
     await Share.share({
-      message: `${offer.title}${discount}`, // TODO(i18n)
+      message: `${offer.title}${discount}`,
       title: offer.title,
     });
   }, [offer, onShare]);
@@ -201,7 +206,7 @@ export function OfferCard({
           <View style={s.typeBadge}>
             <IconTag size={12} color={palette.brand} />
             <Text style={s.typeBadgeText}>
-              {offerTypeLabel(offer.type)}
+              {t(offerTypeLabelKey(offer.type))}
             </Text>
           </View>
 
@@ -209,7 +214,7 @@ export function OfferCard({
             <View style={s.countdownBadge}>
               <Text style={s.countdownText}>
                 {isExpired
-                  ? 'Expired' // TODO(i18n)
+                  ? t('offer.expired')
                   : `⏱ ${countdown ?? '…'}`}
               </Text>
             </View>
@@ -238,9 +243,9 @@ export function OfferCard({
         )}
 
         {/* Min purchase note */}
-        {!!formatMinPurchase(offer.min_purchase_cents) && (
+        {!!formatMinPurchaseAmount(offer.min_purchase_cents) && (
           <Text style={s.minPurchaseText}>
-            {formatMinPurchase(offer.min_purchase_cents)}
+            {t('offer.minPurchase', { amount: formatMinPurchaseAmount(offer.min_purchase_cents) })}
           </Text>
         )}
 
@@ -250,7 +255,7 @@ export function OfferCard({
             onPress={handleOrderNow}
             disabled={isExpired}
             accessibilityRole="button"
-            accessibilityLabel="Order now" // TODO(i18n)
+            accessibilityLabel={t('offer.orderNow')}
             accessibilityState={{ disabled: isExpired }}
             style={({ pressed }) => [
               s.orderBtn,
@@ -259,15 +264,14 @@ export function OfferCard({
             ]}
           >
             <IconShoppingBag size={15} color={c.bgSurface} style={{ marginRight: 6 }} />
-            {/* TODO(i18n) */}
-            <Text style={s.orderBtnLabel}>Order now</Text>
+            <Text style={s.orderBtnLabel}>{t('offer.orderNow')}</Text>
           </Pressable>
 
           <Pressable
             onPress={handleShare}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Share offer" // TODO(i18n)
+            accessibilityLabel={t('offer.shareOffer')}
             style={({ pressed }) => [s.shareBtn, pressed && s.shareBtnPressed]}
           >
             <IconShare size={18} color={c.brand} />
@@ -278,8 +282,7 @@ export function OfferCard({
       {/* ── Footer: Posted by Owner ── */}
       <View style={s.footer}>
         <IconCrown size={13} color={c.gold} />
-        {/* TODO(i18n) */}
-        <Text style={s.footerText}>Posted by Owner</Text>
+        <Text style={s.footerText}>{t('offer.postedByOwner')}</Text>
       </View>
     </View>
   );

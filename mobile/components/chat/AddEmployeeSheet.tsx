@@ -23,7 +23,6 @@
  *
  * Colors: useThemeColors() only — no hardcoded hex.
  * Icons: @tabler/icons-react-native.
- * i18n: // TODO(i18n)
  */
 
 import React, { useCallback, useState } from 'react';
@@ -46,6 +45,7 @@ import {
   IconUserPlus,
   IconX,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { addEmployee, EMPLOYEE_ROLES } from '../../services/employees';
 import type { EmployeeRole } from '../../services/employees';
@@ -83,6 +83,7 @@ export function AddEmployeeSheet({
   onAdded,
 }: AddEmployeeSheetProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
   const s = makeStyles(c);
 
   const [selectedRole, setSelectedRole] = useState<EmployeeRole | null>(null);
@@ -117,27 +118,23 @@ export function AddEmployeeSheet({
           onClose();
         }, 800);
       } else {
-        // TODO(i18n)
         switch (result.reason) {
           case 'plan_limit':
-            setErrorMsg(
-              result.message ??
-                'You have reached the maximum number of employees on your current plan.',
-            );
+            setErrorMsg(result.message ?? t('employee.errorPlanLimit'));
             break;
           case 'already_exists':
-            setErrorMsg(result.message ?? 'This user is already on your staff.');
+            setErrorMsg(result.message ?? t('employee.errorAlreadyExists'));
             break;
           case 'not_configured':
-            setErrorMsg('Service unavailable. Please try again later.');
+            setErrorMsg(t('employee.errorNotConfigured'));
             break;
           case 'db_error':
           default:
-            setErrorMsg(result.message ?? 'Something went wrong. Please try again.');
+            setErrorMsg(result.message ?? t('employee.errorGeneric'));
         }
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong.');
+      setErrorMsg(err instanceof Error ? err.message : t('employee.errorGenericShort'));
     } finally {
       setLoading(false);
     }
@@ -179,13 +176,12 @@ export function AddEmployeeSheet({
               )}
             </View>
             <View style={s.headerText}>
-              {/* TODO(i18n) */}
               <Text style={s.title}>
-                {success ? 'Invite Sent!' : 'Add as Employee'}
+                {success ? t('employee.inviteSentTitle') : t('employee.title')}
               </Text>
               {!success && (
                 <Text style={s.subtitle}>
-                  Select a role for this team member.
+                  {t('employee.subtitle')}
                 </Text>
               )}
             </View>
@@ -194,7 +190,7 @@ export function AddEmployeeSheet({
               onPress={handleClose}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Close" // TODO(i18n)
+              accessibilityLabel={t('actions.close', { ns: 'common' })}
               disabled={loading}
               style={({ pressed }) => [s.closeBtn, pressed && s.closeBtnPressed]}
             >
@@ -220,7 +216,7 @@ export function AddEmployeeSheet({
                     }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={role} // TODO(i18n)
+                    accessibilityLabel={role}
                     style={({ pressed }) => [
                       s.roleRow,
                       isSelected && s.roleRowSelected,
@@ -246,7 +242,6 @@ export function AddEmployeeSheet({
                         ]}
                       >
                         {role}
-                        {/* TODO(i18n) */}
                       </Text>
                     </View>
                     {isSelected ? (
@@ -263,10 +258,8 @@ export function AddEmployeeSheet({
           {/* Success state note */}
           {success && (
             <View style={s.successNote}>
-              {/* TODO(i18n) */}
               <Text style={s.successText}>
-                The invite is pending. The user will be notified and can accept or
-                decline from their profile.
+                {t('employee.successNote')}
               </Text>
             </View>
           )}
@@ -284,7 +277,7 @@ export function AddEmployeeSheet({
               onPress={handleSendInvite}
               disabled={!selectedRole || loading}
               accessibilityRole="button"
-              accessibilityLabel="Send invite" // TODO(i18n)
+              accessibilityLabel={t('employee.sendInviteA11y')}
               accessibilityState={{ disabled: !selectedRole || loading }}
               style={({ pressed }) => [
                 s.ctaBtn,
@@ -295,9 +288,8 @@ export function AddEmployeeSheet({
               {loading ? (
                 <ActivityIndicator size="small" color={c.bgSurface} />
               ) : (
-                // TODO(i18n)
                 <Text style={s.ctaBtnLabel}>
-                  {selectedRole ? `Invite as ${selectedRole}` : 'Select a role'}
+                  {selectedRole ? t('employee.inviteAs', { role: selectedRole }) : t('employee.selectRole')}
                 </Text>
               )}
             </Pressable>
@@ -312,8 +304,7 @@ export function AddEmployeeSheet({
               disabled={loading}
               style={s.cancelWrap}
             >
-              {/* TODO(i18n) */}
-              <Text style={s.cancelText}>Cancel</Text>
+              <Text style={s.cancelText}>{t('actions.cancel', { ns: 'common' })}</Text>
             </Pressable>
           )}
         </View>
