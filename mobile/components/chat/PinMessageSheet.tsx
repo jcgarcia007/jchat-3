@@ -17,10 +17,10 @@
  * Colors: ChatTheme prop only — no hardcoded hex. Falls back to useThemeColors()
  *   for text/border colors that are not part of the chat theme.
  * Icons: @tabler/icons-react-native
- * // TODO(i18n)
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -85,11 +85,17 @@ export interface PinMessageSheetProps {
 
 // ── Timer label map ───────────────────────────────────────────────────────────
 
-const TIMER_OPTIONS: { value: PinTimer; label: string }[] = [
-  { value: '1h',   label: '1 hour'  },  // TODO(i18n)
-  { value: '6h',   label: '6 hours' },  // TODO(i18n)
-  { value: '24h',  label: '24 hours' }, // TODO(i18n)
-  { value: 'none', label: 'No expiry' }, // TODO(i18n)
+type TimerLabelKey =
+  | 'pin.timer1h'
+  | 'pin.timer6h'
+  | 'pin.timer24h'
+  | 'pin.timerNone';
+
+const TIMER_OPTIONS: { value: PinTimer; labelKey: TimerLabelKey }[] = [
+  { value: '1h',   labelKey: 'pin.timer1h'   },
+  { value: '6h',   labelKey: 'pin.timer6h'   },
+  { value: '24h',  labelKey: 'pin.timer24h'  },
+  { value: 'none', labelKey: 'pin.timerNone' },
 ];
 
 function timerToExpiresAt(timer: PinTimer): string | null {
@@ -199,6 +205,7 @@ export function PinMessageSheet({
   onPinned,
 }: PinMessageSheetProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
 
   /** Notification mode. */
   const [notify, setNotify] = useState(true);
@@ -269,7 +276,7 @@ export function PinMessageSheet({
         roomIds.map((rid) => ({
           room_id:   rid,
           user_id:   pinnedBy,
-          body:      `📌 Owner pinned a message`, // TODO(i18n)
+          body:      t('pin.systemPinned'),
           type:      'system',
           is_system: true,
           metadata:  { pinned_message_id: message.id },
@@ -281,13 +288,13 @@ export function PinMessageSheet({
       onClose();
     } catch (err) {
       Alert.alert(
-        'Could not pin message', // TODO(i18n)
-        err instanceof Error ? err.message : 'Please try again.',
+        t('pin.couldNotPinTitle'),
+        err instanceof Error ? err.message : t('pin.tryAgain'),
       );
     } finally {
       setSaving(false);
     }
-  }, [canSave, timer, selectedRooms, message.id, pinnedBy, notify, onPinned, onClose]);
+  }, [canSave, timer, selectedRooms, message.id, pinnedBy, notify, onPinned, onClose, t]);
 
   // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -314,12 +321,12 @@ export function PinMessageSheet({
         {/* Header */}
         <View style={s.header}>
           <IconPin size={20} color={theme.accent} />
-          <Text style={s.headerTitle}>Pin Message</Text>{/* TODO(i18n) */}
+          <Text style={s.headerTitle}>{t('pin.sheetTitle')}</Text>
           <Pressable
             onPress={onClose}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Close" // TODO(i18n)
+            accessibilityLabel={t('actions.close', { ns: 'common' })}
             style={s.closeBtn}
           >
             <IconX size={20} color={c.textSecondary} />
@@ -341,7 +348,7 @@ export function PinMessageSheet({
           </View>
 
           {/* ── Notification mode ──────────────────────────────────────────── */}
-          <SectionLabel label="Notification" c={c} />{/* TODO(i18n) */}
+          <SectionLabel label={t('pin.notification')} c={c} />
           <View style={s.row}>
             <Pressable
               onPress={() => setNotify(true)}
@@ -362,7 +369,7 @@ export function PinMessageSheet({
                   { color: notify ? theme.accent : c.textSecondary },
                 ]}
               >
-                Notify{/* TODO(i18n) */}
+                {t('pin.notify')}
               </Text>
             </Pressable>
 
@@ -388,7 +395,7 @@ export function PinMessageSheet({
                   { color: !notify ? theme.accent : c.textSecondary },
                 ]}
               >
-                Silent{/* TODO(i18n) */}
+                {t('pin.silent')}
               </Text>
             </Pressable>
           </View>
@@ -396,7 +403,7 @@ export function PinMessageSheet({
           {/* ── Room selector ──────────────────────────────────────────────── */}
           {rooms.length > 1 && (
             <>
-              <SectionLabel label="Pin to rooms" c={c} />{/* TODO(i18n) */}
+              <SectionLabel label={t('pin.pinToRooms')} c={c} />
               <View style={s.pillWrap}>
                 {rooms.map((room) => (
                   <Pill
@@ -413,12 +420,12 @@ export function PinMessageSheet({
           )}
 
           {/* ── Auto-unpin timer ───────────────────────────────────────────── */}
-          <SectionLabel label="Auto-unpin" c={c} />{/* TODO(i18n) */}
+          <SectionLabel label={t('pin.autoUnpin')} c={c} />
           <View style={s.pillWrap}>
             {TIMER_OPTIONS.map((opt) => (
               <Pill
                 key={opt.value}
-                label={opt.label}
+                label={t(opt.labelKey)}
                 selected={timer === opt.value}
                 onPress={() => setTimer(opt.value)}
                 accent={theme.accent}
@@ -432,7 +439,7 @@ export function PinMessageSheet({
             onPress={handlePin}
             disabled={!canSave || saving}
             accessibilityRole="button"
-            accessibilityLabel="Pin message" // TODO(i18n)
+            accessibilityLabel={t('pin.pinButtonA11y')}
             style={({ pressed }) => [
               s.saveBtn,
               {
@@ -448,7 +455,7 @@ export function PinMessageSheet({
               <>
                 <IconPin size={18} color="#ffffff" />
                 <Text style={s.saveBtnLabel}>
-                  Pin Message{/* TODO(i18n) */}
+                  {t('pin.pinButton')}
                 </Text>
               </>
             )}

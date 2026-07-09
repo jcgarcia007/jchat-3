@@ -188,5 +188,31 @@
     "banTitle": "Ban {{name}}?",
     "banMessage": "They will be permanently removed from this room and cannot re-enter.",
     "banConfirm": "Ban"
+  },
+  "pin": {
+    "timer1h": "1 hour",
+    "timer6h": "6 hours",
+    "timer24h": "24 hours",
+    "timerNone": "No expiry",
+    "systemPinned": "📌 Owner pinned a message",
+    "couldNotPinTitle": "Could not pin message",
+    "couldNotUnpinTitle": "Could not unpin",
+    "tryAgain": "Please try again.",
+    "sheetTitle": "Pin Message",
+    "notification": "Notification",
+    "notify": "Notify",
+    "silent": "Silent",
+    "pinToRooms": "Pin to rooms",
+    "autoUnpin": "Auto-unpin",
+    "pinButton": "Pin Message",
+    "pinButtonA11y": "Pin message",
+    "allPinsTitle": "Pinned Messages ({{count}})",
+    "unpin": "Unpin",
+    "noActivePins": "No active pins",
+    "unpinTitle": "Unpin message?",
+    "unpinMessage": "This will remove the pin for all users in this room.",
+    "bannerA11yMultiple": "{{count}} pinned messages — tap to see all",
+    "bannerA11ySingle": "Pinned message",
+    "moreCount": "+{{count}} more"
   }
 }

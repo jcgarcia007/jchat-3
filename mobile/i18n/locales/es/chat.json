@@ -188,5 +188,31 @@
     "banTitle": "¿Bloquear a {{name}}?",
     "banMessage": "Será quitado permanentemente de esta sala y no podrá volver a entrar.",
     "banConfirm": "Bloquear"
+  },
+  "pin": {
+    "timer1h": "1 hora",
+    "timer6h": "6 horas",
+    "timer24h": "24 horas",
+    "timerNone": "Sin caducidad",
+    "systemPinned": "📌 El dueño fijó un mensaje",
+    "couldNotPinTitle": "No se pudo fijar el mensaje",
+    "couldNotUnpinTitle": "No se pudo desfijar",
+    "tryAgain": "Inténtalo de nuevo.",
+    "sheetTitle": "Fijar mensaje",
+    "notification": "Notificación",
+    "notify": "Notificar",
+    "silent": "Silencioso",
+    "pinToRooms": "Fijar en salas",
+    "autoUnpin": "Auto-desfijar",
+    "pinButton": "Fijar mensaje",
+    "pinButtonA11y": "Fijar mensaje",
+    "allPinsTitle": "Mensajes fijados ({{count}})",
+    "unpin": "Desfijar",
+    "noActivePins": "No hay mensajes fijados",
+    "unpinTitle": "¿Desfijar mensaje?",
+    "unpinMessage": "Esto quitará el mensaje fijado para todos en esta sala.",
+    "bannerA11yMultiple": "{{count}} mensajes fijados — toca para ver todos",
+    "bannerA11ySingle": "Mensaje fijado",
+    "moreCount": "+{{count}} más"
   }
 }

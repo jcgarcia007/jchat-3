@@ -21,7 +21,6 @@
  *
  * Colors: ChatTheme prop + useThemeColors() for fallback chrome. NO hardcoded hex.
  * Icons: @tabler/icons-react-native
- * // TODO(i18n)
  */
 
 import React, {
@@ -31,6 +30,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -210,6 +210,7 @@ function AllPinsModal({
   c,
   countdown,
 }: AllPinsModalProps) {
+  const { t } = useTranslation('chat');
   const s = useMemo(() => modalStyles(c, theme), [c, theme]);
 
   return (
@@ -230,13 +231,13 @@ function AllPinsModal({
         <View style={s.header}>
           <IconPin size={18} color={theme.accent} />
           <Text style={s.headerTitle}>
-            Pinned Messages ({pins.length}){/* TODO(i18n) */}
+            {t('pin.allPinsTitle', { count: pins.length })}
           </Text>
           <Pressable
             onPress={onClose}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Close" // TODO(i18n)
+            accessibilityLabel={t('actions.close', { ns: 'common' })}
           >
             <IconX size={20} color={c.textSecondary} />
           </Pressable>
@@ -258,7 +259,7 @@ function AllPinsModal({
                 {countdown.get(item.id) !== '' && (
                   <View style={s.timerRow}>
                     <Text style={s.timerText}>
-                      ⏱ {countdown.get(item.id)}{/* TODO(i18n) */}
+                      ⏱ {countdown.get(item.id)}
                     </Text>
                   </View>
                 )}
@@ -268,7 +269,7 @@ function AllPinsModal({
                   onPress={() => onUnpin(item.id)}
                   hitSlop={10}
                   accessibilityRole="button"
-                  accessibilityLabel="Unpin" // TODO(i18n)
+                  accessibilityLabel={t('pin.unpin')}
                   style={s.unpinBtn}
                 >
                   <IconX size={16} color={c.textSecondary} />
@@ -278,7 +279,7 @@ function AllPinsModal({
           )}
           contentContainerStyle={s.listContent}
           ListEmptyComponent={
-            <Text style={s.empty}>No active pins{/* TODO(i18n) */}</Text>
+            <Text style={s.empty}>{t('pin.noActivePins')}</Text>
           }
         />
       </View>
@@ -412,6 +413,7 @@ export function PinnedBanner({
   onUnpin,
 }: PinnedBannerProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('chat');
   const { pins, loading } = useActivePins(roomId);
 
   /** Per-pin countdown strings, updated every minute. */
@@ -460,12 +462,12 @@ export function PinnedBanner({
   const handleUnpin = useCallback(
     (pinId: string) => {
       Alert.alert(
-        'Unpin message?', // TODO(i18n)
-        'This will remove the pin for all users in this room.', // TODO(i18n)
+        t('pin.unpinTitle'),
+        t('pin.unpinMessage'),
         [
-          { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
           {
-            text: 'Unpin', // TODO(i18n)
+            text: t('pin.unpin'),
             style: 'destructive',
             onPress: async () => {
               setUnpinning((prev) => new Set(prev).add(pinId));
@@ -481,8 +483,8 @@ export function PinnedBanner({
                 setShowAll(false);
               } catch (err) {
                 Alert.alert(
-                  'Could not unpin', // TODO(i18n)
-                  err instanceof Error ? err.message : 'Please try again.',
+                  t('pin.couldNotUnpinTitle'),
+                  err instanceof Error ? err.message : t('pin.tryAgain'),
                 );
               } finally {
                 setUnpinning((prev) => {
@@ -496,7 +498,7 @@ export function PinnedBanner({
         ],
       );
     },
-    [onUnpin],
+    [onUnpin, t],
   );
 
   // ── Filter out expired (already expired at render time) ─────────────────────
@@ -530,8 +532,8 @@ export function PinnedBanner({
         accessibilityRole="button"
         accessibilityLabel={
           activePins.length > 1
-            ? `${activePins.length} pinned messages — tap to see all` // TODO(i18n)
-            : 'Pinned message' // TODO(i18n)
+            ? t('pin.bannerA11yMultiple', { count: activePins.length })
+            : t('pin.bannerA11ySingle')
         }
       >
         {/* Left accent bar */}
@@ -551,7 +553,7 @@ export function PinnedBanner({
             )}
             {activePins.length > 1 && (
               <Text style={s.moreText}>
-                +{activePins.length - 1} more{/* TODO(i18n) */}
+                {t('pin.moreCount', { count: activePins.length - 1 })}
               </Text>
             )}
           </View>
@@ -569,7 +571,7 @@ export function PinnedBanner({
             disabled={isUnpinning}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Unpin" // TODO(i18n)
+            accessibilityLabel={t('pin.unpin')}
             style={s.unpinBtn}
           >
             {isUnpinning ? (
