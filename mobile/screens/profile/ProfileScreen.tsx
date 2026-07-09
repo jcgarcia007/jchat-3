@@ -20,7 +20,6 @@
  *   - Places tab: uses getCheckInHistory() which strips created_at
  *   - GPS never exposed on profile
  *
- * TODO(i18n): replace English strings with translation keys
  * TODO(nav): when Task 1.8 (EditProfileScreen) lands, wire onEditProfile.
  * TODO(nav): when DMs screen (Task 1.12) exposes a "start DM" API, wire onMessage.
  */
@@ -45,6 +44,7 @@ import {
   IconMapPin,
   IconMovie,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -78,18 +78,25 @@ const CELL_SIZE = (SCREEN_W - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
 type TabId = 'posts' | 'reels' | 'places' | 'gifts' | 'saved';
 
+type TabA11yKey =
+  | 'view.postsTab'
+  | 'view.reelsTab'
+  | 'view.placesTab'
+  | 'view.giftsTab'
+  | 'view.savedTab';
+
 interface TabConfig {
   id: TabId;
   Icon: React.ComponentType<{ size: number; color: string }>;
-  accessibilityLabel: string;
+  a11yKey: TabA11yKey;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'posts',  Icon: IconGridDots, accessibilityLabel: 'Posts tab' },
-  { id: 'reels',  Icon: IconMovie,    accessibilityLabel: 'Reels tab' },
-  { id: 'places', Icon: IconMapPin,   accessibilityLabel: 'Places tab' },
-  { id: 'gifts',  Icon: IconGift,     accessibilityLabel: 'Gifts tab' },
-  { id: 'saved',  Icon: IconBookmark, accessibilityLabel: 'Saved tab' },
+  { id: 'posts',  Icon: IconGridDots, a11yKey: 'view.postsTab'  },
+  { id: 'reels',  Icon: IconMovie,    a11yKey: 'view.reelsTab'  },
+  { id: 'places', Icon: IconMapPin,   a11yKey: 'view.placesTab' },
+  { id: 'gifts',  Icon: IconGift,     a11yKey: 'view.giftsTab'  },
+  { id: 'saved',  Icon: IconBookmark, a11yKey: 'view.savedTab'  },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -97,6 +104,7 @@ const TABS: TabConfig[] = [
 /** 3-column square grid cell for a post thumbnail */
 function PostCell({ post }: { post: PostRow }) {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
   const firstMedia = post.media_urls?.[0] ?? null;
 
   return (
@@ -111,7 +119,7 @@ function PostCell({ post }: { post: PostRow }) {
           source={{ uri: firstMedia }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
-          accessibilityLabel="Post thumbnail"
+          accessibilityLabel={t('view.postThumbnailA11y')}
         />
       ) : (
         /* Text-only post placeholder */
@@ -135,12 +143,13 @@ interface TabIconProps {
 
 function TabIcon({ config, isActive, theme, onPress }: TabIconProps) {
   const { Icon } = config;
+  const { t } = useTranslation('profile');
   return (
     <TouchableOpacity
       style={styles.tabBtn}
       onPress={onPress}
       accessibilityRole="tab"
-      accessibilityLabel={config.accessibilityLabel}
+      accessibilityLabel={t(config.a11yKey)}
       accessibilityState={{ selected: isActive }}
     >
       <Icon
@@ -156,11 +165,12 @@ function TabIcon({ config, isActive, theme, onPress }: TabIconProps) {
 
 /** Empty state for Places tab */
 function PlacesEmpty({ theme }: { theme: ProfileTheme }) {
+  const { t } = useTranslation('profile');
   return (
     <View style={styles.emptyTab}>
       <IconMapPin size={40} color={theme.tabInactive} />
       <Text style={[styles.emptyTabText, { color: theme.tabInactive }]}>
-        No places yet {/* TODO(i18n) */}
+        {t('view.noPlacesYet')}
       </Text>
     </View>
   );
@@ -184,6 +194,7 @@ interface PlacesTabProps {
 
 function PlacesTab({ places, theme }: PlacesTabProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
   if (places.length === 0) return <PlacesEmpty theme={theme} />;
 
   return (
@@ -207,7 +218,7 @@ function PlacesTab({ places, theme }: PlacesTabProps) {
               source={{ uri: item.businessLogoUrl }}
               style={[styles.placeLogo, { backgroundColor: c.bgOverlay }]}
               resizeMode="cover"
-              accessibilityLabel={`${item.businessName} logo`}
+              accessibilityLabel={t('view.businessLogoA11y', { name: item.businessName })}
             />
           ) : (
             <View style={[styles.placeLogo, styles.placeLogoFallback, { backgroundColor: theme.btn1Bg }]}>
@@ -241,6 +252,7 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProps = {}) {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user: authUser, signOut } = useAuth();
 
@@ -292,14 +304,14 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
         if (!cancelled) setProfile(row);
       } catch (err) {
         if (!cancelled)
-          setProfileError(err instanceof Error ? err.message : 'Failed to load profile.');
+          setProfileError(err instanceof Error ? err.message : t('view.loadProfileError'));
       } finally {
         if (!cancelled) setProfileLoading(false);
       }
     }
     void loadProfile();
     return () => { cancelled = true; };
-  }, [targetId]);
+  }, [targetId, t]);
 
   // ── Load posts on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -385,7 +397,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
         <Text style={[styles.errorText, { color: palette.danger }]}>
-          {profileError ?? 'Profile not found.'}
+          {profileError ?? t('view.profileNotFound')}
         </Text>
       </View>
     );
@@ -404,7 +416,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
           );
         }
         if (posts.length === 0) {
-          return <GenericEmpty theme={theme} label="No posts yet" />;
+          return <GenericEmpty theme={theme} label={t('view.noPostsYet')} />;
         }
         return (
           <View style={styles.grid}>
@@ -416,7 +428,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
 
       case 'reels':
         // TODO: Reels/Stories data source not yet implemented
-        return <GenericEmpty theme={theme} label="Reels coming soon" />;
+        return <GenericEmpty theme={theme} label={t('view.reelsSoon')} />;
 
       case 'places':
         if (placesLoading) {
@@ -433,7 +445,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
 
       case 'saved':
         // TODO: Saved posts data source not yet implemented
-        return <GenericEmpty theme={theme} label="Saved coming soon" />;
+        return <GenericEmpty theme={theme} label={t('view.savedSoon')} />;
 
       default:
         return null;

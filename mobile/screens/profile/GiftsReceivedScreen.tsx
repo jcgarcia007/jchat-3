@@ -7,8 +7,6 @@
  * Gift visibility is gated on the recipient's privacy setting (Task 1.13).
  * This screen is shown only when the user is viewing their own profile or
  * when the viewed user has enabled public gift visibility.
- *
- * TODO(i18n): Replace English strings with translation keys.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -19,6 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconGift } from '@tabler/icons-react-native';
 
 import { useAuth } from '../../context/AuthContext';
@@ -55,9 +54,10 @@ interface GiftCardProps {
 
 function GiftCard({ gift }: GiftCardProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
 
   const senderName =
-    gift.sender?.display_name ?? gift.sender?.username ?? 'Someone';
+    gift.sender?.display_name ?? gift.sender?.username ?? t('gifts.someone');
   const businessName = gift.room?.business?.name ?? null;
   const amountLabel = formatAmount(gift.amount_cents);
 
@@ -85,13 +85,13 @@ function GiftCard({ gift }: GiftCardProps) {
 
       {/* Sender + business context */}
       <Text style={[styles.meta, { color: c.textSecondary }]} numberOfLines={1}>
-        From{' '}
+        {t('gifts.from')}{' '}
         <Text style={[styles.metaBold, { color: c.textPrimary }]}>
           {senderName}
         </Text>
         {businessName !== null && (
           <>
-            {' '}at{' '}
+            {' '}{t('gifts.at')}{' '}
             <Text style={[styles.metaBold, { color: palette.brand }]}>
               {businessName}
             </Text>
@@ -118,14 +118,15 @@ function GiftCard({ gift }: GiftCardProps) {
 
 function EmptyState() {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
   return (
     <View style={styles.emptyContainer}>
       <IconGift size={48} color={c.textTertiary} />
       <Text style={[styles.emptyTitle, { color: c.textSecondary }]}>
-        No gifts yet
+        {t('gifts.emptyTitle')}
       </Text>
       <Text style={[styles.emptySubtitle, { color: c.textTertiary }]}>
-        Gifts you receive from other users will appear here.
+        {t('gifts.emptySubtitle')}
       </Text>
     </View>
   );
@@ -143,6 +144,7 @@ interface Props {
 export default function GiftsReceivedScreen({ userId }: Props) {
   const c = useThemeColors();
   const { user } = useAuth();
+  const { t } = useTranslation('profile');
 
   const targetUserId = userId ?? user?.id ?? null;
 
@@ -162,12 +164,12 @@ export default function GiftsReceivedScreen({ userId }: Props) {
       setGifts(rows);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to load gifts.';
+        err instanceof Error ? err.message : t('gifts.loadError');
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [targetUserId]);
+  }, [targetUserId, t]);
 
   useEffect(() => {
     void load();

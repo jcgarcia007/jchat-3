@@ -18,7 +18,6 @@
  *   5. Save: updates the `users` table row and navigates back.
  *   6. Cancel: Alert confirm if unsaved changes, then goBack().
  *
- * TODO(i18n): replace English strings with translation keys.
  * TODO(schema): add `city` text column to the users table.
  * TODO(schema): add `cover_url` text column to the users table.
  */
@@ -46,6 +45,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import {
   IconCamera,
   IconCheck,
@@ -122,6 +122,7 @@ async function uploadImage(
 
 export default function EditProfileScreen(): React.JSX.Element {
   const c = useThemeColors();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation();
   const { user: authUser, signOut } = useAuth();
 
@@ -254,8 +255,8 @@ export default function EditProfileScreen(): React.JSX.Element {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== ImagePicker.PermissionStatus.GRANTED) {
       Alert.alert(
-        'Permission required',
-        'Please allow access to your photo library in Settings.',
+        t('edit.permissionTitle'),
+        t('edit.permissionMessage'),
       );
       return false;
     }
@@ -313,14 +314,14 @@ export default function EditProfileScreen(): React.JSX.Element {
 
   const handleLogout = useCallback(() => {
     Alert.alert(
-      'Log out?',
-      'Are you sure you want to log out of your account?',
+      t('edit.logoutConfirmTitle'),
+      t('edit.logoutConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log out', style: 'destructive', onPress: () => { void signOut(); } },
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+        { text: t('edit.logoutConfirmButton'), style: 'destructive', onPress: () => { void signOut(); } },
       ],
     );
-  }, [signOut]);
+  }, [signOut, t]);
 
   // ── Cancel handler ────────────────────────────────────────────────────────
 
@@ -330,18 +331,18 @@ export default function EditProfileScreen(): React.JSX.Element {
       return;
     }
     Alert.alert(
-      'Discard changes?', // TODO(i18n)
-      'You have unsaved changes. Discard them?',
+      t('edit.discardTitle'),
+      t('edit.discardMessage'),
       [
-        { text: 'Keep editing', style: 'cancel' },
+        { text: t('edit.keepEditing'), style: 'cancel' },
         {
-          text: 'Discard',
+          text: t('edit.discard'),
           style: 'destructive',
           onPress: () => navigation.goBack(),
         },
       ],
     );
-  }, [navigation, displayName, username, bio, city, language, profileThemeId, avatarUri, coverUri]);
+  }, [navigation, displayName, username, bio, city, language, profileThemeId, avatarUri, coverUri, t]);
 
   // ── Save handler ──────────────────────────────────────────────────────────
 
@@ -350,13 +351,13 @@ export default function EditProfileScreen(): React.JSX.Element {
 
     // Block save if username is taken
     if (usernameStatus === 'taken') {
-      Alert.alert('Username taken', 'Please choose a different username.');
+      Alert.alert(t('edit.usernameTakenTitle'), t('edit.usernameTakenMessage'));
       return;
     }
 
     // Block save while checking
     if (usernameStatus === 'checking') {
-      Alert.alert('Please wait', 'Checking username availability…');
+      Alert.alert(t('edit.pleaseWaitTitle'), t('edit.checkingUsername'));
       return;
     }
 
@@ -410,8 +411,8 @@ export default function EditProfileScreen(): React.JSX.Element {
 
       navigation.goBack();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'An error occurred while saving.';
-      Alert.alert('Save failed', msg);
+      const msg = err instanceof Error ? err.message : t('edit.saveErrorGeneric');
+      Alert.alert(t('edit.saveFailedTitle'), msg);
     } finally {
       setSaving(false);
     }
@@ -427,6 +428,7 @@ export default function EditProfileScreen(): React.JSX.Element {
     coverUri,
     usernameStatus,
     navigation,
+    t,
   ]);
 
   // ── Theme preview ─────────────────────────────────────────────────────────
@@ -453,27 +455,27 @@ export default function EditProfileScreen(): React.JSX.Element {
           onPress={handleCancel}
           style={styles.headerBtn}
           accessibilityRole="button"
-          accessibilityLabel="Cancel"
+          accessibilityLabel={t('actions.cancel', { ns: 'common' })}
           disabled={saving}
         >
           <IconX size={22} color={c.textSecondary} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-          Edit Profile {/* TODO(i18n) */}
+          {t('edit.title')}
         </Text>
 
         <TouchableOpacity
           onPress={() => { void handleSave(); }}
           style={styles.headerBtn}
           accessibilityRole="button"
-          accessibilityLabel="Save"
+          accessibilityLabel={t('actions.save', { ns: 'common' })}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator size="small" color={palette.brand} />
           ) : (
-            <Text style={[styles.saveText, { color: palette.brand }]}>Save</Text>
+            <Text style={[styles.saveText, { color: palette.brand }]}>{t('actions.save', { ns: 'common' })}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -493,7 +495,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           <TouchableOpacity
             onPress={() => { void pickCover(); }}
             accessibilityRole="button"
-            accessibilityLabel="Change cover photo"
+            accessibilityLabel={t('edit.changeCoverPhotoA11y')}
             activeOpacity={0.8}
           >
             <View style={[styles.coverContainer, { backgroundColor: selectedTheme.coverBg }]}>
@@ -502,14 +504,14 @@ export default function EditProfileScreen(): React.JSX.Element {
                   source={{ uri: coverUri }}
                   style={StyleSheet.absoluteFill}
                   resizeMode="cover"
-                  accessibilityLabel="Cover photo preview"
+                  accessibilityLabel={t('edit.coverPreviewA11y')}
                 />
               ) : null}
               <View style={styles.coverOverlay}>
                 <View style={[styles.cameraChip, { backgroundColor: c.bgOverlay }]}>
                   <IconCamera size={16} color={c.textPrimary} />
                   <Text style={[styles.cameraLabel, { color: c.textPrimary }]}>
-                    Change Cover {/* TODO(i18n) */}
+                    {t('edit.changeCover')}
                   </Text>
                 </View>
               </View>
@@ -521,7 +523,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             <TouchableOpacity
               onPress={() => { void pickAvatar(); }}
               accessibilityRole="button"
-              accessibilityLabel="Change avatar photo"
+              accessibilityLabel={t('edit.changeAvatarPhotoA11y')}
               activeOpacity={0.8}
             >
               <View
@@ -538,7 +540,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                     source={{ uri: avatarUri }}
                     style={styles.avatarImage}
                     resizeMode="cover"
-                    accessibilityLabel="Avatar preview"
+                    accessibilityLabel={t('edit.avatarPreviewA11y')}
                   />
                 ) : (
                   <IconUser size={36} color={c.textTertiary} />
@@ -556,7 +558,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             {/* Display name */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                Display Name {/* TODO(i18n) */}
+                {t('edit.displayNameLabel')}
               </Text>
               <TextInput
                 value={displayName}
@@ -569,18 +571,18 @@ export default function EditProfileScreen(): React.JSX.Element {
                     borderColor: c.borderSubtle,
                   },
                 ]}
-                placeholder="Your name"
+                placeholder={t('edit.namePlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 maxLength={50}
                 autoCorrect={false}
-                accessibilityLabel="Display name"
+                accessibilityLabel={t('edit.displayNameA11y')}
               />
             </View>
 
             {/* Username */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                Username {/* TODO(i18n) */}
+                {t('edit.usernameLabel')}
               </Text>
               <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
                 <Text style={[styles.atSymbol, { color: c.textTertiary }]}>@</Text>
@@ -588,12 +590,12 @@ export default function EditProfileScreen(): React.JSX.Element {
                   value={username}
                   onChangeText={handleUsernameChange}
                   style={[styles.inputInner, { color: c.textPrimary }]}
-                  placeholder="username"
+                  placeholder={t('edit.usernamePlaceholder')}
                   placeholderTextColor={c.textTertiary}
                   maxLength={30}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  accessibilityLabel="Username"
+                  accessibilityLabel={t('edit.usernameA11y')}
                 />
                 <UsernameIndicator status={usernameStatus} />
               </View>
@@ -603,7 +605,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             {/* Bio */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                Bio {/* TODO(i18n) */}
+                {t('edit.bioLabel')}
               </Text>
               <TextInput
                 value={bio}
@@ -617,12 +619,12 @@ export default function EditProfileScreen(): React.JSX.Element {
                     borderColor: c.borderSubtle,
                   },
                 ]}
-                placeholder="Tell people about yourself"
+                placeholder={t('edit.bioPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 multiline
                 numberOfLines={3}
                 maxLength={160}
-                accessibilityLabel="Bio"
+                accessibilityLabel={t('edit.bioA11y')}
               />
             </View>
 
@@ -630,7 +632,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             <View style={styles.fieldGroup}>
               {/* TODO(schema): city column not yet in users table */}
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                City {/* TODO(i18n) */}
+                {t('edit.cityLabel')}
               </Text>
               <TextInput
                 value={city}
@@ -643,18 +645,18 @@ export default function EditProfileScreen(): React.JSX.Element {
                     borderColor: c.borderSubtle,
                   },
                 ]}
-                placeholder="Your city (manual text only)"
+                placeholder={t('edit.cityPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 maxLength={80}
                 autoCorrect={false}
-                accessibilityLabel="City of residence"
+                accessibilityLabel={t('edit.cityA11y')}
               />
             </View>
 
             {/* Language */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                Language {/* TODO(i18n) */}
+                {t('edit.languageLabel')}
               </Text>
               <View style={styles.langRow}>
                 {LANGUAGES.map((lang) => {
@@ -699,7 +701,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             {/* Profile Theme */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                Profile Theme {/* TODO(i18n) */}
+                {t('edit.themeLabel')}
               </Text>
               <TouchableOpacity
                 onPress={() => setThemeModalVisible(true)}
@@ -711,7 +713,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`Change profile theme, current: ${selectedTheme.name}`}
+                accessibilityLabel={t('edit.changeThemeA11y', { name: selectedTheme.name })}
               >
                 {/* Theme swatch */}
                 <View
@@ -733,11 +735,11 @@ export default function EditProfileScreen(): React.JSX.Element {
               onPress={handleLogout}
               style={[styles.logoutBtn, { borderColor: palette.danger }]}
               accessibilityRole="button"
-              accessibilityLabel="Log out"
+              accessibilityLabel={t('edit.logOutA11y')}
               disabled={saving}
             >
               <IconLogout size={18} color={palette.danger} />
-              <Text style={[styles.logoutLabel, { color: palette.danger }]}>Log Out{/* TODO(i18n) */}</Text>
+              <Text style={[styles.logoutLabel, { color: palette.danger }]}>{t('edit.logOut')}</Text>
             </TouchableOpacity>
 
           </View>
@@ -755,13 +757,13 @@ export default function EditProfileScreen(): React.JSX.Element {
           {/* Modal header */}
           <View style={[styles.modalHeader, { borderBottomColor: c.borderSubtle }]}>
             <Text style={[styles.modalTitle, { color: c.textPrimary }]}>
-              Choose Theme {/* TODO(i18n) */}
+              {t('edit.chooseTheme')}
             </Text>
             <TouchableOpacity
               onPress={() => setThemeModalVisible(false)}
               style={styles.headerBtn}
               accessibilityRole="button"
-              accessibilityLabel="Close theme picker"
+              accessibilityLabel={t('edit.closeThemePickerA11y')}
             >
               <IconCheck size={22} color={palette.brand} />
             </TouchableOpacity>
@@ -810,24 +812,25 @@ interface HintProps extends StatusProps {
 }
 
 function UsernameHint({ status, c }: HintProps): React.JSX.Element | null {
+  const { t } = useTranslation('profile');
   if (status === 'available') {
     return (
       <Text style={[styles.hintText, { color: palette.success }]}>
-        Username available {/* TODO(i18n) */}
+        {t('edit.usernameAvailable')}
       </Text>
     );
   }
   if (status === 'taken') {
     return (
       <Text style={[styles.hintText, { color: palette.danger }]}>
-        Username already taken {/* TODO(i18n) */}
+        {t('edit.usernameTaken')}
       </Text>
     );
   }
   if (status === 'error') {
     return (
       <Text style={[styles.hintText, { color: palette.warning }]}>
-        Could not check availability {/* TODO(i18n) */}
+        {t('edit.usernameCheckError')}
       </Text>
     );
   }
