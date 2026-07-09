@@ -54,12 +54,10 @@ interface Room {
   slug: string | null;
   chat_theme_id: number;
   is_password_protected: boolean;
-  password_hash: string | null;
   ttl_hours: number | null;
   notify_enabled: boolean;
   is_main: boolean;
   sort: number;
-  qr_token: string | null;
 }
 
 /** Editable draft for a room's settings panel. */
@@ -92,12 +90,10 @@ const DEMO_ROOMS: Room[] = [
     slug: "main",
     chat_theme_id: 1,
     is_password_protected: false,
-    password_hash: null,
     ttl_hours: null,
     notify_enabled: true,
     is_main: true,
     sort: 0,
-    qr_token: "demo-main-00000001",
   },
   {
     id: "demo-vip-room",
@@ -110,12 +106,10 @@ const DEMO_ROOMS: Room[] = [
     slug: "vip-lounge",
     chat_theme_id: 4,
     is_password_protected: true,
-    password_hash: "$2b$10$placeholder_hash",
     ttl_hours: 24,
     notify_enabled: false,
     is_main: false,
     sort: 1,
-    qr_token: "demo-vip-00000002",
   },
 ];
 
@@ -404,7 +398,7 @@ function SettingsPanel({
             <input
               type="password"
               placeholder={
-                room.password_hash
+                room.is_password_protected
                   ? "Leave blank to keep current password"
                   : "Enter room password"
               }
@@ -1049,6 +1043,17 @@ function ChatRoomManagerPage() {
 
   /** QR Modal */
   const [qrRoom, setQrRoom] = useState<Room | null>(null);
+  // qr_token is no longer read via the rooms table (S1 lockdown); the owner fetches it
+  // on demand through the get_room_qr_token RPC when opening the QR modal.
+  const [qrToken, setQrToken] = useState<string | null>(null);
+
+  const handleOpenQr = useCallback(async (room: Room) => {
+    setQrRoom(room);
+    setQrToken(null);
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase.rpc("get_room_qr_token", { p_room_id: room.id });
+    if (!error && typeof data === "string") setQrToken(data);
+  }, []);
 
   // Placeholder business id — Task 2.2 / auth session provides the real one
   const businessId = PLACEHOLDER_BUSINESS_ID;
@@ -1073,8 +1078,8 @@ function ChatRoomManagerPage() {
       .from("rooms")
       .select(
         "id, business_id, parent_room_id, name, description, icon, color, slug, " +
-        "chat_theme_id, is_password_protected, password_hash, ttl_hours, " +
-        "notify_enabled, is_main, sort, qr_token"
+        "chat_theme_id, is_password_protected, ttl_hours, " +
+        "notify_enabled, is_main, sort"
       )
       .eq("business_id", businessId)
       .order("sort", { ascending: true });
@@ -1212,12 +1217,10 @@ function ChatRoomManagerPage() {
           slug: name.toLowerCase().replace(/\s+/g, "-"),
           chat_theme_id: 1,
           is_password_protected: false,
-          password_hash: null,
           ttl_hours: null,
           notify_enabled: true,
           is_main: false,
           sort: rooms.length,
-          qr_token: null,
         };
         setRooms((prev) => [...prev, newRoom]);
         setDrafts((prev) => ({ ...prev, [newRoom.id]: toDraft(newRoom) }));
@@ -1412,7 +1415,7 @@ function ChatRoomManagerPage() {
               onDraftChange={(patch) => handleDraftChange(mainRoom.id, patch)}
               onSave={() => handleSave(mainRoom.id)}
               onDelete={() => {/* main room cannot be deleted — button not rendered */}}
-              onQR={() => setQrRoom(mainRoom)}
+              onQR={() => { void handleOpenQr(mainRoom); }}
             />
           )}
 
@@ -1435,7 +1438,7 @@ function ChatRoomManagerPage() {
                 onDraftChange={(patch) => handleDraftChange(room.id, patch)}
                 onSave={() => handleSave(room.id)}
                 onDelete={() => setRoomToDelete(room)}
-                onQR={() => setQrRoom(room)}
+                onQR={() => { void handleOpenQr(room); }}
               />
             ) : null
           )}
@@ -1530,7 +1533,7 @@ function ChatRoomManagerPage() {
       {qrRoom && (
         <QRModal
           room={{
-            qr_token: qrRoom.qr_token ?? qrRoom.id,
+            qr_token: qrToken ?? qrRoom.id,
             name: qrRoom.name,
             chat_theme_id: qrRoom.chat_theme_id,
             is_main: qrRoom.is_main,
@@ -1544,7 +1547,7 @@ function ChatRoomManagerPage() {
             } satisfies QRModalBusiness
           }
           open={true}
-          onClose={() => setQrRoom(null)}
+          onClose={() => { setQrRoom(null); setQrToken(null); }}
         />
       )}
     </div>

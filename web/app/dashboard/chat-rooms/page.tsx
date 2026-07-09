@@ -40,7 +40,6 @@ interface RoomRow {
   is_password_protected: boolean;
   ttl_hours: number | null;
   chat_theme_id: number;
-  qr_token: string | null;
   member_count: number;
 }
 
@@ -61,9 +60,9 @@ const TYPE_META: Record<RoomType, { icon: React.ComponentType<{ size?: number }>
 };
 
 const DEMO_ROOMS: RoomRow[] = [
-  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, qr_token: "demo-main-00000001", member_count: 86 },
-  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, qr_token: "demo-vip-00000002", member_count: 12 },
-  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, chat_theme_id: 7, qr_token: "demo-event-00000003", member_count: 31 },
+  { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 86 },
+  { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, member_count: 12 },
+  { id: "d3", name: "Friday Night Live", icon: "🎶", is_main: false, is_active: true, is_password_protected: false, ttl_hours: 6, chat_theme_id: 7, member_count: 31 },
 ];
 
 const ROOM_EMOJIS = ["💬", "🥂", "🎶", "🍻", "🎉", "⭐️", "🔥", "🏆", "🎯", "🪩", "🎨", "📣"];
@@ -91,20 +90,41 @@ export default function ChatRoomsPage() {
 
   // QR modal
   const [qrRoom, setQrRoom] = useState<RoomRow | null>(null);
+  // qr_token is no longer read from the rooms table (S1 lockdown); fetched on demand
+  // via the get_room_qr_token RPC (owner/admin only) when the QR modal opens.
+  const [qrToken, setQrToken] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrGenerating, setQrGenerating] = useState(false);
   const [qrRenewing, setQrRenewing] = useState(false);
   const [qrRenewError, setQrRenewError] = useState<string | null>(null);
 
-  function openQr(room: RoomRow) {
-    if (!room.qr_token) return;
+  async function openQr(room: RoomRow) {
     setQrRoom(room);
+    setQrToken(null);
     setQrDataUrl(null);
     setQrGenerating(true);
     setQrRenewError(null);
-    void generateStyledQrPngDataUrl(roomQrUrl(room.qr_token))
-      .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
-      .catch(() => { setQrGenerating(false); });
+    try {
+      let token: string;
+      if (!isSupabaseConfigured) {
+        token = `demo-${room.id}`;
+      } else {
+        const { data, error: rpcErr } = await supabase.rpc("get_room_qr_token", { p_room_id: room.id });
+        if (rpcErr || typeof data !== "string") {
+          setQrRenewError("No se pudo obtener el código QR.");
+          setQrGenerating(false);
+          return;
+        }
+        token = data;
+      }
+      setQrToken(token);
+      const u = await generateStyledQrPngDataUrl(roomQrUrl(token));
+      setQrDataUrl(u);
+    } catch {
+      // qrDataUrl stays null → the modal shows the "Error al generar" fallback.
+    } finally {
+      setQrGenerating(false);
+    }
   }
 
   async function renewQr() {
@@ -137,9 +157,7 @@ export default function ChatRoomsPage() {
         newToken = data as string;
       }
 
-      const updatedRoom = { ...qrRoom, qr_token: newToken };
-      setRooms((prev) => prev.map((r) => (r.id === qrRoom.id ? { ...r, qr_token: newToken } : r)));
-      setQrRoom(updatedRoom);
+      setQrToken(newToken);
 
       setQrDataUrl(null);
       setQrGenerating(true);
@@ -173,7 +191,7 @@ export default function ChatRoomsPage() {
   async function load(bizId: string) {
     const { data, error: roomsErr } = await supabase
       .from("rooms")
-      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours, chat_theme_id, qr_token")
+      .select("id, name, icon, is_main, is_active, is_password_protected, ttl_hours, chat_theme_id")
       .eq("business_id", bizId)
       .order("is_main", { ascending: false })
       .order("sort", { ascending: true });
@@ -235,7 +253,7 @@ export default function ChatRoomsPage() {
       if (!isSupabaseConfigured) {
         setRooms((prev) => [
           ...prev,
-          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, qr_token: null, member_count: 0 },
+          { id: `demo-${Date.now()}`, name, icon: newEmoji, is_main: false, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 0 },
         ]);
       } else if (business) {
         const { error: insErr } = await supabase.from("rooms").insert({
@@ -537,9 +555,8 @@ export default function ChatRoomsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => openQr(r)}
-                    title={r.qr_token ? "Ver QR de esta sala" : "Sin token QR"}
-                    disabled={!r.qr_token}
+                    onClick={() => { void openQr(r); }}
+                    title="Ver QR de esta sala"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -548,12 +565,12 @@ export default function ChatRoomsPage() {
                       borderRadius: "8px",
                       border: "1px solid var(--db-border)",
                       background: "var(--db-bg-elevated)",
-                      color: r.qr_token ? "var(--db-accent)" : "var(--db-text-tertiary)",
+                      color: "var(--db-accent)",
                       fontSize: "13px",
                       fontWeight: 600,
-                      cursor: r.qr_token ? "pointer" : "default",
+                      cursor: "pointer",
                       whiteSpace: "nowrap",
-                      opacity: r.qr_token ? 1 : 0.5,
+                      opacity: 1,
                     }}
                   >
                     <IconQrcode size={14} />
@@ -592,7 +609,7 @@ export default function ChatRoomsPage() {
           role="dialog"
           aria-modal="true"
           aria-label={`QR de ${qrRoom.name}`}
-          onClick={(e) => { if (e.target === e.currentTarget) { setQrRoom(null); setQrRenewError(null); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setQrRoom(null); setQrToken(null); setQrRenewError(null); } }}
           style={{
             position: "fixed",
             inset: 0,
@@ -652,7 +669,7 @@ export default function ChatRoomsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => { setQrRoom(null); setQrRenewError(null); }}
+                onClick={() => { setQrRoom(null); setQrToken(null); setQrRenewError(null); }}
                 aria-label="Cerrar"
                 style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer", padding: "4px" }}
               >
@@ -709,7 +726,7 @@ export default function ChatRoomsPage() {
             </div>
 
             {/* URL */}
-            {qrRoom.qr_token && (
+            {qrToken && (
               <p style={{
                 fontSize: "11px",
                 color: "var(--db-text-secondary)",
@@ -718,7 +735,7 @@ export default function ChatRoomsPage() {
                 wordBreak: "break-all",
                 fontFamily: "monospace",
               }}>
-                {roomQrUrl(qrRoom.qr_token)}
+                {roomQrUrl(qrToken)}
               </p>
             )}
 
@@ -726,10 +743,10 @@ export default function ChatRoomsPage() {
             <div style={{ display: "flex", gap: "8px" }}>
               <button
                 type="button"
-                disabled={!qrDataUrl || !qrRoom.qr_token}
+                disabled={!qrDataUrl || !qrToken}
                 onClick={() => {
-                  if (!qrDataUrl || !qrRoom.qr_token) return;
-                  downloadDataUrl(qrDataUrl, `qr-${qrRoom.qr_token}.png`);
+                  if (!qrDataUrl || !qrToken) return;
+                  downloadDataUrl(qrDataUrl, `qr-${qrToken}.png`);
                 }}
                 style={{
                   flex: 1,
@@ -753,12 +770,12 @@ export default function ChatRoomsPage() {
               </button>
               <button
                 type="button"
-                disabled={!qrDataUrl || !qrRoom.qr_token}
+                disabled={!qrDataUrl || !qrToken}
                 onClick={() => {
-                  if (!qrRoom.qr_token) return;
+                  if (!qrToken) return;
                   void downloadStyledQrPdf(
-                    roomQrUrl(qrRoom.qr_token),
-                    `qr-${qrRoom.qr_token}`,
+                    roomQrUrl(qrToken),
+                    `qr-${qrToken}`,
                     business?.name ?? "JChat",
                     qrRoom.name
                   );

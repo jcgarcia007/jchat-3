@@ -3027,6 +3027,7 @@ export type Database = {
         Args: { _business_id: string; _is_sub_room: boolean }
         Returns: string
       }
+      get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
       is_platform_admin: { Args: never; Returns: boolean }
       join_room_via_qr: {
         Args: { token: string }
