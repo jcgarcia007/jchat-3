@@ -12,7 +12,6 @@
  * • RatingPrompt appears after status transitions to "delivered"
  * • "Back to chat" navigates to ChatRoom using roomId from route params
  * // TODO(server): send push notification when status → "ready"
- * // TODO(i18n)
  *
  * Route params: { orderId: string; roomId?: string }
  * Navigator: uses generic useNavigation / useRoute — AppNavigator registers this
@@ -42,6 +41,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import {
   IconCheck,
@@ -76,9 +76,11 @@ type AnyNav = NativeStackNavigationProp<AnyStackParamList>;
 
 // ── Stepper config ────────────────────────────────────────────────────────────
 
+type StepLabelKey = 'tracking.stepConfirmed' | 'tracking.stepPreparing' | 'tracking.stepReady';
+
 interface StepConfig {
   key: OrderStatus;
-  label: string; // TODO(i18n)
+  labelKey: StepLabelKey;
   Icon: React.ComponentType<{ size: number; color: string }>;
   /** token color for this step's active state */
   activeColor: string;
@@ -87,19 +89,19 @@ interface StepConfig {
 const STEPS: StepConfig[] = [
   {
     key: 'confirmed',
-    label: 'Confirmed',
+    labelKey: 'tracking.stepConfirmed',
     Icon: IconCheck,
     activeColor: palette.brand,       // blue
   },
   {
     key: 'preparing',
-    label: 'Preparing',
+    labelKey: 'tracking.stepPreparing',
     Icon: IconChefHat,
     activeColor: palette.warning,     // amber
   },
   {
     key: 'ready',
-    label: 'Ready',
+    labelKey: 'tracking.stepReady',
     Icon: IconCheck,
     activeColor: palette.success,     // green
   },
@@ -121,6 +123,7 @@ function statusToStepIndex(status: OrderStatus): number {
 
 /** Returns a formatted remaining minutes string, or null when expired / no ETA. */
 function useEtaCountdown(order: OrderRow | null): string | null {
+  const { t } = useTranslation('pos');
   const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -145,14 +148,15 @@ function useEtaCountdown(order: OrderRow | null): string | null {
   }, [order]);
 
   if (remaining === null) return null;
-  if (remaining === 0) return 'Any moment now'; // TODO(i18n)
-  return `~${remaining} min`;                    // TODO(i18n)
+  if (remaining === 0) return t('tracking.anyMoment');
+  return t('tracking.etaMinutes', { min: remaining });
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OrderTrackingScreen(): React.ReactElement {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const { user } = useAuth();
 
   const route = useRoute<OrderTrackingRoute>();
@@ -244,7 +248,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
   // ── Service call
   const handleServiceCall = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      Alert.alert('Unavailable', 'Service call requires a live connection.'); // TODO(i18n)
+      Alert.alert(t('tracking.serviceUnavailableTitle'), t('tracking.serviceUnavailableMessage'));
       return;
     }
     if (!order || !user) return;
@@ -260,14 +264,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
       });
       if (error) throw error;
       setShowServiceSheet(false);
-      Alert.alert('Staff notified', 'Someone will be with you shortly.'); // TODO(i18n)
+      Alert.alert(t('tracking.staffNotifiedTitle'), t('tracking.staffNotifiedMessage'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong'; // TODO(i18n)
-      Alert.alert('Error', msg); // TODO(i18n)
+      const msg = err instanceof Error ? err.message : t('tracking.genericError');
+      Alert.alert(t('shared.errorTitle'), msg);
     } finally {
       setServiceCallLoading(false);
     }
-  }, [order, user]);
+  }, [order, user, t]);
 
   // ── Styles
   const styles = useMemo(() => makeStyles(c), [c]);
@@ -284,11 +288,9 @@ export default function OrderTrackingScreen(): React.ReactElement {
   if (!order) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <Text style={styles.errorText}>Order not found.</Text>
-        {/* TODO(i18n) */}
+        <Text style={styles.errorText}>{t('tracking.orderNotFound')}</Text>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnLabel}>Go back</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.backBtnLabel}>{t('shared.goBack')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -304,12 +306,11 @@ export default function OrderTrackingScreen(): React.ReactElement {
           onPress={handleBackToChat}
           style={styles.headerBack}
           accessibilityRole="button"
-          accessibilityLabel="Back to chat" // TODO(i18n)
+          accessibilityLabel={t('tracking.backToChatA11y')}
         >
           <IconArrowLeft size={22} color={c.textPrimary} />
         </Pressable>
-        <Text style={styles.headerTitle}>Your Order</Text>
-        {/* TODO(i18n) */}
+        <Text style={styles.headerTitle}>{t('cart.yourOrder')}</Text>
         {/* Spacer to center title */}
         <View style={styles.headerSpacer} />
       </View>
@@ -322,16 +323,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {/* ── Cancelled banner ── */}
         {isCancelled && (
           <View style={[styles.statusBanner, { backgroundColor: c.danger }]}>
-            <Text style={styles.statusBannerText}>Order Cancelled</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.statusBannerText}>{t('tracking.orderCancelled')}</Text>
           </View>
         )}
 
         {/* ── ETA Card ── */}
         {!isCancelled && !isDelivered && etaLabel !== null && (
           <View style={styles.etaCard}>
-            <Text style={styles.etaLabel}>Estimated wait</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.etaLabel}>{t('tracking.estimatedWait')}</Text>
             <Text style={styles.etaValue}>{etaLabel}</Text>
           </View>
         )}
@@ -385,12 +384,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
                         isCurrent && styles.stepLabelCurrent,
                       ]}
                     >
-                      {step.label}
-                      {/* TODO(i18n) */}
+                      {t(step.labelKey)}
                     </Text>
                     {isCurrent && order.status !== 'delivered' && (
-                      <Text style={styles.stepSublabel}>In progress…</Text>
-                      // TODO(i18n)
+                      <Text style={styles.stepSublabel}>{t('tracking.inProgress')}</Text>
                     )}
                   </View>
                 </View>
@@ -403,8 +400,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {isDelivered && (
           <View style={[styles.statusBanner, { backgroundColor: c.success }]}>
             <IconCheck size={18} color={c.bgSurface} />
-            <Text style={styles.statusBannerText}>Delivered!</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.statusBannerText}>{t('tracking.delivered')}</Text>
           </View>
         )}
 
@@ -413,7 +409,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
           <View style={styles.ratingContainer}>
             <RatingPrompt
               businessId={order.business_id}
-              businessName="this business" // TODO: pass business name through route params in a future update
+              businessName={t('tracking.thisBusiness')} // TODO: pass business name through route params in a future update
               onDone={() => setRatingDone(true)}
             />
           </View>
@@ -422,15 +418,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {/* ── Per-item list ── */}
         {items.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Items</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.sectionTitle}>{t('tracking.yourItems')}</Text>
             {items.map((item) => (
               <View key={item.id} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                   <Text style={styles.itemQty}>{item.qty}×</Text>
                   <Text style={styles.itemName}>
                     {/* menu_item_id used as fallback label until name join is added */}
-                    Item #{item.menu_item_id.slice(0, 8)}
+                    {t('tracking.itemFallback', { id: item.menu_item_id.slice(0, 8) })}
                   </Text>
                 </View>
                 <View
@@ -455,8 +450,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
                       },
                     ]}
                   >
-                    {item.item_status === 'ready' ? 'Ready' : 'Cooking'}
-                    {/* TODO(i18n) */}
+                    {item.item_status === 'ready' ? t('tracking.statusReady') : t('tracking.statusCooking')}
                   </Text>
                 </View>
               </View>
@@ -466,17 +460,16 @@ export default function OrderTrackingScreen(): React.ReactElement {
 
         {/* ── Order summary ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.sectionTitle}>{t('shared.orderSummary')}</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryLabel}>{t('cart.subtotal')}</Text>
             <Text style={styles.summaryValue}>
               ${(order.subtotal_cents / 100).toFixed(2)}
             </Text>
           </View>
           {order.tax_cents > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tax</Text>
+              <Text style={styles.summaryLabel}>{t('tracking.tax')}</Text>
               <Text style={styles.summaryValue}>
                 ${(order.tax_cents / 100).toFixed(2)}
               </Text>
@@ -484,7 +477,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
           )}
           {order.tip_cents > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tip</Text>
+              <Text style={styles.summaryLabel}>{t('tracking.tip')}</Text>
               <Text style={styles.summaryValue}>
                 ${(order.tip_cents / 100).toFixed(2)}
               </Text>
@@ -492,14 +485,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
           )}
           {order.discount_cents > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={styles.summaryLabel}>{t('tracking.discount')}</Text>
               <Text style={[styles.summaryValue, { color: c.success }]}>
                 −${(order.discount_cents / 100).toFixed(2)}
               </Text>
             </View>
           )}
           <View style={[styles.summaryRow, styles.summaryTotal]}>
-            <Text style={styles.summaryTotalLabel}>Total</Text>
+            <Text style={styles.summaryTotalLabel}>{t('cart.total')}</Text>
             <Text style={styles.summaryTotalValue}>
               ${(order.total_cents / 100).toFixed(2)}
             </Text>
@@ -515,11 +508,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
             onPress={() => setShowServiceSheet(true)}
             style={styles.serviceBtn}
             accessibilityRole="button"
-            accessibilityLabel="Call for service" // TODO(i18n)
+            accessibilityLabel={t('tracking.callServiceA11y')}
           >
             <IconBellRinging size={20} color={c.bgSurface} />
-            <Text style={styles.serviceBtnLabel}>Call Staff</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.serviceBtnLabel}>{t('tracking.callStaff')}</Text>
           </Pressable>
         )}
 
@@ -529,10 +521,9 @@ export default function OrderTrackingScreen(): React.ReactElement {
             onPress={handleBackToChat}
             style={[styles.chatBtn, !(!isCancelled && !isDelivered) && styles.chatBtnFull]}
             accessibilityRole="button"
-            accessibilityLabel="Back to chat" // TODO(i18n)
+            accessibilityLabel={t('tracking.backToChatA11y')}
           >
-            <Text style={styles.chatBtnLabel}>Back to Chat</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.chatBtnLabel}>{t('tracking.backToChat')}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -552,11 +543,9 @@ export default function OrderTrackingScreen(): React.ReactElement {
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
 
-          <Text style={styles.sheetTitle}>Call for Staff Assistance</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.sheetTitle}>{t('tracking.sheetTitle')}</Text>
           <Text style={styles.sheetBody}>
-            A staff member will be notified and will come to your table.
-            {/* TODO(i18n) */}
+            {t('tracking.sheetBody')}
           </Text>
 
           <Pressable
@@ -564,7 +553,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             disabled={serviceCallLoading}
             style={[styles.sheetConfirmBtn, serviceCallLoading && styles.sheetBtnDisabled]}
             accessibilityRole="button"
-            accessibilityLabel="Confirm service call" // TODO(i18n)
+            accessibilityLabel={t('tracking.confirmServiceA11y')}
             accessibilityState={{ disabled: serviceCallLoading }}
           >
             {serviceCallLoading ? (
@@ -572,8 +561,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             ) : (
               <>
                 <IconBellRinging size={18} color={c.bgSurface} />
-                <Text style={styles.sheetConfirmLabel}>Notify Staff</Text>
-                {/* TODO(i18n) */}
+                <Text style={styles.sheetConfirmLabel}>{t('tracking.notifyStaff')}</Text>
               </>
             )}
           </Pressable>
@@ -582,10 +570,9 @@ export default function OrderTrackingScreen(): React.ReactElement {
             onPress={() => setShowServiceSheet(false)}
             style={styles.sheetCancelBtn}
             accessibilityRole="button"
-            accessibilityLabel="Cancel" // TODO(i18n)
+            accessibilityLabel={t('actions.cancel', { ns: 'common' })}
           >
-            <Text style={styles.sheetCancelLabel}>Cancel</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.sheetCancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
         </View>
       </Modal>

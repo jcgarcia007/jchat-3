@@ -26,7 +26,6 @@
  *
  * Colors: useThemeColors() + palette — NO hardcoded hex.
  * Icons: @tabler/icons-react-native.
- * // TODO(i18n)
  */
 
 import React, {
@@ -36,6 +35,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Animated,
@@ -85,10 +85,13 @@ type TipPreset = 10 | 15 | 20 | 'custom';
 
 type PaymentMethod = 'card' | 'apple' | 'google' | 'paypal';
 
+type PaymentLabelKey = 'checkout.payCard' | 'checkout.payApple' | 'checkout.payGoogle' | 'checkout.payPaypal';
+type PaymentSubKey = 'checkout.cardMasked' | 'checkout.payAppleSub' | 'checkout.payGoogleSub' | 'checkout.payPaypalSub';
+
 interface PaymentMethodOption {
   id: PaymentMethod;
-  label: string;
-  sublabel: string;
+  labelKey: PaymentLabelKey;
+  sublabelKey: PaymentSubKey;
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 }
 
@@ -101,27 +104,27 @@ const TIP_PRESETS: TipPreset[] = [10, 15, 20, 'custom'];
 const PAYMENT_OPTIONS: PaymentMethodOption[] = [
   {
     id: 'card',
-    label: 'Saved Card',
-    sublabel: '•••• 4242',
+    labelKey: 'checkout.payCard',
+    sublabelKey: 'checkout.cardMasked',
     Icon: IconCreditCard,
   },
   {
     id: 'apple',
-    label: 'Apple Pay',
-    sublabel: 'Touch or Face ID',
+    labelKey: 'checkout.payApple',
+    sublabelKey: 'checkout.payAppleSub',
     Icon: IconBrandApple,
   },
   {
     id: 'google',
-    label: 'Google Pay',
-    sublabel: 'Pay with Google',
+    labelKey: 'checkout.payGoogle',
+    sublabelKey: 'checkout.payGoogleSub',
     Icon: IconBrandGoogle,
   },
   {
     id: 'paypal',
-    label: 'PayPal',
+    labelKey: 'checkout.payPaypal',
     // TODO(paypal): enable via Stripe PayPal integration
-    sublabel: 'Redirect to PayPal',
+    sublabelKey: 'checkout.payPaypalSub',
     Icon: IconBrandPaypal,
   },
 ];
@@ -154,6 +157,7 @@ interface ProcessingOverlayProps {
 }
 
 function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
+  const { t } = useTranslation('pos');
   return (
     <Modal
       transparent
@@ -165,10 +169,10 @@ function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
         <View style={[overlayStyles.card, { backgroundColor: c.bgElevated }]}>
           <ActivityIndicator size="large" color={palette.brand} />
           <Text style={[overlayStyles.text, { color: c.textPrimary }]}>
-            Processing payment…
+            {t('checkout.processing')}
           </Text>
           <Text style={[overlayStyles.sub, { color: c.textSecondary }]}>
-            Please wait a moment.
+            {t('checkout.processingSub')}
           </Text>
         </View>
       </View>
@@ -213,6 +217,7 @@ interface ErrorSheetProps {
 }
 
 function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: ErrorSheetProps) {
+  const { t } = useTranslation('pos');
   return (
     <Modal
       transparent
@@ -236,10 +241,10 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
         </View>
 
         <Text style={[sheetStyles.title, { color: c.textPrimary }]}>
-          Payment failed
+          {t('checkout.paymentFailed')}
         </Text>
         <Text style={[sheetStyles.message, { color: c.textSecondary }]}>
-          {errorMessage || 'Something went wrong. Please try again.'}
+          {errorMessage || t('checkout.paymentError')}
         </Text>
 
         {/* Actions */}
@@ -251,9 +256,9 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
               { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Retry payment"
+            accessibilityLabel={t('checkout.retryA11y')}
           >
-            <Text style={sheetStyles.retryBtnText}>Try again</Text>
+            <Text style={sheetStyles.retryBtnText}>{t('checkout.tryAgain')}</Text>
           </Pressable>
 
           <Pressable
@@ -263,10 +268,10 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
               { borderColor: c.borderSubtle, opacity: pressed ? 0.7 : 1 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Cancel"
+            accessibilityLabel={t('actions.cancel', { ns: 'common' })}
           >
             <Text style={[sheetStyles.cancelBtnText, { color: c.textSecondary }]}>
-              Cancel
+              {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
         </View>
@@ -350,6 +355,7 @@ const sheetStyles = StyleSheet.create({
 
 export default function CheckoutScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const navigation = useNavigation<CheckoutNav>();
   const { user } = useAuth();
   const cart = useCart();
@@ -496,9 +502,9 @@ export default function CheckoutScreen() {
     let bioResult;
     try {
       bioResult = await authenticateAsync({
-        promptMessage: `Pay ${formatCents(totalCents)}`,
-        fallbackLabel: 'Use Passcode',
-        cancelLabel: 'Cancel',
+        promptMessage: t('checkout.bioPrompt', { amount: formatCents(totalCents) }),
+        fallbackLabel: t('checkout.bioFallback'),
+        cancelLabel: t('actions.cancel', { ns: 'common' }),
         disableDeviceFallback: false,
       });
     } catch {
@@ -577,6 +583,7 @@ export default function CheckoutScreen() {
     clear,
     selectedPayment,
     navigation,
+    t,
   ]);
 
   const handleRetry = useCallback(() => {
@@ -600,12 +607,12 @@ export default function CheckoutScreen() {
             onPress={handleBack}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('shared.goBack')}
             hitSlop={8}
           >
             <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>Checkout</Text>
+          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('checkout.title')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -613,10 +620,10 @@ export default function CheckoutScreen() {
         <View style={styles.emptyContainer}>
           <IconShoppingBag size={56} color={c.textTertiary} strokeWidth={1.5} />
           <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
-            Nothing to check out
+            {t('checkout.emptyTitle')}
           </Text>
           <Text style={[styles.emptySub, { color: c.textSecondary }]}>
-            Go back and add items to your cart first.
+            {t('checkout.emptySub')}
           </Text>
           <Pressable
             onPress={handleBack}
@@ -625,9 +632,9 @@ export default function CheckoutScreen() {
               { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Back to menu"
+            accessibilityLabel={t('checkout.backToMenuA11y')}
           >
-            <Text style={styles.backMenuBtnText}>Back to Menu</Text>
+            <Text style={styles.backMenuBtnText}>{t('checkout.backToMenu')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -637,7 +644,7 @@ export default function CheckoutScreen() {
   // ── Tip label helper ──────────────────────────────────────────────────────────
 
   function tipPresetLabel(p: TipPreset): string {
-    return p === 'custom' ? 'Custom' : `${p}%`;
+    return p === 'custom' ? t('checkout.tipCustom') : t('checkout.tipPercent', { value: p });
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -655,12 +662,12 @@ export default function CheckoutScreen() {
             onPress={handleBack}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('shared.goBack')}
             hitSlop={8}
           >
             <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>Checkout</Text>
+          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('checkout.title')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -675,17 +682,17 @@ export default function CheckoutScreen() {
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <View style={styles.sectionTitleRow}>
               <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-                Order Summary
+                {t('shared.orderSummary')}
               </Text>
               <Pressable
                 onPress={handleEditOrder}
                 style={({ pressed }) => [styles.editBtn, { opacity: pressed ? 0.6 : 1 }]}
                 accessibilityRole="button"
-                accessibilityLabel="Edit order"
+                accessibilityLabel={t('checkout.editOrderA11y')}
                 hitSlop={8}
               >
                 <IconEdit size={16} color={palette.brand} strokeWidth={2} />
-                <Text style={[styles.editBtnText, { color: palette.brand }]}>Edit</Text>
+                <Text style={[styles.editBtnText, { color: palette.brand }]}>{t('checkout.edit')}</Text>
               </Pressable>
             </View>
 
@@ -714,14 +721,14 @@ export default function CheckoutScreen() {
             {/* Order type badge */}
             <View style={[styles.orderTypeBadge, { backgroundColor: c.bgElevated }]}>
               <Text style={[styles.orderTypeBadgeText, { color: c.textSecondary }]}>
-                {orderType === 'table' ? 'Table service' : orderType === 'counter' ? 'Counter pickup' : 'Gift order'}
+                {orderType === 'table' ? t('checkout.orderTable') : orderType === 'counter' ? t('checkout.orderCounter') : t('checkout.orderGift')}
               </Text>
             </View>
           </View>
 
           {/* ── Tip Selector ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
-            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Add a Tip</Text>
+            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('checkout.addTip')}</Text>
 
             <View style={styles.tipRow}>
               {TIP_PRESETS.map((preset) => {
@@ -777,7 +784,7 @@ export default function CheckoutScreen() {
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                   autoFocus
-                  accessibilityLabel="Custom tip amount in dollars"
+                  accessibilityLabel={t('checkout.customTipA11y')}
                 />
               </View>
             )}
@@ -785,10 +792,12 @@ export default function CheckoutScreen() {
 
           {/* ── Payment Method ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
-            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Payment Method</Text>
+            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('checkout.paymentMethod')}</Text>
 
             {paymentOptions.map((opt) => {
               const isSelected = selectedPayment === opt.id;
+              const label = t(opt.labelKey);
+              const sublabel = t(opt.sublabelKey);
               return (
                 <Pressable
                   key={opt.id}
@@ -802,7 +811,7 @@ export default function CheckoutScreen() {
                   ]}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: isSelected }}
-                  accessibilityLabel={`${opt.label} — ${opt.sublabel}`}
+                  accessibilityLabel={t('checkout.paymentOptionA11y', { label, sublabel })}
                 >
                   {/* Icon */}
                   <View style={[styles.paymentIconWrap, { backgroundColor: c.bgElevated }]}>
@@ -812,10 +821,10 @@ export default function CheckoutScreen() {
                   {/* Label */}
                   <View style={styles.paymentLabelWrap}>
                     <Text style={[styles.paymentLabel, { color: c.textPrimary }]}>
-                      {opt.label}
+                      {label}
                     </Text>
                     <Text style={[styles.paymentSublabel, { color: c.textTertiary }]}>
-                      {opt.sublabel}
+                      {sublabel}
                     </Text>
                   </View>
 
@@ -841,7 +850,7 @@ export default function CheckoutScreen() {
           {/* ── Total Breakdown ── */}
           <View style={[styles.section, styles.totalsSection, { backgroundColor: c.bgSurface }]}>
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>Subtotal</Text>
+              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
               <Text style={[styles.totalValue, { color: c.textPrimary }]}>
                 {formatCents(subtotalCents)}
               </Text>
@@ -849,7 +858,7 @@ export default function CheckoutScreen() {
 
             {/* TODO: tax from business location */}
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>Tax (8%)</Text>
+              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.taxLabel')}</Text>
               <Text style={[styles.totalValue, { color: c.textPrimary }]}>
                 {formatCents(taxCents)}
               </Text>
@@ -857,7 +866,7 @@ export default function CheckoutScreen() {
 
             <View style={styles.totalRow}>
               <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
-                {tipPreset === 'custom' ? 'Tip (custom)' : `Tip (${tipPreset}%)`}
+                {tipPreset === 'custom' ? t('checkout.tipLabelCustom') : t('checkout.tipLabelPercent', { value: tipPreset })}
               </Text>
               <Text style={[styles.totalValue, { color: c.textPrimary }]}>
                 {formatCents(tipCents)}
@@ -867,7 +876,7 @@ export default function CheckoutScreen() {
             <View style={[styles.totalDivider, { backgroundColor: c.borderSubtle }]} />
 
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>Total</Text>
+              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
               <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
                 {formatCents(totalCents)}
               </Text>
@@ -894,14 +903,14 @@ export default function CheckoutScreen() {
                 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Pay ${formatCents(totalCents)} with Face ID`}
+              accessibilityLabel={t('checkout.payA11y', { amount: formatCents(totalCents) })}
               accessibilityState={{ disabled: processing }}
             >
               {processing ? (
                 <ActivityIndicator color="#ffffff" size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  Pay {formatCents(totalCents)} with Face ID
+                  {t('checkout.payButton', { amount: formatCents(totalCents) })}
                 </Text>
               )}
             </Pressable>
@@ -911,7 +920,7 @@ export default function CheckoutScreen() {
           <View style={styles.secureRow}>
             <IconLock size={13} color={c.textTertiary} strokeWidth={2} />
             <Text style={[styles.secureText, { color: c.textTertiary }]}>
-              Secured by Stripe
+              {t('checkout.securedByStripe')}
             </Text>
           </View>
         </View>

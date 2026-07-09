@@ -22,7 +22,6 @@
  *
  * Colors: useThemeColors() + palette — NO hardcoded hex.
  * Icons: @tabler/icons-react-native.
- * // TODO(i18n)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,6 +33,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -81,12 +81,18 @@ type SaveCardState = 'idle' | 'done_saved' | 'done_dismissed' | 'done_error';
 
 export default function PaymentSuccessScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const { user } = useAuth();
   const navigation = useNavigation<PaymentSuccessNav>();
   const route = useRoute<PaymentSuccessRoute>();
 
   const { orderNumber, businessName, orderType, roomId, cardAlreadySaved } =
     route.params;
+
+  // Localized order-type label (reuses the cart order labels; falls back to the raw value).
+  const orderTypeLabel =
+    ({ table: t('cart.orderTable'), counter: t('cart.orderCounter'), gift: t('cart.orderGift') } as Record<string, string>)[orderType]
+    ?? (orderType.charAt(0).toUpperCase() + orderType.slice(1));
 
   // ── Animation setup ──────────────────────────────────────────────────────────
   // The checkmark circle enters with a spring: starts invisible + small,
@@ -175,16 +181,14 @@ export default function PaymentSuccessScreen() {
 
         {/* ── Title ─────────────────────────────────────────────────────── */}
         <Text style={[styles.title, { color: c.textPrimary }]}>
-          {/* TODO(i18n) */}
-          Payment confirmed!
+          {t('success.title')}
         </Text>
 
         {/* ── Order details card ────────────────────────────────────────── */}
         <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
           {/* Order number — displayed prominently */}
           <Text style={[styles.orderNumberLabel, { color: c.textSecondary }]}>
-            {/* TODO(i18n) */}
-            Order number
+            {t('success.orderNumber')}
           </Text>
           <Text style={[styles.orderNumber, { color: c.textPrimary }]}>
             {orderNumber}
@@ -194,8 +198,7 @@ export default function PaymentSuccessScreen() {
 
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: c.textSecondary }]}>
-              {/* TODO(i18n) */}
-              Business
+              {t('success.business')}
             </Text>
             <Text style={[styles.detailValue, { color: c.textPrimary }]}>
               {businessName}
@@ -204,53 +207,47 @@ export default function PaymentSuccessScreen() {
 
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: c.textSecondary }]}>
-              {/* TODO(i18n) */}
-              Order type
+              {t('success.orderType')}
             </Text>
             <Text style={[styles.detailValue, { color: c.textPrimary }]}>
-              {/* Capitalise first letter for display */}
-              {orderType.charAt(0).toUpperCase() + orderType.slice(1)}
+              {orderTypeLabel}
             </Text>
           </View>
         </View>
 
         {/* ── Confirmation email note ───────────────────────────────────── */}
         <Text style={[styles.emailNote, { color: c.textTertiary }]}>
-          {/* TODO(i18n) */}
           {/* TODO(server): confirmation email Edge Function */}
-          A confirmation email will be sent to you shortly.
+          {t('success.emailNote')}
         </Text>
 
         {/* ── Save-card prompt ──────────────────────────────────────────── */}
         {showSavePrompt && (
           <View style={[styles.savePrompt, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <Text style={[styles.savePromptTitle, { color: c.textPrimary }]}>
-              {/* TODO(i18n) */}
-              Save card for faster checkout?
+              {t('success.savePrompt')}
             </Text>
             <View style={styles.savePromptButtons}>
               <Pressable
                 style={[styles.saveBtn, styles.saveBtnPrimary, { backgroundColor: c.brand }]}
                 onPress={handleSaveCard}
                 disabled={isSaving}
-                accessibilityLabel="Save card"
+                accessibilityLabel={t('success.saveCardA11y')}
                 accessibilityRole="button"
               >
                 <Text style={styles.saveBtnPrimaryText}>
-                  {/* TODO(i18n) */}
-                  {isSaving ? 'Saving…' : 'Save card'}
+                  {isSaving ? t('success.saving') : t('success.saveCard')}
                 </Text>
               </Pressable>
               <Pressable
                 style={[styles.saveBtn, styles.saveBtnSecondary, { borderColor: c.borderSubtle }]}
                 onPress={handleDismissSavePrompt}
                 disabled={isSaving}
-                accessibilityLabel="Not now"
+                accessibilityLabel={t('success.notNowA11y')}
                 accessibilityRole="button"
               >
                 <Text style={[styles.saveBtnSecondaryText, { color: c.textSecondary }]}>
-                  {/* TODO(i18n) */}
-                  Not now
+                  {t('success.notNow')}
                 </Text>
               </Pressable>
             </View>
@@ -260,14 +257,12 @@ export default function PaymentSuccessScreen() {
         {/* ── Save-card result feedback ──────────────────────────────────── */}
         {saveState === 'done_saved' && (
           <Text style={[styles.saveResultText, { color: palette.success }]}>
-            {/* TODO(i18n) */}
-            Card saved for future checkouts.
+            {t('success.cardSaved')}
           </Text>
         )}
         {saveState === 'done_error' && (
           <Text style={[styles.saveResultText, { color: palette.danger }]}>
-            {/* TODO(i18n) */}
-            Could not save card. You can try again from your profile settings.
+            {t('success.cardSaveError')}
           </Text>
         )}
 
@@ -275,12 +270,11 @@ export default function PaymentSuccessScreen() {
         <Pressable
           style={[styles.backBtn, { backgroundColor: c.brand }]}
           onPress={handleBackToChat}
-          accessibilityLabel={roomId ? 'Back to chat' : 'Done'}
+          accessibilityLabel={roomId ? t('success.backToChatA11y') : t('success.doneA11y')}
           accessibilityRole="button"
         >
           <Text style={styles.backBtnText}>
-            {/* TODO(i18n) */}
-            {roomId ? 'Back to chat' : 'Done'}
+            {roomId ? t('success.backToChat') : t('success.done')}
           </Text>
         </Pressable>
 
