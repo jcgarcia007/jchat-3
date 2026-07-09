@@ -1,0 +1,35 @@
+{
+  "inbox": {
+    "title": "Mensajes",
+    "noMessagesYet": "Aún no hay mensajes",
+    "now": "ahora",
+    "empty": "Aún no tienes conversaciones.\nInicia un chat desde el perfil de un usuario."
+  },
+  "dmChat": {
+    "title": "Chat",
+    "voiceNote": "Nota de voz",
+    "sayHello": "¡Saluda!",
+    "placeholder": "Mensaje…",
+    "errorTitle": "Error",
+    "sendTextError": "No se pudo enviar el mensaje.",
+    "sendPhotoError": "No se pudo enviar la foto.",
+    "permissionTitle": "Permiso requerido",
+    "permissionMessage": "Permite el acceso a las fotos para enviar imágenes.",
+    "voiceTitle": "Notas de voz",
+    "voiceMessage": "Las notas de voz llegarán pronto."
+  },
+  "friends": {
+    "title": "Amigos",
+    "tabFollowers": "Seguidores",
+    "tabFollowing": "Siguiendo",
+    "tabRequests": "Solicitudes",
+    "emptyFollowers": "No tienes seguidores aún.",
+    "emptyFollowing": "Todavía no sigues a nadie.",
+    "emptyRequests": "No tienes solicitudes pendientes.",
+    "userFallback": "Usuario",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "remove": "Quitar",
+    "unfollow": "Dejar de seguir"
+  }
+}

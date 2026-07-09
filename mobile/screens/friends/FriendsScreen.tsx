@@ -21,6 +21,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { IconUser } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -38,16 +39,26 @@ import {
 
 type TabId = 'followers' | 'following' | 'requests';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'followers', label: 'Seguidores' },
-  { id: 'following', label: 'Siguiendo' },
-  { id: 'requests', label: 'Solicitudes' },
+type TabLabelKey =
+  | 'friends.tabFollowers'
+  | 'friends.tabFollowing'
+  | 'friends.tabRequests';
+
+const TABS: { id: TabId; labelKey: TabLabelKey }[] = [
+  { id: 'followers', labelKey: 'friends.tabFollowers' },
+  { id: 'following', labelKey: 'friends.tabFollowing' },
+  { id: 'requests', labelKey: 'friends.tabRequests' },
 ];
 
-const EMPTY_COPY: Record<TabId, string> = {
-  followers: 'No tienes seguidores aún.',
-  following: 'Todavía no sigues a nadie.',
-  requests: 'No tienes solicitudes pendientes.',
+type EmptyCopyKey =
+  | 'friends.emptyFollowers'
+  | 'friends.emptyFollowing'
+  | 'friends.emptyRequests';
+
+const EMPTY_COPY: Record<TabId, EmptyCopyKey> = {
+  followers: 'friends.emptyFollowers',
+  following: 'friends.emptyFollowing',
+  requests: 'friends.emptyRequests',
 };
 
 // ── User row ──────────────────────────────────────────────────────────────────
@@ -68,7 +79,8 @@ function UserRow({
   busy: boolean;
 }) {
   const c = useThemeColors();
-  const name = profile?.display_name ?? profile?.username ?? 'Usuario';
+  const { t } = useTranslation('social');
+  const name = profile?.display_name ?? profile?.username ?? t('friends.userFallback');
   const handle = profile?.username ? `@${profile.username}` : '';
 
   return (
@@ -127,6 +139,7 @@ function UserRow({
 
 export default function FriendsScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('social');
   const { user } = useAuth();
   const myId = user?.id ?? null;
 
@@ -184,12 +197,12 @@ export default function FriendsScreen() {
             busy={busyId === req.requester_id}
             actions={[
               {
-                label: 'Aceptar',
+                label: t('friends.accept'),
                 onPress: () =>
                   withBusy(req.requester_id, () => acceptRequest(req.requester_id), 'requests'),
               },
               {
-                label: 'Rechazar',
+                label: t('friends.reject'),
                 destructive: true,
                 onPress: () =>
                   withBusy(req.requester_id, () => rejectRequest(req.requester_id), 'requests'),
@@ -207,7 +220,7 @@ export default function FriendsScreen() {
             busy={busyId === u.id}
             actions={[
               {
-                label: 'Quitar',
+                label: t('friends.remove'),
                 destructive: true,
                 onPress: () => withBusy(u.id, () => removeFollower(u.id), 'followers'),
               },
@@ -222,7 +235,7 @@ export default function FriendsScreen() {
           busy={busyId === u.id}
           actions={[
             {
-              label: 'Dejar de seguir',
+              label: t('friends.unfollow'),
               destructive: true,
               onPress: () => withBusy(u.id, () => unfollowUser(myId as string, u.id), 'following'),
             },
@@ -230,7 +243,7 @@ export default function FriendsScreen() {
         />
       );
     },
-    [tab, busyId, withBusy, myId],
+    [tab, busyId, withBusy, myId, t],
   );
 
   const data: (SocialUser | PendingRequest)[] =
@@ -244,22 +257,22 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgBase }]} edges={['top']}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>Amigos</Text>
+      <Text style={[styles.title, { color: c.textPrimary }]}>{t('friends.title')}</Text>
 
       {/* Tabs */}
       <View style={[styles.tabBar, { borderBottomColor: c.borderSubtle }]}>
-        {TABS.map((t) => {
-          const active = t.id === tab;
+        {TABS.map((tabItem) => {
+          const active = tabItem.id === tab;
           return (
             <Pressable
-              key={t.id}
-              onPress={() => setTab(t.id)}
+              key={tabItem.id}
+              onPress={() => setTab(tabItem.id)}
               style={styles.tabItem}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
               <Text style={[styles.tabLabel, { color: active ? c.textPrimary : c.textTertiary }]}>
-                {t.label}
+                {t(tabItem.labelKey)}
               </Text>
               <View
                 style={[
@@ -279,7 +292,7 @@ export default function FriendsScreen() {
         </View>
       ) : data.length === 0 ? (
         <View style={styles.center}>
-          <Text style={[styles.empty, { color: c.textTertiary }]}>{EMPTY_COPY[tab]}</Text>
+          <Text style={[styles.empty, { color: c.textTertiary }]}>{t(EMPTY_COPY[tab])}</Text>
         </View>
       ) : (
         <FlatList

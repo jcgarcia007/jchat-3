@@ -15,7 +15,6 @@
  *   - TODO(expo-av not installed): voice recording — stubbed with an alert
  *   - TODO(Task 1.13): respect read-receipts privacy setting before showing ticks
  *   - TODO(Task 1.13/1.15): filter blocked + DM-permission check
- *   - TODO(i18n): all strings in English
  */
 
 import React, {
@@ -39,6 +38,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -90,6 +90,7 @@ interface BubbleProps {
 
 function MessageBubble({ message, isOwn }: BubbleProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('social');
 
   // Bubble colors mirror chatThemes "default" style
   const bubbleOutBg = palette.brand;
@@ -151,7 +152,7 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
           <View style={styles.voiceRow}>
             <IconMicrophone size={16} color={textColor} strokeWidth={2} />
             <Text style={[styles.voiceLabel, { color: textColor }]}>
-              Voice note
+              {t('dmChat.voiceNote')}
             </Text>
           </View>
         )}
@@ -194,6 +195,7 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
 
 export default function DMChatScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('social');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
@@ -280,12 +282,12 @@ export default function DMChatScreen() {
       await sendMessage({ conversationId, senderId: user.id, body });
     } catch (err) {
       console.warn('[DMChat] send error', err);
-      Alert.alert('Error', 'Failed to send message.'); // TODO(i18n)
+      Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendTextError'));
       setText(body); // restore on failure
     } finally {
       setSending(false);
     }
-  }, [user, text, sending, conversationId]);
+  }, [user, text, sending, conversationId, t]);
 
   // ── Pick & send photo ───────────────────────────────────────────────────────
 
@@ -295,8 +297,8 @@ export default function DMChatScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
-        'Permission required',
-        'Allow photo access to send images.', // TODO(i18n)
+        t('dmChat.permissionTitle'),
+        t('dmChat.permissionMessage'),
       );
       return;
     }
@@ -320,9 +322,9 @@ export default function DMChatScreen() {
       });
     } catch (err) {
       console.warn('[DMChat] photo send error', err);
-      Alert.alert('Error', 'Failed to send photo.'); // TODO(i18n)
+      Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendPhotoError'));
     }
-  }, [user, conversationId]);
+  }, [user, conversationId, t]);
 
   // ── Voice note stub ─────────────────────────────────────────────────────────
 
@@ -330,10 +332,10 @@ export default function DMChatScreen() {
     // TODO(expo-av not installed): voice recording
     // When expo-av is available, implement record → stop → upload → sendMessage({voiceUrl})
     Alert.alert(
-      'Voice notes',
-      'Voice recording coming soon.', // TODO(i18n)
+      t('dmChat.voiceTitle'),
+      t('dmChat.voiceMessage'),
     );
-  }, []);
+  }, [t]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -363,7 +365,7 @@ export default function DMChatScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
           {/* TODO: load other user's display_name here */}
-          Chat {/* TODO(i18n) */}
+          {t('dmChat.title')}
         </Text>
       </View>
 
@@ -387,7 +389,7 @@ export default function DMChatScreen() {
           ListEmptyComponent={
             <View style={styles.emptyCenter}>
               <Text style={[styles.emptyText, { color: c.textTertiary }]}>
-                Say hello! {/* TODO(i18n) */}
+                {t('dmChat.sayHello')}
               </Text>
             </View>
           }
@@ -433,7 +435,7 @@ export default function DMChatScreen() {
               borderColor: c.borderSubtle,
             },
           ]}
-          placeholder="Message…" // TODO(i18n)
+          placeholder={t('dmChat.placeholder')}
           placeholderTextColor={c.textTertiary}
           value={text}
           onChangeText={setText}

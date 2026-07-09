@@ -1,0 +1,35 @@
+{
+  "inbox": {
+    "title": "Messages",
+    "noMessagesYet": "No messages yet",
+    "now": "now",
+    "empty": "No conversations yet.\nStart chatting from a user's profile."
+  },
+  "dmChat": {
+    "title": "Chat",
+    "voiceNote": "Voice note",
+    "sayHello": "Say hello!",
+    "placeholder": "Message…",
+    "errorTitle": "Error",
+    "sendTextError": "Failed to send message.",
+    "sendPhotoError": "Failed to send photo.",
+    "permissionTitle": "Permission required",
+    "permissionMessage": "Allow photo access to send images.",
+    "voiceTitle": "Voice notes",
+    "voiceMessage": "Voice recording coming soon."
+  },
+  "friends": {
+    "title": "Friends",
+    "tabFollowers": "Followers",
+    "tabFollowing": "Following",
+    "tabRequests": "Requests",
+    "emptyFollowers": "You have no followers yet.",
+    "emptyFollowing": "You're not following anyone yet.",
+    "emptyRequests": "You have no pending requests.",
+    "userFallback": "User",
+    "accept": "Accept",
+    "reject": "Decline",
+    "remove": "Remove",
+    "unfollow": "Unfollow"
+  }
+}

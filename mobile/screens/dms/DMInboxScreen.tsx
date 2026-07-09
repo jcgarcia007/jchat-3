@@ -13,7 +13,6 @@
  * Realtime: subscribes to dm_messages INSERT events to keep previews live;
  * unsubscribes on unmount.
  *
- * TODO(i18n): all user-visible strings are in English.
  * TODO(Task 1.13/1.15): filter blocked users + respect DM-permission setting.
  */
 
@@ -27,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -58,11 +58,11 @@ function initials(name: string | null, username: string): string {
     .slice(0, 2);
 }
 
-function relativeTime(iso: string | null): string {
+function relativeTime(iso: string | null, nowLabel: string): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'now';
+  if (mins < 1) return nowLabel;
   if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
@@ -79,6 +79,7 @@ interface RowProps {
 
 function ConversationRow({ item, onPress }: RowProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('social');
   const { otherUser, lastMessageBody, lastMessageAt, unreadCount } = item;
   const name = otherUser.display_name ?? otherUser.username;
   const hasUnread = unreadCount > 0;
@@ -119,7 +120,7 @@ function ConversationRow({ item, onPress }: RowProps) {
             {name}
           </Text>
           <Text style={[styles.rowTime, { color: c.textTertiary }]}>
-            {relativeTime(lastMessageAt)}
+            {relativeTime(lastMessageAt, t('inbox.now'))}
           </Text>
         </View>
 
@@ -134,7 +135,7 @@ function ConversationRow({ item, onPress }: RowProps) {
             ]}
             numberOfLines={1}
           >
-            {lastMessageBody ?? 'No messages yet'}
+            {lastMessageBody ?? t('inbox.noMessagesYet')}
           </Text>
           {hasUnread && (
             <View style={[styles.badge, { backgroundColor: palette.brand }]}>
@@ -153,6 +154,7 @@ function ConversationRow({ item, onPress }: RowProps) {
 
 export default function DMInboxScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('social');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<InboxNav>();
   const { user } = useAuth();
@@ -237,7 +239,7 @@ export default function DMInboxScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.borderSubtle }]}>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-          Messages {/* TODO(i18n) */}
+          {t('inbox.title')}
         </Text>
       </View>
 
@@ -245,7 +247,7 @@ export default function DMInboxScreen() {
       {loading && conversations.length === 0 ? (
         <View style={styles.center}>
           <Text style={[styles.emptyText, { color: c.textTertiary }]}>
-            Loading…
+            {t('state.loading', { ns: 'common' })}
           </Text>
         </View>
       ) : (
@@ -265,8 +267,7 @@ export default function DMInboxScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={[styles.emptyText, { color: c.textTertiary }]}>
-                No conversations yet.{'\n'}Start chatting from a user's profile.
-                {/* TODO(i18n) */}
+                {t('inbox.empty')}
               </Text>
             </View>
           }
