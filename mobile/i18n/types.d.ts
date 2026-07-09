@@ -11,6 +11,7 @@ import type chat from './locales/en/chat.json';
 import type profile from './locales/en/profile.json';
 import type settings from './locales/en/settings.json';
 import type social from './locales/en/social.json';
+import type pos from './locales/en/pos.json';
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {
@@ -22,6 +23,7 @@ declare module 'react-i18next' {
       profile: typeof profile;
       settings: typeof settings;
       social: typeof social;
+      pos: typeof pos;
     };
   }
 }

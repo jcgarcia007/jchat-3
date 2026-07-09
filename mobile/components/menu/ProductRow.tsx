@@ -7,8 +7,6 @@
  *   - Badges: best_seller | new | hot
  *   - "+ " button: direct addLine when no required size options;
  *     otherwise TODO(Task 3.3) → open ProductDetail (fallback: first size).
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
@@ -19,6 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconPlus } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
@@ -33,10 +32,15 @@ const BADGE_COLORS: Record<NonNullable<MenuItem['badge']>, string> = {
   hot: palette.danger,
 };
 
-const BADGE_LABELS: Record<NonNullable<MenuItem['badge']>, string> = {
-  best_seller: 'Best Seller',
-  new: 'New',
-  hot: 'Hot',
+type BadgeLabelKey =
+  | 'shared.badgeBestSeller'
+  | 'shared.badgeNew'
+  | 'shared.badgeHot';
+
+const BADGE_LABEL_KEYS: Record<NonNullable<MenuItem['badge']>, BadgeLabelKey> = {
+  best_seller: 'shared.badgeBestSeller',
+  new: 'shared.badgeNew',
+  hot: 'shared.badgeHot',
 };
 
 interface ProductRowProps {
@@ -47,6 +51,7 @@ interface ProductRowProps {
 
 export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const { addLine } = useCart();
 
   const hasPhoto = !!item.photo_url;
@@ -80,7 +85,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
   }, [hasRequiredSizes, item, addLine]);
 
   const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
-  const badgeLabel = item.badge ? BADGE_LABELS[item.badge] : null;
+  const badgeLabel = item.badge ? t(BADGE_LABEL_KEYS[item.badge]) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgSurface, borderBottomColor: c.borderSubtle }]}>
@@ -121,7 +126,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
               {formatPrice(item.price_cents)}
             </Text>
             {hasRequiredSizes ? (
-              <Text style={[styles.fromLabel, { color: c.textSecondary }]}>  from</Text>
+              <Text style={[styles.fromLabel, { color: c.textSecondary }]}>{'  ' + t('shared.from')}</Text>
             ) : null}
           </View>
         </View>
@@ -144,7 +149,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
               hasPhoto ? styles.addButtonPhoto : styles.addButtonCompact,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={`Add ${item.name} to cart`}
+            accessibilityLabel={t('productRow.addToCartA11y', { name: item.name })}
           >
             <IconPlus size={18} color="#ffffff" strokeWidth={2.5} />
           </Pressable>

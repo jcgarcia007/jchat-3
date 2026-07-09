@@ -4,8 +4,6 @@
  * Sticky bottom bar shown only when the cart has items.
  *   - Shows item count badge + "View cart" label + subtotal.
  *   - Tapping → TODO(Task 3.4): navigate to CartScreen.
- *
- * // TODO(i18n)
  */
 
 import React from 'react';
@@ -15,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconShoppingCart } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -27,6 +26,7 @@ interface CartBarProps {
 export function CartBar({ onPress }: CartBarProps) {
   const { itemCount, subtotalCents } = useCart();
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
 
   if (itemCount === 0) return null;
 
@@ -41,7 +41,7 @@ export function CartBar({ onPress }: CartBarProps) {
           { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
         ]}
         accessibilityRole="button"
-        accessibilityLabel={`View cart — ${itemCount} items, ${formattedTotal}`}
+        accessibilityLabel={t('cartBar.viewCartA11y', { count: itemCount, total: formattedTotal })}
       >
         {/* Left: cart icon + count badge */}
         <View style={styles.leftGroup}>
@@ -54,7 +54,7 @@ export function CartBar({ onPress }: CartBarProps) {
         </View>
 
         {/* Center label */}
-        <Text style={styles.label}>View Cart</Text>
+        <Text style={styles.label}>{t('cartBar.viewCart')}</Text>
 
         {/* Right: total */}
         <Text style={styles.total}>{formattedTotal}</Text>

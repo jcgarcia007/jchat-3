@@ -23,7 +23,6 @@
  *
  * Colors: useThemeColors() + palette tokens — NO hardcoded hex.
  * Icons: @tabler/icons-react-native.
- * // TODO(i18n)
  */
 
 import React, {
@@ -32,6 +31,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -96,40 +96,43 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function buildOptionsLabel(line: CartLine): string {
+function buildOptionsLabel(line: CartLine, notePrefix: string): string {
   const parts: string[] = [];
   if (line.size) parts.push(line.size.label);
   for (const extra of line.extras) parts.push(extra.label);
-  if (line.specialInstructions) parts.push(`Note: ${line.specialInstructions}`);
+  if (line.specialInstructions) parts.push(`${notePrefix} ${line.specialInstructions}`);
   return parts.join(' · ');
 }
 
 // ── Order type card data ──────────────────────────────────────────────────────
 
+type OrderCardLabelKey = 'cart.orderTable' | 'cart.orderCounter' | 'cart.orderGift';
+type OrderCardSubKey = 'cart.orderTableSub' | 'cart.orderCounterSub' | 'cart.orderGiftSub';
+
 interface OrderTypeCard {
   type: OrderType;
-  label: string;
-  sublabel: string;
+  labelKey: OrderCardLabelKey;
+  sublabelKey: OrderCardSubKey;
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 }
 
 const ORDER_TYPE_CARDS: OrderTypeCard[] = [
   {
     type: 'table',
-    label: 'Table',
-    sublabel: 'Waiter brings it',
+    labelKey: 'cart.orderTable',
+    sublabelKey: 'cart.orderTableSub',
     Icon: IconArmchair,
   },
   {
     type: 'counter',
-    label: 'Counter',
-    sublabel: 'Pick up yourself',
+    labelKey: 'cart.orderCounter',
+    sublabelKey: 'cart.orderCounterSub',
     Icon: IconShoppingBag,
   },
   {
     type: 'gift',
-    label: 'Gift',
-    sublabel: 'Send to someone',
+    labelKey: 'cart.orderGift',
+    sublabelKey: 'cart.orderGiftSub',
     Icon: IconGift,
   },
 ];
@@ -173,6 +176,7 @@ function QtyButton({ onPress, disabled = false, icon }: QtyButtonProps) {
 
 export default function CartScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const navigation = useNavigation<CartNav>();
   const { user } = useAuth();
 
@@ -252,7 +256,7 @@ export default function CartScreen() {
           seen.add(row.user_id);
           users.push({
             userId: row.user_id,
-            displayName: row.users?.display_name ?? row.users?.username ?? 'User',
+            displayName: row.users?.display_name ?? row.users?.username ?? t('cart.userFallback'),
             username: row.users?.username ?? '',
           });
         }
@@ -266,7 +270,7 @@ export default function CartScreen() {
 
     void loadRoomUsers();
     return () => { cancelled = true; };
-  }, [orderType, roomId, user?.id]);
+  }, [orderType, roomId, user?.id, t]);
 
   // ── Promo code validation ────────────────────────────────────────────────────
 
@@ -277,7 +281,7 @@ export default function CartScreen() {
     if (!isSupabaseConfigured) {
       // Demo mode: accept any code with a flat 10% discount
       const discount = Math.round(subtotalCents * 0.1);
-      setPromoResult({ valid: true, discountCents: discount, label: '10% off (demo)' });
+      setPromoResult({ valid: true, discountCents: discount, label: t('cart.demoDiscount') });
       setPromoCode(code);
       return;
     }
@@ -296,7 +300,7 @@ export default function CartScreen() {
       if (error) throw error;
 
       if (!data) {
-        setPromoResult({ valid: false, discountCents: 0, label: '', error: 'Invalid or expired code.' });
+        setPromoResult({ valid: false, discountCents: 0, label: '', error: t('cart.invalidCode') });
         setPromoCode(null);
         return;
       }
@@ -308,7 +312,7 @@ export default function CartScreen() {
           valid: false,
           discountCents: 0,
           label: '',
-          error: `Minimum order is ${formatCents(minOrder)} for this code.`,
+          error: t('cart.minOrder', { amount: formatCents(minOrder) }),
         });
         setPromoCode(null);
         return;
@@ -325,21 +329,21 @@ export default function CartScreen() {
 
       if (offer.discount_type === 'percent') {
         discountCents = Math.round(subtotalCents * (offer.discount_value / 100));
-        label = `${offer.discount_value}% off`;
+        label = t('cart.percentOff', { value: offer.discount_value });
       } else {
         discountCents = Math.min(offer.discount_value, subtotalCents);
-        label = `${formatCents(offer.discount_value)} off`;
+        label = t('cart.fixedOff', { amount: formatCents(offer.discount_value) });
       }
 
       setPromoResult({ valid: true, discountCents, label });
       setPromoCode(code);
     } catch (err) {
       console.warn('[CartScreen] applyPromo error:', err);
-      Alert.alert('Error', 'Could not validate promo code. Please try again.');
+      Alert.alert(t('shared.errorTitle'), t('cart.promoValidateError'));
     } finally {
       setPromoLoading(false);
     }
-  }, [promoInput, subtotalCents, setPromoCode]);
+  }, [promoInput, subtotalCents, setPromoCode, t]);
 
   const handleClearPromo = useCallback(() => {
     setPromoInput('');
@@ -380,28 +384,28 @@ export default function CartScreen() {
   const handleDecrement = useCallback((lineId: string, qty: number) => {
     if (qty <= 1) {
       Alert.alert(
-        'Remove item?',
-        'This will remove the item from your cart.',
+        t('cart.removeItemTitle'),
+        t('cart.removeItemMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: () => removeLine(lineId) },
+          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+          { text: t('cart.remove'), style: 'destructive', onPress: () => removeLine(lineId) },
         ],
       );
     } else {
       updateQty(lineId, qty - 1);
     }
-  }, [updateQty, removeLine]);
+  }, [updateQty, removeLine, t]);
 
   const handleDelete = useCallback((lineId: string, itemName: string) => {
     Alert.alert(
-      'Remove item?',
-      `Remove "${itemName}" from your cart?`,
+      t('cart.removeItemTitle'),
+      t('cart.removeItemNamed', { name: itemName }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => removeLine(lineId) },
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+        { text: t('cart.remove'), style: 'destructive', onPress: () => removeLine(lineId) },
       ],
     );
-  }, [removeLine]);
+  }, [removeLine, t]);
 
   const handleSelectOrderType = useCallback((type: OrderType) => {
     setOrderType(type);
@@ -426,7 +430,7 @@ export default function CartScreen() {
   // ── Render: cart line item ───────────────────────────────────────────────────
 
   const renderLine = useCallback(({ item: line }: { item: CartLine }) => {
-    const optionsLabel = buildOptionsLabel(line);
+    const optionsLabel = buildOptionsLabel(line, t('cart.notePrefix'));
     return (
       <View style={[styles.lineRow, { backgroundColor: c.bgSurface, borderBottomColor: c.borderSubtle }]}>
         {/* Left: name + options */}
@@ -440,7 +444,7 @@ export default function CartScreen() {
             </Text>
           ) : null}
           <Text style={[styles.lineUnitPrice, { color: c.textSecondary }]}>
-            {formatCents(line.unitPriceCents)} each
+            {t('cart.each', { price: formatCents(line.unitPriceCents) })}
           </Text>
         </View>
 
@@ -471,7 +475,7 @@ export default function CartScreen() {
             onPress={() => handleDelete(line.lineId, line.item.name)}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={`Remove ${line.item.name}`}
+            accessibilityLabel={t('cart.removeA11y', { name: line.item.name })}
             style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.6 : 1 }]}
           >
             <IconTrash size={18} color={c.danger} strokeWidth={2} />
@@ -479,7 +483,7 @@ export default function CartScreen() {
         </View>
       </View>
     );
-  }, [c, handleDecrement, handleIncrement, handleDelete]);
+  }, [c, handleDecrement, handleIncrement, handleDelete, t]);
 
   const keyExtractor = useCallback((line: CartLine) => line.lineId, []);
 
@@ -494,13 +498,13 @@ export default function CartScreen() {
             onPress={handleBack}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('shared.goBack')}
             hitSlop={8}
           >
             <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-            Your Order
+            {t('cart.yourOrder')}
           </Text>
           <View style={styles.headerBtn} />
         </View>
@@ -509,10 +513,10 @@ export default function CartScreen() {
         <View style={styles.emptyContainer}>
           <IconShoppingBag size={56} color={c.textTertiary} strokeWidth={1.5} />
           <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
-            Your cart is empty
+            {t('cart.emptyTitle')}
           </Text>
           <Text style={[styles.emptySubtitle, { color: c.textSecondary }]}>
-            Add some items from the menu to get started.
+            {t('cart.emptySubtitle')}
           </Text>
           <Pressable
             onPress={handleBrowseMenu}
@@ -521,9 +525,9 @@ export default function CartScreen() {
               { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Browse menu"
+            accessibilityLabel={t('cart.browseMenuA11y')}
           >
-            <Text style={styles.browseButtonText}>Browse Menu</Text>
+            <Text style={styles.browseButtonText}>{t('cart.browseMenu')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -547,13 +551,13 @@ export default function CartScreen() {
             onPress={handleBack}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('shared.goBack')}
             hitSlop={8}
           >
             <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-            Your Order
+            {t('cart.yourOrder')}
           </Text>
           <View style={styles.headerBtn} />
         </View>
@@ -567,11 +571,13 @@ export default function CartScreen() {
           {/* ── Order type selector ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              How would you like your order?
+              {t('cart.orderTypeTitle')}
             </Text>
             <View style={styles.orderTypeRow}>
-              {ORDER_TYPE_CARDS.map(({ type, label, sublabel, Icon }) => {
+              {ORDER_TYPE_CARDS.map(({ type, labelKey, sublabelKey, Icon }) => {
                 const isSelected = orderType === type;
+                const label = t(labelKey);
+                const sublabel = t(sublabelKey);
                 return (
                   <Pressable
                     key={type}
@@ -586,7 +592,7 @@ export default function CartScreen() {
                     ]}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
-                    accessibilityLabel={`${label} — ${sublabel}`}
+                    accessibilityLabel={t('cart.orderTypeCardA11y', { label, sublabel })}
                   >
                     <Icon
                       size={24}
@@ -614,7 +620,7 @@ export default function CartScreen() {
           {orderType === 'gift' ? (
             <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
               <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-                Send gift to
+                {t('cart.sendGiftTo')}
               </Text>
 
               {/* Selected recipient chip */}
@@ -634,10 +640,10 @@ export default function CartScreen() {
                     onPress={() => { setGiftRecipient(null); setGiftPickerOpen(true); }}
                     style={({ pressed }) => [styles.changeBtn, { opacity: pressed ? 0.7 : 1 }]}
                     accessibilityRole="button"
-                    accessibilityLabel="Change gift recipient"
+                    accessibilityLabel={t('cart.changeRecipientA11y')}
                   >
                     <Text style={[styles.changeBtnText, { color: palette.brand }]}>
-                      Change
+                      {t('cart.change')}
                     </Text>
                   </Pressable>
                 </View>
@@ -652,11 +658,11 @@ export default function CartScreen() {
                     { borderColor: c.borderSubtle, backgroundColor: c.bgElevated, opacity: pressed ? 0.8 : 1 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel="Select gift recipient"
+                  accessibilityLabel={t('cart.selectRecipientA11y')}
                 >
                   <IconGift size={18} color={c.textSecondary} strokeWidth={2} />
                   <Text style={[styles.pickRecipientText, { color: c.textSecondary }]}>
-                    {giftPickerOpen ? 'Close picker' : 'Select recipient…'}
+                    {giftPickerOpen ? t('cart.closePicker') : t('cart.selectRecipient')}
                   </Text>
                 </Pressable>
               ) : null}
@@ -671,8 +677,8 @@ export default function CartScreen() {
                   ) : roomUsers.length === 0 ? (
                     <Text style={[styles.pickerEmpty, { color: c.textTertiary }]}>
                       {isSupabaseConfigured
-                        ? 'No other users found in this room.'
-                        : 'Connect to Supabase to see room members.'}
+                        ? t('cart.noOtherUsers')
+                        : t('cart.connectSupabase')}
                     </Text>
                   ) : (
                     roomUsers.map((u) => (
@@ -684,7 +690,7 @@ export default function CartScreen() {
                           { borderBottomColor: c.borderSubtle, opacity: pressed ? 0.7 : 1 },
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel={`Send gift to ${u.displayName}`}
+                        accessibilityLabel={t('cart.sendGiftToUserA11y', { name: u.displayName })}
                       >
                         <View style={[styles.avatarCircle, { backgroundColor: palette.brandLight }]}>
                           <Text style={[styles.avatarInitial, { color: palette.brand }]}>
@@ -710,7 +716,7 @@ export default function CartScreen() {
               {/* Required notice */}
               {!giftRecipientId ? (
                 <Text style={[styles.recipientRequired, { color: palette.warning }]}>
-                  A recipient is required to proceed.
+                  {t('cart.recipientRequired')}
                 </Text>
               ) : null}
             </View>
@@ -719,7 +725,7 @@ export default function CartScreen() {
           {/* ── Items list ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              Items
+              {t('cart.items')}
             </Text>
             <FlatList
               data={lines}
@@ -733,7 +739,7 @@ export default function CartScreen() {
           {/* ── Promo code ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              Promo Code
+              {t('cart.promoCode')}
             </Text>
 
             <View style={styles.promoRow}>
@@ -750,7 +756,7 @@ export default function CartScreen() {
                     color: c.textPrimary,
                   },
                 ]}
-                placeholder="Enter promo code…"
+                placeholder={t('cart.promoPlaceholder')}
                 placeholderTextColor={c.textTertiary}
                 value={promoInput}
                 onChangeText={setPromoInput}
@@ -769,10 +775,10 @@ export default function CartScreen() {
                     { backgroundColor: c.bgElevated, opacity: pressed ? 0.7 : 1 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel="Remove promo code"
+                  accessibilityLabel={t('cart.removePromoA11y')}
                 >
                   <Text style={[styles.promoBtnText, { color: palette.danger }]}>
-                    Remove
+                    {t('cart.remove')}
                   </Text>
                 </Pressable>
               ) : (
@@ -787,7 +793,7 @@ export default function CartScreen() {
                     },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel="Apply promo code"
+                  accessibilityLabel={t('cart.applyPromoA11y')}
                   accessibilityState={{ disabled: promoLoading || !promoInput.trim() }}
                 >
                   {promoLoading ? (
@@ -799,7 +805,7 @@ export default function CartScreen() {
                         { color: promoInput.trim() ? '#ffffff' : c.textTertiary },
                       ]}
                     >
-                      Apply
+                      {t('cart.apply')}
                     </Text>
                   )}
                 </Pressable>
@@ -815,8 +821,8 @@ export default function CartScreen() {
                 ]}
               >
                 {promoResult.valid
-                  ? `Code applied — ${promoResult.label} (−${formatCents(promoResult.discountCents)})`
-                  : promoResult.error ?? 'Invalid code.'}
+                  ? t('cart.codeApplied', { label: promoResult.label, amount: formatCents(promoResult.discountCents) })
+                  : promoResult.error ?? t('cart.invalidCodeShort')}
               </Text>
             ) : null}
           </View>
@@ -825,7 +831,7 @@ export default function CartScreen() {
           <View style={[styles.section, styles.totalsSection, { backgroundColor: c.bgSurface }]}>
             {/* Subtotal */}
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>Subtotal</Text>
+              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
               <Text style={[styles.totalValue, { color: c.textPrimary }]}>
                 {formatCents(subtotalCents)}
               </Text>
@@ -835,7 +841,7 @@ export default function CartScreen() {
             {discountCents > 0 ? (
               <View style={styles.totalRow}>
                 <Text style={[styles.totalLabel, { color: palette.success }]}>
-                  Discount ({promoResult?.label})
+                  {t('cart.discountLabel', { label: promoResult?.label ?? '' })}
                 </Text>
                 <Text style={[styles.totalValue, { color: palette.success }]}>
                   −{formatCents(discountCents)}
@@ -847,7 +853,7 @@ export default function CartScreen() {
             <View style={styles.totalRow}>
               <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
                 {/* TODO: tax from business location */}
-                Tax (8%)
+                {t('cart.taxLabel')}
               </Text>
               <Text style={[styles.totalValue, { color: c.textPrimary }]}>
                 {formatCents(taxCents)}
@@ -859,7 +865,7 @@ export default function CartScreen() {
 
             {/* Total */}
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>Total</Text>
+              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
               <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
                 {formatCents(totalCents)}
               </Text>
@@ -875,7 +881,7 @@ export default function CartScreen() {
           {/* Disabled hint */}
           {!canCheckout && orderType === 'gift' && !giftRecipientId ? (
             <Text style={[styles.checkoutHint, { color: palette.warning }]}>
-              Please select a gift recipient above.
+              {t('cart.checkoutHint')}
             </Text>
           ) : null}
 
@@ -890,7 +896,7 @@ export default function CartScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={canCheckout ? `Proceed to checkout — ${formatCents(totalCents)}` : 'Select order type to proceed'}
+            accessibilityLabel={canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(totalCents) }) : t('cart.selectOrderType')}
             accessibilityState={{ disabled: !canCheckout }}
           >
             <Text
@@ -899,7 +905,7 @@ export default function CartScreen() {
                 { color: canCheckout ? '#ffffff' : c.textTertiary },
               ]}
             >
-              {canCheckout ? `Proceed to Checkout · ${formatCents(totalCents)}` : 'Select order type to proceed'}
+              {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(totalCents) }) : t('cart.selectOrderType')}
             </Text>
           </Pressable>
         </View>

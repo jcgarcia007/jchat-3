@@ -20,7 +20,6 @@
  * Colors: useThemeColors() + palette tokens only — no hardcoded hex
  *   (badge accent colours use a small local const, same pattern as ProductRow).
  * Icons: @tabler/icons-react-native
- * // TODO(i18n)
  */
 
 import React, {
@@ -28,6 +27,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Image,
   KeyboardAvoidingView,
@@ -62,10 +62,15 @@ const BADGE_COLORS: Record<NonNullable<MenuItem['badge']>, string> = {
   hot: palette.danger,
 };
 
-const BADGE_LABELS: Record<NonNullable<MenuItem['badge']>, string> = {
-  best_seller: 'Best Seller',
-  new: 'New',
-  hot: 'Hot',
+type BadgeLabelKey =
+  | 'shared.badgeBestSeller'
+  | 'shared.badgeNew'
+  | 'shared.badgeHot';
+
+const BADGE_LABEL_KEYS: Record<NonNullable<MenuItem['badge']>, BadgeLabelKey> = {
+  best_seller: 'shared.badgeBestSeller',
+  new: 'shared.badgeNew',
+  hot: 'shared.badgeHot',
 };
 
 // ── Route params ──────────────────────────────────────────────────────────────
@@ -86,6 +91,7 @@ function formatCents(cents: number): string {
 
 export default function ProductDetailScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const navigation = useNavigation();
   const route = useRoute<ProductDetailRoute>();
   const { addLine } = useCart();
@@ -192,7 +198,7 @@ export default function ProductDetailScreen() {
   // ── Badge ───────────────────────────────────────────────────────────────────
 
   const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
-  const badgeLabel = item.badge ? BADGE_LABELS[item.badge] : null;
+  const badgeLabel = item.badge ? t(BADGE_LABEL_KEYS[item.badge]) : null;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -223,7 +229,7 @@ export default function ProductDetailScreen() {
                 style={[styles.heroImage, styles.heroPlaceholder, { backgroundColor: c.bgElevated }]}
               >
                 <Text style={[styles.heroPlaceholderText, { color: c.textTertiary }]}>
-                  No photo
+                  {t('productDetail.noPhoto')}
                 </Text>
               </View>
             )}
@@ -236,7 +242,7 @@ export default function ProductDetailScreen() {
                 { opacity: pressed ? 0.7 : 1 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('shared.goBack')}
               hitSlop={8}
             >
               <IconArrowLeft size={20} color="#ffffff" strokeWidth={2.5} />
@@ -261,7 +267,7 @@ export default function ProductDetailScreen() {
                 {formatCents(item.price_cents)}
                 {hasSizes ? (
                   <Text style={[styles.fromLabel, { color: c.textSecondary }]}>
-                    {' '}from
+                    {' ' + t('shared.from')}
                   </Text>
                 ) : null}
               </Text>
@@ -294,7 +300,7 @@ export default function ProductDetailScreen() {
             {item.id_required ? (
               <View style={[styles.idNotice, { backgroundColor: palette.warning + '22', borderColor: palette.warning + '55' }]}>
                 <Text style={[styles.idNoticeText, { color: palette.warning }]}>
-                  Valid ID required to order this item
+                  {t('productDetail.idRequired')}
                 </Text>
               </View>
             ) : null}
@@ -305,11 +311,11 @@ export default function ProductDetailScreen() {
             <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-                  Size
+                  {t('productDetail.size')}
                 </Text>
                 <View style={[styles.requiredBadge, { backgroundColor: palette.danger + '22' }]}>
                   <Text style={[styles.requiredBadgeText, { color: palette.danger }]}>
-                    Required
+                    {t('productDetail.required')}
                   </Text>
                 </View>
               </View>
@@ -353,7 +359,7 @@ export default function ProductDetailScreen() {
                       </Text>
                     ) : (
                       <Text style={[styles.optionPrice, { color: c.textTertiary }]}>
-                        Included
+                        {t('productDetail.included')}
                       </Text>
                     )}
                   </Pressable>
@@ -367,10 +373,10 @@ export default function ProductDetailScreen() {
             <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-                  Extras
+                  {t('productDetail.extras')}
                 </Text>
                 <Text style={[styles.optionalLabel, { color: c.textTertiary }]}>
-                  Optional
+                  {t('productDetail.optional')}
                 </Text>
               </View>
 
@@ -419,7 +425,7 @@ export default function ProductDetailScreen() {
           {/* ── Special instructions ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              Special Instructions
+              {t('productDetail.specialInstructions')}
             </Text>
             <TextInput
               style={[
@@ -430,7 +436,7 @@ export default function ProductDetailScreen() {
                   borderColor: c.borderSubtle,
                 },
               ]}
-              placeholder="Allergies, preferences…"
+              placeholder={t('productDetail.instructionsPlaceholder')}
               placeholderTextColor={c.textTertiary}
               value={specialInstructions}
               onChangeText={setSpecialInstructions}
@@ -446,7 +452,7 @@ export default function ProductDetailScreen() {
           {/* ── Quantity selector ── */}
           <View style={[styles.section, styles.qtySection, { backgroundColor: c.bgSurface }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              Quantity
+              {t('productDetail.quantity')}
             </Text>
             <View style={styles.qtyRow}>
               <Pressable
@@ -460,7 +466,7 @@ export default function ProductDetailScreen() {
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Decrease quantity"
+                accessibilityLabel={t('productDetail.decreaseQty')}
                 accessibilityState={{ disabled: qty <= 1 }}
                 hitSlop={8}
               >
@@ -482,7 +488,7 @@ export default function ProductDetailScreen() {
                   { backgroundColor: palette.brandLight, opacity: pressed ? 0.7 : 1 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Increase quantity"
+                accessibilityLabel={t('productDetail.increaseQty')}
                 hitSlop={8}
               >
                 <IconPlus size={18} color={palette.brand} strokeWidth={2.5} />
@@ -521,8 +527,8 @@ export default function ProductDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel={
               canAddToCart
-                ? `Add to cart — ${formatCents(totalCents)}`
-                : 'Select a size to add to cart'
+                ? t('productDetail.addToCartA11y', { price: formatCents(totalCents) })
+                : t('productDetail.selectSizeA11y')
             }
             accessibilityState={{ disabled: !canAddToCart }}
           >
@@ -532,7 +538,7 @@ export default function ProductDetailScreen() {
                 { color: canAddToCart ? '#ffffff' : c.textTertiary },
               ]}
             >
-              {canAddToCart ? `Add to Cart` : 'Select a size'}
+              {canAddToCart ? t('productDetail.addToCart') : t('productDetail.selectSize')}
             </Text>
           </Pressable>
         </View>

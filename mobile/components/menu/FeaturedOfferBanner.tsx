@@ -5,8 +5,6 @@
  * TODO: fetch active offer from offers table (Task 2.6 / 3.16 schema).
  *       For now accepts an optional offer stub and renders a placeholder when
  *       no real data is available.
- *
- * // TODO(i18n)
  */
 
 import React from 'react';
@@ -15,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 
@@ -31,13 +30,14 @@ interface FeaturedOfferBannerProps {
 
 export function FeaturedOfferBanner({ offer }: FeaturedOfferBannerProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
 
   if (!offer) return null;
 
   return (
     <View style={[styles.banner, { backgroundColor: palette.brand + '18', borderColor: palette.brand + '44' }]}>
       <View style={styles.pill}>
-        <Text style={styles.pillText}>OFFER</Text>
+        <Text style={styles.pillText}>{t('offerBanner.badge')}</Text>
       </View>
       <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1}>
         {offer.title}

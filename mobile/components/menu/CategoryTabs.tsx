@@ -3,8 +3,7 @@
  *
  * Horizontal scrollable tabs for menu categories.
  * Tapping a tab invokes onSelect(categoryId) so the parent can scroll the list.
- *
- * // TODO(i18n)
+ * (Category names come from the DB — no static strings to translate here.)
  */
 
 import React, { useRef } from 'react';

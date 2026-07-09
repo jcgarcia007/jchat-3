@@ -20,7 +20,6 @@
  * // TODO(Task 3.4): navigate to CartScreen from CartBar.
  *
  * Colors: useThemeColors() only. Icons: @tabler/icons-react-native.
- * // TODO(i18n)
  */
 
 import React, {
@@ -46,6 +45,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import {
   IconArrowLeft,
   IconShoppingCart,
@@ -250,6 +250,7 @@ function buildSections(categories: MenuCategory[], query: string): MenuSection[]
 
 export default function MenuScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const navigation = useNavigation<MenuNav>();
   const route = useRoute<MenuRoute>();
   const cart = useCart();
@@ -295,12 +296,12 @@ export default function MenuScreen() {
           setCategories(cats);
           // Business name comes from route params; the menu service doesn't fetch it.
           if (!routeBusinessName && cats.length === 0) {
-            setBusinessName('Menu');
+            setBusinessName(t('menu.menuFallback'));
           }
         }
       } catch (err) {
         if (!cancelled) {
-          Alert.alert('Error', 'Could not load the menu. Please try again.');
+          Alert.alert(t('shared.errorTitle'), t('menu.loadError'));
           console.warn('[MenuScreen] getMenu error:', err);
         }
       } finally {
@@ -310,7 +311,7 @@ export default function MenuScreen() {
 
     void load();
     return () => { cancelled = true; };
-  }, [businessId, routeBusinessName]);
+  }, [businessId, routeBusinessName, t]);
 
   // Set first category as active once categories are loaded
   useEffect(() => {
@@ -413,12 +414,12 @@ export default function MenuScreen() {
       <View style={styles.emptyState}>
         <Text style={[styles.emptyText, { color: c.textSecondary }]}>
           {searchQuery.trim()
-            ? `No items match "${searchQuery}"`
-            : 'No menu items available right now.'}
+            ? t('menu.noMatch', { query: searchQuery })
+            : t('menu.noItems')}
         </Text>
       </View>
     );
-  }, [loading, searchQuery, c]);
+  }, [loading, searchQuery, c, t]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -430,21 +431,21 @@ export default function MenuScreen() {
           onPress={handleBack}
           style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('shared.goBack')}
           hitSlop={8}
         >
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </Pressable>
 
         <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
-          {businessName || 'Menu'}
+          {businessName || t('menu.menuFallback')}
         </Text>
 
         <Pressable
           onPress={handleCartPress}
           style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel={`Shopping cart, ${cart.itemCount} items`}
+          accessibilityLabel={t('menu.cartA11y', { count: cart.itemCount })}
           hitSlop={8}
         >
           <View>
@@ -466,7 +467,7 @@ export default function MenuScreen() {
           <IconSearch size={16} color={c.textTertiary} strokeWidth={2} />
           <TextInput
             style={[styles.searchInput, { color: c.textPrimary }]}
-            placeholder="Search menu…"
+            placeholder={t('menu.searchPlaceholder')}
             placeholderTextColor={c.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
