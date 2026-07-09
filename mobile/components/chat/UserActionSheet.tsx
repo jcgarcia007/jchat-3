@@ -35,7 +35,6 @@
  *
  * // TODO(Stage 4): require moderator physical presence (geofence) before
  * //   displaying owner/mod actions.
- * // TODO(i18n)
  */
 
 import React, { useCallback, useState } from 'react';
@@ -66,6 +65,7 @@ import {
   IconUserPlus,
   IconX,
 } from '@tabler/icons-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
@@ -128,29 +128,30 @@ interface MuteDurationPickerProps {
 }
 
 function MuteDurationPicker({ onSelect, onCancel, c }: MuteDurationPickerProps) {
+  const { t } = useTranslation('chat');
   const s = pickerStyles(c);
   return (
     <View style={s.container}>
-      <Text style={s.title}>Mute in room for…</Text>{/* TODO(i18n) */}
+      <Text style={s.title}>{t('userAction.mutePickerTitle')}</Text>
 
       <Pressable style={s.option} onPress={() => onSelect('1h')}>
         <IconClock size={18} color={c.textSecondary} />
-        <Text style={s.optionLabel}>1 hour</Text>{/* TODO(i18n) */}
+        <Text style={s.optionLabel}>{t('userAction.duration1h')}</Text>
       </Pressable>
 
       <Pressable style={s.option} onPress={() => onSelect('24h')}>
         <IconClock size={18} color={c.textSecondary} />
-        <Text style={s.optionLabel}>24 hours</Text>{/* TODO(i18n) */}
+        <Text style={s.optionLabel}>{t('userAction.duration24h')}</Text>
       </Pressable>
 
       <Pressable style={s.option} onPress={() => onSelect('permanent')}>
         <IconBellOff size={18} color={palette.danger} />
-        <Text style={[s.optionLabel, { color: palette.danger }]}>Permanent</Text>{/* TODO(i18n) */}
+        <Text style={[s.optionLabel, { color: palette.danger }]}>{t('userAction.durationPermanent')}</Text>
       </Pressable>
 
       <Pressable style={s.cancelOption} onPress={onCancel}>
         <IconX size={16} color={c.textSecondary} />
-        <Text style={s.cancelLabel}>Cancel</Text>{/* TODO(i18n) */}
+        <Text style={s.cancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
       </Pressable>
     </View>
   );
@@ -282,6 +283,7 @@ export function UserActionSheet({
 }: UserActionSheetProps) {
   const c = useThemeColors();
   const { user } = useAuth();
+  const { t } = useTranslation('chat');
 
   /** Whether to show the mute-duration sub-picker instead of the main list. */
   const [showMutePicker, setShowMutePicker] = useState(false);
@@ -301,8 +303,8 @@ export function UserActionSheet({
         await fn();
       } catch (err) {
         Alert.alert(
-          'Something went wrong', // TODO(i18n)
-          err instanceof Error ? err.message : 'Please try again.',
+          t('userAction.errorTitle'),
+          err instanceof Error ? err.message : t('userAction.tryAgain'),
         );
       } finally {
         setLoadingAction(null);
@@ -329,10 +331,10 @@ export function UserActionSheet({
       // Server decides public (direct follow) vs private (pending request).
       const result = await requestOrFollow(targetUserId);
       Alert.alert(
-        result === 'requested' ? 'Request sent' : 'Following', // TODO(i18n)
+        result === 'requested' ? t('userAction.requestSentTitle') : t('userAction.followingTitle'),
         result === 'requested'
-          ? 'This account is private. They will review your request.'
-          : `You are now following ${targetName}.`,
+          ? t('userAction.requestSentMessage')
+          : t('userAction.nowFollowing', { name: targetName }),
       );
       onClose();
     });
@@ -343,8 +345,8 @@ export function UserActionSheet({
     // This is a local preference — no room_mutes row is written.
     // TODO(schema): add user_personal_mutes table and write a row here.
     Alert.alert(
-      `${targetName} muted`, // TODO(i18n)
-      'You will no longer see their messages.',
+      t('userAction.mutedTitle', { name: targetName }),
+      t('userAction.personalMuteMessage'),
     );
     onClose();
   }, [targetName, onClose]);
@@ -352,8 +354,8 @@ export function UserActionSheet({
   const handleReport = useCallback(async () => {
     if (!user) return;
     await run('report', async () => {
-      await reportUser(user.id, targetUserId, 'Reported from chat'); // TODO(i18n): let user pick a reason
-      Alert.alert('Report submitted', 'Our team will review this report.'); // TODO(i18n)
+      await reportUser(user.id, targetUserId, 'Reported from chat'); // TODO: let the user pick a reason
+      Alert.alert(t('userAction.reportSubmittedTitle'), t('userAction.reportSubmittedMessage'));
       onClose();
     });
   }, [user, run, targetUserId, onClose]);
@@ -361,12 +363,12 @@ export function UserActionSheet({
   const handleBlock = useCallback(async () => {
     if (!user) return;
     Alert.alert(
-      `Block ${targetName}?`, // TODO(i18n)
-      'They will be hidden from your view. This does not remove them from the room.', // TODO(i18n)
+      t('userAction.blockTitle', { name: targetName }),
+      t('userAction.blockMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Block', // TODO(i18n)
+          text: t('userAction.blockConfirm'),
           style: 'destructive',
           onPress: async () => {
             await run('block', async () => {
@@ -392,7 +394,7 @@ export function UserActionSheet({
         action: 'warn',
         detail: null,
       });
-      Alert.alert(`${targetName} warned`, 'Warning has been logged.'); // TODO(i18n)
+      Alert.alert(t('userAction.warnedTitle', { name: targetName }), t('userAction.warnedMessage'));
       onClose();
     });
   }, [user, run, businessId, roomId, targetUserId, targetName, onClose]);
@@ -415,10 +417,14 @@ export function UserActionSheet({
         // TODO(Stage 4): require moderator physical presence (geofence check)
         await muteInRoom(roomId, targetUserId, user.id, businessId, durationHours);
         const label =
-          duration === '1h' ? '1 hour' : duration === '24h' ? '24 hours' : 'permanently'; // TODO(i18n)
+          duration === '1h'
+            ? t('userAction.forOneHour')
+            : duration === '24h'
+            ? t('userAction.forTwentyFourHours')
+            : t('userAction.forPermanent');
         Alert.alert(
-          `${targetName} muted`, // TODO(i18n)
-          `They have been muted in this room for ${label}.`,
+          t('userAction.mutedTitle', { name: targetName }),
+          t('userAction.mutedInRoomFor', { duration: label }),
         );
         onClose();
       });
@@ -429,12 +435,12 @@ export function UserActionSheet({
   const handleRemove = useCallback(async () => {
     if (!user) return;
     Alert.alert(
-      `Remove ${targetName}?`, // TODO(i18n)
-      'They will be removed from this room but can re-enter.', // TODO(i18n)
+      t('userAction.removeTitle', { name: targetName }),
+      t('userAction.removeMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Remove', // TODO(i18n)
+          text: t('userAction.removeConfirm'),
           style: 'destructive',
           onPress: async () => {
             await run('remove', async () => {
@@ -459,12 +465,12 @@ export function UserActionSheet({
   const handleBan = useCallback(async () => {
     if (!user) return;
     Alert.alert(
-      `Ban ${targetName}?`, // TODO(i18n)
-      'They will be permanently removed from this room and cannot re-enter.', // TODO(i18n)
+      t('userAction.banTitle', { name: targetName }),
+      t('userAction.banMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Ban', // TODO(i18n)
+          text: t('userAction.banConfirm'),
           style: 'destructive',
           onPress: async () => {
             await run('ban', async () => {
@@ -513,8 +519,7 @@ export function UserActionSheet({
               <View style={s.roleBadge}>
                 <IconShield size={11} color={c.brand} />
                 <Text style={s.roleBadgeText}>
-                  {viewerRole === 'owner' ? 'Owner view' : 'Moderator view'}
-                  {/* TODO(i18n) */}
+                  {viewerRole === 'owner' ? t('userAction.ownerView') : t('userAction.moderatorView')}
                 </Text>
               </View>
             )}
@@ -544,7 +549,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconUser size={20} color={c.textSecondary} />}
-                label="View Profile" // TODO(i18n)
+                label={t('userAction.viewProfile')}
                 onPress={handleViewProfile}
               />
 
@@ -552,7 +557,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconMessage size={20} color={c.textSecondary} />}
-                label="Send DM" // TODO(i18n)
+                label={t('userAction.sendDM')}
                 onPress={handleDM}
               />
 
@@ -560,7 +565,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconUserPlus size={20} color={c.textSecondary} />}
-                label="Follow / Add Friend" // TODO(i18n)
+                label={t('userAction.followAddFriend')}
                 onPress={handleFollow}
                 loading={loadingAction === 'follow'}
               />
@@ -569,7 +574,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconBell size={20} color={c.textSecondary} />}
-                label="Mute" // TODO(i18n)
+                label={t('userAction.mute')}
                 onPress={handlePersonalMute}
               />
 
@@ -580,7 +585,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconFlag size={20} color={palette.danger} />}
-                label="Report" // TODO(i18n)
+                label={t('userAction.report')}
                 onPress={handleReport}
                 destructive
                 loading={loadingAction === 'report'}
@@ -590,7 +595,7 @@ export function UserActionSheet({
               <ActionRow
                 c={c}
                 icon={<IconUserOff size={20} color={palette.danger} />}
-                label="Block" // TODO(i18n)
+                label={t('userAction.block')}
                 onPress={handleBlock}
                 destructive
                 loading={loadingAction === 'block'}
@@ -602,7 +607,7 @@ export function UserActionSheet({
                   {/* Section label */}
                   <View style={s.sectionHeader}>
                     <Text style={s.sectionLabel}>
-                      Room moderation {/* TODO(i18n) */}
+                      {t('userAction.roomModeration')}
                     </Text>
                   </View>
 
@@ -610,7 +615,7 @@ export function UserActionSheet({
                   <ActionRow
                     c={c}
                     icon={<IconAlertTriangle size={20} color={c.warning} />}
-                    label="Warn user" // TODO(i18n)
+                    label={t('userAction.warnUser')}
                     onPress={handleWarn}
                     loading={loadingAction === 'warn'}
                   />
@@ -619,7 +624,7 @@ export function UserActionSheet({
                   <ActionRow
                     c={c}
                     icon={<IconBellOff size={20} color={c.textSecondary} />}
-                    label="Mute in room" // TODO(i18n)
+                    label={t('userAction.muteInRoom')}
                     onPress={handleMuteInRoomPress}
                     loading={loadingAction === 'muteRoom'}
                   />
@@ -631,7 +636,7 @@ export function UserActionSheet({
                   <ActionRow
                     c={c}
                     icon={<IconUserMinus size={20} color={palette.danger} />}
-                    label="Remove from room" // TODO(i18n)
+                    label={t('userAction.removeFromRoom')}
                     onPress={handleRemove}
                     destructive
                     loading={loadingAction === 'remove'}
@@ -641,7 +646,7 @@ export function UserActionSheet({
                   <ActionRow
                     c={c}
                     icon={<IconBan size={20} color={palette.danger} />}
-                    label="Ban permanently" // TODO(i18n)
+                    label={t('userAction.banPermanently')}
                     onPress={handleBan}
                     destructive
                     loading={loadingAction === 'ban'}
