@@ -81,8 +81,11 @@ const config: ExpoConfig = {
     [
       'expo-location',
       {
-        locationAlwaysAndWhenInUsePermission:
-          'JChat uses your location for venue geofencing and the live map.',
+        // "When in use" only (M8). Proximity/geofencing runs in the FOREGROUND —
+        // there is no real background location yet. Requesting "Always" without
+        // using it is needless Apple-review friction. Restore
+        // locationAlwaysAndWhenInUsePermission + UIBackgroundModes when Stage 4
+        // wires real background geofencing (see services/geofence.ts TODO).
         locationWhenInUsePermission:
           'JChat uses your location to show nearby venues on the map.',
       },
