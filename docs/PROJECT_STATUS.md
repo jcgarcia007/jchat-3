@@ -13,6 +13,9 @@ Last updated: 2026-07-10
 > `55eaa2d`, `c746796`). Pendientes de Juan (no-código): S5 leaked-password toggle, S4 rate
 > limiting (diferido), M4 capability Apple, flip W1 CSP a enforce, revocar/regenerar `.p8`
 > de Apple, device testing (OAuth/delete/biometría vía EAS dev-client). Ver PLAN_LANZAMIENTO.md.
+> Continuación: cerrados también M8 (`75dbfcf`), M3/Apple-Maps docs (`7051a34`) y M9 OTA
+> (`12fc1f7`). Fase 2 de bloqueantes de review completa en código. Pendiente de Juan para
+> OTA: correr `eas update:configure` una vez desde `mobile/`.
 
 > **⚠️ SEGURIDAD PENDIENTE:** el archivo `.p8` de Sign in with Apple se expuso durante la
 > configuración. Revocar la key en Apple Developer → Keys, generar una nueva, regenerar el

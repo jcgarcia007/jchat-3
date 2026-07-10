@@ -92,9 +92,9 @@ Móvil:
 - [~] **M4** — Sign in with Apple: código listo (reusa `handleOAuth` de M1); FALTA capability en App Store Connect *(Juan)* + device test
 - [x] **M6** — Borrado de cuenta in-app (Edge Function delete-account + Settings UI, hard delete) — `55eaa2d`
 - [x] **M2** — Biometría real (LockScreen gate en cold start + toggle opt-in) — `c746796`
-- [ ] **M8** — Permiso ubicación "when in use" — PENDIENTE
-- [ ] **M3** — Resolver Maps iOS (Google-custom vs Apple) — PENDIENTE (decisión de producto)
-- [ ] **M9** — OTA (runtimeVersion + canales) — PENDIENTE
+- [x] **M8** — Permiso ubicación "when in use" — `75dbfcf`
+- [x] **M3** — Maps iOS = Apple Maps (decisión de producto; docs D-20) — `7051a34`
+- [x] **M9** — OTA (runtimeVersion fingerprint + canales EAS Update) — `12fc1f7`
 
 ### FASE 3 — Que la app se sienta viva  ·  ~8.5-12 d
 **Responsable: Claude Code + cuentas de infra de Juan**
@@ -206,7 +206,7 @@ pesado) · offline mode (choca con arquitectura cloud-first).
 |---|---|---|
 | FASE 0 (legal/cuentas) | ⬜ no iniciado | — |
 | FASE 1 (seguridad) | 🟨 en progreso | S1 3172ae2 · S2/S3/S6/S7 af43587 · E1/E5 9a400cd (falta S4/S5 de Juan) |
-| FASE 2 (review tiendas) | 🟨 en progreso | W1 1af2168 · W2 89977e2 · W3 (ya) · M1 34303ce · M2 c746796 · M6 55eaa2d (falta M4 capability/device, M3, M8, M9) |
+| FASE 2 (review tiendas) | 🟨 código completo (falta acción de Juan) | W1 1af2168 · W2 89977e2 · W3 (ya) · M1 34303ce · M2 c746796 · M6 55eaa2d · M8 75dbfcf · M3 7051a34 (docs) · M9 12fc1f7 — pendiente Juan: M4 capability/device, flip W1 enforce |
 | FASE 3 (app viva) | ⬜ no iniciado | — |
 | FASE 4 (verificación) | ⬜ no iniciado | — |
 | FASE 5 (comercio) | ⬜ no iniciado | — |
