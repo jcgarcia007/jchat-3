@@ -55,7 +55,12 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import {
+  supabase,
+  isSupabaseConfigured,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+} from '../../services/supabase';
 import { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
 // ---------------------------------------------------------------------------
@@ -317,39 +322,74 @@ export default function SettingsScreen() {
     );
   }, [signOut, t]);
 
-  // ── Delete account ─────────────────────────────────────────────────────────
-  const handleDeleteAccount = useCallback(() => {
-    Alert.alert(
-      t('alerts.deleteTitle'),
-      t('alerts.deleteMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+  // ── Delete account (M6 — hard delete via Edge Function) ────────────────────
+  // Calls the `delete-account` Edge Function, which verifies the caller's JWT
+  // server-side and hard-deletes auth.users (cascades all personal data).
+  const performDeleteAccount = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+      return;
+    }
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+        return;
+      }
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+        return;
+      }
+
+      // Success — confirm, then sign out (AuthContext routes to Welcome/Login).
+      Alert.alert(t('alerts.deleteSuccessTitle'), t('alerts.deleteSuccessMessage'), [
         {
-          text: t('alerts.deleteConfirm'),
-          style: 'destructive',
+          text: t('actions.ok', { ns: 'common' }),
           onPress: () => {
-            // TODO(server): schedule account deletion with 24h delay
-            // Call a server-side Edge Function that:
-            //   1. Marks users.deletion_requested_at = now()
-            //   2. Schedules a job to permanently delete after 24h
-            //   3. Signs the user out immediately
-            Alert.alert(
-              t('alerts.deleteReceivedTitle'),
-              t('alerts.deleteReceivedMessage'),
-              [
-                {
-                  text: t('actions.ok', { ns: 'common' }),
-                  onPress: () => {
-                    signOut().catch(() => null);
-                  },
-                },
-              ],
-            );
+            signOut().catch(() => null);
           },
         },
-      ],
-    );
+      ]);
+    } catch {
+      Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+    }
   }, [signOut, t]);
+
+  const handleDeleteAccount = useCallback(() => {
+    // Confirmation 1 — explain that deletion is permanent and irreversible.
+    Alert.alert(t('alerts.deleteTitle'), t('alerts.deleteMessage'), [
+      { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+      {
+        text: t('alerts.deleteContinue'),
+        style: 'destructive',
+        onPress: () => {
+          // Confirmation 2 — last chance before the irreversible action.
+          Alert.alert(t('alerts.deleteFinalTitle'), t('alerts.deleteFinalMessage'), [
+            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+            {
+              text: t('alerts.deleteConfirm'),
+              style: 'destructive',
+              onPress: () => {
+                void performDeleteAccount();
+              },
+            },
+          ]);
+        },
+      },
+    ]);
+  }, [performDeleteAccount, t]);
 
   // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = useCallback(() => {
