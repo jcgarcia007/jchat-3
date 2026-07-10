@@ -1,11 +1,22 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
 > **`docs/PLAN_LANZAMIENTO.md`**; los 3 informes de evidencia y los prompts de remediación
 > están en `docs/AUDITORIA_*_2026.md` + `docs/PROMPT_CLAUDE_CODE_seguridad.md`.
+
+> **Sesión 2026-07-10 — Seguridad + bloqueantes de review:** cerrados en código S1, S2,
+> S3, S6, S7, E1, E5 (Bloque 1) y W1, W2, W3, M1, M2, M6 (Fase 2). 8 commits auditados y
+> verificados en BD (`3172ae2`, `af43587`, `9a400cd`, `1af2168`, `89977e2`, `34303ce`,
+> `55eaa2d`, `c746796`). Pendientes de Juan (no-código): S5 leaked-password toggle, S4 rate
+> limiting (diferido), M4 capability Apple, flip W1 CSP a enforce, revocar/regenerar `.p8`
+> de Apple, device testing (OAuth/delete/biometría vía EAS dev-client). Ver PLAN_LANZAMIENTO.md.
+
+> **⚠️ SEGURIDAD PENDIENTE:** el archivo `.p8` de Sign in with Apple se expuso durante la
+> configuración. Revocar la key en Apple Developer → Keys, generar una nueva, regenerar el
+> JWT (client secret) y actualizarlo en Supabase **ANTES de producción.**
 
 ---
 

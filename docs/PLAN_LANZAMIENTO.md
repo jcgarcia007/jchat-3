@@ -4,7 +4,7 @@
 > completa del 2026-07-09 (seguridad, escalabilidad, móvil iOS/Android, web, POS).
 > Los 4 informes de auditoría son la evidencia detrás de cada tarea.
 >
-> **Última actualización: 2026-07-09**
+> **Última actualización: 2026-07-10**
 
 ---
 
@@ -69,28 +69,32 @@ comercio/POS que podrías ajustar según feedback).
 
 ### FASE 1 — Seguridad crítica  ·  ~3.5-5 d  ·  BLOQUEA TODO
 **Responsable: Claude Code (prompts ya escritos) + 2 toggles de Juan**
-- [ ] **S1** — Lockdown `rooms.qr_token` + `password_hash` + RPC owner *(PROMPT A, aislado)*
-- [ ] **S2** — Revoke EXECUTE funciones admin/cron/trigger para anon *(PROMPT B)*
-- [ ] **S3** — `public_profiles` a security_invoker *(PROMPT B)*
-- [ ] **S6/S7** — buckets listing + policy stripe-events *(PROMPT B)*
-- [ ] **E1** — RLS initPlan wrap + helpers STABLE *(PROMPT C)*
-- [ ] **S5** — *(Juan)* activar leaked-password protection en Supabase Auth
-- [ ] **S4** — Rate limiting: Supabase Auth nativo *(Juan)* + Upstash/Cloudflare en Edge *(Claude Code)*
+- [x] **S1** — Lockdown `rooms.qr_token` + `password_hash` + RPC owner — `3172ae2`
+- [x] **S2** — Revoke EXECUTE funciones — `af43587`
+- [x] **S3** — `public_profiles` (se MANTIENE security_definer intencional + `is_private`) — `af43587`
+- [x] **S6/S7** — menu-photos owner-scoped + stripe-events deny-all — `af43587`
+- [x] **E1** — RLS initPlan wrap (6 policies SELECT) — `9a400cd`
+- [ ] **S5** — *(Juan)* leaked-password protection — PENDIENTE (toggle de Juan)
+- [ ] **S4** — Rate limiting: Supabase Auth nativo *(Juan)* + Upstash/Cloudflare *(Claude Code)* — DIFERIDO (no bloqueante para beta controlada; tracked)
+
+> **Nota S3:** el linter marca `security_definer_view` como warning, pero se decidió
+> MANTENER `public_profiles` como SECURITY DEFINER intencionalmente (es la compuerta de
+> columnas públicas sobre `users`, cuya RLS es own-row only). Ver DECISIONS.md (D-15).
 
 ### FASE 2 — Bloqueantes de review de tiendas  ·  ~6.5-9 d
 **Responsable: Claude Code + capabilities de Juan**
 Web:
-- [ ] **W1** — Security headers + CSP calibrada (Supabase/Stripe/Maps allowlist)
-- [ ] **W2** — Fix open-redirect `//`
-- [ ] **W3** — Reconciliar esquemas QR (quedarse con `/c/token`)
+- [x] **W1** — Security headers + CSP (report-only, falta flip a enforce tras calibrar) — `1af2168`
+- [x] **W2** — Fix open-redirect `//` — `89977e2`
+- [x] **W3** — Reconciliar esquemas QR — YA reconciliado (sin commit; `/r/slug` ya no existía)
 Móvil:
-- [ ] **M1** — Deep-link OAuth (scheme jchat:// + openAuthSessionAsync + setSession)
-- [ ] **M4** — Sign in with Apple capability *(Juan: App Store Connect)* + flujo
-- [ ] **M6** — Borrado de cuenta in-app (RPC + pantalla Settings)
-- [ ] **M2** — Biometría resume sesión (o quitar del UI si se difiere)
-- [ ] **M8** — Permiso ubicación "when in use"
-- [ ] **M3** — Resolver Maps iOS (decidir Google-custom vs Apple)
-- [ ] **M9** — OTA (runtimeVersion + canales)
+- [x] **M1** — Deep-link OAuth (scheme jchat:// + openAuthSessionAsync + setSession) — `34303ce` (+`f4ba64a`)
+- [~] **M4** — Sign in with Apple: código listo (reusa `handleOAuth` de M1); FALTA capability en App Store Connect *(Juan)* + device test
+- [x] **M6** — Borrado de cuenta in-app (Edge Function delete-account + Settings UI, hard delete) — `55eaa2d`
+- [x] **M2** — Biometría real (LockScreen gate en cold start + toggle opt-in) — `c746796`
+- [ ] **M8** — Permiso ubicación "when in use" — PENDIENTE
+- [ ] **M3** — Resolver Maps iOS (Google-custom vs Apple) — PENDIENTE (decisión de producto)
+- [ ] **M9** — OTA (runtimeVersion + canales) — PENDIENTE
 
 ### FASE 3 — Que la app se sienta viva  ·  ~8.5-12 d
 **Responsable: Claude Code + cuentas de infra de Juan**
@@ -105,7 +109,7 @@ Móvil:
 **Responsable: Juan prueba, Planning Claude audita**
 - [ ] 4 pruebas manuales pendientes (social A+B, modificadores, DM gate, TTL)
 - [ ] Smoke tests generales (auth, realtime, privacidad, RLS)
-- [ ] **E5** — migrar campos sort a bigint *(Claude Code, rápido)*
+- [x] **E5** — migrar campos sort a bigint — `9a400cd`
 - [ ] Load-test presence (venue simulado 200-500) *(recomendado)*
 
 > **🎯 Fin de FASE 4 = LANZAMIENTO A listo.** (Beta social + venues.)
@@ -201,8 +205,8 @@ pesado) · offline mode (choca con arquitectura cloud-first).
 | Fase | Estado | SHAs |
 |---|---|---|
 | FASE 0 (legal/cuentas) | ⬜ no iniciado | — |
-| FASE 1 (seguridad) | ⬜ no iniciado | — |
-| FASE 2 (review tiendas) | ⬜ no iniciado | — |
+| FASE 1 (seguridad) | 🟨 en progreso | S1 3172ae2 · S2/S3/S6/S7 af43587 · E1/E5 9a400cd (falta S4/S5 de Juan) |
+| FASE 2 (review tiendas) | 🟨 en progreso | W1 1af2168 · W2 89977e2 · W3 (ya) · M1 34303ce · M2 c746796 · M6 55eaa2d (falta M4 capability/device, M3, M8, M9) |
 | FASE 3 (app viva) | ⬜ no iniciado | — |
 | FASE 4 (verificación) | ⬜ no iniciado | — |
 | FASE 5 (comercio) | ⬜ no iniciado | — |
