@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -119,52 +120,68 @@ export default function LoginScreen() {
   }
 
   // ── Social OAuth (deep-link, M1) ───────────────────────────────────────────
-  // Flujo: signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
-  //   → openAuthSessionAsync abre el browser y captura el redirect a jchat://auth/callback
-  //   → implicit flow: los tokens vuelven en el fragment (#access_token=…&refresh_token=…)
-  //   → setSession(...) → AuthContext.onAuthStateChange entra a la app.
+  // signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
+  //   → openAuthSessionAsync abre el browser y captura el redirect de vuelta
+  //   → implicit flow: tokens en el fragment (#access_token=…&refresh_token=…) → setSession
+  //   → PKCE flow: ?code=… → exchangeCodeForSession
+  //   → AuthContext.onAuthStateChange entra a la app.
   async function handleOAuth(provider: 'google' | 'apple') {
     if (!isSupabaseConfigured) {
       Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
 
-    const redirectTo = 'jchat://auth/callback';
+    // Deep-link de retorno; debe coincidir con la Redirect URL registrada en Supabase.
+    const redirectTo = Linking.createURL('auth/callback');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      // skipBrowserRedirect: no auto-redirigimos; abrimos data.url nosotros y capturamos
-      // el retorno con openAuthSessionAsync para poder cerrar el flujo dentro de la app.
+      // skipBrowserRedirect: abrimos data.url nosotros con openAuthSessionAsync para
+      // capturar el retorno y cerrar el flujo dentro de la app.
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) {
       Alert.alert(t('login.alerts.signInErrorTitle'), error.message);
       return;
     }
-    if (!data.url) return;
+    if (!data?.url) return;
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    // 'cancel' / 'dismiss' → el usuario cerró el navegador; sin error.
+    // 'cancel' / 'dismiss' → el usuario cerró el navegador; sin error que reportar.
     if (result.type !== 'success' || !result.url) return;
 
-    const params = parseAuthFragment(result.url);
-    const errDesc = params.error_description ?? params.error;
-    if (errDesc) {
-      Alert.alert(t('login.alerts.signInErrorTitle'), errDesc);
-      return;
-    }
-    const access_token = params.access_token;
-    const refresh_token = params.refresh_token;
-    if (!access_token || !refresh_token) {
-      Alert.alert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInFailedTitle'));
+    const returnedUrl = result.url;
+
+    // Caso 1 — implicit flow: access_token + refresh_token en el fragment.
+    const fragment = parseAuthFragment(returnedUrl);
+    if (fragment.access_token && fragment.refresh_token) {
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: fragment.access_token,
+        refresh_token: fragment.refresh_token,
+      });
+      if (sessionError) {
+        Alert.alert(t('login.alerts.signInErrorTitle'), sessionError.message);
+      }
+      // Éxito: onAuthStateChange en AuthContext dispara y la app entra.
       return;
     }
 
-    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (sessionError) {
-      Alert.alert(t('login.alerts.signInErrorTitle'), sessionError.message);
+    // Caso 2 — PKCE flow: ?code=… en los query params. Linking.parse maneja el scheme
+    // custom jchat:// de forma fiable (new URL no parsea bien esquemas no estándar en RN).
+    const code = Linking.parse(returnedUrl).queryParams?.code;
+    if (typeof code === 'string' && code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        Alert.alert(t('login.alerts.signInErrorTitle'), exchangeError.message);
+      }
       return;
     }
-    // Éxito: onAuthStateChange en AuthContext dispara y el navegador raíz entra a la app.
+
+    // Ni token ni code: mostrar el error del provider si vino, o un fallback genérico.
+    const errDesc = fragment.error_description ?? fragment.error;
+    Alert.alert(
+      t('login.alerts.signInErrorTitle'),
+      errDesc ?? t('login.alerts.signInErrorMessage'),
+    );
   }
 
   // ── Email / password ──────────────────────────────────────────────────────
