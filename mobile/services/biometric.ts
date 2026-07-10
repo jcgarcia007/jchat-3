@@ -17,6 +17,42 @@ import * as LocalAuthentication from 'expo-local-authentication';
 /** Local flag key — whether the user opted into biometric app-lock on this device. */
 const BIOMETRIC_ENABLED_KEY = '@jchat/biometric_enabled';
 
+/** Local flag key — whether we already showed the post-login enrollment prompt. */
+const BIOMETRIC_PROMPTED_KEY = '@jchat/biometric_prompted';
+
+/** ¿Ya se le mostró el prompt de enrolamiento al usuario en este device? */
+export async function wasBiometricPrompted(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(BIOMETRIC_PROMPTED_KEY)) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/** Marcar que ya se mostró el prompt (independiente de si aceptó o no). */
+export async function setBiometricPrompted(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(BIOMETRIC_PROMPTED_KEY, 'true');
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Etiqueta legible del método biométrico disponible en el device, para el copy.
+ * Devuelve 'face' | 'fingerprint' | 'generic'. El componente mapea a i18n.
+ */
+export async function biometricKind(): Promise<'face' | 'fingerprint' | 'generic'> {
+  try {
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) return 'face';
+    if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return 'fingerprint';
+    return 'generic';
+  } catch {
+    return 'generic';
+  }
+}
+
 /** True only if the device has biometric hardware AND the user has enrolled a face/fingerprint. */
 export async function canUseBiometrics(): Promise<boolean> {
   const [hasHardware, isEnrolled] = await Promise.all([

@@ -27,6 +27,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 import LockScreen from '../screens/auth/LockScreen';
+import BiometricEnrollGate from '../components/auth/BiometricEnrollGate';
 
 // Non-tab screens that live inside the main (authenticated) stack
 import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
@@ -105,6 +106,7 @@ export default function AppNavigator() {
   const { isAuthenticated, locked } = useAuth();
 
   return (
+    <>
     <NavigationContainer linking={linking}>
       {!isAuthenticated ? (
         <AuthStack.Navigator screenOptions={defaultScreenOptions}>
@@ -135,5 +137,9 @@ export default function AppNavigator() {
         </MainStack.Navigator>
       )}
     </NavigationContainer>
+    {/* Post-login biometric enrollment prompt — mounted only while authenticated
+        and in-app (not during the cold-start lock gate). Persists across navigation. */}
+    {isAuthenticated && !locked && <BiometricEnrollGate />}
+    </>
   );
 }

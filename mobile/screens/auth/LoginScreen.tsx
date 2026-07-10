@@ -4,7 +4,7 @@
  * email + password form, forgot password stub, sign-up link.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -35,6 +35,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { isBiometricEnabled } from '../../services/biometric';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
@@ -85,6 +86,18 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Biometric login card is opt-in: only shown once the user enabled the lock (M2).
+  const [biometricButtonVisible, setBiometricButtonVisible] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void isBiometricEnabled().then((enabled) => {
+      if (!cancelled) setBiometricButtonVisible(enabled);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ── Biometric ─────────────────────────────────────────────────────────────
   async function handleBiometric() {
@@ -244,20 +257,22 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        {/* ── Biometric card (primary) ────────────────────────────────────── */}
-        <TouchableOpacity
-          style={[styles.biometricCard, { backgroundColor: palette.brand }]}
-          onPress={handleBiometric}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={t('login.biometricA11y')}
-        >
-          <IconFaceId size={36} color={LOGIN_COLORS.onBrand} strokeWidth={1.5} />
-          <View style={styles.biometricText}>
-            <Text style={styles.biometricTitle}>{t('login.biometricTitle')}</Text>
-            <Text style={styles.biometricSub}>{t('login.biometricSub')}</Text>
-          </View>
-        </TouchableOpacity>
+        {/* ── Biometric card (primary) — opt-in, only when the lock is enabled ── */}
+        {biometricButtonVisible && (
+          <TouchableOpacity
+            style={[styles.biometricCard, { backgroundColor: palette.brand }]}
+            onPress={handleBiometric}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('login.biometricA11y')}
+          >
+            <IconFaceId size={36} color={LOGIN_COLORS.onBrand} strokeWidth={1.5} />
+            <View style={styles.biometricText}>
+              <Text style={styles.biometricTitle}>{t('login.biometricTitle')}</Text>
+              <Text style={styles.biometricSub}>{t('login.biometricSub')}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* ── Social buttons ──────────────────────────────────────────────── */}
         <View style={styles.socialRow}>

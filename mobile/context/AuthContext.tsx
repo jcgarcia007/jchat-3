@@ -12,6 +12,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
@@ -32,6 +33,13 @@ interface AuthContextValue {
   locked: boolean;
   /** Clear the biometric gate (called by LockScreen after a successful Face ID). */
   unlock: () => void;
+  /**
+   * True right after a FRESH sign-in in this app session (not cold-start restore).
+   * Used to offer the post-login biometric enrollment prompt once.
+   */
+  justSignedIn: boolean;
+  /** Clear the fresh-sign-in signal (called once the enrollment prompt has been handled). */
+  clearJustSignedIn: () => void;
   /** Dev-only: enter the app without a real session (placeholder buttons). */
   devBypass: () => void;
   signOut: () => Promise<void>;
@@ -44,6 +52,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [bypass, setBypass] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [justSignedIn, setJustSignedIn] = useState(false);
+  // True once the initial getSession has resolved. Guards justSignedIn so that
+  // startup events ('INITIAL_SESSION' or a restore that fires 'SIGNED_IN' in some
+  // versions) don't look like a fresh login.
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -58,10 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) setLocked(true);
       }
       if (mounted) setLoading(false);
+      // Initialization complete — any SIGNED_IN after this point is a fresh login.
+      initializedRef.current = true;
     })();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       // Never touch `locked` here — a fresh sign-in must enter the app directly.
       setSession(next);
+      // Only a fresh login (after init) offers the enrollment prompt.
+      if (_event === 'SIGNED_IN' && initializedRef.current) {
+        setJustSignedIn(true);
+      }
     });
     return () => {
       mounted = false;
@@ -89,10 +108,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session?.user?.id]);
 
   const unlock = useCallback(() => setLocked(false), []);
+  const clearJustSignedIn = useCallback(() => setJustSignedIn(false), []);
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {
     setBypass(false);
     setLocked(false);
+    setJustSignedIn(false);
     await supabase.auth.signOut();
   }, []);
 
@@ -104,10 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!session || bypass,
       locked,
       unlock,
+      justSignedIn,
+      clearJustSignedIn,
       devBypass,
       signOut,
     }),
-    [session, loading, bypass, locked, unlock, devBypass, signOut],
+    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, devBypass, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
