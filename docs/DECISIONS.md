@@ -10,10 +10,12 @@ Last updated: 2026-07-10
 Decision: Use Google Maps (PROVIDER_GOOGLE) on both iOS and Android.
 Why: The custom pastel and dark map styles (customMapStyle) are Google-Maps-only — Apple Maps doesn't support custom styling. We nearly switched to native maps to escape the iOS blank-map bug, but once the real root cause was fixed (D-02) Google Maps worked, so we kept it and preserved the brand styling.
 Consequence: Heat-map gradient overlays remain possible later (Google-only feature).
+> ⚠️ ACTUALIZADO 2026-07-10 (D-20): esta decisión se revirtió para iOS — iOS ahora usa Apple Maps (sin estilo custom). Android mantiene Google Maps con customMapStyle. Ver D-20.
 
 ### D-02 — react-native-maps plugin MUST use the array form
 Decision: Always declare ['react-native-maps', { iosGoogleMapsApiKey }], never the bare string 'react-native-maps'.
 Why: The bare string makes the config plugin run Apple-Maps-only — it omits the Google Maps pod and strips GMSServices.provideAPIKey() from AppDelegate, causing a silent blank map on iOS. This cost a multi-hour debugging session; the key was never the problem.
+> ⚠️ ACTUALIZADO 2026-07-10 (D-20): la premisa (forzar Google Maps en iOS vía array-form) ya no aplica en iOS — iOS usa Apple Maps. El array-form del plugin sigue siendo relevante solo para la key de Android. Ver D-20.
 
 ### D-03 — Platform-specific Maps API keys
 Decision: Split into GOOGLE_MAPS_KEY_IOS and GOOGLE_MAPS_KEY_ANDROID (separate GCP-restricted keys), set in EAS as sensitive for prod+dev.
@@ -22,6 +24,11 @@ Why: Correct security posture (each key restricted to its platform/bundle/SHA). 
 ### D-04 — Heat zones deferred; if ever needed, circles not gradient
 Decision: No heat zones for now; the Nearby tab already surfaces activity. If added later, prefer colored Circle overlays over a true Heatmap.
 Why: Heatmap (gradient) is Google-Maps-only and buggy on iOS even via Google (AIRMapHeatmap not found errors). Circle/Polygon work on both providers, are tappable (enter chat), and map cleanly to each venue's geofence (point + radius) — discrete circles represent bounded geofences better than a diffuse gradient.
+
+### D-20 — iOS usa Apple Maps (revierte la premisa de D-01/D-02 para iOS)
+Decision: En iOS el mapa es **Apple Maps** (provider nativo por defecto de react-native-maps en iOS), NO Google Maps. Android sigue con Google Maps (PROVIDER_GOOGLE) y su customMapStyle pastel/dark. Decisión de producto 2026-07-10 (M3).
+Why: Apple Maps es nativo, no requiere key adicional ni el pod de Google Maps en iOS, y evita la fricción de mantener GMSServices/keys iOS. El costo aceptado es que el estilo custom pastel/dark (customMapStyle) NO aplica en iOS — Apple Maps no soporta estilos custom. Se prioriza simplicidad e integración nativa sobre consistencia visual cross-platform del mapa.
+Consequence: El mapa en iOS se ve con el estilo nativo de Apple (sin la paleta de marca); Android conserva el estilo custom. Esto REVIERTE para iOS la premisa de D-01 (que mantenía Google en ambos por el estilo) y hace que el problema que motivó D-02 (array-form del plugin para forzar Google en iOS) ya NO aplique en iOS — el config actual usa Apple Maps en iOS intencionalmente. D-03 (keys por plataforma) sigue vigente solo para la key de Android. D-04 (heat zones diferidas) sin cambios.
 
 ## Web map editor
 
