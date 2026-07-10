@@ -54,6 +54,24 @@ const BTN_RADIUS = 14;
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
 
+/**
+ * Parse the `#key=value&…` fragment of the OAuth callback URL into a plain object.
+ * Manual parse (no reliance on RN's partial URLSearchParams polyfill). Implicit
+ * flow returns access_token / refresh_token (or error / error_description) here.
+ */
+function parseAuthFragment(url: string): Record<string, string> {
+  const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
+  const out: Record<string, string> = {};
+  for (const pair of hash.split('&')) {
+    if (!pair) continue;
+    const eq = pair.indexOf('=');
+    const key = eq >= 0 ? pair.slice(0, eq) : pair;
+    const val = eq >= 0 ? pair.slice(eq + 1) : '';
+    out[decodeURIComponent(key)] = decodeURIComponent(val);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -100,23 +118,53 @@ export default function LoginScreen() {
     }
   }
 
-  // ── Social OAuth ──────────────────────────────────────────────────────────
+  // ── Social OAuth (deep-link, M1) ───────────────────────────────────────────
+  // Flujo: signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
+  //   → openAuthSessionAsync abre el browser y captura el redirect a jchat://auth/callback
+  //   → implicit flow: los tokens vuelven en el fragment (#access_token=…&refresh_token=…)
+  //   → setSession(...) → AuthContext.onAuthStateChange entra a la app.
   async function handleOAuth(provider: 'google' | 'apple') {
     if (!isSupabaseConfigured) {
       Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
-    const { data, error } = await supabase.auth.signInWithOAuth({ provider });
+
+    const redirectTo = 'jchat://auth/callback';
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      // skipBrowserRedirect: no auto-redirigimos; abrimos data.url nosotros y capturamos
+      // el retorno con openAuthSessionAsync para poder cerrar el flujo dentro de la app.
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
     if (error) {
       Alert.alert(t('login.alerts.signInErrorTitle'), error.message);
       return;
     }
-    if (data.url) {
-      // TODO(deep-link): handle OAuth redirect back into the app.
-      // Set up a deep-link handler (e.g. jchat://auth/callback) so Supabase
-      // can return the session to the app after the browser completes the flow.
-      await WebBrowser.openBrowserAsync(data.url);
+    if (!data.url) return;
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    // 'cancel' / 'dismiss' → el usuario cerró el navegador; sin error.
+    if (result.type !== 'success' || !result.url) return;
+
+    const params = parseAuthFragment(result.url);
+    const errDesc = params.error_description ?? params.error;
+    if (errDesc) {
+      Alert.alert(t('login.alerts.signInErrorTitle'), errDesc);
+      return;
     }
+    const access_token = params.access_token;
+    const refresh_token = params.refresh_token;
+    if (!access_token || !refresh_token) {
+      Alert.alert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInFailedTitle'));
+      return;
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (sessionError) {
+      Alert.alert(t('login.alerts.signInErrorTitle'), sessionError.message);
+      return;
+    }
+    // Éxito: onAuthStateChange en AuthContext dispara y el navegador raíz entra a la app.
   }
 
   // ── Email / password ──────────────────────────────────────────────────────

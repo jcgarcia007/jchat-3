@@ -18,6 +18,9 @@ const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleSe
 const config: ExpoConfig = {
   name: 'JChat',
   slug: 'jchat',
+  // Deep-link scheme — habilita jchat:// para el callback de OAuth (M1) y otros deep
+  // links. Registra CFBundleURLTypes (iOS) + intent-filter (Android) en prebuild.
+  scheme: 'jchat',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
