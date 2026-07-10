@@ -22,6 +22,17 @@ const config: ExpoConfig = {
   // links. Registra CFBundleURLTypes (iOS) + intent-filter (Android) en prebuild.
   scheme: 'jchat',
   version: '1.0.0',
+  // OTA (M9): EAS Update. runtimeVersion 'fingerprint' → EAS calcula el runtime del
+  // grafo nativo; un cambio en código nativo cambia el runtime y evita mandar un JS
+  // bundle incompatible a binarios viejos. checkAutomatically ON_LOAD: busca update
+  // al abrir; fallbackToCacheTimeout 0 → no bloquea el arranque esperando el update
+  // (se aplica en el siguiente cold start).
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: {
+    url: 'https://u.expo.dev/6fd667cf-ddde-4236-83be-71b2477eaa0f',
+    fallbackToCacheTimeout: 0,
+    checkAutomatically: 'ON_LOAD',
+  },
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
