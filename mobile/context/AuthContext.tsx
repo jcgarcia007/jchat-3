@@ -16,6 +16,7 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { isBiometricEnabled } from '../services/biometric';
 import { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
 
@@ -24,6 +25,13 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  /**
+   * True when a RESTORED session must pass the biometric gate before entering
+   * the app. Set only on cold start (never on a fresh login / background return).
+   */
+  locked: boolean;
+  /** Clear the biometric gate (called by LockScreen after a successful Face ID). */
+  unlock: () => void;
   /** Dev-only: enter the app without a real session (placeholder buttons). */
   devBypass: () => void;
   signOut: () => Promise<void>;
@@ -35,16 +43,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [bypass, setBypass] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data.session);
-        setLoading(false);
+    // Cold start: restore the session AND decide the biometric gate here — this is
+    // the ONLY place `locked` is ever set to true, so a fresh login (handled by
+    // onAuthStateChange below) or a background return never triggers the lock.
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setSession(data.session);
+      if (data.session && (await isBiometricEnabled())) {
+        if (mounted) setLocked(true);
       }
-    });
+      if (mounted) setLoading(false);
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      // Never touch `locked` here — a fresh sign-in must enter the app directly.
       setSession(next);
     });
     return () => {
@@ -72,9 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, [session?.user?.id]);
 
+  const unlock = useCallback(() => setLocked(false), []);
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {
     setBypass(false);
+    setLocked(false);
     await supabase.auth.signOut();
   }, []);
 
@@ -84,10 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       loading,
       isAuthenticated: !!session || bypass,
+      locked,
+      unlock,
       devBypass,
       signOut,
     }),
-    [session, loading, bypass, devBypass, signOut],
+    [session, loading, bypass, locked, unlock, devBypass, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

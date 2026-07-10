@@ -43,6 +43,7 @@ import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
   IconChevronRight,
+  IconFingerprint,
   IconLanguage,
   IconLock,
   IconMoon,
@@ -61,6 +62,12 @@ import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
 } from '../../services/supabase';
+import {
+  canUseBiometrics,
+  isBiometricEnabled,
+  setBiometricEnabled,
+  authenticateBiometric,
+} from '../../services/biometric';
 import { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
 // ---------------------------------------------------------------------------
@@ -269,6 +276,8 @@ export default function SettingsScreen() {
   // ── Local state ────────────────────────────────────────────────────────────
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  // Biometric app-lock (M2) — device-local opt-in, independent of user settings.
+  const [biometricOn, setBiometricOn] = useState(false);
 
   // ── Load settings from Supabase on mount ──────────────────────────────────
   useEffect(() => {
@@ -285,6 +294,45 @@ export default function SettingsScreen() {
       })
       .finally(() => setLoadingSettings(false));
   }, [user?.id]);
+
+  // ── Biometric app-lock: read the current opt-in state on mount ─────────────
+  useEffect(() => {
+    let mounted = true;
+    isBiometricEnabled()
+      .then((on) => {
+        if (mounted) setBiometricOn(on);
+      })
+      .catch(() => null);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ── Toggle biometric app-lock ──────────────────────────────────────────────
+  const handleToggleBiometric = useCallback(
+    async (next: boolean) => {
+      if (!next) {
+        // Disabling — no verification needed.
+        await setBiometricEnabled(false);
+        setBiometricOn(false);
+        return;
+      }
+      // Enabling — require hardware + enrollment, then confirm with a live prompt.
+      const available = await canUseBiometrics();
+      if (!available) {
+        Alert.alert(
+          t('alerts.biometricUnavailableTitle'),
+          t('alerts.biometricUnavailableMessage'),
+        );
+        return; // leave the toggle OFF
+      }
+      const ok = await authenticateBiometric(t('lock.prompt', { ns: 'auth' }));
+      if (!ok) return; // failed/cancelled — leave the toggle OFF
+      await setBiometricEnabled(true);
+      setBiometricOn(true);
+    },
+    [t],
+  );
 
   // ── Patch helper — updates local state + persists delta ───────────────────
   const patch = useCallback(
@@ -618,6 +666,26 @@ export default function SettingsScreen() {
           label={t('main.privacySettings')}
           onPress={handlePrivacy}
           right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        {/* Biometric app-lock (M2) — opt-in Face ID / Touch ID gate */}
+        <SettingsRow
+          icon={<IconFingerprint size={20} color={c.brand} strokeWidth={2} />}
+          label={t('main.biometricLock')}
+          sublabel={t('main.biometricLockSub')}
+          right={
+            <Switch
+              value={biometricOn}
+              onValueChange={(v) => {
+                void handleToggleBiometric(v);
+              }}
+              trackColor={{ false: c.borderSubtle, true: c.brand }}
+              thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
+              accessibilityLabel={t('main.biometricLock')}
+            />
+          }
         />
 
         {/* Spacer */}

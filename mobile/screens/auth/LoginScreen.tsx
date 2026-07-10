@@ -106,14 +106,18 @@ export default function LoginScreen() {
       fallbackLabel: t('login.biometricFallback'),
     });
     if (result.success) {
-      // TODO: resume an existing Supabase session here.
-      // supabase.auth.getSession() → if a valid session exists, the AuthContext
-      // listener will already have picked it up and isAuthenticated will be true.
-      // If no stored session, show an error directing the user to sign in with email.
-      Alert.alert(
-        t('login.alerts.biometricVerifiedTitle'),
-        t('login.alerts.biometricVerifiedMessage'),
-      );
+      // The real cold-start biometric gate lives in LockScreen (M2); this button
+      // only matters for the rare case of an already-authenticated user viewing
+      // the login screen. If a session exists, AuthContext has already routed
+      // into the app — nothing to do. If not, there is no session to unlock, so
+      // direct the user to sign in with email.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        Alert.alert(
+          t('login.alerts.biometricVerifiedTitle'),
+          t('login.alerts.biometricVerifiedMessage'),
+        );
+      }
     } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
       Alert.alert(t('login.alerts.authFailedTitle'), t('login.alerts.authFailedMessage'));
     }

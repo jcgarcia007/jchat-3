@@ -24,6 +24,8 @@
     "signOut": "Cerrar sesión",
     "deleteAccount": "Eliminar cuenta",
     "deleteAccountSub": "Elimina tu cuenta y todos tus datos permanentemente",
+    "biometricLock": "Requerir Face ID / Touch ID",
+    "biometricLockSub": "Pedir biometría al abrir la app",
     "proxAll": "Todas",
     "proxFavorites": "Favoritos",
     "proxVisited": "Visitados",
@@ -48,6 +50,8 @@
     "deleteSuccessMessage": "Tu cuenta y todos tus datos se han eliminado permanentemente.",
     "deleteErrorTitle": "Error al eliminar",
     "deleteErrorMessage": "No pudimos eliminar tu cuenta. Inténtalo de nuevo.",
+    "biometricUnavailableTitle": "Biometría no disponible",
+    "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
     "comingSoonTitle": "Próximamente",
     "changePasswordSoon": "El cambio de contraseña aún no está disponible."
   },

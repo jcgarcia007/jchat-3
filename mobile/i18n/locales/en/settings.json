@@ -24,6 +24,8 @@
     "signOut": "Sign Out",
     "deleteAccount": "Delete Account",
     "deleteAccountSub": "Permanently delete your account and all your data",
+    "biometricLock": "Require Face ID / Touch ID",
+    "biometricLockSub": "Ask for biometrics when opening the app",
     "proxAll": "All",
     "proxFavorites": "Favorites",
     "proxVisited": "Visited",
@@ -48,6 +50,8 @@
     "deleteSuccessMessage": "Your account and all your data have been permanently deleted.",
     "deleteErrorTitle": "Deletion failed",
     "deleteErrorMessage": "We couldn't delete your account. Please try again.",
+    "biometricUnavailableTitle": "Biometrics unavailable",
+    "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first.",
     "comingSoonTitle": "Coming soon",
     "changePasswordSoon": "Password change is not yet available."
   },

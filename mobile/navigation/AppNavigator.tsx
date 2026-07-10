@@ -26,6 +26,7 @@ import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
+import LockScreen from '../screens/auth/LockScreen';
 
 // Non-tab screens that live inside the main (authenticated) stack
 import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
@@ -85,6 +86,7 @@ export type MainStackParamList = {
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
+const LockStack = createNativeStackNavigator<{ Lock: undefined }>();
 
 const defaultScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
@@ -100,7 +102,7 @@ const linking: LinkingOptions<MainStackParamList> = {
 };
 
 export default function AppNavigator() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, locked } = useAuth();
 
   return (
     <NavigationContainer linking={linking}>
@@ -112,6 +114,11 @@ export default function AppNavigator() {
           <AuthStack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
           <AuthStack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
         </AuthStack.Navigator>
+      ) : locked ? (
+        // Biometric gate — a restored session must pass Face ID before the app.
+        <LockStack.Navigator screenOptions={defaultScreenOptions}>
+          <LockStack.Screen name="Lock" component={LockScreen} />
+        </LockStack.Navigator>
       ) : (
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
           <MainStack.Screen name="Tabs" component={BottomTabs} />
