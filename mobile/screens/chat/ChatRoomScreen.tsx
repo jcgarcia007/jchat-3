@@ -359,7 +359,7 @@ export default function ChatRoomScreen() {
     try {
       let query = supabase
         .from('messages')
-        .select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at, sender:users!messages_user_id_fkey(display_name, username)')
+        .select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at')
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
@@ -373,13 +373,30 @@ export default function ChatRoomScreen() {
         console.error('loadMessages error:', error);
         return;
       }
-      const msgs = (data ?? []).map((row: Record<string, unknown>) => {
-        const sender = row.sender as { display_name: string | null; username: string } | null;
-        const senderName = sender?.display_name ?? sender?.username ?? undefined;
-        if (senderName && typeof row.user_id === 'string') {
-          userNameCacheRef.current.set(row.user_id, senderName);
+      const rows = data ?? [];
+
+      // Resolver nombres de autores desde public_profiles (la RLS de `users` sólo
+      // deja ver la propia fila; public_profiles es la fuente pública correcta).
+      const uniqueUserIds = [...new Set(
+        rows.map((r: Record<string, unknown>) => r.user_id).filter(Boolean) as string[]
+      )];
+
+      if (uniqueUserIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('public_profiles')
+          .select('id, username, display_name')
+          .in('id', uniqueUserIds);
+        for (const p of profs ?? []) {
+          const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
+          if (nm) userNameCacheRef.current.set(p.id as string, nm);
         }
-        return { ...row, sender: undefined, sender_name: senderName } as unknown as ChatMessage;
+      }
+
+      const msgs = rows.map((row: Record<string, unknown>) => {
+        const senderName = typeof row.user_id === 'string'
+          ? userNameCacheRef.current.get(row.user_id)
+          : undefined;
+        return { ...row, sender_name: senderName } as unknown as ChatMessage;
       });
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
@@ -404,6 +421,24 @@ export default function ChatRoomScreen() {
     void loadMessages(activeRoomId);
   }, [activeRoomId, initialLoading, entryVisible, loadMessages]);
 
+  // Sembrar el nombre propio en la caché (para envío optimista y para resolver
+  // el bubble propio). public_profiles es legible por authenticated.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user?.id) return;
+    let cancelled = false;
+    void (async () => {
+      const { data: prof } = await supabase
+        .from('public_profiles')
+        .select('id, username, display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const nm = prof?.display_name ?? prof?.username ?? undefined;
+      if (nm) userNameCacheRef.current.set(user.id, nm);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   // ── Realtime subscription (messages) ──────────────────────────────────────
 
   useEffect(() => {
@@ -421,8 +456,8 @@ export default function ChatRoomScreen() {
         },
         (payload) => {
           const raw = payload.new as ChatMessage;
-          const senderName = userNameCacheRef.current.get(raw.user_id);
-          const newMsg: ChatMessage = senderName ? { ...raw, sender_name: senderName } : raw;
+          const cached = userNameCacheRef.current.get(raw.user_id);
+          const newMsg: ChatMessage = cached ? { ...raw, sender_name: cached } : raw;
           setMessages((prev) => {
             // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
             if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -431,6 +466,23 @@ export default function ChatRoomScreen() {
           // With the inverted list a new message at index 0 appears at the bottom
           // automatically: if the user is at the bottom they see it; if they
           // scrolled up to read history, they are not yanked down.
+          // If the name wasn't cached (message from a user we haven't seen yet),
+          // resolve it from public_profiles and patch the message in place.
+          if (!cached && raw.user_id) {
+            void (async () => {
+              const { data: prof } = await supabase
+                .from('public_profiles')
+                .select('id, username, display_name')
+                .eq('id', raw.user_id)
+                .maybeSingle();
+              const nm = prof?.display_name ?? prof?.username ?? undefined;
+              if (nm) {
+                userNameCacheRef.current.set(raw.user_id, nm);
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm } : m)));
+              }
+            })();
+          }
         },
       )
       .subscribe();
