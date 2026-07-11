@@ -47,6 +47,7 @@ export interface OrderPayload {
   totalCents: number;
   promoCode?: string | null;
   specialInstructions?: string | null;
+  tableLabel?: string | null;
   items: {
     menuItemId: string;
     name: string;
@@ -97,6 +98,7 @@ export async function fetchPaymentSheetParams(
         user_id: order.userId,
         room_id: order.roomId ?? null,
         order_type: order.orderType,
+        table_label: order.tableLabel ?? null,
         gift_recipient_id: order.giftRecipientId ?? null,
         subtotal_cents: order.subtotalCents,
         tax_cents: order.taxCents,

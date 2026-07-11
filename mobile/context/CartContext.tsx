@@ -42,6 +42,8 @@ interface CartContextValue {
   lines: CartLine[];
   orderType: OrderType;
   giftRecipientId: string | null;
+  /** Free-text table/location for order_type = table (e.g. "5", "barra"). */
+  tableLabel: string | null;
   promoCode: string | null;
   itemCount: number;
   subtotalCents: number;
@@ -51,6 +53,7 @@ interface CartContextValue {
   removeLine: (lineId: string) => void;
   setOrderType: (t: OrderType) => void;
   setGiftRecipient: (userId: string | null) => void;
+  setTableLabel: (v: string | null) => void;
   setPromoCode: (code: string | null) => void;
   clear: () => void;
 }
@@ -78,6 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('table');
   const [giftRecipientId, setGiftRecipientId] = useState<string | null>(null);
+  const [tableLabel, setTableLabel] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState<string | null>(null);
 
   const setContext = useCallback((bId: string, rId: string | null) => {
@@ -121,6 +125,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLines([]);
     setPromoCode(null);
     setGiftRecipientId(null);
+    setTableLabel(null);
     setOrderType('table');
   }, []);
 
@@ -137,6 +142,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       orderType,
       giftRecipientId,
+      tableLabel,
       promoCode,
       itemCount,
       subtotalCents,
@@ -146,11 +152,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeLine,
       setOrderType,
       setGiftRecipient: setGiftRecipientId,
+      setTableLabel,
       setPromoCode,
       clear,
     }),
     [
-      businessId, roomId, lines, orderType, giftRecipientId, promoCode,
+      businessId, roomId, lines, orderType, giftRecipientId, tableLabel, promoCode,
       itemCount, subtotalCents, setContext, addLine, updateQty, removeLine, clear,
     ],
   );

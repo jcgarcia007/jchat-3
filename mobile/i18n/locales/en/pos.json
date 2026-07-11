@@ -100,6 +100,10 @@
     "taxLabel": "Tax (8%)",
     "total": "Total",
     "checkoutHint": "Please select a gift recipient above.",
+    "tableLabelTitle": "Table / location",
+    "tableLabelPlaceholder": "e.g. 5, bar, terrace…",
+    "tableRequired": "Enter your table or location to continue",
+    "tableLabelA11y": "Table or location",
     "proceedCheckout": "Proceed to Checkout · {{amount}}",
     "proceedCheckoutA11y": "Proceed to checkout — {{amount}}",
     "selectOrderType": "Select order type to proceed"

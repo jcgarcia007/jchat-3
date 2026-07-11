@@ -44,6 +44,7 @@ export interface OrderRow {
   promo_code: string | null;
   eta_minutes: number | null;
   special_instructions: string | null;
+  table_label: string | null;
   stripe_pi_id: string | null;
   created_at: string;
   status_updated_at: string | null;
@@ -62,6 +63,7 @@ export interface NewOrderInput {
   totalCents: number;
   promoCode?: string | null;
   specialInstructions?: string | null;
+  tableLabel?: string | null;
   items: {
     menuItemId: string;
     qty: number;
@@ -92,6 +94,7 @@ export async function createOrderRecord(input: NewOrderInput): Promise<OrderRow>
       total_cents: input.totalCents,
       promo_code: input.promoCode ?? null,
       special_instructions: input.specialInstructions ?? null,
+      table_label: input.tableLabel ?? null,
     })
     .select('*')
     .single();

@@ -180,6 +180,7 @@ export default function CartScreen() {
     lines,
     orderType,
     giftRecipientId,
+    tableLabel,
     promoCode,
     subtotalCents,
     roomId,
@@ -188,6 +189,7 @@ export default function CartScreen() {
     removeLine,
     setOrderType,
     setGiftRecipient,
+    setTableLabel,
     setPromoCode,
   } = useCart();
 
@@ -360,8 +362,9 @@ export default function CartScreen() {
   const canCheckout = useMemo(() => {
     if (lines.length === 0) return false;
     if (orderType === 'gift') return !!giftRecipientId;
-    return true; // table or counter — no extra requirement
-  }, [lines.length, orderType, giftRecipientId]);
+    if (orderType === 'table') return !!tableLabel?.trim();
+    return true; // counter — no extra requirement
+  }, [lines.length, orderType, giftRecipientId, tableLabel]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -611,6 +614,28 @@ export default function CartScreen() {
               })}
             </View>
           </View>
+
+          {/* ── Table / location (required for table orders) ── */}
+          {orderType === 'table' ? (
+            <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
+              <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
+                {t('cart.tableLabelTitle')}
+              </Text>
+              <TextInput
+                value={tableLabel ?? ''}
+                onChangeText={(v) => setTableLabel(v)}
+                placeholder={t('cart.tableLabelPlaceholder')}
+                placeholderTextColor={c.textTertiary}
+                maxLength={40}
+                style={[
+                  styles.tableInput,
+                  { backgroundColor: c.bgElevated, borderColor: c.borderSubtle, color: c.textPrimary },
+                ]}
+                accessibilityLabel={t('cart.tableLabelA11y')}
+                returnKeyType="done"
+              />
+            </View>
+          ) : null}
 
           {/* ── Gift recipient picker ── */}
           {orderType === 'gift' ? (
@@ -878,6 +903,11 @@ export default function CartScreen() {
           {!canCheckout && orderType === 'gift' && !giftRecipientId ? (
             <Text style={[styles.checkoutHint, { color: palette.warning }]}>
               {t('cart.checkoutHint')}
+            </Text>
+          ) : null}
+          {!canCheckout && orderType === 'table' && !tableLabel?.trim() ? (
+            <Text style={[styles.checkoutHint, { color: palette.warning }]}>
+              {t('cart.tableRequired')}
             </Text>
           ) : null}
 
@@ -1178,6 +1208,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 1,
+  },
+  tableInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    marginTop: 4,
   },
   promoBtn: {
     borderRadius: 10,

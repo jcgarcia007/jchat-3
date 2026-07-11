@@ -81,7 +81,7 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
 }
 
 interface CartItem { menu_item_id: string; name: string; qty: number; price_cents: number; options?: Record<string, unknown>; special_instructions?: string | null; }
-interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; items: CartItem[]; }
+interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; table_label?: string | null; items: CartItem[]; }
 
 /** Email lives in auth.users, not public.users — fetch via the admin API. */
 async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string): Promise<string | undefined> {
@@ -150,7 +150,11 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const payload = body.order as OrderPayload | undefined;
   if (!payload) return errorResponse("order payload is required");
 
-  const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, items } = payload;
+  const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label, items } = payload;
+  // Sanitize free-text table label (never trust the client; Stripe metadata is length-capped).
+  const tableLabel = typeof table_label === "string"
+    ? table_label.trim().slice(0, 40) || null
+    : null;
 
   // tip_cents is the only client-supplied amount we accept; all others are recalculated.
   const clientTipCents = typeof payload.tip_cents === "number" ? payload.tip_cents : 0;
@@ -292,6 +296,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (gift_recipient_id)   metadata.gift_recipient_id = gift_recipient_id;
   if (promo_code)          metadata.promo_code = promo_code;
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
+  if (tableLabel)           metadata.table_label = tableLabel;
   if (itemsMeta.length > 490) metadata.items_overflow = "1";
   // Only logged when body.user_id differs from JWT — aids debugging.
   if (traceUserId !== authUserId) metadata.client_user_id = traceUserId;

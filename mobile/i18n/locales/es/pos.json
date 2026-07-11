@@ -100,6 +100,10 @@
     "taxLabel": "Impuesto (8%)",
     "total": "Total",
     "checkoutHint": "Selecciona un destinatario arriba.",
+    "tableLabelTitle": "Mesa o lugar",
+    "tableLabelPlaceholder": "Ej. 5, barra, terraza…",
+    "tableRequired": "Indica tu mesa o lugar para continuar",
+    "tableLabelA11y": "Mesa o lugar",
     "proceedCheckout": "Ir al pago · {{amount}}",
     "proceedCheckoutA11y": "Ir al pago — {{amount}}",
     "selectOrderType": "Elige el tipo de pedido para continuar"

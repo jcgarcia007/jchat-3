@@ -92,6 +92,7 @@ async function handlePaymentSucceeded(
   const totalCents = parseInt(meta.total_cents ?? "0", 10);
   const promoCode = meta.promo_code ?? null;
   const specialInstructions = meta.special_instructions ?? null;
+  const tableLabel = meta.table_label ?? null;
   const itemsRaw = meta.items ?? "[]";
 
   if (!businessId || !userId) {
@@ -142,6 +143,7 @@ async function handlePaymentSucceeded(
       total_cents: totalCents,
       promo_code: promoCode,
       special_instructions: specialInstructions,
+      table_label: tableLabel,
       stripe_pi_id: paymentIntent.id,
       status_updated_at: new Date().toISOString(),
     })
