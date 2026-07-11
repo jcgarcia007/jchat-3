@@ -460,8 +460,12 @@ export default function ChatRoomScreen() {
   useEffect(() => {
     if (!isSupabaseConfigured || entryVisible) return;
 
+    // Unique topic per subscription — see PinnedBanner: repeated topics return the
+    // existing (already-subscribed) channel and .on() then throws. The filter below
+    // does the real scoping, not the topic.
+    const topic = `room-messages:${activeRoomId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`room-messages:${activeRoomId}`)
+      .channel(topic)
       .on(
         'postgres_changes',
         {

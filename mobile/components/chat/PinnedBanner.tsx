@@ -143,8 +143,13 @@ export function useActivePins(roomId: string): {
     if (!isSupabaseConfigured) return;
 
     // Realtime: refresh the full list on any change to this room's pins.
+    // Unique topic per subscription: supabase.channel(topic) returns the EXISTING
+    // channel for a repeated topic, and .on() after subscribe() throws. removeChannel
+    // is async, so a fast remount (e.g. returning from checkout) can still hit the old
+    // one. The real scoping is the filter below, not the topic.
+    const topic = `pinned_messages:${roomId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`pinned_messages:room_id=eq.${roomId}`)
+      .channel(topic)
       .on(
         'postgres_changes',
         {
