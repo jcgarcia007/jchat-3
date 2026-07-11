@@ -55,42 +55,48 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
   const { addLine } = useCart();
 
   const hasPhoto = !!item.photo_url;
-  const hasRequiredSizes = (item.options?.sizes?.length ?? 0) > 0;
+  const hasSizes = (item.options?.sizes?.length ?? 0) > 0;
+  // Open the customizer when the item has modifier groups (new system) OR sizes
+  // (legacy). Items with neither add straight to the cart.
+  const shouldOpenDetail = item.has_modifiers || hasSizes;
 
   const formatPrice = useCallback((cents: number) => {
     return `$${(cents / 100).toFixed(2)}`;
   }, []);
 
   const handleAdd = useCallback(() => {
-    if (hasRequiredSizes) {
-      // TODO(Task 3.3): navigate to ProductDetailScreen for size selection.
-      // Fallback: use the first size option so the cart still works.
-      const firstSize = item.options.sizes![0];
-      addLine({
-        item,
-        qty: 1,
-        size: firstSize,
-        extras: [],
-        unitPriceCents: item.price_cents + firstSize.price_cents,
-      });
-    } else {
-      addLine({
-        item,
-        qty: 1,
-        size: null,
-        extras: [],
-        unitPriceCents: item.price_cents,
-      });
+    if (shouldOpenDetail) {
+      // Let ProductDetailScreen handle modifier/size selection + pricing.
+      onOpenDetail(item);
+      return;
     }
-  }, [hasRequiredSizes, item, addLine]);
+    // No modifiers and no sizes → add straight to the cart.
+    addLine({
+      item,
+      qty: 1,
+      size: null,
+      extras: [],
+      unitPriceCents: item.price_cents,
+    });
+  }, [shouldOpenDetail, item, addLine, onOpenDetail]);
 
   const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
   const badgeLabel = item.badge ? t(BADGE_LABEL_KEYS[item.badge]) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgSurface, borderBottomColor: c.borderSubtle }]}>
-      {/* Main row content */}
-      <View style={styles.content}>
+      {/* Tapping the row opens the customizer when the item has options, else adds
+          to cart (web parity). The "+" button below is a nested Pressable. */}
+      <Pressable
+        style={styles.content}
+        onPress={handleAdd}
+        accessibilityRole="button"
+        accessibilityLabel={
+          shouldOpenDetail
+            ? t('productRow.customizeA11y', { name: item.name })
+            : t('productRow.addToCartA11y', { name: item.name })
+        }
+      >
         {/* Text area */}
         <View style={styles.textArea}>
           {/* Badge */}
@@ -125,7 +131,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
             <Text style={[styles.price, { color: c.textPrimary }]}>
               {formatPrice(item.price_cents)}
             </Text>
-            {hasRequiredSizes ? (
+            {hasSizes ? (
               <Text style={[styles.fromLabel, { color: c.textSecondary }]}>{'  ' + t('shared.from')}</Text>
             ) : null}
           </View>
@@ -154,7 +160,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
             <IconPlus size={18} color="#ffffff" strokeWidth={2.5} />
           </Pressable>
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }

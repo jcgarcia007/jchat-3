@@ -34,6 +34,8 @@ export interface MenuItem {
   stock_count: number | null;
   options: MenuItemOptions;
   sort: number;
+  /** True when the item has linked modifier groups (new Uber-Eats-style system). */
+  has_modifiers: boolean;
 }
 
 export interface MenuCategory {
@@ -44,6 +46,20 @@ export interface MenuCategory {
   sort: number;
   is_published: boolean;
   items: MenuItem[];
+}
+
+/**
+ * Map a raw menu_items row (with an embedded `menu_item_modifier_groups(count)`)
+ * to a MenuItem: derive has_modifiers from the count and strip the nested field.
+ */
+function mapMenuItem(raw: Record<string, unknown>): MenuItem {
+  const nested = raw.menu_item_modifier_groups;
+  const linkCount = Array.isArray(nested)
+    ? ((nested[0] as { count?: number } | undefined)?.count ?? 0)
+    : 0;
+  const { menu_item_modifier_groups: _omit, ...rest } = raw;
+  void _omit;
+  return { ...rest, has_modifiers: linkCount > 0 } as unknown as MenuItem;
 }
 
 /** Fetch the published menu (categories with their items) for a business. */
@@ -59,14 +75,16 @@ export async function getMenu(businessId: string): Promise<MenuCategory[]> {
 
   const { data: items, error: itemErr } = await supabase
     .from('menu_items')
-    .select('*')
+    // Embedded count of linked modifier groups (one-to-many; FK unambiguous).
+    .select('*, menu_item_modifier_groups(count)')
     .eq('business_id', businessId)
     .eq('is_published', true)
     .order('sort', { ascending: true });
   if (itemErr) throw itemErr;
 
   const byCat = new Map<string, MenuItem[]>();
-  for (const it of (items ?? []) as unknown as MenuItem[]) {
+  for (const raw of (items ?? []) as Record<string, unknown>[]) {
+    const it = mapMenuItem(raw);
     // Auto-hide out-of-stock items (stock_count === 0)
     if (it.stock_count === 0) continue;
     const arr = byCat.get(it.category_id) ?? [];
@@ -84,9 +102,9 @@ export async function getMenuItem(itemId: string): Promise<MenuItem | null> {
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('menu_items')
-    .select('*')
+    .select('*, menu_item_modifier_groups(count)')
     .eq('id', itemId)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as MenuItem) ?? null;
+  return data ? mapMenuItem(data as Record<string, unknown>) : null;
 }

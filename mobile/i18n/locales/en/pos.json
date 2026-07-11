@@ -17,7 +17,8 @@
     "badge": "OFFER"
   },
   "productRow": {
-    "addToCartA11y": "Add {{name}} to cart"
+    "addToCartA11y": "Add {{name}} to cart",
+    "customizeA11y": "Customize {{name}}"
   },
   "menu": {
     "menuFallback": "Menu",
