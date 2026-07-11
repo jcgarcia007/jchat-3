@@ -50,7 +50,7 @@
     "peopleList": "People in this room",
     "peopleHere_one": "{{count}} person here",
     "peopleHere_other": "{{count}} people here",
-    "userLongPressA11y": "Long press for actions on {{name}}"
+    "userTapA11y": "View {{name}}'s options"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — password protected"

@@ -18,11 +18,11 @@
  *   usersInRoom    — list of user summaries for the avatar row
  *   onBack         — called when the back button is pressed
  *   onMenuPress    — called when the menu icon is pressed
- *   onUserLongPress — called when an avatar in the row is long-pressed
+ *   onUserPress    — called when an avatar in the row is tapped (opens quick card)
  *   children       — SubRoomTabs (rendered between top bar and avatar row)
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Image,
   Pressable,
@@ -39,6 +39,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
+import type { UserAnchor } from './MessageBubble';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ export interface ChatTopBarProps {
   usersInRoom: UserSummary[];
   onBack: () => void;
   onMenuPress: () => void;
-  onUserLongPress: (userId: string, displayName: string) => void;
+  onUserPress: (userId: string, displayName: string, anchor: UserAnchor) => void;
   children?: React.ReactNode;
 }
 
@@ -75,24 +76,33 @@ export interface ChatTopBarProps {
 interface UserAvatarProps {
   user: UserSummary;
   theme: ChatTheme;
-  onLongPress: (userId: string, displayName: string) => void;
+  onPressUser: (userId: string, displayName: string, anchor: UserAnchor) => void;
 }
 
-function UserAvatar({ user, theme, onLongPress }: UserAvatarProps) {
+function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
   const { t } = useTranslation('chat');
   const displayName =
     user.is_incognito && user.nickname ? user.nickname : user.display_name;
+  const ref = useRef<View>(null);
 
-  const handleLongPress = useCallback(() => {
-    onLongPress(user.id, displayName);
-  }, [onLongPress, user.id, displayName]);
+  // Tap → measure the avatar rect (window coords) and open the anchored quick card.
+  const handlePress = useCallback(() => {
+    const node = ref.current;
+    if (node && typeof node.measureInWindow === 'function') {
+      node.measureInWindow((x, y, width, height) => {
+        onPressUser(user.id, displayName, { x, y, width, height });
+      });
+    } else {
+      onPressUser(user.id, displayName, { x: 0, y: 0, width: 0, height: 0 });
+    }
+  }, [onPressUser, user.id, displayName]);
 
   return (
     <Pressable
-      onLongPress={handleLongPress}
-      delayLongPress={400}
+      ref={ref}
+      onPress={handlePress}
       accessibilityRole="button"
-      accessibilityLabel={t('topBar.userLongPressA11y', { name: displayName })}
+      accessibilityLabel={t('topBar.userTapA11y', { name: displayName })}
       style={avatarStyles.wrap}
     >
       {!user.is_incognito && user.avatar_url ? (
@@ -140,7 +150,7 @@ export function ChatTopBar({
   usersInRoom,
   onBack,
   onMenuPress,
-  onUserLongPress,
+  onUserPress,
   children,
 }: ChatTopBarProps) {
   const { t } = useTranslation('chat');
@@ -210,7 +220,7 @@ export function ChatTopBar({
               key={u.id}
               user={u}
               theme={theme}
-              onLongPress={onUserLongPress}
+              onPressUser={onUserPress}
             />
           ))}
           {usersInRoom.length === 0 && (

@@ -713,13 +713,6 @@ export default function ChatRoomScreen() {
 
   // ── Long-press user ────────────────────────────────────────────────────────
 
-  // Still used by ChatTopBar's presence avatars (a different surface from message
-  // bubbles) — long-pressing a user in the top bar opens the full UserActionSheet.
-  const handleUserLongPress = useCallback((userId: string, displayName: string) => {
-    if (userId === user?.id) return; // Can't action yourself
-    setUserSheet({ visible: true, userId, userName: displayName });
-  }, [user?.id]);
-
   const handleCloseUserSheet = useCallback(() => {
     setUserSheet((prev) => ({ ...prev, visible: false }));
   }, []);
@@ -957,7 +950,7 @@ export default function ChatRoomScreen() {
         usersInRoom={usersInRoom}
         onBack={handleBack}
         onMenuPress={handleMenuPress}
-        onUserLongPress={handleUserLongPress}
+        onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}
         <SubRoomTabs
