@@ -108,3 +108,44 @@ export async function getMenuItem(itemId: string): Promise<MenuItem | null> {
   if (error) throw error;
   return data ? mapMenuItem(data as Record<string, unknown>) : null;
 }
+
+// ── Modifier groups (new Uber-Eats-style system; migrations 030-032) ──────────
+
+export interface ModifierChoice {
+  label: string;
+  price_cents: number;
+}
+
+export interface ModifierGroup {
+  id: string;
+  label: string;
+  type: 'single' | 'multi';
+  min_select: number;
+  max_select: number;
+  choices: ModifierChoice[];
+}
+
+/** Fetch modifier groups (with choices) linked to a menu item, in link order. */
+export async function getItemModifierGroups(itemId: string): Promise<ModifierGroup[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('menu_item_modifier_groups')
+    .select('sort, modifier_groups(id, label, type, min_select, max_select, choices)')
+    .eq('menu_item_id', itemId)
+    .order('sort', { ascending: true });
+  if (error) throw error;
+
+  const groups: ModifierGroup[] = [];
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    // Many-to-one → PostgREST returns an object; tolerate an array shape just in case.
+    const rel = row.modifier_groups;
+    const g = (Array.isArray(rel) ? rel[0] : rel) as ModifierGroup | null | undefined;
+    if (g) {
+      groups.push({
+        ...g,
+        choices: Array.isArray(g.choices) ? g.choices : [],
+      });
+    }
+  }
+  return groups;
+}

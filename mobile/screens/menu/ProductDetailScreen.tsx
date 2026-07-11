@@ -24,6 +24,7 @@
 
 import React, {
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -52,7 +53,9 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
-import type { MenuItem, MenuOptionChoice } from '../../services/menu';
+import type { CartModifierSelection } from '../../context/CartContext';
+import { getItemModifierGroups } from '../../services/menu';
+import type { MenuItem, MenuOptionChoice, ModifierGroup } from '../../services/menu';
 
 // ── Badge accent colours (local const — same pattern as ProductRow) ───────────
 
@@ -105,6 +108,23 @@ export default function ProductDetailScreen() {
   const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [qty, setQty] = useState(1);
+  // Modifier groups (new system) + selection state: groupId → Set of chosen labels.
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
+  const [modifierSel, setModifierSel] = useState<Record<string, Set<string>>>({});
+
+  useEffect(() => {
+    let alive = true;
+    getItemModifierGroups(item.id)
+      .then((groups) => {
+        if (alive) setModifierGroups(groups);
+      })
+      .catch(() => {
+        if (alive) setModifierGroups([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [item.id]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
@@ -128,12 +148,35 @@ export default function ProductDetailScreen() {
     return total;
   }, [selectedExtras, extrasMap]);
 
+  const modifiersTotalCents = useMemo<number>(() => {
+    let total = 0;
+    for (const group of modifierGroups) {
+      const sel = modifierSel[group.id];
+      if (!sel) continue;
+      for (const choice of group.choices) {
+        if (sel.has(choice.label)) total += choice.price_cents;
+      }
+    }
+    return total;
+  }, [modifierGroups, modifierSel]);
+
+  // Every group must satisfy its min/max selection count.
+  const modifiersValid = useMemo<boolean>(() => {
+    for (const group of modifierGroups) {
+      const count = modifierSel[group.id]?.size ?? 0;
+      if (count < group.min_select) return false;
+      if (count > group.max_select) return false;
+    }
+    return true;
+  }, [modifierGroups, modifierSel]);
+
   const sizePriceCents = selectedSize?.price_cents ?? 0;
-  const unitPriceCents = item.price_cents + sizePriceCents + extrasTotalCents;
+  const unitPriceCents =
+    item.price_cents + sizePriceCents + extrasTotalCents + modifiersTotalCents;
   const totalCents = unitPriceCents * qty;
 
-  // Add to Cart is disabled when sizes exist but none has been chosen yet.
-  const canAddToCart = !hasSizes || selectedSize !== null;
+  // Add to Cart is disabled when a required size/modifier isn't satisfied yet.
+  const canAddToCart = (!hasSizes || selectedSize !== null) && modifiersValid;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -157,6 +200,24 @@ export default function ProductDetailScreen() {
     });
   }, []);
 
+  const toggleModifier = useCallback((group: ModifierGroup, label: string) => {
+    setModifierSel((prev) => {
+      const cur = new Set(prev[group.id] ?? []);
+      if (group.type === 'single') {
+        // radio: replace the selection
+        return { ...prev, [group.id]: new Set([label]) };
+      }
+      // multi: checkbox capped at max_select
+      if (cur.has(label)) {
+        cur.delete(label);
+      } else {
+        if (cur.size >= group.max_select) return prev; // cap reached, ignore
+        cur.add(label);
+      }
+      return { ...prev, [group.id]: cur };
+    });
+  }, []);
+
   const handleDecrement = useCallback(() => {
     setQty((q) => Math.max(1, q - 1));
   }, []);
@@ -172,11 +233,20 @@ export default function ProductDetailScreen() {
       .map((label) => extrasMap.get(label))
       .filter((e): e is MenuOptionChoice => e !== undefined);
 
+    const modifierSelections: CartModifierSelection[] = modifierGroups
+      .map((group) => ({
+        groupId: group.id,
+        groupLabel: group.label,
+        choices: group.choices.filter((ch) => modifierSel[group.id]?.has(ch.label)),
+      }))
+      .filter((g) => g.choices.length > 0);
+
     addLine({
       item,
       qty,
       size: selectedSize,
       extras,
+      modifierSelections,
       specialInstructions: specialInstructions.trim() || undefined,
       unitPriceCents,
     });
@@ -186,6 +256,8 @@ export default function ProductDetailScreen() {
     canAddToCart,
     selectedExtras,
     extrasMap,
+    modifierGroups,
+    modifierSel,
     addLine,
     item,
     qty,
@@ -421,6 +493,95 @@ export default function ProductDetailScreen() {
               })}
             </View>
           ) : null}
+
+          {/* ── Modifier groups (new system) ── */}
+          {modifierGroups.map((group) => {
+            const isRequired = group.min_select >= 1;
+            const subtitle =
+              group.type === 'single'
+                ? t('productDetail.chooseOne')
+                : t('productDetail.chooseUpTo', { count: group.max_select });
+            const sel = modifierSel[group.id];
+            return (
+              <View key={group.id} style={[styles.section, { backgroundColor: c.bgSurface }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
+                    {group.label}
+                  </Text>
+                  {isRequired ? (
+                    <View style={[styles.requiredBadge, { backgroundColor: palette.danger + '22' }]}>
+                      <Text style={[styles.requiredBadgeText, { color: palette.danger }]}>
+                        {t('productDetail.required')}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.optionalLabel, { color: c.textTertiary }]}>
+                      {t('productDetail.optional')}
+                    </Text>
+                  )}
+                </View>
+
+                <Text
+                  style={[styles.optionalLabel, { color: c.textTertiary, paddingHorizontal: 16, paddingBottom: 8 }]}
+                >
+                  {subtitle}
+                </Text>
+
+                {group.choices.map((choice) => {
+                  const isChosen = sel?.has(choice.label) ?? false;
+                  return (
+                    <Pressable
+                      key={choice.label}
+                      onPress={() => toggleModifier(group, choice.label)}
+                      style={({ pressed }) => [
+                        styles.optionRow,
+                        { borderBottomColor: c.borderSubtle, opacity: pressed ? 0.7 : 1 },
+                      ]}
+                      accessibilityRole={group.type === 'single' ? 'radio' : 'checkbox'}
+                      accessibilityState={{ checked: isChosen }}
+                      accessibilityLabel={`${choice.label}${choice.price_cents > 0 ? `, +${formatCents(choice.price_cents)}` : ''}`}
+                    >
+                      {group.type === 'single' ? (
+                        <View
+                          style={[
+                            styles.radio,
+                            {
+                              borderColor: isChosen ? palette.brand : c.borderSubtle,
+                              backgroundColor: isChosen ? palette.brand : 'transparent',
+                            },
+                          ]}
+                        >
+                          {isChosen ? <View style={styles.radioDot} /> : null}
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.checkbox,
+                            {
+                              borderColor: isChosen ? palette.brand : c.borderSubtle,
+                              backgroundColor: isChosen ? palette.brand : 'transparent',
+                            },
+                          ]}
+                        >
+                          {isChosen ? <Text style={styles.checkmark}>✓</Text> : null}
+                        </View>
+                      )}
+
+                      <Text style={[styles.optionLabel, { color: c.textPrimary }]}>
+                        {choice.label}
+                      </Text>
+
+                      {choice.price_cents > 0 ? (
+                        <Text style={[styles.optionPrice, { color: c.textSecondary }]}>
+                          +{formatCents(choice.price_cents)}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })}
 
           {/* ── Special instructions ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>

@@ -34,6 +34,8 @@
     "idRequired": "Se requiere identificación válida para pedir este artículo",
     "size": "Tamaño",
     "required": "Obligatorio",
+    "chooseOne": "Elige 1",
+    "chooseUpTo": "Elige hasta {{count}}",
     "included": "Incluido",
     "extras": "Extras",
     "optional": "Opcional",

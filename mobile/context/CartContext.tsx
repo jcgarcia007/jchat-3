@@ -15,6 +15,13 @@ import type { MenuItem, MenuOptionChoice } from '../services/menu';
 
 export type OrderType = 'table' | 'counter' | 'gift';
 
+/** Selected choices for one modifier group (new modifier-group system). */
+export interface CartModifierSelection {
+  groupId: string;
+  groupLabel: string;
+  choices: { label: string; price_cents: number }[];
+}
+
 export interface CartLine {
   /** Stable line id (item id + serialized options). */
   lineId: string;
@@ -22,8 +29,10 @@ export interface CartLine {
   qty: number;
   size: MenuOptionChoice | null;
   extras: MenuOptionChoice[];
+  /** Selected modifier groups (new system). Price already folded into unitPriceCents. */
+  modifierSelections?: CartModifierSelection[];
   specialInstructions?: string;
-  /** Unit price including selected size + extras, in cents. */
+  /** Unit price including selected size + extras + modifiers, in cents. */
   unitPriceCents: number;
 }
 
@@ -46,10 +55,19 @@ interface CartContextValue {
   clear: () => void;
 }
 
-function makeLineId(itemId: string, size: MenuOptionChoice | null, extras: MenuOptionChoice[]): string {
+function makeLineId(
+  itemId: string,
+  size: MenuOptionChoice | null,
+  extras: MenuOptionChoice[],
+  modifierSelections?: CartModifierSelection[],
+): string {
   const s = size?.label ?? '';
   const e = extras.map((x) => x.label).sort().join(',');
-  return `${itemId}::${s}::${e}`;
+  const m = (modifierSelections ?? [])
+    .map((g) => `${g.groupId}:${g.choices.map((ch) => ch.label).sort().join('|')}`)
+    .sort()
+    .join(';');
+  return `${itemId}::${s}::${e}::${m}`;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -75,7 +93,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addLine = useCallback((line: Omit<CartLine, 'lineId'>) => {
-    const lineId = makeLineId(line.item.id, line.size, line.extras);
+    const lineId = makeLineId(line.item.id, line.size, line.extras, line.modifierSelections);
     setLines((prev) => {
       const existing = prev.find((l) => l.lineId === lineId);
       if (existing) {

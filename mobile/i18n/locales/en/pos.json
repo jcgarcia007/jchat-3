@@ -34,6 +34,8 @@
     "idRequired": "Valid ID required to order this item",
     "size": "Size",
     "required": "Required",
+    "chooseOne": "Choose 1",
+    "chooseUpTo": "Choose up to {{count}}",
     "included": "Included",
     "extras": "Extras",
     "optional": "Optional",
