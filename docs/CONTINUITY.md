@@ -36,4 +36,12 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - Audit every Claude Code diff: it sometimes adds unrequested features (e.g. gift toggle) or drops safety nets (min-validation). Flag deviations.
 - Keep this /docs/ set updated as milestones complete.
 
-Last updated: 2026-07-09
+## Aprendizajes 2026-07-11 (device testing)
+- **RN/Hermes upload:** `fetch(localUri).blob()` sube 0 bytes. Patrón correcto y único: `services/storage.ts uploadImage` (expo-file-system/legacy readAsStringAsync base64 → base64-arraybuffer decode → upload ArrayBuffer). Reusar SIEMPRE, no reimplementar.
+- **Chat lee perfiles de otros desde `public_profiles`**, no de `users` (RLS own-row+admin bloquea joins). Cualquier campo nuevo que el chat necesite (nombre, avatar) se añade al batch select de public_profiles + al cache.
+- **Presencia (usePresenceChannels) usa `user_metadata.avatar_url`**, no public.users. Los cambios de avatar deben sincronizar auth metadata (auth.updateUser) además de la tabla.
+- **Divergencia web/móvil (patrón recurrente):** el móvil se queda atrás de features que la web ya migró. Casos vistos: (a) customizador de menú gateado por `options.sizes` viejo en vez de modifier groups (arreglado 6a0b055); (b) plantillas de menú que el móvil ignora (pendiente, D-27). Al tocar features de menú, revisar SIEMPRE paridad web/móvil.
+- **Antes de confiar en un embedded count/join, verificar la RLS de la tabla embebida** (p. ej. menu_item_modifier_groups era public-read → el count funcionó). Un fallo de RLS da count 0 silencioso (mismo patrón que mordió con `users`).
+- **Supabase Google provider:** requiere Web Client ID + su Client Secret (GOCSPX-) para el intercambio server-side. Vacío → "missing OAuth secret"; mismatch → "Unable to exchange external code".
+
+Last updated: 2026-07-11

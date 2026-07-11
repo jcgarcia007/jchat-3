@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Maps
 
@@ -107,6 +107,29 @@ Consequence: Requiere build EAS dev-client para probar (no funciona en Expo Go, 
 Decision: `next.config.ts` pasó de `{}` a `headers` con CSP calibrada; arranca en `Content-Security-Policy-Report-Only`.
 Why: Report-Only permite calibrar (Supabase/Stripe/Maps allowlist) sin romper la app. Google Fonts se omitió del allowlist porque `next/font` auto-hospeda. Stripe pre-provisionado para W5.
 Consequence: Flip a enforce (1 línea) tras verificar la consola sin violaciones legítimas. Commit `1af2168`.
+
+## Device testing (Sesión 2026-07-11)
+
+### D-21 — Username OAuth derivado del email/nombre
+Al registrarse por OAuth, el trigger 048 deriva el username del email local-part (o nombre de Google), sanitizado a [a-z0-9_], 3-30 chars, dedupe con sufijo. Editable después. (Ref: migración 048, 3eef6e2.)
+
+### D-22 — Botón Face ID del login: opt-in
+El botón "Use Face ID / Touch ID" en LoginScreen solo aparece si el usuario activó el lock biométrico (flag @jchat/biometric_enabled). Sin sesión guardada, biometría no puede crear sesión → se ocultaba el callejón sin salida. (Ref: 2b31f27.)
+
+### D-23 — Prompt de enrolamiento biométrico post-login
+Tras el primer login exitoso (cualquier método), si hay hardware y no está activado ni preguntado, se ofrece activar el lock (una sola vez). Combina con el toggle de Ajustes. Sigue mejores prácticas (ofrecer post-login, opt-in de un toque, texto adaptativo). (Ref: 2b31f27.)
+
+### D-24 — Quick card de usuario por tap
+Tap (no long-press) en avatar/nombre —tanto en mensajes como en la fila de presencia— abre una tarjeta compacta anclada, fondo opaco. Reemplaza el long-press. El UserActionSheet grande se conserva como destino de "Silenciar" (duración de mute) y moderación de dueño, vía onOpenFull. (Ref: f807355, c73844f, d93f164.)
+
+### D-25 — Fuente de avatar por superficie
+Perfil y chat-mensajes leen avatar de `public.users`/`public_profiles`. La fila de presencia lee de `user_metadata.avatar_url`. Por eso EditProfileScreen sincroniza AMBOS al guardar (tabla users + auth.updateUser). (Ref: 3aa9e38, 7bcc661.)
+
+### D-26 — Native sign-in DIFERIDO
+Apple/Google nativos (expo-apple-authentication + @react-native-google-signin) eliminarían el diálogo "supabase.co", pero requieren build nativo y reabren el código de auth recién estabilizado. Diferido a una tanda dedicada.
+
+### D-27 — Plantillas de menú en móvil: PENDIENTE (se implementará)
+`businesses.menu_template_id` (ej. 'icon-rail') hoy solo lo respeta la web; el móvil tiene un layout fijo (MenuScreen ignora el campo). DECISIÓN: el móvil DEBE respetar la misma plantilla que la web. Es la próxima tanda grande — requiere mapear las plantillas web y replicarlas como layouts nativos. Diagnóstico hecho; implementación pendiente.
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.

@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
@@ -68,6 +68,68 @@ en app**. Pasos:
 - Anclar (pin) un mensaje viejo → NO debe borrarse.
 - (Conocido/diferido) las **fotos** de mensajes purgados quedan huérfanas en `post-media` — GC vía
   Storage API pendiente (ver "What's next" + D-14).
+
+---
+
+## Sesión 2026-07-11 — Device testing (EAS dev-client) + fixes en cadena
+
+Build EAS dev-client en iPhone de Juan. Se probaron los flujos reales y salieron VARIOS
+bugs que solo se ven en device. Todos auditados (get_commit full_patch) y pusheados a
+origin/main.
+
+**Bugs de device testing resueltos:**
+- `3eef6e2` (migración 048, aplicada vía MCP): trigger `on_auth_user_created` auto-crea
+  `public.users` al registrarse (OAuth + email). Deriva username del email local-part /
+  nombre de Google, editable luego. Backfill del huérfano OAuth. CAUSA: OAuth no pasaba por
+  RegisterStep2 → sin fila en public.users → fallaba enviar mensajes.
+- `589fdde`: nombres del chat vía `public_profiles` (la RLS de `users` es own-row+admin y
+  bloqueaba el embedded join `sender:users!fkey`). El chat resuelve nombres batch desde
+  public_profiles + cache + realtime async.
+- `c7581fa`: subida de foto de perfil (avatar/cover). CAUSA: EditProfileScreen tenía su
+  propia `uploadImage` con `fetch().blob()` (rompe en RN/Hermes, sube 0 bytes). Fix: usar
+  la `uploadImage` de `services/storage.ts` (expo-file-system/legacy + base64-arraybuffer),
+  la misma que ya funcionaba en el chat.
+- `3aa9e38`: avatares en mensajes del chat (faltaba `avatar_url` en el batch a
+  public_profiles → sender_avatar vacío).
+- `7bcc661`: avatares en la fila de presencia. CAUSA: usePresenceChannels emite el avatar
+  desde `user.user_metadata.avatar_url`, no desde public.users. Fix: EditProfileScreen
+  ahora sincroniza `supabase.auth.updateUser({ data: { avatar_url } })` al guardar.
+- `6a0b055`: customizador de menú no abría en móvil. CAUSA: ProductRow decidía abrir el
+  detalle con `options.sizes` (sistema viejo), pero los ítems usan grupos de modificadores
+  (migraciones 030-032). Fix: `services/menu` trae `has_modifiers` (embedded count de
+  `menu_item_modifier_groups`), ProductRow abre el detalle con `has_modifiers || sizes`, y
+  la fila entera es tappable (paridad con web).
+
+**Feature UX — tarjeta rápida de usuario (quick card):**
+- `f807355`: tap en avatar/nombre de un mensaje abre una tarjeta compacta ANCLADA al avatar
+  (measureInWindow + flip arriba/abajo + piquito), fondo opaco, 6 acciones en grid (Perfil,
+  DM, Seguir, Silenciar, Reportar, Bloquear). Silenciar delega al UserActionSheet grande
+  (que conserva duración de mute + moderación de dueño) vía onOpenFull.
+- `c73844f`: quitado el long-press del avatar/nombre de mensajes (tap-only).
+- `d93f164`: la fila de presencia (ChatTopBar) también abre la quick card con tap (mismo
+  handler); se eliminó `handleUserLongPress` (ya sin uso).
+
+**Biometría:**
+- `2b31f27`: prompt de enrolamiento biométrico post-login (una vez, tras el primer login de
+  cualquier método; texto adaptativo Face ID/Touch ID/huella) + botón Face ID del login solo
+  visible si el lock está activado (opt-in). Reusa el flag `@jchat/biometric_enabled` de M2.
+
+**Config OAuth (acciones en Supabase/Google, no código):** el provider Google en Supabase
+tenía el Client Secret VACÍO → "missing OAuth secret"; tras poner el secret, "Unable to
+exchange external code" por mismatch → regenerado el Client Secret del Web Client
+(257672140298-rbeq5...) en Google Cloud y pegado en Supabase. Google login OK.
+
+**Resultados device testing (PASÓ):** M4 Apple login, M1 Google login, chat (envío +
+nombres + avatares de ambas cuentas + presencia), mapa + venues (Apple Maps M3), quick card
+(mensajes + presencia), subida de foto (perfil + chat + presencia), menú (6 categorías, 19
+ítems, add-to-cart).
+
+**Pendiente de probar en device:** M2 biometría (toggle + prompt + lock — estaba bloqueado
+por bundle viejo, ya debería andar), cambio de idioma ES/EN, menú customizador (6a0b055,
+recargar y confirmar), borrado de cuenta M6 (cuenta desechable).
+
+**Pendiente de Juan (no código):** revocar/regenerar el .p8 de Apple (expuesto en sesión
+anterior), decisión de native sign-in, confirmar `eas update:configure`.
 
 ---
 
