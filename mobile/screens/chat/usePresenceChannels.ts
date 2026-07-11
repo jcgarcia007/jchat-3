@@ -58,13 +58,25 @@ interface UsePresenceChannelsResult {
 // Subscribe + track presence on a single room channel. Caller owns the returned
 // channel (untrack + removeChannel on cleanup). `onState` fires with the room id
 // and its live present-user list on every sync/join/leave.
-function subscribePresence(
+async function subscribePresence(
   roomId: string,
   userId: string,
   payload: PresencePayload,
   onState: (roomId: string, users: UserSummary[]) => void,
-): RealtimeChannel {
-  const ch = supabase.channel(`presence:${roomId}`, {
+): Promise<RealtimeChannel> {
+  const name = `presence:${roomId}`;
+  // Presence NEEDS a shared topic (all devices join the same one), so we can't
+  // uniquify it like the postgres_changes channels. Instead, drop any stale channel
+  // with this topic and AWAIT it: supabase.channel(name) otherwise returns the old,
+  // already-subscribed channel and .on() after subscribe() throws.
+  const stale = supabase
+    .getChannels()
+    .filter((c) => c.topic === `realtime:${name}` || c.topic === name);
+  if (stale.length > 0) {
+    await Promise.all(stale.map((c) => supabase.removeChannel(c)));
+  }
+
+  const ch = supabase.channel(name, {
     config: { presence: { key: userId } },
   });
   const rebuild = () => {
@@ -145,19 +157,25 @@ export function usePresenceChannels({
   useEffect(() => {
     if (!isSupabaseConfigured || entryVisible || !payload || !user || !mainRoomId) return;
 
+    let cancelled = false;
     const channels: RealtimeChannel[] = [];
 
-    const main = subscribePresence(mainRoomId, user.id, payload, applyState);
-    mainRef.current = main;
-    channels.push(main);
+    void (async () => {
+      const main = await subscribePresence(mainRoomId, user.id, payload, applyState);
+      if (cancelled) { void supabase.removeChannel(main); return; }
+      mainRef.current = main;
+      channels.push(main);
 
-    if (anchorRoomId !== mainRoomId) {
-      const anchor = subscribePresence(anchorRoomId, user.id, payload, applyState);
-      anchorRef.current = anchor;
-      channels.push(anchor);
-    }
+      if (anchorRoomId !== mainRoomId) {
+        const anchor = await subscribePresence(anchorRoomId, user.id, payload, applyState);
+        if (cancelled) { void supabase.removeChannel(anchor); return; }
+        anchorRef.current = anchor;
+        channels.push(anchor);
+      }
+    })();
 
     return () => {
+      cancelled = true;
       for (const ch of channels) {
         void ch.untrack().finally(() => {
           void supabase.removeChannel(ch);
@@ -173,13 +191,24 @@ export function usePresenceChannels({
   useEffect(() => {
     if (!isSupabaseConfigured || entryVisible || !payload || !user || !visitedRoomId) return;
 
-    const ch = subscribePresence(visitedRoomId, user.id, payload, applyState);
-    visitedRef.current = ch;
+    let cancelled = false;
+    let ch: RealtimeChannel | null = null;
+
+    void (async () => {
+      const c = await subscribePresence(visitedRoomId, user.id, payload, applyState);
+      if (cancelled) { void supabase.removeChannel(c); return; }
+      ch = c;
+      visitedRef.current = c;
+    })();
 
     return () => {
-      void ch.untrack().finally(() => {
-        void supabase.removeChannel(ch);
-      });
+      cancelled = true;
+      if (ch) {
+        const c = ch;
+        void c.untrack().finally(() => {
+          void supabase.removeChannel(c);
+        });
+      }
       visitedRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
