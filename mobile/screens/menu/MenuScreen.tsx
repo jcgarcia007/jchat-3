@@ -12,7 +12,7 @@
  * 5. Search bar filters items by name (client-side).
  * 6. FeaturedOfferBanner: TODO — fetch active offer; stub shown for demo.
  * 7. CategoryTabs: sticky horizontal tabs; tapping jumps to that section.
- * 8. SectionList with category headers + ProductRow per item.
+ * 8. ScrollView with per-category sections (measured offsets) + ProductRow per item.
  * 9. CartBar: sticky bottom bar, visible only when itemCount > 0.
  *
  * ── Task stubs ────────────────────────────────────────────────────────────────
@@ -35,13 +35,13 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
-  SectionList,
-  SectionListData,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -273,10 +273,10 @@ export default function MenuScreen() {
     isSupabaseConfigured ? null : DEMO_OFFER,
   );
 
-  const listRef = useRef<SectionList<MenuItem, MenuSection>>(null);
-  // Target section for a pending scroll — retried if scrollToLocation fails
-  // because the destination rows weren't measured yet (variable-height list).
-  const pendingScrollSection = useRef<number | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  // Measured absolute Y of each section (its View is a direct child of the
+  // ScrollView) → reliable scrollTo target without SectionList index math.
+  const sectionOffsets = useRef<Record<string, number>>({});
 
   // ── Set cart context once on mount ──────────────────────────────────────────
 
@@ -343,33 +343,27 @@ export default function MenuScreen() {
 
   // ── Scroll to category ───────────────────────────────────────────────────────
 
-  const scrollToCategory = useCallback(
-    (categoryId: string) => {
-      setActiveCategoryId(categoryId);
-      const sectionIndex = sections.findIndex((s) => s.categoryId === categoryId);
-      if (sectionIndex >= 0 && listRef.current) {
-        pendingScrollSection.current = sectionIndex;
-        listRef.current.scrollToLocation({
-          sectionIndex,
-          itemIndex: 0,
-          viewOffset: 0,
-          animated: true,
-        });
-      }
-    },
-    [sections],
-  );
+  const scrollToCategory = useCallback((categoryId: string) => {
+    setActiveCategoryId(categoryId);
+    const y = sectionOffsets.current[categoryId];
+    if (y != null) {
+      scrollRef.current?.scrollTo({ y: Math.max(y - 4, 0), animated: true });
+    }
+  }, []);
 
-  // ── Track visible section for tab highlight ───────────────────────────────────
+  // ── Track visible section for tab highlight (on scroll) ───────────────────────
 
-  const handleViewableItemsChanged = useCallback(
-    (info: { viewableItems: Array<{ section?: MenuSection }> }) => {
-      const firstSection = info.viewableItems.find((vi) => vi.section)?.section;
-      if (firstSection) {
-        setActiveCategoryId(firstSection.categoryId);
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      let current: string | null = sections[0]?.categoryId ?? null;
+      for (const sec of sections) {
+        const off = sectionOffsets.current[sec.categoryId];
+        if (off != null && off <= y + 12) current = sec.categoryId;
       }
+      if (current && current !== activeCategoryId) setActiveCategoryId(current);
     },
-    [],
+    [sections, activeCategoryId],
   );
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -390,33 +384,6 @@ export default function MenuScreen() {
   );
 
   // ── Render helpers ────────────────────────────────────────────────────────────
-
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: SectionListData<MenuItem, MenuSection> }) => (
-      <View style={[styles.sectionHeader, { backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle }]}>
-        <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-          {section.title}
-        </Text>
-      </View>
-    ),
-    [c],
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: MenuItem }) => (
-      <ProductRow item={item} onOpenDetail={handleOpenDetail} />
-    ),
-    [handleOpenDetail],
-  );
-
-  const keyExtractor = useCallback((item: MenuItem) => item.id, []);
-
-  const ListHeaderComponent = useMemo(
-    () => (
-      <FeaturedOfferBanner offer={activeOffer} />
-    ),
-    [activeOffer],
-  );
 
   const ListEmptyComponent = useMemo(() => {
     if (loading) return null;
@@ -502,36 +469,36 @@ export default function MenuScreen() {
           <ActivityIndicator size="large" color={palette.brand} />
         </View>
       ) : (
-        <SectionList<MenuItem, MenuSection>
-          ref={listRef}
-          sections={sections}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          ListHeaderComponent={ListHeaderComponent}
-          ListEmptyComponent={ListEmptyComponent}
-          stickySectionHeadersEnabled
-          showsVerticalScrollIndicator={false}
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.listContent}
-          onViewableItemsChanged={handleViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 20 }}
-          onMomentumScrollEnd={() => {
-            pendingScrollSection.current = null;
-          }}
-          // The destination rows weren't measured yet — retry once after a beat.
-          onScrollToIndexFailed={() => {
-            const target = pendingScrollSection.current;
-            if (target == null) return;
-            setTimeout(() => {
-              listRef.current?.scrollToLocation({
-                sectionIndex: target,
-                itemIndex: 0,
-                viewOffset: 0,
-                animated: true,
-              });
-            }, 300);
-          }}
-        />
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+        >
+          <FeaturedOfferBanner offer={activeOffer} />
+          {sections.length === 0 ? (
+            ListEmptyComponent
+          ) : (
+            sections.map((sec) => (
+              <View
+                key={sec.categoryId}
+                onLayout={(e) => {
+                  sectionOffsets.current[sec.categoryId] = e.nativeEvent.layout.y;
+                }}
+              >
+                <View style={[styles.sectionHeader, { backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle }]}>
+                  <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{sec.title}</Text>
+                </View>
+                {sec.data.map((item) => (
+                  <ProductRow key={item.id} item={item} onOpenDetail={handleOpenDetail} />
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
       )}
 
       {/* ── Cart bar (bottom, visible when cart has items) ── */}
