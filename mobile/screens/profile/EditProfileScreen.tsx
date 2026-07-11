@@ -65,6 +65,7 @@ import type { ProfileTheme } from '../../theme/profileThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { getUserById } from '../../services/users';
 import type { UserRow } from '../../services/users';
+import { uploadImage } from '../../services/storage';
 
 import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector';
 
@@ -85,38 +86,6 @@ type LanguageCode = (typeof LANGUAGES)[number]['code'];
 const USERNAME_DEBOUNCE_MS = 500;
 const AVATAR_BUCKET = 'avatars';
 const COVER_BUCKET = 'covers';
-
-// ── Upload helpers ───────────────────────────────────────────────────────────
-
-/**
- * Upload a local image URI to the given Supabase Storage bucket.
- * Returns the public URL on success, or the original localUri when
- * Supabase is not configured (demo/dev mode).
- */
-async function uploadImage(
-  userId: string,
-  localUri: string,
-  bucket: string,
-): Promise<string> {
-  if (!isSupabaseConfigured) return localUri;
-
-  // Fetch the file as a blob
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  const ext = localUri.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-  const path = `${userId}/${Date.now()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(path, blob, { contentType, upsert: true });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-}
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
