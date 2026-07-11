@@ -217,6 +217,8 @@ export default function ChatRoomScreen() {
   const oldestTimestampRef = useRef<string | null>(null);
   // Cache user_id → display name to resolve sender_name for realtime messages
   const userNameCacheRef = useRef<Map<string, string>>(new Map());
+  // Cache user_id → avatar_url (null = no avatar) to resolve sender_avatar
+  const userAvatarCacheRef = useRef<Map<string, string | null>>(new Map());
   const flatListRef = useRef<FlatList>(null);
   // Fullscreen photo viewer: the tapped image's URL (null = closed).
   const [viewerImage, setViewerImage] = useState<string | null>(null);
@@ -393,11 +395,12 @@ export default function ChatRoomScreen() {
       if (uniqueUserIds.length > 0) {
         const { data: profs } = await supabase
           .from('public_profiles')
-          .select('id, username, display_name')
+          .select('id, username, display_name, avatar_url')
           .in('id', uniqueUserIds);
         for (const p of profs ?? []) {
           const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
           if (nm) userNameCacheRef.current.set(p.id as string, nm);
+          userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
         }
       }
 
@@ -405,7 +408,10 @@ export default function ChatRoomScreen() {
         const senderName = typeof row.user_id === 'string'
           ? userNameCacheRef.current.get(row.user_id)
           : undefined;
-        return { ...row, sender_name: senderName } as unknown as ChatMessage;
+        const senderAvatar = typeof row.user_id === 'string'
+          ? userAvatarCacheRef.current.get(row.user_id) ?? undefined
+          : undefined;
+        return { ...row, sender_name: senderName, sender_avatar: senderAvatar } as unknown as ChatMessage;
       });
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
@@ -438,12 +444,13 @@ export default function ChatRoomScreen() {
     void (async () => {
       const { data: prof } = await supabase
         .from('public_profiles')
-        .select('id, username, display_name')
+        .select('id, username, display_name, avatar_url')
         .eq('id', user.id)
         .maybeSingle();
       if (cancelled) return;
       const nm = prof?.display_name ?? prof?.username ?? undefined;
       if (nm) userNameCacheRef.current.set(user.id, nm);
+      userAvatarCacheRef.current.set(user.id, prof?.avatar_url ?? null);
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -465,8 +472,11 @@ export default function ChatRoomScreen() {
         },
         (payload) => {
           const raw = payload.new as ChatMessage;
-          const cached = userNameCacheRef.current.get(raw.user_id);
-          const newMsg: ChatMessage = cached ? { ...raw, sender_name: cached } : raw;
+          const cachedName = userNameCacheRef.current.get(raw.user_id);
+          const cachedAvatar = userAvatarCacheRef.current.get(raw.user_id);
+          const newMsg: ChatMessage = cachedName
+            ? { ...raw, sender_name: cachedName, sender_avatar: cachedAvatar ?? undefined }
+            : raw;
           setMessages((prev) => {
             // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
             if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -476,19 +486,21 @@ export default function ChatRoomScreen() {
           // automatically: if the user is at the bottom they see it; if they
           // scrolled up to read history, they are not yanked down.
           // If the name wasn't cached (message from a user we haven't seen yet),
-          // resolve it from public_profiles and patch the message in place.
-          if (!cached && raw.user_id) {
+          // resolve name + avatar from public_profiles and patch the message in place.
+          if (!cachedName && raw.user_id) {
             void (async () => {
               const { data: prof } = await supabase
                 .from('public_profiles')
-                .select('id, username, display_name')
+                .select('id, username, display_name, avatar_url')
                 .eq('id', raw.user_id)
                 .maybeSingle();
               const nm = prof?.display_name ?? prof?.username ?? undefined;
+              const av = prof?.avatar_url ?? null;
+              if (nm) userNameCacheRef.current.set(raw.user_id, nm);
+              userAvatarCacheRef.current.set(raw.user_id, av);
               if (nm) {
-                userNameCacheRef.current.set(raw.user_id, nm);
                 setMessages((prev) =>
-                  prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm } : m)));
+                  prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
               }
             })();
           }
