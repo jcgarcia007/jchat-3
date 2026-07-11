@@ -301,15 +301,14 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // Only logged when body.user_id differs from JWT — aids debugging.
   if (traceUserId !== authUserId) metadata.client_user_id = traceUserId;
 
-  // ── Idempotency key (prevent double-charge on network retry) ──────────────
-  const itemsFingerprint = btoa(
-    items
-      .slice()
-      .sort((a, b) => a.menu_item_id.localeCompare(b.menu_item_id))
-      .map((it) => `${it.menu_item_id}:${it.qty}`)
-      .join(","),
-  ).slice(0, 22);
-  const idempotencyKey = `pi:${authUserId}:${business_id}:${serverTotalCents}:${itemsFingerprint}`;
+  // ── Idempotency key (unique per payment ATTEMPT) ───────────────────────────
+  // A key derived from the cart (user+business+total+items) is deterministic, so a
+  // customer repeating an identical order reuses it with different params (e.g. a new
+  // table_label) → Stripe 400. The client sends a fresh key per attempt; we namespace
+  // it with the JWT-verified user so one client can't collide with another's key.
+  const rawKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  const safeKey = /^[A-Za-z0-9_-]{8,64}$/.test(rawKey) ? rawKey : null;
+  const idempotencyKey = `pi:${authUserId}:${safeKey ?? crypto.randomUUID()}`;
 
   // ── Create PaymentIntent ───────────────────────────────────────────────────
   const ephemeralKey = await stripe.ephemeralKeys.create(

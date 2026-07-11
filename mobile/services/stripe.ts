@@ -48,6 +48,8 @@ export interface OrderPayload {
   promoCode?: string | null;
   specialInstructions?: string | null;
   tableLabel?: string | null;
+  /** Fresh key per payment attempt (server namespaces it with the JWT user). */
+  idempotencyKey?: string;
   items: {
     menuItemId: string;
     name: string;
@@ -93,6 +95,7 @@ export async function fetchPaymentSheetParams(
   const { data, error } = await supabase.functions.invoke<PaymentSheetParams>('payments', {
     body: {
       action: 'create_payment_intent',
+      idempotency_key: order.idempotencyKey ?? null,
       order: {
         business_id: order.businessId,
         user_id: order.userId,

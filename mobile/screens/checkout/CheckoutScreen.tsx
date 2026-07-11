@@ -149,6 +149,12 @@ function generateDemoOrderNumber(): string {
   return `#J-${String(n).padStart(5, '0')}`;
 }
 
+/** Fresh key per payment attempt — see payments EF: a cart-derived key collides
+ *  when the customer repeats an identical order. */
+function makeIdempotencyKey(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ── Sub-component: Processing Overlay ─────────────────────────────────────────
 
 interface ProcessingOverlayProps {
@@ -529,6 +535,7 @@ export default function CheckoutScreen() {
       orderType,
       giftRecipientId,
       tableLabel,
+      idempotencyKey: makeIdempotencyKey(),
       subtotalCents,
       taxCents,
       tipCents,
