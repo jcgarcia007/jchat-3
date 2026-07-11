@@ -129,7 +129,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />
           <MainStack.Screen name="Menu" component={MenuScreen} />
-          <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} />
+          <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'modal' }} />
           <MainStack.Screen name="Cart" component={CartScreen} />
           <MainStack.Screen name="Checkout" component={CheckoutScreen} />
           <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />

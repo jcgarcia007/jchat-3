@@ -274,6 +274,9 @@ export default function MenuScreen() {
   );
 
   const listRef = useRef<SectionList<MenuItem, MenuSection>>(null);
+  // Target section for a pending scroll — retried if scrollToLocation fails
+  // because the destination rows weren't measured yet (variable-height list).
+  const pendingScrollSection = useRef<number | null>(null);
 
   // ── Set cart context once on mount ──────────────────────────────────────────
 
@@ -345,6 +348,7 @@ export default function MenuScreen() {
       setActiveCategoryId(categoryId);
       const sectionIndex = sections.findIndex((s) => s.categoryId === categoryId);
       if (sectionIndex >= 0 && listRef.current) {
+        pendingScrollSection.current = sectionIndex;
         listRef.current.scrollToLocation({
           sectionIndex,
           itemIndex: 0,
@@ -511,8 +515,22 @@ export default function MenuScreen() {
           contentContainerStyle={styles.listContent}
           onViewableItemsChanged={handleViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 20 }}
-          // Prevent scroll errors when sections change during search
-          onScrollToIndexFailed={() => undefined}
+          onMomentumScrollEnd={() => {
+            pendingScrollSection.current = null;
+          }}
+          // The destination rows weren't measured yet — retry once after a beat.
+          onScrollToIndexFailed={() => {
+            const target = pendingScrollSection.current;
+            if (target == null) return;
+            setTimeout(() => {
+              listRef.current?.scrollToLocation({
+                sectionIndex: target,
+                itemIndex: 0,
+                viewOffset: 0,
+                animated: true,
+              });
+            }, 300);
+          }}
         />
       )}
 
