@@ -378,6 +378,18 @@ export default function EditProfileScreen(): React.JSX.Element {
 
       if (error) throw error;
 
+      // Keep Auth metadata in sync — chat presence (usePresenceChannels) reads the
+      // avatar from user_metadata.avatar_url, not from the users table. Only when
+      // the avatar actually changed. Additional to the users update, never a
+      // replacement; a failure here must not fail the save (users already updated).
+      if (finalAvatarUrl && avatarUri !== originalAvatar) {
+        try {
+          await supabase.auth.updateUser({ data: { avatar_url: finalAvatarUrl } });
+        } catch (metaErr) {
+          console.warn('[EditProfile] auth metadata avatar sync failed', metaErr);
+        }
+      }
+
       navigation.goBack();
     } catch (err) {
       const msg = err instanceof Error ? err.message : t('edit.saveErrorGeneric');
