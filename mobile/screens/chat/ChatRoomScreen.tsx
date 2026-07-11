@@ -713,6 +713,8 @@ export default function ChatRoomScreen() {
 
   // ── Long-press user ────────────────────────────────────────────────────────
 
+  // Still used by ChatTopBar's presence avatars (a different surface from message
+  // bubbles) — long-pressing a user in the top bar opens the full UserActionSheet.
   const handleUserLongPress = useCallback((userId: string, displayName: string) => {
     if (userId === user?.id) return; // Can't action yourself
     setUserSheet({ visible: true, userId, userName: displayName });
@@ -848,13 +850,12 @@ export default function ChatRoomScreen() {
         isOwn={item.user_id === user?.id}
         theme={chatTheme}
         authorRole={roleMap.get(item.user_id) ?? null}
-        onLongPressUser={handleUserLongPress}
         onPressUser={handleUserPress}
         onLongPressMessage={handleLongPressMessage}
         onImagePress={setViewerImage}
       />
     ),
-    [user?.id, chatTheme, roleMap, handleUserLongPress, handleUserPress, handleLongPressMessage],
+    [user?.id, chatTheme, roleMap, handleUserPress, handleLongPressMessage],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────

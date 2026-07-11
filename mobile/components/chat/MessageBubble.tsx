@@ -9,8 +9,8 @@
  *   display only their nickname (message.metadata.nickname); never show
  *   real name or avatar.
  *
- * Long-press the avatar/name row → onLongPressUser callback (opens UserActionSheet).
- * Long-press the bubble         → future: message options (reply, copy, etc.)
+ * Tap the avatar/name row → onPressUser callback (opens the anchored quick card).
+ * Long-press the bubble    → future: message options (reply, copy, etc.)
  *
  * // TODO(Task 2.5): pinned banner is rendered by PinnedBanner, not here.
  * // TODO(Task 2.6): offer type renders OfferCard placeholder below.
@@ -69,8 +69,6 @@ export interface MessageBubbleProps {
   theme: ChatTheme;
   /** Role of the author in this business chat room. Hidden for incognito messages. */
   authorRole?: 'owner' | 'staff' | null;
-  /** Called with the sender's user_id when avatar/name area is long-pressed. */
-  onLongPressUser?: (userId: string, displayName: string) => void;
   /**
    * Called with the sender's user_id + the avatar's on-screen rect when the
    * avatar/name area is TAPPED (opens the anchored quick card).
@@ -225,7 +223,6 @@ export function MessageBubble({
   isOwn,
   theme,
   authorRole,
-  onLongPressUser,
   onPressUser,
   onLongPressMessage,
   onImagePress,
@@ -235,12 +232,6 @@ export function MessageBubble({
   const incognito = isIncognito(message);
   const isOffer = message.type === 'offer';
   const avatarRef = useRef<View>(null);
-
-  const handleLongPressUser = useCallback(() => {
-    if (onLongPressUser) {
-      onLongPressUser(message.user_id, displayName);
-    }
-  }, [onLongPressUser, message.user_id, displayName]);
 
   // Tap → measure the avatar rect (window coords) and open the anchored quick card.
   const handlePressUser = useCallback(() => {
@@ -279,8 +270,6 @@ export function MessageBubble({
         <Pressable
           ref={avatarRef}
           onPress={handlePressUser}
-          onLongPress={handleLongPressUser}
-          delayLongPress={400}
           accessibilityRole="button"
           accessibilityLabel={t('bubble.userLongPressA11y', { name: displayName })}
           style={styles.avatarWrap}
@@ -305,8 +294,6 @@ export function MessageBubble({
         {!isOwn && (
           <Pressable
             onPress={handlePressUser}
-            onLongPress={handleLongPressUser}
-            delayLongPress={400}
             style={styles.senderNameRow}
           >
             <Text style={[styles.senderName, { color: theme.accent }]} numberOfLines={1}>
