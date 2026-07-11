@@ -76,7 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>('counter');
+  const [orderType, setOrderType] = useState<OrderType>('table');
   const [giftRecipientId, setGiftRecipientId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState<string | null>(null);
 
@@ -121,7 +121,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLines([]);
     setPromoCode(null);
     setGiftRecipientId(null);
-    setOrderType('counter');
+    setOrderType('table');
   }, []);
 
   const itemCount = useMemo(() => lines.reduce((n, l) => n + l.qty, 0), [lines]);

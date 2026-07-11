@@ -129,12 +129,8 @@ const ORDER_TYPE_CARDS: OrderTypeCard[] = [
     sublabelKey: 'cart.orderCounterSub',
     Icon: IconShoppingBag,
   },
-  {
-    type: 'gift',
-    labelKey: 'cart.orderGift',
-    sublabelKey: 'cart.orderGiftSub',
-    Icon: IconGift,
-  },
+  // 'gift' hidden for now (gift features deferred to P0-2/P0-3). The OrderType and the
+  // gift recipient picker logic stay intact so it can be re-enabled by restoring this card.
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
