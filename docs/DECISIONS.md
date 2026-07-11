@@ -131,6 +131,18 @@ Apple/Google nativos (expo-apple-authentication + @react-native-google-signin) e
 ### D-27 — Plantillas de menú en móvil: PENDIENTE (se implementará)
 `businesses.menu_template_id` (ej. 'icon-rail') hoy solo lo respeta la web; el móvil tiene un layout fijo (MenuScreen ignora el campo). DECISIÓN: el móvil DEBE respetar la misma plantilla que la web. Es la próxima tanda grande — requiere mapear las plantillas web y replicarlas como layouts nativos. Diagnóstico hecho; implementación pendiente.
 
+### D-28 — Tipo de pedido: 'table' por defecto, 'gift' oculto
+El carrito abre con Mesa seleccionada. La card de Regalo se oculta (coherente con diferir features de regalo hasta cerrar los temas de pago). El type 'gift' y el gift picker se conservan inertes. (Ref: 88a8589.)
+
+### D-29 — `table_label` OBLIGATORIO en pedidos a mesa
+En la web el campo "Mesa" es opcional (pero eso vive en el sheet de LLAMAR AL MESERO → `service_calls.table_label`, no en el pedido). Para un PEDIDO, la mesa es obligatoria: sin ella el pedido no se puede entregar. Texto libre (máx 40): "5", "barra", "terraza". (Ref: 1eee04d, migración 049.)
+
+### D-30 — Topics de realtime
+Los canales de `postgres_changes` usan topic ÚNICO por suscripción (el `filter` hace el scoping). Los canales de PRESENCIA deben mantener el topic COMPARTIDO (`presence:${roomId}`) o los usuarios dejan de verse → ahí el fix es purgar+AWAITar el canal stale antes de resuscribir. (Ref: c8e0836, 0b593ad.)
+
+### D-31 — Clave de idempotencia por INTENTO, no por carrito
+La clave la genera el cliente en cada intento de pago; el servidor la valida y la namespacea con el usuario del JWT. Una clave derivada del carrito bloquea pedidos idénticos repetidos. (Ref: e1e02aa.)
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

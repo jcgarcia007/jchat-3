@@ -131,6 +131,100 @@ recargar y confirmar), borrado de cuenta M6 (cuenta desechable).
 **Pendiente de Juan (no código):** revocar/regenerar el .p8 de Apple (expuesto en sesión
 anterior), decisión de native sign-in, confirmar `eas update:configure`.
 
+### Parte 2 — Paridad de menú, cadena de pagos y crashes de realtime
+
+**Menú móvil a la par de la web:**
+- `f543937`: ProductDetail pasa a `presentation: 'modal'` (entra desde abajo, paridad web).
+  (Su intento de scroll por categoría con `scrollToLocation` FALLÓ en device — superado por a883048.)
+- `a883048`: scroll por categoría FIABLE — se reemplazó SectionList por ScrollView; cada
+  sección es hijo DIRECTO del ScrollView y registra su Y absoluta vía `onLayout` en
+  `sectionOffsets`; `scrollToCategory` hace `scrollTo({y})`. Tab activa vía `onScroll`.
+  CAUSA del fallo previo: `SectionList.scrollToLocation` + `ListHeaderComponent` +
+  sticky headers no movía la lista en absoluto. Trade-off aceptado: se pierden los
+  headers de sección pegajosos.
+- `1683b95` (TANDA A): grupos de modificadores en el customizador móvil.
+  `services/menu`: tipos `ModifierGroup`/`ModifierChoice` + `getItemModifierGroups()`
+  (embedded desde `menu_item_modifier_groups`). `ProductDetailScreen`: single=radio /
+  multi=checkbox respetando `min_select`/`max_select`, validación de requeridos
+  (bloquea "Añadir"), precio dinámico. `CartContext`: `CartModifierSelection` +
+  `CartLine.modifierSelections`; `makeLineId` incluye los modificadores (configs
+  distintas del mismo ítem = líneas separadas).
+- `88a8589`: tipo de pedido por defecto = 'table'; card de 'gift' OCULTA (la lógica del
+  gift picker y el type 'gift' se conservan inertes → reactivable restaurando la card).
+
+**Número de mesa en el pedido (cadena completa):**
+- `1eee04d` + **migración 049 (APLICADA vía MCP)**: `orders.table_label` (text, ≤40 chars).
+  La cadena: CartContext → CartScreen (input obligatorio si order_type='table') →
+  CheckoutScreen → `services/stripe` → EF `payments` (sanitiza, mete en metadata del
+  PaymentIntent) → EF `stripe-webhook` (lee metadata → INSERT en orders).
+  CLAVE: las órdenes las crea el SERVIDOR (webhook, service_role — migración 033), NUNCA
+  el móvil en producción. Cualquier campo nuevo de orden debe atravesar TODA la cadena.
+
+**Fixes de realtime (crashes en device):**
+- `c8e0836`: "cannot add postgres_changes callbacks after subscribe()" al volver del
+  checkout. CAUSA: `supabase.channel(topic)` DEVUELVE el canal existente si el topic se
+  repite; `removeChannel` es async, así que un remonte rápido reutiliza el canal ya
+  suscrito y `.on()` lanza. FIX: topic ÚNICO por suscripción en PinnedBanner y
+  ChatRoomScreen (el `filter` del `.on()` hace el scoping real, no el topic).
+- `0b593ad`: mismo crash en PRESENCIA. La presencia NO puede usar topic único (todos los
+  dispositivos deben compartir `presence:${roomId}` para verse). FIX: `subscribePresence`
+  es ahora async — purga los canales stale del mismo topic y AWAITa su `removeChannel`
+  antes de crear el nuevo. Ambos efectos corren en IIFE async con guard `cancelled`.
+
+**Pagos — idempotencia:**
+- `e1e02aa`: StripeIdempotencyError en device. CAUSA: la EF derivaba la clave del carrito
+  (`pi:user:business:total:itemsFingerprint`) → totalmente determinista, así que un cliente
+  repitiendo un pedido IDÉNTICO (mismo total) reusaba la clave con parámetros distintos →
+  Stripe 400. En producción BLOQUEARÍA pedir dos veces lo mismo.
+  FIX: el cliente genera una clave fresca por intento (`makeIdempotencyKey`) enviada en
+  `body.idempotency_key`; la EF la valida (`[A-Za-z0-9_-]{8,64}`) y la namespacea con el
+  usuario verificado por JWT (fallback `crypto.randomUUID()`).
+  VERIFICADO con datos: dos órdenes con total idéntico (1782, mesa 5) creadas sin error.
+
+**INFRAESTRUCTURA (fuera de git — NO PERDER):**
+- Migración **049 aplicada** vía Supabase MCP.
+- Edge Functions **`payments` y `stripe-webhook` DESPLEGADAS** (payments quedó en v17).
+- Secretos de Supabase configurados: **`STRIPE_SECRET_KEY`** y **`EXPO_PUBLIC_STRIPE_PK`**
+  (llaves de TEST de Stripe). Sin `STRIPE_SECRET_KEY` la EF hace `throw` → 500 y el móvil
+  no recibe la publishable key → "no puedo agregar la tarjeta".
+- RECORDATORIO: **tras cambiar secretos hay que REDESPLEGAR** la Edge Function.
+
+**HITO — flujo de compra completo verificado end-to-end por primera vez:**
+menú → customizador con modificadores → carrito → mesa → Stripe (tarjeta test 4242) →
+webhook → orden en la BD con impuesto (8%) y propina. 6 órdenes reales creadas.
+
+**Estado de Bar XZX:** `stripe_account_id = NULL` (sin onboarding de Stripe Connect). La EF
+lo maneja (`if (stripeAccountId)`) → cobra sin destination charges. Pendiente onboardear
+Connect para que el negocio reciba el dinero.
+
+### PENDIENTES (actualizado 2026-07-11 parte 2)
+
+**🔴 BLOQUEANTE DE PRODUCCIÓN — BUG DE DINERO (máxima prioridad, próxima tanda):**
+**Los modificadores NO se cobran.** La app muestra el precio con modificadores (p.ej. Alitas
+BBQ $22) pero el servidor cobra solo el precio base ($14) → se pierden los extras en cada
+pedido. EVIDENCIA: `order_items.price_cents = 1400` con el carrito mostrando $22.
+CAUSA: `CheckoutScreen` solo envía `options: { size, extras }` (sistema VIEJO); las
+`modifierSelections` (Tanda A) NUNCA llegan al servidor. La EF `resolveModifierCents()` solo
+lee `menu_items.options` (sizes/extras legacy) → suma $0.
+FIX (TANDA C): (1) CheckoutScreen envía las selecciones de modificadores; (2) la EF
+`payments` resuelve los precios desde `modifier_groups.choices` en la BD (NUNCA del cliente)
+y los suma a `lineUnitCents`; (3) redesplegar la EF. Toca la ruta de dinero → auditar con
+cuidado.
+
+**Otros pendientes:**
+- Pantalla de Cart: no muestra el desglose de modificadores por línea (se guardan, pero no
+  se listan).
+- `UserProfileScreen` (ver perfil de OTRO usuario) NO EXISTE — el botón "Perfil" de la quick
+  card solo muestra un Alert placeholder.
+- D-27: plantillas de menú en móvil (`businesses.menu_template_id` — hoy solo la web las
+  respeta).
+- Bar XZX sin `stripe_account_id` → onboarding de Stripe Connect pendiente.
+- Auditar formalmente P0-2/P0-3 y actualizar su estado (parecen resueltos).
+- Pruebas de device pendientes: biometría (toggle/prompt/lock), cambio de idioma ES/EN,
+  borrado de cuenta (M6).
+- `mobile/eas.json`: reformat del linter sin commitear en el working tree.
+- Revocar/regenerar la .p8 de Apple (expuesta en sesión anterior).
+
 ---
 
 ## Sesión 2026-07-08 — completado
