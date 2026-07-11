@@ -1,4 +1,19 @@
 {
+  "quickCard": {
+    "tapForProfile": "Toca para ver perfil",
+    "profile": "Perfil",
+    "dm": "DM",
+    "follow": "Seguir",
+    "mute": "Silenciar",
+    "report": "Reportar",
+    "block": "Bloquear",
+    "followedMsg": "Ahora sigues a este usuario.",
+    "requestedMsg": "Solicitud de seguimiento enviada.",
+    "reportConfirm": "¿Reportar a {{name}} a los moderadores?",
+    "blockConfirm": "¿Bloquear a {{name}}? Dejarán de verse los mensajes.",
+    "errorTitle": "Algo salió mal",
+    "errorMsg": "Inténtalo de nuevo."
+  },
   "input": {
     "placeholder": "Mensaje…",
     "a11yInput": "Campo de mensaje",

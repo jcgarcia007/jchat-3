@@ -1,4 +1,19 @@
 {
+  "quickCard": {
+    "tapForProfile": "Tap to view profile",
+    "profile": "Profile",
+    "dm": "DM",
+    "follow": "Follow",
+    "mute": "Mute",
+    "report": "Report",
+    "block": "Block",
+    "followedMsg": "You're now following this user.",
+    "requestedMsg": "Follow request sent.",
+    "reportConfirm": "Report {{name}} to moderators?",
+    "blockConfirm": "Block {{name}}? You won't see each other's messages.",
+    "errorTitle": "Something went wrong",
+    "errorMsg": "Please try again."
+  },
   "input": {
     "placeholder": "Message…",
     "a11yInput": "Message input",

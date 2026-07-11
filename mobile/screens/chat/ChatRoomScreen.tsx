@@ -66,7 +66,8 @@ import { SubRoomTabs } from '../../components/chat/SubRoomTabs';
 import type { SubRoom } from '../../components/chat/SubRoomTabs';
 import { ChatInput } from '../../components/chat/ChatInput';
 import { MessageBubble } from '../../components/chat/MessageBubble';
-import type { ChatMessage } from '../../components/chat/MessageBubble';
+import type { ChatMessage, UserAnchor } from '../../components/chat/MessageBubble';
+import UserQuickCard from '../../components/chat/UserQuickCard';
 import ImageView from 'react-native-image-viewing';
 import { IncognitoToggle, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
@@ -235,6 +236,14 @@ export default function ChatRoomScreen() {
     userId: string;
     userName: string;
   }>({ visible: false, userId: '', userName: '' });
+
+  // UserQuickCard (tap on avatar/name → anchored popover)
+  const [quickCard, setQuickCard] = useState<{
+    visible: boolean;
+    userId: string;
+    userName: string;
+    anchor: UserAnchor;
+  }>({ visible: false, userId: '', userName: '', anchor: { x: 0, y: 0, width: 0, height: 0 } });
 
   // Loading state
   const [initialLoading, setInitialLoading] = useState(true);
@@ -713,6 +722,55 @@ export default function ChatRoomScreen() {
     setUserSheet((prev) => ({ ...prev, visible: false }));
   }, []);
 
+  // ── Tap user → anchored quick card (long-press still opens the full sheet) ──
+  const handleUserPress = useCallback(
+    (userId: string, displayName: string, anchor: UserAnchor) => {
+      if (userId === user?.id) return; // Can't action yourself
+      setQuickCard({ visible: true, userId, userName: displayName, anchor });
+    },
+    [user?.id],
+  );
+
+  const handleCloseQuickCard = useCallback(() => {
+    setQuickCard((p) => ({ ...p, visible: false }));
+  }, []);
+
+  // Shared profile/DM handlers — reused by both UserActionSheet and UserQuickCard
+  // (each caller closes its own surface first).
+  const handleViewProfile = useCallback(
+    (userId: string) => {
+      // TODO: navigate to UserProfile screen
+      Alert.alert(t('chatRoom.profileTitle'), t('chatRoom.viewProfileOf', { userId }));
+    },
+    [t],
+  );
+
+  const handleStartDM = useCallback(
+    async (userId: string) => {
+      if (!user) return;
+      try {
+        // start_dm RPC applies the gate (block + whoCanDMMe) server-side.
+        const conv = await getOrCreateConversation(user.id, userId);
+        // Cross-stack: ChatRoom (MainStack) → Tabs → DMs (DMStack) → DMChat.
+        navigation.navigate('Tabs', {
+          screen: 'DMs',
+          params: {
+            screen: 'DMChat',
+            params: { conversationId: conv.id, otherUserId: userId },
+          },
+        });
+      } catch (err) {
+        if (err instanceof DmGateError) {
+          Alert.alert(t('chatRoom.dmTitle'), err.message); // gated: blocked / nobody / not-follower
+          return;
+        }
+        console.warn('[ChatRoom] start DM error', err);
+        Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.dmOpenError'));
+      }
+    },
+    [user, navigation, t],
+  );
+
   // ── Role resolution ────────────────────────────────────────────────────────
 
   // TODO(Task 2.9): resolve viewer role from employees table.
@@ -791,11 +849,12 @@ export default function ChatRoomScreen() {
         theme={chatTheme}
         authorRole={roleMap.get(item.user_id) ?? null}
         onLongPressUser={handleUserLongPress}
+        onPressUser={handleUserPress}
         onLongPressMessage={handleLongPressMessage}
         onImagePress={setViewerImage}
       />
     ),
-    [user?.id, chatTheme, roleMap, handleUserLongPress, handleLongPressMessage],
+    [user?.id, chatTheme, roleMap, handleUserLongPress, handleUserPress, handleLongPressMessage],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────
@@ -1046,31 +1105,11 @@ export default function ChatRoomScreen() {
         viewerRole={viewerRole}
         onViewProfile={(userId) => {
           handleCloseUserSheet();
-          // TODO: navigate to UserProfile screen
-          Alert.alert(t('chatRoom.profileTitle'), t('chatRoom.viewProfileOf', { userId }));
+          handleViewProfile(userId);
         }}
-        onDM={async (userId) => {
+        onDM={(userId) => {
           handleCloseUserSheet();
-          if (!user) return;
-          try {
-            // start_dm RPC applies the gate (block + whoCanDMMe) server-side.
-            const conv = await getOrCreateConversation(user.id, userId);
-            // Cross-stack: ChatRoom (MainStack) → Tabs → DMs (DMStack) → DMChat.
-            navigation.navigate('Tabs', {
-              screen: 'DMs',
-              params: {
-                screen: 'DMChat',
-                params: { conversationId: conv.id, otherUserId: userId },
-              },
-            });
-          } catch (err) {
-            if (err instanceof DmGateError) {
-              Alert.alert(t('chatRoom.dmTitle'), err.message); // gated: blocked / nobody / not-follower
-              return;
-            }
-            console.warn('[ChatRoom] start DM error', err);
-            Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.dmOpenError'));
-          }
+          void handleStartDM(userId);
         }}
         onRemove={(userId) => {
           // Optimistically hide; presence sync catches up when they leave.
@@ -1080,6 +1119,21 @@ export default function ChatRoomScreen() {
           setHiddenUserIds((prev) => new Set(prev).add(userId));
         }}
         onClose={handleCloseUserSheet}
+      />
+
+      {/* ── UserQuickCard (tap on avatar/name) ────────────────────────────── */}
+      <UserQuickCard
+        visible={quickCard.visible}
+        targetUserId={quickCard.userId}
+        targetName={quickCard.userName}
+        anchor={quickCard.anchor}
+        onViewProfile={handleViewProfile}
+        onDM={handleStartDM}
+        onOpenFull={(userId, userName) => {
+          handleCloseQuickCard();
+          setUserSheet({ visible: true, userId, userName });
+        }}
+        onClose={handleCloseQuickCard}
       />
 
       {/* ── Pin message sheet (Task 2.5) ──────────────────────────────────── */}

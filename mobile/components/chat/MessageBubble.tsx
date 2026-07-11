@@ -16,7 +16,7 @@
  * // TODO(Task 2.6): offer type renders OfferCard placeholder below.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Image,
   Pressable,
@@ -54,6 +54,14 @@ export interface ChatMessage {
   sender_avatar?: string;
 }
 
+/** On-screen rectangle of a tapped avatar (window coords), used to anchor the quick card. */
+export interface UserAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface MessageBubbleProps {
   message: ChatMessage;
   /** Whether this message was sent by the current viewer. */
@@ -63,6 +71,11 @@ export interface MessageBubbleProps {
   authorRole?: 'owner' | 'staff' | null;
   /** Called with the sender's user_id when avatar/name area is long-pressed. */
   onLongPressUser?: (userId: string, displayName: string) => void;
+  /**
+   * Called with the sender's user_id + the avatar's on-screen rect when the
+   * avatar/name area is TAPPED (opens the anchored quick card).
+   */
+  onPressUser?: (userId: string, displayName: string, anchor: UserAnchor) => void;
   /** Called when the message bubble itself is long-pressed (e.g. to pin). */
   onLongPressMessage?: (message: ChatMessage) => void;
   /** Called with a photo message's media_url when its image is tapped. */
@@ -213,6 +226,7 @@ export function MessageBubble({
   theme,
   authorRole,
   onLongPressUser,
+  onPressUser,
   onLongPressMessage,
   onImagePress,
 }: MessageBubbleProps) {
@@ -220,12 +234,26 @@ export function MessageBubble({
   const displayName = resolveDisplayName(message, t('bubble.unknownUser'));
   const incognito = isIncognito(message);
   const isOffer = message.type === 'offer';
+  const avatarRef = useRef<View>(null);
 
   const handleLongPressUser = useCallback(() => {
     if (onLongPressUser) {
       onLongPressUser(message.user_id, displayName);
     }
   }, [onLongPressUser, message.user_id, displayName]);
+
+  // Tap → measure the avatar rect (window coords) and open the anchored quick card.
+  const handlePressUser = useCallback(() => {
+    if (!onPressUser) return;
+    const node = avatarRef.current;
+    if (node && typeof node.measureInWindow === 'function') {
+      node.measureInWindow((x, y, width, height) => {
+        onPressUser(message.user_id, displayName, { x, y, width, height });
+      });
+    } else {
+      onPressUser(message.user_id, displayName, { x: 0, y: 0, width: 0, height: 0 });
+    }
+  }, [onPressUser, message.user_id, displayName]);
 
   const handleLongPressMessage = useCallback(() => {
     onLongPressMessage?.(message);
@@ -249,6 +277,8 @@ export function MessageBubble({
       {/* Avatar — hidden for incognito senders */}
       {!isOwn && (
         <Pressable
+          ref={avatarRef}
+          onPress={handlePressUser}
           onLongPress={handleLongPressUser}
           delayLongPress={400}
           accessibilityRole="button"
@@ -274,6 +304,7 @@ export function MessageBubble({
         {/* Sender name row — only for others */}
         {!isOwn && (
           <Pressable
+            onPress={handlePressUser}
             onLongPress={handleLongPressUser}
             delayLongPress={400}
             style={styles.senderNameRow}
