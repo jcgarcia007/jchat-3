@@ -115,6 +115,10 @@ const config: ExpoConfig = {
     eas: {
       projectId: '6fd667cf-ddde-4236-83be-71b2477eaa0f',
     },
+    // hCaptcha sitekey (D-38) — pública, client-safe. La SECRET key va SÓLO en el
+    // dashboard de Supabase, nunca aquí. Placeholder "PENDIENTE_SITEKEY" mientras
+    // no esté la real → el kill-switch en services/captcha.tsx desactiva el reto.
+    hcaptchaSiteKey: process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY,
   },
 };
 

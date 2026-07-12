@@ -52,6 +52,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useCaptcha } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
@@ -128,6 +129,8 @@ type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 export default function RegisterStep2Screen({ route, navigation }: Props) {
   const c = useThemeColors();
   const { t } = useTranslation('auth');
+  // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
+  const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
   const { name = '', email = '', password = '' } = route.params ?? {};
 
   // ── Date of birth ──────────────────────────────────────────────────────────
@@ -313,10 +316,31 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         return;
       }
 
+      // ── hCaptcha (D-38): token JUSTO antes del signUp (uso único, expira) ──
+      // Kill-switch (sin sitekey): captchaEnabled=false → se procede sin token.
+      let captchaToken: string | null = null;
+      if (captchaEnabled) {
+        try {
+          captchaToken = await getCaptchaToken();
+        } catch {
+          // Fallo de carga/red del reto (p. ej. WiFi malo). Mensaje accionable.
+          Alert.alert(t('captcha.errorTitle'), t('captcha.errorMessage'));
+          setSubmitting(false);
+          return;
+        }
+        if (captchaToken === null) {
+          // Usuario canceló / expiró: no llamar a Supabase sin token.
+          Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // ── 1. Create auth user ───────────────────────────────────────────────
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
+        options: { captchaToken: captchaToken ?? undefined },
       });
 
       if (signUpError) {
@@ -359,7 +383,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       Alert.alert(t('register.alerts.errorTitle'), message);
       setSubmitting(false);
     }
-  }, [dob, username, availability, termsAccepted, email, password, name, language]);
+  }, [dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t]);
 
   // ---------------------------------------------------------------------------
   // Computed values for rendering
@@ -376,6 +400,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------------
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
+      {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
+      {CaptchaGate}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

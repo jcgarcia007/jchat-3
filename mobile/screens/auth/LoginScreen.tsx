@@ -36,6 +36,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { isBiometricEnabled } from '../../services/biometric';
+import { useCaptcha } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,8 @@ export default function LoginScreen() {
   const c = useThemeColors();
   const navigation = useNavigation<LoginNav>();
   const { t } = useTranslation('auth');
+  // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
+  const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -216,14 +219,38 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
+
+    // hCaptcha (D-38): obtener token JUSTO antes del intento (uso único, expira).
+    // Kill-switch (sin sitekey): captchaEnabled=false → se procede sin token.
+    let captchaToken: string | null = null;
+    if (captchaEnabled) {
+      try {
+        captchaToken = await getCaptchaToken();
+      } catch {
+        // Fallo de carga/red del reto (p. ej. WiFi malo). Mensaje accionable.
+        setLoading(false);
+        Alert.alert(t('captcha.errorTitle'), t('captcha.errorMessage'));
+        return;
+      }
+      if (captchaToken === null) {
+        // Usuario canceló / expiró: no llamar a Supabase sin token (con el captcha
+        // activado fallaría con "captcha verification failed").
+        setLoading(false);
+        Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email: trimmedEmail,
       password: trimmedPassword,
+      options: { captchaToken: captchaToken ?? undefined },
     });
     setLoading(false);
 
     if (error) {
       // AuthContext session listener handles successful sign-in automatically.
+      // Tras cualquier intento el token queda quemado: el próximo pide uno nuevo.
       Alert.alert(t('login.alerts.signInFailedTitle'), error.message);
     }
     // On success: AuthContext onAuthStateChange fires → isAuthenticated flips →
@@ -244,6 +271,8 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar barStyle="light-content" />
+      {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
+      {CaptchaGate}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
