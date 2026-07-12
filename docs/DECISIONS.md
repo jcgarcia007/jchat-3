@@ -149,6 +149,9 @@ La metadata de Stripe capa los valores a 500 chars; con modificadores el carrito
 ### D-33 — Los precios de modificadores SIEMPRE se resuelven en el servidor
 El cliente solo envía ids de grupo + etiquetas de choice. La EF los precia desde `modifier_groups.choices` en la BD y rechaza grupos no vinculados al ítem o etiquetas inexistentes. Ningún precio del cliente se usa jamás. (Ref: 4ea3d00.)
 
+### D-34 — El cliente NUNCA escribe en orders ni order_items
+Ambas tablas las escribe solo el `stripe-webhook` con service_role (salta RLS). `orders` ya no tenía política de INSERT (033); `order_items` la tenía y se eliminó (051) porque permitía a un cliente añadir ítems no pagados a su propia orden. El cliente solo LEE. (Ref: migraciones 033, 051.)
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

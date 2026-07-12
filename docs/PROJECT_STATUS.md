@@ -235,7 +235,29 @@ fallo silencioso por otro.
 - Esas 7 etiquetas habrían desbordado los 500 chars de la metadata → `pending_order_carts`
   fue lo que permitió que los ítems llegaran completos.
 
-### PENDIENTES (actualizado 2026-07-11 parte 3)
+### Parte 4 — Auditoría de seguridad: P0-2 y P0-3 RESUELTOS ✅ + hallazgo nuevo
+
+**P0-2 (recálculo de totales server-side) — RESUELTO.** La EF `payments` recalcula todo desde
+la BD: `amount: serverTotalCents` ("client total_cents is ignored"); subtotal desde precios de
+BD (base + modificadores), impuesto desde `businesses.tax_rate`, descuento forzado a 0. Lo
+único del cliente es `tip_cents`, validado y capado al 200% del subtotal del servidor. La
+metadata se escribe con valores del SERVIDOR y el webhook lee de ahí. Además, `orders` NO
+tiene política de INSERT → el cliente no puede crear órdenes con montos inventados
+(migración 033). EVIDENCIA: impuesto = 8% exacto sobre el subtotal del servidor; los
+modificadores se precian desde `modifier_groups.choices` (Tanda C).
+
+**P0-3 (Edge Functions confían en IDs del cliente) — RESUELTO.** Las CUATRO EF verifican el
+JWT (`verifyCaller`). Las que actúan sobre un negocio comprueban PROPIEDAD antes de nada
+(`assertOwnerOrAdmin` → 403 "not the owner of this business"): en `stripe-connect` está en el
+ROUTER, antes del switch (cubre las 3 acciones); en `subscriptions`, dentro de
+`create_checkout`. `body.user_id` nunca se usa para auth ni consultas — solo como traza.
+
+**🔴 HALLAZGO NUEVO (cerrado en migración 051):** `order_items` tenía una política que permitía
+al CLIENTE insertar ítems en su propia orden ya pagada → la cocina los prepararía gratis. El
+total estaba protegido, los ítems no. Política eliminada (051). El webhook usa service_role
+(salta RLS) → no se rompe nada.
+
+### PENDIENTES (actualizado 2026-07-11 parte 4)
 
 > ✅ RESUELTO (Parte 3, `4ea3d00`): el bloqueante 🔴 "los modificadores no se cobran" quedó
 > arreglado — cobro server-side desde `modifier_groups.choices` + carrito en
@@ -251,7 +273,6 @@ fallo silencioso por otro.
 - D-27: plantillas de menú en móvil (`businesses.menu_template_id` — hoy solo la web las
   respeta).
 - Bar XZX sin `stripe_account_id` → onboarding de Stripe Connect pendiente.
-- Auditar formalmente P0-2/P0-3 y actualizar su estado (parecen resueltos).
 - Pruebas de device pendientes: biometría (toggle/prompt/lock), cambio de idioma ES/EN,
   borrado de cuenta (M6).
 - `mobile/eas.json`: reformat del linter sin commitear en el working tree.

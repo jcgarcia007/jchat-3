@@ -51,5 +51,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **La metadata de Stripe NO sirve como almacén del carrito.** Límite de 500 chars por valor. Cualquier dato de pedido que crezca (modificadores, notas) debe ir a una tabla de la BD keyed por el PaymentIntent, no a la metadata. Fallo silencioso si se ignora: orden creada sin ítems (el webhook no puede parsear el JSON truncado).
 - **Patrón de dinero:** el cliente envía IDs y ETIQUETAS; el servidor resuelve TODOS los precios desde la BD. Aplica igual a sizes/extras (legacy, `menu_items.options`) y a los modifier groups (`modifier_groups.choices`).
 - **Un fix de dinero puede destapar otro fallo:** al añadir modificadores al payload se descubrió el desbordamiento de metadata. Antes de cambiar la ruta de pagos, verificar también los LÍMITES de lo que se transporta, no solo el cálculo.
+- **Proteger el total no basta: hay que proteger los ÍTEMS.** La EF recalculaba el total correctamente (P0-2), pero una política de RLS permitía al cliente insertar `order_items` extra en su orden ya pagada → la cocina los prepararía gratis. Al auditar la ruta de dinero, revisar TODAS las tablas que el cliente puede escribir, no solo el cálculo.
+- **P0-2 y P0-3 estaban resueltos en el código desde 2026-06-24 pero los docs seguían listándolos como bloqueantes.** Auditar el código antes de asumir que un pendiente sigue abierto.
 
 Last updated: 2026-07-11
