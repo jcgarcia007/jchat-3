@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconSend, IconArrowLeft, IconLoader2, IconCamera, IconToolsKitchen2, IconBell, IconHeart, IconX, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 import { getChatTheme } from "@/lib/chatThemes";
@@ -180,6 +181,7 @@ interface Props {
 }
 
 export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
+  const router = useRouter();
   // The room being viewed. Starts at the QR-resolved room (prop) and changes
   // in-place as the user taps sub-chats — no page reload.
   const [activeRoomId, setActiveRoomId] = useState(roomId);
@@ -189,6 +191,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Sender name/avatar cache, resolved from public_profiles (see ensureProfiles).
   const [profiles, setProfiles] = useState<Record<string, SenderProfile>>({});
+  // Business slug for the "Menú" button in the attach panel (businesses is public-read).
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
   const [inputText, setInputText] = useState("");
@@ -279,6 +283,23 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   useEffect(() => {
     profilesRef.current = profiles;
   }, [profiles]);
+
+  // Business slug → the public menu at /m/[slug] (attach-panel "Menú" button).
+  useEffect(() => {
+    if (!isSupabaseConfigured || !businessId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("businesses")
+        .select("slug")
+        .eq("id", businessId)
+        .maybeSingle();
+      if (!cancelled) setBusinessSlug((data as { slug?: string } | null)?.slug ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
 
   // Resolve missing sender profiles from the public_profiles view. Other users'
   // public fields come from that view — RLS on `users` only exposes your OWN row
@@ -1502,8 +1523,15 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 </span>
               </button>
 
-              {/* Menú — disabled, coming soon */}
-              <div
+              {/* Menú — opens the business's public menu at /m/[slug] */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!businessSlug) return;
+                  setShowAttachPanel(false);
+                  router.push(`/m/${businessSlug}`);
+                }}
+                disabled={!businessSlug}
                 style={{
                   flex: 1,
                   minWidth: 62,
@@ -1511,23 +1539,20 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 4,
+                  gap: 6,
                   padding: "12px 8px",
                   borderRadius: 14,
                   border: `1px solid ${theme.border}`,
                   background: theme.bubbleInBg,
-                  opacity: 0.72,
-                  cursor: "default",
+                  cursor: businessSlug ? "pointer" : "default",
+                  opacity: businessSlug ? 1 : 0.5,
                 }}
               >
                 <IconToolsKitchen2 size={24} style={{ color: theme.accent }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
                   Menú
                 </span>
-                <span style={{ fontSize: 9, color: theme.bubbleInText, opacity: 0.55, marginTop: -2 }}>
-                  pronto
-                </span>
-              </div>
+              </button>
 
               {/* Servicio */}
               <button
