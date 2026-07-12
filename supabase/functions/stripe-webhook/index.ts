@@ -166,10 +166,31 @@ async function handlePaymentSucceeded(
 
   const orderId = (order as { id: string }).id;
 
-  // 3. Insert order_items rows
-  if (items.length > 0) {
-    const { error: itemsErr } = await db.from("order_items").insert(
-      items.map((it) => ({
+  // 3. Insert order_items rows.
+  // Prefer the server-resolved cart (no size limit). Fall back to the packed metadata
+  // for PaymentIntents created before pending_order_carts existed.
+  const { data: pendingCart } = await db
+    .from("pending_order_carts")
+    .select("items")
+    .eq("payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+
+  type ResolvedItem = {
+    menu_item_id: string; qty: number; price_cents: number;
+    options?: Record<string, unknown>; special_instructions?: string | null;
+  };
+
+  const rowsToInsert = pendingCart?.items
+    ? (pendingCart.items as ResolvedItem[]).map((it) => ({
+        order_id: orderId,
+        menu_item_id: it.menu_item_id,
+        qty: it.qty,
+        price_cents: it.price_cents,
+        options: it.options ?? {},
+        special_instructions: it.special_instructions ?? null,
+        item_status: "cooking",
+      }))
+    : items.map((it) => ({            // legacy metadata path (unchanged)
         order_id: orderId,
         menu_item_id: it.m,
         qty: it.q,
@@ -177,14 +198,24 @@ async function handlePaymentSucceeded(
         options: it.o ?? {},
         special_instructions: it.s ?? null,
         item_status: "cooking",
-      })),
-    );
+      }));
 
+  if (rowsToInsert.length > 0) {
+    const { error: itemsErr } = await db.from("order_items").insert(rowsToInsert);
     if (itemsErr) {
       console.error(`[stripe-webhook] failed to insert order_items for order ${orderId}:`, itemsErr);
       // Order row was inserted — partial state. Log but don't throw so webhook returns 200.
       // KDS will show an order with no items; staff can manually add them.
     }
+  }
+
+  // Clean up the pending cart (idempotent; log-only on failure).
+  if (pendingCart) {
+    const { error: delErr } = await db
+      .from("pending_order_carts")
+      .delete()
+      .eq("payment_intent_id", paymentIntent.id);
+    if (delErr) console.warn("[stripe-webhook] failed to delete pending cart:", delErr);
   }
 
   console.log(

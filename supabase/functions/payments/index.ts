@@ -143,6 +143,45 @@ function resolveModifierCents(
 }
 
 /**
+ * Resolve the DB price of a line's modifier-group selections (new system).
+ * The client sends only { g: groupId, c: [choiceLabel] }; ALL prices come from
+ * modifier_groups.choices in the DB. Rejects groups not linked to the item and
+ * unknown choice labels. Returns the cents to add + the verified labels (for the
+ * kitchen), or { error } for a 400.
+ */
+function resolveGroupModifierCents(
+  itemId: string,
+  itemName: string,
+  selections: unknown,
+  // deno-lint-ignore no-explicit-any
+  groupsByItem: Map<string, Map<string, any>>,
+): { cents: number; labels: string[] } | { error: string } {
+  if (!Array.isArray(selections) || selections.length === 0) return { cents: 0, labels: [] };
+  // deno-lint-ignore no-explicit-any
+  const groups = groupsByItem.get(itemId) ?? new Map<string, any>();
+  let cents = 0;
+  const labels: string[] = [];
+  // deno-lint-ignore no-explicit-any
+  for (const sel of selections as any[]) {
+    const gid = typeof sel?.g === "string" ? sel.g : null;
+    if (!gid) return { error: `Invalid modifier group for ${itemName}` };
+    const group = groups.get(gid);
+    if (!group) return { error: `Modifier group not available for ${itemName}` };
+    const choices = Array.isArray(group.choices) ? group.choices : [];
+    const chosen = Array.isArray(sel.c) ? sel.c : [];
+    for (const label of chosen) {
+      if (typeof label !== "string") continue;
+      // deno-lint-ignore no-explicit-any
+      const match = choices.find((c: any) => c?.label === label);
+      if (!match) return { error: `Invalid choice "${label}" for ${itemName}` };
+      cents += typeof match.price_cents === "number" ? match.price_cents : 0;
+      labels.push(label);
+    }
+  }
+  return { cents, labels };
+}
+
+/**
  * authUserId: JWT-verified caller identity from Deno.serve — never use body.user_id
  * for authentication or DB lookups. body.user_id is kept as a trace field only.
  */
@@ -232,17 +271,55 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     if (!row.is_available)               return errorResponse(`Item not available: ${row.name}`);
   }
 
+  // Modifier groups linked to the ordered items (new system). Prices come from here,
+  // never from the client.
+  const { data: mimgRows, error: mgErr } = await db
+    .from("menu_item_modifier_groups")
+    .select("menu_item_id, modifier_groups(id, label, choices)")
+    .in("menu_item_id", itemIds);
+  if (mgErr) return errorResponse(`DB error fetching modifier groups: ${mgErr.message}`, 500);
+
+  // menu_item_id → (group_id → group)
+  // deno-lint-ignore no-explicit-any
+  const groupsByItem = new Map<string, Map<string, any>>();
+  // deno-lint-ignore no-explicit-any
+  for (const row of (mimgRows ?? []) as any[]) {
+    const g = Array.isArray(row.modifier_groups) ? row.modifier_groups[0] : row.modifier_groups;
+    if (!g) continue;
+    const mid = row.menu_item_id as string;
+    if (!groupsByItem.has(mid)) groupsByItem.set(mid, new Map());
+    groupsByItem.get(mid)!.set(g.id as string, g);
+  }
+
   // ── Server-side recalculation (P0-2 + FIX #6 modifiers) ───────────────────
   // Uses DB base price per item AND DB modifier prices (size/extras read from
   // menu_items.options); the client's price_cents and any prices in it.options
   // are ignored. Duplicate cart lines (same menu_item_id twice) are both summed.
   // lineUnitCents[idx] = DB base + DB modifiers for items[idx].
   const lineUnitCents: number[] = [];
+  const resolvedOptions: Record<string, unknown>[] = [];
   for (const it of items) {
     const row = dbMap.get(it.menu_item_id)!;
-    const mod = resolveModifierCents(row, it.options, row.name as string);
-    if ("error" in mod) return errorResponse(mod.error);
-    lineUnitCents.push((row.price_cents as number) + mod.cents);
+    // Legacy sizes/extras (menu_items.options)
+    const legacy = resolveModifierCents(row, it.options, row.name as string);
+    if ("error" in legacy) return errorResponse(legacy.error);
+    // New modifier groups (modifier_groups.choices)
+    const mods = resolveGroupModifierCents(
+      it.menu_item_id,
+      row.name as string,
+      (it.options as Record<string, unknown> | undefined)?.modifiers,
+      groupsByItem,
+    );
+    if ("error" in mods) return errorResponse(mods.error);
+
+    lineUnitCents.push((row.price_cents as number) + legacy.cents + mods.cents);
+
+    const sel = (it.options ?? {}) as Record<string, unknown>;
+    resolvedOptions.push({
+      ...(typeof sel.size === "string" ? { size: sel.size } : {}),
+      ...(Array.isArray(sel.extras) && sel.extras.length ? { extras: sel.extras } : {}),
+      ...(mods.labels.length ? { modifiers: mods.labels } : {}),
+    });
   }
   const serverSubtotalCents = items.reduce(
     (sum, it, idx) => sum + lineUnitCents[idx] * it.qty,
@@ -336,6 +413,25 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
 
   const paymentIntent = await stripe.paymentIntents.create(piParams, { idempotencyKey });
   const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
+
+  // Persist the SERVER-RESOLVED cart keyed by the PaymentIntent. The webhook reads this
+  // instead of the size-capped Stripe metadata (which truncates once modifiers exist).
+  const { error: cartErr } = await db.from("pending_order_carts").upsert({
+    payment_intent_id: paymentIntent.id,
+    business_id,
+    user_id: authUserId,
+    items: items.map((it, idx) => ({
+      menu_item_id: it.menu_item_id,
+      qty: it.qty,
+      price_cents: lineUnitCents[idx],          // server-priced
+      options: resolvedOptions[idx],            // server-verified labels
+      special_instructions: it.special_instructions ?? null,
+    })),
+  });
+  if (cartErr) {
+    console.error("[payments] failed to persist pending cart:", cartErr);
+    // Don't fail the payment: the webhook falls back to metadata.
+  }
 
   // serverTotalCents + breakdown are returned for future UX reconciliation.
   // The client currently ignores these fields; a follow-up can use them to

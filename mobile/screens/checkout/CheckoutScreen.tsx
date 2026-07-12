@@ -484,8 +484,17 @@ export default function CheckoutScreen() {
             menuItemId: l.item.id,
             qty: l.qty,
             priceCents: l.unitPriceCents,
-            // Fix #6: forward selected modifier LABELS only; server prices them.
-            options: { size: l.size?.label ?? null, extras: (l.extras ?? []).map((e) => e.label) },
+            // Fix #6: forward selected modifier LABELS/IDs only; server prices them.
+            options: {
+              size: l.size?.label ?? null,
+              extras: (l.extras ?? []).map((e) => e.label),
+              // Modifier groups (new system): group id + chosen labels. The server
+              // prices them from modifier_groups.choices in the DB — never the client.
+              modifiers: (l.modifierSelections ?? []).map((g) => ({
+                g: g.groupId,
+                c: g.choices.map((ch) => ch.label),
+              })),
+            },
             specialInstructions: l.specialInstructions ?? null,
           })),
         });
@@ -547,9 +556,18 @@ export default function CheckoutScreen() {
         name: l.item.name,
         qty: l.qty,
         priceCents: l.unitPriceCents,
-        // Fix #6: forward selected modifier LABELS only; the server resolves their
-        // price from menu_items.options server-side (never trust client prices).
-        options: { size: l.size?.label ?? null, extras: (l.extras ?? []).map((e) => e.label) },
+        // Fix #6: forward selected modifier LABELS/IDs only; the server resolves their
+        // price from the DB server-side (never trust client prices).
+        options: {
+          size: l.size?.label ?? null,
+          extras: (l.extras ?? []).map((e) => e.label),
+          // Modifier groups (new system): group id + chosen labels. Server-priced
+          // from modifier_groups.choices in the DB — never the client.
+          modifiers: (l.modifierSelections ?? []).map((g) => ({
+            g: g.groupId,
+            c: g.choices.map((ch) => ch.label),
+          })),
+        },
         specialInstructions: l.specialInstructions ?? null,
       })),
     };
