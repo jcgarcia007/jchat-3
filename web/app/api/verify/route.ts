@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabaseAdmin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,50 @@ function randomCode(len: number, numeric = false): string {
 /** Today's date as YYYY-MM-DD (UTC). */
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Kill-switch (FIX #1d): the SMS step is a stub — Twilio is not wired up. Until the
+ * three TWILIO_* secrets exist, send_sms/verify_sms return 503 instead of simulating
+ * a verification the app can't actually perform.
+ */
+const isTwilioConfigured = !!(
+  process.env.TWILIO_ACCOUNT_SID &&
+  process.env.TWILIO_AUTH_TOKEN &&
+  process.env.TWILIO_PHONE_NUMBER
+);
+
+/**
+ * Auth gate (P0-3): assert the caller owns `businessId` (or is a platform admin).
+ * Returns null when allowed, or a 403/404/500 NextResponse. Ownership is read with the
+ * service-role client so it can't be spoofed; the caller identity is the verified
+ * `authUserId` from the cookie-session JWT — NEVER body.business_id alone.
+ */
+async function assertOwnerOrAdmin(
+  businessId: string,
+  authUserId: string
+): Promise<NextResponse | null> {
+  const { data: biz, error } = await supabaseAdmin
+    .from("businesses")
+    .select("owner_id")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!biz) return NextResponse.json({ error: "Business not found." }, { status: 404 });
+  if (biz.owner_id === authUserId) return null;
+
+  const { data: admin } = await supabaseAdmin
+    .from("admin_roles")
+    .select("user_id")
+    .eq("user_id", authUserId)
+    .maybeSingle();
+  if (admin) return null;
+
+  return NextResponse.json(
+    { error: "Forbidden: not the owner of this business." },
+    { status: 403 }
+  );
 }
 
 // ─── Route Handler ─────────────────────────────────────────────────────────────
@@ -62,6 +107,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 400 }
     );
   }
+
+  // ── Auth (P0-3): verify JWT + business ownership BEFORE any action ─────────────
+  // This route runs on the service-role client (bypasses RLS), so it MUST enforce
+  // access itself. The browser calls it with the cookie session (no Authorization
+  // header), so we verify via the SSR cookie client — getUser() validates the JWT
+  // server-side against Supabase Auth. Then we gate on ownership of body.business_id.
+  const serverClient = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await serverClient.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const forbidden = await assertOwnerOrAdmin(business_id, user.id);
+  if (forbidden) return forbidden;
 
   // ── Action dispatch ──────────────────────────────────────────────────────────
 
@@ -172,6 +234,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // ── Step 3a: Send SMS verification code ───────────────────────────────────
     case "send_sms": {
+      // Kill-switch (FIX #1d): no Twilio → don't simulate a verification.
+      if (!isTwilioConfigured) {
+        return NextResponse.json(
+          { error: "Verification flow not available yet." },
+          { status: 503 }
+        );
+      }
+
       const sms_code = randomCode(6, true); // 6-digit numeric
       const sms_expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // now + 10 min
 
@@ -196,17 +266,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
        * });
        */
 
-      // In dev/stub mode: return the code directly so the owner can test without Twilio.
-      // TODO(Twilio): remove sms_code from the response once Twilio is wired up.
+      // The code is NEVER returned to the client — it is a verification secret and is
+      // delivered only via SMS (once Twilio is wired up above).
       return NextResponse.json({
         ok: true,
         expires_at: sms_expires_at,
-        __dev_code: sms_code, // remove when Twilio is live
       });
     }
 
     // ── Step 3b: Verify SMS code ──────────────────────────────────────────────
     case "verify_sms": {
+      // Kill-switch (FIX #1d): no Twilio → the SMS step doesn't exist yet.
+      if (!isTwilioConfigured) {
+        return NextResponse.json(
+          { error: "Verification flow not available yet." },
+          { status: 503 }
+        );
+      }
+
       const submitted_code = body.code;
       if (typeof submitted_code !== "string" || !submitted_code.trim()) {
         return NextResponse.json({ error: "code is required." }, { status: 400 });
@@ -242,7 +319,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
       }
 
-      // Mark SMS as verified
+      // Mark ONLY the SMS step as verified. This route must NOT flip
+      // businesses.status to 'verified' — that flag enables Stripe payments and
+      // must never be settable by the business owner (FIX #1c). The subject of a
+      // verification cannot self-approve it.
+      //
+      // TODO: the flip to businesses.status='verified' is performed exclusively by
+      //   (a) a super_admin action, or (b) a real Stripe Identity webhook — never here.
       const { error: smsUpdateErr } = await supabaseAdmin
         .from("business_verifications")
         .update({ sms_verified: true })
@@ -252,19 +335,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: smsUpdateErr.message }, { status: 500 });
       }
 
-      // All 3 steps complete → set businesses.status='verified'
-      // This enables Stripe payments for the business (payments are blocked
-      // until status='verified' per JChat payment rules).
-      const { error: bizUpdateErr } = await supabaseAdmin
-        .from("businesses")
-        .update({ status: "verified" })
-        .eq("id", business_id);
-
-      if (bizUpdateErr) {
-        return NextResponse.json({ error: bizUpdateErr.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ ok: true, verified: true });
+      return NextResponse.json({ ok: true, sms_verified: true });
     }
 
     default:
