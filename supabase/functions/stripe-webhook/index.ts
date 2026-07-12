@@ -16,10 +16,11 @@
  *   supabase functions deploy stripe-webhook
  *
  * Required env vars (Supabase dashboard → Edge Functions → Secrets):
- *   STRIPE_SECRET_KEY         — sk_live_… or sk_test_…
- *   STRIPE_WEBHOOK_SECRET     — whsec_… from Stripe dashboard webhook config
- *   SUPABASE_URL              — auto-injected
- *   SUPABASE_SERVICE_ROLE_KEY — set manually
+ *   STRIPE_SECRET_KEY            — sk_live_… or sk_test_…
+ *   STRIPE_WEBHOOK_SECRET        — whsec_… for the "Your account" endpoint (payment_intent.*)
+ *   STRIPE_CONNECT_WEBHOOK_SECRET — whsec_… for the "Connected accounts" endpoint (account.updated)
+ *   SUPABASE_URL                — auto-injected
+ *   SUPABASE_SERVICE_ROLE_KEY   — set manually
  *
  * Stripe webhook endpoint to register:
  *   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
@@ -303,18 +304,36 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const stripe = getStripe();
   const rawBody = await req.text();
   const sig = req.headers.get("stripe-signature") ?? "";
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
-  if (!webhookSecret) {
-    console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
+  // This function backs TWO Stripe webhook endpoints, each with its own signing secret:
+  //   · STRIPE_WEBHOOK_SECRET         — "Your account" endpoint (payment_intent.*)
+  //   · STRIPE_CONNECT_WEBHOOK_SECRET — "Connected accounts" endpoint (account.updated)
+  // A Connect event only verifies against the Connect endpoint's secret, so we try each
+  // configured secret and keep the first that verifies. At least one must be set.
+  const webhookSecrets = [
+    Deno.env.get("STRIPE_WEBHOOK_SECRET"),
+    Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
+  ].filter((s): s is string => !!s);
+
+  if (webhookSecrets.length === 0) {
+    console.error(
+      "[stripe-webhook] no signing secret set (STRIPE_WEBHOOK_SECRET / STRIPE_CONNECT_WEBHOOK_SECRET) — aborting",
+    );
     return errorResponse("Webhook secret not configured", 500);
   }
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
-  } catch (err) {
-    console.error("[stripe-webhook] signature verification failed:", err);
+  let event: Stripe.Event | null = null;
+  let lastErr: unknown = null;
+  for (const secret of webhookSecrets) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(rawBody, sig, secret);
+      break; // verified against this secret
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!event) {
+    console.error("[stripe-webhook] signature verification failed:", lastErr);
     return errorResponse("Invalid webhook signature", 400);
   }
 
