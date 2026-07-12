@@ -76,6 +76,39 @@ interface SetupSheetParams {
   publishableKey: string;
 }
 
+// ── error helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Extrae el mensaje real de un error de supabase.functions.invoke.
+ * FunctionsHttpError trae el Response en .context con body { error: string }.
+ * Devuelve { status, message } — message es el del servidor si se pudo leer,
+ * o error.message como fallback.
+ */
+async function readFunctionError(
+  error: unknown,
+): Promise<{ status: number | null; message: string }> {
+  const fallback =
+    error instanceof Error ? error.message : 'Unknown function error';
+  const ctx = (error as { context?: unknown })?.context;
+  if (ctx instanceof Response) {
+    try {
+      const body = await ctx.clone().json();
+      const serverMsg = typeof body?.error === 'string' ? body.error : null;
+      return { status: ctx.status, message: serverMsg ?? fallback };
+    } catch {
+      return { status: ctx.status, message: fallback };
+    }
+  }
+  return { status: null, message: fallback };
+}
+
+class PaymentsFunctionError extends Error {
+  constructor(message: string, public status: number | null) {
+    super(message);
+    this.name = 'PaymentsFunctionError';
+  }
+}
+
 // ── fetchPaymentSheetParams ───────────────────────────────────────────────────
 
 /**
@@ -123,7 +156,9 @@ export async function fetchPaymentSheetParams(
   });
 
   if (error) {
-    throw new Error(`payments/create_payment_intent failed: ${error.message}`);
+    const { status, message } = await readFunctionError(error);
+    console.error('[stripe] create_payment_intent failed:', status, message);
+    throw new PaymentsFunctionError(message, status);
   }
 
   if (!data?.clientSecret) {
@@ -216,6 +251,14 @@ export async function initAndPresentPaymentSheet(
     // Sheet was confirmed — payment succeeded. The server webhook will create the order.
     return { ok: true };
   } catch (err) {
+    if (err instanceof PaymentsFunctionError) {
+      // 409 = el negocio no puede cobrar aún (gates de Connect); 4xx = validación.
+      return {
+        ok: false,
+        code: err.status === 409 ? 'BusinessNotReady' : 'ServerError',
+        message: err.message,
+      };
+    }
     const message = err instanceof Error ? err.message : 'Unknown payment error';
     console.error('[stripe] unexpected error:', err);
     return { ok: false, code: 'UnexpectedError', message };
@@ -245,11 +288,9 @@ export async function saveCard(userId: string): Promise<StripeResult> {
     });
 
     if (error) {
-      return {
-        ok: false,
-        code: 'FunctionError',
-        message: `payments/create_setup_intent failed: ${error.message}`,
-      };
+      const { status, message } = await readFunctionError(error);
+      console.error('[stripe] create_setup_intent failed:', status, message);
+      return { ok: false, code: 'FunctionError', message };
     }
 
     if (!data?.clientSecret) {
