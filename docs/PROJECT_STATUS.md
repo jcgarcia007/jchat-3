@@ -257,11 +257,91 @@ al CLIENTE insertar ítems en su propia orden ya pagada → la cocina los prepar
 total estaba protegido, los ítems no. Política eliminada (051). El webhook usa service_role
 (salta RLS) → no se rompe nada.
 
-### PENDIENTES (actualizado 2026-07-11 parte 4)
+### Parte 5 — Web a la par, Stripe Connect operativo, y decisiones de negocio
+
+**Paridad web (el móvil iba por delante — se invirtió el patrón):**
+- `ce9c37c`: portados a web los 2 fixes de canales realtime (topic único en postgres_changes;
+  purgar+AWAITar el canal stale en presencia, que DEBE mantener topic compartido).
+- `6f89b64`: **BUG REAL, invisible para el dueño.** El chat web resolvía el remitente con un
+  join embebido `users(...)`, bloqueado por RLS (`users` = fila propia + platform admin).
+  Juan veía los nombres SOLO porque es super_admin; un usuario normal veía "Usuario" en todos
+  los mensajes. Fix: leer de `public_profiles` (como móvil) + renderizar avatar en las burbujas.
+  El incógnito NO filtra su foto real (senderAvatar = null si incognito).
+- `f77e2df`: el botón "Menú" del panel "+" del chat web estaba deshabilitado ("pronto") →
+  ahora abre `/m/[slug]` (slug leído de `businesses`, que es public-read).
+
+**Stripe Connect — OPERATIVO (el negocio ya recibe el dinero):**
+- `d50e802`: página `/dashboard/payments` (era un placeholder "coming in Task 3.6") → UI de
+  onboarding que llama a la EF `stripe-connect` (get_account_status / create_connect_account /
+  create_login_link). 5 estados. El estado real SIEMPRE viene de get_account_status, nunca del
+  query param.
+- `99aa98c`: **BUG.** La página (y `billing`) usaban `.maybeSingle()` sobre `owner_id` →
+  PostgREST ERROR con múltiples filas. Juan tiene **5 negocios** (y el plan Pro permite 10).
+  Fix: cargar TODOS los negocios + selector (solo si hay >1).
+- `48093fa`: **BUG DE CORS.** Las EF declaraban `Access-Control-Allow-Headers:
+  "Content-Type, Authorization"`, pero supabase-js SIEMPRE envía `apikey` + `x-client-info`
+  → el navegador BLOQUEABA el POST tras el preflight (los logs solo mostraban `OPTIONS 204`).
+  `payments` no lo sufría porque solo la llamaba el MÓVIL (las apps nativas no aplican CORS).
+  Fix en las 3 EF: `"authorization, x-client-info, apikey, content-type"` (+ stripe-signature
+  en subscriptions).
+
+**Infraestructura (fuera de git — NO PERDER):**
+- Secretos Supabase: `CONNECT_RETURN_URL` / `CONNECT_REFRESH_URL` → `https://jchat.cloud/dashboard/payments?connect=success|refresh`
+  (el fallback del código apuntaba a `jchat.app`, que NO es de Juan).
+- `PLATFORM_FEE_PERCENT="2.9"` / `PLATFORM_FEE_FIXED_CENTS="30"` (ver D-35).
+- EF desplegadas: `stripe-connect`, `payments`, `subscriptions`, `stripe-webhook`.
+- **Dominio de producción: `jchat.cloud`** (Vercel; también www.jchat.cloud, jchat-3.vercel.app).
+
+**VERIFICADO end-to-end con dinero real (test mode):**
+Bar XZX conectado → `stripe_account_id = acct_1TsFZ2BnfRF5wjlh`. Pago de $39.36 desde móvil:
+Stripe muestra `Connected account: acct_1TsFZ2Bn…`, `Application fee: $1.44`,
+`Net amount: $37.92` → **el dinero LLEGA al negocio**. Cuadra al centavo con lo calculado.
+Los otros 4 negocios de Juan siguen sin conectar (cada uno tiene su propia cuenta).
+
+### PENDIENTES (actualizado 2026-07-11 parte 5)
 
 > ✅ RESUELTO (Parte 3, `4ea3d00`): el bloqueante 🔴 "los modificadores no se cobran" quedó
 > arreglado — cobro server-side desde `modifier_groups.choices` + carrito en
 > `pending_order_carts`. Ver Parte 3 arriba.
+
+**🔴 BLOQUEANTE DE PRODUCCIÓN — CAPTCHA (próxima sesión, decidido: hCaptcha):**
+Hay que implementarlo en WEB + MÓVIL antes de lanzar. Es global en Supabase, así que activarlo
+sin el móvil rompe el login. Plan:
+1. Juan: cuenta hCaptcha → Sitekey (público) + Secret key.
+2. Supabase Dashboard → Authentication → Bot and Abuse Protection → Enable CAPTCHA →
+   provider hCaptcha → pegar Secret key. (NO activar hasta que el móvil esté listo.)
+3. Móvil: `@hcaptcha/react-native-hcaptcha` (+ peers `react-native-modal`,
+   `react-native-webview`). ⚠️ **REQUIERE BUILD NATIVO NUEVO** (no OTA). Tocar login/registro
+   por email+contraseña. OAuth (Google/Apple) NO necesita captcha (redirige al proveedor).
+4. Web: `@hcaptcha/react-hcaptcha` en login, registro, reset y checkout de invitado.
+5. Pasar el token: `supabase.auth.signUp/signInWithPassword/signInAnonymously({ options: { captchaToken } })`.
+6. Rate limit: SUBIRLO a ~300/h (NO bajarlo — ver D-39).
+
+**🔴 CHECKOUT DE INVITADO (diseñado, NO implementado) — ver D-37.** Plan en 2 tandas:
+- **Tanda 1 (backend):** migración `orders.contact_email` + `contact_phone`; arreglar el trigger
+  `handle_new_auth_user` para invitados anónimos (username derivado del UUID, sin bucle de
+  dedupe); EF `payments` acepta y sanitiza el contacto → metadata + `receipt_email`;
+  EF `stripe-webhook` lo inserta en orders; **cron diario** que borre invitados anónimos SIN
+  pedidos de más de 7 días (los que SÍ pidieron se conservan: registro financiero + reembolsos).
+- **Tanda 2 (web):** instalar `@stripe/stripe-js` + `@stripe/react-stripe-js` (la web solo tiene
+  el SDK de SERVIDOR); en `MenuPageClient`: anonymous sign-in al pagar, paso de contacto
+  (email/teléfono opcionales + aviso), Stripe Elements, llamar a la EF `payments`, confirmar.
+  El carrito web YA guarda los modificadores como `{groupId, choices}` → mapea directo al
+  `{g, c}` que espera la EF.
+DATOS CLAVE: `orders.user_id` es **NOT NULL** → toda orden necesita un usuario real (por eso
+la auth anónima). El menú web `/m/[slug]` es HOY completamente público (sin auth).
+
+**⚠️ BUG — borrar un usuario con pedidos FALLA.** `orders.user_id` es NOT NULL pero la FK es
+`ON DELETE SET NULL` → se contradicen: el DELETE revienta. Esto significa que la función de
+**eliminar cuenta (M6) FALLARÍA** para cualquier usuario que haya pedido algo. REVISAR.
+
+**⚠️ El dashboard necesita un SELECTOR GLOBAL de negocio.** `billing/page.tsx` sigue usando
+`.maybeSingle()` → roto para dueños con varios negocios. El plan Pro (10 negocios) no es usable
+sin esto. Tanda propia.
+
+**⚠️ Stripe NO opera en República Dominicana.** Un negocio dominicano NO puede conectarse a
+Stripe Connect. Como el mercado objetivo es US + RD, hay que resolverlo a nivel de producto
+(otro procesador para RD, o lanzar solo en US primero).
 
 **Otros pendientes:**
 - Purga de `pending_order_carts`: las filas de PIs abandonados (pago no completado) quedan
@@ -272,7 +352,8 @@ total estaba protegido, los ítems no. Política eliminada (051). El webhook usa
   card solo muestra un Alert placeholder.
 - D-27: plantillas de menú en móvil (`businesses.menu_template_id` — hoy solo la web las
   respeta).
-- Bar XZX sin `stripe_account_id` → onboarding de Stripe Connect pendiente.
+- Stripe Connect: Bar XZX YA conectado (Parte 5); los otros 4 negocios de Juan siguen sin
+  `stripe_account_id` → onboarding pendiente por cada uno.
 - Pruebas de device pendientes: biometría (toggle/prompt/lock), cambio de idioma ES/EN,
   borrado de cuenta (M6).
 - `mobile/eas.json`: reformat del linter sin commitear en el working tree.

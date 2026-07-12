@@ -152,6 +152,22 @@ El cliente solo envía ids de grupo + etiquetas de choice. La EF los precia desd
 ### D-34 — El cliente NUNCA escribe en orders ni order_items
 Ambas tablas las escribe solo el `stripe-webhook` con service_role (salta RLS). `orders` ya no tenía política de INSERT (033); `order_items` la tenía y se eliminó (051) porque permitía a un cliente añadir ítems no pagados a su propia orden. El cliente solo LEE. (Ref: migraciones 033, 051.)
 
+### D-35 — MODELO DE INGRESOS: suscripción, NO comisión
+`PLATFORM_FEE_PERCENT = 2.9` + `FIXED_CENTS = 30` — que es EXACTAMENTE lo que cobra Stripe → el procesamiento es NEUTRO (Juan no gana ni pierde en los pagos). Los ingresos vienen de las suscripciones ($49 Business / $99 Pro).
+JUSTIFICACIÓN DE MERCADO (investigado): JChat NO es delivery (DoorDash/Uber Eats: 15-30%). Es pedidos EN EL LOCAL (QR/mesa), donde el estándar es SUSCRIPCIÓN + 0% comisión: Choice QR (40€/mes, 0%), Jamezz (50-300€/mes), UpMenu ($49), Menu Tiger ($17-119), Sunday ($49-299), ChowNow (suscripción + 0%, procesamiento estándar). Los restaurantes tienen márgenes netos del 3-5% → una comisión les duele mucho. VENTAJA COMPETITIVA: poder vender **"0% de comisión"** con verdad. Si algún día se quiere ingreso por volumen: subir a 4-5%, o crear un plan sin suscripción con comisión para negocios pequeños.
+
+### D-36 — Cada negocio/evento tiene SU PROPIA cuenta de Stripe
+`stripe_account_id` vive en `businesses` → web y móvil comparten automáticamente la cuenta del mismo negocio. Los eventos hoy se modelan COMO negocios (Juan ya tiene "caminata" y "Correr 5K" en `businesses`). Cuando exista la tabla `events`, necesitará su propio `stripe_account_id`.
+
+### D-37 — Checkout de invitado en el menú web (PENDIENTE DE IMPLEMENTAR)
+Decisión de producto tomada: el invitado paga SIN registrarse (Supabase anonymous sign-in), y se le piden email O teléfono (OPCIONALES) para enviarle el recibo y poder gestionar reembolsos. Si los deja en blanco, se le avisa amablemente de que no podrá recibir recibo ni solicitar reembolso, y se procede igual. El contacto va en la ORDEN (no en la cuenta).
+
+### D-38 — CAPTCHA: hCaptcha (NO Turnstile)
+Turnstile NO tiene SDK oficial de React Native (el paquete comunitario `react-native-turnstile` enruta por un dominio de un TERCERO, `turnstile.1337707.xyz` → inaceptable en una app de pagos). hCaptcha SÍ tiene SDK oficial: `@hcaptcha/react-native-hcaptcha` (hCaptcha Team, MIT, iOS+Android, por defecto en modo INVISIBLE) y `@hcaptcha/react-hcaptcha` para web. Supabase soporta ambos.
+
+### D-39 — NO usar rate limiting como defensa principal
+El límite de Supabase para registros anónimos es de **30/hora POR IP**. En un bar, TODOS los clientes comparten el WiFi = MISMA IP → con más de 30 clientes nuevos/hora, el cliente 31 NO PODRÍA PEDIR. El rate limiting ROMPERÍA el negocio en hora punta. Subirlo alto (300/h) solo como tope de emergencia. La defensa real es el CAPTCHA (distingue humano/robot, no cuenta peticiones).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
