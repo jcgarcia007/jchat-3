@@ -6,13 +6,22 @@
  * dashboard db-theme vars — because super-admin is a separate area
  * with its own access controls.
  *
- * Access is gated by <SuperAdminGate> (users.role === 'super_admin' or an
- * admin_roles entry; demo mode allows so the panel stays viewable).
+ * Access is verified SERVER-SIDE in this layout via the is_platform_admin()
+ * RPC with a redirect (hallazgo #14): a non-admin never reaches the subtree,
+ * so the RLS stops being the only barrier. <SuperAdminGate> is kept as a
+ * second layer (defense in depth) and to keep the panel viewable in demo mode
+ * without Supabase. Layers: server gate (this file) → client gate → RLS.
+ * (SuperAdminGate: users.role === 'super_admin' or an admin_roles entry.)
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import SuperAdminGate from "@/components/SuperAdminGate";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
 import {
   IconShield,
   IconMapPin,
@@ -34,11 +43,28 @@ export const metadata: Metadata = {
   description: "JChat 3.0 super admin panel",
 };
 
-export default function SuperAdminLayout({
+export default async function SuperAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Server-side gate (hallazgo #14): la RLS deja de ser la ÚNICA barrera.
+  // Mismo patrón que dashboard/layout.tsx. Se salta solo sin Supabase
+  // (demo local), igual que allí.
+  if (isSupabaseConfigured) {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      redirect("/auth/login?next=/super-admin");
+    }
+    const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+    if (!isAdmin) {
+      redirect("/dashboard");
+    }
+  }
+
   return (
     // Force dark theme for the entire super-admin subtree
     <div
