@@ -55,7 +55,7 @@ const csp = [
 const securityHeaders = [
   // CSP en Report-Only (revertida tras un enforce prematuro en prod — ver nota arriba).
   // NO cambiar a "Content-Security-Policy" hasta pasar el walkthrough en un preview.
-  { key: "Content-Security-Policy-Report-Only", value: csp },
+  { key: "Content-Security-Policy", value: csp },
   // El resto SÍ en enforce (seguras, verificado que no rompen nada en esta app):
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Frame-Options", value: "DENY" },
