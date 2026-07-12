@@ -36,9 +36,9 @@ export default async function DashboardLayout({
     }
 
     // Platform admins (super_admin / admin_roles) ALWAYS have dashboard access, even
-    // without a paid plan — they need it to run manual business verification
-    // (/dashboard/admin/verifications). Without this, an admin with no plan would be
-    // bounced to the upgrade page and could never approve a business.
+    // without a paid plan. Manual business verification lives at /super-admin/verification
+    // (its own gated subtree), but admins shouldn't be bounced to the upgrade page when
+    // they open the dashboard. Without this, an admin with no plan would be redirected away.
     const { data: isAdmin } = await supabase.rpc("is_platform_admin");
 
     if (!isAdmin) {

@@ -3123,10 +3123,6 @@ export type Database = {
         Args: { p_business_id: string; p_status: string }
         Returns: undefined
       }
-      admin_set_business_verification: {
-        Args: { p_approve: boolean; p_business_id: string }
-        Returns: undefined
-      }
       block_user: { Args: { p_target: string }; Returns: undefined }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
       can_view_profile: {

@@ -1,15 +1,19 @@
 /**
- * JChat 3.0 — Super Admin Verification Queue (Task 3.13)
+ * JChat 3.0 — Super Admin: Business Verification (Task 2.17 / consolidated 2026-07-12)
  *
- * Shows business_verifications with identity_status = 'pending'.
- * Approve → businesses.status = 'verified', business_verifications.identity_status = 'approved'
- * Reject  → businesses.status = 'rejected', business_verifications.identity_status = 'rejected'
+ * Manual approval console. Approving a business sets businesses.status='verified' — the
+ * flag that ENABLES ITS PAYMENTS — via the is_platform_admin()-gated RPC
+ * admin_set_business_status(). Approve stamps verified_by/verified_at; revoke returns it
+ * to 'pending_verification' (cutting payments) and clears provenance.
  *
- * TODO(roles): gate to Super Admin / Compliance Admin.
- * TODO(server): notify business owner on approve/reject.
+ * LEGACY rows (status='verified' with verified_by NULL) were set by the old /api/verify
+ * bug and never passed a real approval — surfaced explicitly so they can be re-reviewed.
  *
- * Tokens: var(--bg-*) / var(--text-*) / var(--color-*) / var(--border-*)
- * NO hardcoded hex. Icons: @tabler/icons-react only.
+ * Access: the /super-admin subtree is gated by <SuperAdminGate> (layout) + RLS + the
+ * RPC's is_platform_admin() check (defense in depth).
+ *
+ * Tokens: var(--bg-*) / var(--text-*) / var(--color-*) / var(--border-*). NO hardcoded
+ * hex. Icons: @tabler/icons-react only. Secrets (sms_code, daily_code) are never shown.
  */
 
 "use client";
@@ -19,311 +23,196 @@ import {
   IconUserCheck,
   IconLoader2,
   IconAlertCircle,
-  IconX,
   IconCheck,
   IconBan,
-  IconChevronDown,
-  IconChevronUp,
-  IconClock,
+  IconX,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface VerificationItem {
+interface Row {
   id: string;
-  business_id: string;
-  business_name: string | null;
-  business_slug: string | null;
-  identity_status: string;
-  submitted_at: string | null;
-  owner_id: string | null;
-  documents: string[] | null; // array of document URLs / refs
-  notes: string | null;
+  name: string | null;
+  slug: string | null;
+  status: string;
+  is_verified: boolean | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  has_stripe: boolean;
+  identity_status: string | null;
+  selfie_submitted: boolean;
+  sms_verified: boolean | null;
 }
 
-// ─── Demo data ────────────────────────────────────────────────────────────────
-
-const DEMO_VERIFICATIONS: VerificationItem[] = [
-  {
-    id: "demo-ver-01",
-    business_id: "demo-biz-10",
-    business_name: "The Velvet Lounge",
-    business_slug: "velvet-lounge",
-    identity_status: "pending",
-    submitted_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    owner_id: "demo-user-20",
-    documents: ["id_front.jpg", "business_license.pdf"],
-    notes: "Owner is requesting expedited review.",
-  },
-  {
-    id: "demo-ver-02",
-    business_id: "demo-biz-11",
-    business_name: "Neon Sushi",
-    business_slug: "neon-sushi",
-    identity_status: "pending",
-    submitted_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    owner_id: "demo-user-21",
-    documents: ["id_front.jpg", "id_back.jpg"],
-    notes: null,
-  },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1d ago";
-  return `${d}d ago`;
-}
+const isLegacy = (r: Row) => r.status === "verified" && !r.verified_by;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminVerificationPage() {
-  const [items, setItems] = useState<VerificationItem[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<Row | null>(null);
 
-  // Review modal
-  const [reviewItem, setReviewItem] = useState<VerificationItem | null>(null);
-  const [reviewDecision, setReviewDecision] = useState<"approve" | "reject" | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-
-  const fetchQueue = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setItems(DEMO_VERIFICATIONS);
+      setRows([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setFetchError(null);
 
-    const { data, error } = await supabase
-      .from("business_verifications")
-      .select(
-        "id, business_id, identity_status, submitted_at, owner_id, documents, notes, businesses(name, slug)"
-      )
-      .eq("identity_status", "pending")
-      .order("submitted_at", { ascending: true });
+    const [bizRes, verRes] = await Promise.all([
+      supabase
+        .from("businesses")
+        .select("id, name, slug, status, is_verified, verified_by, verified_at, stripe_account_id")
+        .order("name", { ascending: true }),
+      // business_verifications is admin-readable (is_platform_admin SELECT policy).
+      // NEVER select sms_code / daily_code — those are verification secrets.
+      supabase
+        .from("business_verifications")
+        .select("business_id, identity_status, selfie_url, sms_verified"),
+    ]);
 
-    if (error) {
-      setFetchError(error.message);
+    if (bizRes.error) {
+      setFetchError(bizRes.error.message);
       setLoading(false);
       return;
     }
 
-    type RawRow = {
-      id: string;
-      business_id: string;
-      identity_status: string;
-      submitted_at: string | null;
-      owner_id: string | null;
-      documents: string[] | null;
-      notes: string | null;
-      businesses: { name: string | null; slug: string | null } | { name: string | null; slug: string | null }[] | null;
-    };
+    const verByBiz = new Map<string, { identity_status: string | null; selfie_url: string | null; sms_verified: boolean | null }>();
+    for (const v of verRes.data ?? []) {
+      verByBiz.set(v.business_id, {
+        identity_status: v.identity_status,
+        selfie_url: v.selfie_url,
+        sms_verified: v.sms_verified,
+      });
+    }
 
-    const mapped: VerificationItem[] = ((data ?? []) as unknown as RawRow[]).map((row) => {
-      const biz = Array.isArray(row.businesses) ? row.businesses[0] : row.businesses;
+    const mapped: Row[] = (bizRes.data ?? []).map((b) => {
+      const v = verByBiz.get(b.id);
       return {
-        id: row.id,
-        business_id: row.business_id,
-        business_name: biz?.name ?? null,
-        business_slug: biz?.slug ?? null,
-        identity_status: row.identity_status,
-        submitted_at: row.submitted_at,
-        owner_id: row.owner_id,
-        documents: row.documents,
-        notes: row.notes,
+        id: b.id,
+        name: b.name,
+        slug: b.slug,
+        status: b.status,
+        is_verified: b.is_verified,
+        verified_by: b.verified_by,
+        verified_at: b.verified_at,
+        has_stripe: !!b.stripe_account_id,
+        identity_status: v?.identity_status ?? null,
+        selfie_submitted: !!v?.selfie_url,
+        sms_verified: v?.sms_verified ?? null,
       };
     });
 
-    setItems(mapped);
+    setRows(mapped);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    void fetchQueue();
-  }, [fetchQueue]);
+    void fetchAll();
+  }, [fetchAll]);
 
-  // ── Review action ─────────────────────────────────────────────────────────
-
-  async function handleReview() {
-    if (!reviewItem || !reviewDecision) return;
-    setSaving(true);
-    setSaveError(null);
-
-    const newStatus = reviewDecision === "approve" ? "approved" : "rejected";
-    const bizStatus = reviewDecision === "approve" ? "verified" : "rejected";
-
-    if (isSupabaseConfigured) {
-      // Update verification record
-      const { error: verErr } = await supabase
-        .from("business_verifications")
-        .update({ identity_status: newStatus })
-        .eq("id", reviewItem.id);
-      if (verErr) {
-        setSaveError(verErr.message);
-        setSaving(false);
-        return;
-      }
-
-      // Update business status via the admin RPC (status is not client-writable;
-      // the RPC gates the change on is_platform_admin()).
-      const { error: bizErr } = await supabase.rpc("admin_set_business_status", {
-        p_business_id: reviewItem.business_id,
-        p_status: bizStatus,
+  // Approve → status='verified' (stamps verified_by/at). Revoke → 'pending_verification'.
+  const runAction = useCallback(
+    async (business: Row, approve: boolean) => {
+      setBusyId(business.id);
+      setActionError(null);
+      const { error } = await supabase.rpc("admin_set_business_status", {
+        p_business_id: business.id,
+        p_status: approve ? "verified" : "pending_verification",
       });
-      if (bizErr) {
-        setSaveError(bizErr.message);
-        setSaving(false);
+      setBusyId(null);
+      if (error) {
+        setActionError(`${business.name ?? business.id}: ${error.message}`);
         return;
       }
+      await fetchAll();
+    },
+    [fetchAll]
+  );
 
-      // TODO(server): notify business owner of approval/rejection via push + email.
-    }
-
-    setItems((prev) => prev.filter((v) => v.id !== reviewItem.id));
-    setSuccessMsg(
-      `"${reviewItem.business_name ?? reviewItem.business_id}" ${
-        reviewDecision === "approve" ? "approved and verified" : "rejected"
-      }.`
-    );
-    setSaving(false);
-    setReviewItem(null);
-    setReviewDecision(null);
-    setReviewNote("");
-  }
-
-  function openReview(item: VerificationItem, decision: "approve" | "reject") {
-    setReviewItem(item);
-    setReviewDecision(decision);
-    setReviewNote("");
-    setSaveError(null);
-  }
-
-  function closeModal() {
-    setReviewItem(null);
-    setReviewDecision(null);
-    setSaveError(null);
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  const legacyCount = rows.filter(isLegacy).length;
 
   return (
-    <div style={{ maxWidth: "900px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+    <div style={{ maxWidth: 1000 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
         <IconUserCheck size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-          Verification Queue
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+          Business verification
         </h1>
       </div>
-
-      {/* TODO(roles): gate to Super Admin / Compliance Admin */}
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 18px" }}>
+        Approving a business sets <code>status = verified</code>, which enables its
+        payments. Only platform admins can do this.
+      </p>
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — actions shown but not persisted." />
+        <Banner type="warning" message="Demo mode — no backend configured; nothing to show." />
       )}
-      {successMsg && (
-        <Banner type="success" message={successMsg} onDismiss={() => setSuccessMsg(null)} />
+      {legacyCount > 0 && (
+        <Banner
+          type="warning"
+          message={`${legacyCount} business${legacyCount === 1 ? "" : "es"} marked "verified" with no approver on record (LEGACY — set by the old /api/verify bug). Re-review and re-approve to stamp provenance.`}
+        />
       )}
-      {fetchError && <Banner type="error" message={`Failed to load queue: ${fetchError}`} />}
+      {fetchError && <Banner type="error" message={`Failed to load: ${fetchError}`} />}
+      {actionError && (
+        <Banner type="error" message={actionError} onDismiss={() => setActionError(null)} />
+      )}
 
       {loading && (
-        <div style={{ display: "flex", justifyContent: "center", padding: "60px" }}>
+        <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
           <IconLoader2 size={28} stroke={1.6} style={{ color: "var(--color-brand)", animation: "spin 1s linear infinite" }} />
         </div>
       )}
 
-      {!loading && items.length === 0 && !fetchError && (
+      {!loading && rows.length === 0 && !fetchError && (
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            padding: "64px 24px",
+            padding: "48px 24px",
             border: "1px dashed var(--border-subtle)",
-            borderRadius: "12px",
+            borderRadius: 12,
             textAlign: "center",
+            color: "var(--text-secondary)",
+            fontSize: 14,
           }}
         >
-          <IconCheck size={32} stroke={1.4} style={{ color: "var(--color-success)" }} />
-          <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
-            Queue is clear
-          </div>
-          <div style={{ fontSize: "13px", color: "var(--text-secondary)", maxWidth: "360px" }}>
-            No pending business verifications.
-          </div>
+          No businesses to review.
         </div>
       )}
 
-      {!loading && items.length > 0 && (
-        <>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: "14px",
-            }}
-          >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: "24px",
-                height: "24px",
-                borderRadius: "20px",
-                background: "var(--color-warning)",
-                color: "var(--bg-base)",
-                fontSize: "12px",
-                fontWeight: 700,
-                padding: "0 6px",
-              }}
-            >
-              {items.length}
-            </span>
-            <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-              pending {items.length === 1 ? "verification" : "verifications"}
-            </span>
-          </div>
-
-          <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "12px", overflow: "hidden" }}>
-            {items.map((item, idx) => (
-              <VerificationRow
-                key={item.id}
-                item={item}
-                isLast={idx === items.length - 1}
-                isExpanded={expandedId === item.id}
-                onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                onApprove={() => openReview(item, "approve")}
-                onReject={() => openReview(item, "reject")}
-              />
-            ))}
-          </div>
-        </>
+      {!loading && rows.length > 0 && (
+        <div style={{ border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
+          {rows.map((r, i) => (
+            <BusinessRow
+              key={r.id}
+              row={r}
+              isLast={i === rows.length - 1}
+              busy={busyId === r.id}
+              onApprove={() => void runAction(r, true)}
+              onRevoke={() => setConfirmRevoke(r)}
+            />
+          ))}
+        </div>
       )}
 
-      {reviewItem && reviewDecision && (
-        <ReviewModal
-          item={reviewItem}
-          decision={reviewDecision}
-          note={reviewNote}
-          setNote={setReviewNote}
-          saving={saving}
-          error={saveError}
-          onConfirm={() => void handleReview()}
-          onClose={closeModal}
+      {confirmRevoke && (
+        <ConfirmRevoke
+          row={confirmRevoke}
+          busy={busyId === confirmRevoke.id}
+          onCancel={() => setConfirmRevoke(null)}
+          onConfirm={async () => {
+            const target = confirmRevoke;
+            setConfirmRevoke(null);
+            await runAction(target, false);
+          }}
         />
       )}
 
@@ -332,226 +221,136 @@ export default function SuperAdminVerificationPage() {
   );
 }
 
-// ─── VerificationRow ──────────────────────────────────────────────────────────
+// ─── Row ──────────────────────────────────────────────────────────────────────
 
-function VerificationRow({
-  item,
+function BusinessRow({
+  row,
   isLast,
-  isExpanded,
-  onToggle,
+  busy,
   onApprove,
-  onReject,
+  onRevoke,
 }: {
-  item: VerificationItem;
+  row: Row;
   isLast: boolean;
-  isExpanded: boolean;
-  onToggle: () => void;
+  busy: boolean;
   onApprove: () => void;
-  onReject: () => void;
+  onRevoke: () => void;
 }) {
+  const verified = row.status === "verified";
+  const legacy = isLegacy(row);
+
   return (
-    <div style={{ borderBottom: isLast ? "none" : "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "14px 16px",
-          flexWrap: "wrap",
-          rowGap: "8px",
-        }}
-      >
-        {/* Status badge */}
-        <span
-          style={{
-            display: "inline-block",
-            padding: "3px 9px",
-            borderRadius: "20px",
-            fontSize: "11px",
-            fontWeight: 700,
-            color: "var(--color-warning)",
-            border: "1px solid var(--color-warning)",
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}
-        >
-          Pending
-        </span>
-
-        {/* Business info */}
-        <div style={{ flex: "2 1 180px", minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {item.business_name ?? item.business_id.slice(0, 12)}
-          </div>
-          <div style={{ fontSize: "12px", color: "var(--text-tertiary)", marginTop: "2px" }}>
-            {item.business_slug ? `/${item.business_slug}` : ""}
-          </div>
+    <div
+      style={{
+        borderBottom: isLast ? "none" : "1px solid var(--border-subtle)",
+        background: "var(--bg-surface)",
+        padding: "14px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        flexWrap: "wrap",
+        rowGap: 10,
+      }}
+    >
+      {/* Name + slug */}
+      <div style={{ flex: "2 1 200px", minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {row.name ?? row.id.slice(0, 12)}
         </div>
-
-        {/* Submitted time */}
-        {item.submitted_at && (
-          <div
-            style={{
-              flex: "0 0 auto",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              fontSize: "12px",
-              color: "var(--text-tertiary)",
-            }}
-          >
-            <IconClock size={12} stroke={1.6} />
-            {timeAgo(item.submitted_at)}
-          </div>
-        )}
-
-        {/* Docs count */}
-        {item.documents && item.documents.length > 0 && (
-          <div style={{ flex: "0 0 auto", fontSize: "12px", color: "var(--text-secondary)" }}>
-            {item.documents.length} doc{item.documents.length !== 1 ? "s" : ""}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ flex: "0 0 auto", display: "flex", gap: "6px", alignItems: "center" }}>
-          <button
-            onClick={onApprove}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              border: "none",
-              background: "var(--color-success)",
-              color: "var(--bg-surface-light)",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <IconCheck size={13} stroke={2} />
-            Approve
-          </button>
-          <button
-            onClick={onReject}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              border: "none",
-              background: "var(--color-danger)",
-              color: "var(--bg-surface-light)",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <IconBan size={13} stroke={2} />
-            Reject
-          </button>
-          <button
-            onClick={onToggle}
-            aria-label={isExpanded ? "Collapse" : "Expand"}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "28px",
-              height: "28px",
-              borderRadius: "6px",
-              border: "1px solid var(--border-subtle)",
-              background: "transparent",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-            }}
-          >
-            {isExpanded ? <IconChevronUp size={15} stroke={1.6} /> : <IconChevronDown size={15} stroke={1.6} />}
-          </button>
+        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+          {row.slug ? `/${row.slug}` : row.id.slice(0, 8)}
         </div>
       </div>
 
-      {/* Expanded */}
-      {isExpanded && (
-        <div
-          style={{
-            padding: "12px 16px 16px",
-            borderTop: "1px solid var(--border-subtle)",
-            background: "var(--bg-elevated, var(--bg-surface))",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-          }}
-        >
-          {item.notes && (
-            <DetailField label="Notes from owner" value={item.notes} />
+      {/* Status + legacy + provenance */}
+      <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <StatusPill status={row.status} />
+          {legacy && (
+            <span
+              title="status=verified but no approver on record — set by the old /api/verify bug"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "2px 7px",
+                borderRadius: 20,
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--color-warning)",
+                border: "1px solid var(--color-warning)",
+              }}
+            >
+              <IconAlertTriangle size={11} stroke={2} />
+              Legacy
+            </span>
           )}
-          {item.documents && item.documents.length > 0 && (
-            <DetailField
-              label="Documents"
-              value={item.documents.join(", ")}
-            />
-          )}
-          {item.owner_id && (
-            <DetailField label="Owner ID" value={item.owner_id} mono />
-          )}
-          <DetailField label="Business ID" value={item.business_id} mono />
         </div>
-      )}
+        <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+          {verified && row.verified_by
+            ? `Approved by ${row.verified_by.slice(0, 8)}…${row.verified_at ? ` · ${new Date(row.verified_at).toLocaleDateString()}` : ""}`
+            : verified
+              ? "No approver on record"
+              : "Not verified"}
+          {row.has_stripe ? " · Stripe connected" : ""}
+        </div>
+      </div>
+
+      {/* Owner steps */}
+      <div style={{ flex: "1 1 160px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <StepChip label="Identity" ok={row.identity_status === "approved"} note={row.identity_status ?? "—"} />
+        <StepChip label="Selfie" ok={row.selfie_submitted} />
+        <StepChip label="SMS" ok={!!row.sms_verified} />
+      </div>
+
+      {/* Actions */}
+      <div style={{ flex: "0 0 auto", display: "flex", gap: 6 }}>
+        {!verified ? (
+          <button onClick={onApprove} disabled={busy} style={actionBtn("var(--color-success)", busy)}>
+            {busy ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconCheck size={13} stroke={2} />}
+            Approve
+          </button>
+        ) : (
+          <button onClick={onRevoke} disabled={busy} style={actionBtn("var(--color-danger)", busy)}>
+            {busy ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconBan size={13} stroke={2} />}
+            Revoke
+          </button>
+        )}
+        {legacy && (
+          <button onClick={onApprove} disabled={busy} title="Re-approve to stamp a real approver on this legacy row" style={actionBtn("var(--color-brand)", busy)}>
+            <IconCheck size={13} stroke={2} />
+            Re-approve
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── ReviewModal ──────────────────────────────────────────────────────────────
+// ─── Confirm revoke ─────────────────────────────────────────────────────────
 
-function ReviewModal({
-  item,
-  decision,
-  note,
-  setNote,
-  saving,
-  error,
+function ConfirmRevoke({
+  row,
+  busy,
+  onCancel,
   onConfirm,
-  onClose,
 }: {
-  item: VerificationItem;
-  decision: "approve" | "reject";
-  note: string;
-  setNote: (s: string) => void;
-  saving: boolean;
-  error: string | null;
+  row: Row;
+  busy: boolean;
+  onCancel: () => void;
   onConfirm: () => void;
-  onClose: () => void;
 }) {
   useEffect(() => {
-    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
-  }, [onClose]);
-
-  const isApprove = decision === "approve";
-  const accent = isApprove ? "var(--color-success)" : "var(--color-danger)";
+  }, [onCancel]);
 
   return (
     <>
-      <div
-        onClick={onClose}
-        aria-hidden="true"
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40 }}
-      />
+      <div onClick={onCancel} aria-hidden style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40 }} />
       <div
         role="dialog"
         aria-modal="true"
@@ -564,121 +363,31 @@ function ReviewModal({
           width: "min(440px, calc(100vw - 32px))",
           background: "var(--bg-surface)",
           border: "1px solid var(--border-subtle)",
-          borderRadius: "14px",
-          padding: "24px",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+          borderRadius: 14,
+          padding: 24,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-          {isApprove ? (
-            <IconCheck size={18} stroke={1.6} style={{ color: accent }} />
-          ) : (
-            <IconBan size={18} stroke={1.6} style={{ color: accent }} />
-          )}
-          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
-            {isApprove ? "Approve Verification" : "Reject Verification"}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <IconBan size={18} stroke={1.6} style={{ color: "var(--color-danger)" }} />
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
+            Revoke verification?
           </h2>
-          <button
-            onClick={onClose}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}
-          >
+          <button onClick={onCancel} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}>
             <IconX size={16} stroke={1.6} />
           </button>
         </div>
-
-        <div
-          style={{
-            fontSize: "13px",
-            color: "var(--text-secondary)",
-            marginBottom: "14px",
-            padding: "10px 12px",
-            background: "var(--bg-elevated, var(--bg-overlay))",
-            borderRadius: "8px",
-          }}
-        >
-          <strong style={{ color: "var(--text-primary)" }}>
-            {item.business_name ?? item.business_id.slice(0, 12)}
-          </strong>
-          <br />
-          <span style={{ fontSize: "12px" }}>
-            businesses.status → <code>{isApprove ? "verified" : "rejected"}</code>
-            <br />
-            business_verifications.identity_status → <code>{isApprove ? "approved" : "rejected"}</code>
-          </span>
-          {/* TODO(server): notify business owner on approve/reject */}
-        </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: "12px",
-              fontWeight: 700,
-              color: "var(--text-tertiary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginBottom: "6px",
-            }}
-          >
-            {isApprove ? "Approval note (optional)" : "Rejection reason"}
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={isApprove ? "Looks good, all documents verified." : "Documents unclear or mismatched."}
-            rows={3}
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              background: "var(--bg-base)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "6px",
-              color: "var(--text-primary)",
-              fontSize: "14px",
-              outline: "none",
-              resize: "vertical",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {error && <Banner type="error" message={error} />}
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid var(--border-subtle)",
-              background: "transparent",
-              color: "var(--text-secondary)",
-              fontSize: "13px",
-              cursor: "pointer",
-            }}
-          >
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 18px" }}>
+          <strong style={{ color: "var(--text-primary)" }}>{row.name ?? row.id.slice(0, 12)}</strong> will
+          return to <code>pending_verification</code>. This <strong>cuts off its payments</strong> until
+          it is approved again.
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}>
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
-            disabled={saving}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              background: saving ? "var(--text-tertiary)" : accent,
-              color: "var(--bg-surface-light)",
-              fontSize: "13px",
-              fontWeight: 700,
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
-          >
-            {saving && <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} />}
-            {!saving && (isApprove ? <IconCheck size={13} stroke={2} /> : <IconBan size={13} stroke={2} />)}
-            {saving ? "Processing…" : isApprove ? "Confirm Approve" : "Confirm Reject"}
+          <button onClick={onConfirm} disabled={busy} style={actionBtn("var(--color-danger)", busy)}>
+            {busy && <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} />}
+            {busy ? "Revoking…" : "Confirm revoke"}
           </button>
         </div>
       </div>
@@ -686,58 +395,79 @@ function ReviewModal({
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Small UI helpers ─────────────────────────────────────────────────────────
 
-function DetailField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function actionBtn(bg: string, busy: boolean): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "6px 12px",
+    borderRadius: 6,
+    border: "none",
+    background: busy ? "var(--text-tertiary)" : bg,
+    color: "var(--bg-surface-light)",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: busy ? "not-allowed" : "pointer",
+  };
+}
+
+function StatusPill({ status }: { status: string }) {
+  const verified = status === "verified";
+  const color = verified ? "var(--color-success)" : "var(--text-secondary)";
   return (
-    <div>
-      <div
-        style={{
-          fontSize: "11px",
-          fontWeight: 700,
-          color: "var(--text-tertiary)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginBottom: "3px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "13px",
-          color: "var(--text-secondary)",
-          fontFamily: mono ? "var(--font-geist-mono, monospace)" : "inherit",
-        }}
-      >
-        {value}
-      </div>
-    </div>
+    <span
+      style={{
+        display: "inline-block",
+        padding: "3px 9px",
+        borderRadius: 20,
+        fontSize: 11,
+        fontWeight: 700,
+        color,
+        border: `1px solid ${color}`,
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function StepChip({ label, ok, note }: { label: string; ok: boolean; note?: string }) {
+  const color = ok ? "var(--color-success)" : "var(--text-tertiary)";
+  return (
+    <span title={note ? `${label}: ${note}` : label} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color, fontWeight: 600 }}>
+      {ok ? <IconCheck size={12} stroke={2.2} /> : <IconX size={12} stroke={2.2} />}
+      {label}
+    </span>
   );
 }
 
 function Banner({ type, message, onDismiss }: { type: "error" | "success" | "warning"; message: string; onDismiss?: () => void }) {
-  const colors = { error: "var(--color-danger)", success: "var(--color-success)", warning: "var(--color-warning)" };
-  const bgs = { error: "rgba(239,68,68,0.08)", success: "rgba(29,158,117,0.08)", warning: "rgba(245,158,11,0.08)" };
+  const color = type === "error" ? "var(--color-danger)" : type === "success" ? "var(--color-success)" : "var(--color-warning)";
+  const bg = type === "error" ? "rgba(239,68,68,0.08)" : type === "success" ? "rgba(29,158,117,0.08)" : "rgba(245,158,11,0.08)";
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "8px",
+        alignItems: "flex-start",
+        gap: 8,
         padding: "10px 14px",
-        borderRadius: "8px",
-        background: bgs[type],
-        border: `1px solid ${colors[type]}`,
-        color: colors[type],
-        fontSize: "13px",
-        marginBottom: "14px",
+        borderRadius: 8,
+        background: bg,
+        border: `1px solid ${color}`,
+        color,
+        fontSize: 13,
+        marginBottom: 14,
       }}
     >
-      <IconAlertCircle size={15} stroke={1.6} style={{ flexShrink: 0 }} />
+      <IconAlertCircle size={15} stroke={1.6} style={{ flexShrink: 0, marginTop: 1 }} />
       <span style={{ flex: 1 }}>{message}</span>
       {onDismiss && (
-        <button onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer", color: colors[type], display: "flex" }}>
+        <button onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer", color, display: "flex" }}>
           <IconX size={14} stroke={2} />
         </button>
       )}
