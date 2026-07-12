@@ -151,24 +151,30 @@ function PrimaryButton({
 function PaymentsInner() {
   const searchParams = useSearchParams();
 
-  const [business, setBusiness] = useState<Business | null>(null);
+  // An owner can have several businesses (Pro plan: up to 10). Each needs its OWN
+  // Stripe account, so we list them all and let the user pick which to connect.
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [status, setStatus] = useState<AccountStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // initial businesses load
+  const [statusLoading, setStatusLoading] = useState(false); // per-business status
   const [connecting, setConnecting] = useState(false);
   const [openingPanel, setOpeningPanel] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId) ?? null;
 
   const showToast = useCallback((type: "success" | "error", msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // ── Load the owner's business + its Stripe account status ─────────────────────
-  const loadStatus = useCallback(async () => {
+  // ── Load ALL of the owner's businesses (no maybeSingle: an owner can have many) ─
+  const loadBusinesses = useCallback(async () => {
     setLoading(true);
     if (!isSupabaseConfigured) {
-      setBusiness(null);
+      setBusinesses([]);
       setLoading(false);
       return;
     }
@@ -177,42 +183,65 @@ function PaymentsInner() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setBusiness(null);
+        setBusinesses([]);
         setLoading(false);
         return;
       }
       setUserEmail(user.email ?? null);
 
-      const { data: biz } = await supabase
+      const { data, error } = await supabase
         .from("businesses")
         .select("id, name")
         .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (!biz) {
-        setBusiness(null);
-        setLoading(false);
-        return;
-      }
-      const b = biz as Business;
-      setBusiness(b);
-
-      const { data, error } = await supabase.functions.invoke("stripe-connect", {
-        body: { action: "get_account_status", business_id: b.id },
-      });
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      setStatus(data as AccountStatus);
+
+      const list = (data as Business[] | null) ?? [];
+      setBusinesses(list);
+      if (list.length > 0) {
+        // Preselect the business the onboarding link came back with, else the first.
+        const fromQuery = searchParams.get("business_id");
+        const initial = fromQuery && list.some((b) => b.id === fromQuery) ? fromQuery : list[0].id;
+        setSelectedBusinessId(initial);
+      }
     } catch (err) {
-      console.error("[payments] loadStatus error:", err);
-      showToast("error", "No se pudo cargar el estado de Stripe.");
+      console.error("[payments] loadBusinesses error:", err);
+      showToast("error", "No se pudieron cargar tus negocios.");
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [searchParams, showToast]);
 
   useEffect(() => {
-    void loadStatus();
-  }, [loadStatus]);
+    void loadBusinesses();
+  }, [loadBusinesses]);
+
+  // ── Load the Stripe account status for a given business ───────────────────────
+  const loadStatus = useCallback(
+    async (businessId: string) => {
+      setStatus(null); // reset so we never show the previous business's state
+      setStatusLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("stripe-connect", {
+          body: { action: "get_account_status", business_id: businessId },
+        });
+        if (error) throw error;
+        setStatus(data as AccountStatus);
+      } catch (err) {
+        console.error("[payments] loadStatus error:", err);
+        showToast("error", "No se pudo cargar el estado de Stripe.");
+      } finally {
+        setStatusLoading(false);
+      }
+    },
+    [showToast],
+  );
+
+  // Reload status whenever the selected business changes.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !selectedBusinessId) return;
+    void loadStatus(selectedBusinessId);
+  }, [selectedBusinessId, loadStatus]);
 
   // ── Handle the return from Stripe onboarding (?connect=success|refresh) ───────
   useEffect(() => {
@@ -220,25 +249,25 @@ function PaymentsInner() {
     if (!connect) return;
     if (connect === "success") showToast("success", "Verificación completada.");
     else if (connect === "refresh") showToast("error", "El enlace expiró, inténtalo de nuevo.");
-    // Clean the URL so a refresh doesn't re-toast.
+    // Clean the URL so a refresh doesn't re-toast (keep business_id for preselection).
     const url = new URL(window.location.href);
     url.searchParams.delete("connect");
     window.history.replaceState({}, "", url.toString());
-    // The real state ALWAYS comes from get_account_status, never the query param.
-    void loadStatus();
+    // Real state ALWAYS comes from get_account_status (the effect above reloads it for
+    // the selected business); never trust the query param.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   const handleConnect = useCallback(async () => {
-    if (!business) return;
+    if (!selectedBusiness) return;
     setConnecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", {
         body: {
           action: "create_connect_account",
-          business_id: business.id,
-          business_name: business.name,
+          business_id: selectedBusiness.id,
+          business_name: selectedBusiness.name,
           email: userEmail ?? undefined,
         },
       });
@@ -255,14 +284,14 @@ function PaymentsInner() {
       showToast("error", "No se pudo iniciar la conexión con Stripe.");
       setConnecting(false);
     }
-  }, [business, userEmail, showToast]);
+  }, [selectedBusiness, userEmail, showToast]);
 
   const handleOpenPanel = useCallback(async () => {
-    if (!business) return;
+    if (!selectedBusinessId) return;
     setOpeningPanel(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", {
-        body: { action: "create_login_link", business_id: business.id },
+        body: { action: "create_login_link", business_id: selectedBusinessId },
       });
       if (error) throw error;
       const url = (data as { url?: string }).url;
@@ -274,7 +303,7 @@ function PaymentsInner() {
     } finally {
       setOpeningPanel(false);
     }
-  }, [business, showToast]);
+  }, [selectedBusinessId, showToast]);
 
   // ── Derived state ─────────────────────────────────────────────────────────────
   const hasAccount = !!status?.account_id;
@@ -299,13 +328,13 @@ function PaymentsInner() {
         />
       )}
 
-      {/* A) Loading */}
+      {/* A) Loading (initial businesses fetch) */}
       {loading ? (
         <Card style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)" }}>
           <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-          <span style={{ fontSize: "14px" }}>Cargando estado de pagos…</span>
+          <span style={{ fontSize: "14px" }}>Cargando…</span>
         </Card>
-      ) : !business ? (
+      ) : businesses.length === 0 ? (
         /* B) No business */
         <Card style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <IconBuildingStore size={22} style={{ color: "var(--db-text-secondary)" }} />
@@ -318,7 +347,48 @@ function PaymentsInner() {
             </div>
           </div>
         </Card>
-      ) : isActive ? (
+      ) : (
+        <>
+          {/* Business selector — only when the owner has more than one */}
+          {businesses.length > 1 && (
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                htmlFor="payments-business"
+                style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "6px" }}
+              >
+                Negocio
+              </label>
+              <select
+                id="payments-business"
+                value={selectedBusinessId ?? ""}
+                onChange={(e) => setSelectedBusinessId(e.target.value)}
+                style={{
+                  width: "100%",
+                  maxWidth: "360px",
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-surface)",
+                  color: "var(--db-text-primary)",
+                  fontSize: "14px",
+                }}
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Status card for the SELECTED business */}
+          {statusLoading || !status ? (
+            <Card style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)" }}>
+              <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+              <span style={{ fontSize: "14px" }}>Cargando estado de pagos…</span>
+            </Card>
+          ) : isActive ? (
         /* E) Active */
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
@@ -378,6 +448,8 @@ function PaymentsInner() {
             Conectar con Stripe
           </PrimaryButton>
         </Card>
+          )}
+        </>
       )}
 
       {/* Toast */}
