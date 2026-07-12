@@ -9,6 +9,8 @@
  *   payment_intent.succeeded      → create orders + order_items rows; KDS picks
  *                                   them up via Supabase Realtime on the orders table.
  *   payment_intent.payment_failed → log failure (client polling / error state).
+ *   account.updated               → sync a business's Connect onboarding flags
+ *                                   (charges/payouts/details) so payments can gate on them.
  *
  * Deploy:
  *   supabase functions deploy stripe-webhook
@@ -21,7 +23,7 @@
  *
  * Stripe webhook endpoint to register:
  *   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
- *   Events to send: payment_intent.succeeded, payment_intent.payment_failed
+ *   Events to send: payment_intent.succeeded, payment_intent.payment_failed, account.updated
  */
 
 import Stripe from "npm:stripe@16.2.0";
@@ -233,6 +235,37 @@ async function handlePaymentSucceeded(
   //   await sendPushToBusinessOwner(businessId, { type: 'new_order', orderId, totalCents });
 }
 
+// ── Handler: account.updated (Connect onboarding state) ───────────────────────
+// Keeps businesses.stripe_charges_enabled/payouts_enabled/details_submitted in sync
+// with Stripe so payments/index.ts can gate on them. Idempotent by nature (writes the
+// same booleans) and also covered by the processed_stripe_events dedup guard below.
+
+async function handleAccountUpdated(account: Stripe.Account): Promise<void> {
+  const db = getAdminClient();
+  const { error } = await db
+    .from("businesses")
+    .update({
+      stripe_charges_enabled: !!account.charges_enabled,
+      stripe_payouts_enabled: !!account.payouts_enabled,
+      stripe_details_submitted: !!account.details_submitted,
+    })
+    .eq("stripe_account_id", account.id);
+
+  if (error) {
+    console.error(
+      `[stripe-webhook] account.updated: failed to sync business for account ${account.id}:`,
+      error,
+    );
+    // Throw so the outer catch rolls back the dedup marker → Stripe retries.
+    throw error;
+  }
+
+  console.log(
+    `[stripe-webhook] account.updated: account=${account.id} charges=${account.charges_enabled} ` +
+      `payouts=${account.payouts_enabled} details=${account.details_submitted}`,
+  );
+}
+
 // ── Handler: payment_intent.payment_failed ────────────────────────────────────
 
 async function handlePaymentFailed(
@@ -313,6 +346,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       case "payment_intent.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      case "account.updated":
+        await handleAccountUpdated(event.data.object as Stripe.Account);
         break;
 
       default:

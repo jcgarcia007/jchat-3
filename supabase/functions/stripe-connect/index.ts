@@ -116,6 +116,17 @@ async function assertOwnerOrAdmin(
   return errorResponse("Forbidden: not the owner of this business", 403);
 }
 
+// Stripe Connect supported countries (ISO-3166 alpha-2). The account country is
+// effectively IMMUTABLE and defines the tax regime, so it comes from the business
+// profile (businesses.country) — NEVER the client body — and must be on this list.
+// Update as Stripe expands availability.
+const SUPPORTED_CONNECT_COUNTRIES = new Set<string>([
+  "US", "CA", "GB", "AU", "NZ", "SG", "HK", "JP", "MY", "TH", "AE", "BR", "MX", "IN",
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+  "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+  "CH", "NO", "LI", "GI",
+]);
+
 // ── Action: create_connect_account ────────────────────────────────────────────
 // Idempotent: if business already has stripe_account_id, creates a new account
 // link (re-starts onboarding if not fully completed) rather than a new account.
@@ -126,7 +137,6 @@ async function handleCreateConnectAccount(
   const businessId = typeof body.business_id === "string" ? body.business_id : null;
   const email = typeof body.email === "string" ? body.email : null;
   const businessName = typeof body.business_name === "string" ? body.business_name : null;
-  const country = typeof body.country === "string" ? body.country : "US";
 
   if (!businessId) return errorResponse("business_id is required");
 
@@ -136,7 +146,7 @@ async function handleCreateConnectAccount(
   // Look up existing business record
   const { data: business, error: bizErr } = await db
     .from("businesses")
-    .select("id, stripe_account_id, name, owner_id")
+    .select("id, stripe_account_id, name, owner_id, country")
     .eq("id", businessId)
     .maybeSingle();
 
@@ -147,6 +157,16 @@ async function handleCreateConnectAccount(
 
   // Create a new Express account if one doesn't exist yet
   if (!accountId) {
+    // FIX #5 — country from the business profile (immutable, tax-defining), never the
+    // client body. Validate against the Stripe Connect supported list.
+    const country = typeof business.country === "string" ? business.country.trim().toUpperCase() : "";
+    if (!country) {
+      return errorResponse("Business country is missing — complete the business profile first", 400);
+    }
+    if (!SUPPORTED_CONNECT_COUNTRIES.has(country)) {
+      return errorResponse(`Country "${country}" is not supported for payments yet`, 400);
+    }
+
     // Owner email comes from auth.users (public.users/businesses have no email).
     const ownerEmail =
       email ??
@@ -155,7 +175,9 @@ async function handleCreateConnectAccount(
       type: "express",
       country,
       email: ownerEmail,
-      business_type: "company",
+      // FIX #4 — business_type is NOT hardcoded (was "company", which forced sole
+      // traders through company onboarding they can't complete). Omitted so Stripe
+      // asks the owner in its own hosted onboarding form.
       business_profile: {
         name: businessName ?? business.name ?? undefined,
         // TODO: map JChat business category to Stripe MCC code
@@ -181,13 +203,23 @@ async function handleCreateConnectAccount(
     }
   }
 
-  // Generate an Account Link for onboarding (or re-onboarding if incomplete)
+  // Generate an Account Link for onboarding (or re-onboarding if incomplete).
+  // FIX #6 — fallback is jchat.cloud (our domain, not jchat.app). A silent fallback to
+  // someone else's domain is worse than a loud warning, so log when the secret is unset.
+  const returnUrlEnv = Deno.env.get("CONNECT_RETURN_URL");
+  const refreshUrlEnv = Deno.env.get("CONNECT_REFRESH_URL");
+  if (!returnUrlEnv || !refreshUrlEnv) {
+    console.warn(
+      "[stripe-connect] CONNECT_RETURN_URL / CONNECT_REFRESH_URL not set — using the " +
+        "https://jchat.cloud fallback. Set these secrets to control the post-onboarding landing page.",
+    );
+  }
   const returnUrl =
-    Deno.env.get("CONNECT_RETURN_URL") ??
-    `https://jchat.app/dashboard/billing?connect=success&business_id=${businessId}`;
+    returnUrlEnv ??
+    `https://jchat.cloud/dashboard/billing?connect=success&business_id=${businessId}`;
   const refreshUrl =
-    Deno.env.get("CONNECT_REFRESH_URL") ??
-    `https://jchat.app/dashboard/billing?connect=refresh&business_id=${businessId}`;
+    refreshUrlEnv ??
+    `https://jchat.cloud/dashboard/billing?connect=refresh&business_id=${businessId}`;
 
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
@@ -226,6 +258,21 @@ async function handleGetAccountStatus(
   }
 
   const account = await stripe.accounts.retrieve(business.stripe_account_id);
+
+  // FIX #3d — persist the Connect flags on every status check so JChat stays synced
+  // even if the account.updated webhook is missed. Log-only on failure (don't block
+  // the status read).
+  const { error: syncErr } = await db
+    .from("businesses")
+    .update({
+      stripe_charges_enabled: !!account.charges_enabled,
+      stripe_payouts_enabled: !!account.payouts_enabled,
+      stripe_details_submitted: !!account.details_submitted,
+    })
+    .eq("id", businessId);
+  if (syncErr) {
+    console.error("[stripe-connect] get_account_status: failed to persist connect flags:", syncErr);
+  }
 
   return jsonResponse({
     onboarded: account.details_submitted && account.charges_enabled,

@@ -249,15 +249,37 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     await db.from("users").update({ stripe_customer_id: customerId }).eq("id", authUserId);
   }
 
-  // ── Fetch business (tax_rate + Stripe Connect account) ───────────────────
+  // ── Fetch business (tax_rate + Stripe Connect account + gating state) ─────
   const { data: business, error: bizErr } = await db
     .from("businesses")
-    .select("id, stripe_account_id, tax_rate")
+    .select("id, stripe_account_id, tax_rate, status, stripe_charges_enabled")
     .eq("id", business_id)
     .maybeSingle();
   if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
   if (!business) return errorResponse("Business not found", 404);
   const stripeAccountId = business.stripe_account_id as string | null;
+
+  // ── Connect preconditions (gates only — amount recalculation is unchanged) ──
+  // Verify the business may LEGITIMATELY receive this money before creating any
+  // PaymentIntent. Missing any gate previously meant either the money silently
+  // landed in the platform account (no destination) or the charge failed at the
+  // register. All return 409 (conflict with the business's current state).
+  //
+  // FIX #2 — payments are blocked until a platform admin verifies the business
+  // (/super-admin/verification). Without this the whole approval flow is decorative.
+  if (business.status !== "verified") {
+    return errorResponse("This business is pending verification", 409);
+  }
+  // FIX #1 — no Connect account = no destination. NEVER create a PaymentIntent
+  // without transfer_data; that routes 100% of the money to the platform account.
+  if (!stripeAccountId) {
+    return errorResponse("This business is not set up to accept payments yet", 409);
+  }
+  // FIX #3c — connected but onboarding not finished → the charge would fail in the
+  // customer's face. Block it here with a clear reason instead.
+  if (!business.stripe_charges_enabled) {
+    return errorResponse("This business has not completed Stripe onboarding", 409);
+  }
 
   // ── Validate items against DB (P0-2) ──────────────────────────────────────
   // De-duplicate IDs for the IN query; duplicates in items[] are intentional
