@@ -15,6 +15,12 @@
  * Deploy:
  *   supabase functions deploy stripe-webhook
  *
+ * Two webhook endpoints, one function: Connect events (account.updated) are only
+ * delivered by a "Connected accounts"-scoped Stripe endpoint, which is a SEPARATE
+ * endpoint from the "Your account" one — and each Stripe endpoint has its OWN signing
+ * secret. So both endpoints point at this same function URL, and it verifies the
+ * signature against EITHER secret (see Deno.serve below).
+ *
  * Required env vars (Supabase dashboard → Edge Functions → Secrets):
  *   STRIPE_SECRET_KEY            — sk_live_… or sk_test_…
  *   STRIPE_WEBHOOK_SECRET        — whsec_… for the "Your account" endpoint (payment_intent.*)
@@ -22,9 +28,10 @@
  *   SUPABASE_URL                — auto-injected
  *   SUPABASE_SERVICE_ROLE_KEY   — set manually
  *
- * Stripe webhook endpoint to register:
+ * Stripe webhook endpoints to register (both → this same function URL):
  *   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
- *   Events to send: payment_intent.succeeded, payment_intent.payment_failed, account.updated
+ *   · "Your account"       → payment_intent.succeeded, payment_intent.payment_failed
+ *   · "Connected accounts" → account.updated
  */
 
 import Stripe from "npm:stripe@16.2.0";
@@ -309,11 +316,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //   · STRIPE_WEBHOOK_SECRET         — "Your account" endpoint (payment_intent.*)
   //   · STRIPE_CONNECT_WEBHOOK_SECRET — "Connected accounts" endpoint (account.updated)
   // A Connect event only verifies against the Connect endpoint's secret, so we try each
-  // configured secret and keep the first that verifies. At least one must be set.
+  // configured secret and keep the first that verifies. At least one must be set. Only
+  // the NAME of the verifying secret is logged — never the secret value.
   const webhookSecrets = [
-    Deno.env.get("STRIPE_WEBHOOK_SECRET"),
-    Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
-  ].filter((s): s is string => !!s);
+    { name: "STRIPE_WEBHOOK_SECRET", secret: Deno.env.get("STRIPE_WEBHOOK_SECRET") },
+    { name: "STRIPE_CONNECT_WEBHOOK_SECRET", secret: Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET") },
+  ].filter((s): s is { name: string; secret: string } => !!s.secret);
 
   if (webhookSecrets.length === 0) {
     console.error(
@@ -323,11 +331,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   let event: Stripe.Event | null = null;
+  let verifiedWith: string | null = null;
   let lastErr: unknown = null;
-  for (const secret of webhookSecrets) {
+  for (const { name, secret } of webhookSecrets) {
     try {
       event = await stripe.webhooks.constructEventAsync(rawBody, sig, secret);
-      break; // verified against this secret
+      verifiedWith = name; // secret NAME only, never the value
+      break;
     } catch (err) {
       lastErr = err;
     }
@@ -337,7 +347,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return errorResponse("Invalid webhook signature", 400);
   }
 
-  console.log(`[stripe-webhook] event: ${event.type} id=${event.id}`);
+  console.log(`[stripe-webhook] event: ${event.type} id=${event.id} verified via ${verifiedWith}`);
 
   // ── Idempotency guard (FIX #5): INSERT-FIRST + DELETE-ON-ERROR ─────────────
   // Insert the event.id first (atomic dedup, no race). If it already exists
