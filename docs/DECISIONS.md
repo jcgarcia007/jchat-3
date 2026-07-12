@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Maps
 
@@ -167,6 +167,74 @@ Turnstile NO tiene SDK oficial de React Native (el paquete comunitario `react-na
 
 ### D-39 — NO usar rate limiting como defensa principal
 El límite de Supabase para registros anónimos es de **30/hora POR IP**. En un bar, TODOS los clientes comparten el WiFi = MISMA IP → con más de 30 clientes nuevos/hora, el cliente 31 NO PODRÍA PEDIR. El rate limiting ROMPERÍA el negocio en hora punta. Subirlo alto (300/h) solo como tope de emergencia. La defensa real es el CAPTCHA (distingue humano/robot, no cuenta peticiones).
+
+## Seguridad y operación (Sesión 2026-07-12)
+
+### D-40 — La verificación de un negocio NO la controla el negocio
+Solo un super_admin verifica negocios (/super-admin/verification), vía el RPC único
+`admin_set_business_status(uuid,text)` gateado con `is_platform_admin()`, con
+trazabilidad en `businesses.verified_by` / `verified_at`. `/api/verify` ya no toca
+`businesses.status`.
+
+### D-41 — RLS: negar EXPLÍCITAMENTE (deny_all), no por ausencia de políticas
+Una tabla sin políticas "funciona" como denegada hoy, pero una política añadida
+después abre acceso sin que nadie lo note. Toda tabla service_role-only lleva una
+política deny_all explícita (patrón aplicado en pending_order_carts).
+
+### D-42 — Los límites de plan se aplican en el SERVIDOR
+Cualquier límite (empleados, negocios/eventos por plan) validado solo en el cliente
+es decorativo. La validación autoritativa vive en BD/Edge Functions.
+
+### D-43 — Los cambios de riesgo van por RAMA con preview
+`main` auto-despliega a PRODUCCIÓN en Vercel — un push ES un deploy. CSP, headers,
+auth y pagos se prueban en branch preview antes de merge. (Aprendido con la CSP.)
+
+### D-44 — La secret key de hCaptcha vive SOLO en Supabase
+Attack Protection guarda el secret; el sitekey (público) va en los clientes. Nunca
+en el repo ni en Vercel env.
+
+### D-45 — `tsc --noEmit` en 0 NO garantiza que el bundle corra
+El type-check no cubre errores de runtime del bundler (bug de prop-types). Todo
+cambio de UI requiere smoke test en el entorno real además del tsc.
+
+### D-46 — Un kill-switch silencioso necesita una prueba que lo haga visible
+Todo gate que degrada en silencio (p. ej. el de Twilio en /api/verify) debe tener
+una verificación que demuestre en qué estado está, o se pudre sin que nadie lo vea.
+
+### D-47 — Las Edge Functions corren en Deno y NO pasan por el tsc de la web
+Nadie comprobó que las columnas que escribe el webhook existieran → el bug de
+contact_email costó "dinero cobrado sin pedido" (migración 059 lo cerró). Toda EF
+que escriba en la BD se verifica columna por columna contra el esquema REAL
+(information_schema), no contra los types generados.
+
+## Stripe — auditoría de mejores prácticas (2026-07-12)
+
+### D-48 — Connect se queda en Accounts v1 (Express) con TECHO de migración
+Decision: se lanza con cuentas v1 `type: "express"` (flujo verificado end-to-end con
+dinero en test). La guía actual de Stripe pide Accounts v2 (`/v2/core/accounts`)
+para plataformas nuevas; migrar requiere subir el SDK (stripe@16.2.0 no tiene el
+namespace v2), reescribir create_connect_account y el manejo de account.updated.
+TECHO: revisar y ejecutar la migración a Accounts v2 ANTES de superar ~10 negocios
+conectados reales — con 1 cuenta de test es trivial, con 50 negocios es un proyecto.
+Why: no se reabre un flujo de dinero verificado justo antes de lanzar; v1/Express
+sigue soportado indefinidamente para plataformas existentes.
+Riesgo aceptado conscientemente (ligado a D-35): con destination charges +
+on_behalf_of, la PLATAFORMA responde por reembolsos y contracargos, y el fee de
+plataforma es neutro (= costo de Stripe) → cada disputa perdida cuesta el monto +
+~$15 sin margen de procesamiento que lo amortigüe. Las suscripciones ($49/$99)
+actúan como prima de ese riesgo. Vigilar la tasa de disputas en super-admin; las
+palancas si duele: subir el fee a 4-5% o evaluar direct charges.
+
+### D-49 — El upgrade de versión de API de Stripe es tanda propia, NUNCA junto al pase a live
+Decision: se lanza a live con la versión pinneada actual (`2024-06-20`, verificada).
+El upgrade a la última (`2026-06-24.dahlia` hoy) se hace DESPUÉS, como tanda
+dedicada: subir stripe@16.2.0 → SDK actual, cambiar apiVersion en las EF, revisar el
+changelog entre versiones (webhooks y Connect especialmente), probar en test y
+redesplegar las 4 EF. ACOPLE ESCONDIDO: el apiVersion de ephemeralKeys.create debe
+seguir siendo compatible con lo que exija @stripe/stripe-react-native — ese pin y la
+versión del SDK móvil se actualizan JUNTOS.
+Why: pase a live y upgrade de API son dos variables de riesgo que no se mueven a la
+vez; pinnear la versión fue lo que mantuvo todo estable dos años.
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
