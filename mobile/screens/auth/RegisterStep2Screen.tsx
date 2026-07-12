@@ -52,7 +52,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { useCaptcha } from '../../services/captcha';
+import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 
@@ -322,14 +322,15 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       if (captchaEnabled) {
         try {
           captchaToken = await getCaptchaToken();
-        } catch {
-          // Fallo de carga/red del reto (p. ej. WiFi malo). Mensaje accionable.
-          Alert.alert(t('captcha.errorTitle'), t('captcha.errorMessage'));
+        } catch (err) {
+          // Expiración / timeout / red / no disponible / ocupado: mensaje según el código.
+          const { titleKey, messageKey } = captchaErrorI18nKeys(err);
+          Alert.alert(t(titleKey), t(messageKey));
           setSubmitting(false);
           return;
         }
         if (captchaToken === null) {
-          // Usuario canceló / expiró: no llamar a Supabase sin token.
+          // Usuario canceló: no llamar a Supabase sin token.
           Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
           setSubmitting(false);
           return;
