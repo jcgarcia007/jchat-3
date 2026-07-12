@@ -23,10 +23,10 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface MessageSender {
-  username: string;
-  display_name: string | null;
-  avatar_url: string | null;
+// Resolved public profile (name + avatar) for a sender, cached by user id.
+interface SenderProfile {
+  name: string;
+  avatarUrl: string | null;
 }
 
 interface PresenceUser {
@@ -68,26 +68,23 @@ interface ChatMessage {
   metadata: Record<string, unknown>;
   is_system: boolean;
   created_at: string;
-  users: MessageSender | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const MSG_SELECT =
-  "id, room_id, user_id, body, type, media_url, metadata, is_system, created_at, users(username, display_name, avatar_url)";
+  "id, room_id, user_id, body, type, media_url, metadata, is_system, created_at";
 
 function isIncognito(msg: ChatMessage): boolean {
   return msg.metadata.incognito === true;
 }
 
-function senderName(msg: ChatMessage): string {
+function senderName(msg: ChatMessage, profiles: Record<string, SenderProfile>): string {
   if (isIncognito(msg)) {
     const nick = msg.metadata.nickname;
     return "🎭 " + (typeof nick === "string" && nick.trim() ? nick.trim() : "Anónimo");
   }
-  if (msg.users?.display_name) return msg.users.display_name;
-  if (msg.users?.username) return msg.users.username;
-  return "Usuario";
+  return profiles[msg.user_id]?.name ?? "Usuario";
 }
 
 function formatTime(iso: string): string {
@@ -190,6 +187,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const anchorRoomId = roomId;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Sender name/avatar cache, resolved from public_profiles (see ensureProfiles).
+  const [profiles, setProfiles] = useState<Record<string, SenderProfile>>({});
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
   const [inputText, setInputText] = useState("");
@@ -227,6 +226,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // Mirror of `profiles` so ensureProfiles doesn't depend on it (stable callback).
+  const profilesRef = useRef<Record<string, SenderProfile>>({});
   // Presence channels: main + anchor are permanent; visited rotates (§2.5).
   const mainPresenceRef = useRef<RealtimeChannel | null>(null);
   const anchorPresenceRef = useRef<RealtimeChannel | null>(null);
@@ -275,7 +276,41 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     if (distanceFromBottom > 300) userScrolledUpRef.current = true;
   }, []);
 
-  // Fetch a single message with users join (used after realtime INSERT)
+  useEffect(() => {
+    profilesRef.current = profiles;
+  }, [profiles]);
+
+  // Resolve missing sender profiles from the public_profiles view. Other users'
+  // public fields come from that view — RLS on `users` only exposes your OWN row
+  // (or everything to a platform admin), so an embedded users(...) join returns
+  // null for normal users.
+  const ensureProfiles = useCallback(async (userIds: string[]) => {
+    const missing = Array.from(new Set(userIds.filter(Boolean))).filter(
+      (id) => !(id in profilesRef.current),
+    );
+    if (missing.length === 0) return;
+    const { data } = await supabase
+      .from("public_profiles")
+      .select("id, username, display_name, avatar_url")
+      .in("id", missing);
+    if (!data) return;
+    const next: Record<string, SenderProfile> = {};
+    for (const p of data as {
+      id: string;
+      username: string | null;
+      display_name: string | null;
+      avatar_url: string | null;
+    }[]) {
+      next[p.id] = {
+        name: p.display_name?.trim() || p.username?.trim() || "Usuario",
+        avatarUrl: p.avatar_url ?? null,
+      };
+    }
+    setProfiles((prev) => ({ ...prev, ...next }));
+  }, []);
+
+  // Fetch a single message (used after realtime INSERT). Sender name/avatar are
+  // resolved separately via ensureProfiles (public_profiles), not an embedded join.
   const fetchMessage = useCallback(
     async (id: string): Promise<ChatMessage | null> => {
       const { data } = await supabase
@@ -359,6 +394,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
       const sorted = ((msgs ?? []) as unknown as ChatMessage[]).slice().reverse();
       setMessages(sorted);
+      void ensureProfiles(sorted.map((m) => m.user_id));
       setLoadState("ok");
     }
 
@@ -366,7 +402,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     return () => {
       cancelled = true;
     };
-  }, [activeRoomId, userId]);
+  }, [activeRoomId, userId, ensureProfiles]);
 
   // Auto-scroll on initial load. Open a short "initial window" during which
   // image onLoad handlers re-anchor to the bottom (heights become known after
@@ -416,6 +452,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           const newId = (payload.new as { id: string }).id;
           const full = await fetchMessage(newId);
           if (!full) return;
+          void ensureProfiles([full.user_id]);
           setMessages((prev) => {
             if (prev.some((m) => m.id === full.id)) return prev;
             return [...prev, full];
@@ -439,7 +476,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         channelRef.current = null;
       }
     };
-  }, [loadState, activeRoomId, fetchMessage, scrollToBottom, userId]);
+  }, [loadState, activeRoomId, fetchMessage, scrollToBottom, userId, ensureProfiles]);
 
   // ── Presence: fetch the user's profile once → the payload tracked everywhere ──
   useEffect(() => {
@@ -1178,17 +1215,60 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           // the exact height via aspect-ratio so the layout never jumps.
           const imgW = typeof msg.metadata?.width === "number" ? msg.metadata.width : undefined;
           const imgH = typeof msg.metadata?.height === "number" ? msg.metadata.height : undefined;
+          // Avatar for OTHERS' messages (own messages carry no avatar, mobile parity).
+          const senderAvatar = incognito ? null : (profiles[msg.user_id]?.avatarUrl ?? null);
+          const senderInitial = senderName(msg, profiles).replace("🎭 ", "").charAt(0).toUpperCase();
 
           return (
             <div
               key={msg.id}
               style={{
                 display: "flex",
-                flexDirection: "column",
-                alignItems: isOwn ? "flex-end" : "flex-start",
-                gap: 2,
+                alignItems: "flex-start",
+                justifyContent: isOwn ? "flex-end" : "flex-start",
+                gap: 8,
               }}
             >
+              {/* Avatar (others only) */}
+              {!isOwn &&
+                (senderAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={senderAvatar}
+                    width={32}
+                    height={32}
+                    alt=""
+                    style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      flexShrink: 0,
+                      background: theme.bubbleInBg,
+                      color: theme.bubbleInText,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {senderInitial}
+                  </div>
+                ))}
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isOwn ? "flex-end" : "flex-start",
+                  gap: 2,
+                  minWidth: 0,
+                }}
+              >
               {/* Sender name + role badge (others only) */}
               {!isOwn && (
                 <div
@@ -1208,7 +1288,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       opacity: incognito ? 0.65 : 1,
                     }}
                   >
-                    {senderName(msg)}
+                    {senderName(msg, profiles)}
                   </span>
                   {/* CRITICAL: badge NEVER renders for incognito messages */}
                   {authorRole === "owner" && (
@@ -1328,6 +1408,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               >
                 {formatTime(msg.created_at)}
               </span>
+              </div>
             </div>
           );
         })}
