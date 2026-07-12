@@ -300,8 +300,10 @@ export type Database = {
           longitude: number | null
           menu_card_effect: string
           menu_enabled: boolean
+          menu_language_mode: string
           menu_mode: string
           menu_palette_id: string | null
+          menu_primary_language: string
           menu_template_id: string
           name: string
           owner_id: string
@@ -317,6 +319,8 @@ export type Database = {
           tip_percentages: number[]
           tips_enabled: boolean
           updated_at: string
+          verified_at: string | null
+          verified_by: string | null
           website: string | null
         }
         Insert: {
@@ -347,8 +351,10 @@ export type Database = {
           longitude?: number | null
           menu_card_effect?: string
           menu_enabled?: boolean
+          menu_language_mode?: string
           menu_mode?: string
           menu_palette_id?: string | null
+          menu_primary_language?: string
           menu_template_id?: string
           name: string
           owner_id: string
@@ -364,6 +370,8 @@ export type Database = {
           tip_percentages?: number[]
           tips_enabled?: boolean
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
           website?: string | null
         }
         Update: {
@@ -394,8 +402,10 @@ export type Database = {
           longitude?: number | null
           menu_card_effect?: string
           menu_enabled?: boolean
+          menu_language_mode?: string
           menu_mode?: string
           menu_palette_id?: string | null
+          menu_primary_language?: string
           menu_template_id?: string
           name?: string
           owner_id?: string
@@ -411,6 +421,8 @@ export type Database = {
           tip_percentages?: number[]
           tips_enabled?: boolean
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
           website?: string | null
         }
         Relationships: [
@@ -1176,6 +1188,7 @@ export type Database = {
           id: string
           is_published: boolean
           name: string
+          name_alt: string | null
           sort: number
         }
         Insert: {
@@ -1186,6 +1199,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name: string
+          name_alt?: string | null
           sort?: number
         }
         Update: {
@@ -1196,6 +1210,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name?: string
+          name_alt?: string | null
           sort?: number
         }
         Relationships: [
@@ -1296,6 +1311,7 @@ export type Database = {
           category_id: string
           created_at: string
           description: string | null
+          description_alt: string | null
           dietary_tags: string[]
           id: string
           id_required: boolean
@@ -1304,6 +1320,7 @@ export type Database = {
           is_published: boolean
           low_stock_threshold: number
           name: string
+          name_alt: string | null
           options: Json
           photo_url: string | null
           price_cents: number
@@ -1317,6 +1334,7 @@ export type Database = {
           category_id: string
           created_at?: string
           description?: string | null
+          description_alt?: string | null
           dietary_tags?: string[]
           id?: string
           id_required?: boolean
@@ -1325,6 +1343,7 @@ export type Database = {
           is_published?: boolean
           low_stock_threshold?: number
           name: string
+          name_alt?: string | null
           options?: Json
           photo_url?: string | null
           price_cents?: number
@@ -1338,6 +1357,7 @@ export type Database = {
           category_id?: string
           created_at?: string
           description?: string | null
+          description_alt?: string | null
           dietary_tags?: string[]
           id?: string
           id_required?: boolean
@@ -1346,6 +1366,7 @@ export type Database = {
           is_published?: boolean
           low_stock_threshold?: number
           name?: string
+          name_alt?: string | null
           options?: Json
           photo_url?: string | null
           price_cents?: number
@@ -1525,6 +1546,7 @@ export type Database = {
           id: string
           key: string
           label: string
+          label_alt: string | null
           max_select: number
           min_select: number
           sort: number
@@ -1537,6 +1559,7 @@ export type Database = {
           id?: string
           key: string
           label: string
+          label_alt?: string | null
           max_select?: number
           min_select?: number
           sort?: number
@@ -1549,6 +1572,7 @@ export type Database = {
           id?: string
           key?: string
           label?: string
+          label_alt?: string | null
           max_select?: number
           min_select?: number
           sort?: number
@@ -1772,6 +1796,7 @@ export type Database = {
           status_updated_at: string
           stripe_pi_id: string | null
           subtotal_cents: number
+          table_label: string | null
           tax_cents: number
           tip_cents: number
           total_cents: number
@@ -1794,6 +1819,7 @@ export type Database = {
           status_updated_at?: string
           stripe_pi_id?: string | null
           subtotal_cents?: number
+          table_label?: string | null
           tax_cents?: number
           tip_cents?: number
           total_cents?: number
@@ -1816,6 +1842,7 @@ export type Database = {
           status_updated_at?: string
           stripe_pi_id?: string | null
           subtotal_cents?: number
+          table_label?: string | null
           tax_cents?: number
           tip_cents?: number
           total_cents?: number
@@ -1860,6 +1887,52 @@ export type Database = {
           },
           {
             foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_order_carts: {
+        Row: {
+          business_id: string
+          created_at: string
+          items: Json
+          payment_intent_id: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          items: Json
+          payment_intent_id: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          items?: Json
+          payment_intent_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_order_carts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_order_carts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_order_carts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2010,6 +2083,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      processed_stripe_events: {
+        Row: {
+          event_id: string
+          processed_at: string
+          type: string | null
+        }
+        Insert: {
+          event_id: string
+          processed_at?: string
+          type?: string | null
+        }
+        Update: {
+          event_id?: string
+          processed_at?: string
+          type?: string | null
+        }
+        Relationships: []
       }
       public_locations: {
         Row: {
@@ -2904,6 +2995,7 @@ export type Database = {
           display_name: string | null
           id: string
           is_incognito: boolean
+          is_private: boolean
           is_verified: boolean
           language: string
           onboarding_completed: boolean
@@ -2930,6 +3022,7 @@ export type Database = {
           display_name?: string | null
           id: string
           is_incognito?: boolean
+          is_private?: boolean
           is_verified?: boolean
           language?: string
           onboarding_completed?: boolean
@@ -2956,6 +3049,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_incognito?: boolean
+          is_private?: boolean
           is_verified?: boolean
           language?: string
           onboarding_completed?: boolean
@@ -2990,6 +3084,7 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           id: string | null
+          is_private: boolean | null
           is_verified: boolean | null
           profile_theme_id: number | null
           username: string | null
@@ -3000,6 +3095,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string | null
+          is_private?: boolean | null
           is_verified?: boolean | null
           profile_theme_id?: number | null
           username?: string | null
@@ -3010,6 +3106,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string | null
+          is_private?: boolean | null
           is_verified?: boolean | null
           profile_theme_id?: number | null
           username?: string | null
@@ -3018,16 +3115,38 @@ export type Database = {
       }
     }
     Functions: {
+      accept_follow_request: {
+        Args: { p_requester: string }
+        Returns: undefined
+      }
       admin_set_business_status: {
         Args: { p_business_id: string; p_status: string }
         Returns: undefined
       }
+      admin_set_business_verification: {
+        Args: { p_approve: boolean; p_business_id: string }
+        Returns: undefined
+      }
+      block_user: { Args: { p_target: string }; Returns: undefined }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
+      can_view_profile: {
+        Args: { target: string; viewer: string }
+        Returns: boolean
+      }
+      can_view_user_content: {
+        Args: { dimension: string; owner: string; viewer: string }
+        Returns: boolean
+      }
+      derive_username: {
+        Args: { _email: string; _meta: Json }
+        Returns: string
+      }
       generate_room_qr_token: {
         Args: { _business_id: string; _is_sub_room: boolean }
         Returns: string
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
+      is_blocked: { Args: { a: string; b: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       join_room_via_qr: {
         Args: { token: string }
@@ -3036,7 +3155,10 @@ export type Database = {
           room_id: string
         }[]
       }
+      purge_expired_messages: { Args: never; Returns: undefined }
       regenerate_room_qr_token: { Args: { _room_id: string }; Returns: string }
+      remove_follower: { Args: { p_follower: string }; Returns: undefined }
+      request_or_follow: { Args: { p_target: string }; Returns: string }
       resolve_room_qr: {
         Args: { token: string }
         Returns: {
@@ -3052,6 +3174,23 @@ export type Database = {
         Args: { password: string; room_id: string }
         Returns: boolean
       }
+      start_dm: {
+        Args: { p_target_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          last_message_at: string
+          user_a: string
+          user_b: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dm_conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      unblock_user: { Args: { p_target: string }; Returns: undefined }
       username_available: { Args: { check_username: string }; Returns: boolean }
       verify_room_password: {
         Args: { password: string; room_id: string }

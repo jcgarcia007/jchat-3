@@ -35,21 +35,29 @@ export default async function DashboardLayout({
       redirect("/auth/login?next=/dashboard");
     }
 
-    // Plan gate: only paying/trialing business or pro accounts may access the
-    // dashboard. Anyone else is sent to register with the upgrade prompt.
-    const { data: profile } = await supabase
-      .from("users")
-      .select("plan, plan_status")
-      .eq("id", user.id)
-      .single();
+    // Platform admins (super_admin / admin_roles) ALWAYS have dashboard access, even
+    // without a paid plan — they need it to run manual business verification
+    // (/dashboard/admin/verifications). Without this, an admin with no plan would be
+    // bounced to the upgrade page and could never approve a business.
+    const { data: isAdmin } = await supabase.rpc("is_platform_admin");
 
-    const hasDashboardAccess =
-      profile != null &&
-      (profile.plan === "business" || profile.plan === "pro") &&
-      (profile.plan_status === "active" || profile.plan_status === "trialing");
+    if (!isAdmin) {
+      // Plan gate: only paying/trialing business or pro accounts may access the
+      // dashboard. Anyone else is sent to register with the upgrade prompt.
+      const { data: profile } = await supabase
+        .from("users")
+        .select("plan, plan_status")
+        .eq("id", user.id)
+        .single();
 
-    if (!hasDashboardAccess) {
-      redirect("/auth/register?upgrade=1");
+      const hasDashboardAccess =
+        profile != null &&
+        (profile.plan === "business" || profile.plan === "pro") &&
+        (profile.plan_status === "active" || profile.plan_status === "trialing");
+
+      if (!hasDashboardAccess) {
+        redirect("/auth/register?upgrade=1");
+      }
     }
 
     // Seed the dashboard theme from the owner's business.
