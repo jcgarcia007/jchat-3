@@ -51,3 +51,8 @@ yarn-error.log*
 .codex/
 /AGENTS.md
 web/Template/
+
+# Secrets — nunca commitear
+*.p8
+*.plist
+generar-jwt.mjs
