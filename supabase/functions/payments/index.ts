@@ -197,6 +197,12 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     ? table_label.trim().slice(0, 40) || null
     : null;
 
+  // Optional guest contact (receipt / refund). Sanitised; never trusted raw.
+  const rawEmail = typeof body.contact_email === "string" ? body.contact_email.trim() : "";
+  const rawPhone = typeof body.contact_phone === "string" ? body.contact_phone.trim() : "";
+  const contactEmail = rawEmail ? rawEmail.slice(0, 120) : null;
+  const contactPhone = rawPhone ? rawPhone.slice(0, 30) : null;
+
   // tip_cents is the only client-supplied amount we accept; all others are recalculated.
   const clientTipCents = typeof payload.tip_cents === "number" ? payload.tip_cents : 0;
   // Retain client's user_id as trace for debugging; never used for auth or DB ops.
@@ -376,6 +382,8 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (promo_code)          metadata.promo_code = promo_code;
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
   if (tableLabel)           metadata.table_label = tableLabel;
+  if (contactEmail)         metadata.contact_email = contactEmail;
+  if (contactPhone)         metadata.contact_phone = contactPhone;
   if (itemsMeta.length > 490) metadata.items_overflow = "1";
   // Only logged when body.user_id differs from JWT — aids debugging.
   if (traceUserId !== authUserId) metadata.client_user_id = traceUserId;
@@ -402,6 +410,8 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     automatic_payment_methods: { enabled: true },
     metadata,
   };
+  // Guest receipt: let Stripe email its own receipt when a contact email is given.
+  if (contactEmail) piParams.receipt_email = contactEmail;
 
   if (stripeAccountId) {
     const platformFeePercent = parseFloat(Deno.env.get("PLATFORM_FEE_PERCENT") ?? "2.9");
