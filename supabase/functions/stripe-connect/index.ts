@@ -52,7 +52,9 @@ async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string):
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  // supabase-js always sends apikey + x-client-info; omitting them makes the browser
+  // block the request after a successful preflight (only OPTIONS reaches the function).
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
