@@ -34,7 +34,7 @@
  * Supabase ignora el `captchaToken`, así que enviar el token siempre es seguro.
  */
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
@@ -53,7 +53,9 @@ const SITE_KEY: string =
 export const isCaptchaEnabled: boolean =
   SITE_KEY.length > 0 && SITE_KEY !== PLACEHOLDER_SITEKEY;
 
-const BASE_URL = 'https://hcaptcha.com';
+// Hostname que hCaptcha valida contra la lista de hosts de la sitekey. Usamos
+// jchat.cloud en web y móvil → un solo dominio que registrar en el panel de hCaptcha.
+const BASE_URL = 'https://jchat.cloud';
 
 // Timeout global de seguridad. Mayor que el timeout de CARGA del SDK (15 s) para no
 // pisarlo: cubre el caso de que el WebView cargue pero luego no emita (p. ej. la app
@@ -142,6 +144,18 @@ export function useCaptcha(): UseCaptcha {
     settlerRef.current = null;
     captchaRef.current?.hide();
     if (s) apply(s);
+  }, []);
+
+  // Cleanup al desmontar: si el usuario abandona la pantalla en mitad de un reto,
+  // cancela el timeout global. Sin esto, 30 s después dispararía sobre un componente
+  // desmontado → hide() nulo + Alert encima de OTRA pantalla.
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, []);
 
   const onMessage = useCallback(

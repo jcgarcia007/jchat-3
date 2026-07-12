@@ -9,8 +9,9 @@
  * readable by the server-side dashboard auth gate. Visual style matches login/page.tsx.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import {
   IconUser,
   IconMail,
@@ -670,6 +671,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // hCaptcha (D-38): token pedido en el submit; el widget se monta abajo.
+  const captchaRef = useRef<InvisibleCaptchaHandle>(null);
 
   // Sanitize username: lowercase, only [a-z0-9_], max 30.
   function handleUsernameChange(v: string) {
@@ -743,9 +746,14 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // hCaptcha (D-38): token de un solo uso justo antes del signUp; getToken()
+    // resetea el widget tras consumirlo. null → kill-switch o reto fallido.
+    const captchaToken = (await captchaRef.current?.getToken()) ?? null;
+
     const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: { captchaToken: captchaToken ?? undefined },
     });
 
     if (signUpErr) {
@@ -824,6 +832,10 @@ export default function RegisterPage() {
           onBack={backToStep1}
         />
       )}
+
+      {/* hCaptcha invisible (D-38): sin UI salvo cuando el reto se dispara. Una sola
+          instancia para ambos steps; el submit real (signUp) ocurre en el step 2. */}
+      <InvisibleCaptcha ref={captchaRef} />
     </div>
   );
 }

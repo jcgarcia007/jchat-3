@@ -8,9 +8,10 @@
  * readable by the server-side dashboard auth gate.
  */
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSafeRedirectPath } from "@/lib/redirect";
+import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import {
   IconMail,
   IconLock,
@@ -39,6 +40,8 @@ function LoginForm() {
   );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // hCaptcha (D-38): token pedido en el submit; el widget se monta abajo.
+  const captchaRef = useRef<InvisibleCaptchaHandle>(null);
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -50,9 +53,14 @@ function LoginForm() {
     }
 
     setLoading(true);
+    // Token de un solo uso; getToken() resetea el widget tras consumirlo. null cuando
+    // el captcha está desactivado (kill-switch) o el reto falla → Supabase lo ignora
+    // mientras el captcha esté global-OFF.
+    const captchaToken = (await captchaRef.current?.getToken()) ?? null;
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
+      options: { captchaToken: captchaToken ?? undefined },
     });
     setLoading(false);
 
@@ -246,6 +254,9 @@ function LoginForm() {
           {loading && <IconLoader2 size={18} className="spin" />}
           {loading ? "Signing in…" : "Sign in"}
         </button>
+
+        {/* hCaptcha invisible (D-38): sin UI salvo cuando el reto se dispara. */}
+        <InvisibleCaptcha ref={captchaRef} />
       </form>
 
       {/* Divider */}
