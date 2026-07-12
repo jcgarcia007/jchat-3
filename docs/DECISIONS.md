@@ -143,6 +143,12 @@ Los canales de `postgres_changes` usan topic ÚNICO por suscripción (el `filter
 ### D-31 — Clave de idempotencia por INTENTO, no por carrito
 La clave la genera el cliente en cada intento de pago; el servidor la valida y la namespacea con el usuario del JWT. Una clave derivada del carrito bloquea pedidos idénticos repetidos. (Ref: e1e02aa.)
 
+### D-32 — El carrito de un PaymentIntent vive en la BD, no en la metadata de Stripe
+La metadata de Stripe capa los valores a 500 chars; con modificadores el carrito desborda y el webhook no puede parsearlo (orden sin ítems, en silencio). El carrito RESUELTO POR EL SERVIDOR (precios de BD + etiquetas verificadas) se guarda en `pending_order_carts` (service_role only) y el webhook lo lee de ahí. La metadata se sigue escribiendo como fallback para PIs viejos y para depurar. (Ref: 4ea3d00, migración 050.)
+
+### D-33 — Los precios de modificadores SIEMPRE se resuelven en el servidor
+El cliente solo envía ids de grupo + etiquetas de choice. La EF los precia desde `modifier_groups.choices` en la BD y rechaza grupos no vinculados al ítem o etiquetas inexistentes. Ningún precio del cliente se usa jamás. (Ref: 4ea3d00.)
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

@@ -197,21 +197,53 @@ webhook → orden en la BD con impuesto (8%) y propina. 6 órdenes reales creada
 lo maneja (`if (stripeAccountId)`) → cobra sin destination charges. Pendiente onboardear
 Connect para que el negocio reciba el dinero.
 
-### PENDIENTES (actualizado 2026-07-11 parte 2)
+### Parte 3 — TANDA C: cobro de modificadores — RESUELTO ✅
 
-**🔴 BLOQUEANTE DE PRODUCCIÓN — BUG DE DINERO (máxima prioridad, próxima tanda):**
-**Los modificadores NO se cobran.** La app muestra el precio con modificadores (p.ej. Alitas
-BBQ $22) pero el servidor cobra solo el precio base ($14) → se pierden los extras en cada
-pedido. EVIDENCIA: `order_items.price_cents = 1400` con el carrito mostrando $22.
-CAUSA: `CheckoutScreen` solo envía `options: { size, extras }` (sistema VIEJO); las
-`modifierSelections` (Tanda A) NUNCA llegan al servidor. La EF `resolveModifierCents()` solo
-lee `menu_items.options` (sizes/extras legacy) → suma $0.
-FIX (TANDA C): (1) CheckoutScreen envía las selecciones de modificadores; (2) la EF
-`payments` resuelve los precios desde `modifier_groups.choices` en la BD (NUNCA del cliente)
-y los suma a `lineUnitCents`; (3) redesplegar la EF. Toca la ruta de dinero → auditar con
-cuidado.
+`4ea3d00` + **migración 050 (APLICADA)** + ambas Edge Functions REDESPLEGADAS.
+
+**El bug (dinero):** la app mostraba el precio con modificadores (Alitas BBQ $23) pero se
+cobraba solo el precio base ($14). CAUSA: CheckoutScreen enviaba únicamente
+`options: { size, extras }` (sistema legacy); las `modifierSelections` (Tanda A) nunca
+llegaban al servidor, y la EF sumaba $0 por modificadores.
+
+**El segundo bug (latente, descubierto al diseñar el fix):** el webhook armaba los
+`order_items` desde `paymentIntent.metadata.items`, que Stripe capa a 500 chars (la EF corta
+a 490). Al añadir los modificadores, un carrito real desborda → JSON truncado → el webhook no
+puede parsear → **orden SIN ÍTEMS, en silencio**. Arreglar solo el cobro habría cambiado un
+fallo silencioso por otro.
+
+**La solución (ambos a la vez):**
+1. `CheckoutScreen` envía las selecciones como `options.modifiers = [{ g: groupId, c: [label] }]`
+   — SOLO ids y etiquetas, NUNCA precios (ambos paths: real y demo).
+2. EF `payments`: batch-fetch de `menu_item_modifier_groups` para todos los ítems; nueva
+   `resolveGroupModifierCents()` precia cada selección desde `modifier_groups.choices` EN LA BD.
+   Rechaza (400) grupos no vinculados al ítem y etiquetas de choice inexistentes.
+   `lineUnitCents = base(BD) + legacy size/extras(BD) + grupos(BD)`. El `price_cents` del
+   cliente se sigue ignorando.
+3. **Migración 050 — `pending_order_carts`** (payment_intent_id PK, business_id, user_id,
+   items jsonb). RLS ON **sin políticas** → solo `service_role`. La EF `payments` guarda ahí
+   el carrito RESUELTO POR EL SERVIDOR (precios de BD + etiquetas verificadas) tras crear el
+   PaymentIntent.
+4. EF `stripe-webhook`: lee `pending_order_carts` por PI id para construir `order_items`
+   (sin límite de tamaño); cae a la metadata para PIs viejos; borra la fila después.
+
+**VERIFICADO con datos reales (orden 2026-07-12 00:08):**
+- `order_items.price_cents` = **2300** (base 1400 + 900 de modificadores) — antes cobraba 1400.
+- `order_items.options.modifiers` = ["8 piezas","BBQ","Suave","Ranch","Papas a la francesa",
+  "Aros de cebolla","Dip extra"] — etiquetas verificadas por el servidor (lo que ve la cocina).
+- Cuadre: 2300 × 2 = subtotal 4600 → impuesto 368 (8%) → propina 690 → total 5658.
+- Esas 7 etiquetas habrían desbordado los 500 chars de la metadata → `pending_order_carts`
+  fue lo que permitió que los ítems llegaran completos.
+
+### PENDIENTES (actualizado 2026-07-11 parte 3)
+
+> ✅ RESUELTO (Parte 3, `4ea3d00`): el bloqueante 🔴 "los modificadores no se cobran" quedó
+> arreglado — cobro server-side desde `modifier_groups.choices` + carrito en
+> `pending_order_carts`. Ver Parte 3 arriba.
 
 **Otros pendientes:**
+- Purga de `pending_order_carts`: las filas de PIs abandonados (pago no completado) quedan
+  huérfanas. Falta un job/cron que borre las de más de unos días.
 - Pantalla de Cart: no muestra el desglose de modificadores por línea (se guardan, pero no
   se listan).
 - `UserProfileScreen` (ver perfil de OTRO usuario) NO EXISTE — el botón "Perfil" de la quick

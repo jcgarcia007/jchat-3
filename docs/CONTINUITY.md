@@ -48,5 +48,8 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **Stripe idempotency:** la clave debe ser única POR INTENTO. Derivarla del carrito (user+business+total+items) rompe los pedidos repetidos idénticos.
 - **Edge Functions:** tras `supabase secrets set` hay que REDESPLEGAR para que las tomen. Los logs de EF vía MCP van con retraso y solo muestran la línea HTTP; el Dashboard de Supabase muestra el cuerpo del error completo (fue la única vía para ver el StripeIdempotencyError).
 - **P0-2 / P0-3 parecen YA RESUELTOS** (ver PENDIENTES): la EF `payments` recalcula todos los montos desde la BD e ignora los del cliente (solo acepta `tip_cents`, validado y capado), y verifica el JWT ignorando `body.user_id`. Evidencia en datos: impuesto = 8% exacto sobre el subtotal calculado por el servidor. FALTA auditoría formal + actualizar el estado en los docs.
+- **La metadata de Stripe NO sirve como almacén del carrito.** Límite de 500 chars por valor. Cualquier dato de pedido que crezca (modificadores, notas) debe ir a una tabla de la BD keyed por el PaymentIntent, no a la metadata. Fallo silencioso si se ignora: orden creada sin ítems (el webhook no puede parsear el JSON truncado).
+- **Patrón de dinero:** el cliente envía IDs y ETIQUETAS; el servidor resuelve TODOS los precios desde la BD. Aplica igual a sizes/extras (legacy, `menu_items.options`) y a los modifier groups (`modifier_groups.choices`).
+- **Un fix de dinero puede destapar otro fallo:** al añadir modificadores al payload se descubrió el desbordamiento de metadata. Antes de cambiar la ruta de pagos, verificar también los LÍMITES de lo que se transporta, no solo el cálculo.
 
 Last updated: 2026-07-11
