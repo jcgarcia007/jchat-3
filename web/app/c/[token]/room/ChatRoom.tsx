@@ -136,18 +136,29 @@ function buildPresentUsers(state: Record<string, unknown[]>): PresenceUser[] {
   return result;
 }
 
-// Subscribe + track presence on a single room channel. The caller owns the
-// returned channel (untrack + removeChannel on cleanup). `onState` is called
-// with the room id and its live present-user list on every sync/join/leave.
-function subscribePresence(
+// Subscribe + track presence on a single room channel. The caller owns the returned
+// channel (untrack + removeChannel on cleanup). `onState` is called with the room id
+// and its live present-user list on every sync/join/leave.
+// A presence channel MUST keep a SHARED topic (`presence:${roomId}`) — every device joins
+// the same one or users stop seeing each other — so we can't uniquify it like the
+// postgres_changes channel. Instead we drop any stale channel with this topic and AWAIT it:
+// supabase.channel(name) otherwise returns the old, already-subscribed channel and .on()
+// after subscribe() throws.
+async function subscribePresence(
   roomId: string,
   userId: string,
   payload: PresencePayload,
   onState: (roomId: string, users: PresenceUser[]) => void,
-): RealtimeChannel {
-  const ch = supabase.channel(`presence:${roomId}`, {
-    config: { presence: { key: userId } },
-  });
+): Promise<RealtimeChannel> {
+  const name = `presence:${roomId}`;
+  const stale = supabase
+    .getChannels()
+    .filter((c) => c.topic === `realtime:${name}` || c.topic === name);
+  if (stale.length > 0) {
+    await Promise.all(stale.map((c) => supabase.removeChannel(c)));
+  }
+
+  const ch = supabase.channel(name, { config: { presence: { key: userId } } });
   const sync = () =>
     onState(roomId, buildPresentUsers(ch.presenceState() as Record<string, unknown[]>));
   ch.on("presence", { event: "sync" }, sync)
@@ -386,8 +397,13 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   useEffect(() => {
     if (loadState !== "ok" || !isSupabaseConfigured) return;
 
+    // Unique topic per subscription: supabase.channel(topic) returns the EXISTING channel
+    // for a repeated topic, and .on() after subscribe() throws. removeChannel is async, so a
+    // fast remount can still hit the old one. The `filter` in .on() does the real scoping —
+    // the topic name is just an identifier.
+    const messagesTopic = `room-messages:${activeRoomId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     channelRef.current = supabase
-      .channel(`room-messages:${activeRoomId}`)
+      .channel(messagesTopic)
       .on(
         "postgres_changes",
         {
@@ -463,19 +479,25 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     const onState = (rid: string, users: PresenceUser[]) =>
       setPresenceByRoom((prev) => ({ ...prev, [rid]: users }));
 
+    let cancelled = false;
     const channels: RealtimeChannel[] = [];
 
-    const main = subscribePresence(mainRoomId, userId, presencePayload, onState);
-    mainPresenceRef.current = main;
-    channels.push(main);
+    void (async () => {
+      const main = await subscribePresence(mainRoomId, userId, presencePayload, onState);
+      if (cancelled) { void supabase.removeChannel(main); return; }
+      mainPresenceRef.current = main;
+      channels.push(main);
 
-    if (anchorRoomId !== mainRoomId) {
-      const anchor = subscribePresence(anchorRoomId, userId, presencePayload, onState);
-      anchorPresenceRef.current = anchor;
-      channels.push(anchor);
-    }
+      if (anchorRoomId !== mainRoomId) {
+        const anchor = await subscribePresence(anchorRoomId, userId, presencePayload, onState);
+        if (cancelled) { void supabase.removeChannel(anchor); return; }
+        anchorPresenceRef.current = anchor;
+        channels.push(anchor);
+      }
+    })();
 
     return () => {
+      cancelled = true;
       for (const ch of channels) {
         void ch.untrack().finally(() => {
           void supabase.removeChannel(ch);
@@ -495,13 +517,24 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     const onState = (rid: string, users: PresenceUser[]) =>
       setPresenceByRoom((prev) => ({ ...prev, [rid]: users }));
 
-    const ch = subscribePresence(visitedRoomId, userId, presencePayload, onState);
-    visitedPresenceRef.current = ch;
+    let cancelled = false;
+    let ch: RealtimeChannel | null = null;
+
+    void (async () => {
+      const c = await subscribePresence(visitedRoomId, userId, presencePayload, onState);
+      if (cancelled) { void supabase.removeChannel(c); return; }
+      ch = c;
+      visitedPresenceRef.current = c;
+    })();
 
     return () => {
-      void ch.untrack().finally(() => {
-        void supabase.removeChannel(ch);
-      });
+      cancelled = true;
+      if (ch) {
+        const c = ch;
+        void c.untrack().finally(() => {
+          void supabase.removeChannel(c);
+        });
+      }
       visitedPresenceRef.current = null;
     };
   }, [visitedRoomId, userId, presencePayload]);
