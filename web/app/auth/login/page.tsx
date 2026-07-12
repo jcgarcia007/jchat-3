@@ -53,14 +53,20 @@ function LoginForm() {
     }
 
     setLoading(true);
-    // Token de un solo uso; getToken() resetea el widget tras consumirlo. null cuando
-    // el captcha está desactivado (kill-switch) o el reto falla → Supabase lo ignora
-    // mientras el captcha esté global-OFF.
-    const captchaToken = (await captchaRef.current?.getToken()) ?? null;
+    // hCaptcha (D-38): token de un solo uso; getToken() resetea el widget tras consumirlo.
+    // Si el reto falla/cancela con el captcha activado → abortar (como el móvil). Si está
+    // desactivado (kill-switch) → proceder sin token (Supabase lo ignora estando global-OFF).
+    const captcha = (await captchaRef.current?.getToken()) ?? { status: "disabled" as const };
+    if (captcha.status === "failed") {
+      setError("No pudimos verificar que eres humano. Inténtalo de nuevo.");
+      setLoading(false);
+      return;
+    }
+    const captchaToken = captcha.status === "ok" ? captcha.token : undefined;
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
-      options: { captchaToken: captchaToken ?? undefined },
+      options: { captchaToken },
     });
     setLoading(false);
 

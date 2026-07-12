@@ -41,12 +41,24 @@ const SITE_KEY = (process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY ?? "").trim();
 export const isCaptchaEnabled: boolean =
   SITE_KEY.length > 0 && SITE_KEY !== PLACEHOLDER_SITEKEY;
 
+/**
+ * Resultado de getToken() — discrimina los DOS motivos por los que no hay token, para
+ * que el consumidor aborte en 'failed' pero proceda en 'disabled' (kill-switch):
+ *   · 'ok'       → reto superado; usa `token`.
+ *   · 'disabled' → captcha apagado (sin sitekey real); procede sin token.
+ *   · 'failed'   → reto cancelado/expirado/erróneo; ABORTA el submit.
+ */
+export type CaptchaResult =
+  | { status: "ok"; token: string }
+  | { status: "disabled" }
+  | { status: "failed" };
+
 export type InvisibleCaptchaHandle = {
   /**
-   * Resuelve con el token de hCaptcha, o null si el captcha está desactivado
-   * (kill-switch) o si el reto falla/cancela. Resetea el widget tras consumirlo.
+   * Ejecuta el reto y devuelve un {@link CaptchaResult}. Resetea el widget tras
+   * consumirlo (token de UN SOLO USO), haya éxito o fallo posterior de auth.
    */
-  getToken: () => Promise<string | null>;
+  getToken: () => Promise<CaptchaResult>;
   /** Resetea el widget manualmente (normalmente no hace falta: getToken ya lo hace). */
   reset: () => void;
 };
@@ -64,19 +76,20 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
   useImperativeHandle(
     ref,
     () => ({
-      async getToken(): Promise<string | null> {
-        if (!isCaptchaEnabled) return null;
+      async getToken(): Promise<CaptchaResult> {
+        // Kill-switch: sin sitekey real, el consumidor procede sin token.
+        if (!isCaptchaEnabled) return { status: "disabled" };
         try {
           let token = captchaToken;
           if (!token) {
             const res = await captchaRef.current?.execute({ async: true });
             token = res?.response ?? null;
           }
-          return token;
+          // Sin token con el captcha activado = el reto no se completó → abortar arriba.
+          return token ? { status: "ok", token } : { status: "failed" };
         } catch {
-          // Reto cerrado / expirado / error de red. Devolvemos null; con el captcha
-          // activado Supabase rechazará el intento, que se muestra como error normal.
-          return null;
+          // Reto cerrado / expirado / error de red → abortar el submit arriba.
+          return { status: "failed" };
         } finally {
           // UN SOLO USO: reset SIEMPRE, haya éxito o fallo posterior de auth.
           captchaRef.current?.resetCaptcha();

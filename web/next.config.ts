@@ -17,27 +17,34 @@ import type { NextConfig } from "next";
 const SUPABASE = "https://klfsgcfoahdtkojyqspd.supabase.co";
 const SUPABASE_WS = "wss://klfsgcfoahdtkojyqspd.supabase.co";
 
-// CSP como allowlist. EN ENFORCE (hallazgo #8 de la auditoría, 2026-07): tras la fase
-// de calibración en Report-Only se hizo el flip a "Content-Security-Policy". Ahora SÍ
-// bloquea cualquier origen fuera del allowlist. Incluye hCaptcha (D-38): script/style/
-// frame/connect a hcaptcha.com y *.hcaptcha.com — sin ellos el reto muere en silencio.
+// CSP como allowlist. EN REPORT-ONLY (hallazgo #8): un flip prematuro a enforce llegó
+// a producción vía auto-deploy y se revirtió — vuelve a Report-Only hasta completar el
+// walkthrough en un PREVIEW. Incluye:
+//   · hCaptcha (D-38): script/style/frame/connect a hcaptcha.com y *.hcaptcha.com.
+//   · Stripe (ruta del dinero, doc oficial): Stripe.js carga m.stripe.network (fraude +
+//     3D Secure) y q.stripe.com (telemetría), además de js/hooks/api.stripe.com.
+//   · Google Maps: su JS inyecta en runtime un <link> a fonts.googleapis.com (Roboto),
+//     servida desde fonts.gstatic.com.
 //
-// Al añadir un origen externo nuevo: agrégalo al directivo correspondiente aquí, o el
-// navegador lo bloqueará.
+// SIGUIENTE PASO: desplegar a un PREVIEW, recorrer con la consola abierta y, sólo si NO
+// hay violaciones legítimas, cambiar el key del primer header a "Content-Security-Policy".
+// Al añadir un origen externo nuevo: agrégalo al directivo correspondiente aquí.
 const csp = [
   `default-src 'self'`,
   // Next.js necesita 'unsafe-inline'/'unsafe-eval' para su runtime; + Stripe JS + Maps JS.
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com`,
-  // 'unsafe-inline' cubre los estilos inline de React (style={{…}}) usados en todo el dashboard.
-  `style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com`,
-  // Imágenes: self + data/blob + Storage de Supabase + tiles/avatares de Google Maps.
-  `img-src 'self' data: blob: ${SUPABASE} https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com`,
-  // Fuentes self-hosted (next/font) + data: por si alguna va inline.
-  `font-src 'self' data:`,
-  // API + Realtime (Supabase, wss), Stripe API, Maps tiles, hCaptcha verify.
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} https://api.stripe.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com`,
-  // Stripe monta iframes para 3D Secure / payment elements / Identity; hCaptcha su reto.
-  `frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://hcaptcha.com https://*.hcaptcha.com`,
+  // 'unsafe-inline' cubre los estilos inline de React (style={{…}}); hCaptcha + el <link>
+  // a fonts.googleapis.com que Google Maps inyecta en runtime (Roboto del mapa).
+  `style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com https://fonts.googleapis.com`,
+  // Imágenes: self + data/blob + Storage de Supabase + tiles/avatares de Google Maps + telemetría de Stripe (q.stripe.com).
+  `img-src 'self' data: blob: ${SUPABASE} https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com https://q.stripe.com`,
+  // Fuentes self-hosted (next/font) + data: + fonts.gstatic.com (Roboto que sirve el mapa).
+  `font-src 'self' data: https://fonts.gstatic.com`,
+  // API + Realtime (Supabase, wss), Stripe API + m.stripe.network (fraude/3DS), Maps tiles, hCaptcha verify.
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com`,
+  // Stripe monta iframes para 3D Secure / payment elements / Identity (js.stripe.com,
+  // hooks.stripe.com, m.stripe.network); hCaptcha su reto.
+  `frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https://hcaptcha.com https://*.hcaptcha.com`,
   `worker-src 'self' blob:`,
   `object-src 'none'`,
   `base-uri 'self'`,
@@ -46,8 +53,9 @@ const csp = [
 ].join("; ");
 
 const securityHeaders = [
-  // CSP en ENFORCE (hallazgo #8 — ver nota arriba).
-  { key: "Content-Security-Policy", value: csp },
+  // CSP en Report-Only (revertida tras un enforce prematuro en prod — ver nota arriba).
+  // NO cambiar a "Content-Security-Policy" hasta pasar el walkthrough en un preview.
+  { key: "Content-Security-Policy-Report-Only", value: csp },
   // El resto SÍ en enforce (seguras, verificado que no rompen nada en esta app):
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Frame-Options", value: "DENY" },

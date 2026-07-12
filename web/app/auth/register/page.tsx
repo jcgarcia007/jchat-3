@@ -746,14 +746,21 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    // hCaptcha (D-38): token de un solo uso justo antes del signUp; getToken()
-    // resetea el widget tras consumirlo. null → kill-switch o reto fallido.
-    const captchaToken = (await captchaRef.current?.getToken()) ?? null;
+    // hCaptcha (D-38): token de un solo uso justo antes del signUp; getToken() resetea el
+    // widget tras consumirlo. Reto fallido/cancelado con captcha activado → abortar; kill-
+    // switch (desactivado) → proceder sin token.
+    const captcha = (await captchaRef.current?.getToken()) ?? { status: "disabled" as const };
+    if (captcha.status === "failed") {
+      setError("No pudimos verificar que eres humano. Inténtalo de nuevo.");
+      setLoading(false);
+      return;
+    }
+    const captchaToken = captcha.status === "ok" ? captcha.token : undefined;
 
     const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { captchaToken: captchaToken ?? undefined },
+      options: { captchaToken },
     });
 
     if (signUpErr) {
