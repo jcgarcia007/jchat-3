@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 
 ## Maps
 
@@ -235,6 +235,20 @@ seguir siendo compatible con lo que exija @stripe/stripe-react-native — ese pi
 versión del SDK móvil se actualizan JUNTOS.
 Why: pase a live y upgrade de API son dos variables de riesgo que no se mueven a la
 vez; pinnear la versión fue lo que mantuvo todo estable dos años.
+
+## Storage hardening (Sesión 2026-07-13)
+
+### D-50 — voice-notes: purge a 48h DIFERIDO hasta implementar la feature (via Edge Function, no pg_cron SQL)
+Decision: `voice-notes` (notas de voz de DMs) debe borrarse a las 48h, PERO el purge NO se
+implementa ahora. Se difiere hasta que se construya la UI de notas de voz en DMs; entonces se
+hará vía Edge Function + Storage API (con su propia verificación, D-47), NO con pg_cron de SQL puro.
+Why: hoy el bucket está vacío y `voice-notes` no se usa en el código (0 refs), así que no hay nada
+que purgar ni ancla de TTL definida. Y crucialmente, [[d-14-chat-ttl-purge]] ya documentó que
+Supabase BLOQUEA `DELETE FROM storage.objects` (trigger `storage.protect_delete` → "Use the Storage
+API instead"): un pg_cron de SQL puro borraría (si acaso) la fila pero dejaría el binario huérfano —
+exactamente el fallo que D-14 registró. El borrado real del binario exige la Storage API desde una
+Edge Function con service_role. Ligado al endurecimiento del bucket en la migración 061 (hallazgo #7):
+voice-notes quedó privado (public=false), 5 MB, MIME allow-list de audio, upload/read con path por owner.
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
