@@ -292,6 +292,38 @@ Corolario (refuerza D-45): el type-check en 0 no dice nada del runtime del bundl
 de RN no está verificado hasta que se ve en el device. Este bug pasó la revisión de código,
 pasó tsc, se commiteó, se desplegó — y no funcionaba.
 
+## Reembolsos (Sesión 2026-07-13)
+
+### D-53 — El reembolso sale del balance del NEGOCIO, y lo aprueba el DUEÑO
+Decision (Juan): el dueño del negocio aprueba los reembolsos solo (sin super_admin), y el
+dinero sale del balance de la cuenta conectada, NO del de la plataforma → la EF
+`stripe-refund` llama a Stripe con `reverse_transfer: true` + `refund_application_fee: true`.
+Why: con destination charges + on_behalf_of, un `refunds.create` SIN esos dos flags saca el
+dinero del balance de la PLATAFORMA. Cada reembolso que aprobara un dueño lo pagaría JChat
+de su bolsillo — y con el fee de plataforma neutro (D-35) no hay margen que lo amortigüe.
+Implementación: EF `stripe-refund` v1 (178e1e5). Defensa anti-doble-reembolso EN DOS CAPAS:
+el guard `dispute.refund_id !== null` (409) y la `idempotencyKey: refund:<dispute_id>` de
+Stripe. El estado real lo confirma Stripe: la EF pone 'approved', y el webhook pone
+'refunded' solo cuando llega un refund con status='succeeded'.
+
+### D-54 — Los column grants por defecto son un agujero recurrente: revisarlos SIEMPRE
+Constraint aprendido a base de encontrarlo tres veces. Postgres/Supabase conceden por defecto
+UPDATE de TABLA COMPLETA a `authenticated` Y a `anon`. Encontrado en `orders` (migr 060),
+`reviews` (migr 064) y `disputes` (migr 065).
+El caso de `disputes` fue GRAVE y merece recordarse: `refund_id` era escribible por el
+cliente → el dueño podía hacer `UPDATE disputes SET refund_id = null, status = 'open'` vía
+PostgREST y volver a pedir el reembolso. La idempotencyKey de Stripe EXPIRA A LAS 24 HORAS,
+así que al día siguiente emitía un refund NUEVO: mismo pedido, reembolsado en bucle. Con
+`reverse_transfer` eso drena el balance de la cuenta conectada, y con destination charges el
+balance negativo lo cubre la PLATAFORMA.
+La Edge Function estaba PERFECTAMENTE escrita. El agujero estaba una capa más abajo, en unos
+grants que nadie había mirado.
+REGLA: toda tabla que el cliente pueda escribir necesita su allow-list de columnas explícita
+(la RLS decide QUÉ FILAS; los column grants deciden QUÉ COLUMNAS). Y toda EF que dependa de
+un guard sobre una columna (`if (x.foo !== null)`) exige verificar que esa columna NO sea
+escribible por el cliente — o el guard es decorativo.
+PENDIENTE: barrer TODAS las tablas buscando este mismo patrón. Solo se han revisado tres.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
