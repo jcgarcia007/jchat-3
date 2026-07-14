@@ -361,25 +361,27 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       }
 
       // ── 2. Insert profile into `users` table ──────────────────────────────
-      const { error: profileError } = await supabase.from('users').upsert(
-        {
-          id: userId,
+      // The handle_new_auth_user trigger already created the row, with a username
+      // DERIVED from the email — not the one the user chose in this form. Apply the
+      // user's actual choices with an UPDATE. No `id` in the payload → respects the
+      // users column allow-list (migr 066): id is in the WHERE, not the SET.
+      const { error: profileError } = await supabase
+        .from('users')
+        .update({
           username: username.trim().toLowerCase(),
           display_name: name.trim() || null,
           language,
           profile_theme_id: 1, // default theme
-        },
-        // DO NOTHING on conflict: the row already exists (handle_new_auth_user
-        // trigger created it). A merge-upsert would put `id` in the ON CONFLICT
-        // SET clause, which the users column allow-list (migr 066) no longer
-        // grants → permission denied. Matches web/app/business/register.
-        { onConflict: 'id', ignoreDuplicates: true },
-      );
+        })
+        .eq('id', userId);
 
       if (profileError) {
-        // Non-fatal: auth succeeded; user can update profile later.
-        // Log but don't block navigation.
-        console.warn('[RegisterStep2] profile insert error:', profileError.message);
+        // Surface it: a unique violation means the chosen username is taken — the
+        // user must SEE that, not silently keep the email-derived fallback.
+        console.warn('[RegisterStep2] profile update error:', profileError.message);
+        Alert.alert(t('register.alerts.signUpErrorTitle'), profileError.message);
+        setSubmitting(false);
+        return;
       }
 
       // TODO(Task 1.6): navigate to Onboarding before main tabs.
