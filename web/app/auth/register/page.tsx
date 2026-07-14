@@ -776,12 +776,19 @@ export default function RegisterPage() {
       return;
     }
 
-    const { error: upsertErr } = await supabase.from("users").upsert({
-      id: userId,
-      username,
-      display_name: fullName.trim(),
-      language,
-    });
+    const { error: upsertErr } = await supabase.from("users").upsert(
+      {
+        id: userId,
+        username,
+        display_name: fullName.trim(),
+        language,
+      },
+      // DO NOTHING on conflict: the row already exists (handle_new_auth_user
+      // trigger created it). A merge-upsert would put `id` in the ON CONFLICT
+      // SET clause, which the users column allow-list (migr 066) no longer
+      // grants → permission denied. Matches web/app/business/register.
+      { onConflict: "id", ignoreDuplicates: true },
+    );
 
     if (upsertErr) {
       setLoading(false);

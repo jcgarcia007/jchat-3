@@ -361,13 +361,20 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       }
 
       // ── 2. Insert profile into `users` table ──────────────────────────────
-      const { error: profileError } = await supabase.from('users').upsert({
-        id: userId,
-        username: username.trim().toLowerCase(),
-        display_name: name.trim() || null,
-        language,
-        profile_theme_id: 1, // default theme
-      });
+      const { error: profileError } = await supabase.from('users').upsert(
+        {
+          id: userId,
+          username: username.trim().toLowerCase(),
+          display_name: name.trim() || null,
+          language,
+          profile_theme_id: 1, // default theme
+        },
+        // DO NOTHING on conflict: the row already exists (handle_new_auth_user
+        // trigger created it). A merge-upsert would put `id` in the ON CONFLICT
+        // SET clause, which the users column allow-list (migr 066) no longer
+        // grants → permission denied. Matches web/app/business/register.
+        { onConflict: 'id', ignoreDuplicates: true },
+      );
 
       if (profileError) {
         // Non-fatal: auth succeeded; user can update profile later.
