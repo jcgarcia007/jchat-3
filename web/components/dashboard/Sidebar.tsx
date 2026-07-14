@@ -7,6 +7,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconLayoutDashboard,
   IconShoppingCart,
+  IconChefHat,
   IconToolsKitchen2,
   IconPackage,
   IconMessages,
@@ -35,6 +36,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Overview",       href: "/dashboard",               icon: IconLayoutDashboard },
   { label: "Orders",         href: "/dashboard/orders",        icon: IconShoppingCart },
+  { label: "Kitchen",        href: "/dashboard/kds",           icon: IconChefHat },
   { label: "Menu",           href: "/dashboard/menu",          icon: IconToolsKitchen2 },
   { label: "Inventory",      href: "/dashboard/inventory",     icon: IconPackage },
   { label: "Chat rooms",     href: "/dashboard/chat-rooms",    icon: IconMessages },
