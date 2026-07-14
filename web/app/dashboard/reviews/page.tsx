@@ -12,8 +12,8 @@
  *
  * Data:
  *   - Uses supabase client from web/lib/supabase.
- *   - businessId is stubbed via DEMO_BUSINESS_ID until Task 2.1 auth is wired.
- *     TODO(Task 2.1): replace DEMO_BUSINESS_ID with session.user.business_id.
+ *   - Resolves the owner's active business via resolveActiveBusiness()
+ *     (@/lib/business); shows <NoBusinessCTA> when there is no business yet.
  *
  * Design:
  *   - All colors via var(--db-*) tokens; no hardcoded hex.
@@ -30,6 +30,8 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Local color block ──────────────────────────────────────────────────────
 // No exact --db- token for gold star color. Design spec: #FFCC00.
@@ -65,10 +67,6 @@ interface AverageRating {
   avg: number;
   count: number;
 }
-
-// ── Demo stub ──────────────────────────────────────────────────────────────
-// TODO(Task 2.1): replace with authenticated business owner's business_id.
-const DEMO_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
 
 // ── Data helpers ───────────────────────────────────────────────────────────
 
@@ -543,12 +541,14 @@ export default function ReviewsPage() {
   const [average, setAverage] = useState<AverageRating>({ avg: 0, count: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [business, setBusiness] = useState<ActiveBusiness | null>(null);
+  const [needsRegister, setNeedsRegister] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (businessId: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchReviews(DEMO_BUSINESS_ID);
+      const data = await fetchReviews(businessId);
       setReviews(data);
       const avg = await computeAverage(data);
       setAverage(avg);
@@ -562,7 +562,33 @@ export default function ReviewsPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    let active = true;
+    void (async () => {
+      if (!isSupabaseConfigured) {
+        setReviews([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await resolveActiveBusiness();
+        if (!active) return;
+        if (!res.ok) {
+          if (res.reason === "no_business" || res.reason === "unauthenticated") setNeedsRegister(true);
+          else setError(res.message);
+          setLoading(false);
+          return;
+        }
+        setBusiness(res.business);
+        await load(res.business.id);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Failed to load reviews.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const handleResponseSubmit = useCallback(
@@ -579,6 +605,17 @@ export default function ReviewsPage() {
     },
     []
   );
+
+  if (!loading && needsRegister) {
+    return (
+      <div style={{ maxWidth: "760px" }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+          Reviews
+        </h1>
+        <NoBusinessCTA message="Register your business to see and respond to reviews." />
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "760px" }}>
@@ -616,7 +653,7 @@ export default function ReviewsPage() {
         </div>
 
         <button
-          onClick={() => void load()}
+          onClick={() => { if (business) void load(business.id); }}
           disabled={loading}
           title="Refresh"
           aria-label="Refresh reviews"
