@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
@@ -71,9 +71,107 @@ en app**. Pasos:
 
 ---
 
-## Estado de la base de datos (2026-07-13)
-- **Migraciones aplicadas: 053–062.**
-- **Edge Functions desplegadas:** `payments` v28 · `stripe-webhook` v22 · `stripe-connect` v23.
+## Estado de la base de datos (2026-07-14)
+- **Migraciones aplicadas: 053–065.**
+- **Edge Functions desplegadas:** `payments` v28 · `stripe-connect` v23 · `stripe-webhook` v24 · `stripe-refund` v1 (NUEVA) · `subscriptions` v22.
+
+---
+
+## Sesión 2026-07-13/14 (noche) — Reembolsos reales + auditoría de la nav del dashboard
+
+### El hallazgo que lo desencadenó todo
+Juan notó que el KDS **no tenía enlace en la barra lateral**. Tirando de ese hilo: **8 de las
+22 páginas del dashboard estaban HUÉRFANAS** — construidas y funcionales (o no), pero
+inalcanzables salvo escribiendo la URL a mano. Ningún cliente las encontraría.
+
+### Cerrado
+- **KDS enlazado** (`fa2eb95`). La pantalla que mira la cocina toda la noche era invisible.
+- **`/dashboard/chat` era CÓDIGO MUERTO** (`c5413cd`): consultaba un `demo-business-id`
+  hardcodeado, tenía un `PLAN_ROOM_LIMIT` en cliente (violaba D-42) y un toggle de
+  "password protected" que NUNCA hasheaba nada. **1.521 líneas borradas.** Ahora la ruta sin
+  `?room=` redirige a `/dashboard/chat-rooms` (la página buena). El camino vivo
+  (`?room=<id>` → LiveChat, destino del botón "Open Chat") quedó intacto.
+- **Reviews arreglada** (`3389cff` + migr 064 `e6adee3`): tenía un `DEMO_BUSINESS_ID`
+  hardcodeado (la misma enfermedad). Y al arreglarlo salió un agujero mayor: **el dueño NO
+  PODÍA responder**. La única política de UPDATE era `auth.uid() = user_id` (solo el autor),
+  así que el UPDATE del dueño no matcheaba ninguna política → Postgres devolvía éxito con
+  **0 filas y sin error** → la respuesta se perdía en silencio. Migración 064 añade la
+  política del dueño + allow-list `(response, responded_at)`. Probado en vivo.
+- **BACKEND DE REEMBOLSOS COMPLETO**:
+  - EF **`stripe-refund` v1** (`178e1e5`): emite el reembolso REAL. Antes, el botón "Approve
+    Refund" solo escribía `status='approved'` en la BD y **NO MOVÍA UN CENTAVO** — el dueño
+    creía haber devuelto el dinero. Con `reverse_transfer` + `refund_application_fee` (D-53).
+  - **`stripe-webhook` v24** (`4435b00`): escucha `refund.created`/`refund.updated`, NO
+    `charge.refunded`. Dos motivos: (1) `charge.refunded` **ni siquiera estaba suscrito** en
+    el endpoint → el handler nunca se habría ejecutado; (2) el endpoint serializa en
+    `2026-05-27.dahlia` mientras la EF pinnea `2024-06-20`, y la lista anidada
+    `charge.refunds` cambia de forma entre versiones (D-49 mordiendo de verdad). El objeto
+    Refund es plano → inmune.
+  - **Migración 065** (`115855f`) — **EL HALLAZGO MÁS GRAVE DEL DÍA**: `authenticated` Y `anon`
+    tenían UPDATE sobre las 12 columnas de `disputes`, **incluida `refund_id`**. El guard
+    anti-doble-reembolso de la EF (`if refund_id !== null`) era **decorativo**: el dueño podía
+    poner `refund_id = null` vía PostgREST y re-disparar el reembolso (la idempotencyKey de
+    Stripe expira a las 24h) → mismo pedido reembolsado en bucle, drenando el balance de la
+    cuenta conectada; y con destination charges, el negativo lo cubre la PLATAFORMA. Ver D-54.
+- **Migración 063** (`c00f861`): `profile-media` ya no se puede LISTAR (hallazgo del linter).
+- **D-51** (`e276171`): `public_profiles` es SECURITY DEFINER A PROPÓSITO — es la capa entera
+  de descubrimiento de perfiles. El ERROR del linter se acepta; la salvaguarda es una regla de
+  proceso (toda columna nueva en la vista exige revisión de seguridad).
+- **D-52** (`990a155`): en React Native, `instanceof` contra globals del navegador NO funciona
+  (fetch polyfilleado) → duck-typing. El fix del 409 pasó tsc, se desplegó, y **no funcionaba
+  en el device**. Solo el smoke lo destapó.
+- **D-53 / D-54** (`2a82cae`): reembolsos y column grants.
+- **`.p8` de Apple ROTADA**: key vieja `5HJZYQUV98` revocada, nueva creada, JWT regenerado y
+  verificado con un login real en el iPhone. **DESCUBIERTO: la `.p8` NUNCA estuvo commiteada
+  en el repo público** — verificado del lado del servidor (búsqueda de código: 0 resultados;
+  `ef7c221` solo añade 5 líneas al `.gitignore`, cero borrados). La premisa que arrastrábamos
+  era FALSA; `ef7c221` fue preventivo, no remedial. El `git filter-repo` se canceló.
+  ⚠️ El client secret de Apple es un JWT que **CADUCA ~ENERO 2027**. Cuando caduque, el login
+  con Apple se rompe EN SILENCIO. Regenerar con `generar-jwt.mjs` antes de esa fecha.
+- **Smokes en device PASADOS**: (a) pagar en un negocio sin Connect muestra el mensaje real
+  del servidor ("This business is not set up to accept payments yet", 409) en vez del genérico;
+  (b) el KDS mueve un pedido de `confirmed` a `preparing` y persiste (migr 060 bien acotada).
+
+### EL PATRÓN: controles que MIENTEN
+La UI se construyó ANTES que las políticas de la BD, así que varios controles engañan al
+usuario. Encontrados hoy:
+1. Toggle "password protected" de salas — nunca hasheó nada (borrado con el código muerto).
+2. "Approve Refund" de disputes — nunca reembolsaba (backend ya arreglado; falta la UI).
+3. "Responder" de reviews — fallaba en silencio (ARREGLADO, migr 064).
+4. `reportReview` — no hay política de RLS para reporters. **SIGUE ROTO.**
+Regla: **antes de enlazar una pantalla a la nav, auditarla.** Una página huérfana puede estarlo
+porque nadie la enlazó, o porque nunca se terminó.
+
+### PENDIENTES — sesión 2026-07-13/14
+🔴 1. **Frontend de `/dashboard/disputes`**: el botón "Approve Refund" sigue haciendo
+   `UPDATE status='approved'` directo en vez de llamar a `stripe-refund`. **El reembolso NO se
+   dispara desde la app.** Además usa `.single()` sobre `businesses` por `owner_id` → revienta
+   con dueños de varios negocios (Juan tiene 5) y muestra las disputas de todos mezcladas.
+   La página está HUÉRFANA, así que nadie puede llegar — no hay riesgo mientras siga así.
+🟠 2. **Trigger de transición de `disputes.status`** (Opción A, elegida): un trigger que, si el
+   escritor NO es service_role, solo permita `status → 'rejected'`. Hoy el dueño puede poner
+   `status='refunded'` a mano sin reembolso real. La migr 065 cerró la parte de COLUMNAS; esto
+   cierra la parte de VALOR.
+🟠 3. **`refund_failed`**: estado nuevo para cuando Stripe reporta el refund como
+   failed/canceled. Hoy la disputa se queda `open` (reintentable, no miente) → no urgente.
+🟠 4. **Barrer TODAS las tablas** buscando el patrón de D-54 (grants de UPDATE de tabla
+   completa a authenticated/anon). Solo se han revisado 3: orders, reviews, disputes.
+🟠 5. **`reportReview` roto**: sin política de RLS para reporters.
+🟠 6. **Analytics**: NO enlazar hasta arreglarla. Lee datos reales, pero el **Forecast es una
+   regresión placeholder FALSA**, la pestaña de API genera **claves inventadas**, y el Loyalty
+   ROI está clavado a 0. Es el argumento de venta del plan Pro. Decidir: implementarlo de
+   verdad o QUITAR esas pestañas.
+🟠 7. **Huérfanas restantes**: `billing` (va con la tanda de monetización), `create` (es un
+   entry point desde un botón — correcto que no tenga item), `events` (SANA, pendiente de
+   enlazar).
+⚪ 8. **Leaked password protection**: BLOQUEADO por plan — requiere Supabase Pro ($25/mes). No
+   es un agujero de la app; se activa cuando se suba de plan (que hará falta igualmente antes
+   de lanzar).
+⚪ 9. **Go-live de Stripe**: el endpoint de webhook actual vive en un **SANDBOX**. Al pasar a
+   live hay que recrear TODOS los endpoints, sus eventos y sus secrets desde cero. Eventos a
+   suscribir: `payment_intent.succeeded`, `payment_intent.payment_failed`,
+   `payment_intent.canceled`, `refund.created`, `refund.updated` (+ `account.updated` en el
+   endpoint de Connected accounts).
 
 ---
 
