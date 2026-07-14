@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 ## Maps
 
@@ -250,6 +250,30 @@ tienen TTL, cuál es, y desde cuándo cuenta. La feature no existe aún (0 refs 
 código, bucket vacío), así que no hay nada que purgar hoy.
 Contexto: migración 061 dejó voice-notes privado (public=false), 5 MB, MIME allow-list
 de audio, upload/read con path por owner.
+
+## Linter de seguridad (Sesión 2026-07-13)
+
+### D-51 — `public_profiles` es SECURITY DEFINER A PROPÓSITO; el ERROR del linter se acepta
+Decision: la vista `public.public_profiles` se queda con SECURITY DEFINER. El linter de
+seguridad de Supabase la marca como ERROR ("Security Definer View": bypassa la RLS de
+`users`), y ese ERROR queda ACEPTADO conscientemente, no arreglado.
+Why: la vista ES la capa de descubrimiento público de perfiles. `users` solo tiene dos
+políticas de SELECT — `users: select own` (auth.uid()=id) y `users: select platform admin`
+(is_platform_admin()) — o sea, ninguna política pública. Pasar la vista a SECURITY INVOKER
+haría que devolviera SOLO la fila del propio caller, rompiendo a TODOS sus consumidores,
+que leen perfiles de OTROS usuarios: móvil (ChatRoomScreen, services/employees, /dms,
+/follows, /blocks, /users) y web (dashboard/orders, dashboard/employees, c/[token]/room,
+LiveChat). Es el diseño ya registrado en D-15 / migración 046.
+La alternativa (dar SELECT público a `users` y restringir por column grants) es un cambio
+de superficie mucho mayor, con riesgo de romper el descubrimiento en producción, y con
+beneficio marginal: la vista expone 9 columnas curadas y ninguna es sensible (id, username,
+display_name, avatar_url, bio, profile_theme_id, is_verified, is_private, created_at).
+REGLA DE PROCESO (esto es lo que de verdad contiene el riesgo): **cualquier columna nueva
+que se añada a `public_profiles` requiere revisión de seguridad explícita**, porque la vista
+BYPASSA la RLS de `users` — lo que entra en la vista queda expuesto sin red. El riesgo no es
+el diseño de hoy; es un ALTER despistado de mañana.
+Contexto: el otro hallazgo del linter de la misma pasada (WARN, `profile-media` permitía
+LISTAR archivos) SÍ se arregló, en la migración 063.
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
