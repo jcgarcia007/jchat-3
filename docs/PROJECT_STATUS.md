@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-11
+Last updated: 2026-07-13
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
@@ -68,6 +68,114 @@ en app**. Pasos:
 - Anclar (pin) un mensaje viejo → NO debe borrarse.
 - (Conocido/diferido) las **fotos** de mensajes purgados quedan huérfanas en `post-media` — GC vía
   Storage API pendiente (ver "What's next" + D-14).
+
+---
+
+## Estado de la base de datos (2026-07-13)
+- **Migraciones aplicadas: 053–062.**
+- **Edge Functions desplegadas:** `payments` v28 · `stripe-webhook` v22 · `stripe-connect` v23.
+
+---
+
+## Sesión 2026-07-13 — Auditoría Stripe + cierre de hallazgos (CERRADO)
+
+**Auditoría de mejores prácticas de Stripe** contra la documentación oficial. Resultado: la
+integración cumple lo importante (PaymentIntents legítimo para checkout propio, SetupIntents,
+dynamic payment methods, apiVersion pinneada, idempotencia, destination charges sin mezclar
+tipos, IDs en text, nunca PAN crudo). Dos deudas registradas (**D-48** Connect v1 con techo de
+migración; **D-49** upgrade de API como tanda propia post-live) y un riesgo aceptado: con
+destination charges la PLATAFORMA responde por disputas y el fee es neutro (D-35) → vigilar la
+tasa de disputas.
+
+**Decisiones D-40 a D-50** registradas en `docs/DECISIONS.md`.
+
+**Cierres de hallazgos de la auditoría:**
+- **#2 UX del 409 en móvil (`e8bd767`):** `mobile/services/stripe.ts` ya no se traga el body del
+  error de las Edge Functions; el usuario ve el mensaje real del servidor ("This business is not
+  set up to accept payments yet", etc.) en vez del genérico "Edge Function returned a non-2xx
+  status code". PENDIENTE: smoke en device.
+- **#3 Allow-list de columnas en `orders` (migr 060, `5ed3b67`):** el dueño ya NO puede hacer
+  UPDATE de `total_cents`/`stripe_pi_id`/etc. de un pedido pagado. Único UPDATE de cliente:
+  authenticated → (`status`, `status_updated_at`). anon sin UPDATE/DELETE/TRUNCATE. PENDIENTE:
+  smoke del KDS en device.
+- **#7 Gate SERVER-SIDE en `/super-admin` (`265aafb`):** el layout es ahora un server component
+  que verifica `is_platform_admin()` y redirige. Capas: server gate → client gate (SuperAdminGate)
+  → RLS. Fue por rama + preview (D-43).
+- **Hallazgos #5, #7, #9 — CERRADO COMPLETO:**
+  - **Buckets (migr 061, `ebf6c29`):** `profile-media` y `voice-notes` tenían `file_size_limit` y
+    `allowed_mime_types` en NULL y SELECT abierto a anon sobre todo el bucket. Ahora: `profile-media`
+    público con 10 MB + MIME de imagen; `voice-notes` PRIVADO (public=false) con 5 MB + MIME de audio;
+    INSERT restringido a la carpeta del propio usuario (`(storage.foldername(name))[1] = auth.uid()`).
+    Ambos buckets estaban vacíos → sin migración de datos.
+  - **Límite de empleados (migr 062, `576b04b`):** era solo del cliente (violaba D-42). Ahora trigger
+    BEFORE INSERT en `employees`: business = 10, pro = 50, platform admins exentos. Probado en vivo:
+    el insert 11 falla con el mensaje del límite, cero residuo.
+  - **`public_profiles`:** VERIFICADA, sin fugas. Expone solo id, username, display_name, avatar_url,
+    bio, profile_theme_id, is_verified, is_private, created_at.
+
+### PENDIENTES — por prioridad (2026-07-13)
+🔴 1. **REVOCAR la `.p8` de Apple** (`AuthKey_5HJZYQUV98.p8`). Estuvo físicamente en la raíz de un
+   repo PÚBLICO. Ya gitignoreada, pero la clave está COMPROMETIDA. Apple Developer → Keys → revocar
+   → nueva → regenerar JWT → actualizar en Supabase. Además: purgar el archivo del historial de git
+   (gitignorear no des-expone lo ya pusheado).
+🔴 2. **PRODUCTO — República Dominicana:** Stripe Connect NO opera en RD. Hay un negocio con
+   `country='DO'` (Bistró Flambeau) que no puede conectar Stripe; el gate de payments lo rechaza
+   correctamente. Decidir: (a) lanzar en USA con pagos y RD solo capa social, (b) procesador local
+   (Azul/CardNet) detrás de una interfaz, (c) aparcar RD.
+🟠 3. **TWILIO:** los 3 secrets existen → el kill-switch de `/api/verify` NO salta, pero el envío de
+   SMS sigue comentado (TODO). El usuario nunca recibe el código: flujo roto en silencio. DECIDIR:
+   conectar Twilio de verdad, o ELIMINAR el paso de SMS (la verificación ya la hace el super_admin a
+   mano). OJO: `/api/verify` es Next.js en VERCEL, lee `process.env` de Vercel, no de Supabase.
+🟠 4. **Leaked password protection:** DESACTIVADO. Supabase → Auth → Policies. 30 segundos.
+🟠 5. **SMTP propio (Resend/SendGrid) ANTES de activar "Confirm email".** El SMTP de Supabase limita
+   a 2 emails/hora → el 3er registro de la hora no recibe su correo. Subir el número no sirve; hay que
+   poner SMTP propio.
+🟠 6. **Smokes en device pendientes:** (a) mensaje del 409 al intentar pagar en un negocio sin Connect;
+   (b) cambio de estado de un pedido en el KDS (tras la allow-list de migr 060).
+⚪ 7. **Purga de datos:** `pending_order_carts` huérfanos (PIs abandonados) y `processed_stripe_events`
+   (crece para siempre y NO tiene `created_at` → no se puede purgar por antigüedad; requiere un ALTER).
+   Ojo **D-50**: el purge de binarios en Storage NO se puede hacer con pg_cron SQL (Supabase bloquea
+   DELETE en `storage.objects`) → Edge Function con Storage API.
+⚪ 8. **Stripe sigue en TEST.** Pasar a live = rotar claves + REDESPLEGAR las 4 EF + nuevos webhook
+   secrets (los DOS endpoints) + recorrer el Go-Live Checklist de Stripe.
+⚪ 9. **Commitear** `docs/PLAN_SEGURIDAD_2026.md` y `docs/PLAN_i18n.md` (solo viven en el Mac).
+⚪ 10. **`app.config.ts`** no declara `usesAppleSignIn:true` → EAS intenta APAGAR Sign in with Apple en
+   cada build. Workaround actual: `EXPO_NO_CAPABILITY_SYNC=1`.
+
+### Camino al MVP (estimación 2026-07-13)
+Restante: ~150–210 h de trabajo efectivo (~2 meses a ~25 h/semana). Bloques grandes: monetización
+(pricing page, trial 30 días, límites de plan server-side, promo codes, ~20–30 h); checkout invitado
+web D-37 (~12–16 h, el backend ya lo soporta); i18n ES/EN (~20–30 h); bugs conocidos + device testing
+(~35–50 h); lanzamiento: Stripe live, builds EAS, assets de stores, review de Apple (~15–25 h).
+NOTA: no existe ningún usuario con `plan='business'` en la BD (solo 'pro' y 'regular') → el tier de $49
+nunca se ha ejercitado end-to-end. Probarlo en la tanda de monetización.
+
+---
+
+## Sesión 2026-07-12 — Seguridad, Stripe Connect, CAPTCHA + CSP (CERRADO)
+
+- **CAPTCHA hCaptcha (D-38):** móvil + web, EN PRODUCCIÓN. Modo 99.9% Passive, hosts jchat.cloud +
+  www.jchat.cloud. Secret solo en Supabase → Attack Protection.
+- **CSP en ENFORCE en producción (hallazgo #8).** Añadidos m.stripe.network, q.stripe.com,
+  fonts.googleapis.com, fonts.gstatic.com, hcaptcha.
+- **Rate limit anónimo 30 → 300/h (D-39).**
+- **Tanda S1 de seguridad (4 bloqueantes):** `/api/verify` blindada (JWT + ownership, `__dev_code`
+  eliminado, ya no toca `businesses.status`), deny_all en `pending_order_carts`,
+  `business_verifications` read-only para el dueño, REVOKE EXECUTE de `handle_new_auth_user`/
+  `derive_username`.
+- **Verificación de negocios por super_admin** en `/super-admin/verification`, con trazabilidad
+  (`businesses.verified_by` / `verified_at`). RPC único: `admin_set_business_status(uuid,text)`,
+  gateado con `is_platform_admin()`.
+- **6 fallos de Stripe Connect arreglados:** `payments` exige `status='verified'` +
+  `stripe_account_id` + `charges_enabled` (antes el 100% del dinero iba a la plataforma);
+  `business_type` ya no hardcodeado; `country` desde `businesses.country`; URLs de retorno a
+  jchat.cloud; columnas `stripe_charges_enabled`/`payouts_enabled`/`details_submitted` (migr 058);
+  webhook `account.updated` con DOS endpoints y DOS secrets.
+- **BUG CRÍTICO resuelto:** el webhook insertaba `orders.contact_email`/`contact_phone`, columnas
+  que no existían → 500 → pago cobrado sin orden creada. Migración 059 añadió las columnas. La orden
+  perdida (`pi_3TsVdbBiS0nTrsOC1Db9TKAk`) se recuperó con un Resend del evento en Stripe y quedó
+  VERIFICADA en la BD: order `a232b0cf`, confirmed, $27.06, subtotal 2200 + tax 176 + tip 330 = 2706,
+  1 item, `pending_order_carts` consumido. Origen del bug → D-47.
 
 ---
 
@@ -470,7 +578,13 @@ Location-based social + commerce mobile app. Proximity group chats tied to physi
 | Test business | Bar XZX — slug bar-xzx-omd2, id 0478b8d5-5217-4369-9fa2-128dbe5b38f8 (Plantation FL), menu_mode 'web' |
 
 ## Workflow
-GitHub MCP read-only for the planning Claude (create_or_update_file returns 403 — ALL writes via Claude Code CLI). Claude Code does all commits/migrations/builds. Supabase + Vercel + Stripe MCP connected. Planning Claude audits every SHA via get_commit, checks deploys via Vercel MCP, writes copy-paste Spanish prompts.
+- Planning Claude (web, MCP de solo lectura) escribe specs copy-paste en español.
+- Juan las pega a Claude Code CLI, que implementa, verifica y commitea.
+- Claude Code pasa SOLO el SHA corto. Planning Claude audita el diff vía GitHub MCP y verifica la
+  BD vía Supabase MCP antes de seguir.
+- Un comando de terminal a la vez.
+- Claude Code AÑADE features no pedidas: auditar cada diff contra el spec. (2026-07-13: inventó un
+  TTL de 48h para voice-notes que nadie pidió y lo registró como decisión; se corrigió en `e80c23b`.)
 
 ---
 
