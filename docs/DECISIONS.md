@@ -275,6 +275,23 @@ el diseño de hoy; es un ALTER despistado de mañana.
 Contexto: el otro hallazgo del linter de la misma pasada (WARN, `profile-media` permitía
 LISTAR archivos) SÍ se arregló, en la migración 063.
 
+## React Native (Sesión 2026-07-13)
+
+### D-52 — En React Native, `instanceof` contra clases globales del navegador NO es fiable
+Constraint aprendido en device, no teoría. El fix del 409 (e8bd767) usaba
+`ctx instanceof Response` para leer el body del error de `supabase.functions.invoke`.
+`tsc --noEmit` daba 0, el código parecía correcto — y en el iPhone el `instanceof` daba
+SIEMPRE false: el status llegaba `null` y el usuario seguía viendo el genérico "Edge
+Function returned a non-2xx status code". Causa: RN polyfillea `fetch` (whatwg-fetch), así
+que la respuesta que construye supabase-js NO es instancia de la `Response` global aunque
+sea una respuesta HTTP perfectamente válida con `.status` y `.json()`.
+REGLA: en código de `mobile/`, para objetos que vienen de librerías (Response, Headers,
+Blob, FormData…), usar DUCK-TYPING (`typeof x.json === 'function'`, `typeof x.status ===
+'number'`) en vez de `instanceof`. Arreglado en c3b81a3.
+Corolario (refuerza D-45): el type-check en 0 no dice nada del runtime del bundle. Un fix
+de RN no está verificado hasta que se ve en el device. Este bug pasó la revisión de código,
+pasó tsc, se commiteó, se desplegó — y no funcionaba.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
