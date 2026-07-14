@@ -7,13 +7,18 @@
  * performed server-side.
  *
  * Owner can:
- *   - Approve a refund (full or partial amount_cents input) →
- *       sets status = 'approved' + stores amount_cents.
- *       TODO(Task 3.6): trigger Stripe refund via Edge Function after approve.
+ *   - Approve a refund (full = the REAL order total, or a partial amount) →
+ *       calls the `stripe-refund` Edge Function, which issues the actual Stripe
+ *       refund (reverse_transfer from the connected account) and sets
+ *       status='approved'. The webhook flips it to 'refunded' when Stripe confirms.
+ *       The client never writes status='approved' itself — the EF is authoritative.
  *   - Reject with a written reason → sets status = 'rejected' + resolution.
  *
- * Customer notification at each status change →
- *       TODO(server): push notification / in-app message on status update.
+ * Customer notification on status change is NOT implemented (no push / email yet).
+ * The UI does not claim otherwise.
+ *
+ * Multi-business: the owner picks which business's disputes to view via a selector
+ * (listUserBusinesses). No business selected → nothing is shown (never "all mixed").
  *
  * Auto-escalation timer is server-side (cron / pg_cron) →
  *       TODO(cron): set status = 'escalated' when NOW() > created_at + interval '48h'.
@@ -38,6 +43,51 @@ import {
   IconChevronUp,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { listUserBusinesses, resolveActiveBusiness, type BusinessListItem } from "@/lib/business";
+
+// ─── Edge Function error reader ─────────────────────────────────────────────────
+// supabase.functions.invoke wraps a non-2xx response as FunctionsHttpError, whose
+// real body { error: "..." } lives in error.context (a Response). Duck-type it (same
+// approach as mobile/services/stripe.ts) — never show the generic "non-2xx" message.
+
+type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
+
+async function readFunctionError(
+  error: unknown,
+): Promise<{ status: number | null; message: string }> {
+  const fallback = error instanceof Error ? error.message : "Refund failed";
+  const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
+  if (!ctx || typeof ctx !== "object") return { status: null, message: fallback };
+  const status = typeof ctx.status === "number" ? ctx.status : null;
+  const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
+
+  if (typeof source.json === "function") {
+    try {
+      const body = await (source.json as () => Promise<unknown>)();
+      const serverMsg = (body as { error?: unknown })?.error;
+      if (typeof serverMsg === "string" && serverMsg.length > 0) return { status, message: serverMsg };
+    } catch {
+      // fall through to text
+    }
+  }
+  if (typeof source.text === "function") {
+    try {
+      const raw = await (source.text as () => Promise<string>)();
+      if (raw) {
+        try {
+          const body = JSON.parse(raw);
+          const serverMsg = (body as { error?: unknown })?.error;
+          if (typeof serverMsg === "string" && serverMsg.length > 0) return { status, message: serverMsg };
+        } catch {
+          if (raw.length < 300) return { status, message: raw };
+        }
+      }
+    } catch {
+      // nothing more to try
+    }
+  }
+  return { status, message: fallback };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,7 +106,10 @@ interface Dispute {
   reason: string;
   description: string | null;
   resolution: string | null;
+  /** What the customer CLAIMS (not authoritative for the refund amount). */
   amount_cents: number | null;
+  /** The REAL order total (orders.total_cents, via the join) — used for full refunds. */
+  order_total_cents: number | null;
   escalated_at: string | null;
   refund_id: string | null;
   created_at: string;
@@ -75,6 +128,7 @@ const DEMO_DISPUTES: Dispute[] = [
       "I ordered a burger but never received it. Please refund my $12.50.",
     resolution: null,
     amount_cents: 1250,
+    order_total_cents: 1250,
     escalated_at: null,
     refund_id: null,
     // 10 hours ago — timer still running
@@ -89,6 +143,7 @@ const DEMO_DISPUTES: Dispute[] = [
     description: "I received a cheese pizza instead of a pepperoni pizza.",
     resolution: null,
     amount_cents: 1800,
+    order_total_cents: 1800,
     escalated_at: null,
     refund_id: null,
     // 50 hours ago — timer elapsed, will show "escalation overdue" visual
@@ -103,6 +158,7 @@ const DEMO_DISPUTES: Dispute[] = [
     description: "The food was cold and stale.",
     resolution: "Full refund approved.",
     amount_cents: 950,
+    order_total_cents: 950,
     escalated_at: null,
     refund_id: null,
     created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
@@ -117,6 +173,7 @@ const DEMO_DISPUTES: Dispute[] = [
     resolution:
       "Wait times were communicated in the app. Refund not warranted.",
     amount_cents: null,
+    order_total_cents: 2100,
     escalated_at: null,
     refund_id: null,
     created_at: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(),
@@ -130,6 +187,7 @@ const DEMO_DISPUTES: Dispute[] = [
     description: "My card was charged twice for the same order.",
     resolution: null,
     amount_cents: 2400,
+    order_total_cents: 2400,
     escalated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     refund_id: null,
     created_at: new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString(),
@@ -177,7 +235,9 @@ export default function DisputesPage() {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [businessId, setBusinessId] = useState<string | null>(null);
+  // Multi-business: the owner may have several (Juan has 5). Never mix them.
+  const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
   // Action sheet state
   const [activeDispute, setActiveDispute] = useState<Dispute | null>(null);
@@ -202,22 +262,23 @@ export default function DisputesPage() {
 
   // ── Resolve owner's business ──────────────────────────────────────────────
 
-  const resolveBusinessId = useCallback(async () => {
+  const loadBusinesses = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (biz) setBusinessId((biz as { id: string }).id);
-    } catch {
-      // no-op — businessId stays null
+    // Load ALL the owner's businesses (the old .single() threw for owners with
+    // more than one — Juan has 5). Default to the active business if it's one of
+    // them, else the first.
+    const list = await listUserBusinesses();
+    setBusinesses(list);
+    if (list.length === 0) {
+      setSelectedBusinessId(null);
+      return;
     }
+    const active = await resolveActiveBusiness();
+    const defaultId =
+      active.ok && list.some((b) => b.id === active.business.id)
+        ? active.business.id
+        : list[0].id;
+    setSelectedBusinessId(defaultId);
   }, []);
 
   // ── Fetch disputes ────────────────────────────────────────────────────────
@@ -228,18 +289,23 @@ export default function DisputesPage() {
       setLoading(false);
       return;
     }
+    // No business selected → show NOTHING (never all businesses mixed together).
+    if (!selectedBusinessId) {
+      setDisputes([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setFetchError(null);
 
-    // Join orders so we can filter by the owner's business
-    // Assumes orders table has a business_id column
+    // Join orders for the business filter + the REAL order total (for full refunds).
     const { data, error } = await supabase
       .from("disputes")
       .select(
         `
         id, order_id, opened_by, status, reason, description,
         resolution, amount_cents, escalated_at, refund_id, created_at,
-        orders!inner(business_id)
+        orders!inner(business_id, total_cents)
       `
       )
       .order("created_at", { ascending: false });
@@ -250,22 +316,23 @@ export default function DisputesPage() {
       return;
     }
 
-    // Filter client-side to this owner's business (if resolved)
+    // Keep only the SELECTED business's disputes; carry the order total onto each row.
     const typed = (data as unknown) as Array<
-      Dispute & { orders: { business_id: string } | null }
+      Omit<Dispute, "order_total_cents"> & {
+        orders: { business_id: string; total_cents: number } | null;
+      }
     >;
-    const rows = typed.filter((d) => {
-      if (!businessId) return true; // show all if biz not yet resolved
-      return d.orders?.business_id === businessId;
-    });
+    const rows: Dispute[] = typed
+      .filter((d) => d.orders?.business_id === selectedBusinessId)
+      .map((d) => ({ ...d, order_total_cents: d.orders?.total_cents ?? null }));
 
     setDisputes(rows);
     setLoading(false);
-  }, [businessId]);
+  }, [selectedBusinessId]);
 
   useEffect(() => {
-    void resolveBusinessId();
-  }, [resolveBusinessId]);
+    void loadBusinesses();
+  }, [loadBusinesses]);
 
   useEffect(() => {
     void fetchDisputes();
@@ -277,13 +344,24 @@ export default function DisputesPage() {
     if (!activeDispute) return;
     setActionError(null);
 
-    let cents: number | null = null;
+    let cents: number;
     if (refundFull) {
-      cents = activeDispute.amount_cents;
+      // Full refund = the REAL order total, NOT what the customer claims.
+      if (activeDispute.order_total_cents == null || activeDispute.order_total_cents <= 0) {
+        setActionError("This order has no known total to refund.");
+        return;
+      }
+      cents = activeDispute.order_total_cents;
     } else {
       const parsed = parseInt(partialCents.replace(/[^0-9]/g, ""), 10);
       if (isNaN(parsed) || parsed <= 0) {
         setActionError("Enter a valid refund amount in cents (e.g. 1250 = $12.50).");
+        return;
+      }
+      // UX-only guard (the server is authoritative — this just avoids an obvious
+      // round-trip that would 400): don't exceed the real order total.
+      if (activeDispute.order_total_cents != null && parsed > activeDispute.order_total_cents) {
+        setActionError(`Refund cannot exceed the order total (${formatCents(activeDispute.order_total_cents)}).`);
         return;
       }
       cents = parsed;
@@ -291,31 +369,23 @@ export default function DisputesPage() {
 
     setSaving(true);
 
+    // Demo mode: no backend — just close (the row won't actually change).
     if (isSupabaseConfigured) {
-      const { error } = await supabase
-        .from("disputes")
-        .update({
-          status: "approved",
-          amount_cents: cents,
-          resolution: refundFull
-            ? "Full refund approved by owner."
-            : `Partial refund of ${cents ? formatCents(cents) : "?"} approved by owner.`,
-        })
-        .eq("id", activeDispute.id);
+      // Issue the REAL refund via the stripe-refund Edge Function. The EF validates
+      // ownership, double-refund (refund_id), amount <= order total, etc. and sets
+      // status='approved'. We do NOT write status here — the EF/webhook own it.
+      const { error } = await supabase.functions.invoke("stripe-refund", {
+        body: { dispute_id: activeDispute.id, amount_cents: cents },
+      });
 
       if (error) {
-        setActionError(error.message);
+        // Show the SERVER's real message (409/402/…), not the generic "non-2xx".
+        const { message } = await readFunctionError(error);
+        setActionError(message);
         setSaving(false);
         return;
       }
     }
-
-    // TODO(Task 3.6): trigger Stripe refund via Edge Function.
-    //   await supabase.functions.invoke('stripe-refund', {
-    //     body: { dispute_id: activeDispute.id, amount_cents: cents },
-    //   });
-
-    // TODO(server): notify customer that refund was approved.
 
     setSaving(false);
     closeAction();
@@ -438,6 +508,37 @@ export default function DisputesPage() {
       {/* Fetch error */}
       {fetchError && (
         <AlertBanner type="error" message={`Failed to load disputes: ${fetchError}`} />
+      )}
+
+      {/* Business selector — only when the owner has more than one. */}
+      {isSupabaseConfigured && businesses.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+          <label
+            htmlFor="dispute-business"
+            style={{ fontSize: "12px", color: "var(--db-text-secondary)" }}
+          >
+            Business
+          </label>
+          <select
+            id="dispute-business"
+            value={selectedBusinessId ?? ""}
+            onChange={(e) => setSelectedBusinessId(e.target.value || null)}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "8px",
+              border: "1px solid var(--db-border)",
+              background: "var(--db-bg-elevated)",
+              color: "var(--db-text-primary)",
+              fontSize: "13px",
+            }}
+          >
+            {businesses.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {/* Summary chips */}
@@ -596,14 +697,17 @@ export default function DisputesPage() {
               }}
             >
               Order: <code>{activeDispute.order_id}</code>
-              {activeDispute.amount_cents !== null && (
+              {activeDispute.order_total_cents !== null && (
                 <span>
                   {" "}
                   · Order total:{" "}
                   <strong style={{ color: "var(--db-text-primary)" }}>
-                    {formatCents(activeDispute.amount_cents)}
+                    {formatCents(activeDispute.order_total_cents)}
                   </strong>
                 </span>
+              )}
+              {activeDispute.amount_cents !== null && (
+                <span> · Customer claims: {formatCents(activeDispute.amount_cents)}</span>
               )}
             </div>
           </div>
@@ -617,7 +721,7 @@ export default function DisputesPage() {
                   <RadioOption
                     checked={refundFull}
                     onChange={() => setRefundFull(true)}
-                    label={`Full refund${activeDispute.amount_cents !== null ? ` — ${formatCents(activeDispute.amount_cents)}` : ""}`}
+                    label={`Full refund${activeDispute.order_total_cents !== null ? ` — ${formatCents(activeDispute.order_total_cents)}` : ""}`}
                   />
                   <RadioOption
                     checked={!refundFull}
@@ -643,8 +747,8 @@ export default function DisputesPage() {
               )}
 
               <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
-                {/* TODO(Task 3.6): Stripe refund triggered via 'stripe-refund' Edge Function */}
-                Stripe refund will be processed server-side via Edge Function (Task 3.6).
+                Approving charges the refund back through Stripe immediately
+                (from the business balance). This cannot be undone.
               </p>
 
               {actionError && <AlertBanner type="error" message={actionError} />}
@@ -686,11 +790,6 @@ export default function DisputesPage() {
                   autoFocus
                 />
               </div>
-
-              <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
-                {/* TODO(server): customer receives push notification when rejected */}
-                Customer will be notified of the rejection (server-side).
-              </p>
 
               {actionError && <AlertBanner type="error" message={actionError} />}
 
