@@ -80,26 +80,68 @@ interface SetupSheetParams {
 
 /**
  * Extrae el mensaje real de un error de supabase.functions.invoke.
- * FunctionsHttpError trae el Response en .context con body { error: string }.
- * Devuelve { status, message } — message es el del servidor si se pudo leer,
- * o error.message como fallback.
+ * FunctionsHttpError trae la respuesta HTTP en .context con body { error: string }.
+ *
+ * OJO (aprendido en device): NO usar `ctx instanceof Response`. En React Native el
+ * fetch está polyfilleado y la Response de supabase-js NO es instancia de la Response
+ * global → el instanceof da false y el mensaje del servidor se pierde. Duck-typing.
  */
 async function readFunctionError(
   error: unknown,
 ): Promise<{ status: number | null; message: string }> {
   const fallback =
     error instanceof Error ? error.message : 'Unknown function error';
-  const ctx = (error as { context?: unknown })?.context;
-  if (ctx instanceof Response) {
+
+  type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
+  const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
+
+  if (!ctx || typeof ctx !== 'object') {
+    return { status: null, message: fallback };
+  }
+
+  const status = typeof ctx.status === 'number' ? ctx.status : null;
+
+  // Leer el body sin consumir el original cuando se pueda clonar.
+  const source: FnCtx =
+    typeof ctx.clone === 'function'
+      ? (ctx.clone as () => FnCtx)()
+      : ctx;
+
+  // 1) Intento directo: .json()
+  if (typeof source.json === 'function') {
     try {
-      const body = await ctx.clone().json();
-      const serverMsg = typeof body?.error === 'string' ? body.error : null;
-      return { status: ctx.status, message: serverMsg ?? fallback };
+      const body = await (source.json as () => Promise<unknown>)();
+      const serverMsg = (body as { error?: unknown })?.error;
+      if (typeof serverMsg === 'string' && serverMsg.length > 0) {
+        return { status, message: serverMsg };
+      }
     } catch {
-      return { status: ctx.status, message: fallback };
+      // sigue al intento por texto
     }
   }
-  return { status: null, message: fallback };
+
+  // 2) Fallback: .text() y parseo manual (por si el body ya se consumió o no es JSON)
+  if (typeof source.text === 'function') {
+    try {
+      const raw = await (source.text as () => Promise<string>)();
+      if (raw) {
+        try {
+          const body = JSON.parse(raw);
+          const serverMsg = (body as { error?: unknown })?.error;
+          if (typeof serverMsg === 'string' && serverMsg.length > 0) {
+            return { status, message: serverMsg };
+          }
+        } catch {
+          // el body no era JSON; devolvemos el texto crudo si es corto y útil
+          if (raw.length < 300) return { status, message: raw };
+        }
+      }
+    } catch {
+      // nada más que intentar
+    }
+  }
+
+  return { status, message: fallback };
 }
 
 class PaymentsFunctionError extends Error {
