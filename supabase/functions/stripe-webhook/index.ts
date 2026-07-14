@@ -11,6 +11,8 @@
  *   payment_intent.payment_failed → log failure (client polling / error state).
  *   account.updated               → sync a business's Connect onboarding flags
  *                                   (charges/payouts/details) so payments can gate on them.
+ *   charge.refunded               → mark the linked dispute status='refunded'
+ *                                   (the refund itself is issued by the stripe-refund function).
  *
  * Deploy:
  *   supabase functions deploy stripe-webhook
@@ -274,6 +276,63 @@ async function handleAccountUpdated(account: Stripe.Account): Promise<void> {
   );
 }
 
+// ── Handler: charge.refunded ──────────────────────────────────────────────────
+// The actual refund is issued by the stripe-refund function (which records
+// disputes.refund_id). This confirms it: flip the linked dispute to 'refunded'.
+// Primary match is by the refund id we stored; metadata.dispute_id is a fallback
+// for the rare case where stripe-refund's DB write failed after Stripe succeeded.
+// Columns written (D-47, verified against the live schema): status, refund_id, updated_at.
+
+async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+  const db = getAdminClient();
+  const refunds = charge.refunds?.data ?? [];
+  if (refunds.length === 0) {
+    console.log(`[stripe-webhook] charge.refunded ${charge.id}: no refunds on charge — skipping`);
+    return;
+  }
+
+  for (const refund of refunds) {
+    // 1. Primary: the dispute we linked via refund_id.
+    const { data: byRefund, error: e1 } = await db
+      .from("disputes")
+      .update({ status: "refunded", updated_at: new Date().toISOString() })
+      .eq("refund_id", refund.id)
+      .select("id");
+    if (e1) {
+      console.error(`[stripe-webhook] charge.refunded: update by refund_id failed (${refund.id}):`, e1);
+      throw e1; // roll back dedup marker → Stripe retries
+    }
+    if (byRefund && byRefund.length > 0) {
+      console.log(`[stripe-webhook] charge.refunded: dispute ${byRefund[0].id} → refunded (refund ${refund.id})`);
+      continue;
+    }
+
+    // 2. Fallback: stripe-refund recorded no refund_id (its DB write failed after
+    //    Stripe succeeded), but the refund carries the dispute_id in metadata.
+    const disputeIdMeta =
+      typeof refund.metadata?.dispute_id === "string" && refund.metadata.dispute_id.length > 0
+        ? refund.metadata.dispute_id
+        : null;
+    if (disputeIdMeta) {
+      const { data: byMeta, error: e2 } = await db
+        .from("disputes")
+        .update({ status: "refunded", refund_id: refund.id, updated_at: new Date().toISOString() })
+        .eq("id", disputeIdMeta)
+        .select("id");
+      if (e2) {
+        console.error(`[stripe-webhook] charge.refunded: update by metadata dispute_id failed (${disputeIdMeta}):`, e2);
+        throw e2;
+      }
+      if (byMeta && byMeta.length > 0) {
+        console.log(`[stripe-webhook] charge.refunded: dispute ${disputeIdMeta} → refunded via metadata (refund ${refund.id})`);
+        continue;
+      }
+    }
+
+    console.log(`[stripe-webhook] charge.refunded: no matching dispute for refund ${refund.id} — skipping`);
+  }
+}
+
 // ── Handler: payment_intent.payment_failed ────────────────────────────────────
 
 async function handlePaymentFailed(
@@ -379,6 +438,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       case "account.updated":
         await handleAccountUpdated(event.data.object as Stripe.Account);
+        break;
+
+      case "charge.refunded":
+        await handleChargeRefunded(event.data.object as Stripe.Charge);
         break;
 
       default:
