@@ -21,7 +21,10 @@
  *
  * Required env vars (Supabase dashboard → Edge Functions → Secrets):
  *   STRIPE_SECRET_KEY         — sk_live_… or sk_test_…
- *   STRIPE_WEBHOOK_SECRET     — whsec_… (from Stripe dashboard webhook config)
+ *   STRIPE_WEBHOOK_SECRET_SUBS — whsec_… for THIS function's OWN Stripe webhook endpoint
+ *                               (subscriptions). Separate from stripe-webhook's
+ *                               STRIPE_WEBHOOK_SECRET (payments) — each Stripe endpoint has
+ *                               its own signing secret, so they must NOT share a variable.
  *   STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO / STRIPE_PRICE_VERIFIED — recurring Price IDs
  *   SUPABASE_URL              — project URL (auto-injected)
  *   SUPABASE_SERVICE_ROLE_KEY — service role key (set manually in secrets)
@@ -303,10 +306,10 @@ async function handleWebhook(req: Request): Promise<Response> {
 
   const rawBody = await req.text();
   const sig = req.headers.get("stripe-signature") ?? "";
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_SUBS");
 
   if (!webhookSecret) {
-    console.error("[subscriptions webhook] STRIPE_WEBHOOK_SECRET is not set — aborting");
+    console.error("[subscriptions webhook] STRIPE_WEBHOOK_SECRET_SUBS is not set — aborting");
     return errorResponse("Webhook secret not configured", 500);
   }
 
