@@ -66,3 +66,36 @@ gate seguiría rechazándolo. Hay que realinear la EF al eje user_id/users.
 - migr 066: users.plan/role/etc no auto-escribibles por el cliente ✅.
 - Datos actuales: 61 users regular/active, 2 pro/active, 0 business, 0 trialing. El tier
   business y el estado trialing NUNCA se han ejercitado.
+
+## 🐛 BUG PENDIENTE (2026-07-15): /pricing "Suscribirme" con sesión → "Failed to send a request to the Edge Function"
+
+**Síntoma:** en el preview de feat/public-pricing-page, un usuario CON sesión pulsa
+"Suscribirme" y sale el banner rojo "Failed to send a request to the Edge Function".
+
+**Lo que YA se sabe (diagnóstico parcial):**
+- La EF `subscriptions` v25 responde 200 a TODAS las llamadas (verificado en los logs de
+  Supabase edge-function). O sea, la EF NO falla — recibe, procesa y responde OK.
+- El error "Failed to send a request" es del LADO DEL NAVEGADOR: la respuesta llega pero el
+  navegador la bloquea/no la lee. Causa más probable: CORS.
+- Encaja con un aviso PREVIO de Claude Code al auditar la EF: "jsonResponse sin
+  Access-Control-Allow-Origin en el body — si billing lo invoca desde el navegador y falla
+  por CORS, es un bug preexistente." → Probablemente ESE es el bug.
+- Hay muchos OPTIONS 204 en los logs (preflight CORS repetido), lo que refuerza la hipótesis.
+
+**Siguiente paso para la próxima sesión (en ESTE orden):**
+1. Abrir la consola del navegador en el preview, pulsar Suscribirme con sesión, y leer el
+   error EXACTO (buscar "CORS", "Access-Control-Allow-Origin", "blocked", "NetworkError").
+2. Revisar supabase/functions/subscriptions/index.ts: los CORS_HEADERS y cómo jsonResponse/
+   errorResponse los aplican. Comparar con cómo lo hace payments/index.ts (que SÍ funciona
+   desde el navegador). Probablemente falta Access-Control-Allow-Origin en las respuestas
+   POST (no solo en el OPTIONS preflight).
+3. Si es eso: alinear los CORS de subscriptions con los de payments/stripe-webhook. Es un
+   cambio pequeño en la EF. Redesplegar subscriptions.
+4. Reprobar el checkout de punta a punta con la cuenta regular.
+
+**Estado de las ramas (para no perderse):**
+- main: sano, todo lo desplegado y auditado.
+- feat/public-pricing-page (7ee4710): la /pricing corregida (Business/Pro/Custom). Sin merge.
+- fix/billing-read-users-plan (f5ada5f): billing arreglado + Portal. Sin merge. OJO: billing
+  tiene el MISMO error de modelo que /pricing tenía (mezcla 4 planes) — hay que corregirlo a
+  Business/Pro/Custom antes de mergear.
