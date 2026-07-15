@@ -179,6 +179,48 @@ function statusColor(status: PlanStatus): string {
   return "var(--db-text-secondary)";
 }
 
+// ── Edge Function error reader ─────────────────────────────────────────────────
+// supabase.functions.invoke wraps a non-2xx as FunctionsHttpError whose real body
+// { error: "..." } lives in error.context (a Response). Duck-type it (same approach as
+// mobile/services/stripe.ts) so we show the SERVER's message — e.g. "No billing account
+// yet. Subscribe to a plan first." — not the generic "non-2xx".
+
+type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
+
+async function readFunctionError(error: unknown): Promise<string> {
+  const fallback = error instanceof Error ? error.message : "Something went wrong";
+  const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
+  if (!ctx || typeof ctx !== "object") return fallback;
+  const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
+
+  if (typeof source.json === "function") {
+    try {
+      const body = await (source.json as () => Promise<unknown>)();
+      const msg = (body as { error?: unknown })?.error;
+      if (typeof msg === "string" && msg.length > 0) return msg;
+    } catch {
+      // fall through to text
+    }
+  }
+  if (typeof source.text === "function") {
+    try {
+      const raw = await (source.text as () => Promise<string>)();
+      if (raw) {
+        try {
+          const body = JSON.parse(raw);
+          const msg = (body as { error?: unknown })?.error;
+          if (typeof msg === "string" && msg.length > 0) return msg;
+        } catch {
+          if (raw.length < 300) return raw;
+        }
+      }
+    } catch {
+      // nothing more to try
+    }
+  }
+  return fallback;
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -267,6 +309,7 @@ export default function BillingPage() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<PlanId | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   // ── Detect checkout result from URL query params ──────────────────────────
@@ -348,6 +391,38 @@ export default function BillingPage() {
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
+  }
+
+  // ── Open the Stripe Customer Portal (change plan / card / invoices / cancel) ─
+  async function handleOpenPortal() {
+    if (!isSupabaseConfigured) {
+      showToast("success", "Demo mode — in production this opens the Stripe billing portal.");
+      return;
+    }
+    setPortalLoading(true);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const { data, error } = await supabase.functions.invoke("subscriptions", {
+        body: { action: "create_portal_session", return_url: `${origin}/dashboard/billing` },
+      });
+
+      if (error) {
+        // Show the SERVER's real message (e.g. "No billing account yet…"), not the generic.
+        showToast("error", await readFunctionError(error));
+        setPortalLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url as string;
+      } else {
+        throw new Error("No portal URL returned.");
+      }
+    } catch (err) {
+      console.error("[billing] handleOpenPortal error:", err);
+      showToast("error", err instanceof Error ? err.message : "Could not open the billing portal.");
+      setPortalLoading(false);
+    }
   }
 
   // ── Upgrade → Stripe Checkout ──────────────────────────────────────────────
@@ -686,7 +761,8 @@ export default function BillingPage() {
         {PLANS.map((plan) => {
           const action = getPlanAction(plan.id);
           const isCurrent = action.kind === "current";
-          const isLoading = actionLoading === plan.id;
+          const isLoading =
+            actionLoading === plan.id || (action.kind === "downgrade" && portalLoading);
 
           return (
             <div
@@ -791,11 +867,9 @@ export default function BillingPage() {
               <button
                 onClick={() => {
                   if (action.kind === "downgrade") {
-                    // Downgrade via Stripe customer portal — stub for now
-                    showToast(
-                      "success",
-                      "Downgrade scheduled — your plan will change at the end of the current billing period. Contact support to apply immediately.",
-                    );
+                    // Downgrade to a paid plan → the Stripe Customer Portal handles the
+                    // switch (with proration). "Downgrade to Free" (kind 'free') is separate.
+                    void handleOpenPortal();
                   } else if (!isCurrent) {
                     handleUpgrade(plan.id);
                   }
@@ -846,7 +920,7 @@ export default function BillingPage() {
                 )}
               </button>
 
-              {/* Downgrade note */}
+              {/* Downgrade note — kept honest per action kind */}
               {(action.kind === "downgrade" || action.kind === "free") && (
                 <p
                   style={{
@@ -857,7 +931,9 @@ export default function BillingPage() {
                     lineHeight: "1.4",
                   }}
                 >
-                  Takes effect at end of current billing period.
+                  {action.kind === "free"
+                    ? "Takes effect at the end of the current billing period."
+                    : "Opens the Stripe billing portal to switch plans (proration applies)."}
                 </p>
               )}
             </div>
@@ -914,14 +990,43 @@ export default function BillingPage() {
                 fontSize: "13px",
                 color: "var(--db-text-secondary)",
                 lineHeight: "1.5",
+                marginBottom: "12px",
               }}
             >
-              {/* TODO(Task 3.15): Add Stripe Customer Portal link.
-                  Call Edge Function action: "create_portal_session" → redirect to portal URL.
-                  The portal lets customers update cards, download invoices, and cancel subscriptions. */}
-              Use the Stripe Customer Portal to update your card, download invoices, or cancel your
-              subscription. Contact support to access the portal link.
+              Update your card, download invoices, or cancel your subscription in the Stripe
+              billing portal.
             </p>
+            <button
+              onClick={() => void handleOpenPortal()}
+              disabled={portalLoading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 16px",
+                borderRadius: "8px",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-text-primary)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: portalLoading ? "wait" : "pointer",
+                opacity: portalLoading ? 0.7 : 1,
+              }}
+            >
+              {portalLoading ? (
+                <>
+                  <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                  Opening…
+                </>
+              ) : (
+                <>
+                  <IconCreditCard size={14} />
+                  Manage billing
+                  <IconExternalLink size={12} style={{ opacity: 0.7 }} />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </Card>
