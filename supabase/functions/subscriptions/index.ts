@@ -197,9 +197,40 @@ async function handleCreateCheckout(
 
   const db = getAdminClient();
 
-  // Downgrade to the free plan: reflect it on the user. We do NOT cancel a live Stripe
-  // subscription here — that happens from the Customer Portal; here we only mirror state.
+  // Downgrade to the free plan. If the user has a live Stripe subscription, we schedule
+  // its cancellation at PERIOD END (not immediate) so they keep the access they already
+  // paid for. When it actually expires, Stripe fires customer.subscription.deleted and
+  // the webhook (unchanged) flips them to 'regular'. We do NOT write plan/plan_status
+  // here in that case — the access continues until it expires.
   if (plan.price_usd === 0) {
+    const { data: row, error: readErr } = await db
+      .from("users")
+      .select("stripe_subscription_id, plan_renews_at")
+      .eq("id", authUserId)
+      .maybeSingle();
+    if (readErr) return errorResponse(`DB error: ${readErr.message}`, 500);
+
+    const subId =
+      (row as { stripe_subscription_id: string | null } | null)?.stripe_subscription_id ?? null;
+
+    if (subId) {
+      // Keep paid access until it expires; the webhook does the final regular flip.
+      try {
+        await getStripe().subscriptions.update(subId, { cancel_at_period_end: true });
+      } catch (err) {
+        const message = err instanceof Error
+          ? err.message
+          : "Failed to schedule cancellation at Stripe";
+        console.error(`[subscriptions] cancel_at_period_end failed for ${subId}:`, message);
+        // Do NOT touch the DB — don't leave the state half-changed.
+        return errorResponse(message, 502);
+      }
+      const effective =
+        (row as { plan_renews_at: string | null } | null)?.plan_renews_at ?? null;
+      return jsonResponse({ scheduled_cancel: true, effective });
+    }
+
+    // No live Stripe subscription (already regular, or an odd state) → reflect free directly.
     const { error } = await db
       .from("users")
       .update({
