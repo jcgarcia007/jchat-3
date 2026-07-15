@@ -11,7 +11,10 @@
  * Handles:
  *   POST /subscriptions  { action: "create_checkout", plan }  (JWT required)
  *     → creates a Stripe Checkout Session for the caller's own user and returns { url }
- *       (or { downgraded: true } for the free plan).
+ *       (or { downgraded: true } / { scheduled_cancel } for the free plan).
+ *
+ *   POST /subscriptions  { action: "create_portal_session" }  (JWT required)
+ *     → returns { url } for the Stripe Customer Portal (change plan / card / cancel).
  *
  *   POST /subscriptions  (raw Stripe webhook body, stripe-signature header)
  *     → handles Stripe subscription lifecycle events; writes users.*.
@@ -298,6 +301,48 @@ async function handleCreateCheckout(
   return jsonResponse({ url: session.url });
 }
 
+// ── Action: create_portal_session (Stripe Customer Portal) ──────────────────────
+// Opens the hosted Customer Portal where the user changes plan (with proration),
+// updates their card, downloads invoices, or cancels. This only READS
+// users.stripe_customer_id and creates a portal session URL — it writes nothing.
+
+async function handleCreatePortalSession(
+  body: Record<string, unknown>,
+  authUserId: string,
+): Promise<Response> {
+  const returnUrl = typeof body.return_url === "string"
+    ? body.return_url
+    : "https://jchat.cloud/dashboard/billing";
+
+  const db = getAdminClient();
+  const { data: userRow, error: userErr } = await db
+    .from("users")
+    .select("stripe_customer_id")
+    .eq("id", authUserId)
+    .maybeSingle();
+  if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
+
+  const customerId =
+    (userRow as { stripe_customer_id: string | null } | null)?.stripe_customer_id ?? null;
+  if (!customerId) {
+    // A regular user who never subscribed has no Stripe Customer yet.
+    return errorResponse("No billing account yet. Subscribe to a plan first.", 400);
+  }
+
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+    return jsonResponse({ url: session.url });
+  } catch (err) {
+    // e.g. the Customer Portal is not configured in Stripe → surface the real message.
+    const message = err instanceof Error ? err.message : "Failed to open the billing portal";
+    console.error(`[subscriptions] create_portal_session failed for user ${authUserId}:`, message);
+    return errorResponse(message, 502);
+  }
+}
+
 // ── Action: webhook (writes users.*) ────────────────────────────────────────────
 
 async function handleWebhook(req: Request): Promise<Response> {
@@ -582,6 +627,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         const auth = await verifyCaller(req);
         if (auth instanceof Response) return auth;
         return await handleCreateCheckout(body, auth.authUserId);
+      }
+
+      case "create_portal_session": {
+        // APP path — Stripe Customer Portal (change plan / card / invoices / cancel).
+        const auth = await verifyCaller(req);
+        if (auth instanceof Response) return auth;
+        return await handleCreatePortalSession(body, auth.authUserId);
       }
 
       default:
