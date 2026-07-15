@@ -172,6 +172,7 @@ porque nadie la enlazó, o porque nunca se terminó.
    suscribir: `payment_intent.succeeded`, `payment_intent.payment_failed`,
    `payment_intent.canceled`, `refund.created`, `refund.updated` (+ `account.updated` en el
    endpoint de Connected accounts).
+⚪ 10. **Rediseño dashboard 4A (diferido)** — ver [docs/design/dashboard-4a/STATUS.md](design/dashboard-4a/STATUS.md).
 
 ---
 
