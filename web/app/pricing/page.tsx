@@ -23,7 +23,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconBuildingStore,
-  IconShield,
   IconBolt,
   IconCrown,
   IconCheck,
@@ -35,67 +34,41 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Plan catalogue (duplicated — see NOTE(unify) above) ─────────────────────────
 
-type PlanId = "regular" | "verified" | "business" | "pro";
+// /pricing is the BUSINESS plans page. Regular ($0) and Verified ($1.99) are USER tiers
+// (personal accounts / profile badge) and live in the mobile user app — NOT here. They
+// still exist in the backend EF catalogue; this page just doesn't OFFER them.
+type CheckoutPlanId = "business" | "pro";
+type PricingPlanId = CheckoutPlanId | "custom";
 
 interface PlanDef {
-  id: PlanId;
+  id: PricingPlanId;
   label: string;
   priceLabel: string;
   description: string;
   features: string[];
   icon: React.ReactNode;
   accentVar: string;
-  paid: boolean;
+  /** "checkout" → Stripe Checkout via the EF. "contact" → email us (no price/checkout). */
+  cta: "checkout" | "contact";
 }
 
 const PLANS: PlanDef[] = [
-  {
-    id: "regular",
-    label: "Regular",
-    priceLabel: "Gratis",
-    description: "Presencia básica en JChat. Ideal para empezar.",
-    features: [
-      "Ficha pública del negocio",
-      "Sala de chat básica",
-      "Hasta 3 ítems de menú",
-      "Pin estándar en el mapa",
-    ],
-    icon: <IconBuildingStore size={22} />,
-    accentVar: "var(--text-tertiary)",
-    paid: false,
-  },
-  {
-    id: "verified",
-    label: "Verified",
-    priceLabel: "$1.99 / mes",
-    description: "Insignia de verificado y más visibilidad en el mapa.",
-    features: [
-      "Todo lo de Regular",
-      "Insignia de verificado",
-      "Prioridad en el mapa",
-      "Hasta 20 ítems de menú",
-      "Analíticas básicas",
-    ],
-    icon: <IconShield size={22} />,
-    accentVar: "var(--color-brand)",
-    paid: true,
-  },
   {
     id: "business",
     label: "Business",
     priceLabel: "$49 / mes",
     description: "POS completo, programa de lealtad y gestión de personal.",
     features: [
-      "Todo lo de Verified",
       "POS + KDS completo",
       "Programa de lealtad",
       "Gestión de empleados",
       "Reservas",
       "Control de inventario",
+      "Hasta 1 negocio y 1 evento",
     ],
     icon: <IconBolt size={22} />,
     accentVar: "var(--color-success)",
-    paid: true,
+    cta: "checkout",
   },
   {
     id: "pro",
@@ -108,13 +81,31 @@ const PLANS: PlanDef[] = [
       "Ítems de menú ilimitados",
       "Payouts con Stripe Connect",
       "Soporte prioritario",
-      "Tema de panel personalizado",
+      "Hasta 10 negocios y 10 eventos",
     ],
     icon: <IconCrown size={22} />,
     accentVar: "var(--color-gold)",
-    paid: true,
+    cta: "checkout",
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    priceLabel: "Contáctanos",
+    description: "Para cadenas o necesidades más allá de Pro. Un plan a tu medida.",
+    features: [
+      "Más de 10 negocios / eventos",
+      "Onboarding dedicado",
+      "Soporte prioritario",
+      "Facturación personalizada",
+    ],
+    icon: <IconBuildingStore size={22} />,
+    accentVar: "var(--color-brand)",
+    cta: "contact",
   },
 ];
+
+// TODO(confirm): correo de ventas para el plan Custom. Placeholder por ahora.
+const SALES_EMAIL = "ventas@jchat.cloud";
 
 // ── Edge Function error reader (duck-typed, same as billing) ────────────────────
 
@@ -158,10 +149,10 @@ async function readFunctionError(error: unknown): Promise<string> {
 
 export default function PricingPage() {
   const router = useRouter();
-  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<CheckoutPlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubscribe(planId: PlanId) {
+  async function handleSubscribe(planId: CheckoutPlanId) {
     setError(null);
     if (!isSupabaseConfigured) {
       setError("La suscripción no está disponible en este entorno.");
@@ -169,12 +160,16 @@ export default function PricingPage() {
     }
     setLoadingPlan(planId);
     try {
+      // Validate the session SERVER-SIDE before touching the EF. getSession() only reads
+      // localStorage and can hand back a stale/expired token → the invoke would then fire
+      // with a dead JWT and surface "Failed to send a request…". getUser() confirms with
+      // the server; a null user means not (or no longer) logged in → go to login.
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      // No session → the Edge Function needs a JWT. Send to login and come back.
-      if (!session) {
+      if (!user) {
+        setLoadingPlan(null);
         router.push("/auth/login?next=/pricing");
         return;
       }
@@ -263,8 +258,10 @@ export default function PricingPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
             gap: "16px",
+            maxWidth: "820px",
+            margin: "0 auto",
           }}
         >
           {PLANS.map((plan) => {
@@ -317,11 +314,15 @@ export default function PricingPage() {
 
                 {/* CTA */}
                 <button
-                  onClick={() =>
-                    plan.paid
-                      ? void handleSubscribe(plan.id)
-                      : router.push("/auth/register?next=/dashboard")
-                  }
+                  onClick={() => {
+                    if (plan.cta === "contact") {
+                      window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
+                        "Plan Custom JChat",
+                      )}`;
+                    } else {
+                      void handleSubscribe(plan.id as CheckoutPlanId);
+                    }
+                  }}
                   disabled={busy}
                   style={{
                     marginTop: "auto",
@@ -331,9 +332,9 @@ export default function PricingPage() {
                     gap: "6px",
                     padding: "10px 16px",
                     borderRadius: "8px",
-                    border: plan.paid ? "none" : "1px solid var(--border-subtle)",
-                    background: plan.paid ? "var(--color-brand)" : "var(--bg-elevated)",
-                    color: plan.paid ? "#fff" : "var(--text-secondary)",
+                    border: plan.cta === "checkout" ? "none" : "1px solid var(--border-subtle)",
+                    background: plan.cta === "checkout" ? "var(--color-brand)" : "var(--bg-elevated)",
+                    color: plan.cta === "checkout" ? "#fff" : "var(--text-secondary)",
                     fontSize: "13px",
                     fontWeight: 600,
                     cursor: busy ? "wait" : "pointer",
@@ -345,13 +346,13 @@ export default function PricingPage() {
                       <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
                       Redirigiendo…
                     </>
-                  ) : plan.paid ? (
+                  ) : plan.cta === "checkout" ? (
                     <>
                       Suscribirme
                       <IconExternalLink size={12} style={{ opacity: 0.7 }} />
                     </>
                   ) : (
-                    "Empezar gratis"
+                    "Contactar"
                   )}
                 </button>
               </div>
