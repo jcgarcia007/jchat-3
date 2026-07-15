@@ -1,29 +1,36 @@
 /**
- * JChat 3.0 — Subscriptions Edge Function (Task 3.15)
+ * JChat 3.0 — Subscriptions Edge Function (Task 3.15; rewritten 2026-07-14 → plan-per-user)
  * Runtime: Deno (Supabase Edge Functions)
  *
- * Handles:
- *   POST /subscriptions  { action: "create_checkout", business_id, plan }
- *     → creates a Stripe Checkout Session and returns { url }.
+ * PLAN-PER-USER (opción B, ver docs/PLAN_MONETIZACION.md): the subscription belongs to
+ * the USER (one per person, covers all their businesses). The plan state lives ENTIRELY in
+ * `users` (plan, plan_status, plan_trial_end, plan_renews_at, stripe_customer_id,
+ * stripe_subscription_id). This function NEVER writes the old `subscriptions` table or
+ * `businesses.plan` anymore. The dashboard gate reads users.plan + users.plan_status.
  *
- *   POST /subscriptions  { action: "webhook" }  (raw Stripe webhook body)
- *     → handles Stripe lifecycle events; upserts subscriptions + businesses.
+ * Handles:
+ *   POST /subscriptions  { action: "create_checkout", plan }  (JWT required)
+ *     → creates a Stripe Checkout Session for the caller's own user and returns { url }
+ *       (or { downgraded: true } for the free plan).
+ *
+ *   POST /subscriptions  (raw Stripe webhook body, stripe-signature header)
+ *     → handles Stripe subscription lifecycle events; writes users.*.
  *
  * Deploy:
  *   supabase functions deploy subscriptions
  *
- * Required env vars (set in Supabase dashboard → Edge Functions → Secrets):
+ * Required env vars (Supabase dashboard → Edge Functions → Secrets):
  *   STRIPE_SECRET_KEY         — sk_live_… or sk_test_…
  *   STRIPE_WEBHOOK_SECRET     — whsec_… (from Stripe dashboard webhook config)
- *   SUPABASE_URL              — project URL (auto-injected by Supabase)
+ *   STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO / STRIPE_PRICE_VERIFIED — recurring Price IDs
+ *   SUPABASE_URL              — project URL (auto-injected)
  *   SUPABASE_SERVICE_ROLE_KEY — service role key (set manually in secrets)
+ *   SUPABASE_ANON_KEY         — for the JWT verification path
  *
  * Rule 4 compliance: ALL Stripe API calls happen here (server-side only).
- * The client web page invokes this via supabase.functions.invoke('subscriptions', …).
  */
 
 // ── Deno imports ──────────────────────────────────────────────────────────────
-// Using esm.sh CDN for Stripe SDK (Deno-compatible)
 import Stripe from "npm:stripe@16.2.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 
@@ -48,7 +55,6 @@ const PLANS: Record<PlanId, PlanDef> = {
   verified: {
     label: "Verified",
     price_usd: 1.99,
-    // TODO: replace with real Stripe Price ID from your dashboard
     stripe_price_id: Deno.env.get("STRIPE_PRICE_VERIFIED") ?? null,
   },
   business: {
@@ -123,47 +129,34 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
   return { authUserId: user.id };
 }
 
-/** Assert the caller owns the business (or is a platform admin). null = OK; Response = 403/404. */
-async function assertOwnerOrAdmin(
+/**
+ * Resolve the JChat user for a webhook event:
+ *   1º metadata.user_id (carried on the checkout session / subscription).
+ *   2º users.stripe_customer_id == the event's customer.
+ * Returns the user id or null (caller logs + breaks — never throws).
+ */
+async function resolveUserId(
   db: ReturnType<typeof getAdminClient>,
-  authUserId: string,
-  businessId: string,
-): Promise<Response | null> {
-  const { data: biz, error } = await db
-    .from("businesses")
-    .select("owner_id")
-    .eq("id", businessId)
-    .maybeSingle();
-  if (error) return errorResponse(`DB error: ${error.message}`, 500);
-  if (!biz) return errorResponse("Business not found", 404);
-  if (biz.owner_id === authUserId) return null;
-  const { data: admin } = await db
-    .from("admin_roles")
-    .select("user_id")
-    .eq("user_id", authUserId)
-    .maybeSingle();
-  if (admin) return null;
-  return errorResponse("Forbidden: not the owner of this business", 403);
-}
-
-/** Extract business_id from subscriptions row via stripe_subscription_id. */
-async function getBusinessIdByStripeSubId(
-  db: ReturnType<typeof getAdminClient>,
-  stripeSubId: string,
+  metaUserId: string | null | undefined,
+  customerId: string | null | undefined,
 ): Promise<string | null> {
-  const { data } = await db
-    .from("subscriptions")
-    .select("business_id")
-    .eq("stripe_subscription_id", stripeSubId)
-    .maybeSingle();
-  return data?.business_id ?? null;
+  if (metaUserId) return metaUserId;
+  if (customerId) {
+    const { data } = await db
+      .from("users")
+      .select("id")
+      .eq("stripe_customer_id", customerId)
+      .maybeSingle();
+    return (data as { id: string } | null)?.id ?? null;
+  }
+  return null;
 }
 
-/** Map Stripe subscription status → JChat status */
+/** Map a Stripe subscription status → users.plan_status. */
 function mapStripeStatus(
   stripeStatus: string,
-): "active" | "past_due" | "suspended" | "trialing" | "canceled" {
-  const map: Record<string, "active" | "past_due" | "suspended" | "trialing" | "canceled"> = {
+): "active" | "trialing" | "past_due" | "canceled" {
+  const map: Record<string, "active" | "trialing" | "past_due" | "canceled"> = {
     active: "active",
     trialing: "trialing",
     past_due: "past_due",
@@ -176,47 +169,48 @@ function mapStripeStatus(
   return map[stripeStatus] ?? "past_due";
 }
 
-// ── Action: create_checkout ───────────────────────────────────────────────────
+/** customer field (string | object | null) → its id. */
+function customerIdOf(
+  customer: string | { id: string } | null | undefined,
+): string | null {
+  if (!customer) return null;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
+// ── Action: create_checkout (per-user) ─────────────────────────────────────────
 
 async function handleCreateCheckout(
   body: Record<string, unknown>,
+  authUserId: string,
 ): Promise<Response> {
-  const businessId = typeof body.business_id === "string" ? body.business_id : null;
   const planId = typeof body.plan === "string" ? body.plan : null;
   const successUrl = typeof body.success_url === "string"
     ? body.success_url
-    : "https://jchat.app/dashboard/billing?checkout=success";
+    : "https://jchat.cloud/dashboard/billing?checkout=success";
   const cancelUrl = typeof body.cancel_url === "string"
     ? body.cancel_url
-    : "https://jchat.app/dashboard/billing?checkout=cancel";
+    : "https://jchat.cloud/dashboard/billing?checkout=cancel";
 
-  if (!businessId) return errorResponse("business_id is required");
   if (!planId) return errorResponse("plan is required");
-
   const plan = PLANS[planId as PlanId];
   if (!plan) return errorResponse(`Unknown plan: ${planId}`);
+
+  const db = getAdminClient();
+
+  // Downgrade to the free plan: reflect it on the user. We do NOT cancel a live Stripe
+  // subscription here — that happens from the Customer Portal; here we only mirror state.
   if (plan.price_usd === 0) {
-    // Downgrading to free — no Stripe session needed; update directly.
-    const db = getAdminClient();
-    await db
-      .from("subscriptions")
-      .upsert(
-        {
-          business_id: businessId,
-          plan: "regular",
-          status: "active",
-          stripe_subscription_id: null,
-          current_period_end: null,
-          trial_end: null,
-          grace_day: 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
-    await db
-      .from("businesses")
-      .update({ plan: "regular" })
-      .eq("id", businessId);
+    const { error } = await db
+      .from("users")
+      .update({
+        plan: "regular",
+        plan_status: "active",
+        plan_renews_at: null,
+        plan_trial_end: null,
+        stripe_subscription_id: null,
+      })
+      .eq("id", authUserId);
+    if (error) return errorResponse(`DB error: ${error.message}`, 500);
     return jsonResponse({ downgraded: true });
   }
 
@@ -230,48 +224,47 @@ async function handleCreateCheckout(
 
   const stripe = getStripe();
 
-  // Look up existing Stripe customer for this business (if any)
-  const db = getAdminClient();
-  const { data: existingSub } = await db
-    .from("subscriptions")
-    .select("stripe_subscription_id")
-    .eq("business_id", businessId)
+  // Resolve/create the user's Stripe Customer.
+  const { data: userRow, error: userErr } = await db
+    .from("users")
+    .select("stripe_customer_id, plan_trial_end")
+    .eq("id", authUserId)
     .maybeSingle();
+  if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
 
-  let customerId: string | undefined;
-  if (existingSub?.stripe_subscription_id) {
-    try {
-      const sub = await stripe.subscriptions.retrieve(
-        existingSub.stripe_subscription_id,
-      );
-      customerId = typeof sub.customer === "string"
-        ? sub.customer
-        : sub.customer.id;
-    } catch {
-      // Subscription may no longer exist in Stripe — proceed without customer
-    }
+  let customerId = (userRow as { stripe_customer_id: string | null } | null)?.stripe_customer_id ?? null;
+  if (!customerId) {
+    const customer = await stripe.customers.create({ metadata: { user_id: authUserId } });
+    customerId = customer.id;
+    const { error: saveErr } = await db
+      .from("users")
+      .update({ stripe_customer_id: customerId })
+      .eq("id", authUserId);
+    if (saveErr) console.error("[subscriptions] failed to save stripe_customer_id:", saveErr);
   }
+
+  // Trial ONLY if the user has never had one (plan_trial_end still null). 30 days.
+  const alreadyUsedTrial =
+    (userRow as { plan_trial_end: string | null } | null)?.plan_trial_end != null;
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+    customer: customerId,
     success_url: successUrl,
     cancel_url: cancelUrl,
-    // Pass business_id through metadata so the webhook can identify the record
-    metadata: { business_id: businessId, plan: planId },
+    metadata: { user_id: authUserId, plan: planId },
     subscription_data: {
-      metadata: { business_id: businessId, plan: planId },
-      // 7-day free trial on first subscription
-      trial_period_days: existingSub ? undefined : 7,
+      metadata: { user_id: authUserId, plan: planId },
+      ...(alreadyUsedTrial ? {} : { trial_period_days: 30 }),
     },
-    ...(customerId ? { customer: customerId } : {}),
   };
 
   const session = await stripe.checkout.sessions.create(sessionParams);
   return jsonResponse({ url: session.url });
 }
 
-// ── Action: webhook ───────────────────────────────────────────────────────────
+// ── Action: webhook (writes users.*) ────────────────────────────────────────────
 
 async function handleWebhook(req: Request): Promise<Response> {
   const stripe = getStripe();
@@ -297,12 +290,9 @@ async function handleWebhook(req: Request): Promise<Response> {
   console.log(`[subscriptions webhook] event: ${event.type} id=${event.id}`);
 
   // ── Idempotency guard (FIX #5): INSERT-FIRST + DELETE-ON-ERROR ─────────────
-  // Insert event.id first (atomic dedup). If it already exists (23505 = re-delivery
-  // of the SAME event), return 200 without reprocessing — this is what prevents the
-  // grace_day +1 from double-counting on webhook re-delivery. Genuine cobro retries
-  // arrive as DISTINCT event.ids and are still counted. Any other DB error → 500 so
-  // Stripe retries. If a handler throws, we DELETE the marker before 500 so the retry
-  // reprocesses.
+  // Insert event.id first (atomic dedup). A re-delivery of the SAME event (23505)
+  // returns 200 without reprocessing. Any other DB error → 500 so Stripe retries.
+  // If a handler throws, we DELETE the marker before 500 so the retry reprocesses.
   const { error: dedupErr } = await db
     .from("processed_stripe_events")
     .insert({ event_id: event.id, type: event.type });
@@ -317,18 +307,18 @@ async function handleWebhook(req: Request): Promise<Response> {
 
   try {
     switch (event.type) {
-    // ── Checkout completed → subscription activated ──────────────────────────
+    // ── Checkout completed → plan activated on the user ──────────────────────
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const businessId = session.metadata?.business_id;
+      const customerId = customerIdOf(session.customer);
+      const userId = await resolveUserId(db, session.metadata?.user_id, customerId);
       const plan = (session.metadata?.plan as PlanId) ?? "regular";
 
-      if (!businessId) {
-        console.warn("checkout.session.completed: missing business_id in metadata");
+      if (!userId) {
+        console.warn(`checkout.session.completed: cannot resolve user for session ${session.id}`);
         break;
       }
 
-      // Retrieve the subscription to get period_end and trial_end
       const stripeSubId =
         typeof session.subscription === "string"
           ? session.subscription
@@ -336,232 +326,157 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       let periodEnd: string | null = null;
       let trialEnd: string | null = null;
+      let planStatus: "active" | "trialing" = "active";
 
       if (stripeSubId) {
         try {
           const sub = await stripe.subscriptions.retrieve(stripeSubId);
           periodEnd = new Date(sub.current_period_end * 1000).toISOString();
-          trialEnd = sub.trial_end
-            ? new Date(sub.trial_end * 1000).toISOString()
-            : null;
+          trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+          planStatus = trialEnd ? "trialing" : "active";
         } catch (err) {
           console.warn("Could not retrieve subscription:", err);
         }
       }
 
-      await db.from("subscriptions").upsert(
-        {
-          business_id: businessId,
-          stripe_subscription_id: stripeSubId,
-          plan,
-          status: trialEnd ? "trialing" : "active",
-          current_period_end: periodEnd,
-          trial_end: trialEnd,
-          grace_day: 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
+      const upd: Record<string, unknown> = {
+        plan,
+        plan_status: planStatus,
+        plan_trial_end: trialEnd,
+        plan_renews_at: periodEnd,
+        stripe_subscription_id: stripeSubId,
+      };
+      if (customerId) upd.stripe_customer_id = customerId;
 
-      await db
-        .from("businesses")
-        .update({ plan, status: "active" })
-        .eq("id", businessId);
-
-      console.log(`[subscriptions] checkout completed: business=${businessId} plan=${plan}`);
+      await db.from("users").update(upd).eq("id", userId);
+      console.log(`[subscriptions] checkout completed: user=${userId} plan=${plan} status=${planStatus}`);
       break;
     }
 
-    // ── Subscription updated (upgrade/downgrade/renew) ───────────────────────
+    // ── Subscription updated (upgrade/downgrade/renew/past_due) ───────────────
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
-      const businessId = sub.metadata?.business_id ??
-        (await getBusinessIdByStripeSubId(db, sub.id));
+      const customerId = customerIdOf(sub.customer);
+      const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
 
-      if (!businessId) {
-        console.warn(`customer.subscription.updated: cannot resolve business for sub ${sub.id}`);
+      if (!userId) {
+        console.warn(`customer.subscription.updated: cannot resolve user for sub ${sub.id}`);
         break;
       }
 
       const plan = (sub.metadata?.plan as PlanId) ?? "regular";
-      const status = mapStripeStatus(sub.status);
+      const planStatus = mapStripeStatus(sub.status);
       const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
-      const trialEnd = sub.trial_end
-        ? new Date(sub.trial_end * 1000).toISOString()
-        : null;
+      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
 
-      await db.from("subscriptions").upsert(
-        {
-          business_id: businessId,
-          stripe_subscription_id: sub.id,
-          plan,
-          status,
-          current_period_end: periodEnd,
-          trial_end: trialEnd,
-          grace_day: 0, // reset on successful update
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
+      const upd: Record<string, unknown> = {
+        plan_status: planStatus,
+        plan_renews_at: periodEnd,
+        plan_trial_end: trialEnd,
+        stripe_subscription_id: sub.id,
+      };
+      // past_due already loses dashboard access via the gate (plan_status). Do NOT
+      // downgrade the plan itself — keep what they had. Otherwise apply the plan change.
+      if (planStatus !== "past_due") upd.plan = plan;
 
-      await db
-        .from("businesses")
-        .update({ plan, status: status === "suspended" ? "suspended" : "active" })
-        .eq("id", businessId);
-
-      console.log(`[subscriptions] sub updated: business=${businessId} plan=${plan} status=${status}`);
+      await db.from("users").update(upd).eq("id", userId);
+      console.log(`[subscriptions] sub updated: user=${userId} plan=${plan} status=${planStatus}`);
       break;
     }
 
-    // ── Subscription deleted / canceled ──────────────────────────────────────
+    // ── Subscription deleted / canceled → back to free ───────────────────────
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
-      const businessId = sub.metadata?.business_id ??
-        (await getBusinessIdByStripeSubId(db, sub.id));
+      const customerId = customerIdOf(sub.customer);
+      const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
 
-      if (!businessId) break;
-
-      await db.from("subscriptions").upsert(
-        {
-          business_id: businessId,
-          stripe_subscription_id: sub.id,
-          plan: "regular",
-          status: "canceled",
-          current_period_end: null,
-          trial_end: null,
-          grace_day: 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
+      if (!userId) {
+        console.warn(`customer.subscription.deleted: cannot resolve user for sub ${sub.id}`);
+        break;
+      }
 
       await db
-        .from("businesses")
-        .update({ plan: "regular", status: "active" })
-        .eq("id", businessId);
-
-      console.log(`[subscriptions] sub deleted/canceled: business=${businessId}`);
+        .from("users")
+        .update({
+          plan: "regular",
+          plan_status: "active",
+          plan_renews_at: null,
+          plan_trial_end: null,
+          stripe_subscription_id: null,
+        })
+        .eq("id", userId);
+      console.log(`[subscriptions] sub deleted/canceled → regular: user=${userId}`);
       break;
     }
 
-    // ── Payment failed → 3-day grace period ──────────────────────────────────
+    // ── Payment failed → past_due (Stripe retries on its own; no grace column) ─
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      const stripeSubId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id ?? null;
+      const customerId = customerIdOf(invoice.customer);
+      const userId = await resolveUserId(db, undefined, customerId);
 
-      if (!stripeSubId) break;
-
-      const businessId = await getBusinessIdByStripeSubId(db, stripeSubId);
-      if (!businessId) break;
-
-      // Fetch current grace_day
-      const { data: currentSub } = await db
-        .from("subscriptions")
-        .select("grace_day")
-        .eq("business_id", businessId)
-        .maybeSingle();
-
-      const prevGraceDay = currentSub?.grace_day ?? 0;
-      const newGraceDay = prevGraceDay + 1;
-
-      // Day 3 → suspend the business
-      const isSuspended = newGraceDay >= 3;
-      const newStatus = isSuspended ? "suspended" : "past_due";
-
-      await db.from("subscriptions").upsert(
-        {
-          business_id: businessId,
-          stripe_subscription_id: stripeSubId,
-          status: newStatus,
-          grace_day: newGraceDay,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
-
-      if (isSuspended) {
-        await db
-          .from("businesses")
-          .update({ status: "suspended" })
-          .eq("id", businessId);
-        console.log(`[subscriptions] business suspended (Day 3): business=${businessId}`);
-      } else {
-        console.log(`[subscriptions] payment failed grace Day ${newGraceDay}: business=${businessId}`);
+      if (!userId) {
+        console.warn(`invoice.payment_failed: cannot resolve user for invoice ${invoice.id}`);
+        break;
       }
 
-      // TODO(notifications): send push/email reminder for each grace day.
-      // Day 1: "Payment failed — please update your payment method (2 days left)."
-      // Day 2: "Last warning — account suspends tomorrow if payment is not resolved."
-      // Day 3: "Your JChat listing has been suspended. Update payment to restore."
-      // Example stub:
-      // await sendBusinessNotification(businessId, `grace_day_${newGraceDay}`);
-
+      // past_due loses dashboard access (gate), but we do NOT touch which plan they had.
+      await db.from("users").update({ plan_status: "past_due" }).eq("id", userId);
+      console.log(`[subscriptions] payment failed → past_due: user=${userId}`);
       break;
     }
 
-    // ── Payment recovered → restore business ─────────────────────────────────
+    // ── Payment recovered → clear past_due + refresh renewal date ─────────────
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
+      const customerId = customerIdOf(invoice.customer);
+      const userId = await resolveUserId(db, undefined, customerId);
+
+      if (!userId) {
+        console.warn(`invoice.payment_succeeded: cannot resolve user for invoice ${invoice.id}`);
+        break;
+      }
+
       const stripeSubId =
         typeof invoice.subscription === "string"
           ? invoice.subscription
           : invoice.subscription?.id ?? null;
 
-      if (!stripeSubId) break;
+      let periodEnd: string | null = null;
+      if (stripeSubId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(stripeSubId);
+          periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+        } catch (err) {
+          console.warn("Could not retrieve subscription for period end:", err);
+        }
+      }
 
-      const businessId = await getBusinessIdByStripeSubId(db, stripeSubId);
-      if (!businessId) break;
-
-      // Only act if the business was previously suspended / past_due
-      const { data: currentSub } = await db
-        .from("subscriptions")
-        .select("status, grace_day, plan")
-        .eq("business_id", businessId)
+      const { data: cur } = await db
+        .from("users")
+        .select("plan_status")
+        .eq("id", userId)
         .maybeSingle();
 
-      if (
-        currentSub?.status === "suspended" ||
-        currentSub?.status === "past_due" ||
-        (currentSub?.grace_day ?? 0) > 0
-      ) {
-        await db.from("subscriptions").upsert(
-          {
-            business_id: businessId,
-            stripe_subscription_id: stripeSubId,
-            status: "active",
-            grace_day: 0,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "business_id" },
-        );
-
-        await db
-          .from("businesses")
-          .update({ status: "active" })
-          .eq("id", businessId);
-
-        console.log(`[subscriptions] payment recovered, business restored: business=${businessId}`);
-
-        // TODO(notifications): send "Your account has been restored" notification.
+      const upd: Record<string, unknown> = {};
+      if (periodEnd) upd.plan_renews_at = periodEnd;
+      if ((cur as { plan_status: string } | null)?.plan_status === "past_due") {
+        upd.plan_status = "active";
       }
+      if (Object.keys(upd).length > 0) {
+        await db.from("users").update(upd).eq("id", userId);
+      }
+      console.log(`[subscriptions] payment succeeded: user=${userId}`);
       break;
     }
 
-    // ── Trial ending reminders ────────────────────────────────────────────────
+    // ── Trial ending reminder (notification is a separate TODO — log only) ────
     case "customer.subscription.trial_will_end": {
       const sub = event.data.object as Stripe.Subscription;
-      const businessId = sub.metadata?.business_id ??
-        (await getBusinessIdByStripeSubId(db, sub.id));
-
-      if (!businessId) break;
-
-      // Stripe fires this 3 days before trial ends.
-      // TODO(notifications): send "Your trial ends in 3 days" + 1-day-before reminder.
-      // The 1-day reminder requires a scheduled pg_cron or separate webhook event.
-      console.log(`[subscriptions] trial ending soon: business=${businessId}`);
+      const customerId = customerIdOf(sub.customer);
+      const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
+      console.log(`[subscriptions] trial ending soon: user=${userId ?? "(unresolved)"}`);
+      // TODO(notifications): tell the user their trial ends soon. Not implemented.
       break;
     }
 
@@ -599,7 +514,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const contentType = req.headers.get("content-type") ?? "";
 
-  // Stripe webhooks arrive as application/json with a stripe-signature header
+  // Stripe webhooks arrive with a stripe-signature header.
   const isWebhook = req.headers.has("stripe-signature");
 
   if (isWebhook) {
@@ -611,7 +526,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
-  // Everything else is a JSON action call from the dashboard
+  // Everything else is a JSON action call from the client.
   if (!contentType.includes("application/json")) {
     return errorResponse("Content-Type must be application/json");
   }
@@ -628,15 +543,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     switch (action) {
       case "create_checkout": {
-        // ── P0-3: APP path (no stripe-signature) — verify JWT + ownership
-        // BEFORE creating a checkout OR running the free-plan downgrade. ──
-        const businessId = typeof body.business_id === "string" ? body.business_id : null;
-        if (!businessId) return errorResponse("business_id is required");
+        // APP path (no stripe-signature) — verify the caller's JWT and act on THEIR
+        // own user id. No business ownership check: a user subscribes to their own plan.
         const auth = await verifyCaller(req);
         if (auth instanceof Response) return auth;
-        const ownerCheck = await assertOwnerOrAdmin(getAdminClient(), auth.authUserId, businessId);
-        if (ownerCheck) return ownerCheck;
-        return await handleCreateCheckout(body);
+        return await handleCreateCheckout(body, auth.authUserId);
       }
 
       default:
