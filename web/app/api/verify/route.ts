@@ -10,8 +10,8 @@
  *   "identity_status"  → Step 1: poll identity_status from business_verifications
  *   "generate_code"    → Step 2: upsert daily_code + code_date; return the code
  *   "submit_selfie"    → Step 2: store selfie_url (stub)
- *   "send_sms"         → Step 3: generate sms_code, store + sms_expires_at
- *   "verify_sms"       → Step 3: check submitted code against DB; if ok set verified
+ *   "send_sms"         → Step 3: ask Twilio Verify to send an SMS code (we store nothing)
+ *   "verify_sms"       → Step 3: ask Twilio Verify to check the code; if ok set sms_verified
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -38,15 +38,74 @@ function todayUTC(): string {
 }
 
 /**
- * Kill-switch (FIX #1d): the SMS step is a stub — Twilio is not wired up. Until the
- * three TWILIO_* secrets exist, send_sms/verify_sms return 503 instead of simulating
- * a verification the app can't actually perform.
+ * Twilio Verify config. The SMS step uses Twilio Verify: Twilio generates, stores, sends
+ * AND validates the one-time code. Our DB NEVER stores the code — that closes the sms_code
+ * read hole (a business owner could previously SELECT their own sms_code and self-verify).
+ *
+ * Auth is an API Key + Secret (Basic base64(apiKey:apiSecret)), NOT the Account Auth Token.
+ * Kill-switch (FIX #1d): until all FOUR secrets exist, send_sms/verify_sms return the same
+ * 503 "Verification flow not available yet" as before — the UI contract is unchanged.
  */
-const isTwilioConfigured = !!(
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_PHONE_NUMBER
-);
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_API_KEY = process.env.TWILIO_API_KEY;
+const TWILIO_API_SECRET = process.env.TWILIO_API_SECRET;
+const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+function twilioConfigured(): boolean {
+  return !!(
+    TWILIO_ACCOUNT_SID &&
+    TWILIO_API_KEY &&
+    TWILIO_API_SECRET &&
+    TWILIO_VERIFY_SERVICE_SID
+  );
+}
+
+/** Basic auth header for the Twilio API using the API Key + Secret (never the Auth Token). */
+function twilioAuthHeader(): string {
+  return "Basic " + Buffer.from(`${TWILIO_API_KEY}:${TWILIO_API_SECRET}`).toString("base64");
+}
+
+/** Twilio Verify endpoint URL for our service. */
+function verifyUrl(resource: "Verifications" | "VerificationCheck"): string {
+  return `https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/${resource}`;
+}
+
+/** E.164 phone format: leading '+' followed by 2–15 digits, first digit non-zero. */
+function isE164(phone: string): boolean {
+  return /^\+[1-9]\d{1,14}$/.test(phone);
+}
+
+/**
+ * Read the business phone (E.164) for verification. Returns { phone } or { error } with a
+ * 400/404/500 response. Uses supabaseAdmin (RLS-bypassing) — the caller has already been
+ * ownership-gated by assertOwnerOrAdmin, so this is safe.
+ */
+async function getBusinessPhoneE164(
+  businessId: string
+): Promise<{ phone: string } | { error: NextResponse }> {
+  const { data, error } = await supabaseAdmin
+    .from("businesses")
+    .select("phone")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (error) {
+    return { error: NextResponse.json({ error: error.message }, { status: 500 }) };
+  }
+  const phone = ((data?.phone as string | null) ?? "").trim();
+  if (!phone || !isE164(phone)) {
+    return {
+      error: NextResponse.json(
+        {
+          error:
+            "El negocio no tiene un teléfono válido en formato internacional (+1...).",
+        },
+        { status: 400 }
+      ),
+    };
+  }
+  return { phone };
+}
 
 /**
  * Auth gate (P0-3): assert the caller owns `businessId` (or is a platform admin).
@@ -232,52 +291,62 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Step 3a: Send SMS verification code ───────────────────────────────────
+    // ── Step 3a: Send SMS verification code (Twilio Verify) ────────────────────
     case "send_sms": {
       // Kill-switch (FIX #1d): no Twilio → don't simulate a verification.
-      if (!isTwilioConfigured) {
+      if (!twilioConfigured()) {
         return NextResponse.json(
           { error: "Verification flow not available yet." },
           { status: 503 }
         );
       }
 
-      const sms_code = randomCode(6, true); // 6-digit numeric
-      const sms_expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // now + 10 min
+      const phoneResult = await getBusinessPhoneE164(business_id);
+      if ("error" in phoneResult) return phoneResult.error;
 
-      const { error } = await supabaseAdmin
-        .from("business_verifications")
-        .upsert(
-          { business_id, sms_code, sms_expires_at, sms_verified: false },
-          { onConflict: "business_id" }
+      // Twilio Verify generates, stores, and sends the code. We store NOTHING — no
+      // sms_code, no expiry — so there is no code in our DB for anyone to read.
+      try {
+        const res = await fetch(verifyUrl("Verifications"), {
+          method: "POST",
+          headers: {
+            Authorization: twilioAuthHeader(),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            To: phoneResult.phone,
+            Channel: "sms",
+          }).toString(),
+        });
+
+        if (!res.ok) {
+          const detail = await res.text();
+          console.error(
+            `[verify/send_sms] Twilio Verify send failed (${res.status}):`,
+            detail
+          );
+          return NextResponse.json(
+            { error: "No se pudo enviar el código. Inténtalo de nuevo." },
+            { status: 502 }
+          );
+        }
+      } catch (err) {
+        console.error("[verify/send_sms] Twilio Verify send error:", err);
+        return NextResponse.json(
+          { error: "No se pudo enviar el código. Inténtalo de nuevo." },
+          { status: 502 }
         );
-
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
-      /*
-       * TODO(Twilio): send the actual SMS here.
-       * const phone = await getBusinessPhone(business_id);
-       * await twilioClient.messages.create({
-       *   body: `Your JChat verification code: ${sms_code}. Expires in 10 minutes.`,
-       *   from: process.env.TWILIO_PHONE_NUMBER,
-       *   to: phone,
-       * });
-       */
-
-      // The code is NEVER returned to the client — it is a verification secret and is
-      // delivered only via SMS (once Twilio is wired up above).
-      return NextResponse.json({
-        ok: true,
-        expires_at: sms_expires_at,
-      });
+      // NEVER return the code (nor a __dev_code) — it lives only in Twilio Verify and is
+      // delivered to the owner by SMS.
+      return NextResponse.json({ ok: true });
     }
 
-    // ── Step 3b: Verify SMS code ──────────────────────────────────────────────
+    // ── Step 3b: Verify SMS code (Twilio Verify check) ─────────────────────────
     case "verify_sms": {
       // Kill-switch (FIX #1d): no Twilio → the SMS step doesn't exist yet.
-      if (!isTwilioConfigured) {
+      if (!twilioConfigured()) {
         return NextResponse.json(
           { error: "Verification flow not available yet." },
           { status: 503 }
@@ -289,47 +358,77 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: "code is required." }, { status: 400 });
       }
 
-      const { data: bv, error: fetchErr } = await supabaseAdmin
-        .from("business_verifications")
-        .select("sms_code, sms_expires_at, sms_verified")
-        .eq("business_id", business_id)
-        .maybeSingle();
+      const phoneResult = await getBusinessPhoneE164(business_id);
+      if ("error" in phoneResult) return phoneResult.error;
 
-      if (fetchErr) {
-        return NextResponse.json({ error: fetchErr.message }, { status: 500 });
-      }
-      if (!bv || !bv.sms_code) {
-        return NextResponse.json({ error: "No code found. Request a new one." }, { status: 400 });
-      }
-      if (bv.sms_verified) {
-        return NextResponse.json({ ok: true, already_verified: true });
-      }
+      // Ask Twilio whether the submitted code is valid. Twilio holds the code — we never
+      // stored it, so there is nothing to compare against in our DB.
+      let approved = false;
+      try {
+        const res = await fetch(verifyUrl("VerificationCheck"), {
+          method: "POST",
+          headers: {
+            Authorization: twilioAuthHeader(),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            To: phoneResult.phone,
+            Code: submitted_code.trim(),
+          }).toString(),
+        });
 
-      // Expiry check
-      const expiresAt = new Date(bv.sms_expires_at as string).getTime();
-      if (Date.now() > expiresAt) {
+        // Twilio returns 404 when the verification expired, was already approved, or ran
+        // out of attempts — that is "invalid or expired", NOT a server error.
+        if (res.status === 404) {
+          return NextResponse.json(
+            { ok: false, error: "Código inválido o expirado." },
+            { status: 400 }
+          );
+        }
+        if (!res.ok) {
+          const detail = await res.text();
+          console.error(
+            `[verify/verify_sms] Twilio VerificationCheck failed (${res.status}):`,
+            detail
+          );
+          return NextResponse.json(
+            { error: "No se pudo verificar el código. Inténtalo de nuevo." },
+            { status: 502 }
+          );
+        }
+
+        const check = (await res.json()) as { status?: string; valid?: boolean };
+        approved = check.status === "approved" && check.valid === true;
+      } catch (err) {
+        console.error("[verify/verify_sms] Twilio VerificationCheck error:", err);
         return NextResponse.json(
-          { error: "Code expired. Please request a new code." },
+          { error: "No se pudo verificar el código. Inténtalo de nuevo." },
+          { status: 502 }
+        );
+      }
+
+      if (!approved) {
+        return NextResponse.json(
+          { ok: false, error: "Código inválido o expirado." },
           { status: 400 }
         );
       }
 
-      // Code match check
-      if (submitted_code.trim() !== (bv.sms_code as string)) {
-        return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
-      }
-
-      // Mark ONLY the SMS step as verified. This route must NOT flip
-      // businesses.status to 'verified' — that flag enables Stripe payments and
-      // must never be settable by the business owner (FIX #1c). The subject of a
-      // verification cannot self-approve it.
+      // Mark ONLY the SMS step as verified. This route must NOT flip businesses.status to
+      // 'verified' — that flag enables Stripe payments and must never be settable by the
+      // business owner (FIX #1c). The subject of a verification cannot self-approve it.
+      // The flip to businesses.status='verified' is done exclusively by (a) a super_admin
+      // action, or (b) a real Stripe Identity webhook — never here.
       //
-      // TODO: the flip to businesses.status='verified' is performed exclusively by
-      //   (a) a super_admin action, or (b) a real Stripe Identity webhook — never here.
+      // upsert (not update): send_sms no longer pre-creates the row, so guarantee the
+      // sms_verified flag persists even if Step 2 was skipped. onConflict leaves the other
+      // verification columns untouched.
       const { error: smsUpdateErr } = await supabaseAdmin
         .from("business_verifications")
-        .update({ sms_verified: true })
-        .eq("business_id", business_id);
+        .upsert(
+          { business_id, sms_verified: true },
+          { onConflict: "business_id" }
+        );
 
       if (smsUpdateErr) {
         return NextResponse.json({ error: smsUpdateErr.message }, { status: 500 });
