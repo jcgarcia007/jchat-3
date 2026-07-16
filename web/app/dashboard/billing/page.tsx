@@ -36,9 +36,14 @@ import {
   IconReceipt,
   IconRefresh,
   IconRocket,
-  IconShield,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import {
+  OFFERED_PLANS,
+  SALES_EMAIL,
+  type OfferedPlanId,
+  type CheckoutPlanId,
+} from "@/lib/plans";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,93 +63,20 @@ interface Subscription {
   stripe_subscription_id: string | null;
 }
 
-interface PlanDef {
-  id: PlanId;
-  label: string;
-  price_usd: number;
-  price_label: string;
-  description: string;
-  features: string[];
-  icon: React.ReactNode;
-  /** CSS color token for the plan accent */
-  accentVar: string;
-}
+// ── Presentation per offered plan (DASHBOARD tokens; data lives in @/lib/plans) ──
+// Only the BUSINESS plans (business/pro/custom) are offered here. Regular/Verified are
+// USER tiers — the EF still has them, but billing does not offer them as cards.
 
-// ── Plan catalogue ────────────────────────────────────────────────────────────
+const ACCENT: Record<OfferedPlanId, string> = {
+  business: "var(--db-success)",
+  pro: "var(--db-warning)",
+  custom: "var(--db-accent)",
+};
 
-const PLANS: PlanDef[] = [
-  {
-    id: "regular",
-    label: "Regular",
-    price_usd: 0,
-    price_label: "Free",
-    description: "Basic presence in JChat. Great for getting started.",
-    features: [
-      "Public business listing",
-      "Basic chat room",
-      "Up to 3 menu items",
-      "Standard map pin",
-    ],
-    icon: <IconBuildingStore size={22} />,
-    accentVar: "var(--db-text-secondary)",
-  },
-  {
-    id: "verified",
-    label: "Verified",
-    price_usd: 1.99,
-    price_label: "$1.99 / mo",
-    description: "Verified badge and enhanced visibility on the map.",
-    features: [
-      "Everything in Regular",
-      "Verified badge on listing",
-      "Priority map placement",
-      "Up to 20 menu items",
-      "Basic analytics",
-    ],
-    icon: <IconShield size={22} />,
-    accentVar: "var(--db-accent)",
-  },
-  {
-    id: "business",
-    label: "Business",
-    price_usd: 49,
-    price_label: "$49 / mo",
-    description: "Full POS suite, loyalty program, and staff management.",
-    features: [
-      "Everything in Verified",
-      "Full POS + KDS",
-      "Loyalty program",
-      "Employee management",
-      "Reservations",
-      "Inventory tracking",
-    ],
-    icon: <IconBolt size={22} />,
-    accentVar: "var(--db-success)",
-  },
-  {
-    id: "pro",
-    label: "Pro",
-    price_usd: 99,
-    price_label: "$99 / mo",
-    description: "Advanced analytics, unlimited menus, and priority support.",
-    features: [
-      "Everything in Business",
-      "Advanced analytics & ROI",
-      "Unlimited menu items",
-      "Stripe Connect payouts",
-      "Priority support",
-      "Custom dashboard theme",
-    ],
-    icon: <IconCrown size={22} />,
-    accentVar: "var(--db-warning)",
-  },
-];
-
-const PLAN_RANK: Record<PlanId, number> = {
-  regular: 0,
-  verified: 1,
-  business: 2,
-  pro: 3,
+const ICONS: Record<OfferedPlanId, React.ReactNode> = {
+  business: <IconBolt size={22} />,
+  pro: <IconCrown size={22} />,
+  custom: <IconBuildingStore size={22} />,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -426,7 +358,7 @@ export default function BillingPage() {
   }
 
   // ── Upgrade → Stripe Checkout ──────────────────────────────────────────────
-  async function handleUpgrade(targetPlan: PlanId) {
+  async function handleUpgrade(targetPlan: CheckoutPlanId) {
     setActionLoading(targetPlan);
 
     if (!isSupabaseConfigured) {
@@ -487,18 +419,9 @@ export default function BillingPage() {
     }
   }
 
-  // ── Plan card action logic ────────────────────────────────────────────────
-  function getPlanAction(
-    planId: PlanId,
-  ): { label: string; kind: "upgrade" | "current" | "downgrade" | "free" } {
-    const currentRank = PLAN_RANK[sub?.plan ?? "regular"];
-    const targetRank = PLAN_RANK[planId];
-
-    if (planId === (sub?.plan ?? "regular")) return { label: "Current plan", kind: "current" };
-    if (targetRank > currentRank) return { label: "Upgrade", kind: "upgrade" };
-    if (planId === "regular") return { label: "Downgrade to Free", kind: "free" };
-    return { label: "Downgrade", kind: "downgrade" };
-  }
+  // Is the signed-in user on a BUSINESS plan (business/pro)? Regular/Verified are user
+  // tiers → treated here as "no business plan".
+  const onBusinessPlan = sub?.plan === "business" || sub?.plan === "pro";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -553,7 +476,13 @@ export default function BillingPage() {
           <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
           <span style={{ fontSize: "14px" }}>Loading subscription…</span>
         </Card>
-      ) : sub ? (
+      ) : !sub ? (
+        <Card style={{ marginBottom: "32px" }}>
+          <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
+            No business account found. Register your business to get started.
+          </p>
+        </Card>
+      ) : onBusinessPlan ? (
         <Card style={{ marginBottom: "32px" }}>
           <div
             style={{
@@ -576,10 +505,10 @@ export default function BillingPage() {
               >
                 <span
                   style={{
-                    color: PLANS.find((p) => p.id === sub.plan)?.accentVar ?? "var(--db-accent)",
+                    color: ACCENT[sub.plan as OfferedPlanId] ?? "var(--db-accent)",
                   }}
                 >
-                  {PLANS.find((p) => p.id === sub.plan)?.icon}
+                  {ICONS[sub.plan as OfferedPlanId]}
                 </span>
                 <span
                   style={{
@@ -588,7 +517,7 @@ export default function BillingPage() {
                     color: "var(--db-text-primary)",
                   }}
                 >
-                  {PLANS.find((p) => p.id === sub.plan)?.label ?? sub.plan} Plan
+                  {OFFERED_PLANS.find((p) => p.id === sub.plan)?.label ?? sub.plan} Plan
                 </span>
                 {/* Status badge */}
                 <span
@@ -649,18 +578,6 @@ export default function BillingPage() {
                     </div>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
                       {formatDate(sub.current_period_end)}
-                    </div>
-                  </div>
-                )}
-                {sub.plan === "regular" && (
-                  <div>
-                    <div
-                      style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}
-                    >
-                      Price
-                    </div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                      Free
                     </div>
                   </div>
                 )}
@@ -741,8 +658,11 @@ export default function BillingPage() {
         </Card>
       ) : (
         <Card style={{ marginBottom: "32px" }}>
-          <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            No business account found. Register your business to get started.
+          <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            No tienes un plan de negocio activo
+          </p>
+          <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+            Elige Business, Pro o Custom abajo para desbloquear el panel de negocio.
           </p>
         </Card>
       )}
@@ -758,11 +678,17 @@ export default function BillingPage() {
           marginBottom: "40px",
         }}
       >
-        {PLANS.map((plan) => {
-          const action = getPlanAction(plan.id);
-          const isCurrent = action.kind === "current";
-          const isLoading =
-            actionLoading === plan.id || (action.kind === "downgrade" && portalLoading);
+        {OFFERED_PLANS.map((plan) => {
+          // Only business/pro can be the current plan (custom never is).
+          const isCurrent = onBusinessPlan && plan.id === sub?.plan;
+          // Spinner: "Suscribirme" tracks actionLoading; "Cambiar plan" tracks portalLoading.
+          const busy =
+            plan.cta === "checkout" && !isCurrent
+              ? onBusinessPlan
+                ? portalLoading
+                : actionLoading === plan.id
+              : false;
+          const isSubscribe = plan.cta === "checkout" && !isCurrent && !onBusinessPlan;
 
           return (
             <div
@@ -804,7 +730,7 @@ export default function BillingPage() {
 
               {/* Plan header */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: plan.accentVar }}>{plan.icon}</span>
+                <span style={{ color: ACCENT[plan.id] }}>{ICONS[plan.id]}</span>
                 <span
                   style={{
                     fontSize: "16px",
@@ -822,10 +748,10 @@ export default function BillingPage() {
                   style={{
                     fontSize: "22px",
                     fontWeight: 800,
-                    color: plan.accentVar,
+                    color: ACCENT[plan.id],
                   }}
                 >
-                  {plan.price_label}
+                  {plan.priceLabel}
                 </span>
               </div>
 
@@ -856,7 +782,7 @@ export default function BillingPage() {
                   >
                     <IconCheck
                       size={13}
-                      style={{ color: plan.accentVar, flexShrink: 0, marginTop: "1px" }}
+                      style={{ color: ACCENT[plan.id], flexShrink: 0, marginTop: "1px" }}
                     />
                     {f}
                   </li>
@@ -866,15 +792,21 @@ export default function BillingPage() {
               {/* CTA button */}
               <button
                 onClick={() => {
-                  if (action.kind === "downgrade") {
-                    // Downgrade to a paid plan → the Stripe Customer Portal handles the
-                    // switch (with proration). "Downgrade to Free" (kind 'free') is separate.
+                  if (plan.cta === "contact") {
+                    window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
+                      "Plan Custom JChat",
+                    )}`;
+                  } else if (isCurrent) {
+                    return;
+                  } else if (onBusinessPlan) {
+                    // Already paying → change plan in the Portal (proration; no new sub).
                     void handleOpenPortal();
-                  } else if (!isCurrent) {
-                    handleUpgrade(plan.id);
+                  } else {
+                    // No business plan yet → fresh Stripe Checkout.
+                    void handleUpgrade(plan.id as CheckoutPlanId);
                   }
                 }}
-                disabled={isCurrent || isLoading}
+                disabled={isCurrent || busy}
                 style={{
                   marginTop: "auto",
                   display: "flex",
@@ -887,55 +819,41 @@ export default function BillingPage() {
                   cursor: isCurrent ? "default" : "pointer",
                   fontSize: "13px",
                   fontWeight: 600,
-                  background: isCurrent
-                    ? "var(--db-bg-elevated)"
-                    : action.kind === "downgrade" || action.kind === "free"
-                    ? "var(--db-bg-elevated)"
-                    : "var(--db-accent)",
+                  background: isSubscribe ? "var(--db-accent)" : "var(--db-bg-elevated)",
                   color: isCurrent
                     ? "var(--db-text-tertiary)"
-                    : action.kind === "downgrade" || action.kind === "free"
-                    ? "var(--db-text-secondary)"
-                    : "var(--db-accent-text)",
+                    : isSubscribe
+                    ? "var(--db-accent-text)"
+                    : "var(--db-text-secondary)",
                   opacity: isCurrent ? 0.7 : 1,
                   transition: "opacity 0.15s",
                 }}
               >
-                {isLoading ? (
+                {busy ? (
                   <>
                     <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
                     Redirecting…
                   </>
+                ) : plan.cta === "contact" ? (
+                  "Contactar"
+                ) : isCurrent ? (
+                  <>
+                    <IconCircleCheck size={14} />
+                    Plan actual
+                  </>
+                ) : onBusinessPlan ? (
+                  <>
+                    Cambiar plan
+                    <IconExternalLink size={12} style={{ opacity: 0.7 }} />
+                  </>
                 ) : (
                   <>
-                    {action.kind === "upgrade" && <IconRocket size={14} />}
-                    {action.kind === "downgrade" && <IconBolt size={14} />}
-                    {action.kind === "free" && <IconBuildingStore size={14} />}
-                    {action.kind === "current" && <IconCircleCheck size={14} />}
-                    {action.label}
-                    {action.kind === "upgrade" && (
-                      <IconExternalLink size={12} style={{ opacity: 0.7 }} />
-                    )}
+                    <IconRocket size={14} />
+                    Suscribirme
+                    <IconExternalLink size={12} style={{ opacity: 0.7 }} />
                   </>
                 )}
               </button>
-
-              {/* Downgrade note — kept honest per action kind */}
-              {(action.kind === "downgrade" || action.kind === "free") && (
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: "var(--db-text-tertiary)",
-                    margin: 0,
-                    textAlign: "center",
-                    lineHeight: "1.4",
-                  }}
-                >
-                  {action.kind === "free"
-                    ? "Takes effect at the end of the current billing period."
-                    : "Opens the Stripe billing portal to switch plans (proration applies)."}
-                </p>
-              )}
             </div>
           );
         })}
