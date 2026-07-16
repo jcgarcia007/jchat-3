@@ -4,11 +4,14 @@
  * Shows the business owner's current plan, available plan options, upgrade/downgrade
  * controls, trial status, and a payment history stub.
  *
- * Architecture:
- *  - Reads current subscription from `subscriptions` table via supabase client.
- *  - Upgrades call the `subscriptions` Edge Function (action: "create_checkout")
+ * Architecture (plan-per-user, opción B — ver docs/PLAN_MONETIZACION.md):
+ *  - Reads the current plan from `users` (plan, plan_status, plan_trial_end,
+ *    plan_renews_at, stripe_subscription_id) for the signed-in user — NOT the retired
+ *    `subscriptions` table.
+ *  - Upgrades call the `subscriptions` Edge Function (action: "create_checkout", { plan })
  *    which returns a Stripe Checkout URL → redirect. (Rule 4: Stripe ALWAYS server-side.)
- *  - Downgrades note "takes effect at period end" (Stripe handles via cancel_at_period_end).
+ *  - Downgrade to free returns { downgraded } (no live sub) or { scheduled_cancel, effective }
+ *    (cancel_at_period_end — keeps paid access until it expires).
  *  - Guard: isSupabaseConfigured wraps all live DB/function calls.
  *
  * Design tokens: var(--db-*) only — NO hardcoded hex.
@@ -34,26 +37,25 @@ import {
   IconRefresh,
   IconRocket,
   IconShield,
-  IconX,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PlanId = "regular" | "verified" | "business" | "pro";
-type SubStatus = "active" | "trialing" | "past_due" | "suspended" | "canceled";
+type PlanStatus = "active" | "trialing" | "past_due" | "canceled";
 
+/**
+ * The signed-in user's plan state, read from `users` (opción B). The field names
+ * current_period_end / trial_end are kept from the old UI but now map to
+ * users.plan_renews_at / users.plan_trial_end. (No grace_day: past_due already says it.)
+ */
 interface Subscription {
-  id: string;
-  business_id: string;
-  stripe_subscription_id: string | null;
   plan: PlanId;
-  status: SubStatus;
-  current_period_end: string | null;
-  trial_end: string | null;
-  grace_day: number;
-  created_at: string;
-  updated_at: string;
+  status: PlanStatus;
+  current_period_end: string | null; // ← users.plan_renews_at
+  trial_end: string | null;          // ← users.plan_trial_end
+  stripe_subscription_id: string | null;
 }
 
 interface PlanDef {
@@ -162,20 +164,61 @@ function daysLeft(iso: string | null): number | null {
   return Math.max(0, Math.ceil(diff / 86_400_000));
 }
 
-function statusLabel(status: SubStatus, graceDay: number): string {
+function statusLabel(status: PlanStatus): string {
   if (status === "trialing") return "Free Trial";
   if (status === "active") return "Active";
-  if (status === "past_due") return `Past Due (Day ${graceDay}/3)`;
-  if (status === "suspended") return "Suspended";
+  if (status === "past_due") return "Payment issue";
   if (status === "canceled") return "Canceled";
   return status;
 }
 
-function statusColor(status: SubStatus): string {
+function statusColor(status: PlanStatus): string {
   if (status === "active" || status === "trialing") return "var(--db-success)";
   if (status === "past_due") return "var(--db-warning)";
-  if (status === "suspended" || status === "canceled") return "var(--db-danger)";
+  if (status === "canceled") return "var(--db-danger)";
   return "var(--db-text-secondary)";
+}
+
+// ── Edge Function error reader ─────────────────────────────────────────────────
+// supabase.functions.invoke wraps a non-2xx as FunctionsHttpError whose real body
+// { error: "..." } lives in error.context (a Response). Duck-type it (same approach as
+// mobile/services/stripe.ts) so we show the SERVER's message — e.g. "No billing account
+// yet. Subscribe to a plan first." — not the generic "non-2xx".
+
+type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
+
+async function readFunctionError(error: unknown): Promise<string> {
+  const fallback = error instanceof Error ? error.message : "Something went wrong";
+  const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
+  if (!ctx || typeof ctx !== "object") return fallback;
+  const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
+
+  if (typeof source.json === "function") {
+    try {
+      const body = await (source.json as () => Promise<unknown>)();
+      const msg = (body as { error?: unknown })?.error;
+      if (typeof msg === "string" && msg.length > 0) return msg;
+    } catch {
+      // fall through to text
+    }
+  }
+  if (typeof source.text === "function") {
+    try {
+      const raw = await (source.text as () => Promise<string>)();
+      if (raw) {
+        try {
+          const body = JSON.parse(raw);
+          const msg = (body as { error?: unknown })?.error;
+          if (typeof msg === "string" && msg.length > 0) return msg;
+        } catch {
+          if (raw.length < 300) return raw;
+        }
+      }
+    } catch {
+      // nothing more to try
+    }
+  }
+  return fallback;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -253,16 +296,11 @@ function AlertBanner({
 // ── Demo subscription (shown when Supabase is not configured) ─────────────────
 
 const DEMO_SUB: Subscription = {
-  id: "demo-sub-1",
-  business_id: "demo-business-1",
-  stripe_subscription_id: null,
   plan: "business",
   status: "trialing",
   current_period_end: new Date(Date.now() + 25 * 86_400_000).toISOString(),
   trial_end: new Date(Date.now() + 5 * 86_400_000).toISOString(),
-  grace_day: 0,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
+  stripe_subscription_id: null,
 };
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -271,8 +309,8 @@ export default function BillingPage() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<PlanId | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [businessId, setBusinessId] = useState<string | null>(null);
 
   // ── Detect checkout result from URL query params ──────────────────────────
   const [checkoutResult, setCheckoutResult] = useState<
@@ -299,13 +337,12 @@ export default function BillingPage() {
 
     if (!isSupabaseConfigured) {
       setSub(DEMO_SUB);
-      setBusinessId(DEMO_SUB.business_id);
       setLoading(false);
       return;
     }
 
     try {
-      // Get the current user's business
+      // Plan-per-user (opción B): the plan lives on the signed-in USER, not per business.
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -315,46 +352,32 @@ export default function BillingPage() {
         return;
       }
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (!business) {
-        setSub(null);
-        setLoading(false);
-        return;
-      }
-
-      setBusinessId(business.id);
-
       const { data, error } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("business_id", business.id)
+        .from("users")
+        .select("plan, plan_status, plan_trial_end, plan_renews_at, stripe_subscription_id")
+        .eq("id", user.id)
         .maybeSingle();
 
       if (error) throw error;
 
-      // If no subscription row yet, synthesize a free/regular one
-      setSub(
-        (data as Subscription | null) ?? {
-          id: "",
-          business_id: business.id,
-          stripe_subscription_id: null,
-          plan: "regular" as PlanId,
-          status: "active" as SubStatus,
-          current_period_end: null,
-          trial_end: null,
-          grace_day: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      );
+      const row = data as {
+        plan: PlanId | null;
+        plan_status: PlanStatus | null;
+        plan_trial_end: string | null;
+        plan_renews_at: string | null;
+        stripe_subscription_id: string | null;
+      } | null;
+
+      setSub({
+        plan: row?.plan ?? "regular",
+        status: row?.plan_status ?? "active",
+        current_period_end: row?.plan_renews_at ?? null,
+        trial_end: row?.plan_trial_end ?? null,
+        stripe_subscription_id: row?.stripe_subscription_id ?? null,
+      });
     } catch (err) {
       console.error("[billing] loadSub error:", err);
-      showToast("error", "Failed to load subscription data.");
+      showToast("error", "Failed to load plan data.");
     } finally {
       setLoading(false);
     }
@@ -370,13 +393,40 @@ export default function BillingPage() {
     setTimeout(() => setToast(null), 4000);
   }
 
-  // ── Upgrade → Stripe Checkout ──────────────────────────────────────────────
-  async function handleUpgrade(targetPlan: PlanId) {
-    if (!businessId) {
-      showToast("error", "No business found for this account.");
+  // ── Open the Stripe Customer Portal (change plan / card / invoices / cancel) ─
+  async function handleOpenPortal() {
+    if (!isSupabaseConfigured) {
+      showToast("success", "Demo mode — in production this opens the Stripe billing portal.");
       return;
     }
+    setPortalLoading(true);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const { data, error } = await supabase.functions.invoke("subscriptions", {
+        body: { action: "create_portal_session", return_url: `${origin}/dashboard/billing` },
+      });
 
+      if (error) {
+        // Show the SERVER's real message (e.g. "No billing account yet…"), not the generic.
+        showToast("error", await readFunctionError(error));
+        setPortalLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url as string;
+      } else {
+        throw new Error("No portal URL returned.");
+      }
+    } catch (err) {
+      console.error("[billing] handleOpenPortal error:", err);
+      showToast("error", err instanceof Error ? err.message : "Could not open the billing portal.");
+      setPortalLoading(false);
+    }
+  }
+
+  // ── Upgrade → Stripe Checkout ──────────────────────────────────────────────
+  async function handleUpgrade(targetPlan: PlanId) {
     setActionLoading(targetPlan);
 
     if (!isSupabaseConfigured) {
@@ -396,7 +446,6 @@ export default function BillingPage() {
       const { data, error } = await supabase.functions.invoke("subscriptions", {
         body: {
           action: "create_checkout",
-          business_id: businessId,
           plan: targetPlan,
           success_url: `${origin}/dashboard/billing?checkout=success`,
           cancel_url: `${origin}/dashboard/billing?checkout=cancel`,
@@ -405,14 +454,28 @@ export default function BillingPage() {
 
       if (error) throw error;
 
+      // Downgrade to free with NO live subscription → applied immediately.
       if (data?.downgraded) {
-        showToast("success", "Downgraded to Regular (free). Changes applied.");
+        showToast("success", "You're now on the Regular (free) plan.");
         await loadSub();
         return;
       }
 
+      // Downgrade WITH a live subscription → scheduled at period end; access kept until then.
+      if (data?.scheduled_cancel) {
+        const eff = typeof data.effective === "string" ? formatDate(data.effective) : null;
+        showToast(
+          "success",
+          eff
+            ? `Your plan stays active until ${eff} and won't renew.`
+            : "Your plan stays active until the end of the period and won't renew.",
+        );
+        await loadSub();
+        return;
+      }
+
+      // Upgrade → Stripe Checkout (Rule 4 compliant — URL from server).
       if (data?.url) {
-        // Redirect to Stripe Checkout (Rule 4 compliant — URL from server)
         window.location.href = data.url as string;
       } else {
         throw new Error("No checkout URL returned from Edge Function.");
@@ -543,7 +606,7 @@ export default function BillingPage() {
                     background: `color-mix(in srgb, ${statusColor(sub.status)} 12%, transparent)`,
                   }}
                 >
-                  {statusLabel(sub.status, sub.grace_day)}
+                  {statusLabel(sub.status)}
                 </span>
               </div>
 
@@ -603,8 +666,8 @@ export default function BillingPage() {
                 )}
               </div>
 
-              {/* Grace period warning */}
-              {sub.status === "past_due" && sub.grace_day > 0 && (
+              {/* Payment problem (past_due) — no grace-day counter; Stripe retries on its own. */}
+              {sub.status === "past_due" && (
                 <div
                   style={{
                     marginTop: "12px",
@@ -621,34 +684,8 @@ export default function BillingPage() {
                 >
                   <IconAlertCircle size={16} />
                   <span>
-                    Payment failed — grace period Day {sub.grace_day}/3.
-                    {sub.grace_day === 2
-                      ? " Your account will be suspended tomorrow if payment is not resolved."
-                      : " Update your payment method to avoid suspension."}
-                  </span>
-                </div>
-              )}
-
-              {/* Suspended warning */}
-              {sub.status === "suspended" && (
-                <div
-                  style={{
-                    marginTop: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "10px 14px",
-                    borderRadius: "8px",
-                    background: "color-mix(in srgb, var(--db-danger) 10%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--db-danger) 25%, transparent)",
-                    color: "var(--db-danger)",
-                    fontSize: "13px",
-                  }}
-                >
-                  <IconX size={16} />
-                  <span>
-                    Your account is suspended and has been removed from the map. Update your payment
-                    method in Stripe to restore access instantly.
+                    There&apos;s a problem with your payment. Update your payment method to keep
+                    your plan active.
                   </span>
                 </div>
               )}
@@ -724,7 +761,8 @@ export default function BillingPage() {
         {PLANS.map((plan) => {
           const action = getPlanAction(plan.id);
           const isCurrent = action.kind === "current";
-          const isLoading = actionLoading === plan.id;
+          const isLoading =
+            actionLoading === plan.id || (action.kind === "downgrade" && portalLoading);
 
           return (
             <div
@@ -829,11 +867,9 @@ export default function BillingPage() {
               <button
                 onClick={() => {
                   if (action.kind === "downgrade") {
-                    // Downgrade via Stripe customer portal — stub for now
-                    showToast(
-                      "success",
-                      "Downgrade scheduled — your plan will change at the end of the current billing period. Contact support to apply immediately.",
-                    );
+                    // Downgrade to a paid plan → the Stripe Customer Portal handles the
+                    // switch (with proration). "Downgrade to Free" (kind 'free') is separate.
+                    void handleOpenPortal();
                   } else if (!isCurrent) {
                     handleUpgrade(plan.id);
                   }
@@ -884,7 +920,7 @@ export default function BillingPage() {
                 )}
               </button>
 
-              {/* Downgrade note */}
+              {/* Downgrade note — kept honest per action kind */}
               {(action.kind === "downgrade" || action.kind === "free") && (
                 <p
                   style={{
@@ -895,7 +931,9 @@ export default function BillingPage() {
                     lineHeight: "1.4",
                   }}
                 >
-                  Takes effect at end of current billing period.
+                  {action.kind === "free"
+                    ? "Takes effect at the end of the current billing period."
+                    : "Opens the Stripe billing portal to switch plans (proration applies)."}
                 </p>
               )}
             </div>
@@ -921,9 +959,9 @@ export default function BillingPage() {
               Payment history
             </p>
             <p style={{ margin: 0, marginTop: "2px" }}>
-              {/* TODO(Task 3.15): Query Stripe invoices via Edge Function and render table:
+              {/* TODO: Query Stripe invoices via Edge Function and render table:
                   columns: Date, Description, Amount, Status (paid/failed), PDF download link.
-                  API: supabase.functions.invoke('subscriptions', { body: { action: 'list_invoices', business_id } }) */}
+                  The Stripe Customer Portal already exposes invoices — prefer linking there. */}
               Invoice history will be available here once Stripe is connected.
             </p>
           </div>
@@ -952,14 +990,43 @@ export default function BillingPage() {
                 fontSize: "13px",
                 color: "var(--db-text-secondary)",
                 lineHeight: "1.5",
+                marginBottom: "12px",
               }}
             >
-              {/* TODO(Task 3.15): Add Stripe Customer Portal link.
-                  Call Edge Function action: "create_portal_session" → redirect to portal URL.
-                  The portal lets customers update cards, download invoices, and cancel subscriptions. */}
-              Use the Stripe Customer Portal to update your card, download invoices, or cancel your
-              subscription. Contact support to access the portal link.
+              Update your card, download invoices, or cancel your subscription in the Stripe
+              billing portal.
             </p>
+            <button
+              onClick={() => void handleOpenPortal()}
+              disabled={portalLoading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 16px",
+                borderRadius: "8px",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-text-primary)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: portalLoading ? "wait" : "pointer",
+                opacity: portalLoading ? 0.7 : 1,
+              }}
+            >
+              {portalLoading ? (
+                <>
+                  <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                  Opening…
+                </>
+              ) : (
+                <>
+                  <IconCreditCard size={14} />
+                  Manage billing
+                  <IconExternalLink size={12} style={{ opacity: 0.7 }} />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </Card>
