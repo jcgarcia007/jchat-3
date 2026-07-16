@@ -8,13 +8,10 @@
  *
  * Simple version (prices + button). The polished login→checkout return flow is a later tanda.
  *
- * NOTE(unify): the PLANS catalogue below is DUPLICATED from
- * web/app/dashboard/billing/page.tsx (same prices/features). Not extracted to a shared
- * component yet because billing's card grid is coupled to its own state AND billing is
- * being reworked on a parallel branch — extracting now would collide. Unify later.
- *
- * Tokens: GLOBAL only (--bg-*, --text-*, --color-*, --border-subtle). The --db-* theme
- * vars exist only inside the dashboard, so a public page cannot use them.
+ * Plans come from the shared catalogue web/lib/plans.ts (OFFERED_PLANS) — the same source
+ * billing uses. This page maps its OWN color/icon per plan id (see ACCENT/ICONS) because it
+ * uses GLOBAL tokens (--bg-*, --text-*, --color-*, --border-subtle); the --db-* dashboard
+ * vars do not exist on a public page.
  */
 
 "use client";
@@ -31,81 +28,26 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  OFFERED_PLANS,
+  SALES_EMAIL,
+  type OfferedPlanId,
+  type CheckoutPlanId,
+} from "@/lib/plans";
 
-// ── Plan catalogue (duplicated — see NOTE(unify) above) ─────────────────────────
+// ── Presentation: color + icon per plan id (GLOBAL tokens; data lives in lib/plans.ts) ──
 
-// /pricing is the BUSINESS plans page. Regular ($0) and Verified ($1.99) are USER tiers
-// (personal accounts / profile badge) and live in the mobile user app — NOT here. They
-// still exist in the backend EF catalogue; this page just doesn't OFFER them.
-type CheckoutPlanId = "business" | "pro";
-type PricingPlanId = CheckoutPlanId | "custom";
+const ACCENT: Record<OfferedPlanId, string> = {
+  business: "var(--color-success)",
+  pro: "var(--color-gold)",
+  custom: "var(--color-brand)",
+};
 
-interface PlanDef {
-  id: PricingPlanId;
-  label: string;
-  priceLabel: string;
-  description: string;
-  features: string[];
-  icon: React.ReactNode;
-  accentVar: string;
-  /** "checkout" → Stripe Checkout via the EF. "contact" → email us (no price/checkout). */
-  cta: "checkout" | "contact";
-}
-
-const PLANS: PlanDef[] = [
-  {
-    id: "business",
-    label: "Business",
-    priceLabel: "$49 / mes",
-    description: "POS completo, programa de lealtad y gestión de personal.",
-    features: [
-      "POS + KDS completo",
-      "Programa de lealtad",
-      "Gestión de empleados",
-      "Reservas",
-      "Control de inventario",
-      "Hasta 1 negocio y 1 evento",
-    ],
-    icon: <IconBolt size={22} />,
-    accentVar: "var(--color-success)",
-    cta: "checkout",
-  },
-  {
-    id: "pro",
-    label: "Pro",
-    priceLabel: "$99 / mes",
-    description: "Analíticas avanzadas, menú ilimitado y soporte prioritario.",
-    features: [
-      "Todo lo de Business",
-      "Analíticas avanzadas y ROI",
-      "Ítems de menú ilimitados",
-      "Payouts con Stripe Connect",
-      "Soporte prioritario",
-      "Hasta 10 negocios y 10 eventos",
-    ],
-    icon: <IconCrown size={22} />,
-    accentVar: "var(--color-gold)",
-    cta: "checkout",
-  },
-  {
-    id: "custom",
-    label: "Custom",
-    priceLabel: "Contáctanos",
-    description: "Para cadenas o necesidades más allá de Pro. Un plan a tu medida.",
-    features: [
-      "Más de 10 negocios / eventos",
-      "Onboarding dedicado",
-      "Soporte prioritario",
-      "Facturación personalizada",
-    ],
-    icon: <IconBuildingStore size={22} />,
-    accentVar: "var(--color-brand)",
-    cta: "contact",
-  },
-];
-
-// TODO(confirm): correo de ventas para el plan Custom. Placeholder por ahora.
-const SALES_EMAIL = "ventas@jchat.cloud";
+const ICONS: Record<OfferedPlanId, React.ReactNode> = {
+  business: <IconBolt size={22} />,
+  pro: <IconCrown size={22} />,
+  custom: <IconBuildingStore size={22} />,
+};
 
 // ── Edge Function error reader (duck-typed, same as billing) ────────────────────
 
@@ -264,7 +206,7 @@ export default function PricingPage() {
             margin: "0 auto",
           }}
         >
-          {PLANS.map((plan) => {
+          {OFFERED_PLANS.map((plan) => {
             const busy = loadingPlan === plan.id;
             return (
               <div
@@ -281,7 +223,7 @@ export default function PricingPage() {
               >
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ color: plan.accentVar }}>{plan.icon}</span>
+                  <span style={{ color: ACCENT[plan.id] }}>{ICONS[plan.id]}</span>
                   <span style={{ fontSize: "17px", fontWeight: 700 }}>{plan.label}</span>
                 </div>
 
@@ -306,7 +248,7 @@ export default function PricingPage() {
                         color: "var(--text-secondary)",
                       }}
                     >
-                      <IconCheck size={13} style={{ color: plan.accentVar, flexShrink: 0, marginTop: "1px" }} />
+                      <IconCheck size={13} style={{ color: ACCENT[plan.id], flexShrink: 0, marginTop: "1px" }} />
                       {f}
                     </li>
                   ))}
