@@ -98,10 +98,19 @@ function getStripe(): Stripe {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Same pattern as payments/index.ts (which works from the browser), plus stripe-signature
+// because this function also receives Stripe webhooks. Without these on the POST responses,
+// the browser blocks the 200 and supabase-js reports "Failed to send a request…".
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
 }
 
@@ -577,14 +586,7 @@ async function handleWebhook(req: Request): Promise<Response> {
 Deno.serve(async (req: Request): Promise<Response> => {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
-      },
-    });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
