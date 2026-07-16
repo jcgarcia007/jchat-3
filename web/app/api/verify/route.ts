@@ -45,6 +45,9 @@ function todayUTC(): string {
  * Auth is an API Key + Secret (Basic base64(apiKey:apiSecret)), NOT the Account Auth Token.
  * Kill-switch (FIX #1d): until all FOUR secrets exist, send_sms/verify_sms return the same
  * 503 "Verification flow not available yet" as before — the UI contract is unchanged.
+ *
+ * NOTE: Vercel snapshots env vars at build time — rotating the Twilio secrets requires a
+ * fresh deployment (an empty commit is skipped by Vercel and does NOT pick them up).
  */
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_API_KEY = process.env.TWILIO_API_KEY;
