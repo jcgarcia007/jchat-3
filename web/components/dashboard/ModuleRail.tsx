@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { IconShield, IconBuildingStore, IconUser, IconLogout } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { IconMapPin, IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
 import { resolveActiveBusiness } from "@/lib/business";
-import { supabase } from "@/lib/supabase";
 import {
   NAV_MODULES,
   CONFIG_MODULE,
@@ -14,16 +13,17 @@ import {
   type NavModule,
 } from "./nav-modules";
 import { useServicePending } from "./useServicePending";
+import { NAV4A, MODULE_COLORS, NEUTRAL_CHIP, initialsOf } from "./nav4a-tokens";
 
-// Dashboard 4A — the 100px module rail.
+// Dashboard 4A — hi-fi module rail (100px, navy).
 //
-// Vertical chips (icon + label) for the 6 modules; Configuración pinned to the
-// bottom (margin-top:auto) with its engranaje icon, separated from the 6. The
-// active module is derived from the pathname. Super-admin link preserved from
-// the old Sidebar. Styling uses --db-* tokens only; the active chip is raised
-// with --db-accent (per-module color chips are a later styling phase).
+// Matches the handoff: navy #0D1B3E column, brand-gradient logo on top, 6
+// per-module color chips, neutral gear for Config, user avatar pinned bottom
+// (VISUAL ONLY — logout now lives inside the Configuración subnav). The business
+// selector also moved OUT of the rail into the subnav. Per-module colors come
+// from the scoped nav4a-tokens (no --db-* touched, no hex in old components).
 
-/** A module has a live badge if any of its pages carries service_pending. */
+/** A module has the pending badge if any page carries service_pending (Pedidos). */
 function moduleHasServiceBadge(mod: NavModule): boolean {
   return mod.pages.some((p) => p.badgeKey === "service_pending");
 }
@@ -31,16 +31,15 @@ function moduleHasServiceBadge(mod: NavModule): boolean {
 function RailChip({
   mod,
   active,
-  badge,
+  showBadge,
 }: {
   mod: NavModule;
   active: boolean;
-  badge: number;
+  showBadge: boolean;
 }) {
   const Icon = mod.icon;
-  // A module links to its first page (Resumen → /dashboard, etc.).
   const href = mod.pages[0]?.href ?? "/dashboard";
-  const showBadge = moduleHasServiceBadge(mod) && badge > 0;
+  const c = MODULE_COLORS[mod.id] ?? NEUTRAL_CHIP;
 
   return (
     <Link
@@ -49,61 +48,56 @@ function RailChip({
       aria-label={mod.label}
       aria-current={active ? "page" : undefined}
       style={{
-        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        gap: "4px",
-        width: "76px",
-        paddingTop: "10px",
-        paddingBottom: "10px",
-        borderRadius: "12px",
+        gap: "5px",
         textDecoration: "none",
-        background: active ? "var(--db-bg-elevated)" : "transparent",
-        borderLeft: active
-          ? "2px solid var(--color-brand)"
-          : "2px solid transparent",
-        color: active ? "var(--db-accent)" : "var(--db-text-secondary)",
-        transition: "background 0.15s, color 0.15s",
       }}
     >
-      <Icon size={22} stroke={1.6} />
       <span
         style={{
-          fontSize: "11px",
-          fontWeight: active ? 600 : 500,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "46px",
+          height: "46px",
+          borderRadius: "14px",
+          background: active ? c.solid : c.tint,
+          color: active ? "#ffffff" : c.icon,
+          boxShadow: active ? `0 0 0 3px ${c.ring}` : "none",
+          transition: "background 0.15s, box-shadow 0.15s, color 0.15s",
+        }}
+      >
+        <Icon size={20} stroke={1.75} />
+
+        {showBadge && (
+          <span
+            aria-label="Pendientes"
+            style={{
+              position: "absolute",
+              top: "-2px",
+              right: "18px",
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: NAV4A.danger,
+            }}
+          />
+        )}
+      </span>
+
+      <span
+        style={{
+          fontSize: "10px",
+          fontWeight: 700,
           lineHeight: 1,
-          textAlign: "center",
+          color: active ? NAV4A.railLabelActive : NAV4A.railLabelInactive,
         }}
       >
         {mod.label}
       </span>
-
-      {showBadge && (
-        <span
-          aria-label={`${badge} pending`}
-          style={{
-            position: "absolute",
-            top: "6px",
-            right: "16px",
-            minWidth: "16px",
-            height: "16px",
-            borderRadius: "8px",
-            background: "var(--db-danger)",
-            color: "var(--db-accent-text)",
-            fontSize: "9px",
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 4px",
-            lineHeight: 1,
-          }}
-        >
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
     </Link>
   );
 }
@@ -111,17 +105,8 @@ function RailChip({
 export function ModuleRail() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
+  const [bizName, setBizName] = useState<string>("");
   const servicePending = useServicePending();
-
-  // Active business name — powers the business selector button (replaces the
-  // TopBar's switcher). Resolved the same way the old TopBar did.
-  const [activeBizName, setActiveBizName] = useState<string>("");
-
-  // User menu (logout) popover. Positioned with fixed coords read from the
-  // button's rect on open, so the rail's overflow can't clip it.
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  const userBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -129,39 +114,16 @@ export function ModuleRail() {
       if (active) setShowAdmin(ok);
     });
     void resolveActiveBusiness().then((res) => {
-      if (active && res.ok) setActiveBizName(res.business.name);
+      if (active && res.ok) setBizName(res.business.name);
     });
     return () => {
       active = false;
     };
   }, []);
 
-  function toggleUserMenu() {
-    if (userMenuOpen) {
-      setUserMenuOpen(false);
-      return;
-    }
-    const rect = userBtnRef.current?.getBoundingClientRect();
-    if (rect) setMenuPos({ top: rect.top, left: rect.right + 8 });
-    setUserMenuOpen(true);
-  }
-
-  async function handleLogout() {
-    // No pre-existing logout helper in the codebase — sign out via the same
-    // browser client the app already uses, then hard-navigate to /auth/login
-    // (where the dashboard auth gate already sends unauthenticated users) so
-    // server components re-evaluate the cleared session.
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Non-fatal: fall through to the redirect regardless.
-    }
-    window.location.href = "/auth/login";
-  }
-
   const activeModule = findActiveModule(pathname);
   const adminActive = pathname.startsWith("/super-admin");
-  const bizInitial = activeBizName ? activeBizName.charAt(0).toUpperCase() : "";
+  const avatarInitials = bizName ? initialsOf(bizName) : "";
 
   return (
     <nav
@@ -175,39 +137,56 @@ export function ModuleRail() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "12px",
-        paddingBottom: "12px",
-        gap: "4px",
-        background: "var(--db-bg-surface)",
-        borderRight: "1px solid var(--db-border)",
+        padding: "20px 8px",
+        gap: "8px",
+        background: NAV4A.navy,
         overflowY: "auto",
         overflowX: "hidden",
         scrollbarWidth: "none",
       }}
     >
+      {/* Logo */}
+      <div
+        aria-hidden
+        style={{
+          width: "38px",
+          height: "38px",
+          borderRadius: "11px",
+          background: NAV4A.brandGradient,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+          flexShrink: 0,
+        }}
+      >
+        <IconMapPin size={20} stroke={1.9} color="#ffffff" />
+      </div>
+
+      {/* 6 module chips */}
       {NAV_MODULES.map((mod) => (
         <RailChip
           key={mod.id}
           mod={mod}
           active={activeModule?.id === mod.id}
-          badge={servicePending}
+          showBadge={moduleHasServiceBadge(mod) && servicePending > 0}
         />
       ))}
 
-      {/* Configuración — pinned to the bottom, separated from the 6 modules. */}
-      <div style={{ marginTop: "auto", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-        <div
-          style={{
-            width: "48px",
-            height: "1px",
-            background: "var(--db-border)",
-            margin: "4px 0",
-          }}
-        />
+      {/* Configuración — neutral gear chip, then super-admin, then avatar pinned bottom. */}
+      <div
+        style={{
+          marginTop: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
         <RailChip
           mod={CONFIG_MODULE}
           active={activeModule?.id === CONFIG_MODULE.id}
-          badge={0}
+          showBadge={false}
         />
 
         {showAdmin && (
@@ -220,182 +199,59 @@ export function ModuleRail() {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              gap: "4px",
-              width: "76px",
-              paddingTop: "10px",
-              paddingBottom: "10px",
-              borderRadius: "12px",
+              gap: "5px",
               textDecoration: "none",
-              background: adminActive ? "var(--db-bg-elevated)" : "transparent",
-              borderLeft: adminActive
-                ? "2px solid var(--color-brand)"
-                : "2px solid transparent",
-              color: adminActive ? "var(--db-accent)" : "var(--db-text-secondary)",
-              transition: "background 0.15s, color 0.15s",
             }}
           >
-            <IconShield size={22} stroke={1.6} />
-            <span style={{ fontSize: "11px", fontWeight: adminActive ? 600 : 500, lineHeight: 1 }}>
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "46px",
+                height: "46px",
+                borderRadius: "14px",
+                background: adminActive ? NEUTRAL_CHIP.solid : NEUTRAL_CHIP.tint,
+                color: adminActive ? "#ffffff" : NEUTRAL_CHIP.icon,
+                boxShadow: adminActive ? `0 0 0 3px ${NEUTRAL_CHIP.ring}` : "none",
+              }}
+            >
+              <IconShield size={20} stroke={1.75} />
+            </span>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                lineHeight: 1,
+                color: adminActive ? NAV4A.railLabelActive : NAV4A.railLabelInactive,
+              }}
+            >
               Admin
             </span>
           </Link>
         )}
 
-        {/* Account controls — replace the removed TopBar's business switcher + user menu. */}
+        {/* User avatar — visual only. Logout lives in the Configuración subnav. */}
         <div
+          aria-label={bizName ? `Cuenta: ${bizName}` : "Cuenta"}
+          title={bizName || "Cuenta"}
           style={{
-            width: "48px",
-            height: "1px",
-            background: "var(--db-border)",
-            margin: "4px 0",
-          }}
-        />
-
-        {/* Business selector → Overview (/dashboard), the existing selection screen. */}
-        <Link
-          href="/dashboard"
-          title={activeBizName ? `Cambiar negocio (actual: ${activeBizName})` : "Cambiar negocio"}
-          aria-label={activeBizName ? `Cambiar negocio, actual: ${activeBizName}` : "Cambiar negocio"}
-          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: NAV4A.brandGradient,
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: "4px",
-            width: "76px",
-            paddingTop: "10px",
-            paddingBottom: "10px",
-            borderRadius: "12px",
-            textDecoration: "none",
-            background: "transparent",
-            borderLeft: "2px solid transparent",
-            color: "var(--db-text-secondary)",
-            transition: "background 0.15s, color 0.15s",
+            fontSize: "12px",
+            fontWeight: 900,
+            color: "#ffffff",
+            flexShrink: 0,
           }}
         >
-          <IconBuildingStore size={22} stroke={1.6} />
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              lineHeight: 1,
-              maxWidth: "72px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {activeBizName || "Negocio"}
-          </span>
-        </Link>
-
-        {/* User menu (logout). Popover opens to the right of the rail. */}
-        <button
-          ref={userBtnRef}
-          type="button"
-          onClick={toggleUserMenu}
-          title="Cuenta"
-          aria-label="Menú de usuario"
-          aria-haspopup="menu"
-          aria-expanded={userMenuOpen}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-            width: "76px",
-            paddingTop: "10px",
-            paddingBottom: "10px",
-            borderRadius: "12px",
-            border: "none",
-            background: userMenuOpen ? "var(--db-bg-elevated)" : "transparent",
-            color: userMenuOpen ? "var(--db-accent)" : "var(--db-text-secondary)",
-            cursor: "pointer",
-            transition: "background 0.15s, color 0.15s",
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              background: "var(--db-accent-bg)",
-              color: "var(--db-accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              fontWeight: 700,
-            }}
-          >
-            {bizInitial || <IconUser size={17} stroke={1.7} />}
-          </span>
-          <span style={{ fontSize: "11px", fontWeight: userMenuOpen ? 600 : 500, lineHeight: 1 }}>
-            Cuenta
-          </span>
-        </button>
+          {avatarInitials}
+        </div>
       </div>
-
-      {userMenuOpen && menuPos && (
-        <>
-          {/* Click-away overlay (same pattern as the old TopBar dropdown). */}
-          <div
-            onClick={() => setUserMenuOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
-          />
-          <div
-            role="menu"
-            style={{
-              position: "fixed",
-              top: menuPos.top,
-              left: menuPos.left,
-              minWidth: "180px",
-              background: "var(--db-bg-elevated)",
-              border: "1px solid var(--db-border)",
-              borderRadius: "10px",
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
-              zIndex: 41,
-              padding: "4px",
-            }}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setUserMenuOpen(false);
-                void handleLogout();
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--db-bg-overlay)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: "8px",
-                border: "none",
-                background: "transparent",
-                color: "var(--db-text-primary)",
-                fontSize: "14px",
-                fontWeight: 500,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <IconLogout size={17} stroke={1.7} />
-              <span>Cerrar sesión</span>
-            </button>
-          </div>
-        </>
-      )}
     </nav>
   );
 }
