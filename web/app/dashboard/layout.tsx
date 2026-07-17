@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { NewDashboardShell } from "@/components/dashboard/NewDashboardShell";
 import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
 import {
   createSupabaseServerClient,
@@ -70,43 +71,53 @@ export default async function DashboardLayout({
     initialThemeId = biz?.dashboard_theme_id ?? 1;
   }
 
+  // Dashboard 4A rollout flag (Fase 0). Default OFF: without this env var set to
+  // "true", the dashboard renders EXACTLY as before (Sidebar 48px + TopBar).
+  // When "true", the new navigation (100px rail + contextual subnav, no TopBar)
+  // is used instead. The auth/plan gate above runs identically on both paths.
+  const useNewNav = process.env.NEXT_PUBLIC_NEW_DASHBOARD === "true";
+
   return (
     <DashboardThemeProvider initialThemeId={initialThemeId}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          minHeight: "100vh",
-          background: "var(--db-bg-base)",
-          color: "var(--db-text-primary)",
-        }}
-      >
-        {/* 48-px icon rail */}
-        <Sidebar />
-
-        {/* Main content column */}
+      {useNewNav ? (
+        <NewDashboardShell>{children}</NewDashboardShell>
+      ) : (
         <div
           style={{
-            flex: 1,
             display: "flex",
-            flexDirection: "column",
-            minWidth: 0,
-            overflow: "hidden",
+            flexDirection: "row",
+            minHeight: "100vh",
+            background: "var(--db-bg-base)",
+            color: "var(--db-text-primary)",
           }}
         >
-          <TopBar />
+          {/* 48-px icon rail */}
+          <Sidebar />
 
-          <main
+          {/* Main content column */}
+          <div
             style={{
               flex: 1,
-              overflowY: "auto",
-              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+              overflow: "hidden",
             }}
           >
-            {children}
-          </main>
+            <TopBar />
+
+            <main
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "24px",
+              }}
+            >
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
+      )}
     </DashboardThemeProvider>
   );
 }
