@@ -17,7 +17,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  IconArmchair,
   IconPlus,
   IconPencil,
   IconTrash,
@@ -226,47 +225,53 @@ export default function TablesPage() {
         <Notice>Aún no has registrado mesas.</Notice>
       ) : (
         floors.map((floor) => (
-          <div key={floor} style={{ marginBottom: "24px" }}>
+          <div key={floor} style={{ marginBottom: "28px" }}>
             {floors.length > 1 && (
-              <h2 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--db-text-tertiary)", margin: "0 0 10px" }}>
+              <h2 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--db-text-tertiary)", margin: "0 0 12px" }}>
                 {floor}
               </h2>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                gap: "14px",
+              }}
+            >
               {rows.filter((r) => r.floor === floor).map((r) => (
                 <div
                   key={r.id}
                   style={{
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
-                    gap: "14px",
-                    padding: "14px 16px",
-                    borderRadius: "12px",
+                    gap: "6px",
+                    padding: "16px 12px",
+                    borderRadius: "14px",
                     background: "var(--db-bg-surface)",
                     border: "1px solid var(--db-border)",
-                    opacity: r.is_active ? 1 : 0.55,
+                    opacity: r.is_active ? 1 : 0.5,
                   }}
                 >
-                  <span style={ICON_BOX}><IconArmchair size={22} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-                      {r.label}
-                      {!r.is_active && (
-                        <span style={{ marginLeft: "8px", fontSize: "12px", fontWeight: 600, color: "var(--db-text-tertiary)" }}>
-                          (inactiva)
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-                      {r.seats} {r.seats === 1 ? "silla" : "sillas"}
-                    </div>
+                  <TableGlyph label={r.label} seats={r.seats} />
+
+                  <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                    {r.seats} {r.seats === 1 ? "silla" : "sillas"}
                   </div>
-                  <button type="button" onClick={() => openEdit(r)} aria-label={`Editar ${r.label}`} style={ICON_BTN}>
-                    <IconPencil size={17} />
-                  </button>
-                  <button type="button" onClick={() => void remove(r)} aria-label={`Eliminar ${r.label}`} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
-                    <IconTrash size={17} />
-                  </button>
+                  {!r.is_active && (
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--db-text-tertiary)" }}>
+                      Inactiva
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                    <button type="button" onClick={() => openEdit(r)} aria-label={`Editar ${r.label}`} style={ICON_BTN}>
+                      <IconPencil size={16} />
+                    </button>
+                    <button type="button" onClick={() => void remove(r)} aria-label={`Eliminar ${r.label}`} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
+                      <IconTrash size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -297,6 +302,57 @@ function Notice({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * Visual table glyph: a central circle (the table) with the label inside, and
+ * `seats` chairs drawn as 45°-rotated rounded squares evenly around it. Chairs
+ * reflect the REAL seat count. To avoid clutter, at most 10 chairs are drawn;
+ * the exact count always shows in the caption below the glyph. Tokens only.
+ */
+function TableGlyph({ label, seats }: { label: string; seats: number }) {
+  const SIZE = 180;
+  const C = SIZE / 2; // center
+  const RING = 58; // chair distance from center
+  const drawn = Math.max(1, Math.min(seats, 10)); // cap drawn chairs at 10
+  const chairs = Array.from({ length: drawn }, (_, i) => {
+    // -45° offset so 4 chairs land on the diagonals (matches the reference).
+    const rad = (((360 / drawn) * i - 45) * Math.PI) / 180;
+    return { cx: C + RING * Math.cos(rad), cy: C + RING * Math.sin(rad) };
+  });
+
+  return (
+    <svg
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      width="150"
+      height="150"
+      role="img"
+      aria-label={`Mesa ${label}, ${seats} ${seats === 1 ? "silla" : "sillas"}`}
+    >
+      {chairs.map((ch, i) => (
+        <rect
+          key={i}
+          x={ch.cx - 13}
+          y={ch.cy - 13}
+          width={26}
+          height={26}
+          rx={6}
+          transform={`rotate(45 ${ch.cx} ${ch.cy})`}
+          style={{ fill: "transparent", stroke: "var(--db-border)", strokeWidth: 2 }}
+        />
+      ))}
+      <circle cx={C} cy={C} r={34} style={{ fill: "transparent", stroke: "var(--db-border)", strokeWidth: 2 }} />
+      <text
+        x={C}
+        y={C}
+        textAnchor="middle"
+        dominantBaseline="central"
+        style={{ fill: "var(--db-accent)", fontSize: "15px", fontWeight: 600 }}
+      >
+        {label}
+      </text>
+    </svg>
   );
 }
 
@@ -436,18 +492,6 @@ const ICON_BTN: React.CSSProperties = {
   color: "var(--db-text-secondary)",
   border: "1px solid var(--db-border)",
   cursor: "pointer",
-  flexShrink: 0,
-};
-
-const ICON_BOX: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: "40px",
-  height: "40px",
-  borderRadius: "10px",
-  background: "var(--db-accent-bg)",
-  color: "var(--db-accent)",
   flexShrink: 0,
 };
 
