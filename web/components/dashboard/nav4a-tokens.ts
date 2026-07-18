@@ -23,6 +23,11 @@ export const NAV4A = {
   // Rail labels
   railLabelActive: "#ffffff",
   railLabelInactive: "rgba(255,255,255,0.6)",
+  // Business switcher dropdown
+  menuShadow: "0 10px 30px rgba(13,27,62,0.16)",
+  itemHoverBg: "#F3F4F6",
+  eventTagBg: "rgba(85,74,183,0.12)",
+  eventTagText: "#554AB7",
   // Shared
   danger: "#E24B4A",
 } as const;

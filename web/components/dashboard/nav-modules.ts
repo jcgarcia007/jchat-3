@@ -30,6 +30,7 @@ import {
   IconSettings,
   IconUsers,
   IconShieldLock,
+  IconBuildingStore,
 } from "@tabler/icons-react";
 
 export type NavIcon = React.ComponentType<{ size?: number; stroke?: number }>;
@@ -118,6 +119,7 @@ export const CONFIG_MODULE: NavModule = {
   label: "Configuración",
   icon: IconSettings,
   pages: [
+    { label: "Negocios", href: "/dashboard/configuration/businesses", icon: IconBuildingStore },
     { label: "Configuración", href: "/dashboard/configuration", icon: IconSettings },
     { label: "Empleados", href: "/dashboard/employees", icon: IconUsers },
     { label: "Roles", href: "/dashboard/roles", icon: IconShieldLock },
@@ -130,6 +132,23 @@ export function isNavPageActive(href: string, pathname: string): boolean {
   return href === "/dashboard"
     ? pathname === "/dashboard"
     : pathname === href || pathname.startsWith(href + "/");
+}
+
+/**
+ * The single active page href within a module's pages, resolved by LONGEST
+ * prefix match. This matters for nested routes: /dashboard/configuration/businesses
+ * matches BOTH "Configuración" (/dashboard/configuration) and "Negocios" via
+ * isNavPageActive, but only the longer, more specific href should highlight.
+ * Returns null when no page matches.
+ */
+export function resolveActivePageHref(pages: NavPage[], pathname: string): string | null {
+  let best: string | null = null;
+  for (const p of pages) {
+    if (isNavPageActive(p.href, pathname)) {
+      if (best === null || p.href.length > best.length) best = p.href;
+    }
+  }
+  return best;
 }
 
 /**

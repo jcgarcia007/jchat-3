@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IconMapPin, IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
-import { resolveActiveBusiness } from "@/lib/business";
 import {
   NAV_MODULES,
   CONFIG_MODULE,
@@ -13,6 +12,7 @@ import {
   type NavModule,
 } from "./nav-modules";
 import { useServicePending } from "./useServicePending";
+import { useActiveBusinessName } from "./useActiveBusinessName";
 import { NAV4A, MODULE_COLORS, NEUTRAL_CHIP, initialsOf } from "./nav4a-tokens";
 
 // Dashboard 4A — hi-fi module rail (100px, navy).
@@ -105,16 +105,13 @@ function RailChip({
 export function ModuleRail() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
-  const [bizName, setBizName] = useState<string>("");
+  const { name: bizName } = useActiveBusinessName();
   const servicePending = useServicePending();
 
   useEffect(() => {
     let active = true;
     isSuperAdmin().then((ok) => {
       if (active) setShowAdmin(ok);
-    });
-    void resolveActiveBusiness().then((res) => {
-      if (active && res.ok) setBizName(res.business.name);
     });
     return () => {
       active = false;

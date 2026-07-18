@@ -1,84 +1,323 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { IconSelector, IconLogout } from "@tabler/icons-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { IconSelector, IconLogout, IconCheck, IconPlus } from "@tabler/icons-react";
 import { supabase } from "@/lib/supabase";
-import { resolveActiveBusiness } from "@/lib/business";
-import { isNavPageActive, CONFIG_MODULE, type NavModule } from "./nav-modules";
+import {
+  listUserBusinesses,
+  listUserEvents,
+  setActiveBusiness,
+} from "@/lib/business";
+import {
+  resolveActivePageHref,
+  CONFIG_MODULE,
+  type NavModule,
+} from "./nav-modules";
 import { useServicePending } from "./useServicePending";
+import { useActiveBusinessName, notifyActiveBusinessChanged } from "./useActiveBusinessName";
 import { NAV4A, planLabel, renewLine, initialsOf } from "./nav4a-tokens";
 
 // Dashboard 4A — hi-fi contextual subnav (230px, white).
 //
-// GLOBAL chrome: the business selector (top) and the plan card (bottom) always
+// GLOBAL chrome: the business switcher (top) and the plan card (bottom) always
 // render — even for Resumen and no-module routes. Only the section LIST is
 // conditional (hidden when the active module has <2 pages, e.g. Resumen).
 // Logout lives here, at the end of the Configuración list. Colors come from the
 // scoped nav4a-tokens.
+
+const CREATE_ROUTE = "/dashboard/configuration/businesses";
 
 interface PlanInfo {
   plan: string | null;
   renewsAt: string | null;
 }
 
-function BusinessSelector({ name }: { name: string }) {
-  const initials = name ? initialsOf(name) : "";
-  // Navigating to Overview (/dashboard) is the existing business-switch surface.
+interface SwitcherItem {
+  id: string;
+  name: string;
+  kind: "business" | "event";
+}
+
+// ─── Business switcher (dropdown) ────────────────────────────────────────────
+// Was a <Link> to Overview; now a button that opens a menu listing the owner's
+// businesses + events. Selecting one calls setActiveBusiness (existing, with its
+// ownership guard), broadcasts the change, and router.refresh()es the current
+// page — no navigation. Menu is fixed-positioned off the button rect so the
+// subnav's overflow can't clip it; closes on select, click-away, and Escape.
+
+function BusinessSwitcher() {
+  const router = useRouter();
+  const { id: activeId, name: activeName } = useActiveBusinessName();
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [items, setItems] = useState<SwitcherItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [biz, events] = await Promise.all([listUserBusinesses(), listUserEvents()]);
+      const merged: SwitcherItem[] = [
+        ...biz.map((b) => ({ id: b.id, name: b.name, kind: "business" as const })),
+        ...events.map((e) => ({ id: e.id, name: e.name, kind: "event" as const })),
+      ];
+      setItems(merged);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  function openMenu() {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    setOpen(true);
+    void loadItems();
+  }
+
+  function toggle() {
+    if (open) setOpen(false);
+    else openMenu();
+  }
+
+  // Close on Escape while open.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  async function activate(id: string) {
+    if (id === activeId) {
+      setOpen(false);
+      return;
+    }
+    setBusy(true);
+    const ok = await setActiveBusiness(id);
+    setBusy(false);
+    setOpen(false);
+    if (ok) {
+      notifyActiveBusinessChanged(); // sync sibling client chrome (rail avatar, this button)
+      router.refresh(); // re-fetch server components on the current route
+    }
+  }
+
+  const initials = activeName ? initialsOf(activeName) : "";
+
   return (
-    <Link
-      href="/dashboard"
-      aria-label={name ? `Cambiar negocio, actual: ${name}` : "Cambiar negocio"}
-      title={name || "Cambiar negocio"}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "10px",
-        borderRadius: "14px",
-        border: `0.5px solid ${NAV4A.subnavBorder}`,
-        textDecoration: "none",
-        marginBottom: "20px",
-      }}
-    >
-      <span
+    <div style={{ marginBottom: "20px" }}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={activeName ? `Cambiar negocio, actual: ${activeName}` : "Cambiar negocio"}
+        title={activeName || "Cambiar negocio"}
+        disabled={busy}
         style={{
-          width: "34px",
-          height: "34px",
-          borderRadius: "10px",
-          background: NAV4A.brandGradient,
-          color: "#ffffff",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: 900,
-          flexShrink: 0,
+          gap: "10px",
+          width: "100%",
+          padding: "10px",
+          borderRadius: "14px",
+          border: `0.5px solid ${NAV4A.subnavBorder}`,
+          background: open ? NAV4A.itemHoverBg : "transparent",
+          cursor: busy ? "wait" : "pointer",
+          textAlign: "left",
         }}
       >
-        {initials}
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{
-            display: "block",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: NAV4A.titleNavy,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            width: "34px",
+            height: "34px",
+            borderRadius: "10px",
+            background: NAV4A.brandGradient,
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "12px",
+            fontWeight: 900,
+            flexShrink: 0,
           }}
         >
-          {name || "Selecciona negocio"}
+          {initials}
         </span>
-        <span style={{ display: "block", fontSize: "11px", color: NAV4A.eyebrow }}>
-          Cambiar negocio
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              display: "block",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: NAV4A.titleNavy,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {activeName || "Selecciona negocio"}
+          </span>
+          <span style={{ display: "block", fontSize: "11px", color: NAV4A.eyebrow }}>
+            Cambiar negocio
+          </span>
         </span>
-      </span>
-      <IconSelector size={16} stroke={1.7} color={NAV4A.eyebrow} />
-    </Link>
+        <IconSelector size={16} stroke={1.7} color={NAV4A.eyebrow} />
+      </button>
+
+      {open && pos && (
+        <>
+          {/* Click-away overlay */}
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+          />
+          <div
+            role="menu"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              minWidth: "220px",
+              maxHeight: "60vh",
+              overflowY: "auto",
+              background: NAV4A.subnavBg,
+              border: `0.5px solid ${NAV4A.subnavBorder}`,
+              borderRadius: "14px",
+              boxShadow: NAV4A.menuShadow,
+              zIndex: 41,
+              padding: "6px",
+            }}
+          >
+            {loading && (
+              <div style={{ padding: "10px 12px", fontSize: "13px", color: NAV4A.eyebrow }}>
+                Cargando…
+              </div>
+            )}
+
+            {!loading &&
+              items.map((item) => {
+                const isActive = item.id === activeId;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void activate(item.id)}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.background = NAV4A.itemHoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.background = "transparent";
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: isActive ? NAV4A.subnavItemActiveBg : "transparent",
+                      color: isActive ? NAV4A.subnavItemActiveText : NAV4A.titleNavy,
+                      fontSize: "14px",
+                      fontWeight: isActive ? 600 : 500,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        borderRadius: "8px",
+                        background: NAV4A.brandGradient,
+                        color: "#ffffff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        fontWeight: 900,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {initialsOf(item.name)}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                    {item.kind === "event" && (
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: "6px",
+                          background: NAV4A.eventTagBg,
+                          color: NAV4A.eventTagText,
+                        }}
+                      >
+                        Evento
+                      </span>
+                    )}
+                    {isActive && <IconCheck size={16} stroke={2} />}
+                  </button>
+                );
+              })}
+
+            {!loading && items.length === 0 && (
+              <div style={{ padding: "8px 10px", fontSize: "13px", color: NAV4A.eyebrow }}>
+                No tienes negocios todavía.
+              </div>
+            )}
+
+            {/* Create — always available, points to the Configuración › Negocios tab */}
+            <Link
+              href={CREATE_ROUTE}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 10px",
+                marginTop: "4px",
+                borderTop: `0.5px solid ${NAV4A.subnavBorder}`,
+                borderRadius: "0 0 8px 8px",
+                textDecoration: "none",
+                color: NAV4A.subnavItemActiveText,
+                fontSize: "14px",
+                fontWeight: 600,
+              }}
+            >
+              <IconPlus size={16} stroke={2} />
+              <span>Crear negocio</span>
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -111,14 +350,10 @@ function PlanCard({ info }: { info: PlanInfo | null }) {
 export function ModuleSubnav({ module }: { module: NavModule | null }) {
   const pathname = usePathname();
   const servicePending = useServicePending();
-  const [bizName, setBizName] = useState<string>("");
   const [plan, setPlan] = useState<PlanInfo | null>(null);
 
   useEffect(() => {
     let active = true;
-    void resolveActiveBusiness().then((res) => {
-      if (active && res.ok) setBizName(res.business.name);
-    });
     void (async () => {
       try {
         const {
@@ -156,6 +391,9 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
 
   const showList = !!module && module.pages.length >= 2;
   const isConfig = module?.id === CONFIG_MODULE.id;
+  // Longest-prefix match so nested routes (e.g. /dashboard/configuration/businesses)
+  // highlight only the most specific page, not its parent.
+  const activeHref = module ? resolveActivePageHref(module.pages, pathname) : null;
 
   return (
     <nav
@@ -174,8 +412,8 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
         overflowY: "auto",
       }}
     >
-      {/* Business selector — global */}
-      <BusinessSelector name={bizName} />
+      {/* Business switcher — global */}
+      <BusinessSwitcher />
 
       {/* Eyebrow — active module name */}
       {module && (
@@ -196,7 +434,7 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
       {/* Section list — hidden for <2-page modules (Resumen) */}
       {showList &&
         module!.pages.map(({ label, href, icon: Icon, badgeKey }) => {
-          const isActive = isNavPageActive(href, pathname);
+          const isActive = href === activeHref;
           const badge = badgeKey === "service_pending" ? servicePending : 0;
           return (
             <Link
