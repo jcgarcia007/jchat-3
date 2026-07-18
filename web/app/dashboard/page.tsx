@@ -20,6 +20,7 @@ import {
   type EventListItem,
 } from "@/lib/business";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
+import { SalesCalendar } from "@/components/dashboard/SalesCalendar";
 
 const CARD: React.CSSProperties = {
   background: "var(--db-bg-surface)",
@@ -196,15 +197,18 @@ export default function OverviewPage() {
         </p>
       )}
 
-      {/* Create entry point — only with the OLD nav. The new 4A nav moves this
-          to Configuración › Negocios; showing both would duplicate the action. */}
-      {!newNav && (
-        <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 26px" }}>
-          <Link href="/dashboard/create" style={{ ...CTA, fontSize: "17px", padding: "14px 28px", gap: "10px" }}>
-            <IconPlus size={20} /> Create new business or event
-          </Link>
-        </div>
-      )}
+      {/* With the new 4A nav, the Overview IS the sales calendar. With the old
+          nav (Production default) it stays EXACTLY as before: create CTA + lists.
+          The plan-usage line above shows in both. */}
+      {newNav ? (
+        <SalesCalendar />
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 26px" }}>
+            <Link href="/dashboard/create" style={{ ...CTA, fontSize: "17px", padding: "14px 28px", gap: "10px" }}>
+              <IconPlus size={20} /> Create new business or event
+            </Link>
+          </div>
 
       {/* ═══ Section 1 — Businesses ═══ */}
       <h2 style={SECTION_TITLE}>Your businesses</h2>
@@ -370,6 +374,8 @@ export default function OverviewPage() {
               );
             })
           )}
+        </>
+      )}
         </>
       )}
     </div>
