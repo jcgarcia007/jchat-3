@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   IconPlus,
+  IconMinus,
   IconPencil,
   IconTrash,
   IconDeviceFloppy,
@@ -58,6 +59,12 @@ export default function TablesPage() {
   const [form, setForm] = useState<FormState | null>(null); // null = closed
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Quick +/- seat adjust: per-table in-flight lock (a Set, so different tables
+  // can be adjusted concurrently but the SAME table can't chain writes) and a
+  // shared error line for a failed save.
+  const [savingSeats, setSavingSeats] = useState<Set<string>>(new Set());
+  const [seatError, setSeatError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) {
@@ -183,6 +190,34 @@ export default function TablesPage() {
     if (!error) await load();
   }
 
+  // Quick seat adjust (+/-), optimistic with rollback on DB error. Bounds match
+  // the tables_seats_range CHECK (1-50) from migration 069 — never exceeded.
+  async function adjustSeats(r: TableRow, delta: number) {
+    const next = r.seats + delta;
+    if (next < 1 || next > 50) return; // respect CHECK bounds
+    if (savingSeats.has(r.id)) return; // a write is already in flight for this table
+
+    const prev = r.seats;
+    // Optimistic: the glyph + caption update instantly.
+    setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, seats: next } : x)));
+    setSavingSeats((s) => new Set(s).add(r.id));
+    setSeatError(null);
+
+    const { error } = await supabase.from("tables").update({ seats: next }).eq("id", r.id);
+
+    setSavingSeats((s) => {
+      const n = new Set(s);
+      n.delete(r.id);
+      return n;
+    });
+
+    if (error) {
+      // Roll back so the screen never shows a value that wasn't saved.
+      setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, seats: prev } : x)));
+      setSeatError(`No se pudieron actualizar las sillas de "${r.label}". Inténtalo de nuevo.`);
+    }
+  }
+
   // ── States ─────────────────────────────────────────────────────────────────
   if (!activeId) {
     return <Shell><Notice>Selecciona un negocio para gestionar sus mesas.</Notice></Shell>;
@@ -208,6 +243,12 @@ export default function TablesPage() {
           onSave={() => void save()}
           onCancel={closeForm}
         />
+      )}
+
+      {seatError && (
+        <div style={{ fontSize: "13px", color: "var(--db-danger)", marginBottom: "12px" }}>
+          {seatError}
+        </div>
       )}
 
       {loading ? (
@@ -265,12 +306,41 @@ export default function TablesPage() {
                   )}
 
                   <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
-                    <button type="button" onClick={() => openEdit(r)} aria-label={`Editar ${r.label}`} style={ICON_BTN}>
-                      <IconPencil size={16} />
-                    </button>
-                    <button type="button" onClick={() => void remove(r)} aria-label={`Eliminar ${r.label}`} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
-                      <IconTrash size={16} />
-                    </button>
+                    {(() => {
+                      const busy = savingSeats.has(r.id);
+                      const minusDisabled = busy || r.seats <= 1;
+                      const plusDisabled = busy || r.seats >= 50;
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void adjustSeats(r, -1)}
+                            disabled={minusDisabled}
+                            aria-label={`Quitar una silla de ${r.label}`}
+                            title={`Quitar una silla de ${r.label}`}
+                            style={{ ...ICON_BTN, opacity: minusDisabled ? 0.4 : 1, cursor: minusDisabled ? "default" : "pointer" }}
+                          >
+                            <IconMinus size={16} />
+                          </button>
+                          <button type="button" onClick={() => openEdit(r)} aria-label={`Editar ${r.label}`} style={ICON_BTN}>
+                            <IconPencil size={16} />
+                          </button>
+                          <button type="button" onClick={() => void remove(r)} aria-label={`Eliminar ${r.label}`} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
+                            <IconTrash size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void adjustSeats(r, 1)}
+                            disabled={plusDisabled}
+                            aria-label={`Añadir una silla a ${r.label}`}
+                            title={`Añadir una silla a ${r.label}`}
+                            style={{ ...ICON_BTN, opacity: plusDisabled ? 0.4 : 1, cursor: plusDisabled ? "default" : "pointer" }}
+                          >
+                            <IconPlus size={16} />
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
