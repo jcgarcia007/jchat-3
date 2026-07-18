@@ -1,14 +1,25 @@
 "use client";
 
+/**
+ * JChat 3.0 — Configuración › Negocios (Dashboard 4A).
+ *
+ * New home for creating businesses/events (moved out of Overview, which becomes
+ * the sales summary later). Lists the owner's businesses + events with an
+ * "Activar" action and links to the existing create flow (/dashboard/create) —
+ * NO form is rebuilt here. Reuses @/lib/business helpers; --db-* tokens only.
+ */
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   IconBuildingStore,
   IconArrowRight,
   IconCalendarEvent,
-  IconCircleCheck,
   IconExternalLink,
   IconMapPin,
+  IconCircleCheck,
+  IconPlus,
 } from "@tabler/icons-react";
 import {
   listUserBusinesses,
@@ -19,6 +30,7 @@ import {
   type EventListItem,
 } from "@/lib/business";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
+import { notifyActiveBusinessChanged } from "@/components/dashboard/useActiveBusinessName";
 
 const CARD: React.CSSProperties = {
   background: "var(--db-bg-surface)",
@@ -42,7 +54,6 @@ const ICON_BOX: React.CSSProperties = {
   background: "var(--db-accent-bg)",
   color: "var(--db-accent)",
   flexShrink: 0,
-  fontSize: "24px",
 };
 
 const CTA: React.CSSProperties = {
@@ -81,7 +92,6 @@ const SECTION_TITLE: React.CSSProperties = {
   margin: "0 0 14px",
 };
 
-/** Green "Verified" pill; renders nothing when the business isn't verified. */
 function VerificationBadge({ isVerified }: { isVerified: boolean }) {
   if (!isVerified) return null;
   return (
@@ -99,7 +109,7 @@ function VerificationBadge({ isVerified }: { isVerified: boolean }) {
       }}
     >
       <IconCircleCheck size={13} />
-      Verified
+      Verificado
     </span>
   );
 }
@@ -132,7 +142,8 @@ function eventStatus(startsAt: string | null, endsAt: string | null): string {
   return "live";
 }
 
-export default function OverviewPage() {
+export default function ConfigBusinessesPage() {
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -164,37 +175,41 @@ export default function OverviewPage() {
     if (id === activeId) return;
     setSwitchingId(id);
     const ok = await setActiveBusiness(id);
+    setSwitchingId(null);
     if (ok) {
-      // Reload so every dashboard surface re-resolves the active business.
-      window.location.reload();
-    } else {
-      setSwitchingId(null);
+      setActiveId(id);
+      notifyActiveBusinessChanged(); // sync the rail avatar + subnav switcher
+      router.refresh(); // re-fetch server components without leaving the page
     }
   }
 
   const loadingRow = (
     <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-      Loading…
+      Cargando…
     </div>
   );
 
   return (
     <div>
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
-        Overview
+        Negocios
       </h1>
       {usage && (
-        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
-          Businesses: {usage.businesses.used}/{usage.businesses.limit} · Events:{" "}
-          {usage.events.used}/{usage.events.limit} · {usage.plan} plan
+        <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
+          Negocios: {usage.businesses.used}/{usage.businesses.limit} · Eventos:{" "}
+          {usage.events.used}/{usage.events.limit} · plan {usage.plan}
         </p>
       )}
 
-      {/* Create moved to Configuración › Negocios (Dashboard 4A). Overview keeps
-          the business/event lists for now; it becomes the sales summary later. */}
+      {/* Create entry point (reuses the existing chooser + wizard). */}
+      <div style={{ marginBottom: "26px" }}>
+        <Link href="/dashboard/create" style={{ ...CTA, fontSize: "15px", padding: "12px 22px", gap: "10px" }}>
+          <IconPlus size={18} /> Crear negocio o evento
+        </Link>
+      </div>
 
-      {/* ═══ Section 1 — Businesses ═══ */}
-      <h2 style={SECTION_TITLE}>Your businesses</h2>
+      {/* ═══ Businesses ═══ */}
+      <h2 style={SECTION_TITLE}>Tus negocios</h2>
 
       {loading ? (
         loadingRow
@@ -205,15 +220,15 @@ export default function OverviewPage() {
           </span>
           <div style={{ flex: 1, minWidth: "200px" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-              Register your business
+              Registra tu negocio
             </h3>
             <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-              Set up your venue to start chatting with customers, taking orders, and hosting events.
+              Crea tu local para chatear con clientes, recibir pedidos y organizar eventos.
             </p>
           </div>
-          <Link href="/business/register" style={CTA}>
+          <Link href="/dashboard/create" style={CTA}>
             <IconBuildingStore size={18} />
-            Register your business
+            Crear negocio
             <IconArrowRight size={16} />
           </Link>
         </section>
@@ -246,7 +261,7 @@ export default function OverviewPage() {
                     <VerificationBadge isVerified={b.is_verified} />
                     {isActive && (
                       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
-                        Active
+                        Activo
                       </span>
                     )}
                   </div>
@@ -256,14 +271,14 @@ export default function OverviewPage() {
                         jchat.app/b/<strong style={{ color: "var(--db-text-primary)" }}>{b.slug}</strong>
                       </>
                     ) : (
-                      "No public slug yet."
+                      "Sin slug público todavía."
                     )}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   {b.slug && (
                     <a href={`/b/${b.slug}`} target="_blank" rel="noreferrer" style={CTA}>
-                      View public page
+                      Ver página pública
                       <IconExternalLink size={16} />
                     </a>
                   )}
@@ -278,7 +293,7 @@ export default function OverviewPage() {
                         opacity: switchingId !== null && switchingId !== b.id ? 0.6 : 1,
                       }}
                     >
-                      {switchingId === b.id ? "Switching…" : "Set as active"}
+                      {switchingId === b.id ? "Activando…" : "Activar"}
                     </button>
                   )}
                 </div>
@@ -288,76 +303,72 @@ export default function OverviewPage() {
         </>
       )}
 
-      {/* ═══ Section 2 — Events ═══ */}
-      <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>Your events</h2>
+      {/* ═══ Events ═══ */}
+      <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>Tus eventos</h2>
 
       {loading ? (
         loadingRow
+      ) : events.length === 0 ? (
+        <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "0 0 4px" }}>
+          Aún no tienes eventos.
+        </p>
       ) : (
-        <>
-          {events.length === 0 ? (
-            <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "0 0 4px" }}>
-              No events yet.
-            </p>
-          ) : (
-            events.map((e) => {
-              const isActive = e.id === activeId;
-              return (
-                <section
-                  key={e.id}
-                  style={{
-                    ...CARD,
-                    marginBottom: "12px",
-                    ...(isActive
-                      ? {
-                          border: "2px solid var(--db-accent)",
-                          boxShadow: "0 0 0 3px var(--db-accent-bg)",
-                        }
-                      : {}),
-                  }}
-                >
-                  <span style={ICON_BOX}>
-                    <IconCalendarEvent size={26} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: "200px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
-                      <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                        {e.name}
-                      </h3>
-                      <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
-                      {isActive && (
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
-                          Active
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-                      <IconMapPin size={13} />
-                      {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "No start date"}
-                      {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    {!isActive && (
-                      <button
-                        type="button"
-                        onClick={() => void handleSetActive(e.id)}
-                        disabled={switchingId !== null}
-                        style={{
-                          ...SECONDARY_BTN,
-                          cursor: switchingId !== null ? "wait" : "pointer",
-                          opacity: switchingId !== null && switchingId !== e.id ? 0.6 : 1,
-                        }}
-                      >
-                        {switchingId === e.id ? "Switching…" : "Set as active"}
-                      </button>
-                    )}
-                  </div>
-                </section>
-              );
-            })
-          )}
-        </>
+        events.map((e) => {
+          const isActive = e.id === activeId;
+          return (
+            <section
+              key={e.id}
+              style={{
+                ...CARD,
+                marginBottom: "12px",
+                ...(isActive
+                  ? {
+                      border: "2px solid var(--db-accent)",
+                      boxShadow: "0 0 0 3px var(--db-accent-bg)",
+                    }
+                  : {}),
+              }}
+            >
+              <span style={ICON_BOX}>
+                <IconCalendarEvent size={26} />
+              </span>
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                    {e.name}
+                  </h3>
+                  <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
+                  {isActive && (
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
+                      Activo
+                    </span>
+                  )}
+                </div>
+                <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
+                  <IconMapPin size={13} />
+                  {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "Sin fecha de inicio"}
+                  {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {!isActive && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSetActive(e.id)}
+                    disabled={switchingId !== null}
+                    style={{
+                      ...SECONDARY_BTN,
+                      cursor: switchingId !== null ? "wait" : "pointer",
+                      opacity: switchingId !== null && switchingId !== e.id ? 0.6 : 1,
+                    }}
+                  >
+                    {switchingId === e.id ? "Activando…" : "Activar"}
+                  </button>
+                )}
+              </div>
+            </section>
+          );
+        })
       )}
     </div>
   );
