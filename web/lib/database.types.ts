@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      tables: {
+        Row: {
+          business_id: string
+          created_at: string
+          floor: string
+          id: string
+          is_active: boolean
+          label: string
+          seats: number
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          floor?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          seats?: number
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          floor?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          seats?: number
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tables_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_roles: {
         Row: {
           created_at: string
