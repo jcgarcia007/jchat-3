@@ -9,6 +9,7 @@ import {
   IconCircleCheck,
   IconExternalLink,
   IconMapPin,
+  IconPlus,
 } from "@tabler/icons-react";
 import {
   listUserBusinesses,
@@ -172,6 +173,11 @@ export default function OverviewPage() {
     }
   }
 
+  // With the new 4A nav, creating a business lives in Configuración › Negocios,
+  // so this CTA is hidden to avoid duplication. With the old nav (Production
+  // default), this button is the only create path — keep it.
+  const newNav = process.env.NEXT_PUBLIC_NEW_DASHBOARD === "true";
+
   const loadingRow = (
     <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>
       Loading…
@@ -190,8 +196,15 @@ export default function OverviewPage() {
         </p>
       )}
 
-      {/* Create moved to Configuración › Negocios (Dashboard 4A). Overview keeps
-          the business/event lists for now; it becomes the sales summary later. */}
+      {/* Create entry point — only with the OLD nav. The new 4A nav moves this
+          to Configuración › Negocios; showing both would duplicate the action. */}
+      {!newNav && (
+        <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 26px" }}>
+          <Link href="/dashboard/create" style={{ ...CTA, fontSize: "17px", padding: "14px 28px", gap: "10px" }}>
+            <IconPlus size={20} /> Create new business or event
+          </Link>
+        </div>
+      )}
 
       {/* ═══ Section 1 — Businesses ═══ */}
       <h2 style={SECTION_TITLE}>Your businesses</h2>
