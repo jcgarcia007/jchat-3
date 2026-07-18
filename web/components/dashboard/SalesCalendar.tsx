@@ -51,6 +51,10 @@ export function SalesCalendar() {
 
   const [totals, setTotals] = useState<Record<number, DayTotals>>({});
   const [loading, setLoading] = useState(true);
+  // A load FAILURE must never look like "no sales" on a money screen.
+  const [loadError, setLoadError] = useState(false);
+  // Bump to re-run the load effect (the "Reintentar" button).
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Today, in LOCAL time, for highlighting + the future-navigation guard.
   const today = useMemo(() => {
@@ -66,6 +70,7 @@ export function SalesCalendar() {
 
     if (!activeId || !isSupabaseConfigured) {
       setTotals({});
+      setLoadError(false);
       setLoading(false);
       return;
     }
@@ -91,7 +96,9 @@ export function SalesCalendar() {
       if (!active) return;
 
       if (error) {
+        // Never claim "no sales" when we simply couldn't load them.
         setTotals({});
+        setLoadError(true);
         setLoading(false);
         return;
       }
@@ -106,13 +113,14 @@ export function SalesCalendar() {
         acc[day] = entry;
       }
       setTotals(acc);
+      setLoadError(false);
       setLoading(false);
     })();
 
     return () => {
       active = false;
     };
-  }, [activeId, viewYear, viewMonth]);
+  }, [activeId, viewYear, viewMonth, reloadKey]);
 
   const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("es-ES", {
     month: "long",
@@ -127,24 +135,21 @@ export function SalesCalendar() {
   const monthCount = Object.values(totals).reduce((s, d) => s + d.count, 0);
   const hasSales = monthCount > 0;
 
+  // Shift the viewed month by delta, letting Date normalize month/year rollover.
+  // No nested setState inside an updater (which StrictMode could double-invoke).
+  function shiftMonth(delta: number) {
+    const d = new Date(viewYear, viewMonth + delta, 1);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+  }
   function goPrev() {
-    setViewMonth((m) => {
-      if (m === 0) {
-        setViewYear((y) => y - 1);
-        return 11;
-      }
-      return m - 1;
-    });
+    shiftMonth(-1);
   }
   function goNext() {
-    if (!canGoNext) return;
-    setViewMonth((m) => {
-      if (m === 11) {
-        setViewYear((y) => y + 1);
-        return 0;
-      }
-      return m + 1;
-    });
+    if (canGoNext) shiftMonth(1);
+  }
+  function retry() {
+    setReloadKey((k) => k + 1);
   }
 
   // No active business → guide the user to the switcher above.
@@ -212,10 +217,14 @@ export function SalesCalendar() {
 
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--db-text-primary)" }}>
-            {loading ? "—" : formatCents(monthCents)}
+            {loading || loadError ? "—" : formatCents(monthCents)}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--db-text-secondary)" }}>
-            {loading ? "Cargando…" : `${monthCount} ${monthCount === 1 ? "pedido" : "pedidos"} este mes`}
+          <div style={{ fontSize: "12px", color: loadError ? "var(--db-danger)" : "var(--db-text-secondary)" }}>
+            {loadError
+              ? "No se pudieron cargar las ventas"
+              : loading
+                ? "Cargando…"
+                : `${monthCount} ${monthCount === 1 ? "pedido" : "pedidos"} este mes`}
           </div>
         </div>
       </div>
@@ -239,8 +248,15 @@ export function SalesCalendar() {
         ))}
       </div>
 
-      {/* Day grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px" }}>
+      {/* Day grid — dimmed on load error so no cell implies a real 0. */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: "6px",
+          opacity: loadError ? 0.5 : 1,
+        }}
+      >
         {Array.from({ length: firstWeekday }).map((_, i) => (
           <div key={`blank-${i}`} />
         ))}
@@ -250,7 +266,8 @@ export function SalesCalendar() {
           const entry = totals[day];
           const isToday =
             viewYear === today.y && viewMonth === today.m && day === today.d;
-          const hasDay = !loading && !!entry && entry.cents > 0;
+          // On error, every day shows the neutral dash — never a "0" total.
+          const hasDay = !loading && !loadError && !!entry && entry.cents > 0;
 
           return (
             <div
@@ -291,8 +308,36 @@ export function SalesCalendar() {
         })}
       </div>
 
-      {/* Empty state (honest) */}
-      {!loading && !hasSales && (
+      {/* Load error — honest, actionable, and NOT the empty "no sales" copy. */}
+      {loadError && (
+        <div style={{ marginTop: "16px", textAlign: "center" }}>
+          <p style={{ fontSize: "14px", color: "var(--db-danger)", margin: "0 0 10px" }}>
+            No se pudieron cargar las ventas. Revisa tu conexión e inténtalo de nuevo.
+          </p>
+          <button
+            type="button"
+            onClick={retry}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: "1px solid var(--db-border)",
+              background: "var(--db-bg-surface)",
+              color: "var(--db-text-primary)",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {/* Empty state — only when the load SUCCEEDED with zero sales. */}
+      {!loading && !loadError && !hasSales && (
         <p style={{ marginTop: "16px", fontSize: "14px", color: "var(--db-text-secondary)", textAlign: "center" }}>
           Aún no hay ventas registradas este mes.
         </p>
