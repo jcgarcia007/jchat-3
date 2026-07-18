@@ -14,6 +14,7 @@ import {
   IconShoppingCart,
   IconChefHat,
   IconBell,
+  IconArmchair,
   IconCalendar,
   IconToolsKitchen2,
   IconPackage,
@@ -65,6 +66,7 @@ export const NAV_MODULES: NavModule[] = [
     label: "Pedidos",
     icon: IconShoppingCart,
     pages: [
+      { label: "Mesas", href: "/dashboard/tables", icon: IconArmchair },
       { label: "Pedidos", href: "/dashboard/orders", icon: IconShoppingCart },
       { label: "Cocina", href: "/dashboard/kds", icon: IconChefHat },
       { label: "Servicio", href: "/dashboard/service", icon: IconBell, badgeKey: "service_pending" },
