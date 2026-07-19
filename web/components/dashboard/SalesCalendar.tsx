@@ -4,10 +4,13 @@
  * Dashboard 4A — Overview sales calendar.
  *
  * A month grid of REAL sales for the active business: each day shows the summed
- * total_cents of that day's orders whose status counts as a sale. Days with no
- * sales show a dash — never a fabricated 0. Month summary = month total + order
- * count. No average-ticket / occupancy / peak-hour metrics: those have no real
- * data source and stay deferred (see docs/design/dashboard-4a/STATUS.md).
+ * total_cents of that day's PAID orders (paid_at is not null). A sale is money
+ * that actually entered — not a kitchen stage — so counting by paid_at keeps
+ * waiter orders that went to the kitchen unpaid OUT of revenue until they're
+ * collected (078, docs/TERMINAL_MESERO.md). Days with no sales show a dash —
+ * never a fabricated 0. Month summary = month total + order count. No
+ * average-ticket / occupancy / peak-hour metrics: those have no real data
+ * source and stay deferred (see docs/design/dashboard-4a/STATUS.md).
  *
  * Tokens: --db-* only (this is dashboard page content, not nav chrome).
  */
@@ -17,10 +20,9 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "./useActiveBusinessName";
 
-// A sale counts from "confirmed" onward (customer has paid). Explicitly EXCLUDES
-// 'pending' (not yet paid) and 'cancelled' / 'refunded'. Order flow states seen
-// in the codebase: pending → confirmed → preparing → ready → delivered (+cancelled).
-export const SALE_STATUSES = ["confirmed", "preparing", "ready", "delivered"] as const;
+// A sale is now counted by paid_at (money entered), not by kitchen status — see
+// the header note. The former SALE_STATUSES constant was removed: it had no other
+// consumer once this switched to paid_at.
 
 // No currency column exists on orders or businesses yet — format as USD.
 // TODO: switch to a real per-business currency once the column exists.
@@ -38,7 +40,7 @@ interface DayTotals {
 
 interface OrderRow {
   total_cents: number;
-  created_at: string;
+  paid_at: string;
 }
 
 export function SalesCalendar() {
@@ -78,20 +80,20 @@ export function SalesCalendar() {
     setLoading(true);
 
     // Month window in LOCAL time, converted to ISO (UTC) for the query. This
-    // captures every order whose instant falls within the local month, and we
-    // group by each order's LOCAL calendar day below — so days never drift
-    // across the UTC boundary in the early hours.
+    // captures every order PAID within the local month, and we group by each
+    // order's LOCAL paid_at day below — so days never drift across the UTC
+    // boundary in the early hours.
     const monthStart = new Date(viewYear, viewMonth, 1);
     const nextMonthStart = new Date(viewYear, viewMonth + 1, 1);
 
     void (async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("total_cents, created_at, status")
+        .select("total_cents, paid_at")
         .eq("business_id", activeId)
-        .gte("created_at", monthStart.toISOString())
-        .lt("created_at", nextMonthStart.toISOString())
-        .in("status", SALE_STATUSES as unknown as string[]);
+        .not("paid_at", "is", null)
+        .gte("paid_at", monthStart.toISOString())
+        .lt("paid_at", nextMonthStart.toISOString());
 
       if (!active) return;
 
@@ -105,8 +107,8 @@ export function SalesCalendar() {
 
       const acc: Record<number, DayTotals> = {};
       for (const row of (data ?? []) as OrderRow[]) {
-        // Group by the order's LOCAL day-of-month.
-        const day = new Date(row.created_at).getDate();
+        // Group by the order's LOCAL paid_at day-of-month.
+        const day = new Date(row.paid_at).getDate();
         const entry = acc[day] ?? { cents: 0, count: 0 };
         entry.cents += row.total_cents ?? 0;
         entry.count += 1;

@@ -25,9 +25,16 @@ import {
   IconUnlink,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-const fmt = (cents: number) => money.format(cents / 100);
+import {
+  fmtCents as fmt,
+  kindLabel,
+  tabStatusLabel,
+  isTabDebt,
+  isTabCollected,
+  modifierLabels,
+  type TabKind,
+  type TabStatus,
+} from "@/lib/tabSemantics";
 
 export interface PanelTable {
   id: string;
@@ -39,8 +46,8 @@ export interface PanelTable {
 interface Tab {
   id: string;
   name: string;
-  kind: "customer" | "waiter";
-  status: "open" | "paid" | "closed";
+  kind: TabKind;
+  status: TabStatus;
 }
 
 interface OrderLite {
@@ -70,29 +77,6 @@ function rpcErrorMessage(msg: string): string {
   if (msg.includes("ORDER_NOT_FOUND")) return "El pedido ya no existe.";
   if (msg.includes("ORDER_NOT_ATTACHED")) return "El pedido no estaba atado a ningún tap.";
   return "No se pudo actualizar el pedido. Inténtalo de nuevo.";
-}
-
-function kindLabel(kind: Tab["kind"]) {
-  return kind === "customer" ? "Cliente" : "Mesero";
-}
-
-// Status meaning depends on the tab kind. "open" = still at the table, NOT debt.
-// Customer taps are prepaid (paid the moment they order), so an open customer tab
-// is already settled. Only an OPEN WAITER tab is money still owed.
-function tabStatusLabel(kind: Tab["kind"], status: Tab["status"]) {
-  if (kind === "customer") {
-    return status === "open" ? "Pagado · en mesa" : status === "paid" ? "Pagado" : "Cerrado";
-  }
-  return status === "open" ? "Por cobrar" : status === "paid" ? "Cobrado" : "Cerrado";
-}
-
-/** A tab is real debt only when a waiter created it (postpay) and it's still open. */
-function isTabDebt(t: { kind: Tab["kind"]; status: Tab["status"] }) {
-  return t.kind === "waiter" && t.status === "open";
-}
-/** Already collected: prepaid customer tabs (any state) + waiter tabs marked paid. */
-function isTabCollected(t: { kind: Tab["kind"]; status: Tab["status"] }) {
-  return t.kind === "customer" || (t.kind === "waiter" && t.status === "paid");
 }
 
 export function TableDetailPanel({
@@ -541,27 +525,6 @@ function ItemRow({ item, name }: { item: Item; name: string }) {
       </div>
     </div>
   );
-}
-
-/** Best-effort flatten of the options jsonb into a short label. */
-function modifierLabels(options: unknown): string {
-  if (!options || typeof options !== "object") return "";
-  const labels: string[] = [];
-  try {
-    for (const v of Object.values(options as Record<string, unknown>)) {
-      if (Array.isArray(v)) {
-        for (const entry of v) {
-          if (entry && typeof entry === "object" && "label" in entry) {
-            const l = (entry as { label?: unknown }).label;
-            if (typeof l === "string") labels.push(l);
-          }
-        }
-      }
-    }
-  } catch {
-    return "";
-  }
-  return labels.join(", ");
 }
 
 const iconBtn: React.CSSProperties = {
