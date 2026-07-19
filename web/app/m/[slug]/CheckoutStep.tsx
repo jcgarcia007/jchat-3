@@ -78,7 +78,23 @@ async function readFunctionError(error: unknown): Promise<string> {
   return fallback;
 }
 
-type Phase = "checking" | "login" | "creating" | "pay" | "success" | "error";
+/** The name to serve the order under, from the user's profile. null when none usable. */
+async function resolveProfileName(userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from("public_profiles")
+      .select("display_name, username")
+      .eq("id", userId)
+      .maybeSingle();
+    const row = data as { display_name: string | null; username: string | null } | null;
+    const name = (row?.display_name ?? row?.username ?? "").trim();
+    return name.length > 0 ? name.slice(0, 60) : null;
+  } catch {
+    return null;
+  }
+}
+
+type Phase = "checking" | "login" | "name" | "creating" | "pay" | "success" | "error";
 type PaidStatus = "succeeded" | "processing";
 
 interface IntentResult {
@@ -109,6 +125,9 @@ export function CheckoutStep({
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
   const [error, setError] = useState<string>("");
   const [intent, setIntent] = useState<IntentResult | null>(null);
+  // Name the order is served under (C3'): profile name, or guest input.
+  const [contactName, setContactName] = useState<string>("");
+  const [nameInput, setNameInput] = useState<string>("");
   const startedRef = useRef(false);
 
   const clientSubtotal = useMemo(
@@ -116,7 +135,7 @@ export function CheckoutStep({
     [cartItems],
   );
 
-  const createIntent = useCallback(async () => {
+  const createIntent = useCallback(async (name: string) => {
     setError("");
     setPhase("creating");
     // Fresh idempotency key per attempt (server namespaces it with the JWT).
@@ -133,6 +152,7 @@ export function CheckoutStep({
       order_type: pickupType === "table" ? "table" : "counter",
       table_label: tableLabel.trim() || null, // informative; real link is via table_qr_token
       table_qr_token: tableQrToken, // C2: opaque token, resolved to a table_id server-side
+      contact_name: name.trim() ? name.trim().slice(0, 60) : null, // C3': served-under name
       gift_recipient_id: null,
       subtotal_cents: clientSubtotal, // ignored by server
       tax_cents: 0, // ignored
@@ -200,9 +220,17 @@ export function CheckoutStep({
         setPhase("login");
         return;
       }
-      // TODO(C3): when anonymous login is enabled, call supabase.auth.signInAnonymously()
+      // TODO(C4): when anonymous login is enabled, call supabase.auth.signInAnonymously()
       // here instead of routing to /auth/login, so a walk-in guest can pay without an account.
-      await createIntent();
+      // C3': if the profile already has a usable name, use it and skip the input;
+      // otherwise ask the guest "¿A nombre de quién?" before creating the intent.
+      const profileName = await resolveProfileName(data.user.id);
+      if (profileName) {
+        setContactName(profileName);
+        await createIntent(profileName);
+      } else {
+        setPhase("name");
+      }
     })();
   }, [createIntent]);
 
@@ -234,6 +262,46 @@ export function CheckoutStep({
         </div>
       )}
 
+      {phase === "name" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 17, fontWeight: 800 }}>¿A nombre de quién?</div>
+          <Muted>Para que el mesero sepa a quién entregar el pedido.</Muted>
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            maxLength={60}
+            placeholder="Tu nombre"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && nameInput.trim()) {
+                const n = nameInput.trim();
+                setContactName(n);
+                void createIntent(n);
+              }
+            }}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #d1d5db",
+              fontSize: 15,
+              color: "#111827",
+            }}
+          />
+          <button
+            type="button"
+            disabled={!nameInput.trim()}
+            onClick={() => {
+              const n = nameInput.trim();
+              setContactName(n);
+              void createIntent(n);
+            }}
+            style={{ ...primaryBtn, opacity: nameInput.trim() ? 1 : 0.5 }}
+          >
+            Continuar al pago
+          </button>
+        </div>
+      )}
+
       {phase === "creating" && <Muted>Preparando el pago…</Muted>}
 
       {phase === "pay" && intent && stripePromise && (
@@ -253,14 +321,22 @@ export function CheckoutStep({
       )}
 
       {phase === "success" && paidStatus === "succeeded" && (
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 40 }}>✓</div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>¡Pago recibido!</div>
-          {intent && <div style={{ fontSize: 15 }}>Pagaste {fmt(intent.serverTotalCents)}.</div>}
-          <Muted>
-            El negocio ya tiene tu pedido y empezará a prepararlo. Tu comprobante llega por correo
-            si diste un email.
-          </Muted>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ fontSize: 40 }}>✓</div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>¡Pago recibido!</div>
+            <Muted>El negocio ya tiene tu pedido y empezará a prepararlo.</Muted>
+          </div>
+
+          <Receipt
+            businessName={business.name}
+            name={contactName}
+            items={cartItems}
+            totalCents={intent?.serverTotalCents ?? clientSubtotal}
+            tableLabel={pickupType === "table" ? tableLabel.trim() : ""}
+          />
+
+          <Muted>Recibo informativo — muéstraselo al mesero si lo necesitas.</Muted>
           <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
         </div>
       )}
@@ -282,7 +358,7 @@ export function CheckoutStep({
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#b91c1c" }}>No se pudo iniciar el pago</div>
           <Muted>{error || "Inténtalo de nuevo."}</Muted>
-          <button type="button" onClick={() => void createIntent()} style={primaryBtn}>Reintentar</button>
+          <button type="button" onClick={() => void createIntent(contactName)} style={primaryBtn}>Reintentar</button>
           <button type="button" onClick={onBack} style={linkBtn}>Volver al pedido</button>
         </div>
       )}
@@ -344,6 +420,50 @@ function PaymentForm({
 
 function originOf(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
+}
+
+/** Informative receipt shown after a successful payment. Items + name from the
+ *  client; the TOTAL is the server-calculated amount. No fabricated order number. */
+function Receipt({
+  businessName,
+  name,
+  items,
+  totalCents,
+  tableLabel,
+}: {
+  businessName: string;
+  name: string;
+  items: CheckoutCartItem[];
+  totalCents: number;
+  tableLabel: string;
+}) {
+  const when = new Date().toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fafafa", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{businessName}</div>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>{when}</div>
+      </div>
+      {(name || tableLabel) && (
+        <div style={{ fontSize: 13, color: "#374151" }}>
+          {name && <div>A nombre de <strong>{name}</strong></div>}
+          {tableLabel && <div>Mesa {tableLabel}</div>}
+        </div>
+      )}
+      <div style={{ borderTop: "1px dashed #d1d5db", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((ci, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 14 }}>
+            <span style={{ color: "#374151" }}>{ci.quantity}× {ci.name}</span>
+            <span style={{ color: "#111827" }}>{fmt(ci.lineTotalCents)}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 10, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 16, color: "#111827" }}>
+        <span>Total</span>
+        <span>{fmt(totalCents)}</span>
+      </div>
+    </div>
+  );
 }
 
 function Sheet({ children }: { children: React.ReactNode }) {

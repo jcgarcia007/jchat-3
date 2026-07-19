@@ -206,8 +206,12 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // Optional guest contact (receipt / refund). Sanitised; never trusted raw.
   const rawEmail = typeof body.contact_email === "string" ? body.contact_email.trim() : "";
   const rawPhone = typeof body.contact_phone === "string" ? body.contact_phone.trim() : "";
+  const rawName = typeof body.contact_name === "string" ? body.contact_name.trim() : "";
   const contactEmail = rawEmail ? rawEmail.slice(0, 120) : null;
   const contactPhone = rawPhone ? rawPhone.slice(0, 30) : null;
+  // Name the order is served under (C3'): guest input, or the profile name. Same
+  // path as email/phone → metadata → webhook → orders.contact_name (max 60).
+  const contactName = rawName ? rawName.slice(0, 60) : null;
 
   // tip_cents is the only client-supplied amount we accept; all others are recalculated.
   const clientTipCents = typeof payload.tip_cents === "number" ? payload.tip_cents : 0;
@@ -437,6 +441,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (resolvedTableId)      metadata.table_id = resolvedTableId;
   if (contactEmail)         metadata.contact_email = contactEmail;
   if (contactPhone)         metadata.contact_phone = contactPhone;
+  if (contactName)          metadata.contact_name = contactName;
   if (itemsMeta.length > 490) metadata.items_overflow = "1";
   // Only logged when body.user_id differs from JWT — aids debugging.
   if (traceUserId !== authUserId) metadata.client_user_id = traceUserId;

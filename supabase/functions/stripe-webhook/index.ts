@@ -115,6 +115,7 @@ async function handlePaymentSucceeded(
   const tableId = meta.table_id ?? null;
   const contactEmail = meta.contact_email ?? null;
   const contactPhone = meta.contact_phone ?? null;
+  const contactName = meta.contact_name ?? null;
   const itemsRaw = meta.items ?? "[]";
 
   if (!businessId || !userId) {
@@ -169,6 +170,7 @@ async function handlePaymentSucceeded(
       table_id: tableId,
       contact_email: contactEmail,
       contact_phone: contactPhone,
+      contact_name: contactName,
       stripe_pi_id: paymentIntent.id,
       status_updated_at: new Date().toISOString(),
     })
