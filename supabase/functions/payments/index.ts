@@ -704,7 +704,7 @@ async function handleCreateWaiterOrder(
   if (orderErr) return errorResponse(`Could not create order: ${orderErr.message}`, 500);
   const orderId = (order as { id: string }).id;
 
-  // item_status 'cooking' — same initial value the stripe-webhook writes.
+  // item_status 'pending' — a dish is never born 'preparing' (D-63: that would leave no edit window). Same initial value the stripe-webhook writes.
   const itemRows = items.map((it, idx) => ({
     order_id: orderId,
     menu_item_id: it.menu_item_id,
@@ -713,7 +713,7 @@ async function handleCreateWaiterOrder(
     options: resolvedOptions[idx],       // server-verified labels
     special_instructions: it.special_instructions ?? null,
     seat: it.seat ?? null,
-    item_status: "cooking",
+    item_status: "pending",
   }));
 
   const { error: itemsErr } = await db.from("order_items").insert(itemRows);
