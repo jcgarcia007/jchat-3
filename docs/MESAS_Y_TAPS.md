@@ -79,6 +79,28 @@ numéricos (`"1"`, `"4"`, `"5"`…) y **no se migran**. De aquí en adelante los
   `special_instructions`, `options` (jsonb, modificadores), `item_status` (estado **por plato**).
 - Hoy hay **0 usuarios anónimos** en `auth.users` (el login anónimo no está activado todavía).
 
+## Limpieza de usuarios anónimos (migración 074)
+
+Cuando se active el login anónimo, cada escaneo de QR crea una fila en `auth.users`
+(`is_anonymous = true`). Para que los anónimos abandonados no se acumulen, un **job diario de
+pg_cron** (`cleanup-anon-users`, `0 5 * * *` UTC) llama a `public.cleanup_anonymous_users()`.
+
+**Dos guardas** — nunca borra a alguien que aún importa:
+1. **Inactivo > 24h** — usa `last_sign_in_at` (o `created_at` si es null), así un invitado que
+   volvió hoy NO se borra.
+2. **Sin tap ABIERTO** — quien tiene un tap `open` podría deber dinero o seguir en la mesa.
+
+**Qué SOBREVIVE** al borrar el usuario (por `ON DELETE SET NULL` en los FK existentes):
+- **Pedidos** (`orders.user_id → NULL`) — el historial de ventas no se toca.
+- **Taps** (`table_tabs.owner_uid/created_by/closed_by → NULL`).
+- **Mensajes** (`messages.user_id → NULL`).
+
+**Qué se borra:** el `auth.users` y su perfil `public.users` (CASCADE), más filas irrelevantes
+pasadas 24h (`room_members`, `check_ins`, `notifications`, `pending_order_carts`, `story_views`…).
+
+La función es SECURITY DEFINER y **solo la ejecuta el cron** (postgres): revocado el EXECUTE de
+`public`, `anon` y `authenticated` — ninguna capa de la app puede invocarla.
+
 ## Pendiente de decidir (no bloquea B1)
 
 - Qué valores exactos usa `item_status` en el flujo (hoy solo se observa `'cooking'`).
