@@ -17,9 +17,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IconX, IconPlus, IconCheck } from "@tabler/icons-react";
+import { IconX, IconPlus, IconMinus, IconCheck, IconTrash, IconAdjustments, IconLock } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { TakeOrderScreen } from "./TakeOrderScreen";
+import { ModifierSheet, type ModGroup } from "./ModifierSheet";
+import { loadModifierGroups } from "@/lib/menuGroups";
+import { readFunctionError } from "@/lib/functionError";
+import type { OrderLineOptions } from "@/lib/orderOptions";
 import {
   fmtCents,
   kindLabel,
@@ -92,7 +96,7 @@ export function TableDetailSheet({
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [menuNames, setMenuNames] = useState<Map<string, string>>(new Map());
+  const [menuInfo, setMenuInfo] = useState<Map<string, { name: string; price_cents: number }>>(new Map());
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -106,6 +110,16 @@ export function TableDetailSheet({
   // Set once the waiter claims this (previously unassigned) table, so the header
   // stops saying "Sin asignar" immediately (the grid also refreshes on close).
   const [justClaimed, setJustClaimed] = useState(false);
+
+  // ── Editing an order line (D-63) ──────────────────────────────────────────
+  // One in-flight write at a time PER LINE, so a double tap can't fire twice.
+  const [busyItems, setBusyItems] = useState<Set<string>>(new Set());
+  const [editError, setEditError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{ item: Item; isLast: boolean } | null>(null);
+  const [editingMods, setEditingMods] = useState<
+    { item: Item; name: string; price_cents: number; groups: ModGroup[]; labels: string[] } | null
+  >(null);
+  const [loadingMods, setLoadingMods] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -152,16 +166,24 @@ export function TableDetailSheet({
       const itemRows = (itemsRes.data ?? []) as Item[];
 
       const miIds = [...new Set(itemRows.map((i) => i.menu_item_id))];
-      let names = new Map<string, string>();
+      let names = new Map<string, { name: string; price_cents: number }>();
       if (miIds.length) {
-        const { data: mi } = await supabase.from("menu_items").select("id, name").in("id", miIds);
-        names = new Map(((mi ?? []) as { id: string; name: string }[]).map((m) => [m.id, m.name]));
+        const { data: mi } = await supabase
+          .from("menu_items")
+          .select("id, name, price_cents")
+          .in("id", miIds);
+        names = new Map(
+          ((mi ?? []) as { id: string; name: string; price_cents: number }[]).map((m) => [
+            m.id,
+            { name: m.name, price_cents: m.price_cents },
+          ]),
+        );
       }
 
       setTabs(tabRows);
       setOrders(orderRows);
       setItems(itemRows);
-      setMenuNames(names);
+      setMenuInfo(names);
     } catch {
       setLoadError(true);
     } finally {
@@ -188,6 +210,96 @@ export function TableDetailSheet({
   const owed = orders.filter((o) => o.paid_at == null).reduce((s, o) => s + (o.total_cents ?? 0), 0);
 
   const directOrders = useMemo(() => orders.filter((o) => o.tab_id == null), [orders]);
+
+  /**
+   * Can this ORDER still be edited? (D-63 — the lock is per ORDER, not per dish.)
+   * A pending dish inside a ticket the kitchen already started is NOT editable.
+   * This mirrors what the server enforces; it decides what we OFFER, it is not the
+   * defence — update_waiter_order_item re-checks every one of these.
+   */
+  function editState(order: Order): { editable: true } | { editable: false; reason: string } {
+    if (order.paid_at != null) return { editable: false, reason: "Pedido pagado — ya no se puede modificar." };
+    if (["cancelled", "delivered", "refunded"].includes(order.status)) {
+      return { editable: false, reason: "Este pedido ya está cerrado." };
+    }
+    const started = items.some(
+      (it) => it.order_id === order.id && (it.item_status === "preparing" || it.item_status === "ready"),
+    );
+    if (started) return { editable: false, reason: "La cocina ya empezó este pedido." };
+    return { editable: true };
+  }
+
+  /** Translate the EF's errors. Never show a raw one. */
+  function editMessage(msg: string): string {
+    if (msg.includes("La cocina ya empezó")) return "La cocina ya empezó este pedido, no se puede modificar.";
+    if (msg.includes("ya está pagado")) return "Este pedido ya está pagado.";
+    if (msg.includes("No puedes editar")) return "No tienes permiso para modificar este pedido.";
+    if (msg.includes("ya está cerrado")) return "Este pedido ya está cerrado.";
+    if (msg.includes("Item not available")) return "Ese plato se acaba de agotar.";
+    if (msg.includes("not found")) return "Ese plato ya no existe en el pedido.";
+    return "No se pudo modificar el pedido. Inténtalo de nuevo.";
+  }
+
+  /**
+   * The ONE path that edits a line. Amounts are never computed here — the EF
+   * re-prices from the DB and rewrites the order totals, so we just reload.
+   */
+  async function editItem(
+    item: Item,
+    patch: { qty?: number; options?: OrderLineOptions; remove?: boolean },
+  ) {
+    if (busyItems.has(item.id)) return;
+    setBusyItems((s) => new Set(s).add(item.id));
+    setEditError(null);
+    try {
+      const { error } = await supabase.functions.invoke("payments", {
+        body: { action: "update_waiter_order_item", order_item_id: item.id, ...patch },
+      });
+      if (error) {
+        const raw = await readFunctionError(error);
+        setEditError(editMessage(raw));
+        // The kitchen may have started this ticket while the waiter was looking.
+        // Reload so the screen catches up and the controls disappear on their own.
+        await load();
+        return;
+      }
+      // Totals (line, order, tab) all come back from the server.
+      await load();
+    } catch {
+      setEditError("No se pudo modificar el pedido. Revisa la conexión.");
+    } finally {
+      setBusyItems((s) => {
+        const n = new Set(s);
+        n.delete(item.id);
+        return n;
+      });
+    }
+  }
+
+  /** Open the shared modifier sheet for an existing line. Groups load on demand. */
+  async function openModifiers(item: Item) {
+    const info = menuInfo.get(item.menu_item_id);
+    if (!info || loadingMods) return;
+    setLoadingMods(true);
+    setEditError(null);
+    try {
+      const groups = (await loadModifierGroups([item.menu_item_id])).get(item.menu_item_id) ?? [];
+      if (groups.length === 0) {
+        setEditError("Este plato no tiene opciones que cambiar.");
+        return;
+      }
+      // Stored options are verified LABELS; the sheet matches them back to groups.
+      const labels = modifierLabels(item.options)
+        .split(", ")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      setEditingMods({ item, name: info.name, price_cents: info.price_cents, groups, labels });
+    } catch {
+      setEditError("No se pudieron cargar las opciones del plato.");
+    } finally {
+      setLoadingMods(false);
+    }
+  }
   const nothing = tabs.length === 0 && orders.length === 0;
 
   async function createTab() {
@@ -259,6 +371,11 @@ export function TableDetailSheet({
             {notice}
           </div>
         )}
+        {editError && (
+          <div style={{ fontSize: 14, color: "var(--db-danger)", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: 12, padding: "12px 14px" }}>
+            {editError}
+          </div>
+        )}
         {actionError && (
           <div style={{ fontSize: 14, color: "var(--db-danger)", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: 12, padding: "12px 14px" }}>
             {actionError}
@@ -297,7 +414,21 @@ export function TableDetailSheet({
                   {tabOrders.length === 0 ? (
                     <Empty>Sin pedidos todavía.</Empty>
                   ) : (
-                    tabOrders.map((o) => <OrderBlock key={o.id} order={o} items={items} names={menuNames} />)
+                    tabOrders.map((o) => (
+                      <OrderBlock
+                        key={o.id}
+                        order={o}
+                        items={items}
+                        names={menuInfo}
+                        edit={{
+                          state: editState(o),
+                          busy: busyItems,
+                          onQty: (it, qty) => void editItem(it, { qty }),
+                          onRemove: (it, isLast) => setRemoving({ item: it, isLast }),
+                          onModifiers: (it) => void openModifiers(it),
+                        }}
+                      />
+                    ))
                   )}
 
                   {/* Only an OPEN tab can take more orders. */}
@@ -320,7 +451,7 @@ export function TableDetailSheet({
                 <SectionTitle>Pedidos directos (QR)</SectionTitle>
                 {directOrders.map((o) => (
                   <Card key={o.id}>
-                    <OrderBlock order={o} items={items} names={menuNames} showName />
+                    <OrderBlock order={o} items={items} names={menuInfo} showName />
                   </Card>
                 ))}
               </div>
@@ -340,6 +471,64 @@ export function TableDetailSheet({
           </>
         )}
       </div>
+
+      {/* Remove confirmation — and the honest warning when it's the last dish. */}
+      {removing && (
+        <div style={confirmOverlay} role="dialog" aria-label="Confirmar quitar plato">
+          <div style={confirmPanel}>
+            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>¿Quitar este plato?</div>
+            <p style={{ fontSize: 14, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
+              {menuInfo.get(removing.item.menu_item_id)?.name ?? "Este plato"} ({removing.item.qty}×).
+              {removing.isLast && (
+                <>
+                  {" "}
+                  <strong style={{ color: "var(--db-warning)" }}>
+                    Es el último plato: el pedido quedará cancelado.
+                  </strong>
+                </>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const it = removing.item;
+                setRemoving(null);
+                void editItem(it, { remove: true });
+              }}
+              style={{ ...primaryBtn, width: "100%", background: "var(--db-danger)", color: "var(--db-bg-base)" }}
+            >
+              Sí, quitar
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemoving(null)}
+              style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Shared modifier sheet, pre-filled with what the line already has. */}
+      {editingMods && (
+        <ModifierSheet
+          dish={{
+            name: editingMods.name,
+            price_cents: editingMods.price_cents,
+            groups: editingMods.groups,
+          }}
+          initialLabels={editingMods.labels}
+          confirmVerb="Guardar"
+          onCancel={() => setEditingMods(null)}
+          onConfirm={(options) => {
+            const it = editingMods.item;
+            setEditingMods(null);
+            // Only the selection travels — the server re-prices the line.
+            void editItem(it, { options });
+          }}
+        />
+      )}
 
       {takingOrderFor && (
         <TakeOrderScreen
@@ -362,14 +551,24 @@ function OrderBlock({
   items,
   names,
   showName = false,
+  edit,
 }: {
   order: Order;
   items: Item[];
-  names: Map<string, string>;
+  names: Map<string, { name: string; price_cents: number }>;
   showName?: boolean;
+  /** Absent → read-only rendering (e.g. the QR orders section). */
+  edit?: {
+    state: { editable: true } | { editable: false; reason: string };
+    busy: Set<string>;
+    onQty: (item: Item, qty: number) => void;
+    onRemove: (item: Item, isLast: boolean) => void;
+    onModifiers: (item: Item) => void;
+  };
 }) {
   const oItems = items.filter((it) => it.order_id === order.id);
   const paid = order.paid_at != null;
+  const editable = edit?.state.editable === true;
   return (
     <div style={{ padding: "8px 0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -382,26 +581,81 @@ function OrderBlock({
           <Badge tone="warn">Por cobrar</Badge>
         )}
       </div>
+
       {oItems.map((it) => {
         const mods = modifierLabels(it.options);
         const note = it.notes || it.special_instructions;
+        const busy = edit?.busy.has(it.id) ?? false;
         return (
-          <div key={it.id} style={{ display: "flex", gap: 8, padding: "3px 0", fontSize: 14 }}>
-            <span style={{ color: "var(--db-text-secondary)", minWidth: 24 }}>{it.qty}×</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span>{names.get(it.menu_item_id) ?? "Plato"}</span>
-                <span style={{ color: "var(--db-text-secondary)" }}>{fmtCents(it.price_cents)}</span>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>
-                {it.item_status}
-                {mods ? ` · ${mods}` : ""}
-                {note ? ` · ${note}` : ""}
+          <div key={it.id} style={{ padding: "3px 0", fontSize: 14 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ color: "var(--db-text-secondary)", minWidth: 24 }}>{it.qty}×</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <span>{names.get(it.menu_item_id)?.name ?? "Plato"}</span>
+                  <span style={{ color: "var(--db-text-secondary)" }}>{fmtCents(it.price_cents)}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>
+                  {it.item_status}
+                  {mods ? ` · ${mods}` : ""}
+                  {note ? ` · ${note}` : ""}
+                </div>
               </div>
             </div>
+
+            {/* Controls only on an EDITABLE order. Disabled while this line has a
+                write in flight, so a double tap can't fire twice. */}
+            {editable && edit && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, marginLeft: 32, flexWrap: "wrap", opacity: busy ? 0.5 : 1 }}>
+                <button
+                  type="button"
+                  disabled={busy || it.qty <= 1}
+                  onClick={() => edit.onQty(it, it.qty - 1)}
+                  aria-label="Quitar uno"
+                  style={{ ...miniIconBtn, opacity: it.qty <= 1 ? 0.4 : 1 }}
+                >
+                  <IconMinus size={16} />
+                </button>
+                <span style={{ minWidth: 22, textAlign: "center", fontWeight: 800 }}>{it.qty}</span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => edit.onQty(it, it.qty + 1)}
+                  aria-label="Añadir uno"
+                  style={miniIconBtn}
+                >
+                  <IconPlus size={16} />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => edit.onModifiers(it)}
+                  style={miniActionBtn}
+                >
+                  <IconAdjustments size={15} /> Opciones
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => edit.onRemove(it, oItems.length === 1)}
+                  style={{ ...miniActionBtn, color: "var(--db-danger)" }}
+                >
+                  <IconTrash size={15} /> Quitar
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
+
+      {/* Not editable → say WHY. Controls that vanish without explanation just look
+          broken to someone in a rush. */}
+      {edit && !editable && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12, color: "var(--db-text-tertiary)" }}>
+          <IconLock size={14} />
+          {edit.state.editable === false ? edit.state.reason : ""}
+        </div>
+      )}
     </div>
   );
 }
@@ -435,6 +689,28 @@ function Badge({ children, tone = "muted" }: { children: React.ReactNode; tone?:
     </span>
   );
 }
+
+const confirmOverlay: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90,
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+};
+const confirmPanel: React.CSSProperties = {
+  background: "var(--db-bg-surface)", border: "1px solid var(--db-border)",
+  borderRadius: 18, padding: "20px", width: "100%", maxWidth: 420,
+};
+
+const miniIconBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  width: 44, height: 44, borderRadius: 10, border: "1px solid var(--db-border)",
+  background: "var(--db-bg-base)", color: "var(--db-text-primary)", cursor: "pointer",
+};
+
+const miniActionBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 5, minHeight: 44,
+  padding: "8px 12px", borderRadius: 10, border: "1px solid var(--db-border)",
+  background: "var(--db-bg-base)", color: "var(--db-text-primary)",
+  fontSize: 13, fontWeight: 700, cursor: "pointer",
+};
 
 const addOrderBtn: React.CSSProperties = {
   display: "inline-flex",
