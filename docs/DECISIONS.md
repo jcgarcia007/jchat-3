@@ -360,6 +360,19 @@ por PIN de 6 dígitos con fichaje obligatorio; permisos propios por mesero; pedi
 no cuentan como venta hasta cobrarse; división de cuenta por partes/artículo/asiento. Offline,
 impresión y Tap to Pay quedan fuera de la v1. Ver [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
 
+### D-61 — Abrir cuenta en una mesa sin asignar te la asigna (revierte D-60 "sin asignación implícita")
+
+Cambio de Juan (2026-07-20): el **primer empleado que abre una cuenta en una mesa SIN asignar se
+la queda** — la mesa pasa a estar asignada a él. Revierte la regla inicial de que atender una
+mesa sin asignar no implicaba asignación. Motivo: sin esto nadie podía abrir cuenta en una mesa
+sin asignar (la política INSERT de `table_tabs` exige `is_waiter_of_table`, y un mesero no puede
+escribir en `table_waiters`, que es owner-only). Se implementa con la RPC `open_tab_on_table`
+(migración 079, SECURITY DEFINER, con advisory lock por mesa para atomicidad ante dos meseros a
+la vez): valida empleado aceptado, si la mesa no tiene mesero lo asigna, si lo tiene y no es él
+devuelve `NOT_ASSIGNED`, y crea el tap. **La política INSERT de `table_tabs` NO se afloja** — la
+RPC es el camino previsto, igual que con los taps de cliente. Ver
+[docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

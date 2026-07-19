@@ -3322,6 +3322,10 @@ export type Database = {
         Args: { p_order_id: string; p_tab_id: string | null }
         Returns: undefined
       }
+      open_tab_on_table: {
+        Args: { p_table_id: string; p_name: string }
+        Returns: Json
+      }
       accept_follow_request: {
         Args: { p_requester: string }
         Returns: undefined
