@@ -92,6 +92,7 @@ export function CheckoutStep({
   cartItems,
   pickupType,
   tableLabel,
+  tableQrToken = null,
   onBack,
   onDone,
 }: {
@@ -99,6 +100,7 @@ export function CheckoutStep({
   cartItems: CheckoutCartItem[];
   pickupType: "counter" | "table";
   tableLabel: string;
+  tableQrToken?: string | null;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -129,7 +131,8 @@ export function CheckoutStep({
       user_id: "", // filled below with the verified uid (server ignores for auth)
       room_id: null,
       order_type: pickupType === "table" ? "table" : "counter",
-      table_label: tableLabel.trim() || null, // C2 will replace this with real table context
+      table_label: tableLabel.trim() || null, // informative; real link is via table_qr_token
+      table_qr_token: tableQrToken, // C2: opaque token, resolved to a table_id server-side
       gift_recipient_id: null,
       subtotal_cents: clientSubtotal, // ignored by server
       tax_cents: 0, // ignored
@@ -179,7 +182,7 @@ export function CheckoutStep({
       serverTotalCents: res.serverTotalCents ?? clientSubtotal,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel]);
+  }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
 
   // On mount: require a session, then create the PaymentIntent.
   useEffect(() => {
