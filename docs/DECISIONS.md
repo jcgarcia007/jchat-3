@@ -341,6 +341,11 @@ NULL`). La función `cleanup_anonymous_users()` es SECURITY DEFINER y solo la ej
 Flujo del cliente en mesa: plan C (híbrido web + salto a app). La superficie web de pedido era
 una demo; se construye el checkout web real (C1) como base. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
 
+### D-58 — Caja de efectivo: cierre de tap justificado, turnos con arqueo, revisión del propietario
+
+Caja de efectivo: cierre de tap justificado (código de caja o razón), turnos con arqueo, y
+revisión del propietario. Depende de B6. Ver [docs/CAJA.md](CAJA.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

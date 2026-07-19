@@ -60,6 +60,11 @@ Etiquetas de estado por tipo: cliente `open` → "Pagado · en mesa"; cliente `p
 "Pagado"/"Cerrado"; mesero `open` → "Por cobrar"; mesero `paid` → "Cobrado". El botón "Marcar
 pagado" solo aplica a taps de mesero (los de cliente ya pagaron); "Cerrar" aplica a ambos.
 
+> **Futuro (caja):** el cierre de un tap de **mesero** pasará a exigir **código de caja o razón**
+> (efectivo cobrado vs. no cobrado → "pendiente de revisión" del dueño). Ver
+> [docs/CAJA.md](CAJA.md), fase **D3**. Todo el flujo de caja depende de **B6** (la terminal del
+> mesero), que aún no existe.
+
 ### Subchat por mesa (opcional)
 
 Al crear una mesa, el administrador decide si le crea un **subchat**. El QR de la mesa ancla a los
