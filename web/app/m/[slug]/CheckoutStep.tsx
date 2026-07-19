@@ -19,6 +19,7 @@ import Link from "next/link";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { buildOrderOptions } from "@/lib/orderOptions";
 import type { MenuItemOption, ModifierChoice } from "./page";
 
 interface GroupSel {
@@ -174,14 +175,9 @@ export function CheckoutStep({
         name: ci.name,
         qty: ci.quantity,
         price_cents: ci.basePriceCents, // ignored; server re-prices
-        options: {
-          size: ci.selectedSize?.label ?? null,
-          extras: ci.selectedExtras.map((e) => e.label),
-          modifiers: ci.groupSelections.map((g) => ({
-            g: g.groupId,
-            c: g.choices.map((ch) => ch.label),
-          })),
-        },
+        // Shared builder (@/lib/orderOptions) — the waiter terminal uses the same
+        // one, so the two surfaces cannot drift into different shapes.
+        options: buildOrderOptions(ci),
         special_instructions: ci.notes ?? null,
       })),
     };

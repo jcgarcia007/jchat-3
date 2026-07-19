@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconX, IconPlus, IconCheck } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { TakeOrderScreen } from "./TakeOrderScreen";
 import {
   fmtCents,
   kindLabel,
@@ -78,7 +79,15 @@ function rpcMessage(msg: string): string {
   return "No se pudo crear la cuenta. Inténtalo de nuevo.";
 }
 
-export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClose: () => void }) {
+export function TableDetailSheet({
+  table,
+  businessId,
+  onClose,
+}: {
+  table: SheetTable;
+  businessId: string;
+  onClose: () => void;
+}) {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -92,6 +101,8 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Which open tab we're taking an order for (null = the detail view).
+  const [takingOrderFor, setTakingOrderFor] = useState<{ id: string; name: string } | null>(null);
   // Set once the waiter claims this (previously unassigned) table, so the header
   // stops saying "Sin asignar" immediately (the grid also refreshes on close).
   const [justClaimed, setJustClaimed] = useState(false);
@@ -280,6 +291,17 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
                   ) : (
                     tabOrders.map((o) => <OrderBlock key={o.id} order={o} items={items} names={menuNames} />)
                   )}
+
+                  {/* Only an OPEN tab can take more orders. */}
+                  {tab.status === "open" && (
+                    <button
+                      type="button"
+                      onClick={() => setTakingOrderFor({ id: tab.id, name: tab.name })}
+                      style={addOrderBtn}
+                    >
+                      <IconPlus size={18} /> Añadir pedido
+                    </button>
+                  )}
                 </Card>
               );
             })}
@@ -320,6 +342,19 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
           </>
         )}
       </div>
+
+      {takingOrderFor && (
+        <TakeOrderScreen
+          businessId={businessId}
+          tabId={takingOrderFor.id}
+          tabName={takingOrderFor.name}
+          tableLabel={table.label}
+          seats={table.seats}
+          onClose={() => setTakingOrderFor(null)}
+          // The order landed — refresh this sheet so it shows up immediately.
+          onSent={() => void load()}
+        />
+      )}
     </div>
   );
 }
@@ -402,6 +437,22 @@ function Badge({ children, tone = "muted" }: { children: React.ReactNode; tone?:
     </span>
   );
 }
+
+const addOrderBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  minHeight: 44,
+  marginTop: 10,
+  padding: "10px 16px",
+  borderRadius: 12,
+  border: "1px solid var(--db-accent)",
+  background: "transparent",
+  color: "var(--db-accent)",
+  fontSize: 14,
+  fontWeight: 800,
+  cursor: "pointer",
+};
 
 const cardHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 };
 

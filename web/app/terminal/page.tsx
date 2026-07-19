@@ -255,9 +255,10 @@ export default function TerminalTablesPage() {
         ))
       )}
 
-      {detail && (
+      {detail && activeBiz && (
         <TableDetailSheet
           table={detail}
+          businessId={activeBiz}
           onClose={() => {
             setDetail(null);
             // A tab may have been created — refresh the grid so the status color
