@@ -15,6 +15,7 @@
  * like "no tables". Tokens: --db-* only.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   IconPlus,
@@ -23,6 +24,7 @@ import {
   IconTrash,
   IconDeviceFloppy,
   IconX,
+  IconUsers,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "@/components/dashboard/useActiveBusinessName";
@@ -66,6 +68,26 @@ export default function TablesPage() {
   const [savingSeats, setSavingSeats] = useState<Set<string>>(new Set());
   const [seatError, setSeatError] = useState<string | null>(null);
 
+  // Assigned-waiter count per table (B4), shown on each card. Read-only tally.
+  const [waiterCounts, setWaiterCounts] = useState<Record<string, number>>({});
+
+  const loadWaiterCounts = useCallback(async () => {
+    if (!activeId || !isSupabaseConfigured) {
+      setWaiterCounts({});
+      return;
+    }
+    const { data, error } = await supabase
+      .from("table_waiters")
+      .select("table_id")
+      .eq("business_id", activeId);
+    if (error) return; // non-critical chrome: leave counts as-is
+    const acc: Record<string, number> = {};
+    for (const r of (data ?? []) as { table_id: string }[]) {
+      acc[r.table_id] = (acc[r.table_id] ?? 0) + 1;
+    }
+    setWaiterCounts(acc);
+  }, [activeId]);
+
   const load = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) {
       setRows([]);
@@ -98,11 +120,12 @@ export default function TablesPage() {
     void (async () => {
       await load();
       if (!active) return;
+      await loadWaiterCounts();
     })();
     return () => {
       active = false;
     };
-  }, [load, reloadKey]);
+  }, [load, loadWaiterCounts, reloadKey]);
 
   // Floors present, in first-seen order; drives the optional grouping headers.
   const floors = useMemo(() => {
@@ -239,9 +262,11 @@ export default function TablesPage() {
           form={form}
           saving={saving}
           error={formError}
+          businessId={activeId}
           onChange={setForm}
           onSave={() => void save()}
           onCancel={closeForm}
+          onWaitersChanged={() => void loadWaiterCounts()}
         />
       )}
 
@@ -299,6 +324,20 @@ export default function TablesPage() {
                   <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
                     {r.seats} {r.seats === 1 ? "silla" : "sillas"}
                   </div>
+                  {(() => {
+                    const wc = waiterCounts[r.id] ?? 0;
+                    return (
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: wc === 0 ? "var(--db-warning)" : "var(--db-text-tertiary)",
+                        }}
+                      >
+                        {wc === 0 ? "Sin mesero" : `${wc} ${wc === 1 ? "mesero" : "meseros"}`}
+                      </div>
+                    );
+                  })()}
                   {!r.is_active && (
                     <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--db-text-tertiary)" }}>
                       Inactiva
@@ -430,16 +469,20 @@ function TableForm({
   form,
   saving,
   error,
+  businessId,
   onChange,
   onSave,
   onCancel,
+  onWaitersChanged,
 }: {
   form: FormState;
   saving: boolean;
   error: string | null;
+  businessId: string | null;
   onChange: (f: FormState) => void;
   onSave: () => void;
   onCancel: () => void;
+  onWaitersChanged: () => void;
 }) {
   return (
     <form
@@ -508,6 +551,12 @@ function TableForm({
 
       {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
 
+      {/* Waiter assignment — only when editing an existing table (needs its id).
+          Saves immediately per checkbox (independent of the table-field Guardar). */}
+      {form.id !== null && businessId && (
+        <WaiterAssignment tableId={form.id} businessId={businessId} onChanged={onWaitersChanged} />
+      )}
+
       <div style={{ display: "flex", gap: "8px" }}>
         <button type="submit" disabled={saving} style={{ ...CTA, opacity: saving ? 0.6 : 1, cursor: saving ? "wait" : "pointer" }}>
           <IconDeviceFloppy size={17} /> {saving ? "Guardando…" : "Guardar"}
@@ -517,6 +566,195 @@ function TableForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Waiter assignment (B4) ───────────────────────────────────────────────────
+// Lists the business's ACCEPTED employees with a checkbox each; checking/
+// unchecking inserts/deletes a table_waiters row immediately (per-row lock).
+// Only employee_id + table_id are written (business_id is set by the 070
+// trigger). RLS is the real gate (owner/admin only); this page is already
+// owner-scoped (it operates on resolveActiveBusiness → the user's own business),
+// so the UI shows here — a rejected write reverts and shows a friendly message.
+
+interface AssignEmployee {
+  employeeId: string;
+  name: string;
+  role: string;
+}
+
+function WaiterAssignment({
+  tableId,
+  businessId,
+  onChanged,
+}: {
+  tableId: string;
+  businessId: string;
+  onChanged: () => void;
+}) {
+  const [employees, setEmployees] = useState<AssignEmployee[]>([]);
+  const [assigned, setAssigned] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setLoading(true);
+      setLoadError(false);
+      try {
+        // Accepted employees of the business + their profile names, plus the
+        // current assignments for this table.
+        const [empRes, waRes] = await Promise.all([
+          supabase
+            .from("employees")
+            .select("id, user_id, role")
+            .eq("business_id", businessId)
+            .eq("status", "accepted"),
+          supabase.from("table_waiters").select("employee_id").eq("table_id", tableId),
+        ]);
+        if (empRes.error || waRes.error) throw empRes.error ?? waRes.error;
+
+        const emps = (empRes.data ?? []) as { id: string; user_id: string; role: string }[];
+        const userIds = [...new Set(emps.map((e) => e.user_id))];
+        let names = new Map<string, string>();
+        if (userIds.length > 0) {
+          const { data: profs } = await supabase
+            .from("public_profiles")
+            .select("id, username, display_name")
+            .in("id", userIds);
+          names = new Map(
+            ((profs ?? []) as { id: string; username: string; display_name: string | null }[]).map(
+              (p) => [p.id, p.display_name ?? p.username],
+            ),
+          );
+        }
+        if (!active) return;
+        setEmployees(
+          emps.map((e) => ({ employeeId: e.id, name: names.get(e.user_id) ?? "—", role: e.role })),
+        );
+        setAssigned(new Set(((waRes.data ?? []) as { employee_id: string }[]).map((w) => w.employee_id)));
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [tableId, businessId]);
+
+  async function toggle(employeeId: string, checked: boolean) {
+    if (savingIds.has(employeeId)) return;
+    setError(null);
+    // Optimistic
+    setAssigned((s) => {
+      const n = new Set(s);
+      if (checked) n.add(employeeId);
+      else n.delete(employeeId);
+      return n;
+    });
+    setSavingIds((s) => new Set(s).add(employeeId));
+
+    // business_id is intentionally omitted: the 070 trigger sets it from the
+    // table, and the client isn't granted that column. The generated Insert type
+    // marks it required (NOT NULL, no default), so cast past it.
+    const insertPayload = { table_id: tableId, employee_id: employeeId } as never;
+    const { error: dbErr } = checked
+      ? await supabase.from("table_waiters").insert(insertPayload)
+      : await supabase.from("table_waiters").delete().eq("table_id", tableId).eq("employee_id", employeeId);
+
+    setSavingIds((s) => {
+      const n = new Set(s);
+      n.delete(employeeId);
+      return n;
+    });
+
+    if (dbErr) {
+      // Roll back the optimistic change.
+      setAssigned((s) => {
+        const n = new Set(s);
+        if (checked) n.delete(employeeId);
+        else n.add(employeeId);
+        return n;
+      });
+      const code = (dbErr as { code?: string }).code;
+      setError(
+        code === "23505"
+          ? "Ese mesero ya estaba asignado."
+          : code === "42501"
+            ? "No tienes permiso para asignar meseros a esta mesa."
+            : "No se pudo actualizar la asignación. Inténtalo de nuevo.",
+      );
+      return;
+    }
+    onChanged(); // refresh the card counts
+  }
+
+  return (
+    <div
+      style={{
+        borderTop: "1px solid var(--db-border)",
+        paddingTop: "12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>
+        <IconUsers size={16} /> Meseros asignados
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>Cargando…</div>
+      ) : loadError ? (
+        <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>
+          No se pudieron cargar los empleados.
+        </div>
+      ) : employees.length === 0 ? (
+        <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+          Este negocio no tiene empleados todavía.{" "}
+          <Link href="/dashboard/employees" style={{ color: "var(--db-accent)", fontWeight: 600 }}>
+            Añadir empleados
+          </Link>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {employees.map((emp) => {
+            const isAssigned = assigned.has(emp.employeeId);
+            const busy = savingIds.has(emp.employeeId);
+            return (
+              <label
+                key={emp.employeeId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "14px",
+                  color: "var(--db-text-primary)",
+                  opacity: busy ? 0.6 : 1,
+                  cursor: busy ? "wait" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isAssigned}
+                  disabled={busy}
+                  onChange={(e) => void toggle(emp.employeeId, e.target.checked)}
+                />
+                <span style={{ flex: 1 }}>{emp.name}</span>
+                <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{emp.role}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
+    </div>
   );
 }
 
