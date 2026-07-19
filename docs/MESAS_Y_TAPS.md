@@ -46,6 +46,20 @@ La mesa se **cierra sola** cuando todos sus taps están pagados. Además, el **m
 pagado / cerrar cualquier tap manualmente** (salida necesaria para el postpago en efectivo y para
 el cliente que se va sin pagar; si no, la mesa quedaría bloqueada para siempre).
 
+**Semántica de `status` (importante):** `open` = **el tap sigue en la mesa**, NO implica deuda.
+Los taps de **cliente** (`kind='customer'`) nacen **ya pagados** (prepago) y permanecen `open`
+solo para que la siguiente ronda se una al mismo tap. **La deuda por cobrar la determina
+`kind='waiter'` + `status='open'`** (postpago, el mesero cobra al final). Por eso, en el panel de
+mesa (B2):
+
+- **Total mesa** = suma de todos los taps (lo consumido, pagado o no).
+- **Ya cobrado** = taps de cliente (cualquier estado) + taps de mesero en `paid`.
+- **Por cobrar** = solo taps de mesero en `open`.
+
+Etiquetas de estado por tipo: cliente `open` → "Pagado · en mesa"; cliente `paid`/`closed` →
+"Pagado"/"Cerrado"; mesero `open` → "Por cobrar"; mesero `paid` → "Cobrado". El botón "Marcar
+pagado" solo aplica a taps de mesero (los de cliente ya pagaron); "Cerrar" aplica a ambos.
+
 ### Subchat por mesa (opcional)
 
 Al crear una mesa, el administrador decide si le crea un **subchat**. El QR de la mesa ancla a los

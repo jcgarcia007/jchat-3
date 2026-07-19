@@ -75,8 +75,24 @@ function rpcErrorMessage(msg: string): string {
 function kindLabel(kind: Tab["kind"]) {
   return kind === "customer" ? "Cliente" : "Mesero";
 }
-function statusLabel(status: Tab["status"]) {
-  return status === "open" ? "Abierto" : status === "paid" ? "Pagado" : "Cerrado";
+
+// Status meaning depends on the tab kind. "open" = still at the table, NOT debt.
+// Customer taps are prepaid (paid the moment they order), so an open customer tab
+// is already settled. Only an OPEN WAITER tab is money still owed.
+function tabStatusLabel(kind: Tab["kind"], status: Tab["status"]) {
+  if (kind === "customer") {
+    return status === "open" ? "Pagado · en mesa" : status === "paid" ? "Pagado" : "Cerrado";
+  }
+  return status === "open" ? "Por cobrar" : status === "paid" ? "Cobrado" : "Cerrado";
+}
+
+/** A tab is real debt only when a waiter created it (postpay) and it's still open. */
+function isTabDebt(t: { kind: Tab["kind"]; status: Tab["status"] }) {
+  return t.kind === "waiter" && t.status === "open";
+}
+/** Already collected: prepaid customer tabs (any state) + waiter tabs marked paid. */
+function isTabCollected(t: { kind: Tab["kind"]; status: Tab["status"] }) {
+  return t.kind === "customer" || (t.kind === "waiter" && t.status === "paid");
 }
 
 export function TableDetailPanel({
@@ -213,8 +229,12 @@ export function TableDetailPanel({
 
   const tabTotal = (tabId: string) =>
     orders.filter((o) => o.tab_id === tabId).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  // Consumed (paid or not) — every tab.
   const tableTotal = tabs.reduce((s, t) => s + tabTotal(t.id), 0);
-  const unpaidTotal = tabs.filter((t) => t.status === "open").reduce((s, t) => s + tabTotal(t.id), 0);
+  // Owed = only OPEN WAITER tabs (postpay). Prepaid customer tabs are NOT debt.
+  const unpaidTotal = tabs.filter(isTabDebt).reduce((s, t) => s + tabTotal(t.id), 0);
+  // Already collected = prepaid customer tabs + waiter tabs marked paid.
+  const collectedTotal = tabs.filter(isTabCollected).reduce((s, t) => s + tabTotal(t.id), 0);
 
   function toggleExpand(id: string) {
     setExpanded((s) => {
@@ -321,9 +341,10 @@ export function TableDetailPanel({
           </button>
         </div>
         {!loading && !loadError && (
-          <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+          <div style={{ display: "flex", gap: "16px", marginTop: "12px", flexWrap: "wrap" }}>
             <Metric label="Total mesa" value={fmt(tableTotal)} />
-            <Metric label="Sin pagar" value={fmt(unpaidTotal)} warn={unpaidTotal > 0} />
+            <Metric label="Ya cobrado" value={fmt(collectedTotal)} />
+            <Metric label="Por cobrar" value={fmt(unpaidTotal)} warn={unpaidTotal > 0} />
           </div>
         )}
       </div>
@@ -359,7 +380,7 @@ export function TableDetailPanel({
                         {isOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                         <span style={{ flex: 1, textAlign: "left", fontWeight: 700, color: "var(--db-text-primary)" }}>{tab.name}</span>
                         <Badge>{kindLabel(tab.kind)}</Badge>
-                        <Badge tone={tab.status === "open" ? "warn" : "muted"}>{statusLabel(tab.status)}</Badge>
+                        <Badge tone={isTabDebt(tab) ? "warn" : "muted"}>{tabStatusLabel(tab.kind, tab.status)}</Badge>
                         <span style={{ fontWeight: 700, color: "var(--db-text-primary)", minWidth: "64px", textAlign: "right" }}>
                           {fmt(tabTotal(tab.id))}
                         </span>
@@ -392,9 +413,12 @@ export function TableDetailPanel({
 
                           {(tab.status === "open") && (
                             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                              <button type="button" disabled={busy} onClick={() => void setTabStatus(tab, "paid")} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
-                                <IconCheck size={15} /> Marcar pagado
-                              </button>
+                              {/* Customer tabs are prepaid → no "Marcar pagado". "Cerrar" for both. */}
+                              {tab.kind === "waiter" && (
+                                <button type="button" disabled={busy} onClick={() => void setTabStatus(tab, "paid")} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
+                                  <IconCheck size={15} /> Marcar pagado
+                                </button>
+                              )}
                               <button type="button" disabled={busy} onClick={() => void setTabStatus(tab, "closed")} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
                                 <IconLock size={15} /> Cerrar
                               </button>
