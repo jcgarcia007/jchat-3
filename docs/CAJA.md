@@ -1,5 +1,7 @@
 # Caja (efectivo) — modelo de producto (2026-07-19)
 
+> El terminal donde vive la caja está especificado en [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
+
 ## Por qué
 Un mesero cobra en efectivo en la mesa. Ese dinero tiene que quedar registrado y trazable, y lo
 que NO se cobró tiene que quedar justificado y a la vista del dueño. Sin esto, el efectivo se

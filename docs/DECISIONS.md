@@ -353,6 +353,13 @@ se le pide nombre solo si no tiene cuenta, y ve un recibo informativo. Cobro del
 tarjeta/efectivo/contactless con división de cuenta. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md) y
 [docs/CAJA.md](CAJA.md).
 
+### D-60 — Terminal del mesero (B6): tablet compartida, PIN, permisos propios, pedidos sin pago
+
+Terminal del mesero (B6): tablet compartida del negocio, vinculada por QR del negocio, acceso
+por PIN de 6 dígitos con fichaje obligatorio; permisos propios por mesero; pedidos sin pago que
+no cuentan como venta hasta cobrarse; división de cuenta por partes/artículo/asiento. Offline,
+impresión y Tap to Pay quedan fuera de la v1. Ver [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

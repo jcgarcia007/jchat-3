@@ -63,7 +63,7 @@ pagado" solo aplica a taps de mesero (los de cliente ya pagaron); "Cerrar" aplic
 > **Futuro (caja):** el cierre de un tap de **mesero** pasará a exigir **código de caja o razón**
 > (efectivo cobrado vs. no cobrado → "pendiente de revisión" del dueño). Ver
 > [docs/CAJA.md](CAJA.md), fase **D3**. Todo el flujo de caja depende de **B6** (la terminal del
-> mesero), que aún no existe.
+> mesero, especificada en [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md)), que aún no existe.
 
 ### Subchat por mesa (opcional)
 
