@@ -329,6 +329,13 @@ PENDIENTE: barrer TODAS las tablas buscando este mismo patrón. Solo se han revi
 Mesas y Taps: taps por persona, prepago cliente / postpago mesero, identidad por login anónimo
 de Supabase, visibilidad limitada a participantes de la mesa. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
 
+### D-56 — Limpieza diaria de usuarios anónimos por pg_cron
+
+Job diario `cleanup-anon-users` (`0 5 * * *` UTC, migración 074) borra usuarios `is_anonymous`
+inactivos > 24h y SIN tap abierto. Los pedidos, taps y mensajes sobreviven (FK `ON DELETE SET
+NULL`). La función `cleanup_anonymous_users()` es SECURITY DEFINER y solo la ejecuta el cron
+(EXECUTE revocado a public/anon/authenticated). Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
