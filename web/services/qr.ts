@@ -35,6 +35,20 @@ export function roomQrUrl(qrToken: string, origin?: string): string {
   return `${base}/c/${qrToken}`;
 }
 
+/**
+ * Canonical deep-link URL for a TABLE via its QR token → /t/{qrToken}
+ * (public entry, migration 073). Scanning identifies the table for ordering
+ * and, if the table has a subchat, also joins that sub-room.
+ */
+export function tableQrUrl(qrToken: string, origin?: string): string {
+  const base =
+    origin ??
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : "https://jchat-3.vercel.app");
+  return `${base}/t/${qrToken}`;
+}
+
 // ─── QR generation options ────────────────────────────────────────────────────
 
 export interface QrColorOpts {

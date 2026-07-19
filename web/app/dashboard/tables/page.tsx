@@ -25,10 +25,13 @@ import {
   IconDeviceFloppy,
   IconX,
   IconUsers,
+  IconQrcode,
+  IconMessageCircle,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "@/components/dashboard/useActiveBusinessName";
 import { TableDetailPanel, type PanelTable } from "@/components/dashboard/TableDetailPanel";
+import { TableQrModal, type QrTable } from "@/components/dashboard/TableQrModal";
 
 interface TableRow {
   id: string;
@@ -37,6 +40,8 @@ interface TableRow {
   seats: number;
   sort: number;
   is_active: boolean;
+  qr_token: string;
+  room_id: string | null;
 }
 
 const DEFAULT_FLOOR = "Principal";
@@ -47,9 +52,10 @@ interface FormState {
   floor: string;
   seats: string; // kept as string for the input; validated to 1-50
   is_active: boolean;
+  roomId: string | null; // subchat room linked to this table (edit only)
 }
 
-const EMPTY_FORM: FormState = { id: null, label: "", floor: DEFAULT_FLOOR, seats: "4", is_active: true };
+const EMPTY_FORM: FormState = { id: null, label: "", floor: DEFAULT_FLOOR, seats: "4", is_active: true, roomId: null };
 
 export default function TablesPage() {
   const { id: activeId } = useActiveBusinessName();
@@ -92,6 +98,9 @@ export default function TablesPage() {
   // Table detail drawer (B2). Clicking a card (not its buttons) opens it.
   const [detailTable, setDetailTable] = useState<PanelTable | null>(null);
 
+  // Per-table QR modal (B5).
+  const [qrTable, setQrTable] = useState<QrTable | null>(null);
+
   const load = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) {
       setRows([]);
@@ -102,7 +111,7 @@ export default function TablesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tables")
-      .select("id, label, floor, seats, sort, is_active")
+      .select("id, label, floor, seats, sort, is_active, qr_token, room_id")
       .eq("business_id", activeId)
       .order("floor", { ascending: true })
       .order("sort", { ascending: true })
@@ -144,7 +153,7 @@ export default function TablesPage() {
   }
   function openEdit(r: TableRow) {
     setFormError(null);
-    setForm({ id: r.id, label: r.label, floor: r.floor, seats: String(r.seats), is_active: r.is_active });
+    setForm({ id: r.id, label: r.label, floor: r.floor, seats: String(r.seats), is_active: r.is_active, roomId: r.room_id });
   }
   function closeForm() {
     setForm(null);
@@ -213,6 +222,12 @@ export default function TablesPage() {
 
   async function remove(r: TableRow) {
     if (!window.confirm(`¿Eliminar la mesa "${r.label}"? Esta acción no se puede deshacer.`)) return;
+    // If the table has a subchat, deactivate it first (never delete the room —
+    // it may hold messages). set_table_subchat(false) marks the room inactive
+    // and clears the link, then the table row can be removed.
+    if (r.room_id) {
+      await supabase.rpc("set_table_subchat", { p_table_id: r.id, p_enable: false });
+    }
     const { error } = await supabase.from("tables").delete().eq("id", r.id);
     if (!error) await load();
   }
@@ -271,6 +286,7 @@ export default function TablesPage() {
           onSave={() => void save()}
           onCancel={closeForm}
           onWaitersChanged={() => void loadWaiterCounts()}
+          onSubchatChanged={() => void load()}
         />
       )}
 
@@ -352,6 +368,11 @@ export default function TablesPage() {
                       </div>
                     );
                   })()}
+                  {r.room_id && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--db-text-tertiary)" }}>
+                      <IconMessageCircle size={13} /> Chat
+                    </div>
+                  )}
                   {!r.is_active && (
                     <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--db-text-tertiary)" }}>
                       Inactiva
@@ -391,6 +412,15 @@ export default function TablesPage() {
                           >
                             <IconPlus size={16} />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setQrTable({ id: r.id, label: r.label, qr_token: r.qr_token, room_id: r.room_id })}
+                            aria-label={`Código QR de ${r.label}`}
+                            title={`Código QR de ${r.label}`}
+                            style={ICON_BTN}
+                          >
+                            <IconQrcode size={16} />
+                          </button>
                         </>
                       );
                     })()}
@@ -409,6 +439,8 @@ export default function TablesPage() {
           onClose={() => setDetailTable(null)}
         />
       )}
+
+      {qrTable && <TableQrModal table={qrTable} onClose={() => setQrTable(null)} />}
     </Shell>
   );
 }
@@ -496,6 +528,7 @@ function TableForm({
   onSave,
   onCancel,
   onWaitersChanged,
+  onSubchatChanged,
 }: {
   form: FormState;
   saving: boolean;
@@ -505,6 +538,7 @@ function TableForm({
   onSave: () => void;
   onCancel: () => void;
   onWaitersChanged: () => void;
+  onSubchatChanged: () => void;
 }) {
   return (
     <form
@@ -579,6 +613,16 @@ function TableForm({
         <WaiterAssignment tableId={form.id} businessId={businessId} onChanged={onWaitersChanged} />
       )}
 
+      {/* Per-table subchat toggle (B5) — only when editing. */}
+      {form.id !== null && (
+        <SubchatToggle
+          tableId={form.id}
+          roomId={form.roomId}
+          onChange={(roomId) => onChange({ ...form, roomId })}
+          onChanged={onSubchatChanged}
+        />
+      )}
+
       <div style={{ display: "flex", gap: "8px" }}>
         <button type="submit" disabled={saving} style={{ ...CTA, opacity: saving ? 0.6 : 1, cursor: saving ? "wait" : "pointer" }}>
           <IconDeviceFloppy size={17} /> {saving ? "Guardando…" : "Guardar"}
@@ -588,6 +632,65 @@ function TableForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Per-table subchat toggle (B5) ────────────────────────────────────────────
+// Enabling calls set_table_subchat(true): creates a sub-room under the business
+// main room and links it. Disabling calls set_table_subchat(false): deactivates
+// the room (never deleted) and clears the link. Both go through the RPC because
+// tables.room_id is not client-writable.
+
+function SubchatToggle({
+  tableId,
+  roomId,
+  onChange,
+  onChanged,
+}: {
+  tableId: string;
+  roomId: string | null;
+  onChange: (roomId: string | null) => void;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle(enable: boolean) {
+    setBusy(true);
+    setError(null);
+    const { data, error: rpcErr } = await supabase.rpc("set_table_subchat", {
+      p_table_id: tableId,
+      p_enable: enable,
+    });
+    setBusy(false);
+    if (rpcErr) {
+      const m = rpcErr.message;
+      setError(
+        m.includes("NO_MAIN_ROOM")
+          ? "El negocio no tiene sala principal para crear el chat."
+          : m.includes("NOT_ALLOWED")
+            ? "No tienes permiso sobre esta mesa."
+            : "No se pudo actualizar el chat de la mesa.",
+      );
+      return;
+    }
+    onChange((data as string | null) ?? null);
+    onChanged();
+  }
+
+  return (
+    <div style={{ borderTop: "1px solid var(--db-border)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--db-text-secondary)", opacity: busy ? 0.6 : 1 }}>
+        <input
+          type="checkbox"
+          checked={!!roomId}
+          disabled={busy}
+          onChange={(e) => void toggle(e.target.checked)}
+        />
+        <IconMessageCircle size={16} /> Chat para esta mesa
+      </label>
+      {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
+    </div>
   );
 }
 
