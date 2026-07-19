@@ -218,7 +218,7 @@ async function handlePaymentSucceeded(
         price_cents: it.price_cents,
         options: it.options ?? {},
         special_instructions: it.special_instructions ?? null,
-        item_status: "cooking",
+        item_status: "pending",
       }))
     : items.map((it) => ({            // legacy metadata path (unchanged)
         order_id: orderId,
@@ -227,7 +227,7 @@ async function handlePaymentSucceeded(
         price_cents: it.p,
         options: it.o ?? {},
         special_instructions: it.s ?? null,
-        item_status: "cooking",
+        item_status: "pending",
       }));
 
   if (rowsToInsert.length > 0) {
