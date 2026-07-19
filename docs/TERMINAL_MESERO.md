@@ -87,6 +87,9 @@ inflaría los ingresos con dinero no cobrado. **Solo cuenta como venta cuando se
 ## Integraciones con lo que ya existe
 - **KDS**: el pedido del mesero aparece en cocina **con mesa y asiento de cada plato**.
 - El mesero **ve el estado de cocina** de sus platos y **recibe aviso cuando uno pasa a listo**.
+  Esos estados (Pendiente · Preparando · Listo para recoger) son **por plato** y los mueve el
+  cocinero desde su propia terminal — ver **[docs/COCINA.md](COCINA.md)**. Hoy el terminal del
+  mesero pinta el valor crudo `item_status`, que siempre dice `cooking` porque nadie lo escribe.
 - **Llamadas de servicio** (`service_calls`, ya existe): llegan a su terminal con **aviso sonoro
   y visible**.
 - **Reservas**: ve las de sus mesas y **puede sentarlas**.

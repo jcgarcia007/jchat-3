@@ -373,6 +373,18 @@ devuelve `NOT_ASSIGNED`, y crea el tap. **La política INSERT de `table_tabs` NO
 RPC es el camino previsto, igual que con los taps de cliente. Ver
 [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
 
+### D-62 — Cocina: tres estados POR PLATO, estado del pedido derivado, y terminal propia del cocinero
+
+Cocina: tres estados **POR PLATO** (pendiente/preparando/listo), **estado del pedido derivado de
+sus platos**, y **terminal propia para el cocinero empleado**. Detectado y a corregir: el badge
+del móvil miente ("Cocinando" para siempre). Ver [docs/COCINA.md](COCINA.md).
+
+Contexto del reconocimiento que motivó la decisión: `order_items.item_status` es hoy una columna
+muerta (nadie escribe otro valor que el default `'cooking'`), `order_items` solo tiene políticas
+de SELECT —así que ningún cliente puede escribirla—, y `orders.status` solo lo puede cambiar el
+DUEÑO, con el KDS viviendo dentro del gate de plan del dashboard: hoy la cocina únicamente
+funciona si el dueño en persona toca el tablero.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
