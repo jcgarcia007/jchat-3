@@ -8,6 +8,7 @@ import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
 import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
 import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
+import { CheckoutStep } from "./CheckoutStep";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -39,7 +40,7 @@ interface CartItem {
   notes?: string;
 }
 
-type AppStep = "menu" | "cart" | "pickup" | "success";
+type AppStep = "menu" | "cart" | "pickup" | "pay";
 type PickupType = "counter" | "table";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1154,7 +1155,7 @@ function PickupSheet({
               cursor: canConfirm ? "pointer" : "not-allowed",
             }}
           >
-            Confirmar pedido (demo)
+            Ir a pagar
           </button>
           {pickupType === "table" && !tableNumber.trim() && (
             <p
@@ -1169,82 +1170,6 @@ function PickupSheet({
             </p>
           )}
         </div>
-      </div>
-    </Backdrop>
-  );
-}
-
-// ── Success Sheet ─────────────────────────────────────────────────────────────
-
-function SuccessSheet({
-  palette,
-  pickupType,
-  tableNumber,
-  onDone,
-}: {
-  palette: MenuPalette;
-  pickupType: PickupType;
-  tableNumber: string;
-  onDone: () => void;
-}) {
-  return (
-    <Backdrop onClose={onDone} palette={palette}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: palette.surfaceElevated,
-          borderRadius: "20px 20px 0 0",
-          padding: "32px 24px 40px",
-          textAlign: "center",
-          width: "100%",
-          maxWidth: 460,
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
-        <h2
-          style={{
-            fontSize: 20,
-            fontWeight: 700,
-            color: palette.text,
-            margin: "0 0 10px",
-          }}
-        >
-          ¡Pedido recibido!
-        </h2>
-        <p
-          style={{
-            fontSize: 14,
-            color: palette.textMuted,
-            lineHeight: 1.6,
-            margin: "0 0 8px",
-          }}
-        >
-          {pickupType === "counter"
-            ? "Recoge tu pedido en la barra cuando esté listo."
-            : `Te lo llevamos a la mesa ${tableNumber}.`}
-        </p>
-        <p style={{ fontSize: 12, color: palette.textFaint, margin: "0 0 28px" }}>
-          Pago próximamente — esto es una demo del flujo.
-        </p>
-        <button
-          onClick={onDone}
-          style={{
-            width: "100%",
-            padding: "14px",
-            borderRadius: 14,
-            border: "none",
-            background:
-              (palette.accentGradient ?? palette.accent),
-            color: palette.accentText,
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Seguir viendo el menú
-        </button>
       </div>
     </Backdrop>
   );
@@ -1630,16 +1555,18 @@ export default function MenuPageClient({
           onConfirm={(type, table) => {
             setPickupType(type);
             setPickupTable(table);
-            setStep("success");
+            setStep("pay");
           }}
         />
       )}
 
-      {step === "success" && (
-        <SuccessSheet
-          palette={palette}
+      {step === "pay" && (
+        <CheckoutStep
+          business={{ id: business.id, name: business.name }}
+          cartItems={cartItems}
           pickupType={pickupType}
-          tableNumber={pickupTable}
+          tableLabel={pickupTable}
+          onBack={() => setStep("pickup")}
           onDone={() => {
             setCartItems([]);
             setStep("menu");
