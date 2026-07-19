@@ -37,6 +37,7 @@ export function CategoryCards({
   loading = false,
   loadError = false,
   onRetry,
+  compact = false,
 }: {
   cards: CategoryCard[];
   totalPublished: number;
@@ -45,6 +46,14 @@ export function CategoryCards({
   loading?: boolean;
   loadError?: boolean;
   onRetry?: () => void;
+  /**
+   * Compact mode (waiter terminal): icon + name only, shorter cards. The row lives
+   * inside a pinned header on a phone, so the count line and badges are dropped to
+   * keep the fixed block small — a waiter taps a category, they don't read stats,
+   * and "Agotado" is shown on the dish itself where it matters. Default false, so
+   * the dashboard is unchanged.
+   */
+  compact?: boolean;
 }) {
   if (loading) {
     return <div style={noticeStyle}>Cargando categorías…</div>;
@@ -77,13 +86,20 @@ export function CategoryCards({
         overflowX: "auto",
         padding: "4px 2px 10px",
         scrollbarWidth: "thin",
+        // Cards always land aligned instead of being sliced in half at the edges.
+        scrollSnapType: "x mandatory",
+        // Keeps the snapped card off the very edge (and clear of the fade hint).
+        scrollPaddingLeft: 2,
+        scrollPaddingRight: 24,
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {/* "Todas" */}
       <Card
         active={activeId === null}
+        compact={compact}
         onClick={() => onSelect(null)}
-        icon={<IconLayoutGrid size={20} stroke={1.6} />}
+        icon={<IconLayoutGrid size={compact ? 18 : 20} stroke={1.6} />}
         name="Todas"
         countLabel={`${totalPublished} ${totalPublished === 1 ? "plato" : "platos"}`}
       />
@@ -92,6 +108,7 @@ export function CategoryCards({
         <Card
           key={c.id}
           active={activeId === c.id}
+          compact={compact}
           dim={c.hidden}
           onClick={() => onSelect(c.id)}
           icon={<CategoryIcon iconUrl={c.iconUrl} icon={c.icon} active={activeId === c.id} />}
@@ -113,6 +130,7 @@ export function CategoryCards({
 
 function Card({
   active,
+  compact = false,
   dim = false,
   onClick,
   icon,
@@ -122,6 +140,7 @@ function Card({
   badges,
 }: {
   active: boolean;
+  compact?: boolean;
   dim?: boolean;
   onClick: () => void;
   icon: React.ReactNode;
@@ -138,13 +157,16 @@ function Card({
       onClick={onClick}
       style={{
         flex: "0 0 auto",
-        minWidth: 128,
+        minWidth: compact ? 104 : 128,
         maxWidth: 200,
+        minHeight: compact ? 44 : undefined, // stays a comfortable touch target
         display: "flex",
         flexDirection: "column",
-        gap: 6,
-        padding: "12px 14px",
+        justifyContent: "center",
+        gap: compact ? 0 : 6,
+        padding: compact ? "10px 14px" : "12px 14px",
         borderRadius: 14,
+        scrollSnapAlign: "start",
         border: active ? "1px solid var(--db-accent)" : "1px solid var(--db-border)",
         background: active ? "var(--db-accent)" : "var(--db-bg-surface)",
         color: active ? "var(--db-accent-text)" : "var(--db-text-primary)",
@@ -162,20 +184,23 @@ function Card({
           {name}
         </span>
       </div>
-      <span
-        style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: active
-            ? "var(--db-accent-text)"
-            : countWarn
-              ? "var(--db-warning)"
-              : "var(--db-text-tertiary)",
-        }}
-      >
-        {countLabel}
-      </span>
-      {badges && <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{badges}</div>}
+      {/* Compact (terminal): icon + name only — keeps the pinned header short. */}
+      {!compact && (
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: active
+              ? "var(--db-accent-text)"
+              : countWarn
+                ? "var(--db-warning)"
+                : "var(--db-text-tertiary)",
+          }}
+        >
+          {countLabel}
+        </span>
+      )}
+      {!compact && badges && <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{badges}</div>}
     </button>
   );
 }
