@@ -341,23 +341,29 @@ export function TakeOrderScreen({
 
   return (
     <div style={overlay} role="dialog" aria-label={`Tomar pedido — ${tableLabel}`}>
-      {/* ── Fixed header: table, tab, seat selector ───────────────────────── */}
+      {/* ── Pinned block: table + tab + seats + categories ─────────────────
+          All of it is ONE opaque, non-scrolling block. The category row used to
+          live in the scrolling body, so it slid up and got clipped at the top of
+          the scroll area (it read as "hidden under the header"). Keeping it here
+          means the waiter can always see, and change, both the active seat and
+          the active category. Opaque background so nothing shows through. */}
       <div style={header}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 900 }}>{tableLabel}</div>
-            <div style={{ fontSize: 14, color: "var(--db-text-secondary)" }}>{tabName}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.2 }}>{tableLabel}</div>
+            <div style={{ fontSize: 13, color: "var(--db-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {tabName}
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar" style={closeBtn}>
             <IconX size={22} />
           </button>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--db-text-tertiary)", marginBottom: 6 }}>
-            Asiento — se aplica a lo que añadas
-          </div>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        {/* Seats — horizontal, snapped, with a fade when there's more to the right */}
+        <div style={{ marginTop: 10 }}>
+          <div style={pinnedLabel}>Asiento — se aplica a lo que añadas</div>
+          <ScrollRow>
             {seatOptions.map((s) => {
               const on = seat === s;
               return (
@@ -368,23 +374,37 @@ export function TakeOrderScreen({
                   aria-pressed={on}
                   style={{
                     flex: "0 0 auto",
-                    minWidth: s === null ? 120 : 52,
-                    height: 52,
+                    minWidth: s === null ? 112 : 46,
+                    height: 46,
                     borderRadius: 12,
-                    fontSize: s === null ? 14 : 18,
+                    fontSize: s === null ? 14 : 17,
                     fontWeight: 800,
                     border: on ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
                     background: on ? "var(--db-accent)" : "var(--db-bg-surface)",
                     color: on ? "var(--db-accent-text)" : "var(--db-text-primary)",
                     cursor: "pointer",
+                    scrollSnapAlign: "start",
                   }}
                 >
                   {s === null ? "Sin asiento" : s}
                 </button>
               );
             })}
-          </div>
+          </ScrollRow>
         </div>
+
+        {/* Categories — pinned with the header, compact so the block stays short */}
+        {!loading && !loadError && categories.length > 0 && totalPublished > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <CategoryCards
+              cards={cards}
+              totalPublished={totalPublished}
+              activeId={activeCat}
+              onSelect={setActiveCat}
+              compact
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────── */}
@@ -407,13 +427,7 @@ export function TakeOrderScreen({
           </Notice>
         ) : (
           <>
-            <CategoryCards
-              cards={cards}
-              totalPublished={totalPublished}
-              activeId={activeCat}
-              onSelect={setActiveCat}
-            />
-
+            {/* The category row is pinned in the header above — not here. */}
             {shownDishes.length === 0 ? (
               <Notice>Esta categoría no tiene platos.</Notice>
             ) : (
@@ -700,6 +714,67 @@ function ModifierSheet({
   );
 }
 
+/**
+ * Horizontal row that snaps its children into place and fades its right edge ONLY
+ * when there is actually more to scroll — a fade over nothing would be a lie about
+ * hidden content. Used for the seat selector (the category row snaps via
+ * CategoryCards' own compact styling).
+ */
+function ScrollRow({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollWidth > el.clientWidth + 4);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    el.addEventListener("scroll", check, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", check);
+    };
+  }, [children]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        ref={ref}
+        style={{
+          display: "flex",
+          gap: 8,
+          overflowX: "auto",
+          paddingBottom: 4,
+          paddingRight: 8,
+          scrollSnapType: "x mandatory",
+          scrollPaddingLeft: 0,
+          scrollPaddingRight: 24,
+          scrollbarWidth: "thin",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {children}
+      </div>
+      {overflowing && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 4,
+            width: 28,
+            pointerEvents: "none",
+            background: "linear-gradient(to right, transparent, var(--db-bg-base))",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Presentational bits (tokens only) ────────────────────────────────────────
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--db-text-tertiary)", margin: "0 0 8px" }}>{children}</div>;
@@ -716,15 +791,27 @@ const overlay: React.CSSProperties = {
   display: "flex", flexDirection: "column",
 };
 const header: React.CSSProperties = {
-  padding: "16px 20px 12px", borderBottom: "1px solid var(--db-border)", flexShrink: 0,
+  padding: "12px 16px 8px",
+  borderBottom: "1px solid var(--db-border)",
+  flexShrink: 0,
+  // OPAQUE: the body scrolls underneath, nothing may show through.
+  background: "var(--db-bg-base)",
+  zIndex: 1,
+};
+const pinnedLabel: React.CSSProperties = {
+  fontSize: 11, fontWeight: 800, textTransform: "uppercase",
+  letterSpacing: "0.05em", color: "var(--db-text-tertiary)", marginBottom: 5,
 };
 const body: React.CSSProperties = {
-  flex: 1, overflowY: "auto", padding: "16px 20px",
-  display: "flex", flexDirection: "column", gap: 16,
+  flex: 1, overflowY: "auto", padding: "14px 16px",
+  display: "flex", flexDirection: "column", gap: 14,
   maxWidth: 900, width: "100%", margin: "0 auto",
+  // The footer is a sibling (not overlaying), but keep a little breathing room so
+  // the last order line never sits flush against it.
+  paddingBottom: 20,
 };
 const footer: React.CSSProperties = {
-  padding: "12px 20px calc(14px + env(safe-area-inset-bottom))",
+  padding: "12px 16px calc(18px + env(safe-area-inset-bottom))",
   borderTop: "1px solid var(--db-border)", background: "var(--db-bg-surface)", flexShrink: 0,
 };
 const dishGrid: React.CSSProperties = {
