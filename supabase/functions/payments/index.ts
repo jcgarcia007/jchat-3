@@ -24,7 +24,11 @@
  */
 
 import Stripe from "npm:stripe@16.2.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+
+/** Supabase client bound to the CALLER's JWT (RLS + auth.uid() apply). */
+// deno-lint-ignore no-explicit-any
+type UserClient = SupabaseClient<any, "public", any>;
 
 // 8% fallback when businesses.tax_rate IS NULL — matches client default.
 // Change this constant (or set businesses.tax_rate per business) to adjust.
@@ -63,7 +67,14 @@ function errorResponse(message: string, status = 400): Response {
  * Same pattern as subscriptions/index.ts. authUserId is the ONLY trusted user
  * identity — body.user_id must never be used for auth or DB lookups.
  */
-async function verifyCaller(req: Request): Promise<{ authUserId: string } | Response> {
+// Returns the caller's id AND the JWT-scoped client that proved it. The client is
+// what lets an action ask the DB a question *as the caller* (e.g. RLS helpers like
+// is_waiter_of_table, which read auth.uid()); the admin client would bypass that
+// and answer for the service role, i.e. check nothing. Additive: existing callers
+// destructure only authUserId.
+async function verifyCaller(
+  req: Request,
+): Promise<{ authUserId: string; userClient: UserClient } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return errorResponse("Missing or invalid Authorization header", 401);
@@ -79,7 +90,7 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
   });
   const { data: { user }, error: authError } = await userClient.auth.getUser();
   if (authError || !user) return errorResponse("Unauthorized", 401);
-  return { authUserId: user.id };
+  return { authUserId: user.id, userClient };
 }
 
 interface CartItem { menu_item_id: string; name: string; qty: number; price_cents: number; options?: Record<string, unknown>; special_instructions?: string | null; }
@@ -181,6 +192,110 @@ function resolveGroupModifierCents(
     }
   }
   return { cents, labels };
+}
+
+/** Minimum shape a line needs to be priced. */
+interface PriceableItem {
+  menu_item_id: string;
+  qty: number;
+  options?: Record<string, unknown>;
+}
+
+interface PricedLines {
+  /** Per-line unit price: DB base + DB modifiers. Index-aligned with items[]. */
+  lineUnitCents: number[];
+  /** Server-VERIFIED option labels per line (what the kitchen should see). */
+  resolvedOptions: Record<string, unknown>[];
+  /** Sum of lineUnitCents[i] * items[i].qty. */
+  subtotalCents: number;
+}
+
+/**
+ * THE single server-side price calculator (extracted verbatim from
+ * handleCreatePaymentIntent so create_waiter_order reuses it instead of growing a
+ * second source of truth about money).
+ *
+ * Validates each line against the DB (exists / same business / available), resolves
+ * BOTH modifier systems (legacy menu_items.options sizes+extras, and the newer
+ * modifier_groups.choices), and returns server-owned amounts. Every price comes
+ * from the database — any amount sent by the client is ignored.
+ *
+ * Returns { error, status } instead of a Response so callers own the HTTP shape.
+ */
+async function priceLinesFromDb(
+  db: ReturnType<typeof getAdminClient>,
+  businessId: string,
+  items: PriceableItem[],
+): Promise<PricedLines | { error: string; status?: number }> {
+  // De-duplicate IDs for the IN query; duplicates in items[] are intentional
+  // (same dish added twice → two cart lines) and summed in recalculation below.
+  const itemIds = [...new Set(items.map((it) => it.menu_item_id))];
+  const { data: dbItems, error: itemsErr } = await db
+    .from("menu_items")
+    .select("id, price_cents, is_available, business_id, name, options")
+    .in("id", itemIds);
+  if (itemsErr) return { error: `DB error fetching items: ${itemsErr.message}`, status: 500 };
+
+  // deno-lint-ignore no-explicit-any
+  const dbMap = new Map<string, any>((dbItems ?? []).map((r: any) => [r.id as string, r]));
+
+  for (const it of items) {
+    const row = dbMap.get(it.menu_item_id);
+    if (!row)                           return { error: `Item not found: ${it.menu_item_id}` };
+    if (row.business_id !== businessId) return { error: "Item does not belong to this business" };
+    if (!row.is_available)              return { error: `Item not available: ${row.name}` };
+  }
+
+  // Modifier groups linked to the ordered items (new system). Prices come from here,
+  // never from the client.
+  const { data: mimgRows, error: mgErr } = await db
+    .from("menu_item_modifier_groups")
+    .select("menu_item_id, modifier_groups(id, label, choices)")
+    .in("menu_item_id", itemIds);
+  if (mgErr) return { error: `DB error fetching modifier groups: ${mgErr.message}`, status: 500 };
+
+  // menu_item_id → (group_id → group)
+  // deno-lint-ignore no-explicit-any
+  const groupsByItem = new Map<string, Map<string, any>>();
+  // deno-lint-ignore no-explicit-any
+  for (const row of (mimgRows ?? []) as any[]) {
+    const g = Array.isArray(row.modifier_groups) ? row.modifier_groups[0] : row.modifier_groups;
+    if (!g) continue;
+    const mid = row.menu_item_id as string;
+    if (!groupsByItem.has(mid)) groupsByItem.set(mid, new Map());
+    groupsByItem.get(mid)!.set(g.id as string, g);
+  }
+
+  // Uses DB base price per item AND DB modifier prices; the client's price_cents
+  // and any prices inside it.options are ignored.
+  const lineUnitCents: number[] = [];
+  const resolvedOptions: Record<string, unknown>[] = [];
+  for (const it of items) {
+    const row = dbMap.get(it.menu_item_id)!;
+    // Legacy sizes/extras (menu_items.options)
+    const legacy = resolveModifierCents(row, it.options, row.name as string);
+    if ("error" in legacy) return { error: legacy.error };
+    // New modifier groups (modifier_groups.choices)
+    const mods = resolveGroupModifierCents(
+      it.menu_item_id,
+      row.name as string,
+      (it.options as Record<string, unknown> | undefined)?.modifiers,
+      groupsByItem,
+    );
+    if ("error" in mods) return { error: mods.error };
+
+    lineUnitCents.push((row.price_cents as number) + legacy.cents + mods.cents);
+
+    const sel = (it.options ?? {}) as Record<string, unknown>;
+    resolvedOptions.push({
+      ...(typeof sel.size === "string" ? { size: sel.size } : {}),
+      ...(Array.isArray(sel.extras) && sel.extras.length ? { extras: sel.extras } : {}),
+      ...(mods.labels.length ? { modifiers: mods.labels } : {}),
+    });
+  }
+
+  const subtotalCents = items.reduce((sum, it, idx) => sum + lineUnitCents[idx] * it.qty, 0);
+  return { lineUnitCents, resolvedOptions, subtotalCents };
 }
 
 /**
@@ -291,80 +406,12 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     return errorResponse("This business has not completed Stripe onboarding", 409);
   }
 
-  // ── Validate items against DB (P0-2) ──────────────────────────────────────
-  // De-duplicate IDs for the IN query; duplicates in items[] are intentional
-  // (same dish added twice → two cart lines) and summed in recalculation below.
-  const itemIds = [...new Set(items.map((it) => it.menu_item_id))];
-  const { data: dbItems, error: itemsErr } = await db
-    .from("menu_items")
-    .select("id, price_cents, is_available, business_id, name, options")
-    .in("id", itemIds);
-  if (itemsErr) return errorResponse(`DB error fetching items: ${itemsErr.message}`, 500);
-
-  // deno-lint-ignore no-explicit-any
-  const dbMap = new Map<string, any>((dbItems ?? []).map((r: any) => [r.id as string, r]));
-
-  for (const it of items) {
-    const row = dbMap.get(it.menu_item_id);
-    if (!row)                            return errorResponse(`Item not found: ${it.menu_item_id}`);
-    if (row.business_id !== business_id) return errorResponse("Item does not belong to this business");
-    if (!row.is_available)               return errorResponse(`Item not available: ${row.name}`);
-  }
-
-  // Modifier groups linked to the ordered items (new system). Prices come from here,
-  // never from the client.
-  const { data: mimgRows, error: mgErr } = await db
-    .from("menu_item_modifier_groups")
-    .select("menu_item_id, modifier_groups(id, label, choices)")
-    .in("menu_item_id", itemIds);
-  if (mgErr) return errorResponse(`DB error fetching modifier groups: ${mgErr.message}`, 500);
-
-  // menu_item_id → (group_id → group)
-  // deno-lint-ignore no-explicit-any
-  const groupsByItem = new Map<string, Map<string, any>>();
-  // deno-lint-ignore no-explicit-any
-  for (const row of (mimgRows ?? []) as any[]) {
-    const g = Array.isArray(row.modifier_groups) ? row.modifier_groups[0] : row.modifier_groups;
-    if (!g) continue;
-    const mid = row.menu_item_id as string;
-    if (!groupsByItem.has(mid)) groupsByItem.set(mid, new Map());
-    groupsByItem.get(mid)!.set(g.id as string, g);
-  }
-
-  // ── Server-side recalculation (P0-2 + FIX #6 modifiers) ───────────────────
-  // Uses DB base price per item AND DB modifier prices (size/extras read from
-  // menu_items.options); the client's price_cents and any prices in it.options
-  // are ignored. Duplicate cart lines (same menu_item_id twice) are both summed.
-  // lineUnitCents[idx] = DB base + DB modifiers for items[idx].
-  const lineUnitCents: number[] = [];
-  const resolvedOptions: Record<string, unknown>[] = [];
-  for (const it of items) {
-    const row = dbMap.get(it.menu_item_id)!;
-    // Legacy sizes/extras (menu_items.options)
-    const legacy = resolveModifierCents(row, it.options, row.name as string);
-    if ("error" in legacy) return errorResponse(legacy.error);
-    // New modifier groups (modifier_groups.choices)
-    const mods = resolveGroupModifierCents(
-      it.menu_item_id,
-      row.name as string,
-      (it.options as Record<string, unknown> | undefined)?.modifiers,
-      groupsByItem,
-    );
-    if ("error" in mods) return errorResponse(mods.error);
-
-    lineUnitCents.push((row.price_cents as number) + legacy.cents + mods.cents);
-
-    const sel = (it.options ?? {}) as Record<string, unknown>;
-    resolvedOptions.push({
-      ...(typeof sel.size === "string" ? { size: sel.size } : {}),
-      ...(Array.isArray(sel.extras) && sel.extras.length ? { extras: sel.extras } : {}),
-      ...(mods.labels.length ? { modifiers: mods.labels } : {}),
-    });
-  }
-  const serverSubtotalCents = items.reduce(
-    (sum, it, idx) => sum + lineUnitCents[idx] * it.qty,
-    0,
-  );
+  // ── Validate items + server-side recalculation (P0-2 + FIX #6 modifiers) ──
+  // Extracted to priceLinesFromDb so the waiter-order action reuses the exact
+  // same calculator. Behaviour and error strings are unchanged.
+  const priced = await priceLinesFromDb(db, business_id, items);
+  if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
+  const { lineUnitCents, resolvedOptions, subtotalCents: serverSubtotalCents } = priced;
 
   const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
   const serverTaxCents = Math.round(serverSubtotalCents * taxRate);
@@ -540,6 +587,166 @@ async function handleCreateSetupIntent(authUserId: string): Promise<Response> {
   return jsonResponse({ clientSecret: setupIntent.client_secret, ephemeralKey: ephemeralKey.secret, customer: customerId, publishableKey });
 }
 
+/**
+ * create_waiter_order — a waiter takes an order at a table. NO payment involved.
+ *
+ * This is the inverse of the customer flow: the order is created UNPAID (paid_at
+ * NULL) and goes straight to the kitchen (status 'confirmed'). It does NOT count
+ * as revenue until it's collected — that's the whole point of splitting paid_at
+ * from status (078). No Stripe, no tip, no discount: those belong to checkout.
+ *
+ * Prices come from priceLinesFromDb — the SAME calculator the payment flow uses.
+ * Any amount sent by the client is ignored.
+ */
+async function handleCreateWaiterOrder(
+  body: Record<string, unknown>,
+  authUserId: string,
+  userClient: UserClient,
+): Promise<Response> {
+  const tabId = typeof body.tab_id === "string" ? body.tab_id : null;
+  if (!tabId) return errorResponse("tab_id is required");
+
+  const rawItems = Array.isArray(body.items) ? body.items : null;
+  if (!rawItems || rawItems.length === 0) return errorResponse("Cart is empty");
+
+  // ── Validate line structure BEFORE any DB call ────────────────────────────
+  interface WaiterLine extends PriceableItem { special_instructions?: string | null; seat?: number | null }
+  const items: WaiterLine[] = [];
+  for (const raw of rawItems as Record<string, unknown>[]) {
+    const menuItemId = typeof raw.menu_item_id === "string" ? raw.menu_item_id : "";
+    if (!menuItemId) return errorResponse("Each item must have a menu_item_id");
+    const qty = raw.qty;
+    if (!Number.isInteger(qty) || (qty as number) < 1) {
+      return errorResponse(`Invalid qty for item ${menuItemId}`);
+    }
+    // seat: null, or an integer 1..50 (matches the order_items_seat_range CHECK).
+    let seat: number | null = null;
+    if (raw.seat !== null && raw.seat !== undefined) {
+      if (!Number.isInteger(raw.seat) || (raw.seat as number) < 1 || (raw.seat as number) > 50) {
+        return errorResponse(`Invalid seat for item ${menuItemId} (must be 1–50)`);
+      }
+      seat = raw.seat as number;
+    }
+    items.push({
+      menu_item_id: menuItemId,
+      qty: qty as number,
+      options: (raw.options ?? {}) as Record<string, unknown>,
+      special_instructions: typeof raw.special_instructions === "string"
+        ? raw.special_instructions.trim().slice(0, 500) || null
+        : null,
+      seat,
+    });
+  }
+
+  const db = getAdminClient();
+
+  // ── Guard 2: the tab must exist and still be open ─────────────────────────
+  const { data: tab, error: tabErr } = await db
+    .from("table_tabs")
+    .select("id, business_id, table_id, status")
+    .eq("id", tabId)
+    .maybeSingle();
+  if (tabErr) return errorResponse(`DB error: ${tabErr.message}`, 500);
+  if (!tab) return errorResponse("Tab not found", 404);
+  if (tab.status !== "open") return errorResponse("Esa cuenta ya está cerrada", 400);
+
+  // ── Guard 3: the caller must be the waiter OF THAT TABLE ──────────────────
+  // Asked through the CALLER's client, so is_waiter_of_table() sees the caller's
+  // auth.uid(). Calling it with the admin client would evaluate it for the service
+  // role and check nothing at all.
+  const { data: isWaiter, error: waiterErr } = await userClient.rpc("is_waiter_of_table", {
+    p_table_id: tab.table_id,
+  });
+  if (waiterErr) return errorResponse(`DB error: ${waiterErr.message}`, 500);
+  if (isWaiter !== true) return errorResponse("Esta mesa no está asignada a ti", 403);
+
+  // ── Guard 4 + pricing: items must belong to the TAB's business ────────────
+  // priceLinesFromDb enforces the business match (and availability) per line.
+  const priced = await priceLinesFromDb(db, tab.business_id as string, items);
+  if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
+  const { lineUnitCents, resolvedOptions, subtotalCents } = priced;
+
+  // Tax uses the business rate, same rule as the payment flow. No tip, no discount.
+  const { data: business, error: bizErr } = await db
+    .from("businesses")
+    .select("id, tax_rate")
+    .eq("id", tab.business_id)
+    .maybeSingle();
+  if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
+  if (!business) return errorResponse("Business not found", 404);
+  const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
+  const taxCents = Math.round(subtotalCents * taxRate);
+  const totalCents = subtotalCents + taxCents;
+
+  // ── Write: order first, then its items ────────────────────────────────────
+  // paid_at stays NULL — the kitchen sees this order, the sales calendar does not.
+  const { data: order, error: orderErr } = await db
+    .from("orders")
+    .insert({
+      business_id: tab.business_id,
+      user_id: null,              // a waiter order has no customer
+      taken_by: authUserId,       // the employee who took it (audit / "my sales")
+      tab_id: tab.id,
+      table_id: tab.table_id,
+      status: "confirmed",        // kitchen can start
+      status_updated_at: new Date().toISOString(),
+      paid_at: null,              // NOT a sale until it's collected
+      order_type: "table",
+      subtotal_cents: subtotalCents,
+      tax_cents: taxCents,
+      tip_cents: 0,
+      discount_cents: 0,
+      total_cents: totalCents,
+      stripe_pi_id: null,
+    })
+    .select("id")
+    .single();
+  if (orderErr) return errorResponse(`Could not create order: ${orderErr.message}`, 500);
+  const orderId = (order as { id: string }).id;
+
+  // item_status 'cooking' — same initial value the stripe-webhook writes.
+  const itemRows = items.map((it, idx) => ({
+    order_id: orderId,
+    menu_item_id: it.menu_item_id,
+    qty: it.qty,
+    price_cents: lineUnitCents[idx],     // server-priced, never the client's
+    options: resolvedOptions[idx],       // server-verified labels
+    special_instructions: it.special_instructions ?? null,
+    seat: it.seat ?? null,
+    item_status: "cooking",
+  }));
+
+  const { error: itemsErr } = await db.from("order_items").insert(itemRows);
+  if (itemsErr) {
+    // No transaction spans two PostgREST calls, so an items failure would leave an
+    // order with no lines — a ghost ticket in the kitchen and a wrong tab total.
+    // Compensate by deleting the order we just created, then report the failure.
+    const { error: rollbackErr } = await db.from("orders").delete().eq("id", orderId);
+    if (rollbackErr) {
+      console.error(
+        `[payments] create_waiter_order: items insert failed AND rollback failed for order ${orderId}:`,
+        rollbackErr,
+      );
+    }
+    return errorResponse(`Could not create order items: ${itemsErr.message}`, 500);
+  }
+
+  return jsonResponse({
+    order_id: orderId,
+    subtotal_cents: subtotalCents,
+    tax_cents: taxCents,
+    total_cents: totalCents,
+    items: items.map((it, idx) => ({
+      menu_item_id: it.menu_item_id,
+      qty: it.qty,
+      seat: it.seat ?? null,
+      unit_price_cents: lineUnitCents[idx],
+      line_total_cents: lineUnitCents[idx] * it.qty,
+      options: resolvedOptions[idx],
+    })),
+  });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
@@ -562,6 +769,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case "ensure_customer":       return await handleEnsureCustomer(authUserId);
       case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId);
       case "create_setup_intent":   return await handleCreateSetupIntent(authUserId);
+      // Waiter takes an order at a table — no payment. Needs the caller-scoped
+      // client so is_waiter_of_table() is evaluated as the caller.
+      case "create_waiter_order":   return await handleCreateWaiterOrder(body, authUserId, auth.userClient);
       default: return errorResponse(`Unknown action: ${action ?? "(none)"}`);
     }
   } catch (err) {
