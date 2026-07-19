@@ -34,6 +34,15 @@ type UserClient = SupabaseClient<any, "public", any>;
 // Change this constant (or set businesses.tax_rate per business) to adjust.
 const TAX_FALLBACK = 0.08;
 
+/**
+ * THE tax rounding. Every flow (payment intent, waiter order, editing a waiter
+ * order) must round identically — two roundings of the same subtotal that differ
+ * by a cent is a money bug that only shows up in reconciliation.
+ */
+function computeTaxCents(subtotalCents: number, taxRate: number): number {
+  return Math.round(subtotalCents * taxRate);
+}
+
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -414,7 +423,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const { lineUnitCents, resolvedOptions, subtotalCents: serverSubtotalCents } = priced;
 
   const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
-  const serverTaxCents = Math.round(serverSubtotalCents * taxRate);
+  const serverTaxCents = computeTaxCents(serverSubtotalCents, taxRate);
 
   // Tip: validate non-negative integer, capped at 200% of server subtotal.
   const maxTipCents = serverSubtotalCents * 2;
@@ -675,7 +684,7 @@ async function handleCreateWaiterOrder(
   if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
   if (!business) return errorResponse("Business not found", 404);
   const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
-  const taxCents = Math.round(subtotalCents * taxRate);
+  const taxCents = computeTaxCents(subtotalCents, taxRate);
   const totalCents = subtotalCents + taxCents;
 
   // ── Write: order first, then its items ────────────────────────────────────
@@ -747,6 +756,197 @@ async function handleCreateWaiterOrder(
   });
 }
 
+/**
+ * update_waiter_order_item — edit ONE dish of a waiter order while the kitchen
+ * hasn't started it (K1d, rule D-63).
+ *
+ * The lock is at ORDER level: if ANY dish of the order is 'preparing' or 'ready',
+ * the whole ticket is frozen — including the dishes still pending. Changing a
+ * ticket the kitchen is already working on is how wrong plates reach a table.
+ *
+ * Pricing: the edited line is re-priced by priceLinesFromDb — the SAME calculator
+ * used to create the order. Untouched lines keep their stored price_cents, which
+ * the server already set when they were created; re-pricing them would silently
+ * rewrite history if the menu price changed since the order was taken. Tax goes
+ * through computeTaxCents so the rounding can't drift.
+ *
+ * Removing the LAST dish CANCELS the order (status='cancelled', totals 0). It is
+ * never deleted — the audit trail (who took it, what happened) has to survive.
+ */
+async function handleUpdateWaiterOrderItem(
+  body: Record<string, unknown>,
+  authUserId: string,
+  userClient: UserClient,
+): Promise<Response> {
+  const orderItemId = typeof body.order_item_id === "string" ? body.order_item_id : null;
+  if (!orderItemId) return errorResponse("order_item_id is required");
+
+  const remove = body.remove === true;
+  // qty/options are ignored entirely when removing.
+  let qty: number | null = null;
+  if (!remove && body.qty !== undefined && body.qty !== null) {
+    if (!Number.isInteger(body.qty) || (body.qty as number) < 1) {
+      return errorResponse("qty must be an integer >= 1");
+    }
+    qty = body.qty as number;
+  }
+  const newOptions = !remove && body.options && typeof body.options === "object"
+    ? (body.options as Record<string, unknown>)
+    : null;
+  if (!remove && qty === null && newOptions === null) {
+    return errorResponse("Nothing to update: send qty, options or remove");
+  }
+
+  const db = getAdminClient();
+
+  // ── Guard 2: the line and its order must exist ────────────────────────────
+  const { data: line, error: lineErr } = await db
+    .from("order_items")
+    .select("id, order_id, menu_item_id, qty, price_cents, item_status")
+    .eq("id", orderItemId)
+    .maybeSingle();
+  if (lineErr) return errorResponse(`DB error: ${lineErr.message}`, 500);
+  if (!line) return errorResponse("Order item not found", 404);
+
+  const { data: order, error: orderErr } = await db
+    .from("orders")
+    .select("id, business_id, status, paid_at, tip_cents, discount_cents")
+    .eq("id", line.order_id)
+    .maybeSingle();
+  if (orderErr) return errorResponse(`DB error: ${orderErr.message}`, 500);
+  if (!order) return errorResponse("Order not found", 404);
+
+  // ── Guard 3: permission, asked AS THE CALLER ──────────────────────────────
+  // is_employee_of_business reads auth.uid(), so it must go through the caller's
+  // client; with the admin client it would answer for the service role and check
+  // nothing. Ownership is compared against the JWT-verified authUserId.
+  const { data: isEmployee, error: empErr } = await userClient.rpc("is_employee_of_business", {
+    p_business_id: order.business_id,
+  });
+  if (empErr) return errorResponse(`DB error: ${empErr.message}`, 500);
+  let allowed = isEmployee === true;
+  if (!allowed) {
+    const { data: biz } = await db
+      .from("businesses")
+      .select("owner_id")
+      .eq("id", order.business_id)
+      .maybeSingle();
+    allowed = (biz as { owner_id?: string } | null)?.owner_id === authUserId;
+  }
+  if (!allowed) return errorResponse("No puedes editar los pedidos de este negocio", 403);
+
+  // ── Guard 5: administrative/terminal states are not editable ──────────────
+  if (["cancelled", "delivered", "refunded"].includes(order.status as string)) {
+    return errorResponse("Este pedido ya está cerrado y no se puede editar", 409);
+  }
+  // NOT in the brief, added deliberately: a PAID order's total is already charged
+  // in Stripe. Editing it would desync the DB from the real charge.
+  if (order.paid_at != null) {
+    return errorResponse("Este pedido ya está pagado; no se puede editar", 409);
+  }
+
+  // ── Guard 4: the D-63 ORDER-level lock ────────────────────────────────────
+  const { data: siblings, error: sibErr } = await db
+    .from("order_items")
+    .select("id, qty, price_cents, item_status")
+    .eq("order_id", order.id);
+  if (sibErr) return errorResponse(`DB error: ${sibErr.message}`, 500);
+  const started = (siblings ?? []).filter(
+    (s) => s.item_status === "preparing" || s.item_status === "ready",
+  );
+  if (started.length > 0) {
+    return errorResponse("La cocina ya empezó este pedido y no se puede modificar", 409);
+  }
+
+  // ── Effect ────────────────────────────────────────────────────────────────
+  if (remove) {
+    const { error: delErr } = await db.from("order_items").delete().eq("id", orderItemId);
+    if (delErr) return errorResponse(`Could not remove the dish: ${delErr.message}`, 500);
+  } else {
+    // Re-price the edited line with THE calculator. Client amounts are ignored:
+    // priceLinesFromDb only reads ids/qty/option selections.
+    const priced = await priceLinesFromDb(db, order.business_id as string, [
+      {
+        menu_item_id: line.menu_item_id as string,
+        qty: qty ?? (line.qty as number),
+        options: (newOptions ?? {}) as Record<string, unknown>,
+      },
+    ]);
+    if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
+
+    const patch: Record<string, unknown> = { price_cents: priced.lineUnitCents[0] };
+    if (qty !== null) patch.qty = qty;
+    if (newOptions !== null) patch.options = priced.resolvedOptions[0];
+
+    const { error: updErr } = await db.from("order_items").update(patch).eq("id", orderItemId);
+    if (updErr) return errorResponse(`Could not update the dish: ${updErr.message}`, 500);
+  }
+
+  // ── Re-sum the order from its CURRENT lines ───────────────────────────────
+  const { data: freshLines, error: freshErr } = await db
+    .from("order_items")
+    .select("id, menu_item_id, qty, price_cents, options, seat, item_status")
+    .eq("order_id", order.id);
+  if (freshErr) return errorResponse(`DB error: ${freshErr.message}`, 500);
+  const lines = freshLines ?? [];
+
+  const { data: business } = await db
+    .from("businesses")
+    .select("tax_rate")
+    .eq("id", order.business_id)
+    .maybeSingle();
+  const taxRate = (business as { tax_rate?: number | null } | null)?.tax_rate != null
+    ? Number((business as { tax_rate: number }).tax_rate)
+    : TAX_FALLBACK;
+
+  let subtotalCents = 0;
+  for (const l of lines) subtotalCents += (l.price_cents as number) * (l.qty as number);
+  let taxCents = computeTaxCents(subtotalCents, taxRate);
+  const tip = (order.tip_cents as number) ?? 0;
+  const discount = (order.discount_cents as number) ?? 0;
+  let totalCents = subtotalCents + taxCents + tip - discount;
+
+  // Last dish removed → CANCEL the order (never delete it: the audit trail of who
+  // took it and what happened has to survive).
+  const emptied = lines.length === 0;
+  const patch: Record<string, unknown> = emptied
+    ? {
+        status: "cancelled",
+        status_updated_at: new Date().toISOString(),
+        subtotal_cents: 0,
+        tax_cents: 0,
+        total_cents: 0,
+      }
+    : { subtotal_cents: subtotalCents, tax_cents: taxCents, total_cents: totalCents };
+  if (emptied) {
+    subtotalCents = 0;
+    taxCents = 0;
+    totalCents = 0;
+  }
+
+  const { error: ordUpdErr } = await db.from("orders").update(patch).eq("id", order.id);
+  if (ordUpdErr) return errorResponse(`Could not update the order: ${ordUpdErr.message}`, 500);
+
+  return jsonResponse({
+    order_id: order.id,
+    removed: remove,
+    cancelled: emptied,
+    subtotal_cents: subtotalCents,
+    tax_cents: taxCents,
+    total_cents: totalCents,
+    items: lines.map((l) => ({
+      order_item_id: l.id,
+      menu_item_id: l.menu_item_id,
+      qty: l.qty,
+      seat: l.seat ?? null,
+      unit_price_cents: l.price_cents,
+      line_total_cents: (l.price_cents as number) * (l.qty as number),
+      options: l.options,
+      item_status: l.item_status,
+    })),
+  });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
@@ -772,6 +972,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // Waiter takes an order at a table — no payment. Needs the caller-scoped
       // client so is_waiter_of_table() is evaluated as the caller.
       case "create_waiter_order":   return await handleCreateWaiterOrder(body, authUserId, auth.userClient);
+      // Edit a dish while the kitchen hasn't started the ticket (D-63). Caller-scoped
+      // client so the employee check is evaluated as the caller.
+      case "update_waiter_order_item":
+        return await handleUpdateWaiterOrderItem(body, authUserId, auth.userClient);
       default: return errorResponse(`Unknown action: ${action ?? "(none)"}`);
     }
   } catch (err) {
