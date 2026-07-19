@@ -346,6 +346,13 @@ una demo; se construye el checkout web real (C1) como base. Ver [docs/MESAS_Y_TA
 Caja de efectivo: cierre de tap justificado (código de caja o razón), turnos con arqueo, y
 revisión del propietario. Depende de B6. Ver [docs/CAJA.md](CAJA.md).
 
+### D-59 — Rediseño del flujo del cliente: el cliente que paga NO crea tap
+
+Rediseño del flujo del cliente: el cliente que paga NO crea tap (los taps son solo del mesero);
+se le pide nombre solo si no tiene cuenta, y ve un recibo informativo. Cobro del mesero por
+tarjeta/efectivo/contactless con división de cuenta. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md) y
+[docs/CAJA.md](CAJA.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

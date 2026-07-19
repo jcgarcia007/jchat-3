@@ -143,18 +143,40 @@ El cliente que escanea pide en la **web** (sin instalar nada). Si tiene la app i
 ofrece/salta a la app. El flujo web es OBLIGATORIO: es lo que ve quien no tiene la app. El salto
 a la app es una mejora encima, no un sustituto.
 
-### Fases
-- **C1 — Checkout web real** en `/m/{slug}`: carrito persistente, invocar la EF `payments`
-  (`create_payment_intent`), Stripe en web, pantalla de éxito. BASE de todo lo demás.
-- **C2 — Contexto de mesa**: consumir `sessionStorage['jchat.tableContext']` (que B5 ya escribe)
-  y propagar el token de mesa hasta la EF `payments` → metadata del PaymentIntent → el webhook
-  resuelve `table_id` real (hoy la orden nace solo con `table_label`, texto libre).
-- **C3 — Tap del cliente**: tras pagar, pedir el nombre del tap. Como las políticas actuales NO
-  permiten al cliente crear taps (INSERT es waiter-only, migración 071) ni atar órdenes
-  (`attach_order_to_tab` exige waiter/owner/admin, 072), hace falta un camino SERVER-SIDE nuevo
-  (RPC SECURITY DEFINER o EF) que verifique: token de mesa válido + `orders.user_id = auth.uid()`
-  + `owner_uid` del tap = `auth.uid()`, y entonces cree el tap y ate la orden.
-- **C4 — Salto a la app** si está instalada (deep link). Prescindible.
+### ⚠️ C3 REDISEÑADO (2026-07-19) — el cliente que paga NO crea tap
+
+Decisión de Juan: **un cliente que ya pagó no necesita un tap**. Los taps son SOLO del mesero
+(postpago). Se descarta el diseño anterior de C3 (RPC `claim_order_into_tab`, nombrar el tap tras
+pagar) — nunca se implementó.
+
+**Nuevo flujo del cliente que escanea el QR:**
+- Ve el **menú**, puede **llamar al servicio** y **entrar al chat** de la mesa (si tiene subchat).
+- **Solo si hay un tap ABIERTO en esa mesa**, aparece un botón para ver **lo pendiente de pagar**
+  en esa mesa.
+- Al **pagar**:
+  · Si NO tiene cuenta JChat → se le pide un **NOMBRE**, solo para que el mesero sepa a quién
+    entregar el pedido.
+  · Si SÍ tiene cuenta → el nombre sale de su perfil, no se le pide nada.
+  · En ambos casos ve un **RECIBO** en su pantalla.
+- **El recibo es SOLO INFORMATIVO** (tranquilidad del cliente). El mesero NO lo necesita como
+  prueba: en su terminal ya ve todos los pedidos de la mesa con el nombre de cada uno, gracias a
+  `orders.table_id` (C2).
+
+**Consecuencia sobre el modelo de datos:** `table_tabs.kind='customer'` queda SIN USO. No se
+elimina (es inocuo), pero ningún flujo lo crea. Toda la semántica de "tap pagado vs por cobrar"
+del panel sigue siendo válida; simplemente solo existirán taps `kind='waiter'`.
+
+**Lo que sigue vigente:** `orders.table_id` (C2) es la pieza CLAVE — es lo que hace que el mesero
+vea en su terminal todo lo pedido en esa mesa, incluidos los pedidos ya pagados por QR.
+
+### Fases revisadas
+- **C1 — Checkout web real** ✅ hecho.
+- **C2 — Contexto de mesa → orders.table_id** ✅ hecho y desplegado.
+- **C3' — Nombre del cliente + recibo** (NUEVO, pendiente): pedir nombre al invitado sin cuenta;
+  usar el nombre del perfil si tiene cuenta; mostrar recibo informativo tras pagar.
+- **C5 — "Ver lo pendiente de la mesa"** (NUEVO, pendiente): botón en el menú, visible SOLO si
+  hay un tap abierto en esa mesa; muestra lo que queda por pagar.
+- **C4 — Salto a la app** si está instalada. Prescindible.
 
 ### Cómo funciona hoy el pedido/pago (verificado)
 - El cliente NUNCA inserta en `orders`. La orden la crea el **webhook** `stripe-webhook` al

@@ -30,5 +30,21 @@ Todo esto vive en **la terminal del mesero**, que HOY NO EXISTE. El dashboard ex
 business/pro; un empleado no puede entrar. B6 (superficie del mesero) es prerequisito de la caja
 —y ya lo era de la asignación de mesas (B4), los taps de mesero y el panel (B2)—.
 
+## Cobro desde la terminal del mesero (fase D5)
+El mesero cobra un tap desde su terminal por tres vías:
+- **Tarjeta** (cobro normal).
+- **Efectivo** → genera la entrada de caja con su código (ver D2).
+- **Contactless / Tap to Pay** (acercar la tarjeta al teléfono del mesero) → **FASE POSTERIOR**,
+  pero es un objetivo confirmado.
+
+**Dividir la cuenta:** el mesero puede dividir un tap **de dos formas, a su elección**:
+- **Partes iguales** entre N personas.
+- **Por artículos** (marca qué platos van a cada persona).
+
+⚠️ **Nota técnica sobre Tap to Pay:** requiere el SDK nativo de Stripe Terminal, con requisitos
+duros de hardware/SO (iPhone XS+ con iOS reciente; Android con NFC certificado) y disponibilidad
+POR PAÍS — hay que confirmar República Dominicana antes de comprometerlo. Por eso va en fase
+aparte, después de que el cobro con tarjeta y efectivo funcionen.
+
 ## Estado
 Modelo definido, SIN implementar. Orden acordado: C3 → B6 → D1-D4.
