@@ -106,3 +106,49 @@ La función es SECURITY DEFINER y **solo la ejecuta el cron** (postgres): revoca
 - Qué valores exactos usa `item_status` en el flujo (hoy solo se observa `'cooking'`).
 - Si un tap puede tener varias personas (compartir cuenta) o es siempre 1 persona = 1 tap.
 - Si el mesero puede mover una orden de un tap a otro.
+
+## B3 revisado — el flujo del cliente (plan C, híbrido)
+
+### Hallazgo (2026-07-18, reconocimiento)
+La superficie de pedido web `web/app/m/[slug]` es una **DEMO**: el botón "Confirmar pedido
+(demo)" solo cambia de paso, NO crea pedidos, NO llama a ninguna Edge Function, NO cobra. El
+carrito es estado local de React (no persiste). El flujo REAL de pedido+pago vive en la **app
+móvil** (`mobile/screens/checkout/`, `mobile/services/stripe.ts` → EF `payments`).
+
+Consecuencia: el QR por mesa de B5 (`/t/[token]` → `/m/{slug}`) hoy lleva a una página donde no
+se puede pedir. B5 sigue siendo correcto (registro de mesas, QR, subchat); lo que falta es un
+destino donde SÍ se pueda pedir.
+
+### Decisión de Juan: plan C (híbrido)
+El cliente que escanea pide en la **web** (sin instalar nada). Si tiene la app instalada, se le
+ofrece/salta a la app. El flujo web es OBLIGATORIO: es lo que ve quien no tiene la app. El salto
+a la app es una mejora encima, no un sustituto.
+
+### Fases
+- **C1 — Checkout web real** en `/m/{slug}`: carrito persistente, invocar la EF `payments`
+  (`create_payment_intent`), Stripe en web, pantalla de éxito. BASE de todo lo demás.
+- **C2 — Contexto de mesa**: consumir `sessionStorage['jchat.tableContext']` (que B5 ya escribe)
+  y propagar el token de mesa hasta la EF `payments` → metadata del PaymentIntent → el webhook
+  resuelve `table_id` real (hoy la orden nace solo con `table_label`, texto libre).
+- **C3 — Tap del cliente**: tras pagar, pedir el nombre del tap. Como las políticas actuales NO
+  permiten al cliente crear taps (INSERT es waiter-only, migración 071) ni atar órdenes
+  (`attach_order_to_tab` exige waiter/owner/admin, 072), hace falta un camino SERVER-SIDE nuevo
+  (RPC SECURITY DEFINER o EF) que verifique: token de mesa válido + `orders.user_id = auth.uid()`
+  + `owner_uid` del tap = `auth.uid()`, y entonces cree el tap y ate la orden.
+- **C4 — Salto a la app** si está instalada (deep link). Prescindible.
+
+### Cómo funciona hoy el pedido/pago (verificado)
+- El cliente NUNCA inserta en `orders`. La orden la crea el **webhook** `stripe-webhook` al
+  recibir `payment_intent.succeeded`, con `status='confirmed'` y `table_label` desde la metadata.
+  No escribe `tab_id` ni `table_id`.
+- La EF `payments` (`create_payment_intent`) recalcula TODOS los importes desde la BD (ignora los
+  del cliente salvo la propina) y guarda el carrito en `pending_order_carts` como puente
+  carrito→orden a través del pago. El webhook lo lee, crea `order_items` con
+  `item_status='cooking'` y lo borra.
+- La EF `payments` EXIGE JWT (`verifyCaller`) → un cliente sin sesión no puede pagar. Por eso B3
+  depende del **login anónimo** de Supabase (pendiente de activar).
+- Pagar sin email es viable: `contact_email` es opcional y Stripe tolera customer sin email.
+
+### Dependencias
+- Login anónimo de Supabase ACTIVADO (sin él, un cliente sin cuenta no puede pagar).
+- La limpieza diaria de anónimos (migración 074) ya está puesta.
