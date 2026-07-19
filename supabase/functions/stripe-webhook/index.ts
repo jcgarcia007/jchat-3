@@ -110,6 +110,9 @@ async function handlePaymentSucceeded(
   const promoCode = meta.promo_code ?? null;
   const specialInstructions = meta.special_instructions ?? null;
   const tableLabel = meta.table_label ?? null;
+  // C2: real table id, resolved server-side by the payments EF (null for counter/
+  // mobile/legacy orders that carry no table_qr_token).
+  const tableId = meta.table_id ?? null;
   const contactEmail = meta.contact_email ?? null;
   const contactPhone = meta.contact_phone ?? null;
   const itemsRaw = meta.items ?? "[]";
@@ -163,6 +166,7 @@ async function handlePaymentSucceeded(
       promo_code: promoCode,
       special_instructions: specialInstructions,
       table_label: tableLabel,
+      table_id: tableId,
       contact_email: contactEmail,
       contact_phone: contactPhone,
       stripe_pi_id: paymentIntent.id,

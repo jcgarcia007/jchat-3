@@ -83,7 +83,7 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
 }
 
 interface CartItem { menu_item_id: string; name: string; qty: number; price_cents: number; options?: Record<string, unknown>; special_instructions?: string | null; }
-interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; table_label?: string | null; items: CartItem[]; }
+interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; table_label?: string | null; table_qr_token?: string | null; items: CartItem[]; }
 
 /** Email lives in auth.users, not public.users — fetch via the admin API. */
 async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string): Promise<string | undefined> {
@@ -195,6 +195,12 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // Sanitize free-text table label (never trust the client; Stripe metadata is length-capped).
   const tableLabel = typeof table_label === "string"
     ? table_label.trim().slice(0, 40) || null
+    : null;
+
+  // C2: optional table QR token. Resolved SERVER-SIDE below (never trust a
+  // client-supplied table_id). The client only sends the opaque token.
+  const tableQrToken = typeof payload.table_qr_token === "string"
+    ? payload.table_qr_token.trim() || null
     : null;
 
   // Optional guest contact (receipt / refund). Sanitised; never trusted raw.
@@ -388,6 +394,30 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     })),
   );
 
+  // C2: resolve the table QR token SERVER-SIDE. The client sends only the opaque
+  // token; we look up the table and REQUIRE it to belong to THIS business (a
+  // cross-business token is rejected — otherwise a customer could attach their
+  // order to another venue's table). Unknown/inactive token → ignored (order
+  // proceeds with no table). NEVER trust a client-supplied table_id.
+  let resolvedTableId: string | null = null;
+  if (tableQrToken) {
+    const { data: tableRow, error: tableErr } = await db
+      .from("tables")
+      .select("id, business_id")
+      .eq("qr_token", tableQrToken)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (tableErr) {
+      console.error("[payments] table_qr_token lookup failed:", tableErr.message);
+    } else if (!tableRow) {
+      console.warn("[payments] table_qr_token not found or inactive — order has no table");
+    } else if (tableRow.business_id !== business_id) {
+      return errorResponse("La mesa no pertenece a este negocio", 400);
+    } else {
+      resolvedTableId = tableRow.id as string;
+    }
+  }
+
   const metadata: Record<string, string> = {
     business_id,
     user_id:        authUserId,                       // JWT-verified
@@ -404,6 +434,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (promo_code)          metadata.promo_code = promo_code;
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
   if (tableLabel)           metadata.table_label = tableLabel;
+  if (resolvedTableId)      metadata.table_id = resolvedTableId;
   if (contactEmail)         metadata.contact_email = contactEmail;
   if (contactPhone)         metadata.contact_phone = contactPhone;
   if (itemsMeta.length > 490) metadata.items_overflow = "1";

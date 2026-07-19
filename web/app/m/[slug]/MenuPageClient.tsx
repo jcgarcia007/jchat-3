@@ -9,6 +9,7 @@ import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
 import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import { CheckoutStep } from "./CheckoutStep";
+import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -1361,6 +1362,40 @@ export default function MenuPageClient({
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [pickupTable, setPickupTable] = useState("");
 
+  // ── Table QR context (C2) — written by B5's /t/[token] into sessionStorage ──
+  // Only honoured when its businessSlug matches THIS page's business (never carry
+  // one venue's table to another). When present, the order is tagged to the real
+  // table via its token (resolved server-side in the payments EF).
+  const [tableCtx, setTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(TABLE_CONTEXT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { token?: string; tableLabel?: string; businessSlug?: string };
+      if (parsed.businessSlug === business.slug && typeof parsed.token === "string" && parsed.token) {
+        setTableCtx({ token: parsed.token, tableLabel: parsed.tableLabel ?? "" });
+        // Reflect the table in the pickup flow (order_type='table', real label).
+        setPickupType("table");
+        setPickupTable(parsed.tableLabel ?? "");
+      } else if (parsed.businessSlug && parsed.businessSlug !== business.slug) {
+        // Navigated to a different venue — drop the stale table context.
+        sessionStorage.removeItem(TABLE_CONTEXT_KEY);
+      }
+    } catch {
+      // Malformed/unavailable sessionStorage — ignore.
+    }
+  }, [business.slug]);
+
+  function clearTableContext() {
+    setTableCtx(null);
+    try {
+      sessionStorage.removeItem(TABLE_CONTEXT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
   // ── Category nav active tracking ────────────────────────────────────────────
   const [activeCategory, setActiveCategory] = useState<string>(
     categories[0]?.id ?? ""
@@ -1499,6 +1534,46 @@ export default function MenuPageClient({
           paddingBottom: 16,
         }}
       >
+      {tableCtx && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            padding: "10px 14px",
+            background: palette.accent,
+            color: palette.accentText,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          <span>
+            Estás pidiendo en la mesa{tableCtx.tableLabel ? ` ${tableCtx.tableLabel}` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={clearTableContext}
+            style={{
+              background: "transparent",
+              border: `1px solid ${palette.accentText}`,
+              color: palette.accentText,
+              borderRadius: 999,
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            No estoy en esa mesa
+          </button>
+        </div>
+      )}
+
       {showBusinessHeader && <BusinessHeader biz={business} />}
 
       <MenuPaletteContext.Provider value={palette}>
@@ -1564,8 +1639,9 @@ export default function MenuPageClient({
         <CheckoutStep
           business={{ id: business.id, name: business.name }}
           cartItems={cartItems}
-          pickupType={pickupType}
-          tableLabel={pickupTable}
+          pickupType={tableCtx ? "table" : pickupType}
+          tableLabel={tableCtx ? tableCtx.tableLabel : pickupTable}
+          tableQrToken={tableCtx?.token ?? null}
           onBack={() => setStep("pickup")}
           onDone={() => {
             setCartItems([]);
