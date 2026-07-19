@@ -97,10 +97,18 @@ async function resolveProfileName(userId: string): Promise<string | null> {
 type Phase = "checking" | "login" | "name" | "creating" | "pay" | "success" | "error";
 type PaidStatus = "succeeded" | "processing";
 
+interface ServerBreakdown {
+  subtotalCents: number;
+  taxCents: number;
+  tipCents: number;
+  discountCents: number;
+}
+
 interface IntentResult {
   clientSecret: string;
   publishableKey: string;
   serverTotalCents: number;
+  breakdown: ServerBreakdown | null; // server-computed; the receipt uses ONLY this
 }
 
 export function CheckoutStep({
@@ -190,7 +198,12 @@ export function CheckoutStep({
       setPhase("error");
       return;
     }
-    const res = data as { clientSecret?: string; publishableKey?: string; serverTotalCents?: number };
+    const res = data as {
+      clientSecret?: string;
+      publishableKey?: string;
+      serverTotalCents?: number;
+      serverBreakdown?: ServerBreakdown;
+    };
     if (!res?.clientSecret || !res?.publishableKey) {
       setError("El servidor no devolvió los datos de pago.");
       setPhase("error");
@@ -200,6 +213,7 @@ export function CheckoutStep({
       clientSecret: res.clientSecret,
       publishableKey: res.publishableKey,
       serverTotalCents: res.serverTotalCents ?? clientSubtotal,
+      breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
   }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
@@ -333,6 +347,7 @@ export function CheckoutStep({
             name={contactName}
             items={cartItems}
             totalCents={intent?.serverTotalCents ?? clientSubtotal}
+            breakdown={intent?.breakdown ?? null}
             tableLabel={pickupType === "table" ? tableLabel.trim() : ""}
           />
 
@@ -422,19 +437,23 @@ function originOf(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
 }
 
-/** Informative receipt shown after a successful payment. Items + name from the
- *  client; the TOTAL is the server-calculated amount. No fabricated order number. */
+/** Informative receipt after a successful payment. ALL amounts come from the
+ *  server (serverTotalCents + serverBreakdown). Item lines show only quantity +
+ *  name — no client-side per-line prices, so nothing can contradict the total.
+ *  No fabricated order number. */
 function Receipt({
   businessName,
   name,
   items,
   totalCents,
+  breakdown,
   tableLabel,
 }: {
   businessName: string;
   name: string;
   items: CheckoutCartItem[];
   totalCents: number;
+  breakdown: ServerBreakdown | null;
   tableLabel: string;
 }) {
   const when = new Date().toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
@@ -450,18 +469,40 @@ function Receipt({
           {tableLabel && <div>Mesa {tableLabel}</div>}
         </div>
       )}
+      {/* Items: quantity + name only. No per-line amount (the server doesn't
+          return a per-line breakdown, so showing client prices could disagree
+          with the server total). */}
       <div style={{ borderTop: "1px dashed #d1d5db", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
         {items.map((ci, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 14 }}>
-            <span style={{ color: "#374151" }}>{ci.quantity}× {ci.name}</span>
-            <span style={{ color: "#111827" }}>{fmt(ci.lineTotalCents)}</span>
+          <div key={i} style={{ fontSize: 14, color: "#374151" }}>
+            {ci.quantity}× {ci.name}
           </div>
         ))}
       </div>
-      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 10, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 16, color: "#111827" }}>
-        <span>Total</span>
-        <span>{fmt(totalCents)}</span>
+      {/* Amounts — all server-computed. */}
+      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+        {breakdown && (
+          <>
+            <ReceiptRow label="Subtotal" cents={breakdown.subtotalCents} />
+            {breakdown.taxCents > 0 && <ReceiptRow label="Impuestos" cents={breakdown.taxCents} />}
+            {breakdown.tipCents > 0 && <ReceiptRow label="Propina" cents={breakdown.tipCents} />}
+            {breakdown.discountCents > 0 && <ReceiptRow label="Descuento" cents={-breakdown.discountCents} />}
+          </>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 16, color: "#111827", marginTop: 4 }}>
+          <span>Total</span>
+          <span>{fmt(totalCents)}</span>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ReceiptRow({ label, cents }: { label: string; cents: number }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280" }}>
+      <span>{label}</span>
+      <span>{fmt(cents)}</span>
     </div>
   );
 }
