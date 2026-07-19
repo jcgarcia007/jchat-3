@@ -55,6 +55,19 @@ Un pedido se puede EDITAR mientras la cocina no lo haya empezado.
   077 y la ruta /terminal como precedente).
 - El **badge del móvil** empezará a decir la verdad en cuanto los estados se muevan de verdad.
 
+## 🧯 Deuda viva: el trigger de compatibilidad `'cooking'` → `'pending'`
+La migración 081 instaló `trg_order_items_normalize_status` (BEFORE insert/update), que traduce
+el valor legado `'cooking'` a `'pending'`. Existía porque las Edge Functions desplegadas todavía
+insertaban `'cooking'` literal: sin él, el CHECK habría hecho fallar el insert de líneas de CADA
+pedido nuevo, y el webhook se traga ese error → cliente pagado y pedido SIN PLATOS.
+
+Las EF ya se desplegaron enviando `'pending'` (payments v33, stripe-webhook v29, 2026-07-20), así
+que el trigger ya no hace falta en el camino normal. **Se deja a propósito como red**: si alguna
+vez hay que revertir una EF a una versión anterior, sin él los pedidos nacerían sin líneas.
+
+**Retirar cuando el despliegue lleve un tiempo estable y no se contemple revertir.** Al retirarlo,
+borrar también la función `public.normalize_item_status()`.
+
 ## Fases propuestas
 - **K1 — Modelo y permisos:** valores de estado + CHECK + migración de `'cooking'` + RPC para que
   un empleado marque un plato + derivación del estado del pedido. Sin UI.
