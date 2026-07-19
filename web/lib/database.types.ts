@@ -3323,7 +3323,8 @@ export type Database = {
         Returns: undefined
       }
       open_tab_on_table: {
-        Args: { p_table_id: string; p_name: string }
+        // p_name has a SQL default (082) — omit it and the server names the tab.
+        Args: { p_table_id: string; p_name?: string }
         Returns: Json
       }
       accept_follow_request: {
