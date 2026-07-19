@@ -324,6 +324,11 @@ un guard sobre una columna (`if (x.foo !== null)`) exige verificar que esa colum
 escribible por el cliente — o el guard es decorativo.
 PENDIENTE: barrer TODAS las tablas buscando este mismo patrón. Solo se han revisado tres.
 
+### D-55 — Mesas y Taps: modelo de cuentas por persona en la mesa
+
+Mesas y Taps: taps por persona, prepago cliente / postpago mesero, identidad por login anónimo
+de Supabase, visibilidad limitada a participantes de la mesa. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
