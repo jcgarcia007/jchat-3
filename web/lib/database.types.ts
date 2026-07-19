@@ -3284,6 +3284,10 @@ export type Database = {
       }
     }
     Functions: {
+      attach_order_to_tab: {
+        Args: { p_order_id: string; p_tab_id: string | null }
+        Returns: undefined
+      }
       accept_follow_request: {
         Args: { p_requester: string }
         Returns: undefined
