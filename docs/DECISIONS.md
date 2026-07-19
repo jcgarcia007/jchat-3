@@ -385,6 +385,20 @@ de SELECT —así que ningún cliente puede escribirla—, y `orders.status` sol
 DUEÑO, con el KDS viviendo dentro del gate de plan del dashboard: hoy la cocina únicamente
 funciona si el dueño en persona toca el tablero.
 
+### D-63 — Un pedido se puede editar hasta que la cocina lo empieza, y el bloqueo es por PEDIDO
+
+Un pedido es editable (cantidad, quitar plato, cambiar modificadores) **mientras ningún plato
+suyo haya entrado en "preparando"**. El bloqueo es **a nivel de PEDIDO, no de plato**: en cuanto
+un solo plato pasa a preparando, **el ticket entero se bloquea**, incluidos los platos que sigan
+pendientes. Motivo: si la cocina ya está trabajando ese ticket, cambiarlo por debajo genera
+errores. Consecuencia asumida y aceptada: si empiezan el entrante, ya no se puede quitar el
+postre de ese pedido. Pueden editar cualquier mesero con acceso a esa mesa, y el dueño siempre.
+
+Corolario de diseño que condiciona el modelo: **un plato recién enviado nace en 'pending'**, no
+en 'preparing' — si naciera preparando no existiría ninguna ventana de edición. Los importes se
+recalculan SIEMPRE en el servidor al modificar, igual que al crear. Ver
+[docs/COCINA.md](COCINA.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

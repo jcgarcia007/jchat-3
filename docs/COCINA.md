@@ -31,6 +31,19 @@ con el pedido entregado. Juan decidió ARREGLARLO (que muestre el estado real), 
 - **Los mueve un COCINERO EMPLEADO, con su propia pantalla**, igual que el mesero tiene la suya.
   No el dueño desde el dashboard.
 
+## Edición de pedidos (decisión de Juan, 2026-07-20)
+Un pedido se puede EDITAR mientras la cocina no lo haya empezado.
+- **El bloqueo es a nivel de PEDIDO, no de plato**: en cuanto CUALQUIER plato del pedido pasa a
+  "preparando", **todo el pedido queda bloqueado**, incluidos los platos que sigan pendientes.
+  Motivo: si la cocina ya está trabajando ese ticket, cambiarle cosas por debajo genera errores.
+  Consecuencia asumida: si empiezan el entrante, ya no se puede quitar el postre de ese pedido.
+- **Qué se puede modificar** mientras el pedido está editable: cantidad, quitar el plato, y
+  cambiar sus modificadores.
+- **Quién puede**: cualquier mesero (con acceso a esa mesa) y el dueño siempre.
+- **Consecuencia de diseño:** un plato recién enviado nace en **"pendiente"**, no en
+  "preparando" — si naciera preparando, nunca habría ventana para editar.
+- Al modificar, los importes se recalculan SIEMPRE en el servidor (misma disciplina que al crear).
+
 ## Consecuencias técnicas conocidas
 - Hace falta una **RPC SECURITY DEFINER** para que un empleado cambie `item_status`, acotada a los
   pedidos de SU negocio. Abrir RLS de `order_items` a `authenticated` daría más de lo que se
