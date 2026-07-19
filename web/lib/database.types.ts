@@ -131,6 +131,8 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          qr_token: string
+          room_id: string | null
           seats: number
           sort: number
           updated_at: string
@@ -142,6 +144,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
+          qr_token?: string
+          room_id?: string | null
           seats?: number
           sort?: number
           updated_at?: string
@@ -153,6 +157,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          qr_token?: string
+          room_id?: string | null
           seats?: number
           sort?: number
           updated_at?: string
@@ -163,6 +169,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tables_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -3284,6 +3297,18 @@ export type Database = {
       }
     }
     Functions: {
+      resolve_table_qr: {
+        Args: { p_token: string }
+        Returns: {
+          business_slug: string
+          room_qr_token: string
+          table_label: string
+        }[]
+      }
+      set_table_subchat: {
+        Args: { p_enable: boolean; p_table_id: string }
+        Returns: string
+      }
       attach_order_to_tab: {
         Args: { p_order_id: string; p_tab_id: string | null }
         Returns: undefined
