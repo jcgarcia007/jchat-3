@@ -33,8 +33,11 @@ Controlables por el dueño, por mesero:
 
 ## Mesas
 - Un mesero ve **sus mesas asignadas + las mesas SIN asignar**. No ve las asignadas a otros.
-- Si atiende una mesa sin asignar, **la mesa SIGUE sin asignar** (cualquiera puede seguir
-  atendiéndola). No hay asignación implícita.
+- Si un empleado **abre una cuenta en una mesa SIN asignar, la mesa QUEDA ASIGNADA a él** (el
+  primero que la atiende se la queda). Cambio del 2026-07-20 respecto a la decisión inicial ("no
+  hay asignación implícita"). Se implementa con la RPC `open_tab_on_table` (SECURITY DEFINER),
+  porque un mesero no puede escribir en `table_waiters` por sí mismo ni insertar en `table_tabs`
+  de una mesa que no tiene asignada.
 - Un mismo empleado **puede trabajar en varios negocios**.
 - **Plano visual en cuadrícula ordenada** (como la referencia POS que dio Juan), NO plano real
   con posiciones arrastrables. Basta con piso + orden, que `tables` ya tiene.

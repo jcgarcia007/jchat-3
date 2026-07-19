@@ -66,6 +66,18 @@ interface Item {
 
 const ORDER_COLS = "id, tab_id, table_id, contact_name, total_cents, status, paid_at";
 
+// Translate the RPC's raised exceptions into friendly copy — never the raw
+// Postgres error.
+function rpcMessage(msg: string): string {
+  if (msg.includes("NOT_ASSIGNED")) return "Esta mesa está asignada a otro mesero.";
+  if (msg.includes("NOT_EMPLOYEE")) return "No eres empleado de este negocio.";
+  if (msg.includes("NAME_REQUIRED")) return "Escribe un nombre para la cuenta.";
+  if (msg.includes("NAME_TOO_LONG")) return "El nombre es demasiado largo (máx. 40 caracteres).";
+  if (msg.includes("TABLE_NOT_FOUND")) return "Esta mesa ya no existe.";
+  if (msg.includes("NOT_AUTHENTICATED")) return "Tu sesión expiró. Vuelve a entrar.";
+  return "No se pudo crear la cuenta. Inténtalo de nuevo.";
+}
+
 export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClose: () => void }) {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -79,6 +91,10 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
   const [newTabName, setNewTabName] = useState("");
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Set once the waiter claims this (previously unassigned) table, so the header
+  // stops saying "Sin asignar" immediately (the grid also refreshes on close).
+  const [justClaimed, setJustClaimed] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -168,22 +184,25 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
     if (!name) return;
     setCreating(true);
     setActionError(null);
-    const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
-    // business_id is set by the 070 trigger — do NOT send it.
-    const payload = { table_id: table.id, name, kind: "waiter", created_by: uid } as never;
-    const { error } = await supabase.from("table_tabs").insert(payload);
+    setNotice(null);
+    // open_tab_on_table (079, SECURITY DEFINER) is the sanctioned path: it opens
+    // the waiter tab AND, on an unassigned table, CLAIMS it for this waiter — a
+    // waiter can do neither directly (table_tabs INSERT is waiter-only; table_waiters
+    // is owner-only). The INSERT policy is untouched; we never write it directly.
+    const { data, error } = await supabase.rpc("open_tab_on_table", {
+      p_table_id: table.id,
+      p_name: name,
+    });
     setCreating(false);
     if (error) {
-      // The 071 INSERT policy requires is_waiter_of_table — fails on a table not
-      // assigned to this waiter. Honest, specific message (do NOT try to bypass).
-      setActionError(
-        (error as { code?: string }).code === "42501"
-          ? "Esta mesa no está asignada a ti. Pide a tu encargado que te la asigne para abrir cuentas."
-          : "No se pudo crear la cuenta. Inténtalo de nuevo.",
-      );
+      setActionError(rpcMessage(error.message));
       return;
     }
     setNewTabName("");
+    if ((data as unknown as { claimed_table?: boolean } | null)?.claimed_table) {
+      setJustClaimed(true);
+      setNotice("Te has asignado esta mesa.");
+    }
     await load();
   }
 
@@ -195,7 +214,7 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
           <div style={{ fontSize: 24, fontWeight: 900 }}>{table.label}</div>
           <div style={{ fontSize: 14, color: "var(--db-text-secondary)" }}>
             {table.floor} · {table.seats} {table.seats === 1 ? "silla" : "sillas"}
-            {table.unassigned && (
+            {table.unassigned && !justClaimed && (
               <span style={{ marginLeft: 8, color: "var(--db-text-tertiary)", fontWeight: 600 }}>· Sin asignar</span>
             )}
           </div>
@@ -216,6 +235,11 @@ export function TableDetailSheet({ table, onClose }: { table: SheetTable; onClos
 
       {/* Body */}
       <div style={body}>
+        {notice && (
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--db-success)", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: 12, padding: "12px 14px" }}>
+            {notice}
+          </div>
+        )}
         {actionError && (
           <div style={{ fontSize: 14, color: "var(--db-danger)", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: 12, padding: "12px 14px" }}>
             {actionError}
