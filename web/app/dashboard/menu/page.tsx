@@ -27,6 +27,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
+import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
 import {
   IconAlertCircle,
   IconArrowDown,
@@ -78,6 +79,7 @@ interface MenuCategory {
   icon_url: string | null;
   sort: number;
   is_published: boolean;
+  name_alt?: string | null; // second-language name (already fetched via select *)
 }
 
 interface MenuItem {
@@ -2646,6 +2648,8 @@ function CategorySection({
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  // Category card selector: null = "Todas" (show every category).
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [togglingMenu, setTogglingMenu] = useState(false);
@@ -3394,6 +3398,30 @@ export default function MenuPage() {
 
   // ── Sorted categories ────────────────────────────────────────────────────────
   const sortedCategories = [...categories].sort((a, b) => a.sort - b.sort);
+
+  // ── Category cards (selector) — real counts + honest warnings ────────────────
+  const categoryCards: CategoryCard[] = sortedCategories.map((cat) => {
+    const catItems = items.filter((it) => it.category_id === cat.id);
+    const published = catItems.filter((it) => it.is_published);
+    const outOfStock = published.filter(
+      (it) => it.is_available === false || (it.stock_count != null && it.stock_count <= 0),
+    ).length;
+    return {
+      id: cat.id,
+      name: cat.name,
+      iconUrl: cat.icon_url,
+      icon: cat.icon,
+      publishedCount: published.length,
+      outOfStock,
+      hidden: !cat.is_published,
+      untranslated: !cat.name_alt || cat.name_alt.trim() === "",
+    };
+  });
+  const totalPublishedItems = items.filter((it) => it.is_published).length;
+  // The cards act as a filter; null = show all categories.
+  const visibleCategories = activeCategoryId
+    ? sortedCategories.filter((c) => c.id === activeCategoryId)
+    : sortedCategories;
 
   // ── Render ───────────────────────────────────────────────────────────────────
   if (noBusiness) {
@@ -4337,29 +4365,25 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && sortedCategories.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            color: "var(--db-text-tertiary)",
-            background: "var(--db-bg-surface)",
-            borderRadius: "12px",
-            border: "1px dashed var(--db-border)",
-          }}
-        >
-          <IconPackage size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <p style={{ fontSize: "14px", margin: 0 }}>
-            No menu categories yet. Click &ldquo;New Category&rdquo; to get started.
-          </p>
+      {/* Category cards selector — honest counts + warnings. Owns the empty /
+          load-error states for categories (loading is handled above). */}
+      {!loading && (
+        <div style={{ marginBottom: "16px" }}>
+          <CategoryCards
+            cards={categoryCards}
+            totalPublished={totalPublishedItems}
+            activeId={activeCategoryId}
+            onSelect={setActiveCategoryId}
+            loadError={!!error && categories.length === 0}
+            onRetry={() => void loadData()}
+          />
         </div>
       )}
 
       {/* Categories */}
       {!loading && (
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {sortedCategories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <CategorySection
               key={cat.id}
               category={cat}
