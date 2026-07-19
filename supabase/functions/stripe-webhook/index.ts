@@ -173,6 +173,9 @@ async function handlePaymentSucceeded(
       contact_name: contactName,
       stripe_pi_id: paymentIntent.id,
       status_updated_at: new Date().toISOString(),
+      // An order born from a payment IS paid — stamp paid_at (078). The waiter
+      // path will create orders WITHOUT this and stamp it later at checkout.
+      paid_at: new Date().toISOString(),
     })
     .select("id")
     .single();

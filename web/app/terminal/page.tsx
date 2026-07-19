@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { TableDetailSheet, type SheetTable } from "@/components/terminal/TableDetailSheet";
 
 interface Biz {
   id: string;
@@ -62,7 +63,7 @@ export default function TerminalTablesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<SheetTable | null>(null);
 
   // 1) Resolve the employee's businesses (accepted only), embedding the name.
   useEffect(() => {
@@ -234,19 +235,36 @@ export default function TerminalTablesPage() {
                 gap: 14,
               }}
             >
-              {tables.filter((t) => t.floor === floor).map((t) => (
-                <TableCard
-                  key={t.id}
-                  table={t}
-                  state={stateOf(t.id)}
-                  unassigned={!assignedIds.has(t.id)}
-                  selected={selectedId === t.id}
-                  onSelect={() => setSelectedId((cur) => (cur === t.id ? null : t.id))}
-                />
-              ))}
+              {tables.filter((t) => t.floor === floor).map((t) => {
+                const unassigned = !assignedIds.has(t.id);
+                return (
+                  <TableCard
+                    key={t.id}
+                    table={t}
+                    state={stateOf(t.id)}
+                    unassigned={unassigned}
+                    selected={detail?.id === t.id}
+                    onSelect={() =>
+                      setDetail({ id: t.id, label: t.label, floor: t.floor, seats: t.seats, unassigned })
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         ))
+      )}
+
+      {detail && (
+        <TableDetailSheet
+          table={detail}
+          onClose={() => {
+            setDetail(null);
+            // A tab may have been created — refresh the grid so the status color
+            // reflects it.
+            setReloadKey((k) => k + 1);
+          }}
+        />
       )}
     </Screen>
   );

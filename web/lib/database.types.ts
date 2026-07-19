@@ -1949,6 +1949,7 @@ export type Database = {
         Row: {
           business_id: string
           contact_email: string | null
+          contact_name: string | null
           contact_phone: string | null
           created_at: string
           discount_cents: number
@@ -1957,6 +1958,7 @@ export type Database = {
           id: string
           notes: string | null
           order_type: string
+          paid_at: string | null
           promo_code: string | null
           room_id: string | null
           special_instructions: string | null
@@ -1976,6 +1978,7 @@ export type Database = {
         Insert: {
           business_id: string
           contact_email?: string | null
+          contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           discount_cents?: number
@@ -1984,6 +1987,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_type?: string
+          paid_at?: string | null
           promo_code?: string | null
           room_id?: string | null
           special_instructions?: string | null
@@ -2003,6 +2007,7 @@ export type Database = {
         Update: {
           business_id?: string
           contact_email?: string | null
+          contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           discount_cents?: number
@@ -2011,6 +2016,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_type?: string
+          paid_at?: string | null
           promo_code?: string | null
           room_id?: string | null
           special_instructions?: string | null
