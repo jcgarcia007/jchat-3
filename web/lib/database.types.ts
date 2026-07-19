@@ -1965,6 +1965,7 @@ export type Database = {
           stripe_pi_id: string | null
           subtotal_cents: number
           tab_id: string | null
+          table_id: string | null
           table_label: string | null
           tax_cents: number
           tip_cents: number
@@ -1991,6 +1992,7 @@ export type Database = {
           stripe_pi_id?: string | null
           subtotal_cents?: number
           tab_id?: string | null
+          table_id?: string | null
           table_label?: string | null
           tax_cents?: number
           tip_cents?: number
@@ -2017,6 +2019,7 @@ export type Database = {
           stripe_pi_id?: string | null
           subtotal_cents?: number
           tab_id?: string | null
+          table_id?: string | null
           table_label?: string | null
           tax_cents?: number
           tip_cents?: number
