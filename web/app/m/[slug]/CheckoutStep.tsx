@@ -79,6 +79,7 @@ async function readFunctionError(error: unknown): Promise<string> {
 }
 
 type Phase = "checking" | "login" | "creating" | "pay" | "success" | "error";
+type PaidStatus = "succeeded" | "processing";
 
 interface IntentResult {
   clientSecret: string;
@@ -103,6 +104,7 @@ export function CheckoutStep({
 }) {
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("checking");
+  const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
   const [error, setError] = useState<string>("");
   const [intent, setIntent] = useState<IntentResult | null>(null);
   const startedRef = useRef(false);
@@ -236,11 +238,18 @@ export function CheckoutStep({
           stripe={stripePromise}
           options={{ clientSecret: intent.clientSecret, appearance: { theme: "stripe" } }}
         >
-          <PaymentForm total={intent.serverTotalCents} returnUrl={`${originOf()}${pathname}`} onPaid={() => setPhase("success")} />
+          <PaymentForm
+            total={intent.serverTotalCents}
+            returnUrl={`${originOf()}${pathname}`}
+            onPaid={(status) => {
+              setPaidStatus(status);
+              setPhase("success");
+            }}
+          />
         </Elements>
       )}
 
-      {phase === "success" && (
+      {phase === "success" && paidStatus === "succeeded" && (
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 40 }}>✓</div>
           <div style={{ fontSize: 18, fontWeight: 800 }}>¡Pago recibido!</div>
@@ -248,6 +257,19 @@ export function CheckoutStep({
           <Muted>
             El negocio ya tiene tu pedido y empezará a prepararlo. Tu comprobante llega por correo
             si diste un email.
+          </Muted>
+          <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
+        </div>
+      )}
+
+      {phase === "success" && paidStatus === "processing" && (
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 40 }}>⏳</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>Tu pago se está procesando</div>
+          {intent && <div style={{ fontSize: 15 }}>Importe: {fmt(intent.serverTotalCents)}.</div>}
+          <Muted>
+            Aún no está confirmado. En cuanto el pago se confirme, el negocio recibirá tu pedido y
+            empezará a prepararlo. Si diste un email, te llegará el comprobante.
           </Muted>
           <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
         </div>
@@ -272,7 +294,7 @@ function PaymentForm({
 }: {
   total: number;
   returnUrl: string;
-  onPaid: () => void;
+  onPaid: (status: PaidStatus) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -294,7 +316,7 @@ function PaymentForm({
       return;
     }
     if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")) {
-      onPaid();
+      onPaid(paymentIntent.status);
       return;
     }
     // Redirect-based methods (some wallets) navigate away and return via return_url.
