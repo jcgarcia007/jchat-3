@@ -28,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "@/components/dashboard/useActiveBusinessName";
+import { TableDetailPanel, type PanelTable } from "@/components/dashboard/TableDetailPanel";
 
 interface TableRow {
   id: string;
@@ -87,6 +88,9 @@ export default function TablesPage() {
     }
     setWaiterCounts(acc);
   }, [activeId]);
+
+  // Table detail drawer (B2). Clicking a card (not its buttons) opens it.
+  const [detailTable, setDetailTable] = useState<PanelTable | null>(null);
 
   const load = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) {
@@ -307,6 +311,15 @@ export default function TablesPage() {
               {rows.filter((r) => r.floor === floor).map((r) => (
                 <div
                   key={r.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailTable({ id: r.id, label: r.label, floor: r.floor, seats: r.seats })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setDetailTable({ id: r.id, label: r.label, floor: r.floor, seats: r.seats });
+                    }
+                  }}
                   style={{
                     display: "flex",
                     flexDirection: "column",
@@ -317,6 +330,7 @@ export default function TablesPage() {
                     background: "var(--db-bg-surface)",
                     border: "1px solid var(--db-border)",
                     opacity: r.is_active ? 1 : 0.5,
+                    cursor: "pointer",
                   }}
                 >
                   <TableGlyph label={r.label} seats={r.seats} />
@@ -344,7 +358,7 @@ export default function TablesPage() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }} onClick={(e) => e.stopPropagation()}>
                     {(() => {
                       const busy = savingSeats.has(r.id);
                       const minusDisabled = busy || r.seats <= 1;
@@ -386,6 +400,14 @@ export default function TablesPage() {
             </div>
           </div>
         ))
+      )}
+
+      {detailTable && activeId && (
+        <TableDetailPanel
+          table={detailTable}
+          businessId={activeId}
+          onClose={() => setDetailTable(null)}
+        />
       )}
     </Shell>
   );
