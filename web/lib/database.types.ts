@@ -14,6 +14,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      table_tabs: {
+        Row: {
+          business_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          name: string
+          owner_uid: string | null
+          paid_at: string | null
+          status: string
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          name: string
+          owner_uid?: string | null
+          paid_at?: string | null
+          status?: string
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          owner_uid?: string | null
+          paid_at?: string | null
+          status?: string
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_tabs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_tabs_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_waiters: {
+        Row: {
+          business_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          table_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          table_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_waiters_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_waiters_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_waiters_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tables: {
         Row: {
           business_id: string
@@ -1826,6 +1935,8 @@ export type Database = {
       orders: {
         Row: {
           business_id: string
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           discount_cents: number
           eta_minutes: number | null
@@ -1840,6 +1951,7 @@ export type Database = {
           status_updated_at: string
           stripe_pi_id: string | null
           subtotal_cents: number
+          tab_id: string | null
           table_label: string | null
           tax_cents: number
           tip_cents: number
@@ -1849,6 +1961,8 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           discount_cents?: number
           eta_minutes?: number | null
@@ -1863,6 +1977,7 @@ export type Database = {
           status_updated_at?: string
           stripe_pi_id?: string | null
           subtotal_cents?: number
+          tab_id?: string | null
           table_label?: string | null
           tax_cents?: number
           tip_cents?: number
@@ -1872,6 +1987,8 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           discount_cents?: number
           eta_minutes?: number | null
@@ -1886,6 +2003,7 @@ export type Database = {
           status_updated_at?: string
           stripe_pi_id?: string | null
           subtotal_cents?: number
+          tab_id?: string | null
           table_label?: string | null
           tax_cents?: number
           tip_cents?: number
@@ -1920,6 +2038,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "table_tabs"
             referencedColumns: ["id"]
           },
           {
