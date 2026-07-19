@@ -72,7 +72,8 @@ const ORDER_COLS = "id, tab_id, table_id, contact_name, total_cents, status, pai
 function rpcMessage(msg: string): string {
   if (msg.includes("NOT_ASSIGNED")) return "Esta mesa está asignada a otro mesero.";
   if (msg.includes("NOT_EMPLOYEE")) return "No eres empleado de este negocio.";
-  if (msg.includes("NAME_REQUIRED")) return "Escribe un nombre para la cuenta.";
+  // NAME_REQUIRED ya no puede ocurrir: desde 082 el nombre es opcional y lo genera
+  // el servidor. NAME_TOO_LONG sigue vivo por si algún día se pasa uno a mano.
   if (msg.includes("NAME_TOO_LONG")) return "El nombre es demasiado largo (máx. 40 caracteres).";
   if (msg.includes("TABLE_NOT_FOUND")) return "Esta mesa ya no existe.";
   if (msg.includes("NOT_AUTHENTICATED")) return "Tu sesión expiró. Vuelve a entrar.";
@@ -97,7 +98,6 @@ export function TableDetailSheet({
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [newTabName, setNewTabName] = useState("");
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -191,28 +191,36 @@ export function TableDetailSheet({
   const nothing = tabs.length === 0 && orders.length === 0;
 
   async function createTab() {
-    const name = newTabName.trim();
-    if (!name) return;
+    if (creating) return;
     setCreating(true);
     setActionError(null);
     setNotice(null);
-    // open_tab_on_table (079, SECURITY DEFINER) is the sanctioned path: it opens
+    // open_tab_on_table (079/082, SECURITY DEFINER) is the sanctioned path: it opens
     // the waiter tab AND, on an unassigned table, CLAIMS it for this waiter — a
     // waiter can do neither directly (table_tabs INSERT is waiter-only; table_waiters
     // is owner-only). The INSERT policy is untouched; we never write it directly.
+    //
+    // No p_name: a waiter never asks "whose account is this?" just to open one. The
+    // server names it "Cuenta N" (082), picking the lowest number free among the
+    // table's non-closed tabs, so several groups at one table stay distinguishable.
     const { data, error } = await supabase.rpc("open_tab_on_table", {
       p_table_id: table.id,
-      p_name: name,
     });
     setCreating(false);
     if (error) {
       setActionError(rpcMessage(error.message));
       return;
     }
-    setNewTabName("");
-    if ((data as unknown as { claimed_table?: boolean } | null)?.claimed_table) {
+    const res = data as unknown as { claimed_table?: boolean; tab_name?: string } | null;
+    // Tell the waiter WHICH tab was created — with several groups at a table, "done"
+    // isn't enough to know where the next dishes will go.
+    const opened = res?.tab_name ? `${res.tab_name} abierta.` : "Cuenta abierta.";
+    if (res?.claimed_table) {
       setJustClaimed(true);
-      setNotice("Te has asignado esta mesa.");
+      // D-61: claiming the table is a responsibility the waiter just took on.
+      setNotice(`${opened} Te has asignado esta mesa.`);
+    } else {
+      setNotice(opened);
     }
     await load();
   }
@@ -318,26 +326,16 @@ export function TableDetailSheet({
               </div>
             )}
 
-            {/* Create waiter tab */}
+            {/* Create waiter tab — one tap, no name asked. The server names it. */}
             <div>
-              <SectionTitle>Nueva cuenta</SectionTitle>
-              <div style={{ display: "flex", gap: 10 }}>
-                <input
-                  value={newTabName}
-                  onChange={(e) => setNewTabName(e.target.value)}
-                  maxLength={40}
-                  placeholder="Nombre de la cuenta"
-                  style={input}
-                />
-                <button
-                  type="button"
-                  disabled={creating || !newTabName.trim()}
-                  onClick={() => void createTab()}
-                  style={{ ...primaryBtn, opacity: creating || !newTabName.trim() ? 0.6 : 1 }}
-                >
-                  <IconPlus size={18} /> Crear
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() => void createTab()}
+                style={{ ...primaryBtn, width: "100%", opacity: creating ? 0.6 : 1 }}
+              >
+                <IconPlus size={18} /> {creating ? "Abriendo…" : "Nueva cuenta"}
+              </button>
             </div>
           </>
         )}
@@ -502,16 +500,6 @@ const closeBtn: React.CSSProperties = {
   color: "var(--db-text-primary)",
   cursor: "pointer",
   flexShrink: 0,
-};
-const input: React.CSSProperties = {
-  flex: 1,
-  padding: "12px 14px",
-  borderRadius: 12,
-  border: "1px solid var(--db-border)",
-  background: "var(--db-bg-surface)",
-  color: "var(--db-text-primary)",
-  fontSize: 15,
-  minWidth: 0,
 };
 const primaryBtn: React.CSSProperties = {
   display: "inline-flex",

@@ -115,6 +115,9 @@ export function TakeOrderScreen({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentTotal, setSentTotal] = useState<number | null>(null);
+  // Review step: sending always goes through it — never straight from the button.
+  const [reviewing, setReviewing] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   // Belt-and-braces against a double send: React state is async, so a fast second
   // tap could read a stale `sending`. This ref flips synchronously.
   const inFlight = useRef(false);
@@ -246,8 +249,39 @@ export function TakeOrderScreen({
   }, [categories, activeCat]);
 
   // ── Draft manipulation ────────────────────────────────────────────────────
+  // These two count the WHOLE draft on purpose — never the active seat. The send
+  // button showing "2 platos" while the ticket carries 7 would make the waiter send
+  // believing it's smaller than it is.
   const estimateTotal = lines.reduce((s, l) => s + l.unitEstimateCents * l.qty, 0);
   const dishCount = lines.reduce((s, l) => s + l.qty, 0);
+
+  /** Dishes per seat (key: seat number, or "none"), for the selector badges. */
+  const countBySeat = useMemo(() => {
+    const m = new Map<number | "none", number>();
+    for (const l of lines) {
+      const k = l.seat ?? "none";
+      m.set(k, (m.get(k) ?? 0) + l.qty);
+    }
+    return m;
+  }, [lines]);
+
+  /** The draft filtered to the seat currently selected in the header. */
+  const seatLines = useMemo(() => lines.filter((l) => l.seat === seat), [lines, seat]);
+
+  /** Draft grouped by seat, for the review step. Seats in order, "sin asiento" last. */
+  const bySeat = useMemo(() => {
+    const groups = new Map<number | "none", DraftLine[]>();
+    for (const l of lines) {
+      const k = l.seat ?? "none";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(l);
+    }
+    return [...groups.entries()].sort((a, b) => {
+      if (a[0] === "none") return 1;
+      if (b[0] === "none") return -1;
+      return (a[0] as number) - (b[0] as number);
+    });
+  }, [lines]);
 
   function addLine(dish: Dish, options: OrderLineOptions, unitCents: number) {
     setSendError(null);
@@ -328,6 +362,7 @@ export function TakeOrderScreen({
       // Show the SERVER's total, not our estimate.
       setSentTotal(typeof res?.total_cents === "number" ? res.total_cents : null);
       setLines([]);
+      setReviewing(false); // leave the review step only once it actually landed
       onSent(); // parent reloads the table detail so the new order appears
     } catch {
       setSendError("No se pudo enviar el pedido. Revisa la conexión.");
@@ -366,13 +401,23 @@ export function TakeOrderScreen({
           <ScrollRow>
             {seatOptions.map((s) => {
               const on = seat === s;
+              // How many dishes this seat already has in the draft. Shown as a small
+              // count badge so the waiter sees at a glance which seats have ordered,
+              // without tapping through them one by one.
+              const n = countBySeat.get(s ?? "none") ?? 0;
               return (
                 <button
                   key={s ?? "none"}
                   type="button"
                   onClick={() => setSeat(s)}
                   aria-pressed={on}
+                  aria-label={
+                    s === null
+                      ? `Sin asiento, ${n} platos`
+                      : `Asiento ${s}, ${n} platos`
+                  }
                   style={{
+                    position: "relative",
                     flex: "0 0 auto",
                     minWidth: s === null ? 112 : 46,
                     height: 46,
@@ -384,9 +429,34 @@ export function TakeOrderScreen({
                     color: on ? "var(--db-accent-text)" : "var(--db-text-primary)",
                     cursor: "pointer",
                     scrollSnapAlign: "start",
+                    overflow: "visible",
                   }}
                 >
                   {s === null ? "Sin asiento" : s}
+                  {n > 0 && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        minWidth: 20,
+                        height: 20,
+                        padding: "0 5px",
+                        borderRadius: 999,
+                        background: "var(--db-success)",
+                        color: "var(--db-bg-base)",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "2px solid var(--db-bg-base)",
+                      }}
+                    >
+                      {n}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -474,11 +544,22 @@ export function TakeOrderScreen({
 
             {/* ── Draft order list ──────────────────────────────────────── */}
             <div style={{ marginTop: 8 }}>
-              <SectionTitle>Pedido ({dishCount} {dishCount === 1 ? "plato" : "platos"})</SectionTitle>
-              {lines.length === 0 ? (
-                <Empty>Toca un plato para añadirlo.</Empty>
+              {/* The list is scoped to the ACTIVE SEAT. The whole-ticket count lives
+                  on the send button below, so a filtered view can't hide dishes. */}
+              <SectionTitle>
+                {seat === null ? "Sin asiento" : `Silla ${seat}`}
+                {seatLines.length > 0 && ` · ${seatLines.reduce((s, l) => s + l.qty, 0)} en esta silla`}
+              </SectionTitle>
+              {seatLines.length === 0 ? (
+                <Empty>
+                  {lines.length === 0
+                    ? "Toca un plato para añadirlo."
+                    : seat === null
+                      ? "No hay platos sin asiento."
+                      : `La silla ${seat} todavía no ha pedido.`}
+                </Empty>
               ) : (
-                lines.map((l) => {
+                seatLines.map((l) => {
                   const summary = summarizeOptions(l.options);
                   return (
                     <div key={l.key} style={lineCard}>
@@ -547,9 +628,11 @@ export function TakeOrderScreen({
             Pedido enviado a cocina · total {fmt(sentTotal)} (calculado por el servidor)
           </div>
         )}
+        {/* Opens the REVIEW step — never sends straight from here. The count is the
+            whole ticket, not the seat being viewed. */}
         <button
           type="button"
-          onClick={() => void send()}
+          onClick={() => setReviewing(true)}
           disabled={sending || lines.length === 0}
           style={{
             ...primaryBtn,
@@ -566,6 +649,153 @@ export function TakeOrderScreen({
           Importe estimado — el total lo calcula el servidor al enviar.
         </div>
       </div>
+
+      {/* ── Review step: the only door to sending ─────────────────────────── */}
+      {reviewing && (
+        <div style={sheetOverlay} role="dialog" aria-label="Resumen del pedido">
+          <div style={{ ...sheetPanel, maxHeight: "92vh" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 4 }}>
+              <div style={{ fontSize: 18, fontWeight: 900 }}>Revisa el pedido</div>
+              <span style={{ fontSize: 13, color: "var(--db-text-secondary)" }}>
+                {tableLabel} · {tabName}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--db-text-tertiary)", marginBottom: 12 }}>
+              {dishCount} {dishCount === 1 ? "plato" : "platos"} en total
+            </div>
+
+            {/* Grouped BY SEAT — that's how the food reaches the table. */}
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+              {bySeat.map(([key, group]) => (
+                <div key={String(key)}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--db-accent)", marginBottom: 6 }}>
+                    {key === "none" ? "Sin asiento" : `Silla ${key}`}
+                    <span style={{ color: "var(--db-text-tertiary)", fontWeight: 600 }}>
+                      {" "}· {group.reduce((s, l) => s + l.qty, 0)}{" "}
+                      {group.reduce((s, l) => s + l.qty, 0) === 1 ? "plato" : "platos"}
+                    </span>
+                  </div>
+                  {group.map((l) => {
+                    const summary = summarizeOptions(l.options);
+                    return (
+                      <div key={l.key} style={{ display: "flex", gap: 8, padding: "4px 0", fontSize: 14 }}>
+                        <span style={{ color: "var(--db-text-secondary)", minWidth: 26, fontWeight: 700 }}>
+                          {l.qty}×
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                            <span>{l.dish.name}</span>
+                            <span style={{ color: "var(--db-text-secondary)" }}>
+                              {fmt(l.unitEstimateCents * l.qty)}
+                            </span>
+                          </div>
+                          {summary && (
+                            <div style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>{summary}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--db-border)", marginTop: 12, paddingTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 900 }}>
+                <span>Total estimado</span>
+                <span>{fmt(estimateTotal)}</span>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--db-text-tertiary)", marginTop: 4 }}>
+                Estimación — el importe real lo calcula el servidor al enviar.
+              </div>
+
+              {sendError && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, color: "var(--db-danger)", marginTop: 10 }}>
+                  <IconAlertTriangle size={18} /> {sendError}
+                </div>
+              )}
+
+              {/* Primary → the only irreversible action. */}
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={sending}
+                style={{ ...primaryBtn, width: "100%", marginTop: 12, opacity: sending ? 0.6 : 1 }}
+              >
+                {sending ? "Enviando…" : "Confirmar y enviar a cocina"}
+              </button>
+
+              {/* Secondary → back, draft untouched. */}
+              <button
+                type="button"
+                onClick={() => setReviewing(false)}
+                disabled={sending}
+                style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
+              >
+                Editar
+              </button>
+
+              {/* Destructive → discards the DRAFT only. Nothing was sent, so this
+                  touches no database row; it just clears the screen. */}
+              <button
+                type="button"
+                onClick={() => setConfirmDiscard(true)}
+                disabled={sending}
+                style={{
+                  ...secondaryBtn,
+                  width: "100%",
+                  marginTop: 8,
+                  justifyContent: "center",
+                  color: "var(--db-danger)",
+                  borderColor: "var(--db-danger)",
+                }}
+              >
+                <IconTrash size={16} /> Cancelar pedido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discard confirmation — losing 8 dishes to a stray tap in a rush is exactly
+          what must not happen. */}
+      {confirmDiscard && (
+        <div style={{ ...sheetOverlay, alignItems: "center", zIndex: 90 }} role="dialog" aria-label="Confirmar cancelación">
+          <div style={{ ...sheetPanel, borderRadius: 18, maxWidth: 420, margin: "0 16px", maxHeight: "auto" }}>
+            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>¿Cancelar el pedido?</div>
+            <p style={{ fontSize: 14, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
+              Se descartará lo que llevas sin enviar ({dishCount}{" "}
+              {dishCount === 1 ? "plato" : "platos"}). No se ha enviado nada a cocina, así que no
+              se borra ningún pedido — solo se vacía esta pantalla.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                // Draft-only: clear local state and leave. No DB call whatsoever.
+                setLines([]);
+                setConfirmDiscard(false);
+                setReviewing(false);
+                onClose();
+              }}
+              style={{
+                ...primaryBtn,
+                width: "100%",
+                background: "var(--db-danger)",
+                color: "var(--db-bg-base)",
+              }}
+            >
+              Sí, descartar
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDiscard(false)}
+              style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
+            >
+              Seguir con el pedido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Modifier sheet ────────────────────────────────────────────────── */}
       {configuring && (
