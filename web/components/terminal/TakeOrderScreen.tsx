@@ -22,20 +22,11 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { readFunctionError } from "@/lib/functionError";
 import { buildOrderOptions, summarizeOptions, type OrderLineOptions } from "@/lib/orderOptions";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
+import { ModifierSheet, type ModGroup } from "./ModifierSheet";
+import { loadModifierGroups } from "@/lib/menuGroups";
 
 // ── Menu shapes (mirrors what /m/[slug] loads) ───────────────────────────────
-interface Choice {
-  label: string;
-  price_cents: number;
-}
-interface Group {
-  id: string;
-  label: string;
-  type: "single" | "multi";
-  min_select: number;
-  max_select: number;
-  choices: Choice[];
-}
+type Group = ModGroup;
 interface Dish {
   id: string;
   category_id: string;
@@ -149,51 +140,8 @@ export function TakeOrderScreen({
       if (itemsRes.error) throw itemsRes.error;
       const items = (itemsRes.data ?? []) as Omit<Dish, "groups">[];
 
-      // Modifier groups via the bridge table — identical to the public menu.
-      const itemIds = items.map((i) => i.id);
-      const groupsByItem = new Map<string, Group[]>();
-      if (itemIds.length > 0) {
-        const bridgeRes = await supabase
-          .from("menu_item_modifier_groups")
-          .select("menu_item_id, modifier_group_id, sort")
-          .in("menu_item_id", itemIds)
-          .order("sort");
-        if (bridgeRes.error) throw bridgeRes.error;
-        const bridge = (bridgeRes.data ?? []) as { menu_item_id: string; modifier_group_id: string }[];
-        const groupIds = [...new Set(bridge.map((b) => b.modifier_group_id))];
-        if (groupIds.length > 0) {
-          const gRes = await supabase
-            .from("modifier_groups")
-            .select("id, label, type, min_select, max_select, choices")
-            .in("id", groupIds);
-          if (gRes.error) throw gRes.error;
-          const byId = new Map(
-            ((gRes.data ?? []) as Record<string, unknown>[]).map((g) => [
-              g.id as string,
-              {
-                id: g.id as string,
-                label: g.label as string,
-                type: (g.type === "multi" ? "multi" : "single") as "single" | "multi",
-                min_select: (g.min_select as number) ?? 0,
-                max_select: (g.max_select as number) ?? 1,
-                choices: (Array.isArray(g.choices) ? g.choices : [])
-                  .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
-                  .map((c) => ({
-                    label: typeof c.label === "string" ? c.label : String(c.label ?? ""),
-                    price_cents: typeof c.price_cents === "number" ? c.price_cents : 0,
-                  })),
-              } as Group,
-            ]),
-          );
-          for (const b of bridge) {
-            const g = byId.get(b.modifier_group_id);
-            if (!g) continue;
-            const arr = groupsByItem.get(b.menu_item_id) ?? [];
-            arr.push(g);
-            groupsByItem.set(b.menu_item_id, arr);
-          }
-        }
-      }
+      // Modifier groups via the shared loader (same parsing as the public menu).
+      const groupsByItem = await loadModifierGroups(items.map((i) => i.id));
 
       setCategories(
         cats.map((c) => ({
@@ -808,138 +756,6 @@ export function TakeOrderScreen({
           }}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * Modifier picker — same groups and min/max rules the customer menu enforces.
- * Single groups pre-select their first choice (and are required when min_select>0);
- * multi groups cap at max_select.
- */
-function ModifierSheet({
-  dish,
-  onCancel,
-  onConfirm,
-}: {
-  dish: Dish;
-  onCancel: () => void;
-  onConfirm: (options: OrderLineOptions, unitCents: number) => void;
-}) {
-  const [single, setSingle] = useState<Record<string, Choice | null>>(() => {
-    const init: Record<string, Choice | null> = {};
-    for (const g of dish.groups) {
-      if (g.type === "single" && g.choices.length > 0) init[g.id] = g.choices[0];
-    }
-    return init;
-  });
-  const [multi, setMulti] = useState<Record<string, Set<string>>>({});
-
-  function toggle(g: Group, c: Choice) {
-    setMulti((prev) => {
-      const cur = new Set(prev[g.id] ?? []);
-      if (cur.has(c.label)) cur.delete(c.label);
-      else if (cur.size < g.max_select) cur.add(c.label);
-      return { ...prev, [g.id]: cur };
-    });
-  }
-
-  const groupSelections = dish.groups
-    .map((g) => {
-      if (g.type === "single") {
-        const c = single[g.id] ?? null;
-        return c ? { groupId: g.id, choices: [c] } : null;
-      }
-      const sel = multi[g.id] ?? new Set<string>();
-      const chosen = g.choices.filter((c) => sel.has(c.label));
-      return chosen.length > 0 ? { groupId: g.id, choices: chosen } : null;
-    })
-    .filter((g): g is { groupId: string; choices: Choice[] } => g !== null);
-
-  // Estimate only — the server re-prices from the DB on send.
-  const unitCents =
-    dish.price_cents +
-    groupSelections.reduce(
-      (s, gs) => s + gs.choices.reduce((t, c) => t + (c.price_cents ?? 0), 0),
-      0,
-    );
-
-  // min_select respected: a required group with nothing chosen blocks confirming.
-  const unmet = dish.groups.filter((g) => {
-    const chosen = groupSelections.find((gs) => gs.groupId === g.id)?.choices.length ?? 0;
-    return chosen < (g.min_select ?? 0);
-  });
-
-  return (
-    <div style={sheetOverlay} role="dialog" aria-label={`Opciones de ${dish.name}`}>
-      <div style={sheetPanel}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 900 }}>{dish.name}</div>
-          <button type="button" onClick={onCancel} aria-label="Cancelar" style={closeBtn}>
-            <IconX size={20} />
-          </button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-          {dish.groups.map((g) => (
-            <div key={g.id}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>
-                {g.label}
-                <span style={{ fontWeight: 600, color: "var(--db-text-tertiary)", marginLeft: 6 }}>
-                  {g.type === "single"
-                    ? g.min_select > 0 ? "· obligatorio" : "· elige uno"
-                    : `· hasta ${g.max_select}`}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {g.choices.map((c) => {
-                  const on =
-                    g.type === "single"
-                      ? single[g.id]?.label === c.label
-                      : (multi[g.id] ?? new Set()).has(c.label);
-                  return (
-                    <button
-                      key={c.label}
-                      type="button"
-                      onClick={() =>
-                        g.type === "single"
-                          ? setSingle((p) => ({ ...p, [g.id]: c }))
-                          : toggle(g, c)
-                      }
-                      aria-pressed={on}
-                      style={{
-                        minHeight: 44,
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        border: on ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
-                        background: on ? "var(--db-accent)" : "var(--db-bg-base)",
-                        color: on ? "var(--db-accent-text)" : "var(--db-text-primary)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {c.label}
-                      {c.price_cents > 0 && (
-                        <span style={{ marginLeft: 6, opacity: 0.85 }}>+{fmt(c.price_cents)}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          disabled={unmet.length > 0}
-          onClick={() => onConfirm(buildOrderOptions({ groupSelections }), unitCents)}
-          style={{ ...primaryBtn, width: "100%", marginTop: 14, opacity: unmet.length > 0 ? 0.55 : 1 }}
-        >
-          {unmet.length > 0 ? `Elige: ${unmet[0].label}` : `Añadir · ${fmt(unitCents)}`}
-        </button>
-      </div>
     </div>
   );
 }
