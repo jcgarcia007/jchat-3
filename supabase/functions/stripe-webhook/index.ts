@@ -118,6 +118,30 @@ async function handleTabSettlementSucceeded(
   );
 }
 
+// Safety net: a payment we CANNOT turn into an order is recorded here instead of
+// lost in a log — the money is already charged, so it has to stay recoverable.
+// Idempotent (stripe_pi_id is unique). On a non-duplicate DB error we throw so the
+// outer catch rolls back the dedup marker → Stripe retries → we don't lose it.
+async function recordOrphanPayment(
+  paymentIntent: Stripe.PaymentIntent,
+  businessId: string | null,
+  reason: string,
+): Promise<void> {
+  const db = getAdminClient();
+  const { error } = await db.from("orphan_payments").insert({
+    stripe_pi_id: paymentIntent.id,
+    business_id: businessId,
+    amount_cents: paymentIntent.amount ?? null,
+    metadata: paymentIntent.metadata ?? {},
+    reason,
+  });
+  if (error && (error as { code?: string }).code !== "23505") {
+    console.error(`[stripe-webhook] failed to record orphan payment ${paymentIntent.id}:`, error);
+    throw error;
+  }
+  console.warn(`[stripe-webhook] ORPHAN payment recorded: pi=${paymentIntent.id} reason="${reason}"`);
+}
+
 async function handlePaymentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
@@ -152,12 +176,22 @@ async function handlePaymentSucceeded(
   const contactName = meta.contact_name ?? null;
   const itemsRaw = meta.items ?? "[]";
 
-  if (!businessId || !userId) {
-    console.error(
-      `[stripe-webhook] payment_intent.succeeded: missing metadata on PI ${paymentIntent.id}`,
-    );
+  // ⚠️ MINE #2 — the old guard was `if (!businessId || !userId) return`, which
+  // silently dropped a paid order and STILL 200'd Stripe (no retry) → money charged,
+  // order lost forever. Now:
+  //   · no business → we can't attribute it: RECORD it in orphan_payments, not a log.
+  //   · business but no user, and it's a GUEST order → create it with user_id NULL.
+  //   · business but no user and NOT a guest order → unknown shape: RECORD it.
+  const isGuestOrder = meta.payment_kind === "guest_order";
+  if (!businessId) {
+    await recordOrphanPayment(paymentIntent, null, "missing business_id");
     return;
   }
+  if (!userId && !isGuestOrder) {
+    await recordOrphanPayment(paymentIntent, businessId, "no user_id and not a guest_order");
+    return;
+  }
+  // From here: either a normal order (userId set) or a guest order (userId null).
 
   // Parse items (may be truncated if cart was very large — items_overflow flag)
   let items: PackedItem[] = [];
@@ -188,7 +222,7 @@ async function handlePaymentSucceeded(
     .from("orders")
     .insert({
       business_id: businessId,
-      user_id: userId,
+      user_id: userId ?? null, // guest order → NULL (080 made orders.user_id nullable)
       room_id: roomId,
       status: "confirmed",
       order_type: orderType,

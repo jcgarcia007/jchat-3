@@ -21,6 +21,16 @@ automáticamente a su mismo tap, sin escribir el nombre otra vez. La privacidad 
 
 _(Alternativa descartada: tokens de dispositivo propios — más código y más frágil.)_
 
+> ⚠️ **ACTUALIZADO 2026-07-20 (G1, D-64): se ABANDONA la vía de login anónimo para el pago de
+> invitado.** Motivo: Supabase limita los registros anónimos **por IP** (30/h por defecto), y en un
+> bar todos los clientes comparten el WiFi = una sola IP → con más de 30 clientes nuevos por hora,
+> el cliente 31 no podría pedir (D-39). En su lugar, un invitado paga por una **Edge Function
+> pública** (`guest-pay`, `verify_jwt=false`), protegida con **hCaptcha verificado del lado
+> servidor** — mismo patrón que `tab-pay`. El pedido SIEMPRE se guarda (cocina, mesero, ventas)
+> con `orders.user_id = NULL`; lo efímero es el vínculo con el cliente. El correo es **opcional**,
+> solo para que Stripe envíe el recibo. La limpieza diaria de anónimos (074) deja de ser
+> necesaria para este flujo, pero se mantiene por si el login anónimo se activa para otra cosa.
+
 ### Dos formas de crear un tap
 
 1. **Cliente (PREPAGO):** pide → paga → nombra su tap → el tap aparece en la mesa.

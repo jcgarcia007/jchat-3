@@ -230,8 +230,9 @@ export function CheckoutStep({
         setPhase("login");
         return;
       }
-      // TODO(C4): when anonymous login is enabled, call supabase.auth.signInAnonymously()
-      // here instead of routing to /auth/login, so a walk-in guest can pay without an account.
+      // Guest checkout (G1, D-64) does NOT use anonymous sessions — Supabase rate-limits
+      // anonymous sign-ups per IP and a bar's shared WiFi is one IP (D-39). A walk-in guest
+      // pays via the public `guest-pay` EF + hCaptcha instead; G2 wires that path in here.
       // C3': if the profile already has a usable name, use it and skip the input;
       // otherwise ask the guest "¿A nombre de quién?" before creating the intent.
       const profileName = await resolveProfileName(data.user.id);
