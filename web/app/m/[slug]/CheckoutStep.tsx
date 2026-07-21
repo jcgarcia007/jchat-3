@@ -1,25 +1,28 @@
 "use client";
 
 /**
- * Real web checkout (plan C — C1). Reuses the `payments` Edge Function exactly
- * like mobile does (create_payment_intent), then renders Stripe's Payment
- * Element in the browser. The EF recalculates ALL amounts server-side from the
- * DB — the client only forwards ids/qty/modifier labels/tip. This component
- * NEVER sends totals the server should trust, and does NOT touch the EF/webhook.
+ * Real web checkout (plan C). Reuses the `payments` Edge Function for logged-in
+ * customers (create_payment_intent) and the public `guest-pay` EF for walk-ins
+ * with NO account (G2, D-64), then renders Stripe's Payment Element. The EF
+ * recalculates ALL amounts server-side from the DB — the client only forwards
+ * ids/qty/modifier labels. This component NEVER sends totals the server trusts.
  *
- * Session is required to pay (the EF verifies the JWT). Without a session we show
- * a login step — anonymous login is not active yet (TODO(C3)).
+ * NO LOGIN WALL: a guest never sees a sign-in screen. With a session → the
+ * logged-in path; without one → name + optional receipt email + hCaptcha → the
+ * public guest-pay EF. Anonymous Supabase sessions are NOT used (per-IP limit vs a
+ * bar's shared WiFi, D-39).
  *
  * Table context is C2 — here table_label is only the manual pickup input (or empty).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { buildOrderOptions } from "@/lib/orderOptions";
+import { readFunctionError } from "@/lib/functionError";
+import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import type { MenuItemOption, ModifierChoice } from "./page";
 
 interface GroupSel {
@@ -43,42 +46,6 @@ export interface CheckoutCartItem {
 const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
 const fmt = (cents: number) => money.format(cents / 100);
 
-// Same shape used across web EF callers (pricing/billing): pull the server's
-// { error } out of a FunctionsHttpError context without consuming the body twice.
-type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
-async function readFunctionError(error: unknown): Promise<string> {
-  const fallback = error instanceof Error ? error.message : "Algo salió mal";
-  const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
-  if (!ctx || typeof ctx !== "object") return fallback;
-  const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
-  if (typeof source.json === "function") {
-    try {
-      const body = await (source.json as () => Promise<unknown>)();
-      const msg = (body as { error?: unknown })?.error;
-      if (typeof msg === "string" && msg.length > 0) return msg;
-    } catch {
-      /* fall through */
-    }
-  }
-  if (typeof source.text === "function") {
-    try {
-      const raw = await (source.text as () => Promise<string>)();
-      if (raw) {
-        try {
-          const body = JSON.parse(raw);
-          const msg = (body as { error?: unknown })?.error;
-          if (typeof msg === "string" && msg.length > 0) return msg;
-        } catch {
-          if (raw.length < 300) return raw;
-        }
-      }
-    } catch {
-      /* nothing else */
-    }
-  }
-  return fallback;
-}
-
 /** The name to serve the order under, from the user's profile. null when none usable. */
 async function resolveProfileName(userId: string): Promise<string | null> {
   try {
@@ -95,8 +62,15 @@ async function resolveProfileName(userId: string): Promise<string | null> {
   }
 }
 
-type Phase = "checking" | "login" | "name" | "creating" | "pay" | "success" | "error";
+// No "login" phase — a guest never sees a sign-in wall. "guest" collects name +
+// optional email and pays via the public guest-pay EF.
+type Phase = "checking" | "name" | "guest" | "creating" | "pay" | "success" | "error";
 type PaidStatus = "succeeded" | "processing";
+
+/** Basic email shape check — only used to validate a receipt email if the guest gives one. */
+function looksLikeEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
 
 interface ServerBreakdown {
   subtotalCents: number;
@@ -137,6 +111,12 @@ export function CheckoutStep({
   // Name the order is served under (C3'): profile name, or guest input.
   const [contactName, setContactName] = useState<string>("");
   const [nameInput, setNameInput] = useState<string>("");
+  // Guest (no session) fields.
+  const [emailInput, setEmailInput] = useState<string>("");
+  const [receiptEmail, setReceiptEmail] = useState<string | null>(null); // what we actually sent
+  const [guestError, setGuestError] = useState<string>("");
+  const [guestSubmitting, setGuestSubmitting] = useState(false);
+  const captchaRef = useRef<InvisibleCaptchaHandle>(null);
   const startedRef = useRef(false);
 
   const clientSubtotal = useMemo(
@@ -214,7 +194,98 @@ export function CheckoutStep({
     setPhase("pay");
   }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
 
-  // On mount: require a session, then create the PaymentIntent.
+  /**
+   * Guest checkout (no session, D-64): name + optional receipt email + hCaptcha →
+   * the PUBLIC guest-pay EF. Prices come from the server; nothing here is trusted.
+   *
+   * ⚠️ Single-use captcha: a FRESH token is fetched at the START of every attempt
+   * (captchaRef.getToken() always resets the widget after — single use is built
+   * into the component). On ANY failure we stay on the guest form (never a dead
+   * end), so the next "Continuar al pago" fetches a brand-new token.
+   */
+  const createGuestIntent = useCallback(async (name: string, email: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setGuestError("Dinos a nombre de quién es el pedido.");
+      return;
+    }
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !looksLikeEmail(trimmedEmail)) {
+      setGuestError("El correo no tiene un formato válido.");
+      return;
+    }
+
+    setGuestSubmitting(true);
+    setGuestError("");
+
+    // A fresh, single-use token for THIS attempt.
+    const cap = await captchaRef.current?.getToken();
+    if (cap && cap.status === "failed") {
+      setGuestError("No pudimos verificar que eres una persona. Inténtalo de nuevo.");
+      setGuestSubmitting(false);
+      return; // widget already reset → next attempt gets a new token
+    }
+    const captchaToken = cap && cap.status === "ok" ? cap.token : undefined;
+
+    const order = {
+      business_id: business.id,
+      order_type: pickupType === "table" ? "table" : "counter",
+      table_label: tableLabel.trim() || null,
+      table_qr_token: tableQrToken,
+      items: cartItems.map((ci) => ({
+        menu_item_id: ci.itemId,
+        qty: ci.quantity,
+        options: buildOrderOptions(ci), // shared builder — server prices from this
+        special_instructions: ci.notes ?? null,
+      })),
+    };
+
+    // guest-pay is PUBLIC (verify_jwt=false); invoke sends the anon apikey and no
+    // bearer when there's no session, which is exactly what a walk-in needs.
+    const { data, error: fnErr } = await supabase.functions.invoke("guest-pay", {
+      body: {
+        action: "create_guest_payment",
+        captcha_token: captchaToken,
+        contact_name: trimmedName,
+        contact_email: trimmedEmail || undefined,
+        order,
+      },
+    });
+
+    if (fnErr) {
+      const raw = await readFunctionError(fnErr);
+      // Captcha failures get the friendly line; the rest (Connect gates, bad email)
+      // are already user-facing from the EF — show them as-is, never a raw error.
+      const msg = /verific|captcha|persona/i.test(raw)
+        ? "No pudimos verificar que eres una persona. Inténtalo de nuevo."
+        : raw;
+      setGuestError(msg);
+      setGuestSubmitting(false); // stays on the guest form → retry fetches a new token
+      return;
+    }
+
+    const res = data as {
+      clientSecret?: string; publishableKey?: string;
+      serverTotalCents?: number; serverBreakdown?: ServerBreakdown;
+    };
+    if (!res?.clientSecret || !res?.publishableKey) {
+      setGuestError("El servidor no devolvió los datos de pago. Inténtalo de nuevo.");
+      setGuestSubmitting(false);
+      return;
+    }
+    setContactName(trimmedName);
+    setReceiptEmail(trimmedEmail || null);
+    setIntent({
+      clientSecret: res.clientSecret,
+      publishableKey: res.publishableKey,
+      serverTotalCents: res.serverTotalCents ?? clientSubtotal,
+      breakdown: res.serverBreakdown ?? null,
+    });
+    setGuestSubmitting(false);
+    setPhase("pay");
+  }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
+
+  // On mount: NO login wall. Session → logged-in path; no session → guest path.
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -227,14 +298,12 @@ export function CheckoutStep({
       // getUser (not getSession) — verifies the token with the server.
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        setPhase("login");
+        // Walk-in guest (D-64): collect name + optional email, pay via guest-pay.
+        setPhase("guest");
         return;
       }
-      // Guest checkout (G1, D-64) does NOT use anonymous sessions — Supabase rate-limits
-      // anonymous sign-ups per IP and a bar's shared WiFi is one IP (D-39). A walk-in guest
-      // pays via the public `guest-pay` EF + hCaptcha instead; G2 wires that path in here.
-      // C3': if the profile already has a usable name, use it and skip the input;
-      // otherwise ask the guest "¿A nombre de quién?" before creating the intent.
+      // Logged in: if the profile already has a usable name, use it and skip the
+      // input; otherwise ask "¿A nombre de quién?" before creating the intent.
       const profileName = await resolveProfileName(data.user.id);
       if (profileName) {
         setContactName(profileName);
@@ -252,24 +321,64 @@ export function CheckoutStep({
 
   return (
     <Sheet>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      {/* Print rules: on window.print() show ONLY the receipt, clean on white. */}
+      <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
+      <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <button type="button" onClick={onBack} style={linkBtn}>← Volver</button>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{business.name}</div>
         <span style={{ width: 60 }} />
       </div>
 
-      {phase === "checking" && <Muted>Comprobando tu sesión…</Muted>}
+      {phase === "checking" && <Muted>Comprobando…</Muted>}
 
-      {phase === "login" && (
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 800 }}>Inicia sesión para completar tu pedido</div>
-          <Muted>Necesitas una sesión para pagar de forma segura.</Muted>
-          <Link
-            href={`/auth/login?next=${encodeURIComponent(pathname)}`}
-            style={{ ...primaryBtn, textDecoration: "none", justifyContent: "center" }}
+      {phase === "guest" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 17, fontWeight: 800 }}>¿A nombre de quién?</div>
+          <Muted>Para que el mesero sepa a quién entregar el pedido.</Muted>
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            maxLength={60}
+            placeholder="Tu nombre"
+            autoFocus
+            aria-label="Tu nombre"
+            style={{
+              ...inputStyle,
+              borderColor: guestError.includes("nombre") ? "#b91c1c" : "#d1d5db",
+            }}
+          />
+
+          <label style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+            Correo para el recibo (opcional)
+          </label>
+          <input
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            maxLength={120}
+            type="email"
+            inputMode="email"
+            placeholder="tucorreo@ejemplo.com"
+            aria-label="Correo para el recibo (opcional)"
+            style={{
+              ...inputStyle,
+              borderColor: guestError.includes("correo") ? "#b91c1c" : "#d1d5db",
+            }}
+          />
+          <Muted>Si lo dejas vacío, no recibirás recibo por correo.</Muted>
+
+          {guestError && <div style={{ fontSize: 13, color: "#b91c1c", textAlign: "center" }}>{guestError}</div>}
+
+          <button
+            type="button"
+            disabled={!nameInput.trim() || guestSubmitting}
+            onClick={() => void createGuestIntent(nameInput, emailInput)}
+            style={{ ...primaryBtn, opacity: !nameInput.trim() || guestSubmitting ? 0.5 : 1 }}
           >
-            Iniciar sesión
-          </Link>
+            {guestSubmitting ? "Verificando…" : "Continuar al pago"}
+          </button>
+
+          {/* Invisible hCaptcha — the token is requested on submit, not on load. */}
+          <InvisibleCaptcha ref={captchaRef} />
         </div>
       )}
 
@@ -316,40 +425,63 @@ export function CheckoutStep({
       {phase === "creating" && <Muted>Preparando el pago…</Muted>}
 
       {phase === "pay" && intent && stripePromise && (
-        <Elements
-          stripe={stripePromise}
-          options={{ clientSecret: intent.clientSecret, appearance: { theme: "stripe" } }}
-        >
-          <PaymentForm
-            total={intent.serverTotalCents}
-            returnUrl={`${originOf()}${pathname}`}
-            onPaid={(status) => {
-              setPaidStatus(status);
-              setPhase("success");
-            }}
-          />
-        </Elements>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Estimated total — the definitive amount is the one on the receipt,
+              computed server-side. Marked as estimated so nothing here is trusted. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={{ fontSize: 14, color: "#374151" }}>Total estimado</span>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(intent.serverTotalCents)}</span>
+          </div>
+          <Muted>El importe definitivo aparecerá en tu recibo tras el pago.</Muted>
+          <Elements
+            stripe={stripePromise}
+            options={{ clientSecret: intent.clientSecret, appearance: { theme: "stripe" } }}
+          >
+            <PaymentForm
+              total={intent.serverTotalCents}
+              returnUrl={`${originOf()}${pathname}`}
+              onPaid={(status) => {
+                setPaidStatus(status);
+                setPhase("success");
+              }}
+            />
+          </Elements>
+        </div>
       )}
 
       {phase === "success" && paidStatus === "succeeded" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="no-print" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ fontSize: 40 }}>✓</div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>¡Pago recibido!</div>
             <Muted>El negocio ya tiene tu pedido y empezará a prepararlo.</Muted>
           </div>
 
-          <Receipt
-            businessName={business.name}
-            name={contactName}
-            items={cartItems}
-            totalCents={intent?.serverTotalCents ?? clientSubtotal}
-            breakdown={intent?.breakdown ?? null}
-            tableLabel={pickupType === "table" ? tableLabel.trim() : ""}
-          />
+          {/* Receipt is the only thing that survives a print (co-print-area). */}
+          <div className="co-print-area">
+            <Receipt
+              businessName={business.name}
+              name={contactName}
+              items={cartItems}
+              totalCents={intent?.serverTotalCents ?? clientSubtotal}
+              breakdown={intent?.breakdown ?? null}
+              tableLabel={pickupType === "table" ? tableLabel.trim() : ""}
+            />
+          </div>
 
-          <Muted>Recibo informativo — muéstraselo al mesero si lo necesitas.</Muted>
-          <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
+          {/* Where the receipt lives now. A guest has no account to look it up later. */}
+          {receiptEmail ? (
+            <Muted>Te hemos enviado el recibo a {receiptEmail}.</Muted>
+          ) : (
+            <div className="no-print" style={{ fontSize: 13, color: "#b45309", fontWeight: 600, textAlign: "center" }}>
+              Guarda o imprime este recibo: no podrás volver a consultarlo.
+            </div>
+          )}
+
+          <button type="button" onClick={() => window.print()} className="no-print" style={primaryBtn}>
+            Imprimir recibo
+          </button>
+          <button type="button" onClick={onDone} className="no-print" style={linkBtn}>Volver al menú</button>
         </div>
       )}
 
@@ -553,3 +685,30 @@ const linkBtn: React.CSSProperties = {
   cursor: "pointer",
   padding: 0,
 };
+
+const inputStyle: React.CSSProperties = {
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  fontSize: 15,
+  color: "#111827",
+};
+
+// Print rules: hide the whole page and the sheet chrome, show ONLY the receipt,
+// clean on white. `.co-print-area` wraps the receipt; `.no-print` hides controls.
+const PRINT_CSS = `
+@media print {
+  /* A parent (the menu <main>) carries a transform, which would make the
+     fixed receipt its containing block and push it off the page. Clearing
+     transforms in print is harmless and re-anchors the receipt to the page. */
+  * { transform: none !important; }
+  body * { visibility: hidden !important; }
+  .co-print-area, .co-print-area * { visibility: visible !important; }
+  .co-print-area {
+    position: fixed !important; inset: 0 !important; margin: 0 !important;
+    padding: 16px !important; background: #ffffff !important; box-shadow: none !important;
+    max-height: none !important; overflow: visible !important;
+  }
+  .no-print { display: none !important; }
+}
+`;
