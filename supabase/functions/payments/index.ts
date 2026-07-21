@@ -25,6 +25,7 @@
 
 import Stripe from "npm:stripe@16.2.0";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 
 /** Supabase client bound to the CALLER's JWT (RLS + auth.uid() apply). */
 // deno-lint-ignore no-explicit-any
@@ -399,20 +400,15 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // landed in the platform account (no destination) or the charge failed at the
   // register. All return 409 (conflict with the business's current state).
   //
-  // FIX #2 — payments are blocked until a platform admin verifies the business
-  // (/super-admin/verification). Without this the whole approval flow is decorative.
-  if (business.status !== "verified") {
-    return errorResponse("This business is pending verification", 409);
-  }
-  // FIX #1 — no Connect account = no destination. NEVER create a PaymentIntent
-  // without transfer_data; that routes 100% of the money to the platform account.
-  if (!stripeAccountId) {
-    return errorResponse("This business is not set up to accept payments yet", 409);
-  }
-  // FIX #3c — connected but onboarding not finished → the charge would fail in the
-  // customer's face. Block it here with a clear reason instead.
-  if (!business.stripe_charges_enabled) {
-    return errorResponse("This business has not completed Stripe onboarding", 409);
+  // Shared gate (verified → Connect account → onboarding finished). Same errors,
+  // now reused by the tab-settlement flow too.
+  const gate = businessChargeGate(business as {
+    stripe_account_id: string | null;
+    status: string | null;
+    stripe_charges_enabled: boolean | null;
+  });
+  if (gate) {
+    return errorResponse(gate.error, gate.status);
   }
 
   // ── Validate items + server-side recalculation (P0-2 + FIX #6 modifiers) ──
@@ -517,25 +513,16 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     { apiVersion: "2024-06-20" },
   );
 
-  const piParams: Stripe.PaymentIntentCreateParams = {
-    amount: serverTotalCents, // server-calculated; client total_cents is ignored
+  // Destination-charge routing via the shared helper (stripeAccountId is set —
+  // businessChargeGate guaranteed it above). amount is the SERVER total.
+  const piParams = buildConnectPiParams({
+    amountCents: serverTotalCents, // server-calculated; client total_cents is ignored
     currency: "usd",
-    customer: customerId,
-    automatic_payment_methods: { enabled: true },
     metadata,
-  };
-  // Guest receipt: let Stripe email its own receipt when a contact email is given.
-  if (contactEmail) piParams.receipt_email = contactEmail;
-
-  if (stripeAccountId) {
-    const platformFeePercent = parseFloat(Deno.env.get("PLATFORM_FEE_PERCENT") ?? "2.9");
-    const platformFeeFixed = parseInt(Deno.env.get("PLATFORM_FEE_FIXED_CENTS") ?? "30", 10);
-    // Platform fee based on server total, not client total.
-    const platformFeeCents = Math.round((serverTotalCents * platformFeePercent) / 100) + platformFeeFixed;
-    piParams.application_fee_amount = platformFeeCents;
-    piParams.transfer_data = { destination: stripeAccountId };
-    piParams.on_behalf_of = stripeAccountId;
-  }
+    stripeAccountId: stripeAccountId as string,
+    customer: customerId,
+    receiptEmail: contactEmail, // guest receipt when a contact email is given
+  });
 
   const paymentIntent = await stripe.paymentIntents.create(piParams, { idempotencyKey });
   const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
@@ -947,6 +934,124 @@ async function handleUpdateWaiterOrderItem(
   });
 }
 
+/**
+ * create_tab_payment — a WAITER starts settling a tab from the terminal.
+ *
+ * The amount is taken from tab_amount_due (SERVER), never the client. For 'card'
+ * it just opens a pending tab_payments row and hands back the pay_token/URL — the
+ * PaymentIntent is created later by the public /pay page (tab-pay EF), when the
+ * customer actually pays. For 'cash' it records the payment and settles the tab
+ * immediately (simple cash for this batch; the till/cash-drawer is a later one).
+ */
+async function handleCreateTabPayment(
+  body: Record<string, unknown>,
+  authUserId: string,
+  userClient: UserClient,
+): Promise<Response> {
+  const tabId = typeof body.tab_id === "string" ? body.tab_id : null;
+  if (!tabId) return errorResponse("tab_id is required");
+  const method = body.method === "card" || body.method === "cash" ? body.method : null;
+  if (!method) return errorResponse("method must be 'card' or 'cash'");
+
+  // Optional waiter-entered tip; default 0. Only trusted from the waiter here.
+  let tipCents = 0;
+  if (body.tip_cents !== undefined && body.tip_cents !== null) {
+    if (!Number.isInteger(body.tip_cents) || (body.tip_cents as number) < 0) {
+      return errorResponse("tip_cents must be a non-negative integer");
+    }
+    tipCents = body.tip_cents as number;
+  }
+
+  const db = getAdminClient();
+
+  // Tab must exist and be open.
+  const { data: tab, error: tabErr } = await db
+    .from("table_tabs")
+    .select("id, business_id, status")
+    .eq("id", tabId)
+    .maybeSingle();
+  if (tabErr) return errorResponse(`DB error: ${tabErr.message}`, 500);
+  if (!tab) return errorResponse("Tab not found", 404);
+  if (tab.status !== "open") return errorResponse("Esa cuenta ya está cerrada", 400);
+
+  // Amount from the SERVER, AS THE CALLER: tab_amount_due enforces the permission
+  // (employee/owner/admin) and returns the sum of unpaid orders. Client amounts
+  // are never read.
+  const { data: due, error: dueErr } = await userClient.rpc("tab_amount_due", { p_tab_id: tabId });
+  if (dueErr) {
+    if (dueErr.message.includes("NOT_ALLOWED")) {
+      return errorResponse("No puedes cobrar en esta mesa", 403);
+    }
+    return errorResponse(`DB error: ${dueErr.message}`, 500);
+  }
+  const amountCents = (due as { amount_cents?: number } | null)?.amount_cents ?? 0;
+  if (amountCents <= 0) return errorResponse("No hay nada que cobrar en esta cuenta", 400);
+
+  if (method === "cash") {
+    // Record the cash payment and settle atomically (084).
+    const { data: row, error: insErr } = await db
+      .from("tab_payments")
+      .insert({
+        tab_id: tabId,
+        amount_cents: amountCents,
+        tip_cents: tipCents,
+        method: "cash",
+        status: "pending",       // settle_tab_payment flips it to 'succeeded'
+        taken_by: authUserId,
+      })
+      .select("id, pay_token")
+      .single();
+    if (insErr) return errorResponse(`Could not create the payment: ${insErr.message}`, 500);
+
+    const { error: settleErr } = await db.rpc("settle_tab_payment", {
+      p_tab_payment_id: (row as { id: string }).id,
+    });
+    if (settleErr) {
+      // The payment row exists but didn't settle — leave it 'pending' (not a lie),
+      // report the failure. Nothing was marked paid.
+      return errorResponse(`Could not settle the tab: ${settleErr.message}`, 500);
+    }
+
+    return jsonResponse({
+      tab_payment_id: (row as { id: string }).id,
+      method: "cash",
+      status: "succeeded",
+      amount_cents: amountCents,
+      tip_cents: tipCents,
+    });
+  }
+
+  // method === 'card': open a pending payment; the PI is created by the public page.
+  const { data: row, error: insErr } = await db
+    .from("tab_payments")
+    .insert({
+      tab_id: tabId,
+      amount_cents: amountCents,
+      tip_cents: tipCents,
+      method: "card",
+      status: "pending",
+      taken_by: authUserId,
+    })
+    .select("id, pay_token")
+    .single();
+  if (insErr) return errorResponse(`Could not create the payment: ${insErr.message}`, 500);
+
+  const payToken = (row as { pay_token: string }).pay_token;
+  // PUBLIC_WEB_URL is the site origin (e.g. https://jchat.app). The path is stable.
+  const base = (Deno.env.get("PUBLIC_WEB_URL") ?? "").replace(/\/+$/, "");
+  const payUrl = base ? `${base}/pay/${payToken}` : `/pay/${payToken}`;
+
+  return jsonResponse({
+    tab_payment_id: (row as { id: string }).id,
+    method: "card",
+    status: "pending",
+    pay_token: payToken,
+    pay_url: payUrl,
+    amount_cents: amountCents,
+    tip_cents: tipCents,
+  });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
@@ -976,6 +1081,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // client so the employee check is evaluated as the caller.
       case "update_waiter_order_item":
         return await handleUpdateWaiterOrderItem(body, authUserId, auth.userClient);
+      // Waiter starts settling a tab. Caller-scoped client so tab_amount_due checks
+      // the permission as the caller. The public card page (tab-pay EF) creates the PI.
+      case "create_tab_payment":
+        return await handleCreateTabPayment(body, authUserId, auth.userClient);
       default: return errorResponse(`Unknown action: ${action ?? "(none)"}`);
     }
   } catch (err) {

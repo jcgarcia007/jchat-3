@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.subscriptions]
 verify_jwt = false
+
+# Public tab-payment page: the customer paying via QR may have no account, so this
+# is called WITHOUT a JWT. Protected by the opaque pay_token + acting only on a
+# 'pending' card payment (same model as the webhook). Does NOT lower payments'.
+[functions.tab-pay]
+verify_jwt = false
