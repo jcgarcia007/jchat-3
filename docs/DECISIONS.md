@@ -399,6 +399,24 @@ en 'preparing' — si naciera preparando no existiría ninguna ventana de edici�
 recalculan SIEMPRE en el servidor al modificar, igual que al crear. Ver
 [docs/COCINA.md](COCINA.md).
 
+### D-64 — Pago de invitado: EF pública + hCaptcha, NO login anónimo
+
+Un cliente sin cuenta paga por una **Edge Function pública** (`guest-pay`, `verify_jwt=false`),
+protegida con **hCaptcha verificado del lado servidor**, en lugar de por una sesión anónima de
+Supabase (se revierte el TODO C4 de CheckoutStep). Motivo: Supabase limita los registros anónimos
+**por IP** (30/h por defecto) y en un bar todos comparten el WiFi = una sola IP → el cliente 31 de
+la hora no podría pedir (choca con D-39). La EF pública evita ese límite; el captcha es la defensa
+real contra bots (D-38). El pedido SIEMPRE se guarda con `orders.user_id = NULL` (nullable desde
+la 080); lo efímero es el vínculo con el cliente. El correo es opcional, solo para el recibo de
+Stripe. Un token de hCaptcha es de **un solo uso** (G2 debe pedir uno nuevo por reintento).
+
+Redes de seguridad que trae G1: (1) el webhook deja de descartar en silencio un pago sin `user_id`
+— un `guest_order` crea el pedido, y un pago que no se puede convertir queda en `orphan_payments`
+en vez de perderse en un log; (2) `pending_order_carts.user_id` pasa a nullable; (3) purga diaria
+de carritos abandonados (los invitados que no completan el pago). El cálculo de precios y el bloque
+Connect NO se duplican: viven en `supabase/functions/_shared/` (`pricing.ts`, `connect.ts`) y los
+importan `payments`, `tab-pay` y `guest-pay`. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

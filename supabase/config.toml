@@ -24,3 +24,9 @@ verify_jwt = false
 # 'pending' card payment (same model as the webhook). Does NOT lower payments'.
 [functions.tab-pay]
 verify_jwt = false
+
+# Public guest checkout (G1): a walk-in with no account pays from the menu. Called
+# WITHOUT a JWT; the bot defence is server-side hCaptcha (not anonymous sessions —
+# see D-39). Does NOT lower payments'.
+[functions.guest-pay]
+verify_jwt = false
