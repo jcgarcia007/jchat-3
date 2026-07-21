@@ -92,10 +92,44 @@ interface PackedItem {
 
 // ── Handler: payment_intent.succeeded ────────────────────────────────────────
 
+// ── Handler: tab settlement succeeded ────────────────────────────────────────
+// A tab payment settled: mark the payment paid, stamp paid_at on the tab's unpaid
+// orders, and close the tab if nothing is left — ALL in one transaction inside
+// settle_tab_payment (084). That single-transaction guarantee is what stops a
+// half-applied settlement (payment 'succeeded' but orders unsealed). settle is
+// idempotent, so a Stripe re-delivery does nothing. On any failure we throw → the
+// outer catch deletes the dedup marker → Stripe retries cleanly.
+async function handleTabSettlementSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<void> {
+  const tabPaymentId = paymentIntent.metadata?.tab_payment_id;
+  if (!tabPaymentId) {
+    console.error(`[stripe-webhook] tab_settlement missing tab_payment_id on PI ${paymentIntent.id}`);
+    return; // nothing to act on; don't retry forever
+  }
+  const db = getAdminClient();
+  const { data, error } = await db.rpc("settle_tab_payment", { p_tab_payment_id: tabPaymentId });
+  if (error) {
+    console.error(`[stripe-webhook] settle_tab_payment failed for ${tabPaymentId} (PI ${paymentIntent.id}):`, error);
+    throw error; // roll back dedup marker → Stripe retries
+  }
+  console.log(
+    `[stripe-webhook] tab settled: payment=${tabPaymentId} pi=${paymentIntent.id} result=${JSON.stringify(data)}`,
+  );
+}
+
 async function handlePaymentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
   const meta = paymentIntent.metadata ?? {};
+
+  // ⚠️ MINE #1 — a TAB SETTLEMENT must NEVER create an order. Branch FIRST, before
+  // any orders insert. Without this discriminator, a tab payment would mint a
+  // phantom paid order with no items and double-count the money.
+  if (meta.payment_kind === "tab_settlement") {
+    await handleTabSettlementSucceeded(paymentIntent);
+    return;
+  }
 
   const businessId = meta.business_id;
   const userId = meta.user_id;
@@ -369,6 +403,24 @@ async function handlePaymentFailed(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
   const meta = paymentIntent.metadata ?? {};
+
+  // A tab settlement that failed: mark the payment 'failed', NEVER touch the orders
+  // (they stay unpaid, the tab stays open, the waiter can retry).
+  if (meta.payment_kind === "tab_settlement") {
+    const tabPaymentId = meta.tab_payment_id;
+    if (tabPaymentId) {
+      const db = getAdminClient();
+      const { error } = await db
+        .from("tab_payments")
+        .update({ status: "failed" })
+        .eq("id", tabPaymentId)
+        .eq("status", "pending"); // don't overwrite an already-succeeded settlement
+      if (error) console.error(`[stripe-webhook] failed to mark tab_payment ${tabPaymentId} failed:`, error);
+    }
+    console.warn(`[stripe-webhook] tab_settlement failed: pi=${paymentIntent.id} payment=${tabPaymentId ?? "?"}`);
+    return;
+  }
+
   const businessId = meta.business_id ?? "(unknown)";
   const userId = meta.user_id ?? "(unknown)";
 
