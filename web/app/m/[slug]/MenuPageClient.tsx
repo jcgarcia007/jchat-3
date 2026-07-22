@@ -1721,6 +1721,7 @@ export default function MenuPageClient({
           pickupType={tableCtx ? "table" : pickupType}
           tableLabel={tableCtx ? tableCtx.tableLabel : pickupTable}
           tableQrToken={tableCtx?.token ?? null}
+          presetName={pickupName}
           onBack={() => setStep("pickup")}
           onDone={() => {
             setCartItems([]);

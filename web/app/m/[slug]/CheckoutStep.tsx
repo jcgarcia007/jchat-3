@@ -46,31 +46,9 @@ export interface CheckoutCartItem {
 const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
 const fmt = (cents: number) => money.format(cents / 100);
 
-/** The name to serve the order under, from the user's profile. null when none usable. */
-async function resolveProfileName(userId: string): Promise<string | null> {
-  try {
-    const { data } = await supabase
-      .from("public_profiles")
-      .select("display_name, username")
-      .eq("id", userId)
-      .maybeSingle();
-    const row = data as { display_name: string | null; username: string | null } | null;
-    const name = (row?.display_name ?? row?.username ?? "").trim();
-    return name.length > 0 ? name.slice(0, 60) : null;
-  } catch {
-    return null;
-  }
-}
-
-// No "login" phase — a guest never sees a sign-in wall. "guest" collects name +
-// optional email and pays via the public guest-pay EF.
-type Phase = "checking" | "name" | "guest" | "creating" | "pay" | "success" | "error";
+// No name/email prompt phases — the name comes from the pickup screen (presetName).
+type Phase = "checking" | "creating" | "pay" | "success" | "error";
 type PaidStatus = "succeeded" | "processing";
-
-/** Basic email shape check — only used to validate a receipt email if the guest gives one. */
-function looksLikeEmail(s: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-}
 
 interface ServerBreakdown {
   subtotalCents: number;
@@ -92,6 +70,7 @@ export function CheckoutStep({
   pickupType,
   tableLabel,
   tableQrToken = null,
+  presetName = "",
   onBack,
   onDone,
 }: {
@@ -100,6 +79,7 @@ export function CheckoutStep({
   pickupType: "counter" | "table";
   tableLabel: string;
   tableQrToken?: string | null;
+  presetName?: string;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -108,14 +88,9 @@ export function CheckoutStep({
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
   const [error, setError] = useState<string>("");
   const [intent, setIntent] = useState<IntentResult | null>(null);
-  // Name the order is served under (C3'): profile name, or guest input.
-  const [contactName, setContactName] = useState<string>("");
-  const [nameInput, setNameInput] = useState<string>("");
-  // Guest (no session) fields.
-  const [emailInput, setEmailInput] = useState<string>("");
-  const [receiptEmail, setReceiptEmail] = useState<string | null>(null); // what we actually sent
-  const [guestError, setGuestError] = useState<string>("");
-  const [guestSubmitting, setGuestSubmitting] = useState(false);
+  // Name the order is served under — from the pickup screen (presetName). May be
+  // empty (optional). Used only for the on-screen receipt.
+  const contactName = presetName.trim().slice(0, 60);
   const captchaRef = useRef<InvisibleCaptchaHandle>(null);
   const startedRef = useRef(false);
 
@@ -124,7 +99,7 @@ export function CheckoutStep({
     [cartItems],
   );
 
-  const createIntent = useCallback(async (name: string) => {
+  const createIntent = useCallback(async () => {
     setError("");
     setPhase("creating");
     // Fresh idempotency key per attempt (server namespaces it with the JWT).
@@ -141,7 +116,7 @@ export function CheckoutStep({
       order_type: pickupType === "table" ? "table" : "counter",
       table_label: tableLabel.trim() || null, // informative; real link is via table_qr_token
       table_qr_token: tableQrToken, // C2: opaque token, resolved to a table_id server-side
-      contact_name: name.trim() ? name.trim().slice(0, 60) : null, // C3': served-under name
+      contact_name: contactName || null, // optional served-under name (from pickup)
       gift_recipient_id: null,
       subtotal_cents: clientSubtotal, // ignored by server
       tax_cents: 0, // ignored
@@ -192,38 +167,21 @@ export function CheckoutStep({
       breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
+  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken]);
 
-  /**
-   * Guest checkout (no session, D-64): name + optional receipt email + hCaptcha →
-   * the PUBLIC guest-pay EF. Prices come from the server; nothing here is trusted.
-   *
-   * ⚠️ Single-use captcha: a FRESH token is fetched at the START of every attempt
-   * (captchaRef.getToken() always resets the widget after — single use is built
-   * into the component). On ANY failure we stay on the guest form (never a dead
-   * end), so the next "Continuar al pago" fetches a brand-new token.
-   */
-  const createGuestIntent = useCallback(async (name: string, email: string) => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setGuestError("Dinos a nombre de quién es el pedido.");
-      return;
-    }
-    const trimmedEmail = email.trim();
-    if (trimmedEmail && !looksLikeEmail(trimmedEmail)) {
-      setGuestError("El correo no tiene un formato válido.");
-      return;
-    }
+  // Guest path (no session, D-64): invisible hCaptcha + the PUBLIC guest-pay EF.
+  // Name is OPTIONAL (guest-pay v2). Prices from the server; nothing trusted.
+  // Single-use captcha: fresh token per attempt; on failure → error phase, and
+  // "Reintentar" fetches a brand-new token.
+  const createGuestIntent = useCallback(async () => {
+    setError("");
+    setPhase("creating");
 
-    setGuestSubmitting(true);
-    setGuestError("");
-
-    // A fresh, single-use token for THIS attempt.
     const cap = await captchaRef.current?.getToken();
     if (cap && cap.status === "failed") {
-      setGuestError("No pudimos verificar que eres una persona. Inténtalo de nuevo.");
-      setGuestSubmitting(false);
-      return; // widget already reset → next attempt gets a new token
+      setError("No pudimos verificar que eres una persona. Inténtalo de nuevo.");
+      setPhase("error");
+      return; // widget already reset → retry gets a new token
     }
     const captchaToken = cap && cap.status === "ok" ? cap.token : undefined;
 
@@ -235,32 +193,27 @@ export function CheckoutStep({
       items: cartItems.map((ci) => ({
         menu_item_id: ci.itemId,
         qty: ci.quantity,
-        options: buildOrderOptions(ci), // shared builder — server prices from this
+        options: buildOrderOptions(ci),
         special_instructions: ci.notes ?? null,
       })),
     };
 
-    // guest-pay is PUBLIC (verify_jwt=false); invoke sends the anon apikey and no
-    // bearer when there's no session, which is exactly what a walk-in needs.
     const { data, error: fnErr } = await supabase.functions.invoke("guest-pay", {
       body: {
         action: "create_guest_payment",
         captcha_token: captchaToken,
-        contact_name: trimmedName,
-        contact_email: trimmedEmail || undefined,
+        contact_name: contactName || undefined, // optional (guest-pay v2)
         order,
       },
     });
 
     if (fnErr) {
       const raw = await readFunctionError(fnErr);
-      // Captcha failures get the friendly line; the rest (Connect gates, bad email)
-      // are already user-facing from the EF — show them as-is, never a raw error.
       const msg = /verific|captcha|persona/i.test(raw)
         ? "No pudimos verificar que eres una persona. Inténtalo de nuevo."
         : raw;
-      setGuestError(msg);
-      setGuestSubmitting(false); // stays on the guest form → retry fetches a new token
+      setError(msg);
+      setPhase("error");
       return;
     }
 
@@ -269,50 +222,41 @@ export function CheckoutStep({
       serverTotalCents?: number; serverBreakdown?: ServerBreakdown;
     };
     if (!res?.clientSecret || !res?.publishableKey) {
-      setGuestError("El servidor no devolvió los datos de pago. Inténtalo de nuevo.");
-      setGuestSubmitting(false);
+      setError("El servidor no devolvió los datos de pago. Inténtalo de nuevo.");
+      setPhase("error");
       return;
     }
-    setContactName(trimmedName);
-    setReceiptEmail(trimmedEmail || null);
     setIntent({
       clientSecret: res.clientSecret,
       publishableKey: res.publishableKey,
       serverTotalCents: res.serverTotalCents ?? clientSubtotal,
       breakdown: res.serverBreakdown ?? null,
     });
-    setGuestSubmitting(false);
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, pickupType, tableLabel, tableQrToken]);
+  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken]);
 
-  // On mount: NO login wall. Session → logged-in path; no session → guest path.
+  // Entry point: route to the right EF by session. Also the "Reintentar" target.
+  const startPayment = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setError("El pago no está configurado.");
+      setPhase("error");
+      return;
+    }
+    // getUser (not getSession) — verifies the token with the server.
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      await createIntent();
+    } else {
+      await createGuestIntent();
+    }
+  }, [createIntent, createGuestIntent]);
+
+  // On mount: start the payment once (no login wall, no prompts).
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    void (async () => {
-      if (!isSupabaseConfigured) {
-        setError("El pago no está configurado.");
-        setPhase("error");
-        return;
-      }
-      // getUser (not getSession) — verifies the token with the server.
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        // Walk-in guest (D-64): collect name + optional email, pay via guest-pay.
-        setPhase("guest");
-        return;
-      }
-      // Logged in: if the profile already has a usable name, use it and skip the
-      // input; otherwise ask "¿A nombre de quién?" before creating the intent.
-      const profileName = await resolveProfileName(data.user.id);
-      if (profileName) {
-        setContactName(profileName);
-        await createIntent(profileName);
-      } else {
-        setPhase("name");
-      }
-    })();
-  }, [createIntent]);
+    void startPayment();
+  }, [startPayment]);
 
   const stripePromise = useMemo<Promise<Stripe | null> | null>(
     () => (intent?.publishableKey ? loadStripe(intent.publishableKey) : null),
@@ -329,100 +273,7 @@ export function CheckoutStep({
         <span style={{ width: 60 }} />
       </div>
 
-      {phase === "checking" && <Muted>Comprobando…</Muted>}
-
-      {phase === "guest" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 800 }}>¿A nombre de quién?</div>
-          <Muted>Para que el mesero sepa a quién entregar el pedido.</Muted>
-          <input
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            maxLength={60}
-            placeholder="Tu nombre"
-            autoFocus
-            aria-label="Tu nombre"
-            style={{
-              ...inputStyle,
-              borderColor: guestError.includes("nombre") ? "#b91c1c" : "#d1d5db",
-            }}
-          />
-
-          <label style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
-            Correo para el recibo (opcional)
-          </label>
-          <input
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            maxLength={120}
-            type="email"
-            inputMode="email"
-            placeholder="tucorreo@ejemplo.com"
-            aria-label="Correo para el recibo (opcional)"
-            style={{
-              ...inputStyle,
-              borderColor: guestError.includes("correo") ? "#b91c1c" : "#d1d5db",
-            }}
-          />
-          <Muted>Si lo dejas vacío, no recibirás recibo por correo.</Muted>
-
-          {guestError && <div style={{ fontSize: 13, color: "#b91c1c", textAlign: "center" }}>{guestError}</div>}
-
-          <button
-            type="button"
-            disabled={!nameInput.trim() || guestSubmitting}
-            onClick={() => void createGuestIntent(nameInput, emailInput)}
-            style={{ ...primaryBtn, opacity: !nameInput.trim() || guestSubmitting ? 0.5 : 1 }}
-          >
-            {guestSubmitting ? "Verificando…" : "Continuar al pago"}
-          </button>
-
-          {/* Invisible hCaptcha — the token is requested on submit, not on load. */}
-          <InvisibleCaptcha ref={captchaRef} />
-        </div>
-      )}
-
-      {phase === "name" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 800 }}>¿A nombre de quién?</div>
-          <Muted>Para que el mesero sepa a quién entregar el pedido.</Muted>
-          <input
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            maxLength={60}
-            placeholder="Tu nombre"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && nameInput.trim()) {
-                const n = nameInput.trim();
-                setContactName(n);
-                void createIntent(n);
-              }
-            }}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #d1d5db",
-              fontSize: 15,
-              color: "#111827",
-            }}
-          />
-          <button
-            type="button"
-            disabled={!nameInput.trim()}
-            onClick={() => {
-              const n = nameInput.trim();
-              setContactName(n);
-              void createIntent(n);
-            }}
-            style={{ ...primaryBtn, opacity: nameInput.trim() ? 1 : 0.5 }}
-          >
-            Continuar al pago
-          </button>
-        </div>
-      )}
-
-      {phase === "creating" && <Muted>Preparando el pago…</Muted>}
+      {(phase === "checking" || phase === "creating") && <Muted>Preparando el pago…</Muted>}
 
       {phase === "pay" && intent && stripePromise && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -469,14 +320,9 @@ export function CheckoutStep({
             />
           </div>
 
-          {/* Where the receipt lives now. A guest has no account to look it up later. */}
-          {receiptEmail ? (
-            <Muted>Te hemos enviado el recibo a {receiptEmail}.</Muted>
-          ) : (
-            <div className="no-print" style={{ fontSize: 13, color: "#b45309", fontWeight: 600, textAlign: "center" }}>
-              Guarda o imprime este recibo: no podrás volver a consultarlo.
-            </div>
-          )}
+          <div className="no-print" style={{ fontSize: 13, color: "#b45309", fontWeight: 600, textAlign: "center" }}>
+            Guarda o imprime este recibo: no podrás volver a consultarlo.
+          </div>
 
           <button type="button" onClick={() => window.print()} className="no-print" style={primaryBtn}>
             Imprimir recibo
@@ -492,7 +338,7 @@ export function CheckoutStep({
           {intent && <div style={{ fontSize: 15 }}>Importe: {fmt(intent.serverTotalCents)}.</div>}
           <Muted>
             Aún no está confirmado. En cuanto el pago se confirme, el negocio recibirá tu pedido y
-            empezará a prepararlo. Si diste un email, te llegará el comprobante.
+            empezará a prepararlo.
           </Muted>
           <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
         </div>
@@ -502,10 +348,14 @@ export function CheckoutStep({
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#b91c1c" }}>No se pudo iniciar el pago</div>
           <Muted>{error || "Inténtalo de nuevo."}</Muted>
-          <button type="button" onClick={() => void createIntent(contactName)} style={primaryBtn}>Reintentar</button>
+          <button type="button" onClick={() => void startPayment()} style={primaryBtn}>Reintentar</button>
           <button type="button" onClick={onBack} style={linkBtn}>Volver al pedido</button>
         </div>
       )}
+      {/* Invisible hCaptcha — always mounted so the guest path can fetch a token
+          the moment the payment starts. Renders nothing visible (null when no
+          sitekey is configured). */}
+      <InvisibleCaptcha ref={captchaRef} />
     </Sheet>
   );
 }
@@ -686,13 +536,6 @@ const linkBtn: React.CSSProperties = {
   padding: 0,
 };
 
-const inputStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  borderRadius: 12,
-  border: "1px solid #d1d5db",
-  fontSize: 15,
-  color: "#111827",
-};
 
 // Print rules: hide the whole page and the sheet chrome, show ONLY the receipt,
 // clean on white. `.co-print-area` wraps the receipt; `.no-print` hides controls.
