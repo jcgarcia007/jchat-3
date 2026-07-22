@@ -78,7 +78,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   (D-66) → hay que esperar al `onLoad` del widget antes de `execute()`, o el primer intento falla
   en falso y solo "Reintentar" funciona. Componente compartido con el login (que sí es tras click),
   el fix es retrocompatible.
-- **La integración Supabage↔Vercel duplica variables de entorno con nombres nuevos** (crea
+- **La integración Supabase↔Vercel duplica variables de entorno con nombres nuevos** (crea
   `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
   `POSTGRES_*`, `SUPABASE_JWT_SECRET`) SIN sobrescribir las que ya usa el código
   (`NEXT_PUBLIC_SUPABASE_URL/_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). No rompe nada mientras el
