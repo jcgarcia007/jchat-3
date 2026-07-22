@@ -9,6 +9,7 @@ import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
 import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import { CheckoutStep } from "./CheckoutStep";
+import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
 import type {
   PublicBusiness,
@@ -923,18 +924,26 @@ function PickupSheet({
   palette,
   cartItems,
   initialTableNumber,
+  initialName,
   onBack,
   onConfirm,
 }: {
   palette: MenuPalette;
   cartItems: CartItem[];
   initialTableNumber: string;
+  initialName: string;
   onBack: () => void;
   onConfirm: (type: PickupType, tableNumber: string, name: string) => void;
 }) {
   const [pickupType, setPickupType] = useState<PickupType>("table");
   const [tableNumber, setTableNumber] = useState(initialTableNumber);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
+  // Si el nombre del perfil llega DESPUÉS de montar esta hoja, rellénalo —
+  // salvo que el usuario ya haya escrito algo (entonces gana lo suyo).
+  const nameTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!nameTouchedRef.current) setName(initialName);
+  }, [initialName]);
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
   const canConfirm = pickupType === "counter" || tableNumber.trim().length > 0;
 
@@ -1085,7 +1094,7 @@ function PickupSheet({
               maxLength={60}
               placeholder="Tu nombre"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { nameTouchedRef.current = true; setName(e.target.value); }}
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -1397,6 +1406,10 @@ export default function MenuPageClient({
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [pickupTable, setPickupTable] = useState("");
   const [pickupName, setPickupName] = useState("");
+  // Nombre del perfil del usuario con sesión, para pre-llenar la casilla de B1.
+  // Vacío para invitados. Se resuelve perezosamente (solo cuando el usuario
+  // muestra intención de compra), para no pedir la sesión a quien solo mira el menú.
+  const [profileName, setProfileName] = useState("");
 
   // ── Table QR context (C2) — written by B5's /t/[token] into sessionStorage ──
   // Only honoured when its businessSlug matches THIS page's business (never carry
@@ -1431,6 +1444,33 @@ export default function MenuPageClient({
       /* ignore */
     }
   }
+
+  // Resolver el nombre del perfil UNA sola vez, cuando el usuario sale del menú
+  // (abre el carrito) — no en cada carga de menú. Invitado sin sesión → se queda
+  // vacío. NOTA: esta resolución es temporal aquí; B2b consolidará de dónde sale
+  // el nombre. No es dato de dinero, así que la duplicación breve es aceptable.
+  const profileFetchedRef = useRef(false);
+  useEffect(() => {
+    if (step === "menu") return;
+    if (profileFetchedRef.current) return;
+    profileFetchedRef.current = true;
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) return; // invitado → casilla vacía
+        const { data: prof } = await supabase
+          .from("public_profiles")
+          .select("display_name, username")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        const row = prof as { display_name: string | null; username: string | null } | null;
+        const n = (row?.display_name ?? row?.username ?? "").trim();
+        if (n) setProfileName(n.slice(0, 60));
+      } catch {
+        /* si falla, la casilla queda vacía — no bloquea nada */
+      }
+    })();
+  }, [step]);
 
   // ── Category nav active tracking ────────────────────────────────────────────
   const [activeCategory, setActiveCategory] = useState<string>(
@@ -1663,6 +1703,7 @@ export default function MenuPageClient({
           palette={palette}
           cartItems={cartItems}
           initialTableNumber={tableCtx ? tableCtx.tableLabel : pickupTable}
+          initialName={profileName}
           onBack={() => setStep("cart")}
           onConfirm={(type, table, name) => {
             setPickupType(type);
