@@ -65,9 +65,15 @@ variables de entorno con nombres nuevos (`SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_S
 sigue apuntando a `klfsgcfoahdtkojyqspd`. No rompe nada; los duplicados son deuda a limpiar.
 
 **Pendientes detectados esta sesión (para retomar):**
-- ⚠️ **Deriva repo↔producción en `payments`:** la EF está desplegada en **v39** con P0-2/P0-3
-  cerrados, pero eso NO vino de esta rama. Confirmar que el código de esos fixes está en `main`
-  (no solo desplegado como función) para no arrastrar deriva.
+- ✅ **Deriva de `payments` — VERIFICADA, sin problema (2026-07-22):** se leyó
+  `supabase/functions/payments/index.ts` en `main`; los fixes P0-2 (recálculo server-side vía
+  `priceLinesFromDb`/`computeTaxCents`/`serverTotalCents`, ignora el total del cliente) y P0-3
+  (`verifyCaller` valida el JWT, opera sobre `authUserId` y nunca `body.user_id`; `table_qr_token`
+  resuelto server-side y rechazando negocio cruzado) ESTÁN en el repo — cabecera fechada
+  2026-06-24 / FIX #7 2026-07-08. El "v39 vs v37" era conteo de DESPLIEGUES, no deriva de código:
+  cada `supabase functions deploy` sube el número tenga o no cambios. Un redeploy desde `main` NO
+  revierte los fixes. (Caveat: no se hizo diff byte-a-byte del bundle desplegado v39; la lógica de
+  seguridad coincide en `main` y en lo desplegado, que era la preocupación real.)
 - 🟠 **`stripe-webhook` 400 repetidos** en los logs (v30/v32): reintentos de Stripe con firma que
   no verifica (probable secret de sandbox stale). Revisar antes del go-live de Stripe.
 - ⚪ Limpiar los duplicados de env vars de la integración + el archivo untracked
