@@ -922,16 +922,19 @@ function CartSheet({
 function PickupSheet({
   palette,
   cartItems,
+  initialTableNumber,
   onBack,
   onConfirm,
 }: {
   palette: MenuPalette;
   cartItems: CartItem[];
+  initialTableNumber: string;
   onBack: () => void;
-  onConfirm: (type: PickupType, tableNumber: string) => void;
+  onConfirm: (type: PickupType, tableNumber: string, name: string) => void;
 }) {
   const [pickupType, setPickupType] = useState<PickupType>("table");
-  const [tableNumber, setTableNumber] = useState("");
+  const [tableNumber, setTableNumber] = useState(initialTableNumber);
+  const [name, setName] = useState("");
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
   const canConfirm = pickupType === "counter" || tableNumber.trim().length > 0;
 
@@ -1032,7 +1035,7 @@ function PickupSheet({
           </div>
 
           {pickupType === "table" && (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <label
                 style={{
                   fontSize: 13,
@@ -1064,6 +1067,38 @@ function PickupSheet({
               />
             </div>
           )}
+
+          <div style={{ marginBottom: 20 }}>
+            <label
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: palette.textMuted,
+                display: "block",
+                marginBottom: 8,
+              }}
+            >
+              Nombre (opcional)
+            </label>
+            <input
+              type="text"
+              maxLength={60}
+              placeholder="Tu nombre"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: 12,
+                border: `1px solid ${palette.border}`,
+                background: palette.surface,
+                color: palette.text,
+                fontSize: 15,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
 
           <div
             style={{
@@ -1140,7 +1175,7 @@ function PickupSheet({
           }}
         >
           <button
-            onClick={() => canConfirm && onConfirm(pickupType, tableNumber.trim())}
+            onClick={() => canConfirm && onConfirm(pickupType, tableNumber.trim(), name.trim())}
             disabled={!canConfirm}
             style={{
               width: "100%",
@@ -1361,6 +1396,7 @@ export default function MenuPageClient({
   const [step, setStep] = useState<AppStep>("menu");
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [pickupTable, setPickupTable] = useState("");
+  const [pickupName, setPickupName] = useState("");
 
   // ── Table QR context (C2) — written by B5's /t/[token] into sessionStorage ──
   // Only honoured when its businessSlug matches THIS page's business (never carry
@@ -1626,10 +1662,12 @@ export default function MenuPageClient({
         <PickupSheet
           palette={palette}
           cartItems={cartItems}
+          initialTableNumber={tableCtx ? tableCtx.tableLabel : pickupTable}
           onBack={() => setStep("cart")}
-          onConfirm={(type, table) => {
+          onConfirm={(type, table, name) => {
             setPickupType(type);
             setPickupTable(table);
+            setPickupName(name);
             setStep("pay");
           }}
         />
