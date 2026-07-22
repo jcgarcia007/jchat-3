@@ -101,10 +101,12 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
     return errorResponse("Verificación fallida, inténtalo de nuevo", 403);
   }
 
-  // ── Guard 2: contact_name required, email optional ─────────────────────────
-  const contactName = typeof body.contact_name === "string" ? body.contact_name.trim() : "";
-  if (!contactName) return errorResponse("Dinos a nombre de quién es el pedido", 400);
-  if (contactName.length > 60) return errorResponse("El nombre es demasiado largo", 400);
+  // ── Guard 2: contact_name OPCIONAL, email opcional ─────────────────────────
+  // El nombre ya no es obligatorio: en mesa el mesero identifica el pedido y, si
+  // el cliente pierde el recibo, el mesero puede reimprimirlo (Tanda 2). Solo lo
+  // saneamos y recortamos; nunca bloquea el pago.
+  const contactName =
+    typeof body.contact_name === "string" ? body.contact_name.trim().slice(0, 60) : "";
 
   let contactEmail: string | null = null;
   if (typeof body.contact_email === "string" && body.contact_email.trim()) {
@@ -195,8 +197,8 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
     subtotal_cents: String(subtotalCents),
     tax_cents: String(taxCents),
     total_cents: String(totalCents),
-    contact_name: contactName,
   };
+  if (contactName) metadata.contact_name = contactName;
   if (contactEmail) metadata.contact_email = contactEmail;
   if (tableLabel) metadata.table_label = tableLabel;
   if (resolvedTableId) metadata.table_id = resolvedTableId;
