@@ -68,6 +68,32 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
   // Token pre-verificado (si hCaptcha resolvió por adelantado vía onVerify).
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
+  // Gate de "listo": el widget invisible carga su script/iframe de forma
+  // asíncrona. Ejecutar execute() antes de que cargue lanza error → un "failed"
+  // espurio en el PRIMER intento (sobre todo cuando getToken se dispara al montar
+  // la pantalla de pago). Esperamos al onLoad de hCaptcha antes de ejecutar; si
+  // tarda demasiado, fail-open (intentamos igual y, si falla, el llamador reintenta).
+  const readyRef = useRef(false);
+  const readyWaitersRef = useRef<Array<() => void>>([]);
+
+  const markReady = useCallback(() => {
+    readyRef.current = true;
+    const waiters = readyWaitersRef.current;
+    readyWaitersRef.current = [];
+    waiters.forEach((w) => w());
+  }, []);
+
+  const waitForReady = useCallback((timeoutMs = 4000): Promise<void> => {
+    if (readyRef.current) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, timeoutMs); // fail-open: intentar de todas formas
+      readyWaitersRef.current.push(() => {
+        clearTimeout(t);
+        resolve();
+      });
+    });
+  }, []);
+
   const reset = useCallback(() => {
     captchaRef.current?.resetCaptcha();
     setCaptchaToken(null);
@@ -80,6 +106,7 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
         // Kill-switch: sin sitekey real, el consumidor procede sin token.
         if (!isCaptchaEnabled) return { status: "disabled" };
         try {
+          await waitForReady(); // no ejecutar antes de que el widget haya cargado
           let token = captchaToken;
           if (!token) {
             const res = await captchaRef.current?.execute({ async: true });
@@ -98,7 +125,7 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
       },
       reset,
     }),
-    [captchaToken, reset],
+    [captchaToken, reset, waitForReady],
   );
 
   if (!isCaptchaEnabled) return null;
@@ -108,6 +135,7 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
       ref={captchaRef}
       sitekey={SITE_KEY}
       size="invisible"
+      onLoad={markReady}
       onVerify={(token) => setCaptchaToken(token)}
       onExpire={() => setCaptchaToken(null)}
     />
