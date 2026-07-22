@@ -130,9 +130,9 @@ en app**. Pasos:
 
 ---
 
-## Estado de la base de datos (2026-07-14)
-- **Migraciones aplicadas: 053–065.**
-- **Edge Functions desplegadas:** `payments` v28 · `stripe-connect` v23 · `stripe-webhook` v24 · `stripe-refund` v1 (NUEVA) · `subscriptions` v22.
+## Estado de la base de datos (2026-07-22)
+- **Migraciones aplicadas: hasta 085** (`085_guest_payment_model`, 2026-07-21; verificado vía Supabase MCP).
+- **Edge Functions desplegadas (8):** `payments` v39 (jwt=true) · `stripe-connect` v27 (jwt=true) · `stripe-webhook` v34 (jwt=false) · `subscriptions` v29 (jwt=false) · `delete-account` v14 (jwt=true) · `stripe-refund` v5 (jwt=true) · `tab-pay` v4 (jwt=false) · `guest-pay` v5 (jwt=false). El número de versión = conteo de despliegues (no atado a commits de git).
 
 ---
 
