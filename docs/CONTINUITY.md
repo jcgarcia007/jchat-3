@@ -60,4 +60,30 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **El riesgo de abuso NO lo crea el checkout de invitado.** El endpoint `/auth/v1/signup` YA es público (la anon key está en el bundle JS). Un atacante puede crear usuarios basura HOY, sin pagar ni pasar por el menú. El CAPTCHA protege TODO el auth, no solo la feature nueva.
 - **El CAPTCHA de Supabase es GLOBAL** (registro, login, reset). Activarlo SIN implementarlo en el móvil ROMPERÍA el login de la app ("Captcha verification failed"). No hay forma de proteger solo un endpoint: envolver el registro en una Edge Function propia NO sirve, porque el atacante llama a Supabase directamente.
 
-Last updated: 2026-07-11
+## Aprendizajes 2026-07-22 (rediseño checkout invitado + captcha)
+- **El secreto de hCaptcha vive en DOS sitios de Supabase, independientes (D-65):** Edge
+  Functions→Secrets→`HCAPTCHA_SECRET` (lo usa `guest-pay`) y Authentication→Attack
+  Protection→CAPTCHA→secret (lo usa el login con contraseña). Cambiar uno no cambia el otro.
+  Síntomas al desincronizarse: `guest-pay` 403 (pago) y/o `sitekey-secret-mismatch` en
+  `POST /token grant_type=password` (login). Los logins OTP/magic-link no llevan captcha → dan
+  200 aunque el de contraseña esté roto (despista al diagnosticar).
+- **Los logs correctos para cada fallo del captcha:** el pago de invitado se depura con los logs
+  de **Edge Functions** de Supabase (`guest-pay` POST 200/403), NO con los de Vercel — `guest-pay`
+  corre en Supabase, no en Vercel. El login se depura con los logs de **Auth** de Supabase
+  (`get_logs service=auth`), donde sale el `error_code=captcha_failed` y el mensaje exacto.
+- **Tras cambiar `HCAPTCHA_SECRET` en Edge Functions, REDESPLEGAR** (`supabase functions deploy
+  guest-pay`) para que la instancia caliente lo tome; el secreto de Authentication aplica al
+  Guardar (sin deploy). Mismo patrón que el ya anotado de "REDESPLEGAR tras secrets set".
+- **El captcha invisible del pago de invitado se dispara al montar la pantalla, no tras click**
+  (D-66) → hay que esperar al `onLoad` del widget antes de `execute()`, o el primer intento falla
+  en falso y solo "Reintentar" funciona. Componente compartido con el login (que sí es tras click),
+  el fix es retrocompatible.
+- **La integración Supabage↔Vercel duplica variables de entorno con nombres nuevos** (crea
+  `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `POSTGRES_*`, `SUPABASE_JWT_SECRET`) SIN sobrescribir las que ya usa el código
+  (`NEXT_PUBLIC_SUPABASE_URL/_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). No rompe nada mientras el
+  código no lea los nombres nuevos, pero deja dos juegos de credenciales → deuda silenciosa. Antes
+  de asumir daño, verificar a qué proyecto apunta la `SUPABASE_URL` nueva (aquí seguía siendo
+  klfsgcfoahdtkojyqspd).
+
+Last updated: 2026-07-22

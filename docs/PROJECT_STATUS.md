@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-14
+Last updated: 2026-07-22
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
@@ -20,6 +20,59 @@ Last updated: 2026-07-14
 > **⚠️ SEGURIDAD PENDIENTE:** el archivo `.p8` de Sign in with Apple se expuso durante la
 > configuración. Revocar la key en Apple Developer → Keys, generar una nueva, regenerar el
 > JWT (client secret) y actualizarlo en Supabase **ANTES de producción.**
+
+---
+
+## Sesión 2026-07-22 — Rediseño del checkout de invitado + fix de captcha (CERRADO, en producción)
+
+Rama `feat/guest-checkout-ui` → merge `dd262e6` a `main` → **producción `jchat.cloud` READY**.
+Solo código frontend + un cambio menor de `guest-pay` (ya desplegado). Auditado diff por diff.
+
+**Qué se hizo (todo verificado con evidencia real, no de palabra):**
+- **B1** (`12e65d7`): la hoja de recogida (PickupSheet) pre-llena la mesa escaneada por QR y
+  añade un campo "Nombre" OPCIONAL debajo del número de mesa; el nombre nunca bloquea el pago.
+- **B2a** (`f666810`): para usuarios logueados, el "Nombre" se pre-llena del perfil
+  (display_name→username), editable y opcional (fetch perezoso, las ediciones del usuario ganan).
+- **B2b** (`4106a39`): el checkout deja de pedir nombre/correo en un paso aparte; enruta por
+  sesión (logueado→EF `payments`, invitado→EF `guest-pay`) al entrar, dispara el pago solo, y
+  el recibo es SOLO-IMPRIMIR (sin email, sin "te enviamos el recibo"). −213/+56.
+- **guest-pay** (`9d940f9`, desplegada v2→v5): `contact_name` ahora OPCIONAL (sin 400 si falta;
+  fuera de la metadata salvo que venga).
+- **Fix de timing del captcha** (`0c97d3d`): `InvisibleCaptcha` espera al `onLoad` del widget
+  antes de `execute()` → el primer intento de pago va directo a la tarjeta, sin el falso "No
+  pudimos verificar que eres una persona". Ver D-66.
+
+**Los dos secretos de hCaptcha (el lío que costó la sesión) — ver D-65:**
+El secreto de hCaptcha estaba desincronizado en DOS sitios independientes de Supabase. Se
+arreglaron ambos:
+- **Edge Functions → `HCAPTCHA_SECRET`** (lo usa `guest-pay`): se pegó el `ES_563..` correcto y
+  se REDESPLEGÓ guest-pay (v5) para que lo tomara → pago de invitado 200.
+- **Authentication → CAPTCHA secret** (lo usa el login con contraseña): tenía el secreto viejo →
+  el login daba `400 sitekey-secret-mismatch`. Se pegó el `ES_563..` → login con contraseña 200.
+
+**Verificación end-to-end (leída de logs/BD reales):**
+- Pago de invitado: `guest-pay` v5 POST 200 + `stripe-webhook` v34 POST 200.
+- Conteo de dinero: 15 pedidos, 3 de invitado (`user_id NULL`, clasificados `guest_order`),
+  $461.82 cobrado, **0 orphan_payments**.
+- Login con contraseña: `POST /token grant_type=password` status 200 (usuario test1), tras el
+  reload de la config de Auth.
+- Caso logueado: nombre "test1" pre-llenado en el checkout (confirmado por Juan en device).
+- Producción: deploy `dpl_BRM3...` state READY, commit `dd262e6`, target production.
+
+**Nota sobre la integración Supabase↔Vercel** (Juan la instaló durante la sesión): duplicó
+variables de entorno con nombres nuevos (`SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`,
+`POSTGRES_*`, etc.) SIN sobrescribir las que usa el código. Verificado que la `SUPABASE_URL`
+sigue apuntando a `klfsgcfoahdtkojyqspd`. No rompe nada; los duplicados son deuda a limpiar.
+
+**Pendientes detectados esta sesión (para retomar):**
+- ⚠️ **Deriva repo↔producción en `payments`:** la EF está desplegada en **v39** con P0-2/P0-3
+  cerrados, pero eso NO vino de esta rama. Confirmar que el código de esos fixes está en `main`
+  (no solo desplegado como función) para no arrastrar deriva.
+- 🟠 **`stripe-webhook` 400 repetidos** en los logs (v30/v32): reintentos de Stripe con firma que
+  no verifica (probable secret de sandbox stale). Revisar antes del go-live de Stripe.
+- ⚪ Limpiar los duplicados de env vars de la integración + el archivo untracked
+  `CLIENT_ID=com.juangarciacruz.jchatapp.signin` (creado por error).
+- ⚪ Borrar la rama `feat/guest-checkout-ui` (ya mergeada).
 
 ---
 

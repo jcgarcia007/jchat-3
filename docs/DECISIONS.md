@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-14
+Last updated: 2026-07-22
 
 ## Maps
 
@@ -416,6 +416,39 @@ en vez de perderse en un log; (2) `pending_order_carts.user_id` pasa a nullable;
 de carritos abandonados (los invitados que no completan el pago). El cálculo de precios y el bloque
 Connect NO se duplican: viven en `supabase/functions/_shared/` (`pricing.ts`, `connect.ts`) y los
 importan `payments`, `tab-pay` y `guest-pay`. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
+
+### D-65 — El secreto de hCaptcha vive en DOS sitios independientes de Supabase
+
+Constraint aprendido depurando en producción, no teoría. El mismo secreto de hCaptcha
+(account-level, `ES_563..`) debe estar pegado en DOS lugares SEPARADOS de Supabase, y son
+independientes:
+1. **Edge Functions → Secrets → `HCAPTCHA_SECRET`** — lo usa `guest-pay` para validar el
+   token del pago de invitado (`/siteverify` server-side).
+2. **Authentication → Attack Protection → CAPTCHA → Captcha secret** — lo usa Supabase Auth
+   para validar el token del **login con contraseña** (y registro/reset).
+El pago de invitado NO pasa por Supabase Auth (es una EF pública), y el login NO pasa por la
+EF — cada uno valida el captcha en su propio sitio con su propia copia del secreto. Cambiar
+uno NO cambia el otro. Síntoma cuando se desincronizan: `guest-pay` devuelve 403 (pago) y/o
+Auth devuelve `400 captcha protection: request disallowed (sitekey-secret-mismatch)` en
+`POST /token grant_type=password` (login). Matiz: los logins por OTP/magic-link NO exigen
+captcha → siguen dando 200 aunque el de contraseña esté roto, lo que despista.
+Corolario (refuerza D-44 y el aprendizaje ya anotado de "REDESPLEGAR tras secrets set"): tras
+cambiar `HCAPTCHA_SECRET` en Edge Functions hay que REDESPLEGAR la función (`supabase functions
+deploy guest-pay`) para que la instancia caliente tome el valor nuevo; el de Authentication, en
+cambio, aplica al Guardar (no requiere deploy). Verificado el 2026-07-22: guest-pay v3→v5 200,
+login password 200 tras el reload de la config de Auth (visible en los logs de Auth como
+"reloading api with new configuration").
+
+### D-66 — El pago de invitado se dispara al entrar y el captcha invisible debe esperar a onLoad
+
+El checkout de invitado (B2b) dispara `getToken()` automáticamente al montar la pantalla de
+pago (no tras un click). El widget invisible de hCaptcha carga su iframe/script de forma
+asíncrona, así que en el PRIMER intento `execute()` corría antes de que el widget estuviera
+listo → fallo espurio "No pudimos verificar que eres una persona"; "Reintentar" funcionaba solo
+porque para entonces ya había cargado. Fix: `InvisibleCaptcha` espera al evento `onLoad` del
+widget (gate `waitForReady`, con timeout fail-open de 4s) ANTES de ejecutar. Componente
+compartido con el login, retrocompatible: el login pide el token tras un click (el widget ya
+lleva rato cargado) → para él la espera se resuelve al instante. Ref `0c97d3d`.
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
