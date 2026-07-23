@@ -194,6 +194,7 @@ export default function TablesPage() {
       const nextSort = rows.reduce((m, r) => Math.max(m, r.sort), 0) + 1;
       const { error } = await supabase
         .from("tables")
+        // @ts-expect-error qr_token lo asigna el trigger trg_assign_table_qr_token (migr. 073); el cliente no puede escribirlo (allow-list 069)
         .insert({ business_id: activeId, label, floor, seats, sort: nextSort, is_active: form.is_active });
       dbError = error;
     } else {

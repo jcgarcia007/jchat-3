@@ -281,7 +281,7 @@ export function TableDetailPanel({
 
   async function attach(orderId: string, tabId: string | null) {
     setActionError(null);
-    const { error } = await supabase.rpc("attach_order_to_tab", { p_order_id: orderId, p_tab_id: tabId });
+    const { error } = await supabase.rpc("attach_order_to_tab", { p_order_id: orderId, p_tab_id: tabId as string });
     if (error) {
       setActionError(rpcErrorMessage(error.message));
       return;
