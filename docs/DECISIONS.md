@@ -492,6 +492,25 @@ el fix correcto suele ser SOLO de tipo (`@ts-expect-error` con nota, o `as Tipo`
 valor de runtime — un `?? ""` o añadir la columna al insert habría METIDO un bug real. Refuerza
 D-45/D-47: el tsc verde no es la verdad; la migración sí. Refs migr 086, commits 537e5a5 / b9ec839.
 
+### D-69 — Un estado que nadie hace caducar, NO caduca: todo plazo necesita un ejecutor
+
+Constraint aprendido encontrando un bug de dinero horas después de crearlo. La migración 086 escribía
+`plan_trial_end = now() + N días` y todos asumimos que "la prueba dura N días". No duraba nada: el gate
+del dashboard solo leía `plan_status IN ('active','trialing')`, y NO existe ningún cron que caduque
+pruebas (`cron.job` tiene 3 entradas: cleanup-anon-users, purge-expired-messages,
+purge-stale-pending-carts). Como una prueba dada por código promocional no tiene suscripción de Stripe
+detrás, NADIE movía nunca `plan_status` → **acceso Pro permanente y gratis**.
+REGLA: escribir una fecha de caducidad NO caduca nada. Todo plazo necesita un EJECUTOR explícito, y hay
+que nombrarlo al diseñarlo: o lo lee el gate en cada petición, o lo aplica un job, o lo gobierna un
+tercero (Stripe). Si nadie lo lee, la fecha es decorativa.
+Corolario de arquitectura (motiva el cambio de modelo): un plazo con dinero detrás **debe gobernarlo
+Stripe**, no una columna nuestra. Nuestra columna no sabe cobrar, ni reintentar, ni avisar, ni cancelar;
+Stripe sí, vía `trial_period_days` + el evento `customer.subscription.trial_will_end`.
+Corolario de defensa: parchear el GATE tapa la puerta principal, no todas — `enforce_business_limit()`
+lee `users.plan` directo, así que el arreglo completo es DEGRADAR el plan al vencer, no solo denegar la
+vista. Refuerza D-42 (los límites se aplican en el servidor) y D-46 (un kill-switch silencioso necesita
+una prueba que lo haga visible). Ref `6bc2bb3`.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

@@ -36,8 +36,37 @@ Sistema de códigos promocionales para super_admin. Ver D-67 (modelo) y D-68 (le
 - **Verificado end-to-end:** super_admin generó `K8GJ33AJKD7A` (Pro/30) → canje REAL con cuenta regular
   (`adriana_p`) vía `redeem_promo_code` → quedó Pro/trialing, `plan_trial_end` +30d → seguimiento
   muestra "adriana_p · quedan 30 días". Producción `b9ec839`+`4fada38` READY.
-- **PENDIENTE:** la pantalla de CANJE del usuario (donde escribe el código; el RPC existe, falta UI).
-  Sistema de afiliados: greenfield, no empezado. "Mes gratis": diferido (toca Stripe).
+- **Botones de gestión** (`db5cf24`): cancelar/reactivar y eliminar, SOLO en códigos sin canjear —
+  borrar uno ya usado destruiría el registro de seguimiento, y "cancelar" uno usado no le quita el
+  plan a nadie (mentiría).
+- 🔴 **BUG DE DINERO ENCONTRADO Y TAPADO** (`6bc2bb3`, ver D-69): el gate del dashboard solo miraba
+  `plan_status IN ('active','trialing')` y NUNCA `plan_trial_end`, y no existe ningún cron que caduque
+  pruebas (solo hay 3 jobs: anon-users, mensajes, carritos). Resultado: **el código promocional
+  regalaba Pro PARA SIEMPRE**. El gate ahora deniega si `plan_status='trialing'` y `plan_trial_end`
+  ya pasó; fail-open si la fecha es NULL (esas pruebas las gobierna Stripe).
+  ⚠️ **SIN VERIFICAR EN VIVO** — es un gate server-side y hace falta una sesión NO-admin con prueba
+  vencida. PRIMERA TAREA de la próxima sesión: cuenta desechable → fecha vencida → debe rebotar a
+  `/auth/register?upgrade=1`; luego fecha futura → debe entrar (que no bloqueemos a quien sí paga).
+- ⚠️ **PARCHE PARCIAL, no la solución de fondo:** el gate tapa la puerta principal, pero
+  `enforce_business_limit()` lee `users.plan` directo → alguien con prueba vencida aún podría crear
+  negocio llamando a la API por fuera del dashboard. La solución real es un job que DEGRADE a
+  `regular` al vencer: arregla gate, límite y todo consumidor de una vez. Va con la tanda de Stripe.
+
+**CAMBIO DE MODELO decidido por Juan (2026-07-22, PENDIENTE de implementar):** el código promocional
+NO debe regalar el plan. El cliente debe **meter tarjeta primero**, y al terminar la prueba Stripe
+cobra automáticamente; si cancela dentro de los 30 días, cero cargo. Principio rector: **que Stripe
+sea el dueño de la prueba**, no nuestra columna `plan_trial_end` (que no sabe cobrar, avisar ni
+cancelar). El código pasará a alimentar `subscription_data.trial_period_days` en el Checkout.
+Investigado: los cupones nativos de Stripe NO sirven (hacen descuentos, no alargan la prueba) → la
+tabla `promo_codes` se queda, pero cambia de trabajo. Requisitos legales (EE.UU.) que esto arrastra:
+divulgación clara ANTES de pedir la tarjeta, casilla de consentimiento SEPARADA y sin marcar,
+cancelación tan fácil como el alta (Portal de Cliente de Stripe), aviso antes de convertir (algunos
+estados exigen 14 días) y confirmación por correo. La regla "click-to-cancel" de la FTC fue anulada
+en julio 2025, PERO siguen vigentes ROSCA, la Sección 5 y las leyes estatales, en plena aplicación.
+NO SOY ABOGADO: los textos los debe revisar uno antes de lanzar (EE.UU. + RD).
+⚠️ El spec de la pantalla de canje en `/pricing` quedó OBSOLETO con este cambio — hay que rehacerlo
+alrededor de Stripe Checkout, no del RPC directo.
+- **PENDIENTE:** sistema de afiliados (greenfield, no empezado). "Mes gratis": diferido (toca Stripe).
 
 ## Sesión 2026-07-22 — Rediseño del checkout de invitado + fix de captcha (CERRADO, en producción)
 
