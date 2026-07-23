@@ -47,14 +47,26 @@ export default async function DashboardLayout({
       // dashboard. Anyone else is sent to register with the upgrade prompt.
       const { data: profile } = await supabase
         .from("users")
-        .select("plan, plan_status")
+        .select("plan, plan_status, plan_trial_end")
         .eq("id", user.id)
         .single();
+
+      // Una prueba VENCIDA no da acceso. `plan_status` se queda en 'trialing' hasta que algo
+      // lo cambie: en una suscripción de Stripe lo cambia el webhook, pero una prueba dada por
+      // CÓDIGO PROMOCIONAL (D-67) no tiene suscripción detrás — sin esta comprobación el acceso
+      // sería PERMANENTE. Si `plan_trial_end` es NULL no denegamos: esa prueba la gobierna
+      // Stripe y Stripe moverá el estado por su cuenta (fail-open deliberado para no expulsar
+      // a un cliente legítimo por un dato que no escribimos nosotros).
+      const trialExpired =
+        profile?.plan_status === "trialing" &&
+        profile?.plan_trial_end != null &&
+        new Date(profile.plan_trial_end) <= new Date();
 
       const hasDashboardAccess =
         profile != null &&
         (profile.plan === "business" || profile.plan === "pro") &&
-        (profile.plan_status === "active" || profile.plan_status === "trialing");
+        (profile.plan_status === "active" || profile.plan_status === "trialing") &&
+        !trialExpired;
 
       if (!hasDashboardAccess) {
         redirect("/auth/register?upgrade=1");
