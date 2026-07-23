@@ -12,174 +12,33 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      table_tabs: {
-        Row: {
-          business_id: string
-          closed_at: string | null
-          closed_by: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          kind: string
-          name: string
-          owner_uid: string | null
-          paid_at: string | null
-          status: string
-          table_id: string
-          updated_at: string
-        }
-        Insert: {
-          business_id: string
-          closed_at?: string | null
-          closed_by?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          kind: string
-          name: string
-          owner_uid?: string | null
-          paid_at?: string | null
-          status?: string
-          table_id: string
-          updated_at?: string
-        }
-        Update: {
-          business_id?: string
-          closed_at?: string | null
-          closed_by?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          kind?: string
-          name?: string
-          owner_uid?: string | null
-          paid_at?: string | null
-          status?: string
-          table_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "table_tabs_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "table_tabs_table_id_fkey"
-            columns: ["table_id"]
-            isOneToOne: false
-            referencedRelation: "tables"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      table_waiters: {
-        Row: {
-          business_id: string
-          created_at: string
-          employee_id: string
-          id: string
-          table_id: string
-        }
-        Insert: {
-          business_id: string
-          created_at?: string
-          employee_id: string
-          id?: string
-          table_id: string
-        }
-        Update: {
-          business_id?: string
-          created_at?: string
-          employee_id?: string
-          id?: string
-          table_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "table_waiters_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "table_waiters_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "table_waiters_table_id_fkey"
-            columns: ["table_id"]
-            isOneToOne: false
-            referencedRelation: "tables"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tables: {
-        Row: {
-          business_id: string
-          created_at: string
-          floor: string
-          id: string
-          is_active: boolean
-          label: string
-          qr_token: string
-          room_id: string | null
-          seats: number
-          sort: number
-          updated_at: string
-        }
-        Insert: {
-          business_id: string
-          created_at?: string
-          floor?: string
-          id?: string
-          is_active?: boolean
-          label: string
-          qr_token?: string
-          room_id?: string | null
-          seats?: number
-          sort?: number
-          updated_at?: string
-        }
-        Update: {
-          business_id?: string
-          created_at?: string
-          floor?: string
-          id?: string
-          is_active?: boolean
-          label?: string
-          qr_token?: string
-          room_id?: string | null
-          seats?: number
-          sort?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tables_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tables_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admin_roles: {
         Row: {
           created_at: string
@@ -481,6 +340,9 @@ export type Database = {
           state: string | null
           status: string
           stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_details_submitted: boolean
+          stripe_payouts_enabled: boolean
           tax_rate: number | null
           tip_percentages: number[]
           tips_enabled: boolean
@@ -532,6 +394,9 @@ export type Database = {
           state?: string | null
           status?: string
           stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
           tax_rate?: number | null
           tip_percentages?: number[]
           tips_enabled?: boolean
@@ -583,6 +448,9 @@ export type Database = {
           state?: string | null
           status?: string
           stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
           tax_rate?: number | null
           tip_percentages?: number[]
           tips_enabled?: boolean
@@ -1902,6 +1770,7 @@ export type Database = {
           order_id: string
           price_cents: number
           qty: number
+          seat: number | null
           special_instructions: string | null
         }
         Insert: {
@@ -1914,6 +1783,7 @@ export type Database = {
           order_id: string
           price_cents: number
           qty?: number
+          seat?: number | null
           special_instructions?: string | null
         }
         Update: {
@@ -1926,6 +1796,7 @@ export type Database = {
           order_id?: string
           price_cents?: number
           qty?: number
+          seat?: number | null
           special_instructions?: string | null
         }
         Relationships: [
@@ -1969,11 +1840,12 @@ export type Database = {
           tab_id: string | null
           table_id: string | null
           table_label: string | null
+          taken_by: string | null
           tax_cents: number
           tip_cents: number
           total_cents: number
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           business_id: string
@@ -1998,11 +1870,12 @@ export type Database = {
           tab_id?: string | null
           table_id?: string | null
           table_label?: string | null
+          taken_by?: string | null
           tax_cents?: number
           tip_cents?: number
           total_cents?: number
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           business_id?: string
@@ -2027,11 +1900,12 @@ export type Database = {
           tab_id?: string | null
           table_id?: string | null
           table_label?: string | null
+          taken_by?: string | null
           tax_cents?: number
           tip_cents?: number
           total_cents?: number
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2070,6 +1944,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -2085,27 +1966,65 @@ export type Database = {
           },
         ]
       }
+      orphan_payments: {
+        Row: {
+          amount_cents: number | null
+          business_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          stripe_pi_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          business_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          stripe_pi_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          business_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          stripe_pi_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orphan_payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_order_carts: {
         Row: {
           business_id: string
           created_at: string
           items: Json
           payment_intent_id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           business_id: string
           created_at?: string
           items: Json
           payment_intent_id: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           business_id?: string
           created_at?: string
           items?: Json
           payment_intent_id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2292,6 +2211,74 @@ export type Database = {
           type?: string | null
         }
         Relationships: []
+      }
+      promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          plan: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          trial_days: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          plan: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          trial_days: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          plan?: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          trial_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_codes_redeemed_by_fkey"
+            columns: ["redeemed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_codes_redeemed_by_fkey"
+            columns: ["redeemed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_locations: {
         Row: {
@@ -3145,6 +3132,235 @@ export type Database = {
           },
         ]
       }
+      tab_payments: {
+        Row: {
+          amount_cents: number
+          business_id: string
+          created_at: string
+          id: string
+          method: string
+          paid_at: string | null
+          pay_token: string
+          status: string
+          stripe_pi_id: string | null
+          tab_id: string
+          taken_by: string | null
+          tip_cents: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          business_id: string
+          created_at?: string
+          id?: string
+          method: string
+          paid_at?: string | null
+          pay_token: string
+          status?: string
+          stripe_pi_id?: string | null
+          tab_id: string
+          taken_by?: string | null
+          tip_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          business_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          paid_at?: string | null
+          pay_token?: string
+          status?: string
+          stripe_pi_id?: string | null
+          tab_id?: string
+          taken_by?: string | null
+          tip_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tab_payments_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "table_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_tabs: {
+        Row: {
+          business_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          name: string
+          owner_uid: string | null
+          paid_at: string | null
+          status: string
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          name: string
+          owner_uid?: string | null
+          paid_at?: string | null
+          status?: string
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          owner_uid?: string | null
+          paid_at?: string | null
+          status?: string
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_tabs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_tabs_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_waiters: {
+        Row: {
+          business_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          table_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          table_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_waiters_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_waiters_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_waiters_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tables: {
+        Row: {
+          business_id: string
+          created_at: string
+          floor: string
+          id: string
+          is_active: boolean
+          label: string
+          qr_token: string
+          room_id: string | null
+          seats: number
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          floor?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          qr_token: string
+          room_id?: string | null
+          seats?: number
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          floor?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          qr_token?: string
+          room_id?: string | null
+          seats?: number
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tables_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tables_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trials: {
         Row: {
           business_id: string
@@ -3191,6 +3407,7 @@ export type Database = {
           language: string
           onboarding_completed: boolean
           plan: string
+          plan_renews_at: string | null
           plan_status: string
           plan_trial_end: string | null
           privacy_settings: Json
@@ -3199,6 +3416,7 @@ export type Database = {
           role: string | null
           settings: Json
           stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
           username: string
         }
@@ -3218,6 +3436,7 @@ export type Database = {
           language?: string
           onboarding_completed?: boolean
           plan?: string
+          plan_renews_at?: string | null
           plan_status?: string
           plan_trial_end?: string | null
           privacy_settings?: Json
@@ -3226,6 +3445,7 @@ export type Database = {
           role?: string | null
           settings?: Json
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           username: string
         }
@@ -3245,6 +3465,7 @@ export type Database = {
           language?: string
           onboarding_completed?: boolean
           plan?: string
+          plan_renews_at?: string | null
           plan_status?: string
           plan_trial_end?: string | null
           privacy_settings?: Json
@@ -3253,6 +3474,7 @@ export type Database = {
           role?: string | null
           settings?: Json
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           username?: string
         }
@@ -3306,27 +3528,6 @@ export type Database = {
       }
     }
     Functions: {
-      resolve_table_qr: {
-        Args: { p_token: string }
-        Returns: {
-          business_slug: string
-          room_qr_token: string
-          table_label: string
-        }[]
-      }
-      set_table_subchat: {
-        Args: { p_enable: boolean; p_table_id: string }
-        Returns: string
-      }
-      attach_order_to_tab: {
-        Args: { p_order_id: string; p_tab_id: string | null }
-        Returns: undefined
-      }
-      open_tab_on_table: {
-        // p_name has a SQL default (082) — omit it and the server names the tab.
-        Args: { p_table_id: string; p_name?: string }
-        Returns: Json
-      }
       accept_follow_request: {
         Args: { p_requester: string }
         Returns: undefined
@@ -3335,8 +3536,13 @@ export type Database = {
         Args: { p_business_id: string; p_status: string }
         Returns: undefined
       }
+      attach_order_to_tab: {
+        Args: { p_order_id: string; p_tab_id: string }
+        Returns: undefined
+      }
       block_user: { Args: { p_target: string }; Returns: undefined }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
+      can_employee_see_table: { Args: { p_table_id: string }; Returns: boolean }
       can_view_profile: {
         Args: { target: string; viewer: string }
         Returns: boolean
@@ -3344,6 +3550,28 @@ export type Database = {
       can_view_user_content: {
         Args: { dimension: string; owner: string; viewer: string }
         Returns: boolean
+      }
+      cleanup_anonymous_users: { Args: never; Returns: number }
+      create_promo_code: {
+        Args: { p_expires_at?: string; p_plan: string; p_trial_days: number }
+        Returns: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          plan: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          trial_days: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "promo_codes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       derive_username: {
         Args: { _email: string; _meta: Json }
@@ -3353,9 +3581,22 @@ export type Database = {
         Args: { _business_id: string; _is_sub_room: boolean }
         Returns: string
       }
+      generate_tab_pay_token: {
+        Args: { _business_id: string }
+        Returns: string
+      }
+      generate_table_qr_token: {
+        Args: { _business_id: string }
+        Returns: string
+      }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
       is_blocked: { Args: { a: string; b: string }; Returns: boolean }
+      is_employee_of_business: {
+        Args: { p_business_id: string }
+        Returns: boolean
+      }
       is_platform_admin: { Args: never; Returns: boolean }
+      is_waiter_of_table: { Args: { p_table_id: string }; Returns: boolean }
       join_room_via_qr: {
         Args: { token: string }
         Returns: {
@@ -3363,7 +3604,14 @@ export type Database = {
           room_id: string
         }[]
       }
+      open_tab_on_table: {
+        Args: { p_name?: string; p_table_id: string }
+        Returns: Json
+      }
+      owns_business_of_table: { Args: { p_table_id: string }; Returns: boolean }
       purge_expired_messages: { Args: never; Returns: undefined }
+      purge_stale_pending_carts: { Args: never; Returns: number }
+      redeem_promo_code: { Args: { p_code: string }; Returns: Json }
       regenerate_room_qr_token: { Args: { _room_id: string }; Returns: string }
       remove_follower: { Args: { p_follower: string }; Returns: undefined }
       request_or_follow: { Args: { p_target: string }; Returns: string }
@@ -3378,10 +3626,38 @@ export type Database = {
           room_name: string
         }[]
       }
+      resolve_tab_payment: {
+        Args: { p_token: string }
+        Returns: {
+          amount_cents: number
+          business_name: string
+          status: string
+          tab_name: string
+          table_label: string
+          tip_cents: number
+        }[]
+      }
+      resolve_table_qr: {
+        Args: { p_token: string }
+        Returns: {
+          business_slug: string
+          room_qr_token: string
+          table_label: string
+        }[]
+      }
+      set_item_status: {
+        Args: { p_order_item_id: string; p_status: string }
+        Returns: Json
+      }
       set_room_password: {
         Args: { password: string; room_id: string }
         Returns: boolean
       }
+      set_table_subchat: {
+        Args: { p_enable: boolean; p_table_id: string }
+        Returns: string
+      }
+      settle_tab_payment: { Args: { p_tab_payment_id: string }; Returns: Json }
       start_dm: {
         Args: { p_target_id: string }
         Returns: {
@@ -3398,7 +3674,9 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      tab_amount_due: { Args: { p_tab_id: string }; Returns: Json }
       unblock_user: { Args: { p_target: string }; Returns: undefined }
+      user_has_tab_at_table: { Args: { p_table_id: string }; Returns: boolean }
       username_available: { Args: { check_username: string }; Returns: boolean }
       verify_room_password: {
         Args: { password: string; room_id: string }
@@ -3532,6 +3810,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
