@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   IconTicket, IconLoader2, IconAlertCircle, IconCheck, IconCopy, IconX, IconSparkles, IconUser,
+  IconBan, IconTrash, IconRefresh,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -113,6 +114,27 @@ export default function SuperAdminPromoCodesPage() {
     setTimeout(() => setCopied(false), 1800);
   }, []);
 
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const toggleActive = useCallback(async (c: PromoCode) => {
+    setActionError(null);
+    setBusyId(c.id);
+    const { error } = await supabase.from("promo_codes").update({ active: !c.active }).eq("id", c.id);
+    setBusyId(null);
+    if (error) { setActionError(error.message); return; }
+    await fetchCodes();
+  }, [fetchCodes]);
+
+  const deleteCode = useCallback(async (c: PromoCode) => {
+    if (!window.confirm(`¿Eliminar el código ${c.code}? Esta acción no se puede deshacer.`)) return;
+    setActionError(null);
+    setBusyId(c.id);
+    const { error } = await supabase.from("promo_codes").delete().eq("id", c.id);
+    setBusyId(null);
+    if (error) { setActionError(error.message); return; }
+    await fetchCodes();
+  }, [fetchCodes]);
+
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -186,7 +208,7 @@ export default function SuperAdminPromoCodesPage() {
       {!loading && codes.length > 0 && (
         <div style={{ border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
           {codes.map((c, i) => (
-            <CodeRow key={c.id} code={c} redeemer={c.redeemed_by ? redeemers[c.redeemed_by] : undefined} isLast={i === codes.length - 1} />
+            <CodeRow key={c.id} code={c} redeemer={c.redeemed_by ? redeemers[c.redeemed_by] : undefined} isLast={i === codes.length - 1} busy={busyId === c.id} onToggle={toggleActive} onDelete={deleteCode} />
           ))}
         </div>
       )}
@@ -196,7 +218,10 @@ export default function SuperAdminPromoCodesPage() {
   );
 }
 
-function CodeRow({ code, redeemer, isLast }: { code: PromoCode; redeemer?: Redeemer; isLast: boolean }) {
+function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
+  code: PromoCode; redeemer?: Redeemer; isLast: boolean; busy: boolean;
+  onToggle: (c: PromoCode) => void; onDelete: (c: PromoCode) => void;
+}) {
   const status = statusOf(code);
   const name = redeemer?.username ?? redeemer?.display_name ?? (code.redeemed_by ? `${code.redeemed_by.slice(0, 8)}…` : null);
   return (
@@ -223,6 +248,18 @@ function CodeRow({ code, redeemer, isLast }: { code: PromoCode; redeemer?: Redee
       <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 10 }}>
         {code.redeemed_by && <DaysLeft days={daysLeft(redeemer?.plan_trial_end ?? null)} />}
         <StatusPill status={status} />
+        {!code.redeemed_by && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <IconBtn
+              title={code.active ? "Cancelar (desactivar)" : "Reactivar"}
+              onClick={() => onToggle(code)}
+              disabled={busy}
+              icon={code.active ? IconBan : IconRefresh}
+              color={code.active ? "var(--color-warning)" : "var(--color-success)"}
+            />
+            <IconBtn title="Eliminar" onClick={() => onDelete(code)} disabled={busy} icon={IconTrash} color="var(--color-danger)" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -234,6 +271,27 @@ const STATUS_META: Record<Status, { label: string; color: string }> = {
   expired:   { label: "Vencido",    color: "var(--color-warning)" },
   inactive:  { label: "Inactivo",   color: "var(--text-secondary)" },
 };
+
+function IconBtn({ title, onClick, disabled, icon: Icon, color }: {
+  title: string; onClick: () => void; disabled?: boolean; icon: React.ElementType; color: string;
+}) {
+  return (
+    <button
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-subtle)",
+        background: "transparent", color,
+        cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <Icon size={15} stroke={1.8} />
+    </button>
+  );
+}
 
 function DaysLeft({ days }: { days: number | null }) {
   if (days === null) return null;
