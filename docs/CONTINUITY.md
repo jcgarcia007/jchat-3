@@ -86,4 +86,22 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   de asumir daño, verificar a qué proyecto apunta la `SUPABASE_URL` nueva (aquí seguía siendo
   klfsgcfoahdtkojyqspd).
 
+## Aprendizajes 2026-07-22 (códigos promocionales + tipos)
+- **Sistema de códigos promocionales (migración 086 + página super-admin 2a/2b, D-67):** un código
+  de 12 chars por usuario, un solo uso, OTORGA plan de prueba (Pro/Business); solo 'regular' canjea.
+  RPCs `create_promo_code` / `redeem_promo_code`. Verificado end-to-end. FALTA la pantalla donde el
+  usuario escribe el código para canjear (móvil/web) — el RPC existe, falta la UI. El "mes gratis" y
+  los afiliados son tandas futuras.
+- **Regenerar `database.types.ts` es parte de TODA migración de schema (D-68):** no se regenera solo;
+  llevaba 4+ migraciones sin sincronizar. Sin regenerar, el cliente tipado rechaza la tabla/RPC nuevos
+  y `tsc` falla.
+- **Los tipos generados pueden ser MÁS estrictos que la BD (D-68):** no ven triggers (columnas que
+  parecen requeridas pero las llena la BD, ej. `tables.qr_token`) ni la nulabilidad de args de un RPC
+  (ej. `attach_order_to_tab(p_tab_id)` acepta null). Al fallar `tsc` tras regenerar, LEER la migración
+  antes de tocar el runtime — el fix es de TIPO, no de valor, o metes un bug.
+- **Las migraciones de este repo se aplican por MCP `apply_migration`, NO por `supabase db push`:** el
+  tracking de la CLI está desincronizado (archivos numéricos `085` vs versiones timestamp en
+  `schema_migrations`), así que `db push` intentaría re-aplicar 001–085. Aplicar por MCP y luego
+  guardar el archivo `.sql` en git (fuente de verdad).
+
 Last updated: 2026-07-22

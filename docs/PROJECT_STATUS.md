@@ -23,6 +23,22 @@ Last updated: 2026-07-22
 
 ---
 
+## Sesión 2026-07-22 (cont.) — Códigos promocionales (CERRADO 2a+2b, en producción)
+
+Sistema de códigos promocionales para super_admin. Ver D-67 (modelo) y D-68 (lección de tipos).
+- **Migración 086** (aplicada vía MCP, archivo en git `086_promo_codes.sql`): tabla `promo_codes` +
+  RLS solo super_admin + RPCs `create_promo_code` / `redeem_promo_code`. El código otorga plan de
+  prueba (Pro/Business) por N días; un solo uso; solo 'regular' canjea.
+- **Pantalla `/super-admin/promo-codes`** (nav nuevo): 2a genera código de 12 chars (plan+días+vence)
+  y lista; 2b seguimiento con nombre del canjeador + días restantes (verde/ámbar/gris). Commits
+  `b9ec839` (2a + tipos regenerados) y `4fada38` (2b). `537e5a5` corrigió 2 falsos positivos de tipos
+  (qr_token/p_tab_id) — solo tipo, sin cambio de runtime.
+- **Verificado end-to-end:** super_admin generó `K8GJ33AJKD7A` (Pro/30) → canje REAL con cuenta regular
+  (`adriana_p`) vía `redeem_promo_code` → quedó Pro/trialing, `plan_trial_end` +30d → seguimiento
+  muestra "adriana_p · quedan 30 días". Producción `b9ec839`+`4fada38` READY.
+- **PENDIENTE:** la pantalla de CANJE del usuario (donde escribe el código; el RPC existe, falta UI).
+  Sistema de afiliados: greenfield, no empezado. "Mes gratis": diferido (toca Stripe).
+
 ## Sesión 2026-07-22 — Rediseño del checkout de invitado + fix de captcha (CERRADO, en producción)
 
 Rama `feat/guest-checkout-ui` → merge `dd262e6` a `main` → **producción `jchat.cloud` READY**.
@@ -131,7 +147,7 @@ en app**. Pasos:
 ---
 
 ## Estado de la base de datos (2026-07-22)
-- **Migraciones aplicadas: hasta 085** (`085_guest_payment_model`, 2026-07-21; verificado vía Supabase MCP).
+- **Migraciones aplicadas: hasta 086** (`086_promo_codes`, aplicada vía MCP; verificado vía Supabase MCP). Tras cada migración de schema, regenerar `web/lib/database.types.ts` (D-68).
 - **Edge Functions desplegadas (8):** `payments` v39 (jwt=true) · `stripe-connect` v27 (jwt=true) · `stripe-webhook` v34 (jwt=false) · `subscriptions` v29 (jwt=false) · `delete-account` v14 (jwt=true) · `stripe-refund` v5 (jwt=true) · `tab-pay` v4 (jwt=false) · `guest-pay` v5 (jwt=false). El número de versión = conteo de despliegues (no atado a commits de git).
 
 ---

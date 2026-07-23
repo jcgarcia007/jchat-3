@@ -450,6 +450,48 @@ widget (gate `waitForReady`, con timeout fail-open de 4s) ANTES de ejecutar. Com
 compartido con el login, retrocompatible: el login pide el token tras un click (el widget ya
 lleva rato cargado) → para él la espera se resuelve al instante. Ref `0c97d3d`.
 
+### D-67 — Códigos promocionales: un código por usuario, un solo uso, otorga plan de prueba
+
+Decisión de producto (Juan, 2026-07-22). Un código promocional es un string de 12 caracteres,
+autogenerado server-side evitando caracteres confusos (O/0/I/1). El super_admin lo crea eligiendo
+plan (`business`|`pro`) + días de prueba (+ vencimiento opcional). Es de UN SOLO USO: al canjearlo,
+OTORGA ese plan en modo prueba (`plan_status='trialing'`, `plan_trial_end = now()+días`) y amarra el
+código al usuario (`redeemed_by`/`redeemed_at`). Solo un usuario `regular` puede canjear
+(`ALREADY_ON_PLAN` si ya tiene plan). Como canjear te SACA de 'regular', cada usuario canjea a lo
+sumo UN código en su vida → `redeemed_by` es 1:1 y la misma tabla `promo_codes` ES el registro de
+seguimiento (no hace falta tabla aparte).
+Why: dar pruebas gratis controladas por la plataforma, con trazabilidad (quién usó qué código y
+cuántos días le quedan). Best-practice de la investigación: códigos 12 chars memorables sin
+caracteres confusos, con tope de uso y expiración para evitar mal uso; en SaaS, crédito/prueba en
+vez de reembolso en efectivo.
+Consequence: RLS de `promo_codes` = solo super_admin (`is_platform_admin`). Creación por RPC
+`create_promo_code` (gateado), canje por RPC `redeem_promo_code` (usuario autenticado, SECURITY
+DEFINER). Pantalla `/super-admin/promo-codes`: genera+lista (2a) + seguimiento con nombre del
+canjeador + días restantes (2b). Verificado end-to-end (create → redeem real con cuenta regular →
+seguimiento muestra nombre + "quedan 30 días"). Migración 086 (aplicada vía MCP). El "mes gratis"
+(crédito en factura Stripe, D-35) y el sistema de afiliados quedan como tandas FUTURAS. PENDIENTE:
+la pantalla donde el USUARIO escribe el código para canjear (móvil/web) — el RPC existe, falta la UI.
+
+### D-68 — Regenerar `database.types.ts` es parte de CADA migración de schema; y los tipos pueden ser MÁS estrictos que la BD
+
+Constraint aprendido construyendo la página de promo codes. Dos caras:
+(1) Los tipos del cliente Supabase (`web/lib/database.types.ts`) NO se regeneran solos. Tras una
+migración que añade tabla/columna/RPC, el cliente fuertemente tipado RECHAZA `.from("tabla_nueva")`
+/ `.rpc("rpc_nuevo")` y `tsc` falla. Los tipos llevaban 4+ migraciones sin regenerar (074/083/084/
+085) → regenerar trajo un diff grande y legítimo (tab_payments, orphan_payments, promo_codes + varios
+RPCs). REGLA: regenerar (`npx supabase gen types typescript --linked > lib/database.types.ts`) es
+parte del ritual de TODA migración que toque el schema, y el diff se AUDITA (no debe borrar tablas;
+solo sumar).
+(2) Los tipos generados pueden ser MÁS ESTRICTOS que la BD real, porque no ven: (a) triggers que
+llenan columnas → marcan una columna requerida en Insert aunque la ponga un trigger (ej.
+`tables.qr_token`, lo asigna `trg_assign_table_qr_token`, migr 073, y el cliente tiene PROHIBIDO
+escribirla por el allow-list 069); (b) la nulabilidad de los args de un RPC → los marca no-nullable
+aunque el RPC acepte null (ej. `attach_order_to_tab(p_tab_id)` acepta null para DESVINCULAR, migr
+072). Cuando `tsc` se queja tras regenerar, hay que LEER la migración antes de "arreglar" el runtime:
+el fix correcto suele ser SOLO de tipo (`@ts-expect-error` con nota, o `as Tipo`), NUNCA cambiar el
+valor de runtime — un `?? ""` o añadir la columna al insert habría METIDO un bug real. Refuerza
+D-45/D-47: el tsc verde no es la verdad; la migración sí. Refs migr 086, commits 537e5a5 / b9ec839.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
