@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  IconTicket, IconLoader2, IconAlertCircle, IconCheck, IconCopy, IconX, IconSparkles,
+  IconTicket, IconLoader2, IconAlertCircle, IconCheck, IconCopy, IconX, IconSparkles, IconUser,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -27,8 +27,21 @@ function statusOf(c: PromoCode): Status {
   return "available";
 }
 
+interface Redeemer {
+  username: string | null;
+  display_name: string | null;
+  plan_trial_end: string | null;
+  plan_status: string | null;
+}
+
+function daysLeft(trialEnd: string | null): number | null {
+  if (!trialEnd) return null;
+  return Math.ceil((new Date(trialEnd).getTime() - Date.now()) / 86400000);
+}
+
 export default function SuperAdminPromoCodesPage() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
+  const [redeemers, setRedeemers] = useState<Record<string, Redeemer>>({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -48,7 +61,30 @@ export default function SuperAdminPromoCodesPage() {
       .select("id, code, plan, trial_days, expires_at, active, redeemed_by, redeemed_at, created_at")
       .order("created_at", { ascending: false });
     if (error) { setFetchError(error.message); setLoading(false); return; }
-    setCodes((data ?? []) as PromoCode[]);
+    const list = (data ?? []) as PromoCode[];
+    setCodes(list);
+
+    const ids = Array.from(
+      new Set(list.map((c) => c.redeemed_by).filter((x): x is string => !!x)),
+    );
+    if (ids.length > 0) {
+      const { data: us } = await supabase
+        .from("users")
+        .select("id, username, display_name, plan_trial_end, plan_status")
+        .in("id", ids);
+      const map: Record<string, Redeemer> = {};
+      for (const u of us ?? []) {
+        map[u.id] = {
+          username: u.username,
+          display_name: u.display_name,
+          plan_trial_end: u.plan_trial_end,
+          plan_status: u.plan_status,
+        };
+      }
+      setRedeemers(map);
+    } else {
+      setRedeemers({});
+    }
     setLoading(false);
   }, []);
 
@@ -150,7 +186,7 @@ export default function SuperAdminPromoCodesPage() {
       {!loading && codes.length > 0 && (
         <div style={{ border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
           {codes.map((c, i) => (
-            <CodeRow key={c.id} code={c} isLast={i === codes.length - 1} />
+            <CodeRow key={c.id} code={c} redeemer={c.redeemed_by ? redeemers[c.redeemed_by] : undefined} isLast={i === codes.length - 1} />
           ))}
         </div>
       )}
@@ -160,8 +196,9 @@ export default function SuperAdminPromoCodesPage() {
   );
 }
 
-function CodeRow({ code, isLast }: { code: PromoCode; isLast: boolean }) {
+function CodeRow({ code, redeemer, isLast }: { code: PromoCode; redeemer?: Redeemer; isLast: boolean }) {
   const status = statusOf(code);
+  const name = redeemer?.username ?? redeemer?.display_name ?? (code.redeemed_by ? `${code.redeemed_by.slice(0, 8)}…` : null);
   return (
     <div style={{ borderBottom: isLast ? "none" : "1px solid var(--border-subtle)", background: "var(--bg-surface)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", rowGap: 10 }}>
       <div style={{ flex: "1 1 180px", minWidth: 0 }}>
@@ -171,11 +208,22 @@ function CodeRow({ code, isLast }: { code: PromoCode; isLast: boolean }) {
         </div>
       </div>
       <div style={{ flex: "1 1 160px", fontSize: 12, color: "var(--text-tertiary)" }}>
-        {code.redeemed_by
-          ? `Usado por ${code.redeemed_by.slice(0, 8)}…${code.redeemed_at ? ` · ${new Date(code.redeemed_at).toLocaleDateString()}` : ""}`
-          : "Sin usar"}
+        {code.redeemed_by ? (
+          <>
+            <div style={{ color: "var(--text-secondary)" }}>
+              <IconUser size={13} stroke={1.8} style={{ verticalAlign: -2, marginRight: 4 }} />
+              {name}
+            </div>
+            {code.redeemed_at && <div style={{ marginTop: 2 }}>Canjeado {new Date(code.redeemed_at).toLocaleDateString()}</div>}
+          </>
+        ) : (
+          "Sin usar"
+        )}
       </div>
-      <div style={{ flex: "0 0 auto" }}><StatusPill status={status} /></div>
+      <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 10 }}>
+        {code.redeemed_by && <DaysLeft days={daysLeft(redeemer?.plan_trial_end ?? null)} />}
+        <StatusPill status={status} />
+      </div>
     </div>
   );
 }
@@ -186,6 +234,18 @@ const STATUS_META: Record<Status, { label: string; color: string }> = {
   expired:   { label: "Vencido",    color: "var(--color-warning)" },
   inactive:  { label: "Inactivo",   color: "var(--text-secondary)" },
 };
+
+function DaysLeft({ days }: { days: number | null }) {
+  if (days === null) return null;
+  const expired = days <= 0;
+  const low = days > 0 && days <= 7;
+  const color = expired ? "var(--text-tertiary)" : low ? "var(--color-warning)" : "var(--color-success)";
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
+      {expired ? "vencida" : `quedan ${days} día${days === 1 ? "" : "s"}`}
+    </span>
+  );
+}
 
 function StatusPill({ status }: { status: Status }) {
   const { label, color } = STATUS_META[status];
