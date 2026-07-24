@@ -526,6 +526,49 @@ sola al panel). El registro y el OAuth de Google apuntan ahí. Ref `3f55cd3`.
 Deuda conocida: la regla de "prueba vencida" quedó DUPLICADA (gate del dashboard + welcome). En welcome
 es solo comodidad de navegación, no seguridad; consolidar en la tanda de Stripe.
 
+### D-71 — El código promocional alimenta la prueba de Stripe; NUNCA otorga el plan
+
+Corrección del modelo de D-67, decidida por Juan el 2026-07-22 e implementada el 2026-07-23.
+El diseño original (`redeem_promo_code`) escribía `users.plan` + `plan_trial_end` directamente.
+Dos fallos graves: (a) SEGURIDAD — cualquier autenticado con un código se daba Pro gratis, sin
+tarjeta, sin suscripción y sin nada que lo caducara salvo el gate (D-69); (b) INCOHERENCIA — el
+Checkout decide si hay prueba mirando `plan_trial_end is null`, así que el código le QUITABA al
+usuario la prueba real de Stripe.
+NUEVO MODELO: el código solo aporta un NÚMERO DE DÍAS. El cliente mete tarjeta en Stripe Checkout,
+el código define `subscription_data.trial_period_days`, y al vencer la prueba Stripe cobra solo;
+si cancela antes, cero cargo. Quien gobierna el plazo es Stripe, no una columna nuestra (D-69).
+Implementación: migr 087 elimina `redeem_promo_code` y la sustituye por `validate_promo_code`
+(solo lee, no consume, para que la UI muestre qué otorgaría). Migr 088 revoca EXECUTE a `anon`.
+La Edge Function `subscriptions` revalida SIEMPRE server-side al crear el Checkout — el navegador
+solo manda el texto del código, nunca los días. Reglas: un código inválido devuelve error explícito
+(`CODE_NOT_FOUND` / `CODE_INACTIVE` / `CODE_ALREADY_USED` / `CODE_EXPIRED` / `CODE_PLAN_MISMATCH`),
+NUNCA pasa en silencio como checkout normal — el usuario creería que se aplicó; el `plan` del código
+debe COINCIDIR con el plan comprado; y el código se consume en el WEBHOOK al completarse el checkout,
+no al crear la sesión, para que un checkout abandonado no lo queme (`.is("redeemed_by", null)` lo
+hace idempotente ante reenvíos de Stripe).
+VERIFICADO end-to-end en producción (Stripe en modo prueba): código de 60 días → `pruebagate` quedó
+pro/trialing con prueba de 60 días (no los 30 por defecto, que es lo que lo demuestra), con
+stripe_customer_id y stripe_subscription_id reales, y el código marcado canjeado por él.
+Refs migr 087/088, commits `e576634` (EF), `b1908cf` (UI), `991e00c`.
+PENDIENTE legal: el aviso previo al cobro (`customer.subscription.trial_will_end` sigue siendo un
+TODO que solo escribe en el log) y la casilla de consentimiento separada antes de pedir la tarjeta.
+
+### D-72 — Una capa de permisos que corta antes deja muerto el mensaje de error de tu función
+
+Encontrado probando la UI de códigos. `validate_promo_code` empieza con
+`if auth.uid() is null → NOT_AUTHENTICATED`, pero la migración 088 revocó EXECUTE a `anon`: Postgres
+corta con `permission denied for function (42501)` ANTES de entrar en el cuerpo, así que esa rama es
+código muerto para un visitante sin sesión. Consecuencia real: en `/pricing` (página PÚBLICA) alguien
+deslogueado con un código perfectamente válido leía "No se pudo aplicar el código" — una pantalla que
+miente sobre la causa.
+REGLA: cuando protejas algo en DOS capas (permisos + lógica interna), recuerda que solo la EXTERNA
+llega a hablar. El mensaje que ve el usuario lo dicta la capa que corta primero, no la que escribiste
+pensando en él. Al añadir una revocación, comprueba qué error acaba viendo la persona.
+Solución aplicada: preguntar por la sesión en el cliente ANTES de llamar a la RPC (así ni se lanza la
+petición condenada) + mapear `permission denied` como red de seguridad. La rama interna se CONSERVA a
+propósito: sigue siendo correcta para otros roles y es la segunda puerta (misma lógica que 088).
+Ref `991e00c`.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

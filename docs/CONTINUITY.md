@@ -104,4 +104,19 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   `schema_migrations`), así que `db push` intentaría re-aplicar 001–085. Aplicar por MCP y luego
   guardar el archivo `.sql` en git (fuente de verdad).
 
-Last updated: 2026-07-22
+## Aprendizajes 2026-07-23 (bienvenida, códigos vía Stripe)
+- **Todo gate necesita destino para el rechazado (D-70):** el registro empujaba a `/dashboard` y el
+  gate devolvía al usuario nuevo al registro → bucle. Al añadir un gate, nombra las DOS salidas.
+- **Los plazos con dinero los gobierna Stripe, no una columna nuestra (D-69/D-71):** el código
+  promocional pasa `trial_period_days` al Checkout; Stripe cobra solo al vencer y cancela sin cargo.
+  Nuestra columna no sabe cobrar, avisar ni cancelar.
+- **Valida el código server-side SIEMPRE y consúmelo al COMPLETAR el checkout (D-71):** el navegador
+  manda el texto, nunca los días; un checkout abandonado no debe quemar el código.
+- **La capa que corta primero es la que habla (D-72):** revocar permisos deja muerto el mensaje de
+  error escrito dentro de la función. Comprueba qué acaba leyendo el usuario.
+- **Regenerar `database.types.ts` es parte de la migración, no un extra (D-68):** volvió a olvidarse
+  al escribir el spec de la UI y `tsc` cayó. Medir el diff antes de aceptarlo funcionó bien.
+- **Antes de dar por pendiente algo, léelo en el código:** el flujo de tarjeta + cobro automático ya
+  estaba construido. Es la cuarta vez en dos sesiones.
+
+Last updated: 2026-07-23

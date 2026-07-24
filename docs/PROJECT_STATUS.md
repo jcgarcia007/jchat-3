@@ -1,6 +1,6 @@
 # JChat 3.0 — Project Status
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 > **📋 Auditoría senior 2026-07-09 completada** (seguridad, escalabilidad, móvil iOS/Android,
 > web, POS vs competencia). La hoja de ruta activa hacia el lanzamiento vive en
@@ -22,6 +22,36 @@ Last updated: 2026-07-22
 > JWT (client secret) y actualizarlo en Supabase **ANTES de producción.**
 
 ---
+
+## Sesión 2026-07-23 (cont.) — Códigos promocionales vía Stripe (CERRADO, verificado en producción)
+
+Corrección del modelo de códigos: ya NO otorgan plan, alimentan la prueba de Stripe. Ver D-71 y D-72.
+- **HALLAZGO:** el flujo "tarjeta + cobro automático" YA EXISTÍA en la Edge Function `subscriptions`
+  (Checkout en modo suscripción pide tarjeta por defecto, `trial_period_days: 30`, webhook completo,
+  Portal de Cliente para cancelar). Lo que faltaba era conectarle el código promocional. Cuarta vez
+  que algo dado por pendiente resulta estar hecho.
+- **Migración 087** (aplicada vía MCP, archivo en git): elimina `redeem_promo_code` (era un atajo a
+  Pro gratis para cualquier autenticado) y la sustituye por `validate_promo_code` (solo lee).
+- **Migración 088:** revoca EXECUTE a `anon` en las funciones de promo. Supabase concede EXECUTE por
+  defecto a anon/authenticated en toda función nueva, y `revoke ... from public` NO lo quita.
+- **Edge Function `subscriptions`** (`e576634`, desplegada, verify_jwt=false sin cambio): acepta
+  `promo_code`, lo revalida server-side, usa sus días como `trial_period_days`, y lo consume en el
+  webhook al completarse el checkout.
+- **UI en `/pricing`** (`b1908cf` + `991e00c`): campo de código con validación en vivo y paso al
+  checkout; mensaje honesto cuando no hay sesión (D-72).
+- ✅ **VERIFICADO END-TO-END en producción** (Stripe en modo prueba, confirmado por Juan): código
+  `7C5NQD9Z7V5Q` (Pro, 60 días) → `pruebagate` entró a Pro/trialing con **60 días** (no los 30 por
+  defecto — eso es lo que prueba que el código actuó), con cliente y suscripción de Stripe REALES, y
+  el código marcado canjeado por él. Limpieza previa: `adriana_p` devuelta a `regular` y el código
+  viejo liberado (eran residuo del modelo anterior).
+- 🔴 **PENDIENTE LEGAL (bloqueante para lanzar con cobros reales):** (1) el aviso previo al cobro —
+  `customer.subscription.trial_will_end` llega a la EF pero sigue siendo un TODO que solo escribe en
+  el log, así que HOY nadie avisa al usuario antes de cobrarle; (2) la casilla de consentimiento
+  separada y sin marcar + los textos claros antes de pedir la tarjeta.
+- ⚪ Anomalía sin atribuir: durante pruebas locales con automatización, `/pricing` saltó dos veces a
+  `/auth/login` SIN `?next=`, solo acompañando a un scroll sintético; no reproducible con scroll
+  programático. Probable inestabilidad de la herramienta. Si aparece navegando normal, investigar un
+  escuchador de sesión que redirija al caducar el token.
 
 ## Sesión 2026-07-23 — Bienvenida post-registro (CERRADO, en producción)
 
