@@ -44,9 +44,11 @@ Sistema de códigos promocionales para super_admin. Ver D-67 (modelo) y D-68 (le
   pruebas (solo hay 3 jobs: anon-users, mensajes, carritos). Resultado: **el código promocional
   regalaba Pro PARA SIEMPRE**. El gate ahora deniega si `plan_status='trialing'` y `plan_trial_end`
   ya pasó; fail-open si la fecha es NULL (esas pruebas las gobierna Stripe).
-  ⚠️ **SIN VERIFICAR EN VIVO** — es un gate server-side y hace falta una sesión NO-admin con prueba
-  vencida. PRIMERA TAREA de la próxima sesión: cuenta desechable → fecha vencida → debe rebotar a
-  `/auth/register?upgrade=1`; luego fecha futura → debe entrar (que no bloqueemos a quien sí paga).
+  ✅ **VERIFICADO EN VIVO (2026-07-23)** con la cuenta desechable `pruebagate`
+  (`prueba+gate@tucorreo.com`, uid `d0e6768d-fcfe-4719-b161-03fbf596e598`, devuelta a `regular` para
+  reutilizarla en futuras pruebas del gate): con `plan_trial_end` vencida (−5 días) el dashboard
+  REBOTA a `/auth/register?upgrade=1`; con fecha futura (+20 días) DEJA ENTRAR. Confirma que bloquea
+  lo vencido SIN expulsar a quien está en prueba válida.
 - ⚠️ **PARCHE PARCIAL, no la solución de fondo:** el gate tapa la puerta principal, pero
   `enforce_business_limit()` lee `users.plan` directo → alguien con prueba vencida aún podría crear
   negocio llamando a la API por fuera del dashboard. La solución real es un job que DEGRADE a
