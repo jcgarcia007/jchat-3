@@ -511,6 +511,21 @@ lee `users.plan` directo, así que el arreglo completo es DEGRADAR el plan al ve
 vista. Refuerza D-42 (los límites se aplican en el servidor) y D-46 (un kill-switch silencioso necesita
 una prueba que lo haga visible). Ref `6bc2bb3`.
 
+### D-70 — Todo gate necesita un destino para los que rechaza (si no, es un bucle)
+
+Bug encontrado en producción el 2026-07-23. El registro terminaba en `router.push("/dashboard")`,
+pero el gate del dashboard exige plan `business|pro` → un usuario recién creado es `regular`, así que
+el gate lo rebotaba a `/auth/register?upgrade=1`. Resultado: **el usuario se registraba y aparecía de
+nuevo en la pantalla de registro**, sin felicitación ni explicación. El registro nunca "falló" — cada
+pieza hacía lo suyo bien; nadie definió dónde aterriza quien NO pasa el gate.
+REGLA: al añadir un gate hay que nombrar las DOS salidas — a dónde va quien pasa y a dónde va quien no.
+Si el destino del rechazado es una pantalla que vuelve a empujarlo al gate, se cierra el bucle. Vale la
+pena recorrer el camino del usuario nuevo (el que aún no tiene nada) además del que ya tiene todo.
+Solución: pantalla `/auth/welcome` (felicita, ofrece Business/Pro, y si YA tiene plan vigente se salta
+sola al panel). El registro y el OAuth de Google apuntan ahí. Ref `3f55cd3`.
+Deuda conocida: la regla de "prueba vencida" quedó DUPLICADA (gate del dashboard + welcome). En welcome
+es solo comodidad de navegación, no seguridad; consolidar en la tanda de Stripe.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

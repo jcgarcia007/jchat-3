@@ -23,6 +23,23 @@ Last updated: 2026-07-22
 
 ---
 
+## Sesión 2026-07-23 — Bienvenida post-registro (CERRADO, en producción)
+
+- ✅ **Gate de prueba vencida VERIFICADO en vivo** (ver bloque de la sesión anterior).
+- 🔴 **Bucle de registro encontrado y arreglado** (`3f55cd3`, ver D-70): el registro empujaba a
+  `/dashboard` y el gate rebotaba al usuario nuevo de vuelta al registro. Nueva pantalla
+  `web/app/auth/welcome/page.tsx`: felicita, ofrece Business/Pro (botón → `/pricing`), y si ya tiene
+  plan vigente se salta sola al panel. Registro y OAuth de Google ahora apuntan ahí. Bilingüe ES/EN
+  leyendo `users.language` (base para el i18n real). VERIFICADO en producción por Juan.
+- ⚠️ **Verificación de correo DESACTIVADA** (decisión de Juan, 2026-07-23): hoy `email_confirmed_at`
+  se rellena solo — cualquiera se registra con un correo falso (se comprobó con un dominio inventado).
+  Aceptable pre-lanzamiento. **REQUISITO ANTES DE LANZAR con clientes reales:** activarla, o no hay
+  recuperación de cuenta ni forma de mandar el aviso previo al cobro que exige la ley (ver el bloque
+  legal de la sesión de códigos promocionales).
+- ⚠️ **Deuda:** la regla de prueba vencida está duplicada (gate + welcome). Consolidar con Stripe.
+- **PENDIENTE (tanda Stripe):** el código promocional debe alimentar `trial_period_days` en Checkout
+  con tarjeta; la pantalla de "elegir plan → felicitar → panel" se completa ahí.
+
 ## Sesión 2026-07-22 (cont.) — Códigos promocionales (CERRADO 2a+2b, en producción)
 
 Sistema de códigos promocionales para super_admin. Ver D-67 (modelo) y D-68 (lección de tipos).
