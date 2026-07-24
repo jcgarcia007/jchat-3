@@ -199,6 +199,10 @@ async function handleCreateCheckout(
   authUserId: string,
 ): Promise<Response> {
   const planId = typeof body.plan === "string" ? body.plan : null;
+  const promoCode =
+    typeof body.promo_code === "string" && body.promo_code.trim().length > 0
+      ? body.promo_code.trim().toUpperCase()
+      : null;
   const successUrl = typeof body.success_url === "string"
     ? body.success_url
     : "https://jchat.cloud/dashboard/billing?checkout=success";
@@ -289,9 +293,50 @@ async function handleCreateCheckout(
     if (saveErr) console.error("[subscriptions] failed to save stripe_customer_id:", saveErr);
   }
 
-  // Trial ONLY if the user has never had one (plan_trial_end still null). 30 days.
+  // ── Código promocional (D-71) ───────────────────────────────────────────────
+  // El código NO otorga plan: solo decide cuántos días de prueba pide el Checkout.
+  // Se valida SIEMPRE aquí, server-side — el navegador nunca decide los días.
+  // Se marca como canjeado en el WEBHOOK, al completarse el checkout.
+  let promoCodeId: string | null = null;
+  let promoTrialDays: number | null = null;
+
+  if (promoCode) {
+    const { data: promoRow, error: promoErr } = await db
+      .from("promo_codes")
+      .select("id, plan, trial_days, expires_at, active, redeemed_by")
+      .eq("code", promoCode)
+      .maybeSingle();
+    if (promoErr) return errorResponse(`DB error: ${promoErr.message}`, 500);
+
+    const p = promoRow as {
+      id: string;
+      plan: string;
+      trial_days: number;
+      expires_at: string | null;
+      active: boolean;
+      redeemed_by: string | null;
+    } | null;
+
+    // Un código inválido NUNCA debe pasar en silencio como "checkout normal":
+    // el usuario creería que su código se aplicó cuando no fue así.
+    if (!p) return errorResponse("CODE_NOT_FOUND", 400);
+    if (!p.active) return errorResponse("CODE_INACTIVE", 400);
+    if (p.redeemed_by) return errorResponse("CODE_ALREADY_USED", 400);
+    if (p.expires_at && new Date(p.expires_at) <= new Date()) {
+      return errorResponse("CODE_EXPIRED", 400);
+    }
+    if (p.plan !== planId) return errorResponse("CODE_PLAN_MISMATCH", 400);
+
+    promoCodeId = p.id;
+    promoTrialDays = p.trial_days;
+  }
+
+  // Con código promocional mandan sus días (aunque el usuario ya haya tenido prueba:
+  // ese es el sentido del código). Sin código, la regla de siempre: 30 días solo si
+  // nunca tuvo una.
   const alreadyUsedTrial =
     (userRow as { plan_trial_end: string | null } | null)?.plan_trial_end != null;
+  const trialDays = promoTrialDays ?? (alreadyUsedTrial ? null : 30);
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
@@ -299,10 +344,21 @@ async function handleCreateCheckout(
     customer: customerId,
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: { user_id: authUserId, plan: planId },
+    // payment_method_collection en modo suscripción es "always" por defecto: Stripe
+    // pide tarjeta aunque la prueba sea gratis. Eso es justo lo que queremos — al
+    // vencer la prueba cobra solo, y si cancela antes no hay cargo.
+    metadata: {
+      user_id: authUserId,
+      plan: planId,
+      ...(promoCodeId ? { promo_code_id: promoCodeId } : {}),
+    },
     subscription_data: {
-      metadata: { user_id: authUserId, plan: planId },
-      ...(alreadyUsedTrial ? {} : { trial_period_days: 30 }),
+      metadata: {
+        user_id: authUserId,
+        plan: planId,
+        ...(promoCodeId ? { promo_code_id: promoCodeId } : {}),
+      },
+      ...(trialDays ? { trial_period_days: trialDays } : {}),
     },
   };
 
@@ -437,6 +493,26 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (customerId) upd.stripe_customer_id = customerId;
 
       await db.from("users").update(upd).eq("id", userId);
+
+      // Consumir el código promocional AQUÍ, no al crear la sesión: un checkout
+      // abandonado no debe quemar el código. El `.is("redeemed_by", null)` hace la
+      // operación idempotente y evita pisar un canje anterior si Stripe reenvía.
+      // Si esto falla NO abortamos el webhook: la suscripción ya es válida y lo
+      // importante es no dejar al usuario sin plan por un fallo de contabilidad.
+      const promoCodeId = session.metadata?.promo_code_id ?? null;
+      if (promoCodeId) {
+        const { error: promoErr } = await db
+          .from("promo_codes")
+          .update({ redeemed_by: userId, redeemed_at: new Date().toISOString() })
+          .eq("id", promoCodeId)
+          .is("redeemed_by", null);
+        if (promoErr) {
+          console.error(`[subscriptions] no se pudo marcar el promo ${promoCodeId}:`, promoErr);
+        } else {
+          console.log(`[subscriptions] promo ${promoCodeId} canjeado por ${userId}`);
+        }
+      }
+
       console.log(`[subscriptions] checkout completed: user=${userId} plan=${plan} status=${planStatus}`);
       break;
     }
