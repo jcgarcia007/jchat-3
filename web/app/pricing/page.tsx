@@ -108,6 +108,10 @@ export default function PricingPage() {
     if (raw.includes("CODE_EXPIRED")) return "Ese código venció.";
     if (raw.includes("CODE_PLAN_MISMATCH")) return "Ese código no aplica a este plan.";
     if (raw.includes("NOT_AUTHENTICATED")) return "Inicia sesión para usar un código.";
+    // La migración 088 revocó EXECUTE a `anon`: sin sesión, Postgres corta con
+    // "permission denied ... (42501)" ANTES de entrar en la función, así que la rama
+    // NOT_AUTHENTICATED de dentro nunca llega a ejecutarse. Red de seguridad.
+    if (raw.includes("permission denied")) return "Inicia sesión para usar un código.";
     return "No se pudo aplicar el código.";
   }
 
@@ -118,6 +122,18 @@ export default function PricingPage() {
     setPromoInfo(null);
     if (!isSupabaseConfigured || code.length === 0) return;
     setPromoChecking(true);
+
+    // /pricing es pública. Sin sesión la RPC fallaría por permisos con un error que no
+    // le dice nada al usuario, así que preguntamos primero y damos el motivo real.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setPromoChecking(false);
+      setPromoError("Inicia sesión para usar un código.");
+      return;
+    }
+
     const { data, error: rpcErr } = await supabase.rpc("validate_promo_code", { p_code: code });
     setPromoChecking(false);
     if (rpcErr) {
