@@ -3611,7 +3611,6 @@ export type Database = {
       owns_business_of_table: { Args: { p_table_id: string }; Returns: boolean }
       purge_expired_messages: { Args: never; Returns: undefined }
       purge_stale_pending_carts: { Args: never; Returns: number }
-      redeem_promo_code: { Args: { p_code: string }; Returns: Json }
       regenerate_room_qr_token: { Args: { _room_id: string }; Returns: string }
       remove_follower: { Args: { p_follower: string }; Returns: undefined }
       request_or_follow: { Args: { p_target: string }; Returns: string }
@@ -3678,6 +3677,7 @@ export type Database = {
       unblock_user: { Args: { p_target: string }; Returns: undefined }
       user_has_tab_at_table: { Args: { p_table_id: string }; Returns: boolean }
       username_available: { Args: { check_username: string }; Returns: boolean }
+      validate_promo_code: { Args: { p_code: string }; Returns: Json }
       verify_room_password: {
         Args: { password: string; room_id: string }
         Returns: boolean
