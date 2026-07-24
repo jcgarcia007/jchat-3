@@ -569,6 +569,29 @@ petición condenada) + mapear `permission denied` como red de seguridad. La rama
 propósito: sigue siendo correcta para otros roles y es la segunda puerta (misma lógica que 088).
 Ref `991e00c`.
 
+### D-73 — Consentimiento de renovación automática: casilla separada, sin marcar, y DOS puertas
+
+Requisito legal implementado el 2026-07-23. Cobrar automáticamente al terminar una prueba exige
+divulgar los términos de forma clara ANTES de recoger datos de pago, y obtener consentimiento
+afirmativo EXPRESO en una casilla SEPARADA y sin marcar por defecto — no vale enterrarlo en los
+términos generales ni pre-marcarla.
+Implementación en `/pricing`, encima de la grilla de planes: bloque "Antes de continuar" con el
+texto de renovación + casilla `consentAccepted` (inicial FALSE a propósito). Los botones de
+checkout quedan deshabilitados hasta marcarla.
+DOS PUERTAS: (1) el botón `disabled` — apariencia, saltable desde el navegador; (2) una comprobación
+al principio de `handleSubscribe` que corta y muestra el motivo. La (2) es la que realmente impide
+llegar a Stripe sin aceptar. Un botón deshabilitado NO es un control de acceso.
+EXENCIÓN deliberada: el plan Custom usa el mismo `<button>` para abrir un `mailto:`, no un checkout
+(`plan.cta === "contact"`), así que NO exige consentimiento — pedir aceptar términos de cobro para
+mandar un correo sería absurdo. De ahí `needsConsent = plan.cta === "checkout" && !consentAccepted`.
+Segunda capa natural: la pantalla de Stripe muestra además la fecha exacta del primer cobro y el
+importe. Nuestra página da los términos, Stripe da los números.
+LIMITACIÓN CONOCIDA: el consentimiento vive SOLO en el navegador; no queda registro. Para una
+disputa real haría falta guardar en BD quién aceptó, qué texto y cuándo, y verificarlo en la Edge
+Function antes de crear el checkout. Cumple el requisito de divulgación + consentimiento; NO da
+prueba auditable. Pendiente si alguna vez hace falta demostrarlo.
+El texto debe revisarlo un abogado antes de lanzar (EE.UU. + RD). Ref `af6b7b3`.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

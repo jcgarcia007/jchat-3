@@ -44,10 +44,27 @@ Corrección del modelo de códigos: ya NO otorgan plan, alimentan la prueba de S
   defecto — eso es lo que prueba que el código actuó), con cliente y suscripción de Stripe REALES, y
   el código marcado canjeado por él. Limpieza previa: `adriana_p` devuelta a `regular` y el código
   viejo liberado (eran residuo del modelo anterior).
-- 🔴 **PENDIENTE LEGAL (bloqueante para lanzar con cobros reales):** (1) el aviso previo al cobro —
-  `customer.subscription.trial_will_end` llega a la EF pero sigue siendo un TODO que solo escribe en
-  el log, así que HOY nadie avisa al usuario antes de cobrarle; (2) la casilla de consentimiento
-  separada y sin marcar + los textos claros antes de pedir la tarjeta.
+- ✅ **(2) Consentimiento de renovación automática — HECHO** (`af6b7b3`, ver D-73): casilla separada
+  y sin marcar en `/pricing`, con los términos ANTES de la tarjeta; botones de checkout bloqueados
+  hasta aceptar, con doble puerta (botón `disabled` + comprobación dentro de `handleSubscribe`). El
+  plan Custom queda exento a propósito (abre un `mailto`, no un checkout). Limitación: el
+  consentimiento no se registra en BD — cumple la divulgación, no da prueba auditable.
+- 🟠 **(1) Aviso previo al cobro — NO es tarea de código:** lo manda STRIPE con un interruptor de su
+  panel (Settings → Billing → Subscriptions and emails → "Send a reminder email 7 days before a free
+  trial ends", + "Link to a Stripe-hosted page" para que incluya el enlace de actualizar tarjeta, +
+  "Send emails about upcoming renewals", + revisar Settings → Branding porque salen con esa
+  identidad). Investigado y confirmado en la doc de Stripe: cumple los requisitos de las redes de
+  tarjetas. **DIFERIDO por Juan (2026-07-23):** activarlo exige completar los datos del negocio en
+  Stripe y prefiere seguir en modo prueba. Avisos: el ajuste es POR MODO (test y vivo son
+  independientes) → **activarlo en VIVO es REQUISITO DE LANZAMIENTO**; en sandbox Stripe casi no
+  envía estos correos (solo a dominios verificados o miembros del equipo); y no hay recordatorio para
+  pruebas de ≤7 días. El `TODO` de `trial_will_end` en la Edge Function puede quedarse: solo haría
+  falta si algún día se quieren correos propios, bilingües y con marca.
+- ⚠️ **NO existe infraestructura de correo transaccional** (comprobado 2026-07-23): en
+  `supabase/functions/_shared` solo hay `connect.ts` y `pricing.ts`, y en Vercel no hay ningún
+  proveedor de email (solo Twilio, que es SMS). Cualquier funcionalidad futura que necesite mandar
+  correos (recibos propios, avisos, recuperación) requiere montar un proveedor primero. Hoy los
+  únicos correos que salen son los de Supabase Auth y los que mande Stripe.
 - ⚪ Anomalía sin atribuir: durante pruebas locales con automatización, `/pricing` saltó dos veces a
   `/auth/login` SIN `?next=`, solo acompañando a un scroll sintético; no reproducible con scroll
   programático. Probable inestabilidad de la herramienta. Si aparece navegando normal, investigar un
