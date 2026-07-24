@@ -97,6 +97,9 @@ export default function PricingPage() {
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoInfo, setPromoInfo] = useState<{ plan: string; trial_days: number } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  // Consentimiento expreso de renovación automática. Arranca en FALSE a propósito:
+  // la ley exige una casilla separada y SIN marcar, no enterrada en los términos.
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Traduce los códigos de error del servidor (RPC validate_promo_code y Edge Function)
@@ -152,6 +155,12 @@ export default function PricingPage() {
 
   async function handleSubscribe(planId: CheckoutPlanId) {
     setError(null);
+    // Un botón deshabilitado es solo apariencia — se puede saltar desde el navegador.
+    // Esta comprobación es la que de verdad impide llegar a Stripe sin haber aceptado.
+    if (!consentAccepted) {
+      setError("Marca la casilla de renovación automática antes de continuar.");
+      return;
+    }
     if (!isSupabaseConfigured) {
       setError("La suscripción no está disponible en este entorno.");
       return;
@@ -257,6 +266,54 @@ export default function PricingPage() {
           </div>
         )}
 
+        {/* Consentimiento de renovación automática. Va ANTES de la grilla porque la ley
+            exige divulgar los términos de forma clara ANTES de recoger datos de pago. */}
+        <div
+          style={{
+            maxWidth: "820px",
+            margin: "0 auto 20px",
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "12px",
+            padding: "18px 20px",
+          }}
+        >
+          <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>
+            Antes de continuar
+          </div>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 14px", lineHeight: 1.6 }}>
+            Tu suscripción se renueva automáticamente cada mes hasta que la canceles. Si tienes días
+            de prueba gratis, no se te cobra nada hasta que terminen; al terminar, se cobra el precio
+            del plan a tu tarjeta y luego cada mes. Puedes cancelar cuando quieras desde tu panel, y
+            si cancelas durante la prueba no se te cobra nada.
+          </p>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              cursor: "pointer",
+              fontSize: "13px",
+              color: "var(--text-primary)",
+              lineHeight: 1.5,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={consentAccepted}
+              onChange={(e) => {
+                setConsentAccepted(e.target.checked);
+                setError(null);
+              }}
+              style={{ marginTop: "2px", width: "16px", height: "16px", flexShrink: 0, cursor: "pointer" }}
+            />
+            <span>
+              Entiendo que se me cobrará automáticamente al terminar la prueba, y que puedo cancelar
+              antes sin ningún cargo.
+            </span>
+          </label>
+        </div>
+
         {/* Plan grid */}
         <div
           style={{
@@ -269,6 +326,9 @@ export default function PricingPage() {
         >
           {OFFERED_PLANS.map((plan) => {
             const busy = loadingPlan === plan.id;
+            // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
+            // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
+            const needsConsent = plan.cta === "checkout" && !consentAccepted;
             return (
               <div
                 key={plan.id}
@@ -326,7 +386,8 @@ export default function PricingPage() {
                       void handleSubscribe(plan.id as CheckoutPlanId);
                     }
                   }}
-                  disabled={busy}
+                  disabled={busy || needsConsent}
+                  title={needsConsent ? "Marca la casilla de arriba para continuar" : undefined}
                   style={{
                     marginTop: "auto",
                     display: "flex",
@@ -340,8 +401,8 @@ export default function PricingPage() {
                     color: plan.cta === "checkout" ? "#fff" : "var(--text-secondary)",
                     fontSize: "13px",
                     fontWeight: 600,
-                    cursor: busy ? "wait" : "pointer",
-                    opacity: busy ? 0.7 : 1,
+                    cursor: busy ? "wait" : needsConsent ? "not-allowed" : "pointer",
+                    opacity: busy ? 0.7 : needsConsent ? 0.45 : 1,
                   }}
                 >
                   {busy ? (
