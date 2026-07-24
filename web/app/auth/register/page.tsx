@@ -727,7 +727,7 @@ export default function RegisterPage() {
     const { error: oauthErr } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/dashboard")}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/auth/welcome")}`,
       },
     });
     // On success the browser is redirected to Google, so we only reach here on error.
@@ -797,7 +797,10 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/dashboard");
+    // A la bienvenida, NO al panel: un usuario nuevo es `regular` y el gate del
+    // dashboard lo rebotaría de vuelta aquí (bucle). La bienvenida decide si
+    // corresponde ofrecer Business/Pro o mandarlo directo al panel.
+    router.push("/auth/welcome");
     router.refresh();
   }
 
