@@ -258,18 +258,36 @@ export function PinMessageSheet({
       const expiresAt = timerToExpiresAt(timer);
       const roomIds = Array.from(selectedRooms);
 
-      // Insert pinned_messages rows (upsert — unique on room_id + message_id).
-      const { error: pinError } = await supabase.from('pinned_messages').upsert(
-        roomIds.map((rid) => ({
-          room_id:    rid,
-          message_id: message.id,
-          pinned_by:  pinnedBy,
-          expires_at: expiresAt,
-          notify,
-        })),
-        { onConflict: 'room_id,message_id' },
-      );
-      if (pinError) throw pinError;
+      // UPDATE-then-INSERT instead of upsert: keeps room_id/message_id out of the
+      // SET clause (they're only in the WHERE), so a column-level UPDATE grant on
+      // just (pinned_by, expires_at, notify) is enough — an upsert's ON CONFLICT
+      // DO UPDATE would also need UPDATE on the conflict-key columns themselves
+      // (D-54 102). One room already pinned refreshes it; a new room gets inserted.
+      const roomsToInsert: string[] = [];
+      for (const rid of roomIds) {
+        const { data: updated, error: updateErr } = await supabase
+          .from('pinned_messages')
+          .update({ pinned_by: pinnedBy, expires_at: expiresAt, notify })
+          .eq('room_id', rid)
+          .eq('message_id', message.id)
+          .select('id');
+
+        if (updateErr) throw updateErr;
+        if (!updated || updated.length === 0) roomsToInsert.push(rid);
+      }
+
+      if (roomsToInsert.length > 0) {
+        const { error: insertErr } = await supabase.from('pinned_messages').insert(
+          roomsToInsert.map((rid) => ({
+            room_id:    rid,
+            message_id: message.id,
+            pinned_by:  pinnedBy,
+            expires_at: expiresAt,
+            notify,
+          })),
+        );
+        if (insertErr) throw insertErr;
+      }
 
       // Insert a system message per room.
       const { error: msgError } = await supabase.from('messages').insert(
