@@ -71,9 +71,7 @@ interface ProductStat {
 interface LoyaltyROI {
   points_issued: number;
   points_redeemed: number;
-  revenue_from_members: number;
   redemption_rate: number;
-  roi_pct: number;
 }
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
@@ -106,9 +104,7 @@ function makeDemoLoyalty(): LoyaltyROI {
   return {
     points_issued: 184200,
     points_redeemed: 61400,
-    revenue_from_members: 62800,
     redemption_rate: 33.3,
-    roi_pct: 312,
   };
 }
 
@@ -336,17 +332,6 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
           </BarChart>
         </ResponsiveContainer>
       </Card>
-
-      {/* Peak hour note */}
-      <Card>
-        <SectionTitle>Peak Hour Pattern</SectionTitle>
-        <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: 0 }}>
-          Historically your busiest window is{" "}
-          <span style={{ color: "var(--db-accent)", fontWeight: 700 }}>7 PM – 9 PM</span> on{" "}
-          <span style={{ color: "var(--db-accent)", fontWeight: 700 }}>Friday & Saturday</span>.
-          See the Chat tab for an hourly activity heatmap.
-        </p>
-      </Card>
     </div>
   );
 }
@@ -487,7 +472,7 @@ function UpgradePrompt() {
       </h2>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", maxWidth: "420px", lineHeight: 1.6, margin: 0 }}>
         Upgrade to <strong style={{ color: "var(--db-accent)" }}>Business Pro</strong> to unlock
-        advanced analytics, revenue forecasting, cohort retention, loyalty ROI, and API access.
+        revenue, product and loyalty analytics with CSV and PDF export.
       </p>
       {/* TODO(plan gate): wire onClick to stripe-connect Edge Function upgrade flow */}
       <button
@@ -592,7 +577,7 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
 
   y += 10;
   doc.setFontSize(13);
-  doc.text("Loyalty ROI", 15, y);
+  doc.text("Loyalty Points", 15, y);
   y += 10;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
@@ -600,8 +585,6 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
     ["Points Issued", String(loyalty.points_issued)],
     ["Points Redeemed", String(loyalty.points_redeemed)],
     ["Redemption Rate", `${loyalty.redemption_rate}%`],
-    ["Member Revenue", `$${loyalty.revenue_from_members.toLocaleString()}`],
-    ["Program ROI", `${loyalty.roi_pct}%`],
   ].forEach(([label, value]) => {
     doc.text(label, 15, y);
     doc.text(value, 100, y);
@@ -839,9 +822,7 @@ export default function AnalyticsPage() {
         setLoyalty({
           points_issued: issued,
           points_redeemed: 0,
-          revenue_from_members: 0, // TODO: join with orders
           redemption_rate: 0,
-          roi_pct: 0, // TODO: compute from member vs non-member revenue diff
         });
       } else {
         setLoyalty(makeDemoLoyalty());
