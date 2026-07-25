@@ -139,20 +139,31 @@ export async function muteInRoom(
       ? new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString()
       : null;
 
-  // Upsert so a second mute call simply refreshes the expiry.
-  const { error } = await supabase
+  // UPDATE-then-INSERT instead of upsert: keeps room_id/user_id out of the SET
+  // clause (they're only in the WHERE), so a column-level UPDATE grant on just
+  // (muted_by, expires_at) is enough — an upsert's ON CONFLICT DO UPDATE would
+  // also need UPDATE on the conflict-key columns themselves (D-54 099).
+  const { data: updated, error: updateErr } = await supabase
     .from('room_mutes')
-    .upsert(
-      {
+    .update({ muted_by: mutedBy, expires_at: expiresAt })
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .select('id');
+
+  if (updateErr) throw updateErr;
+
+  if (!updated || updated.length === 0) {
+    const { error: insertErr } = await supabase
+      .from('room_mutes')
+      .insert({
         room_id: roomId,
         user_id: userId,
         muted_by: mutedBy,
         expires_at: expiresAt,
-      },
-      { onConflict: 'room_id,user_id' },
-    );
+      });
 
-  if (error) throw error;
+    if (insertErr) throw insertErr;
+  }
 
   // Audit log
   const detail =
@@ -231,20 +242,31 @@ export async function banUser(
 ): Promise<void> {
   assertConfigured();
 
-  const { error } = await supabase
+  // UPDATE-then-INSERT instead of upsert: keeps room_id/user_id (and
+  // business_id) out of the SET clause, so a column-level UPDATE grant on
+  // just (banned_by, reason) is enough — see the same note in muteInRoom.
+  const { data: updated, error: updateErr } = await supabase
     .from('bans')
-    .upsert(
-      {
+    .update({ banned_by: bannedBy, reason: reason ?? null })
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .select('id');
+
+  if (updateErr) throw updateErr;
+
+  if (!updated || updated.length === 0) {
+    const { error: insertErr } = await supabase
+      .from('bans')
+      .insert({
         business_id: businessId,
         room_id: roomId,
         user_id: userId,
         banned_by: bannedBy,
         reason: reason ?? null,
-      },
-      { onConflict: 'room_id,user_id' },
-    );
+      });
 
-  if (error) throw error;
+    if (insertErr) throw insertErr;
+  }
 
   await logAction({
     businessId,
