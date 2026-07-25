@@ -1,3 +1,8 @@
+> ⚠️ ARCHIVO HISTÓRICO — bitácora sesión por sesión hasta 2026-07-23.
+> El estado ACTUAL de la app vive en **docs/ESTADO.md** (resumen de 1 página, verificado contra
+> código/BD). Este archivo se conserva solo para el detalle histórico; puede contener afirmaciones
+> ya desfasadas o corregidas. NO es la fuente de verdad.
+
 # JChat 3.0 — Project Status
 
 Last updated: 2026-07-23

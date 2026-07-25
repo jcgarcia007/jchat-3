@@ -6,6 +6,7 @@ This /docs/ folder is the durable knowledge base for JChat 3.0 so work continues
 
 ## Read these in order
 1. PROJECT_STATUS.md — Where the project is right now, what's deployed, the prioritized plan. Read first when resuming.
+   Estado actual de un vistazo: docs/ESTADO.md (PROJECT_STATUS.md pasó a docs/archive/ como bitácora histórica).
 2. SPEC.md — Product spec: flows, screens, business rules (converted from MASTER_SPEC.docx).
 3. DESIGN_SYSTEM.md — Colors, themes, tokens, components (converted from DESIGN_SYSTEM.docx).
 4. ARCHITECTURE.md — Reusable technical patterns (menu device-frame, chat scroll web/mobile, multi-presence, sub-chats, image viewer, iOS/Android fixes).
