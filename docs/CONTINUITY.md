@@ -26,7 +26,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 1. Read docs/ESTADO.md to load current state + next steps (the session-by-session log is archived at docs/archive/PROJECT_STATUS_historico.md).
 2. Skim DECISIONS.md so you don't re-litigate settled choices.
 3. Use MCP tools (GitHub, Supabase klfsgcfoahdtkojyqspd, Vercel prj_sGiwIjcnfUbrdzuITqY7ikEMI9tI) to verify live state before acting.
-4. Continue from "What's next" in docs/ESTADO.md.
+4. Continue from "Bloqueantes de lanzamiento" in docs/ESTADO.md.
 
 ## Working agreement (to keep chats long-lived)
 - Prefer pasting text/errors over screenshots. Claude reads code directly from GitHub via MCP. Screenshots only for genuinely visual UI matters.
