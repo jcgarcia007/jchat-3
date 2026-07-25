@@ -54,9 +54,11 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 
 ## Roto o que engaña al usuario (prioridad alta)
 
-- 🔴 **Analytics muestra datos FALSOS** 📼: el pronóstico es un placeholder inventado, la pestaña de
-  API genera claves falsas, el ROI de lealtad está clavado a 0. **Es el argumento de venta del plan
-  Pro.** Decidir: implementar de verdad o quitar esas pestañas. NO enlazar la página hasta entonces.
+- ✅ **Analytics — ahora 100% honesto** (2026-07-24, commits `dbde566` + `9b9afa6`): se quitaron las
+  pestañas con datos inventados (Forecast, Customers, Chat, API) y el ROI falso de Loyalty. Quedan
+  Revenue, Products y Loyalty (solo puntos), más la banda "Overview — live" — todo desde la BD real.
+  El PDF también se limpió. Sigue SIN enlazar en el menú (huérfana); ahora que no miente, se puede
+  decidir enlazarla. Falta verificación visual en vivo (requiere sesión de dueño con negocio).
 - 🔴 **"Approve Refund" no reembolsa** 📼: la pantalla de disputas hace `UPDATE status='approved'`
   directo en vez de llamar a `stripe-refund` (que SÍ funciona). El dueño cree que devolvió el dinero
   y no se movió nada. La página está huérfana (nadie llega) → sin riesgo mientras siga así.
