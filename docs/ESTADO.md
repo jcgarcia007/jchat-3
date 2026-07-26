@@ -1,8 +1,8 @@
 # JChat 3.0 — Estado
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 Fuente de verdad de "cómo está la app HOY". La bitácora histórica (sesión por sesión) vive en
-`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-75).
+`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-76).
 
 Convención: ✅ verificado contra código/BD · 📼 según bitácora, sin reconfirmar · ⚠️ riesgo · 🔴 bloqueante
 
@@ -101,6 +101,11 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 - 🟠 **Selector global de negocio** en el dashboard: sin él, el plan Pro (10 negocios) no es usable.
 - 🟠 **i18n EN/ES completo**: el bloque más grande. La base está puesta (welcome bilingüe); falta el
   barrido de dashboard, móvil, super-admin y correos.
+- 🟠 **Tres features Stage-3 a medio construir (UI por delante del backend) — construir o gatear antes de
+  lanzar** (ver D-76): (1) **lealtad** (ganar puntos nunca cableado; canje sin RPC), (2) **force-refund de
+  super-admin** (Task 3.6; hoy neutralizado, no llama a Stripe), (3) **gestión de equipo de admins** (Task
+  3.13; add/remove sin RPC). Ninguna hace daño hoy (inertes/neutralizadas); todas necesitan backend
+  server-side/RPC con guardas, NO parches de grants.
 
 ---
 

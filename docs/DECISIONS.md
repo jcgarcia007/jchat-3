@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ## Maps
 
@@ -643,6 +643,46 @@ re-otorgar el grant de columna (la tanda revocó el grant). En arreglo en tandas
 producto preexistentes hallados en la auditoría de upserts: `redeemReward`/`addPoints` (móvil) nunca
 pudieron escribir `loyalty_points` desde el cliente (la tabla solo permite `service_role`); `followUser`
 (follow directo) es código muerto (la app usa follow-requests + `unfollowUser`).
+
+### D-76 — Tres features super-admin/Stage-3 a medio construir: DIFERIDAS, con la receta de cómo construirlas (no parchear)
+
+Decisión (2026-07-25/26): durante el barrido de "pantallas que mienten" (D-75) aparecieron tres pantallas
+cuyo backend nunca se terminó — se construyó la UI por delante. Ninguna es un bug ACTIVO hoy (están inertes o
+ya neutralizadas), pero las tres son FEATURES A TERMINAR, no parches. Se DIFIEREN a Stage 3. Se registra aquí
+la forma CORRECTA de construir cada una, porque el arreglo ingenuo reintroduce un agujero.
+
+1. Lealtad (puntos). Hoy: el "ganar puntos" está muerto (awardPoints es un stub sin llamadores; el award al
+   completar pedido es un TODO nunca cableado) y el "canjear" es inalcanzable (el botón se deshabilita a 0
+   puntos, y nadie tiene puntos). loyalty_points y loyalty_rules con 0 filas; ningún writer server-side.
+   CÓMO construirla: (a) award SERVER-SIDE en el flujo de completar pedido (EF/webhook con service_role:
+   points = floor(total_cents/100 * loyalty_rules.points_per_dollar)); (b) canje por RPC SECURITY DEFINER que
+   valide el saldo y lo descuente de forma atómica; (c) UI para que el dueño configure loyalty_rules. NUNCA
+   re-otorgar loyalty_points a authenticated: es dinero, el saldo lo escribe SOLO el servidor (la RLS
+   service_role-only actual es CORRECTA; el bug era el código cliente que hacía upsert directo).
+
+2. Force-refund de super-admin (Task 3.6). Hoy: NEUTRALIZADO (commit 6eb4381) — escribía status='refunded' +
+   un refund_id falso ('sa_refund_'+Date.now()) sin llamar a Stripe, lo que habría disparado el guard de D-53
+   (refund_id !== null → 409) y BLOQUEADO el reembolso real de esa disputa. CÓMO construirla: invocar la EF
+   stripe-refund de verdad con soporte de OVERRIDE de super-admin (la EF hoy es owner-scoped, D-53) — el
+   super-admin fuerza el reembolso sobre la cuenta conectada del negocio. Reactivar el botón SOLO cuando esté
+   cableado.
+
+3. Gestión de equipo de admins (Task 3.13). Hoy: inerte — añadir da error de RLS (admin_roles no tiene política
+   de INSERT), y "quitar" solo se muestra para roles != super_admin (no hay ninguno; solo existe el super_admin).
+   CÓMO construirla: RPC SECURITY DEFINER gateada a super_admin ESPECÍFICO (users.role='super_admin', NO
+   is_platform_admin()). FOOTGUN a evitar: is_platform_admin() es TRUE para CUALQUIER fila de admin_roles, así
+   que darle a admin_roles una política simple de INSERT/DELETE gateada a is_platform_admin() dejaría que un
+   futuro sub-admin (p. ej. ops_admin) se auto-ascendiera a super_admin (por PostgREST crudo, saltándose el
+   desplegable de la UI) o borrara al super_admin. Guardas de la RPC: no acuñar super_admins a la ligera, no
+   borrar al último super_admin, no auto-borrarse. Los grants directos de admin_roles siguen revocados (la
+   definer no los necesita).
+
+Regla transversal (la lección del clúster): toda mutación privilegiada o de dinero va por RPC SECURITY DEFINER
+o Edge Function, con el caller verificado server-side y guardas explícitas — nunca por escritura directa del
+cliente ni re-otorgando grants a authenticated. Es la misma regla de D-40 (verificación de negocio por RPC) y
+D-53 (reembolso por EF). Antes de lanzar: construir estas tres, o dejar sus pantallas gateadas/ocultas para no
+enseñar features que no funcionan (coherente con D-74). CHIP de seguimiento por cada una (loyalty award+redeem,
+Task 3.6, Task 3.13).
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
