@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
@@ -31,6 +32,7 @@ export default function IconRail({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const NAVY = P.bg;
   const CARD = P.surface;
@@ -208,7 +210,7 @@ export default function IconRail({
           boxShadow: "0 10px 24px rgba(79,209,197,0.3)",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 800 }}><IconShoppingCart size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />Carrito · {cartCount}</span>
+        <span style={{ fontSize: 13, fontWeight: 800 }}><IconShoppingCart size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />{t("iconRailCartLabel", { count: cartCount })}</span>
         <span style={{ fontSize: 13, fontWeight: 800 }}>{fmtPrice(cartTotal)} →</span>
       </button>
     </div>

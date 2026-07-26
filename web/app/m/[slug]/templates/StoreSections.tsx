@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -26,6 +27,7 @@ function ShelfTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -68,14 +70,14 @@ function ShelfTile({
             {item.name}
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: P.price, marginTop: 2 }}>
-            {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+            {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
           </div>
         </div>
         <button
           type="button"
           onClick={() => !soldOut && onItemAdd(item)}
           disabled={soldOut}
-          aria-label={`Agregar ${item.name}`}
+          aria-label={t("addItemAria", { name: item.name })}
           style={{
             flexShrink: 0,
             width: 28,
@@ -109,6 +111,7 @@ export default function StoreSections({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
@@ -140,13 +143,13 @@ export default function StoreSections({
             cursor: "pointer",
           }}
         >
-          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 4 }} />Bolsa · {cartCount}
+          <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 4 }} />{t("storeSectionsCartLabel", { count: cartCount })}
         </button>
       </div>
 
       {/* Greeting */}
       <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-1px", color: P.text, padding: "10px 2px 18px" }}>
-        Bienvenido.
+        {t("storeSectionsGreeting")}
       </div>
 
       {/* Category cards with horizontal shelves */}
@@ -172,7 +175,7 @@ export default function StoreSections({
               {cat.name}
             </h2>
             <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 2 }}>
-              {cat.items.length} {cat.items.length === 1 ? "platillo" : "platillos"}
+              {t("storeSectionsDishCount", { count: cat.items.length })}
             </div>
           </div>
 

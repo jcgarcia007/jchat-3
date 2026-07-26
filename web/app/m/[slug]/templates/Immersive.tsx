@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useRef, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -24,6 +25,7 @@ export default function Immersive({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -111,7 +113,7 @@ export default function Immersive({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{
             flexShrink: 0,
             display: "inline-flex",
@@ -186,13 +188,13 @@ export default function Immersive({
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14 }}>
                   <span style={{ fontSize: 20, fontWeight: 800, color: P.price }}>
-                    {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+                    {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
                   </span>
                   <button
                     type="button"
                     onClick={() => !soldOut && onItemAdd(item)}
                     disabled={soldOut}
-                    aria-label={`Agregar ${item.name}`}
+                    aria-label={t("addItemAria", { name: item.name })}
                     style={{
                       width: 48,
                       height: 48,

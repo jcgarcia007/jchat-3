@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -24,6 +25,7 @@ export default function Carousel({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [activeCat, setActiveCat] = useState<string>(nonEmpty[0]?.id ?? "");
@@ -57,12 +59,12 @@ export default function Carousel({
           <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
             {business.name}
           </h1>
-          <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>Elige tu antojo</div>
+          <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>{t("carouselTagline")}</div>
         </div>
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -154,7 +156,7 @@ export default function Carousel({
               )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14 }}>
                 <span style={{ fontSize: 20, fontWeight: 800, color: P.price }}>
-                  {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+                  {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
                 </span>
                 <button
                   type="button"
@@ -201,7 +203,7 @@ export default function Carousel({
             />
           ))}
         </div>
-        <div style={{ fontSize: 11, color: P.textFaint }}>← Desliza para ver los {items.length} →</div>
+        <div style={{ fontSize: 11, color: P.textFaint }}>{t("carouselSwipeHint", { count: items.length })}</div>
       </div>
     </div>
   );

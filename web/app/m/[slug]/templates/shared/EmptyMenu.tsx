@@ -1,6 +1,11 @@
+"use client";
+
 // Empty menu state — moved verbatim from MenuPageClient.
 
+import { useTranslations } from "next-intl";
+
 export function EmptyMenu({ bizName }: { bizName: string }) {
+  const t = useTranslations("menu");
   return (
     <div
       style={{
@@ -18,10 +23,10 @@ export function EmptyMenu({ bizName }: { bizName: string }) {
           margin: "0 0 8px",
         }}
       >
-        {bizName} aún no tiene menú
+        {t("emptyMenuTitle", { bizName })}
       </h2>
       <p style={{ fontSize: 13, margin: 0, lineHeight: 1.6 }}>
-        Estamos preparando algo delicioso. Vuelve pronto.
+        {t("emptyMenuBody")}
       </p>
     </div>
   );

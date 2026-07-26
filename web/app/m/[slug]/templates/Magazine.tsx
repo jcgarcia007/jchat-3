@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -29,6 +30,7 @@ function ArticleItem({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -50,13 +52,13 @@ function ArticleItem({
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: P.accent }}>
-          {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+          {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
         </span>
         <button
           type="button"
           onClick={() => !soldOut && onItemAdd(item)}
           disabled={soldOut}
-          aria-label={`Agregar ${item.name}`}
+          aria-label={t("addItemAria", { name: item.name })}
           style={{
             width: 26,
             height: 26,
@@ -90,6 +92,7 @@ export default function Magazine({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
@@ -112,11 +115,11 @@ export default function Magazine({
             onClick={onOpenCart}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF, color: P.textMuted, whiteSpace: "nowrap", paddingTop: 6 }}
           >
-            <IconShoppingCart size={13} style={{ verticalAlign: "-2px", marginRight: 3 }} />Cesta ({cartCount})
+            <IconShoppingCart size={13} style={{ verticalAlign: "-2px", marginRight: 3 }} />{t("magazineCartLabel", { count: cartCount })}
           </button>
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: P.textFaint, marginTop: 6 }}>
-          Menú · Nº 1 · {nonEmpty.length} {nonEmpty.length === 1 ? "sección" : "secciones"}
+          {t("magazineSectionsCount", { count: nonEmpty.length })}
           {business.category ? ` · ${business.category}` : ""}
         </div>
       </div>
@@ -154,7 +157,7 @@ export default function Magazine({
       {/* Feature spread */}
       <div style={{ padding: "20px 0", borderBottom: `0.5px solid ${P.border}` }}>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", color: P.accent, marginBottom: 8 }}>
-          El plato de la casa
+          {t("magazineFeaturedLabel")}
         </div>
         {featured.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -186,7 +189,7 @@ export default function Magazine({
               cursor: "pointer",
             }}
           >
-            Agregar
+            {t("magazineAddButton")}
           </button>
         </div>
       </div>

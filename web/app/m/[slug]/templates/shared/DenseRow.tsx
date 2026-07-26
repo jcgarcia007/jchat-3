@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useRef } from "react";
 import { IconPlus } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { fmtPrice } from "./format";
-import { BADGE_CONFIG, DIETARY_LABELS } from "./CategorySection";
+import { getBadgeConfig, getDietaryLabels } from "./CategorySection";
 import type { PublicMenuItem } from "../../page";
 
 /**
@@ -35,6 +36,7 @@ export function DenseRow({
   onItemAdd: (item: PublicMenuItem) => void;
   palette?: DenseRowPalette;
 }) {
+  const t = useTranslations("menu");
   const card = palette?.card ?? "var(--bg-surface)";
   const border = palette?.border ?? "var(--border-subtle)";
   const name = palette?.name ?? "var(--text-primary)";
@@ -44,7 +46,7 @@ export function DenseRow({
 
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   const hasOptions = item.groups.length > 0;
-  const badge = item.badge ? BADGE_CONFIG[item.badge] : null;
+  const badge = item.badge ? getBadgeConfig(t)[item.badge] : null;
 
   const [faved, setFaved] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
@@ -166,14 +168,14 @@ export function DenseRow({
                   padding: "1px 6px",
                 }}
               >
-                {DIETARY_LABELS[tag] ?? tag}
+                {getDietaryLabels(t)[tag] ?? tag}
               </span>
             ))}
           </div>
         )}
 
         <div style={{ fontSize: 13, fontWeight: 800, color: price, marginTop: 3 }}>
-          {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+          {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
         </div>
       </div>
 
@@ -182,7 +184,7 @@ export function DenseRow({
         <button
           type="button"
           onClick={() => setFaved((v) => !v)}
-          aria-label={faved ? "Quitar de favoritos" : "Agregar a favoritos"}
+          aria-label={faved ? t("removeFavoriteAria") : t("addFavoriteAria")}
           style={{
             background: "none",
             border: "none",
@@ -199,7 +201,7 @@ export function DenseRow({
           type="button"
           onClick={handleAdd}
           disabled={soldOut}
-          aria-label={hasOptions ? "Personalizar" : "Agregar al carrito"}
+          aria-label={hasOptions ? t("customizeAria") : t("addToCartAria")}
           style={{
             width: 32,
             height: 32,

@@ -69,6 +69,114 @@
     "goToPay": "Ir a pagar",
     "enterTableNumber": "Ingresa el número de mesa",
     "orderingAtTable": "Estás pidiendo en la mesa{tableLabel}",
-    "notAtThisTable": "No estoy en esa mesa"
+    "notAtThisTable": "No estoy en esa mesa",
+
+    "soldOut": "Agotado",
+    "addItemAria": "Agregar {name}",
+    "viewCartAriaCount": "Ver carrito, {count} artículos",
+    "addToCartAria": "Agregar al carrito",
+    "customizeAria": "Personalizar",
+    "allCategoryFilter": "Todo",
+    "dishCountPlural": "{count, plural, one {# PLATO} other {# PLATOS}}",
+    "addWithPlus": "+ Agregar",
+
+    "aiSubtitle": "Hoy · seleccionado para ti",
+    "aiAssistantPrompt": "¿Lo de siempre? <b>{name}</b> — ¿o probamos algo distinto hoy?",
+    "aiConfirmYes": "Sí — agregar +",
+    "aiShowSomethingNew": "Muéstrame algo nuevo",
+    "aiRecommendedForYou": "Recomendado para ti",
+    "aiLiveUpdating": "actualiza en vivo",
+    "aiMatchScore": "{score}% match",
+    "aiComposerPlaceholder": "Pídeme lo que sea… «algo caliente»",
+    "aiReasons": [
+      "Porque te gustan los clásicos",
+      "Popular con gustos como el tuyo",
+      "Combina con lo que sueles pedir",
+      "Tendencia esta semana",
+      "Recomendado por el chef",
+      "Ligero y fresco, como prefieres",
+      "Muy pedido a esta hora"
+    ],
+
+    "cardStackAllSeen": "¡Los viste todos!",
+    "cardStackHasItems": "Tienes {count} en tu carrito.",
+    "cardStackEmptyAlt": "No agregaste nada aún.",
+    "cardStackRestart": "Reiniciar",
+    "cardStackViewCartArrow": "Ver carrito →",
+    "deckButtonPass": "PASAR",
+    "deckButtonAdd": "AGREGAR",
+    "deckButtonSave": "GUARDAR",
+
+    "gestureEdgeHint": "categorías",
+    "gesturePrevCategoryAria": "Categoría anterior",
+    "gestureNextCategoryAria": "Categoría siguiente",
+    "gesturePrevDishAria": "Plato anterior",
+    "gestureNextDishAria": "Plato siguiente",
+    "gestureLegend": "⌃⌄ platos · ‹› categorías",
+    "gestureHoldToAdd": "Mantén para agregar",
+
+    "carouselTagline": "Elige tu antojo",
+    "carouselSwipeHint": "← Desliza para ver los {count} →",
+
+    "leftDrawerOpenCategoriesAria": "Abrir categorías",
+    "leftDrawerViewCartAria": "Ver carrito",
+    "leftDrawerCategoriesHeading": "Categorías",
+
+    "masonryQuestion": "¿Qué se te antoja hoy?",
+    "masonrySearchPlaceholder": "Buscar platillos…",
+    "masonryClearAria": "Limpiar",
+    "masonryResultCount": "{count, plural, one {# resultado} other {# resultados}}",
+    "masonryNoResults": "Sin resultados.",
+    "masonryCheckout": "Checkout →",
+    "masonryCartItemCount": "{count, plural, one {# artículo} other {# artículos}}",
+
+    "categorySidebarCartLabel": "CARRITO · {count}",
+    "iconRailCartLabel": "Carrito · {count}",
+
+    "infiniteFeedTagline": "Entrega a tu mesa · lo más pedido",
+    "infiniteFeedCartLabel": "Carrito ({count})",
+    "infiniteFeedCartFooter": "{amount} · A tu mesa →",
+
+    "luxuryChapterLabel": "Capítulo {number}",
+    "luxuryConciergeCartAria": "Concierge · carrito, {count} artículos",
+
+    "magazineCartLabel": "Cesta ({count})",
+    "magazineSectionsCount": "Menú · Nº 1 · {count, plural, one {# sección} other {# secciones}}",
+    "magazineFeaturedLabel": "El plato de la casa",
+    "magazineAddButton": "Agregar",
+
+    "stickyTabsCartLabel": "Ver carrito · {count}",
+
+    "storeSectionsCartLabel": "Bolsa · {count}",
+    "storeSectionsGreeting": "Bienvenido.",
+    "storeSectionsDishCount": "{count, plural, one {# platillo} other {# platillos}}",
+
+    "streamingRowsTagline": "Entrega en tu asiento",
+    "streamingRowsSeeAll": "VER TODO →",
+
+    "timelineTagline": "Velada de degustación · itinerario",
+    "timelineCartLabel": "Tu velada · {count, plural, one {# platillo} other {# platillos}}",
+
+    "badgeBestSeller": "⭐ Más vendido",
+    "badgeNew": "✨ Nuevo",
+    "badgeHot": "🌶️ Hot",
+
+    "dietaryVegetarian": "🌱 Vegetal",
+    "dietaryVegan": "🌿 Vegano",
+    "dietaryGlutenFree": "🌾 Sin gluten",
+    "dietarySeafood": "🦐 Mariscos",
+    "dietarySpicy": "🌶️ Picante",
+    "dietaryNutFree": "🥜 Sin nueces",
+    "dietaryDairyFree": "🥛 Sin lácteos",
+
+    "removeFavoriteAria": "Quitar de favoritos",
+    "addFavoriteAria": "Agregar a favoritos",
+
+    "previousAria": "Anterior",
+    "nextAria": "Siguiente",
+    "storiesSwipeToAdd": "↑ Deslizar para agregar",
+
+    "emptyMenuTitle": "{bizName} aún no tiene menú",
+    "emptyMenuBody": "Estamos preparando algo delicioso. Vuelve pronto."
   }
 }

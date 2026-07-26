@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -25,6 +26,7 @@ export default function Gesture({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const stepBtn: React.CSSProperties = {
     width: 40,
@@ -69,7 +71,7 @@ export default function Gesture({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: `1px solid ${P.border}`, background: P.surfaceElevated, color: P.text, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
           <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
@@ -78,20 +80,20 @@ export default function Gesture({
 
       {/* Category indicator */}
       <div style={{ textAlign: "center", marginTop: 10, fontSize: 10, fontWeight: 900, letterSpacing: "3px", color: P.textFaint }}>
-        {cat.name.toUpperCase()} — {items.length} {items.length === 1 ? "PLATO" : "PLATOS"}
+        {cat.name.toUpperCase()} — {t("dishCountPlural", { count: items.length })}
       </div>
 
       {/* Edge whispers */}
-      <div style={{ position: "absolute", left: 8, top: "48%", fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.5, writingMode: "vertical-rl", transform: "rotate(180deg)" }}>‹ categorías</div>
-      <div style={{ position: "absolute", right: 8, top: "48%", fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.5, writingMode: "vertical-rl" }}>categorías ›</div>
+      <div style={{ position: "absolute", left: 8, top: "48%", fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.5, writingMode: "vertical-rl", transform: "rotate(180deg)" }}>‹ {t("gestureEdgeHint")}</div>
+      <div style={{ position: "absolute", right: 8, top: "48%", fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.5, writingMode: "vertical-rl" }}>{t("gestureEdgeHint")} ›</div>
 
       {/* Side category zones */}
-      <button type="button" aria-label="Categoría anterior" onClick={prevCat} style={{ position: "absolute", left: 0, top: 90, bottom: 200, width: 44, background: "transparent", border: "none", cursor: "pointer", color: P.textFaint, fontSize: 24, zIndex: 5 }}>‹</button>
-      <button type="button" aria-label="Categoría siguiente" onClick={nextCat} style={{ position: "absolute", right: 0, top: 90, bottom: 200, width: 44, background: "transparent", border: "none", cursor: "pointer", color: P.textFaint, fontSize: 24, zIndex: 5 }}>›</button>
+      <button type="button" aria-label={t("gesturePrevCategoryAria")} onClick={prevCat} style={{ position: "absolute", left: 0, top: 90, bottom: 200, width: 44, background: "transparent", border: "none", cursor: "pointer", color: P.textFaint, fontSize: 24, zIndex: 5 }}>‹</button>
+      <button type="button" aria-label={t("gestureNextCategoryAria")} onClick={nextCat} style={{ position: "absolute", right: 0, top: 90, bottom: 200, width: 44, background: "transparent", border: "none", cursor: "pointer", color: P.textFaint, fontSize: 24, zIndex: 5 }}>›</button>
 
       {/* Stage: one dish */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "16px 48px" }}>
-        <button type="button" onClick={prevItem} aria-label="Plato anterior" style={stepBtn}>⌃</button>
+        <button type="button" onClick={prevItem} aria-label={t("gesturePrevDishAria")} style={stepBtn}>⌃</button>
         <div style={{ margin: "12px 0" }}>
           {item.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -100,16 +102,16 @@ export default function Gesture({
             <div style={{ width: 240, height: 240, borderRadius: "50%", background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>🍽️</div>
           )}
         </div>
-        <button type="button" onClick={nextItem} aria-label="Plato siguiente" style={stepBtn}>⌄</button>
+        <button type="button" onClick={nextItem} aria-label={t("gestureNextDishAria")} style={stepBtn}>⌄</button>
 
         <div style={{ fontSize: 24, fontWeight: 800, color: P.text, marginTop: 14 }}>{item.name}</div>
         {item.description && (
           <div style={{ fontSize: 13, color: P.textMuted, marginTop: 8, lineHeight: 1.5, maxWidth: 300 }}>{item.description}</div>
         )}
         <div style={{ fontSize: 22, fontWeight: 800, color: P.price, marginTop: 12 }}>
-          {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+          {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
         </div>
-        <div style={{ fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.6, marginTop: 6 }}>⌃⌄ platos · ‹› categorías</div>
+        <div style={{ fontSize: 9, letterSpacing: "1px", color: P.textFaint, opacity: 0.6, marginTop: 6 }}>{t("gestureLegend")}</div>
       </div>
 
       {/* Central add button */}
@@ -133,7 +135,7 @@ export default function Gesture({
             cursor: soldOut ? "not-allowed" : "pointer",
           }}
         >
-          {soldOut ? "Agotado" : "Mantén para agregar"}
+          {soldOut ? t("soldOut") : t("gestureHoldToAdd")}
         </button>
       </div>
     </div>

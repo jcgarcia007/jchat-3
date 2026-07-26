@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -28,6 +29,7 @@ function FullBleedCard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -73,14 +75,14 @@ function FullBleedCard({
             {item.name}
           </div>
           <div style={{ fontSize: 12, fontWeight: 800, color: P.price, marginTop: 2 }}>
-            {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+            {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
           </div>
         </div>
         <button
           type="button"
           onClick={() => !soldOut && onItemAdd(item)}
           disabled={soldOut}
-          aria-label={`Agregar ${item.name}`}
+          aria-label={t("addItemAria", { name: item.name })}
           style={{
             flexShrink: 0,
             width: 30,
@@ -115,6 +117,7 @@ export default function GlassChips({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
@@ -151,7 +154,7 @@ export default function GlassChips({
             onClick={() => scrollToCategory(nonEmpty[0].id)}
             style={chipStyle(false, P)}
           >
-            Todo
+            {t("allCategoryFilter")}
           </button>
           {nonEmpty.map((cat) => (
             <button
@@ -204,7 +207,7 @@ export default function GlassChips({
       <button
         type="button"
         onClick={onOpenCart}
-        aria-label={`Ver carrito, ${cartCount} artículos`}
+        aria-label={t("viewCartAriaCount", { count: cartCount })}
         style={{
           position: "relative",
           pointerEvents: "auto",

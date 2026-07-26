@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -27,6 +28,7 @@ function LandscapeTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -54,13 +56,13 @@ function LandscapeTile({
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: P.price }}>
-              {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+              {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
             </span>
             <button
               type="button"
               onClick={() => !soldOut && onItemAdd(item)}
               disabled={soldOut}
-              aria-label={`Agregar ${item.name}`}
+              aria-label={t("addItemAria", { name: item.name })}
               style={{
                 width: 28,
                 height: 28,
@@ -95,6 +97,7 @@ export default function StreamingRows({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
@@ -110,7 +113,7 @@ export default function StreamingRows({
           {business.name}
         </h1>
         <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>
-          {business.category ? `${business.category} · ` : ""}Entrega en tu asiento
+          {business.category ? `${business.category} · ` : ""}{t("streamingRowsTagline")}
         </div>
       </div>
 
@@ -141,7 +144,7 @@ export default function StreamingRows({
             }}
           >
             <span style={{ fontSize: 16, fontWeight: 800, color: P.text }}>{cat.name}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: P.textFaint }}>VER TODO →</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: P.textFaint }}>{t("streamingRowsSeeAll")}</span>
           </button>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px" }}>
             {cat.items.map((item) => (
@@ -167,7 +170,7 @@ export default function StreamingRows({
       <button
         type="button"
         onClick={onOpenCart}
-        aria-label={`Ver carrito, ${cartCount} artículos`}
+        aria-label={t("viewCartAriaCount", { count: cartCount })}
         style={{
           position: "relative",
           pointerEvents: "auto",

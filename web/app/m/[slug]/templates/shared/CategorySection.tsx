@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { IconPlus } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import { buildEffectStyles, type CardEffect } from "./effects";
 import { fmtPrice } from "./format";
@@ -10,21 +11,31 @@ import type { PublicMenuCategory, PublicMenuItem } from "../../page";
 // Item-card rendering system — moved verbatim from MenuPageClient.
 // Reused by every category-based template.
 
-export const BADGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  best_seller: { label: "⭐ Más vendido", bg: "#D97706", color: "#fff" },
-  new: { label: "✨ Nuevo", bg: "#059669", color: "#fff" },
-  hot: { label: "🌶️ Hot", bg: "#DC2626", color: "#fff" },
-};
+// item.badge / dietary_tags are a fixed enum the owner picks from a dropdown —
+// the label TEXT for each option is our chrome, so it's translated (like the
+// legacy size/extras labels in page.tsx). Functions, not module consts, because
+// useTranslations() is a hook and can't run at module scope.
+type BadgeConfig = Record<string, { label: string; bg: string; color: string }>;
 
-export const DIETARY_LABELS: Record<string, string> = {
-  vegetarian: "🌱 Vegetal",
-  vegan: "🌿 Vegano",
-  gluten_free: "🌾 Sin gluten",
-  seafood: "🦐 Mariscos",
-  spicy: "🌶️ Picante",
-  nut_free: "🥜 Sin nueces",
-  dairy_free: "🥛 Sin lácteos",
-};
+export function getBadgeConfig(t: (key: string) => string): BadgeConfig {
+  return {
+    best_seller: { label: t("badgeBestSeller"), bg: "#D97706", color: "#fff" },
+    new: { label: t("badgeNew"), bg: "#059669", color: "#fff" },
+    hot: { label: t("badgeHot"), bg: "#DC2626", color: "#fff" },
+  };
+}
+
+export function getDietaryLabels(t: (key: string) => string): Record<string, string> {
+  return {
+    vegetarian: t("dietaryVegetarian"),
+    vegan: t("dietaryVegan"),
+    gluten_free: t("dietaryGlutenFree"),
+    seafood: t("dietarySeafood"),
+    spicy: t("dietarySpicy"),
+    nut_free: t("dietaryNutFree"),
+    dairy_free: t("dietaryDairyFree"),
+  };
+}
 
 function AddButton({
   hasOptions,
@@ -37,13 +48,14 @@ function AddButton({
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   floating?: boolean;
 }) {
+  const t = useTranslations("menu");
   const label = justAdded ? "✓" : <IconPlus size={18} />;
   const bg = justAdded ? "#059669" : "var(--color-brand)";
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={hasOptions ? "Personalizar" : "Agregar al carrito"}
+      aria-label={hasOptions ? t("customizeAria") : t("addToCartAria")}
       style={{
         width: 30,
         height: 30,
@@ -92,9 +104,10 @@ export function ItemCard({
   onCardMove: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   const hasOptions = item.groups.length > 0;
-  const badge = item.badge ? BADGE_CONFIG[item.badge] : null;
+  const badge = item.badge ? getBadgeConfig(t)[item.badge] : null;
 
   const cardId = `${item.category_id}/${item.id}`;
   const isHovered = !soldOut && hoveredCardId === cardId;
@@ -244,7 +257,7 @@ export function ItemCard({
                 padding: "4px 10px",
               }}
             >
-              Agotado
+              {t("soldOut")}
             </span>
           </div>
         )}
@@ -314,7 +327,7 @@ export function ItemCard({
                     padding: "1px 5px",
                   }}
                 >
-                  {DIETARY_LABELS[tag] ?? tag}
+                  {getDietaryLabels(t)[tag] ?? tag}
                 </span>
               ))}
             </div>

@@ -69,6 +69,114 @@
     "goToPay": "Go to payment",
     "enterTableNumber": "Enter the table number",
     "orderingAtTable": "You're ordering at the table{tableLabel}",
-    "notAtThisTable": "I'm not at that table"
+    "notAtThisTable": "I'm not at that table",
+
+    "soldOut": "Sold out",
+    "addItemAria": "Add {name}",
+    "viewCartAriaCount": "View cart, {count} items",
+    "addToCartAria": "Add to cart",
+    "customizeAria": "Customize",
+    "allCategoryFilter": "All",
+    "dishCountPlural": "{count, plural, one {# DISH} other {# DISHES}}",
+    "addWithPlus": "+ Add",
+
+    "aiSubtitle": "Today · picked for you",
+    "aiAssistantPrompt": "The usual? <b>{name}</b> — or shall we try something different today?",
+    "aiConfirmYes": "Yes — add it +",
+    "aiShowSomethingNew": "Show me something new",
+    "aiRecommendedForYou": "Recommended for you",
+    "aiLiveUpdating": "updates live",
+    "aiMatchScore": "{score}% match",
+    "aiComposerPlaceholder": "Ask me anything… «something hot»",
+    "aiReasons": [
+      "Because you like the classics",
+      "Popular with tastes like yours",
+      "Pairs with what you usually order",
+      "Trending this week",
+      "Recommended by the chef",
+      "Light and fresh, just how you like it",
+      "Popular at this hour"
+    ],
+
+    "cardStackAllSeen": "You've seen them all!",
+    "cardStackHasItems": "You have {count} in your cart.",
+    "cardStackEmptyAlt": "You haven't added anything yet.",
+    "cardStackRestart": "Restart",
+    "cardStackViewCartArrow": "View cart →",
+    "deckButtonPass": "SKIP",
+    "deckButtonAdd": "ADD",
+    "deckButtonSave": "SAVE",
+
+    "gestureEdgeHint": "categories",
+    "gesturePrevCategoryAria": "Previous category",
+    "gestureNextCategoryAria": "Next category",
+    "gesturePrevDishAria": "Previous dish",
+    "gestureNextDishAria": "Next dish",
+    "gestureLegend": "⌃⌄ dishes · ‹› categories",
+    "gestureHoldToAdd": "Hold to add",
+
+    "carouselTagline": "Pick your craving",
+    "carouselSwipeHint": "← Swipe to see all {count} →",
+
+    "leftDrawerOpenCategoriesAria": "Open categories",
+    "leftDrawerViewCartAria": "View cart",
+    "leftDrawerCategoriesHeading": "Categories",
+
+    "masonryQuestion": "What are you craving today?",
+    "masonrySearchPlaceholder": "Search dishes…",
+    "masonryClearAria": "Clear",
+    "masonryResultCount": "{count, plural, one {# result} other {# results}}",
+    "masonryNoResults": "No results.",
+    "masonryCheckout": "Checkout →",
+    "masonryCartItemCount": "{count, plural, one {# item} other {# items}}",
+
+    "categorySidebarCartLabel": "CART · {count}",
+    "iconRailCartLabel": "Cart · {count}",
+
+    "infiniteFeedTagline": "Delivered to your table · most popular",
+    "infiniteFeedCartLabel": "Cart ({count})",
+    "infiniteFeedCartFooter": "{amount} · To your table →",
+
+    "luxuryChapterLabel": "Chapter {number}",
+    "luxuryConciergeCartAria": "Concierge · cart, {count} items",
+
+    "magazineCartLabel": "Basket ({count})",
+    "magazineSectionsCount": "Menu · No. 1 · {count, plural, one {# section} other {# sections}}",
+    "magazineFeaturedLabel": "Chef's specialty",
+    "magazineAddButton": "Add",
+
+    "stickyTabsCartLabel": "View cart · {count}",
+
+    "storeSectionsCartLabel": "Bag · {count}",
+    "storeSectionsGreeting": "Welcome.",
+    "storeSectionsDishCount": "{count, plural, one {# dish} other {# dishes}}",
+
+    "streamingRowsTagline": "Delivered to your seat",
+    "streamingRowsSeeAll": "SEE ALL →",
+
+    "timelineTagline": "Tasting evening · itinerary",
+    "timelineCartLabel": "Your evening · {count, plural, one {# dish} other {# dishes}}",
+
+    "badgeBestSeller": "⭐ Best seller",
+    "badgeNew": "✨ New",
+    "badgeHot": "🌶️ Hot",
+
+    "dietaryVegetarian": "🌱 Vegetarian",
+    "dietaryVegan": "🌿 Vegan",
+    "dietaryGlutenFree": "🌾 Gluten-free",
+    "dietarySeafood": "🦐 Seafood",
+    "dietarySpicy": "🌶️ Spicy",
+    "dietaryNutFree": "🥜 Nut-free",
+    "dietaryDairyFree": "🥛 Dairy-free",
+
+    "removeFavoriteAria": "Remove from favorites",
+    "addFavoriteAria": "Add to favorites",
+
+    "previousAria": "Previous",
+    "nextAria": "Next",
+    "storiesSwipeToAdd": "↑ Swipe to add",
+
+    "emptyMenuTitle": "{bizName} doesn't have a menu yet",
+    "emptyMenuBody": "We're preparing something delicious. Come back soon."
   }
 }

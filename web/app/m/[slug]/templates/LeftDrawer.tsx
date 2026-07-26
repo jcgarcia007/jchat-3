@@ -3,6 +3,7 @@ import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
@@ -28,6 +29,7 @@ export default function LeftDrawer({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const CREAM = P.bg;
   const PANEL = "#5E1A0E"; // bespoke chrome: dark-brown drawer (not a semantic field)
@@ -61,7 +63,7 @@ export default function LeftDrawer({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Abrir categorías"
+          aria-label={t("leftDrawerOpenCategoriesAria")}
           style={{
             display: "flex",
             alignItems: "center",
@@ -92,7 +94,7 @@ export default function LeftDrawer({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label="Ver carrito"
+          aria-label={t("leftDrawerViewCartAria")}
           style={{
             position: "relative",
             width: 38,
@@ -182,7 +184,7 @@ export default function LeftDrawer({
             {business.name}
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
-            Categorías
+            {t("leftDrawerCategoriesHeading")}
           </div>
         </div>
 

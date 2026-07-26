@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -25,6 +26,7 @@ export default function Stories({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [current, setCurrent] = useState(0);
@@ -64,8 +66,8 @@ export default function Stories({
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, transparent 26%, transparent 50%, rgba(0,0,0,0.88) 100%)" }} />
 
       {/* Tap zones */}
-      <button type="button" aria-label="Anterior" onClick={prev} style={{ position: "absolute", left: 0, top: 130, bottom: 200, width: "35%", background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }} />
-      <button type="button" aria-label="Siguiente" onClick={next} style={{ position: "absolute", right: 0, top: 130, bottom: 200, width: "65%", background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }} />
+      <button type="button" aria-label={t("previousAria")} onClick={prev} style={{ position: "absolute", left: 0, top: 130, bottom: 200, width: "35%", background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }} />
+      <button type="button" aria-label={t("nextAria")} onClick={next} style={{ position: "absolute", right: 0, top: 130, bottom: 200, width: "65%", background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }} />
 
       {/* Progress segments */}
       <div style={{ position: "absolute", top: 10, left: 12, right: 12, zIndex: 10, display: "flex", gap: 3 }}>
@@ -116,7 +118,7 @@ export default function Stories({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.14)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
           <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
@@ -131,11 +133,11 @@ export default function Stories({
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
           <span style={{ fontSize: 22, fontWeight: 800, color: P.price }}>
-            {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+            {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-          <button type="button" onClick={prev} aria-label="Anterior" style={navBtn}>‹</button>
+          <button type="button" onClick={prev} aria-label={t("previousAria")} style={navBtn}>‹</button>
           <button
             type="button"
             onClick={() => !soldOut && onItemAdd(item)}
@@ -152,9 +154,9 @@ export default function Stories({
               cursor: soldOut ? "not-allowed" : "pointer",
             }}
           >
-            ↑ Deslizar para agregar
+            {t("storiesSwipeToAdd")}
           </button>
-          <button type="button" onClick={next} aria-label="Siguiente" style={navBtn}>›</button>
+          <button type="button" onClick={next} aria-label={t("nextAria")} style={navBtn}>›</button>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -27,6 +28,7 @@ function MasonryCard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -50,13 +52,13 @@ function MasonryCard({
         <div style={{ fontSize: 13, fontWeight: 600, color: P.text, lineHeight: 1.3 }}>{item.name}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 800, color: P.price }}>
-            {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+            {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
           </span>
           <button
             type="button"
             onClick={() => !soldOut && onItemAdd(item)}
             disabled={soldOut}
-            aria-label={`Agregar ${item.name}`}
+            aria-label={t("addItemAria", { name: item.name })}
             style={{
               width: 28,
               height: 28,
@@ -90,6 +92,7 @@ export default function MasonrySearch({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -116,7 +119,7 @@ export default function MasonrySearch({
             {business.name}
           </div>
           <h1 style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.5px", color: P.text, margin: 0, lineHeight: 1.15 }}>
-            ¿Qué se te antoja hoy?
+            {t("masonryQuestion")}
           </h1>
         </div>
         <div
@@ -155,11 +158,11 @@ export default function MasonrySearch({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar platillos…"
+          placeholder={t("masonrySearchPlaceholder")}
           style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: P.text, fontSize: 14 }}
         />
         {query && (
-          <button type="button" onClick={() => setQuery("")} aria-label="Limpiar" style={{ background: "none", border: "none", color: P.textFaint, cursor: "pointer", fontSize: 16 }}>
+          <button type="button" onClick={() => setQuery("")} aria-label={t("masonryClearAria")} style={{ background: "none", border: "none", color: P.textFaint, cursor: "pointer", fontSize: 16 }}>
             ×
           </button>
         )}
@@ -167,7 +170,7 @@ export default function MasonrySearch({
 
       {/* Category filter tokens */}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", marginTop: 12 }}>
-        <FilterToken label="Todo" active={selectedCategory === null} onClick={() => setSelectedCategory(null)} />
+        <FilterToken label={t("allCategoryFilter")} active={selectedCategory === null} onClick={() => setSelectedCategory(null)} />
         {nonEmpty.map((cat) => (
           <FilterToken
             key={cat.id}
@@ -179,13 +182,13 @@ export default function MasonrySearch({
       </div>
 
       <div style={{ fontSize: 12, color: P.textFaint, margin: "12px 0 14px" }}>
-        {results.length} {results.length === 1 ? "resultado" : "resultados"}
+        {t("masonryResultCount", { count: results.length })}
       </div>
 
       {/* Masonry wall */}
       {results.length === 0 ? (
         <div style={{ textAlign: "center", padding: "40px 0", color: P.textFaint, fontSize: 14 }}>
-          Sin resultados.
+          {t("masonryNoResults")}
         </div>
       ) : (
         <div style={{ columns: 2, columnGap: 12 }}>
@@ -217,7 +220,7 @@ export default function MasonrySearch({
           }}
         >
           <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
-<IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />{cartCount} {cartCount === 1 ? "artículo" : "artículos"} · {fmtPrice(cartTotal)}
+<IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />{t("masonryCartItemCount", { count: cartCount })} · {fmtPrice(cartTotal)}
           </span>
           <button
             type="button"
@@ -234,7 +237,7 @@ export default function MasonrySearch({
               cursor: "pointer",
             }}
           >
-            Checkout →
+            {t("masonryCheckout")}
           </button>
         </div>
       )}

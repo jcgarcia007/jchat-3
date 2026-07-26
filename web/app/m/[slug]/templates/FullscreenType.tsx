@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -27,6 +28,7 @@ function CourseTile({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -40,13 +42,13 @@ function CourseTile({
       <div style={{ fontSize: 13, fontWeight: 600, color: P.text, marginTop: 8, lineHeight: 1.25 }}>{item.name}</div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: P.accent }}>
-          {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+          {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
         </span>
         <button
           type="button"
           onClick={() => !soldOut && onItemAdd(item)}
           disabled={soldOut}
-          aria-label={`Agregar ${item.name}`}
+          aria-label={t("addItemAria", { name: item.name })}
           style={{
             width: 26,
             height: 26,
@@ -80,6 +82,7 @@ export default function FullscreenType({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const nonEmpty = categories.filter((c) => c.items.length > 0);
   const [expanded, setExpanded] = useState<string | null>(nonEmpty[0]?.id ?? null);
@@ -98,7 +101,7 @@ export default function FullscreenType({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -143,7 +146,7 @@ export default function FullscreenType({
               <span style={{ fontSize: 11, color: P.accent, flexShrink: 0 }}>{NUM(i)}</span>
               <span style={{ fontSize: 34, fontWeight: 500, color: P.text, lineHeight: 1 }}>{cat.name}</span>
               <span style={{ marginLeft: "auto", fontSize: 10, letterSpacing: "2px", color: P.textFaint, flexShrink: 0, alignSelf: "center" }}>
-                {cat.items.length} {cat.items.length === 1 ? "PLATO" : "PLATOS"}
+                {t("dishCountPlural", { count: cat.items.length })}
               </span>
             </button>
 

@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -28,6 +29,7 @@ export default function StickyTabs({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
   const nonEmpty = categories.filter((c) => c.items.length > 0);
@@ -154,7 +156,7 @@ export default function StickyTabs({
           boxShadow: "0 12px 28px rgba(0,0,0,0.4)",
         }}
       >
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.text }}><IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />Ver carrito · {cartCount}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: P.text }}><IconShoppingCart size={15} style={{ verticalAlign: "-3px", marginRight: 5 }} />{t("stickyTabsCartLabel", { count: cartCount })}</span>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: P.price }}>{fmtPrice(cartTotal)}</span>
       </button>
     </div>

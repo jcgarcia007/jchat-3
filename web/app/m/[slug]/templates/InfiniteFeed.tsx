@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
@@ -27,6 +28,7 @@ function Billboard({
   item: PublicMenuItem;
   onItemAdd: (item: PublicMenuItem) => void;
 }) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   return (
@@ -82,13 +84,13 @@ function Billboard({
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
           <span style={{ fontSize: 18, fontWeight: 800, color: P.accent }}>
-            {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+            {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
           </span>
           <button
             type="button"
             onClick={() => !soldOut && onItemAdd(item)}
             disabled={soldOut}
-            aria-label={`Agregar ${item.name}`}
+            aria-label={t("addItemAria", { name: item.name })}
             style={{
               width: 48,
               height: 48,
@@ -123,6 +125,7 @@ export default function InfiniteFeed({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
 
@@ -138,7 +141,7 @@ export default function InfiniteFeed({
           {business.name}
         </h1>
         <div style={{ fontSize: 13, color: P.textMuted, marginTop: 3 }}>
-          Entrega a tu mesa · lo más pedido
+          {t("infiniteFeedTagline")}
         </div>
       </div>
 
@@ -180,8 +183,8 @@ export default function InfiniteFeed({
             boxShadow: "0 10px 26px rgba(255,214,10,0.35)",
           }}
         >
-          <span style={{ fontSize: 14, fontWeight: 800 }}><IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />Carrito ({cartCount})</span>
-          <span style={{ fontSize: 14, fontWeight: 800 }}>{fmtPrice(cartTotal)} · A tu mesa →</span>
+          <span style={{ fontSize: 14, fontWeight: 800 }}><IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />{t("infiniteFeedCartLabel", { count: cartCount })}</span>
+          <span style={{ fontSize: 14, fontWeight: 800 }}>{t("infiniteFeedCartFooter", { amount: fmtPrice(cartTotal) })}</span>
         </button>
       </div>
     </div>

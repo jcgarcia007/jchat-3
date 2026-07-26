@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -25,6 +26,7 @@ export default function CardStack({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
   const [index, setIndex] = useState(0);
@@ -49,7 +51,7 @@ export default function CardStack({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1px solid ${P.border}`, background: P.surfaceElevated, color: P.text, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
         >
           <IconShoppingCart size={15} style={{ verticalAlign: "-2px", marginRight: 3 }} />{cartCount}
@@ -74,17 +76,17 @@ export default function CardStack({
       {done ? (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: P.text }}>¡Los viste todos!</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: P.text }}>{t("cardStackAllSeen")}</div>
           <div style={{ fontSize: 13, color: P.textMuted, marginTop: 6 }}>
-            {cartCount > 0 ? `Tienes ${cartCount} en tu carrito.` : "No agregaste nada aún."}
+            {cartCount > 0 ? t("cardStackHasItems", { count: cartCount }) : t("cardStackEmptyAlt")}
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
             <button type="button" onClick={() => setIndex(0)} style={{ padding: "11px 20px", borderRadius: 999, border: `1px solid ${P.border}`, background: "transparent", color: P.text, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              ↺ Reiniciar
+              ↺ {t("cardStackRestart")}
             </button>
             {cartCount > 0 && (
               <button type="button" onClick={onOpenCart} style={{ padding: "11px 20px", borderRadius: 999, border: "none", background: P.accent, color: P.accentText, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Ver carrito →
+                {t("cardStackViewCartArrow")}
               </button>
             )}
           </div>
@@ -136,7 +138,7 @@ export default function CardStack({
                         </div>
                       )}
                       <div style={{ fontSize: 20, fontWeight: 800, color: P.price, marginTop: 10 }}>
-                        {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+                        {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
                       </div>
                     </div>
                   </div>
@@ -147,9 +149,9 @@ export default function CardStack({
 
           {/* Decision buttons */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 28, marginTop: 26 }}>
-            <DeckButton onClick={advance} label="PASAR" glyph="✕" color={P.textMuted} border={P.border} />
-            <DeckButton onClick={add} label="AGREGAR" glyph="+" color="#fff" bg={P.accent} border={P.accent} big />
-            <DeckButton onClick={advance} label="GUARDAR" glyph="♡" color={P.price} border={P.price} />
+            <DeckButton onClick={advance} label={t("deckButtonPass")} glyph="✕" color={P.textMuted} border={P.border} />
+            <DeckButton onClick={add} label={t("deckButtonAdd")} glyph="+" color="#fff" bg={P.accent} border={P.accent} big />
+            <DeckButton onClick={advance} label={t("deckButtonSave")} glyph="♡" color={P.price} border={P.price} />
           </div>
         </>
       )}

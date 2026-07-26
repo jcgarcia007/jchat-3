@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -38,6 +39,7 @@ export default function Timeline({
   cartTotal,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const items = categories.flatMap((c) => c.items);
 
@@ -53,7 +55,7 @@ export default function Timeline({
           {business.name}
         </h1>
         <div style={{ fontSize: 12.5, color: P.textMuted, marginTop: 3 }}>
-          Velada de degustación · itinerario
+          {t("timelineTagline")}
         </div>
       </div>
 
@@ -76,7 +78,7 @@ export default function Timeline({
         }}
       >
         <span style={{ fontSize: 12.5, fontWeight: 700, color: P.text }}>
-          <IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />Tu velada · {cartCount} {cartCount === 1 ? "platillo" : "platillos"}
+          <IconShoppingCart size={16} style={{ verticalAlign: "-3px", marginRight: 5 }} />{t("timelineCartLabel", { count: cartCount })}
         </span>
         <span style={{ fontSize: 12.5, fontWeight: 800, color: P.accent }}>{fmtPrice(cartTotal)} →</span>
       </button>
@@ -156,7 +158,7 @@ export default function Timeline({
                   )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: P.accent }}>
-                      {soldOut ? "Agotado" : fmtPrice(item.price_cents)}
+                      {soldOut ? t("soldOut") : fmtPrice(item.price_cents)}
                     </span>
                     <button
                       type="button"
@@ -173,7 +175,7 @@ export default function Timeline({
                         cursor: soldOut ? "not-allowed" : "pointer",
                       }}
                     >
-                      + Agregar
+                      {t("addWithPlus")}
                     </button>
                   </div>
                 </div>

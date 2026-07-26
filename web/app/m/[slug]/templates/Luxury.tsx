@@ -2,6 +2,7 @@
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
@@ -28,6 +29,7 @@ export default function Luxury({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const GOLD = P.accent;
   const items = categories.flatMap((c) => c.items);
@@ -106,7 +108,7 @@ export default function Luxury({
           </div>
 
           <div style={{ fontSize: 9, letterSpacing: "3px", color: P.textFaint, marginTop: 22, textTransform: "uppercase" }}>
-            Capítulo {String(active + 1).padStart(2, "0")}
+            {t("luxuryChapterLabel", { number: String(active + 1).padStart(2, "0") })}
           </div>
           <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 27, fontWeight: 500, color: P.text, marginTop: 8, lineHeight: 1.15 }}>
             {hero.name}
@@ -121,7 +123,7 @@ export default function Luxury({
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18, width: "100%", maxWidth: 220 }}>
             <div style={{ flex: 1, height: 1, background: "rgba(201,169,106,0.35)" }} />
             <span style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: GOLD }}>
-              {heroSoldOut ? "Agotado" : fmtPrice(hero.price_cents)}
+              {heroSoldOut ? t("soldOut") : fmtPrice(hero.price_cents)}
             </span>
             <div style={{ flex: 1, height: 1, background: "rgba(201,169,106,0.35)" }} />
           </div>
@@ -144,7 +146,7 @@ export default function Luxury({
               cursor: heroSoldOut ? "not-allowed" : "pointer",
             }}
           >
-            + Agregar
+            {t("addWithPlus")}
           </button>
         </div>
       </div>
@@ -191,7 +193,7 @@ export default function Luxury({
       <button
         type="button"
         onClick={onOpenCart}
-        aria-label={`Concierge · carrito, ${cartCount} artículos`}
+        aria-label={t("luxuryConciergeCartAria", { count: cartCount })}
         style={{
           position: "relative",
           pointerEvents: "auto",

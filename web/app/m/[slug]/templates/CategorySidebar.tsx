@@ -1,6 +1,7 @@
 "use client";
 import { IconShoppingCart } from "@tabler/icons-react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import type { MenuTemplateProps } from "./types";
@@ -29,6 +30,7 @@ export default function CategorySidebar({
   cartCount,
   onOpenCart,
 }: MenuTemplateProps) {
+  const t = useTranslations("menu");
   const P = useMenuPalette();
   const ROW_PALETTE = { card: P.surface, border: P.border, name: P.text, muted: P.textFaint, price: P.price, accent: P.accent };
   const nonEmpty = categories.filter((c) => c.items.length > 0);
@@ -164,7 +166,7 @@ export default function CategorySidebar({
         <button
           type="button"
           onClick={onOpenCart}
-          aria-label={`Ver carrito, ${cartCount} artículos`}
+          aria-label={t("viewCartAriaCount", { count: cartCount })}
           style={{
             position: "fixed",
             top: "50%",
@@ -184,7 +186,7 @@ export default function CategorySidebar({
             boxShadow: "-6px 0 18px rgba(0,0,0,0.35)",
           }}
         >
-          <IconShoppingCart size={15} style={{ marginBottom: 6 }} />CARRITO · {cartCount}
+          <IconShoppingCart size={15} style={{ marginBottom: 6 }} />{t("categorySidebarCartLabel", { count: cartCount })}
         </button>,
         document.body,
       )}
