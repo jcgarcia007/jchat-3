@@ -21,10 +21,11 @@ const SUPABASE_WS = "wss://klfsgcfoahdtkojyqspd.supabase.co";
 // true  = Report-Only: observa y REPORTA violaciones (a /api/csp-report), NO bloquea. Úsalo para VALIDAR.
 // false = enforce: bloquea de verdad. Poner en false SOLO cuando, tras recorrer los flujos en un preview,
 //         /api/csp-report NO haya logueado ninguna violación legítima en los logs de Vercel.
-const CSP_REPORT_ONLY = true;
+const CSP_REPORT_ONLY = false;
 
-// CSP como allowlist. El MODO lo controla `CSP_REPORT_ONLY` (abajo): hoy en Report-Only para VALIDAR con
-// datos reales antes de enforzar. Las violaciones se reportan a /api/csp-report → visibles en logs de Vercel.
+// CSP como allowlist. El MODO lo controla `CSP_REPORT_ONLY` (abajo): en ENFORCE, validado (2026-07-26) —
+// se ejerció producción (login + 18 páginas del dashboard, incluidas payments y disputes con Stripe) en
+// Report-Only y /api/csp-report no registró ninguna violación. El endpoint sigue vigilando en enforce.
 // Historial (hallazgo #8): un flip prematuro a enforce llegó a prod vía auto-deploy y rompió cosas; por eso
 // ahora se valida en Report-Only y se pasa a enforce con un solo toggle, no a mano en el key. Incluye:
 //   · hCaptcha (D-38): script/style/frame/connect a hcaptcha.com y *.hcaptcha.com.
