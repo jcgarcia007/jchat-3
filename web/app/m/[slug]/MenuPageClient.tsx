@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
 import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
@@ -67,6 +68,7 @@ function calcLineFromGroups(base: number, groups: GroupSelection[], qty: number)
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function BusinessHeader({ biz }: { biz: PublicBusiness }) {
+  const t = useTranslations("menu");
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
       {/* Cover */}
@@ -80,7 +82,7 @@ function BusinessHeader({ biz }: { biz: PublicBusiness }) {
           position: "relative",
         }}
         role="img"
-        aria-label={`Portada de ${biz.name}`}
+        aria-label={t("coverAlt", { name: biz.name })}
       >
         <div
           style={{
@@ -139,7 +141,7 @@ function BusinessHeader({ biz }: { biz: PublicBusiness }) {
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ color: "var(--color-gold)", fontSize: 13 }}>★</span>
             <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {biz.category ?? "Restaurante"}
+              {biz.category ?? t("defaultCategory")}
             </span>
           </div>
         </div>
@@ -189,6 +191,7 @@ function CustomizerSheet({
     notes?: string
   ) => void;
 }) {
+  const t = useTranslations("menu");
   // Pre-select defaults: single groups get default index (hielo->2, picante->1, rest->0)
   const [singleSel, setSingleSel] = useState<Record<string, ModifierChoice | null>>(() => {
     const init: Record<string, ModifierChoice | null> = {};
@@ -436,12 +439,12 @@ function CustomizerSheet({
                   {group.label}
                   {group.type === "multi" && group.max_select < group.choices.length && (
                     <span style={{ fontSize: 11, color: palette.textFaint, textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
-                      · hasta {group.max_select}
+                      · {t("upTo", { max: group.max_select })}
                     </span>
                   )}
                   {group.type === "multi" && group.min_select > 0 && (
                     <span style={{ fontSize: 11, color: palette.danger, textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
-                      · mín {group.min_select}
+                      · {t("minRequired", { min: group.min_select })}
                     </span>
                   )}
                 </div>
@@ -548,12 +551,12 @@ function CustomizerSheet({
           {/* Notes */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-              Notas para la cocina
+              {t("kitchenNotesLabel")}
             </div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Sin cebolla, extra salsa..."
+              placeholder={t("kitchenNotesPlaceholder")}
               rows={2}
               maxLength={200}
               style={{ ...sheetInputStyle, resize: "none" }}
@@ -655,7 +658,7 @@ function CustomizerSheet({
               justifyContent: "space-between",
             }}
           >
-            <span>Agregar al pedido</span>
+            <span>{t("addToOrder")}</span>
             <span>{fmtPrice(totalCents)}</span>
           </button>
         </div>
@@ -681,6 +684,7 @@ function CartSheet({
   onRemove: (cartId: string) => void;
   onContinue: () => void;
 }) {
+  const t = useTranslations("menu");
   const subtotal = cartItems.reduce((s, i) => s + i.lineTotalCents, 0);
 
   return (
@@ -712,7 +716,7 @@ function CartSheet({
           <h2
             style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0, display: "flex", alignItems: "center", gap: 8 }}
           >
-            <IconShoppingCart size={20} style={{ color: palette.accent }} />Tu carrito
+            <IconShoppingCart size={20} style={{ color: palette.accent }} />{t("cartTitle")}
           </h2>
           <button
             onClick={onClose}
@@ -740,7 +744,7 @@ function CartSheet({
               }}
             >
               <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><IconShoppingCart size={40} style={{ color: palette.textFaint }} /></div>
-              Tu carrito está vacío
+              {t("cartEmpty")}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -886,7 +890,7 @@ function CartSheet({
             }}
           >
             <span style={{ fontSize: 14, color: palette.textMuted, fontWeight: 500 }}>
-              Subtotal
+              {t("subtotal")}
             </span>
             <span style={{ fontSize: 18, fontWeight: 700, color: palette.text }}>
               {fmtPrice(subtotal)}
@@ -910,7 +914,7 @@ function CartSheet({
               cursor: cartItems.length > 0 ? "pointer" : "not-allowed",
             }}
           >
-            Continuar
+            {t("continue")}
           </button>
         </div>
       </div>
@@ -935,6 +939,7 @@ function PickupSheet({
   onBack: () => void;
   onConfirm: (type: PickupType, tableNumber: string, name: string) => void;
 }) {
+  const t = useTranslations("menu");
   const [pickupType, setPickupType] = useState<PickupType>("table");
   const [tableNumber, setTableNumber] = useState(initialTableNumber);
   const [name, setName] = useState(initialName);
@@ -990,7 +995,7 @@ function PickupSheet({
           <h2
             style={{ fontSize: 17, fontWeight: 700, color: palette.text, margin: 0 }}
           >
-            ¿Cómo quieres recibir tu pedido?
+            {t("pickupQuestion")}
           </h2>
         </div>
 
@@ -1000,13 +1005,13 @@ function PickupSheet({
               [
                 {
                   type: "table" as PickupType,
-                  label: "🪑 En mi mesa",
-                  desc: "Te lo llevamos a tu mesa",
+                  label: t("pickupTableLabel"),
+                  desc: t("pickupTableDesc"),
                 },
                 {
                   type: "counter" as PickupType,
-                  label: "🍽️ En la barra",
-                  desc: "Recoge en el counter cuando esté listo",
+                  label: t("pickupCounterLabel"),
+                  desc: t("pickupCounterDesc"),
                 },
               ] as const
             ).map(({ type, label, desc }) => {
@@ -1054,12 +1059,12 @@ function PickupSheet({
                   marginBottom: 8,
                 }}
               >
-                Número de mesa
+                {t("tableNumberLabel")}
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="Ej: 12"
+                placeholder={t("tableNumberPlaceholder")}
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
                 style={{
@@ -1087,12 +1092,12 @@ function PickupSheet({
                 marginBottom: 8,
               }}
             >
-              Nombre (opcional)
+              {t("nameOptionalLabel")}
             </label>
             <input
               type="text"
               maxLength={60}
-              placeholder="Tu nombre"
+              placeholder={t("namePlaceholder")}
               value={name}
               onChange={(e) => { nameTouchedRef.current = true; setName(e.target.value); }}
               style={{
@@ -1127,7 +1132,7 @@ function PickupSheet({
                 marginBottom: 10,
               }}
             >
-              Resumen del pedido
+              {t("orderSummary")}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {cartItems.map((ci) => (
@@ -1167,7 +1172,7 @@ function PickupSheet({
               }}
             >
               <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>
-                Total
+                {t("total")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: palette.price }}>
                 {fmtPrice(subtotal)}
@@ -1200,7 +1205,7 @@ function PickupSheet({
               cursor: canConfirm ? "pointer" : "not-allowed",
             }}
           >
-            Ir a pagar
+            {t("goToPay")}
           </button>
           {pickupType === "table" && !tableNumber.trim() && (
             <p
@@ -1211,7 +1216,7 @@ function PickupSheet({
                 margin: "8px 0 0",
               }}
             >
-              Ingresa el número de mesa
+              {t("enterTableNumber")}
             </p>
           )}
         </div>
@@ -1293,6 +1298,7 @@ function CartFAB({
   total: number;
   onClick: () => void;
 }) {
+  const t = useTranslations("menu");
   if (count === 0) return null;
 
   return (
@@ -1332,7 +1338,7 @@ function CartFAB({
         {count}
       </span>
       <IconShoppingCart size={20} style={{ marginRight: -4 }} />
-      Ver carrito · {fmtPrice(total)}
+      {t("viewCart", { amount: fmtPrice(total) })}
     </button>
   );
 }
@@ -1346,6 +1352,7 @@ export default function MenuPageClient({
   business: PublicBusiness;
   categories: PublicMenuCategory[];
 }) {
+  const t = useTranslations("menu");
   const cardEffect = business.menu_card_effect ?? "lift";
   // Resolve the active palette: a business-chosen custom palette (from the
   // 40-palette catalog) overrides the template's original board palette;
@@ -1628,7 +1635,7 @@ export default function MenuPageClient({
           }}
         >
           <span>
-            Estás pidiendo en la mesa{tableCtx.tableLabel ? ` ${tableCtx.tableLabel}` : ""}
+            {t("orderingAtTable", { tableLabel: tableCtx.tableLabel ? ` ${tableCtx.tableLabel}` : "" })}
           </span>
           <button
             type="button"
@@ -1645,7 +1652,7 @@ export default function MenuPageClient({
               whiteSpace: "nowrap",
             }}
           >
-            No estoy en esa mesa
+            {t("notAtThisTable")}
           </button>
         </div>
       )}

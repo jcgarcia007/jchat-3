@@ -13,6 +13,7 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
@@ -119,6 +120,7 @@ async function getMenuData(slug: string): Promise<{
 } | null> {
   if (!isSupabaseConfigured) return null;
 
+  const t = await getTranslations("menu");
   const supabase = await createSupabaseServerClient();
 
   const { data: biz, error: bizErr } = await supabase
@@ -251,7 +253,7 @@ async function getMenuData(slug: string): Promise<{
     if (opts.sizes.length > 0) {
       groups.push({
         id: "legacy-size",
-        label: "Tamaño",
+        label: t("legacySizeLabel"),
         type: "single",
         min_select: 1,
         max_select: 1,
@@ -261,7 +263,7 @@ async function getMenuData(slug: string): Promise<{
     if (opts.extras.length > 0) {
       groups.push({
         id: "legacy-extras",
-        label: "Extras",
+        label: t("legacyExtrasLabel"),
         type: "multi",
         min_select: 0,
         max_select: opts.extras.length,
@@ -313,12 +315,13 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const data = await getMenuData(slug);
-  if (!data) return { title: "Menú no encontrado — JChat" };
+  const t = await getTranslations("menu");
+  if (!data) return { title: t("notFoundTitle") };
 
   const { business: biz } = data;
   const title = `Menú · ${biz.name}`;
   const description =
-    biz.description ?? `Ver el menú de ${biz.name} y hacer tu pedido.`;
+    biz.description ?? t("defaultDescription", { name: biz.name });
   return {
     title,
     description,
@@ -349,6 +352,7 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
   if (!data && isSupabaseConfigured) notFound();
 
   if (!data) {
+    const t = await getTranslations("menu");
     return (
       <main
         data-theme="dark"
@@ -362,7 +366,7 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
         }}
       >
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-          Configura Supabase para ver el menú.
+          {t("supabaseNotConfigured")}
         </p>
       </main>
     );
