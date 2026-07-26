@@ -19,6 +19,7 @@ import {
   IconMessageCircle2,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type Lang = "es" | "en";
 
@@ -208,6 +209,10 @@ export default function WelcomePage() {
       >
         {t.later}
       </button>
+
+      <div style={{ marginTop: 14 }}>
+        <LanguageSwitcher />
+      </div>
     </div>
   );
 }
