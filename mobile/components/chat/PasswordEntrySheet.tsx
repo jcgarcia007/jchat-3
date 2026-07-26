@@ -46,9 +46,7 @@ import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import {
-  clearAttempts,
   getLockState,
-  recordFailure,
   verifyRoomPassword,
   LOCKOUT_MS,
   MAX_ATTEMPTS,
@@ -179,8 +177,7 @@ export function PasswordEntrySheet({
       const result = await verifyRoomPassword(roomId, password.trim());
 
       if (result.ok) {
-        // Clear the attempt record from the DB
-        await clearAttempts(roomId, user.id);
+        // The RPC already deleted the room_access_attempts row server-side.
         setPassword('');
         onSuccess();
         return;
@@ -207,8 +204,9 @@ export function PasswordEntrySheet({
         return;
       }
 
-      // Wrong password — record the failure and update lock state.
-      const nextState = await recordFailure(roomId, user.id);
+      // Wrong password — the RPC already recorded the failure server-side;
+      // read back the state it just wrote.
+      const nextState = await getLockState(roomId, user.id);
 
       if (nextState.locked && nextState.lockedUntil) {
         setLocked(true);
