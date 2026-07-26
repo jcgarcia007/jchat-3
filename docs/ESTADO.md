@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-26
 Fuente de verdad de "cómo está la app HOY". La bitácora histórica (sesión por sesión) vive en
-`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-76).
+`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-77).
 
 Convención: ✅ verificado contra código/BD · 📼 según bitácora, sin reconfirmar · ⚠️ riesgo · 🔴 bloqueante
 
@@ -19,7 +19,7 @@ Mercados: **USA en el lanzamiento; República Dominicana diferida a una fase fin
 | | |
 |---|---|
 | Tablas (public) | 60 |
-| Última migración | 102 (`102_pinned_messages_update_allowlist`) |
+| Última migración | 110 (`110_reconcile_business_limit_trigger`) · 114 aplicadas en BD |
 | Usuarios | 67 (regular + 3 pro + 1 business) |
 | Negocios | 18 — **solo 1 con Stripe conectado** |
 | Pedidos | 17, todos pagados |
@@ -94,11 +94,20 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 
 - ✅ **D-54 — barrido de column-grants COMPLETO** (D-75, migraciones 089–102, 2026-07-25): las ~44
   tablas con grant de escritura de tabla completa a `authenticated`/`anon` quedaron con allow-lists de
-  columnas verificados contra el código; escritura de `anon` en todo `public` = 0. Queda solo
-  `room_access_attempts` (🔴 fix de arquitectura: lockout de contraseña de sala auto-reseteable) y tres
-  flujos rotos por falta de política RLS de UPDATE (invitación de empleado, dismiss-report), en arreglo
-  aparte.
-- 🟠 **Selector global de negocio** en el dashboard: sin él, el plan Pro (10 negocios) no es usable.
+  columnas verificados contra el código; escritura de `anon` en todo `public` = 0. **Cerrado del todo
+  (2026-07-26):** `room_access_attempts` ya NO es auto-reseteable (código `9cacf79` + migr `103`: el
+  cliente solo lee su fila; la RPC `verify_room_password` SECURITY DEFINER gobierna el lockout
+  server-side y hashea la contraseña de sala). Los dos flujos que quedaron sin política RLS de UPDATE —
+  invitación de empleado y dismiss-report — están arreglados (política + grant de `status`; reconciliados
+  en git como migr `104`/`105`). Migraciones en disco hasta la 110 (103 = lockdown; 104–110 =
+  reconciliación BD↔git).
+- ✅ **Selector global de negocio — YA CONSTRUIDO** (verificado en código 2026-07-26):
+  `resolveActiveBusiness()` (web/lib/business.ts) lee `users.active_business_id` con fallback al negocio
+  más reciente; hay switcher funcional (en el `TopBar` del shell actual, y un `BusinessSwitcher` en el
+  shell nuevo "4A" tras el flag `NEXT_PUBLIC_NEW_DASHBOARD`). Pendiente para darlo por cerrado: confirmar
+  qué shell está en producción (env de Vercel) y, si es el 4A, cerrar un hueco de propagación (el
+  contenido de página no se re-resuelve al cambiar sin recargar); + un test en vivo con cuenta de 2+
+  negocios.
 - 🟠 **i18n EN/ES completo**: el bloque más grande. La base está puesta (welcome bilingüe); falta el
   barrido de dashboard, móvil, super-admin y correos.
 - 🟠 **Tres features Stage-3 a medio construir (UI por delante del backend) — construir o gatear antes de
@@ -106,6 +115,14 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   super-admin** (Task 3.6; hoy neutralizado, no llama a Stripe), (3) **gestión de equipo de admins** (Task
   3.13; add/remove sin RPC). Ninguna hace daño hoy (inertes/neutralizadas); todas necesitan backend
   server-side/RPC con guardas, NO parches de grants.
+- ⚠️ **CSP en ENFORCE, sin validar** (verificado en `web/next.config.ts` 2026-07-26): el header se envía
+  como `Content-Security-Policy` (modo enforce), NO Report-Only — los comentarios del archivo dicen
+  "Report-Only" por un revert documentado que nunca cambió el `key`, y `middleware.ts` no lo sobreescribe.
+  El allow-list está bien calibrado (Supabase, Maps, Stripe, hCaptcha, fuentes self-hosted), pero el
+  walkthrough de validación en un preview NO se hizo y hay historial de que un enforce previo rompió prod.
+  Antes de tráfico real: recorrer los flujos (login, mapa, checkout Stripe, hCaptcha) con la consola
+  abierta en un preview; si se prefiere diferir, cambiar el `key` a `Content-Security-Policy-Report-Only`.
+  Las violaciones CSP son client-side → NO aparecen en los logs de Vercel.
 
 ---
 

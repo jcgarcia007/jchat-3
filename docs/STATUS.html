@@ -56,6 +56,7 @@
   .ic-wip{background:rgba(245,158,11,.2);color:#FBbf47}
   .ic-no{background:rgba(139,146,165,.2);color:#A9B3C2}
   .ic-x{background:rgba(255,59,48,.2);color:#FF6B62}
+  .ic-log{background:rgba(139,92,246,.2);color:#B79CFF}
   ul.items li b{color:var(--text)}
   ul.items li small{color:var(--faint);font-size:12.5px}
 
@@ -82,6 +83,7 @@
   .footer{text-align:center;color:var(--faint);font-size:12.5px;margin-top:50px;padding-top:20px;border-top:1px solid var(--border)}
   .barwrap{background:var(--surface2);border-radius:10px;height:10px;overflow:hidden;margin-top:4px}
   .bar{height:100%;border-radius:10px}
+  code{background:var(--surface2);padding:1px 6px;border-radius:5px;font-size:12.5px;color:#9FD0FF}
 </style>
 </head>
 <body>
@@ -91,26 +93,26 @@
     <div class="logo">JChat 3.0</div>
     <h1>Status Report</h1>
     <div class="sub">Plataforma social basada en ubicación + comercio ligero. Chats de proximidad atados a lugares físicos, pedidos en el venue vía Stripe, mapa como interfaz, y suscripciones de negocio por tiers.</div>
-    <div class="updated">📅 Actualizado: 6 julio 2026 &nbsp;·&nbsp; Rama: main &nbsp;·&nbsp; Último commit auditado: 67de6a2</div>
+    <div class="updated">📅 Actualizado: 26 julio 2026 &nbsp;·&nbsp; Rama: main &nbsp;·&nbsp; Último commit: <code style="background:rgba(255,255,255,.15);color:#fff">b221930</code></div>
   </div>
 </header>
 
 <div class="wrap">
 
   <div class="metrics">
-    <div class="metric"><div class="n">21</div><div class="l">Plantillas de menú</div></div>
-    <div class="metric"><div class="n">40</div><div class="l">Paletas de color</div></div>
-    <div class="metric"><div class="n">3</div><div class="l">Plataformas (web/iOS/Android)</div></div>
-    <div class="metric"><div class="n">~47</div><div class="l">Tablas Supabase</div></div>
-    <div class="metric"><div class="n">2</div><div class="l">Blockers P0 producción</div></div>
+    <div class="metric"><div class="n">60</div><div class="l">Tablas Supabase</div></div>
+    <div class="metric"><div class="n">110</div><div class="l">Migraciones en git · 114 aplicadas en BD</div></div>
+    <div class="metric"><div class="n">18</div><div class="l">Negocios · 1 con Stripe conectado</div></div>
+    <div class="metric"><div class="n">17</div><div class="l">Pedidos, todos pagados</div></div>
+    <div class="metric"><div class="n">8</div><div class="l">Edge Functions</div></div>
   </div>
 
   <nav>
     <div class="wrap">
       <a href="#resumen">Resumen</a>
       <a href="#producto">Producto</a>
-      <a href="#tecnico">Técnico</a>
       <a href="#seguridad">Seguridad</a>
+      <a href="#tecnico">Técnico</a>
       <a href="#falta">Qué falta</a>
       <a href="#mejorar">Mejoras (research)</a>
       <a href="#roadmap">Roadmap</a>
@@ -120,39 +122,51 @@
   <!-- RESUMEN -->
   <section id="resumen">
     <h2><span class="dot" style="background:var(--blue)"></span>Resumen ejecutivo</h2>
-    <div class="section-desc">Dónde está JChat 3.0 hoy, en una vista.</div>
+    <div class="section-desc">Dónde está JChat 3.0 hoy, en una vista. Fuente: <code>docs/ESTADO.md</code> (actualizado 2026-07-26) + <code>docs/DECISIONS.md</code>.</div>
     <div class="card">
       <p style="font-size:14.5px;color:#D4D9E1">
-      JChat 3.0 tiene un <b>producto funcional y pulido en las 3 plataformas</b>. El sistema de menús (web) está completo:
-      21 plantillas de diseño, 40 paletas de color aplicables por negocio, responsive, y modales que heredan el tema.
-      El sistema de chat de proximidad funciona en web, iOS y Android con <b>sub-chats, presencia múltiple, y scroll robusto</b>.
-      La app móvil, el dashboard de negocio y el cliente web-por-QR están operativos.
+      JChat 3.0 tiene <b>pagos end-to-end funcionando y verificados</b>: menú → carrito → mesa → Stripe →
+      webhook → orden en BD, con totales recalculados server-side. El checkout de invitado (sin cuenta),
+      las suscripciones con cobro automático, los códigos promocionales (alimentan la prueba de Stripe,
+      ya no regalan plan) y Stripe Connect (el negocio de prueba recibe el dinero de verdad) están
+      operativos y comprobados en vivo, no solo en el código.
       <br><br>
-      <b style="color:#FBbf47">Lo que bloquea el lanzamiento a producción con pagos reales</b> son dos temas de seguridad (P0-2 y P0-3):
-      los totales de pedido no se recalculan en el servidor, y las Edge Functions confían en IDs del cliente. Además, la red de
-      seguridad de tipos de TypeScript está apagada (<code>ignoreBuildErrors</code>), lo que ya causó un bug oculto.
+      <b style="color:#5FD77F">Esta última quincena (2026-07-24 a 26) fue sobre todo de higiene y honestidad</b>:
+      un barrido de seguridad completo cerró el patrón de grants de tabla completa en <b>~44 tablas</b>
+      (14 migraciones, <code>089</code>–<code>103</code>), se cerró un hueco crítico en una vista que saltaba
+      la RLS de <code>users</code>, se quitaron dos pantallas que afirmaban haber completado una acción de
+      dinero sin haberlo hecho (Analytics con datos inventados, un "Force Refund" que nunca llamaba a Stripe),
+      y se reconcilió el archivo de migraciones con lo que realmente hay en producción.
       <br><br>
-      <b>En una frase:</b> el producto está listo para demos y pruebas reales; falta cerrar la capa de seguridad de dinero
-      y algunas features de retención (no leídos, TTL de mensajes) antes de cobrar de verdad.
+      <b>Lo que falta antes de cobrar en modo vivo</b> ya no es seguridad de dinero (P0-2/P0-3 de la
+      auditoría original están cerrados) — es <b>papeleo de lanzamiento</b>: SMTP propio, migrar Stripe a
+      modo vivo, verificación de correo, i18n completo, y tres features de super-admin construidas por
+      delante de su backend (lealtad, gestión de equipo de admins, force-refund real) que quedaron
+      deliberadamente diferidas a Stage 3.
+      <br><br>
+      <b>En una frase:</b> el producto cobra dinero de verdad hoy en modo prueba; falta el trabajo de
+      salida a producción (correo, Stripe vivo, i18n) y decidir si esas tres features a medias se
+      construyen o se ocultan antes de lanzar.
       </p>
     </div>
     <div class="grid2">
       <div class="card">
-        <h3>💪 Fortalezas</h3>
+        <h3>💪 Verificado con evidencia real</h3>
         <ul class="items">
-          <li><span class="ic ic-ok">✓</span><span>Diferenciador único: <b>POS ligero dentro de un chat social de proximidad</b> — nadie en el mercado lo tiene</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Modelo <b>subscription-only sin comisión</b> por transacción (Toast cobra 2.49%+)</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Sistema de menús de nivel producto: 21 plantillas × 40 paletas</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Chat funcionando en las 3 plataformas con presencia múltiple</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Pagos móviles end-to-end, totales recalculados server-side</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Checkout de invitado (3 pagos reales, 0 huérfanos)</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Suscripción con tarjeta + cobro automático (prueba de 60 días real)</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Stripe Connect paga al negocio ($37.92 netos de $39.36, verificado)</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Barrido de seguridad D-54 completo — escritura de <code>anon</code> en <code>public</code> = 0</span></li>
         </ul>
       </div>
       <div class="card">
         <h3>⚠️ Riesgos actuales</h3>
         <ul class="items">
-          <li><span class="ic ic-x">!</span><span><b>P0-2 / P0-3</b>: dinero no validado server-side — bloqueante para cobrar</span></li>
-          <li><span class="ic ic-x">!</span><span><b>ignoreBuildErrors ON</b>: sin red de tipos, ya ocultó un bug real</span></li>
-          <li><span class="ic ic-wip">~</span><span>Geo-verificación server-side (regla de oro del producto) aún por implementar</span></li>
-          <li><span class="ic ic-wip">~</span><span>Varias copias del repo local → riesgo de trabajar en la equivocada</span></li>
+          <li><span class="ic ic-x">!</span><span><b>SMTP propio</b>: Supabase limita a 2 correos/hora — bloquea activar verificación de correo</span></li>
+          <li><span class="ic ic-x">!</span><span><b>Stripe sigue en modo prueba</b>: falta el checklist completo de paso a modo vivo</span></li>
+          <li><span class="ic ic-wip">~</span><span>Tres features Stage-3 a medio construir (UI por delante del backend) — inertes hoy, decidir antes de lanzar</span></li>
+          <li><span class="ic ic-wip">~</span><span>Sin pruebas automatizadas — todo se verifica a mano, sesión a sesión</span></li>
         </ul>
       </div>
     </div>
@@ -161,114 +175,52 @@
   <!-- PRODUCTO -->
   <section id="producto">
     <h2><span class="dot" style="background:var(--green)"></span>Estado de producto</h2>
-    <div class="section-desc">Qué features existen y funcionan, por área.</div>
+    <div class="section-desc">Qué funciona, verificado contra código y BD — no contra lo que dice el código que debería pasar.</div>
     <div class="legend">
-      <span><span class="ic ic-ok">✓</span> Hecho y verificado</span>
+      <span><span class="ic ic-ok">✓</span> Verificado contra código/BD</span>
+      <span><span class="ic ic-log">📼</span> Según bitácora, sin reconfirmar esta sesión</span>
       <span><span class="ic ic-wip">~</span> Parcial / en progreso</span>
-      <span><span class="ic ic-no">·</span> Pendiente</span>
-      <span><span class="ic ic-x">!</span> Bloqueante</span>
+      <span><span class="ic ic-x">!</span> Roto o bloqueante</span>
     </div>
 
     <div class="card">
-      <h3>Sistema de Menús (web) <span class="badge b-done">Completo</span></h3>
+      <h3>Pagos y suscripciones <span class="badge b-done">Verificado end-to-end</span></h3>
       <ul class="items">
-        <li><span class="ic ic-ok">✓</span><span><b>21 plantillas de menú</b> portadas a React, cada una un arquetipo distinto (grid, drawer, editorial, streaming, stories, luxury, etc.)</span></li>
-        <li><span class="ic ic-ok">✓</span><span><b>40 paletas de color</b> aplicables por negocio/evento + "volver a original"; tipografía siempre fija</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Paleta + tipografía originales del board por plantilla (Playfair, Space Grotesk)</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Modales/sheets heredan la paleta activa; responsive (columna centrada tipo app)</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Grupos de modificadores estilo Uber-Eats (single/multi, min/max, precio en vivo)</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Multi-foto por ítem, 51 iconos de categoría, 10 efectos de tarjeta, selector colapsable</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Carritos unificados, sheet de recogida ("En mi mesa" primero + número de mesa)</span></li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h3>Chat de proximidad <span class="badge b-done">Funcional 3 plataformas</span></h3>
-      <ul class="items">
-        <li><span class="ic ic-ok">✓</span><span><b>Sub-chats</b>: navegación in-place entre salas del negocio (web + móvil), sin recargar</span></li>
-        <li><span class="ic ic-ok">✓</span><span><b>Presencia múltiple</b>: Main (todos) + ancla del QR (fijo) + sub-chat visitado (rotativo)</span></li>
-        <li><span class="ic ic-ok">✓</span><span><b>Scroll robusto</b>: web (aspect-ratio + re-scroll), móvil (FlatList inverted), al entrar y al enviar</span></li>
-        <li><span class="ic ic-ok">✓</span><span>AppState en móvil (re-track al volver de background)</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Realtime de mensajes, fotos, 15 temas, modo incógnito, roles, llamar al mesero</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Salas con password (candado + verificación), QR por sala, membresía temporal 24h</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Pickers de foto (galería legacy Android + cámara con manejo de errores)</span></li>
-        <li><span class="ic ic-no">·</span><span><b>TTL 24h / purga de mensajes</b> (Fase 2) — diseñado, no implementado</span></li>
-        <li><span class="ic ic-no">·</span><span><b>No leídos por usuario</b> (Fase 3) — badges + "leído al verlo en pantalla"</span></li>
-        <li><span class="ic ic-no">·</span><span>Reacciones, reply, menciones @, voz, GIFs, editar/borrar — en backlog</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Pedido móvil</b>: menú → modificadores → carrito → mesa → Stripe → webhook → orden en BD con impuesto y propina, totales recalculados server-side</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Checkout de invitado</b> (web, sin cuenta): <code>guest-pay</code> + hCaptcha + red de huérfanos</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Suscripciones</b>: Stripe Checkout pide tarjeta, prueba de N días, cobra al vencer, Portal de Cliente para cancelar</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Códigos promocionales</b>: alimentan <code>trial_period_days</code> en Stripe — ya NO regalan plan directamente (D-71)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Consentimiento de renovación automática</b> antes de pedir la tarjeta (D-73)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Stripe Connect</b>: el negocio de prueba recibe el dinero de verdad</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Gate de plan</b> del dashboard, con caducidad de prueba verificada en vivo</span></li>
       </ul>
     </div>
 
     <div class="grid2">
       <div class="card">
-        <h3>Mapa & Ubicación <span class="badge b-prog">Parcial</span></h3>
+        <h3>Chat &amp; social <span class="badge b-prog">📼 Sin reconfirmar</span></h3>
         <ul class="items">
-          <li><span class="ic ic-ok">✓</span><span>Mapas en 3 plataformas (iOS/Android/web) resueltos</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Controles: zoom, recenter, safe-area</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Geofence 50m canónico (enforce en BD, migración 021)</span></li>
-          <li><span class="ic ic-no">·</span><span>Geo-verificación server-side (regla de oro) pendiente</span></li>
-          <li><span class="ic ic-no">·</span><span>Heatmap / pulse dots diferidos (bug iOS de Heatmap)</span></li>
+          <li><span class="ic ic-log">📼</span><span>Presencia + realtime en iOS/Android/web, sub-chats, TTL 24h, fotos, 15 temas</span></li>
+          <li><span class="ic ic-log">📼</span><span>Seguir/privacidad/bloqueo/DM</span></li>
+          <li><span class="ic ic-log">📼</span><span>Mesas/meseros/cocina (KDS)</span></li>
+          <li><span class="ic ic-log">📼</span><span>Menú web público <code>/m/[slug]</code>, estilo modificadores Uber Eats</span></li>
         </ul>
       </div>
       <div class="card">
-        <h3>Cliente web-por-QR <span class="badge b-done">Operativo</span></h3>
+        <h3>Onboarding &amp; bienvenida <span class="badge b-done">Verificado</span></h3>
         <ul class="items">
-          <li><span class="ic ic-ok">✓</span><span><code>/c/[token]</code> → welcome → login → RoomHub</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Menú · Llamar servicio · Entrar al chat</span></li>
-          <li><span class="ic ic-ok">✓</span><span>join_room_via_qr, tokens firmados por sala</span></li>
-          <li><span class="ic ic-ok">✓</span><span>Fix de zoom iOS (input font-size 16px)</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Bienvenida post-registro — arregla el bucle registro→dashboard→registro que existía antes</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Gate de plan con caducidad de prueba, comprobado en vivo con cuenta desechable</span></li>
         </ul>
       </div>
     </div>
 
     <div class="card">
-      <h3>Dashboard de negocio <span class="badge b-prog">Operativo, con huecos</span></h3>
+      <h3>Dashboard: Analytics &amp; Disputas <span class="badge b-done">Ahora honestos</span></h3>
       <ul class="items">
-        <li><span class="ic ic-ok">✓</span><span>Editor de menú completo (categorías, ítems, fotos, modificadores, plantilla, paleta, efecto)</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Room Manager con QR, password, TTL, notify por sala</span></li>
-        <li><span class="ic ic-ok">✓</span><span>Modo del menú (link propio / menú web / quitar)</span></li>
-        <li><span class="ic ic-wip">~</span><span>Room Manager usa <code>PLACEHOLDER_BUSINESS_ID</code> en un punto — fix pendiente</span></li>
-        <li><span class="ic ic-no">·</span><span>Split checks, propinas, QR por mesa, floor plan, export CSV/PDF — backlog POS</span></li>
-        <li><span class="ic ic-no">·</span><span>Centro de alertas por fases, KDS, reservas, loyalty — spec, no implementado</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- TECNICO -->
-  <section id="tecnico">
-    <h2><span class="dot" style="background:var(--purple)"></span>Estado técnico</h2>
-    <div class="section-desc">Stack, arquitectura, y deuda técnica.</div>
-
-    <div class="grid2">
-      <div class="card">
-        <h3>Stack</h3>
-        <ul class="items">
-          <li><span class="ic ic-no">·</span><span><b>Móvil:</b> React Native (Expo SDK 56, React 19), React Navigation v7</span></li>
-          <li><span class="ic ic-no">·</span><span><b>Web:</b> Next.js 16.2.9 (Turbopack), Vercel</span></li>
-          <li><span class="ic ic-no">·</span><span><b>Backend:</b> Supabase (Postgres, Edge Functions, Storage, Realtime, RLS), ~47 tablas</span></li>
-          <li><span class="ic ic-no">·</span><span><b>Pagos:</b> Stripe Connect &nbsp;·&nbsp; <b>Mapas:</b> Apple/Google</span></li>
-          <li><span class="ic ic-no">·</span><span><b>Builds:</b> EAS &nbsp;·&nbsp; <code>com.juangarciacruz.jchatapp</code></span></li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Workflow (dual-Claude)</h3>
-        <ul class="items">
-          <li><span class="ic ic-no">·</span><span>Planning Claude (web): lee vía GitHub MCP, aplica migraciones vía Supabase MCP, audita SHAs</span></li>
-          <li><span class="ic ic-no">·</span><span>Claude Code CLI: ejecuta, commitea, buildea (GitHub write da 403 al planner)</span></li>
-          <li><span class="ic ic-no">·</span><span>Docs en <code>/docs</code> para continuidad entre sesiones</span></li>
-          <li><span class="ic ic-no">·</span><span>Reportes largos → archivo .md en repo → leído desde GitHub</span></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Deuda técnica <span class="badge b-prog">A vigilar</span></h3>
-      <ul class="items">
-        <li><span class="ic ic-x">!</span><span><b style="color:#FF6B62">ignoreBuildErrors: true</b> activo en <code>next.config.ts</code> — red de tipos APAGADA. Ya ocultó un <code>database.types.ts</code> corrupto. <b>Máxima prioridad:</b> arreglar ~33 errores de tipo y quitarlo</span></li>
-        <li><span class="ic ic-wip">~</span><span>Migraciones 030/031 no registradas en <code>schema_migrations</code> (desync de registro)</span></li>
-        <li><span class="ic ic-wip">~</span><span><code>menu_items</code> tiene 2 columnas de foto legacy (<code>image_url</code> + <code>photo_url</code>)</span></li>
-        <li><span class="ic ic-wip">~</span><span>Varias copias del repo local (con/sin espacios) → riesgo de commit en la equivocada</span></li>
-        <li><span class="ic ic-wip">~</span><span>Working tree con archivos sueltos en <code>design/</code>; falta limpiar</span></li>
-        <li><span class="ic ic-no">·</span><span>expo-updates (OTA) no configurado; re-habilitar "Confirm email" en Supabase</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>Analytics</b> muestra SOLO datos reales (Revenue, Products, Loyalty-puntos + banda "Overview — live"). Se quitaron Forecast/Customers/Chat/API (inventados) y el ROI falso de Loyalty. Ya enlazada en el menú.</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>"Approve Refund"</b> (dashboard normal) SÍ reembolsa — invoca la Edge Function <code>stripe-refund</code>, no escribe <code>status='approved'</code> a mano. Ya enlazada en el menú.</span></li>
+        <li><span class="ic ic-wip">~</span><span>Falta verificación <b>visual</b> en vivo de ambas (requiere sesión de dueño con negocio real)</span></li>
       </ul>
     </div>
   </section>
@@ -276,77 +228,156 @@
   <!-- SEGURIDAD -->
   <section id="seguridad">
     <h2><span class="dot" style="background:var(--red)"></span>Seguridad</h2>
-    <div class="section-desc">Estado de los blockers P0 y la postura general.</div>
+    <div class="section-desc">El trabajo más grande de las últimas sesiones: cerrar el patrón "grant de tabla completa a authenticated/anon" en todas las tablas.</div>
+
     <div class="card">
-      <table>
-        <tr><th>ID</th><th>Tema</th><th>Estado</th></tr>
-        <tr><td><code>P0-1</code></td><td>Salas privadas legibles por cualquier usuario autenticado</td><td><span class="prio p-lo">Cerrado</span> migraciones 019-020</td></tr>
-        <tr><td><code>P0-4</code></td><td>RLS de users</td><td><span class="prio p-lo">Cerrado</span> migración 018</td></tr>
-        <tr><td><code>P0-2</code></td><td>Totales de pedido no recalculados server-side</td><td><span class="prio p-hi">Abierto</span> bloquea producción</td></tr>
-        <tr><td><code>P0-3</code></td><td>Edge Functions confían en IDs del cliente (service_role)</td><td><span class="prio p-hi">Abierto</span> bloquea producción</td></tr>
-      </table>
-      <p style="font-size:13.5px;color:var(--muted);margin-top:14px">
-      La pantalla de pagos/gifting está <b>diferida hasta cerrar P0-2 y P0-3</b>. Todo cálculo de dinero nuevo
-      (modificadores, split, propina) debe recalcularse en el servidor. Es el mismo principio: nunca confiar en montos del cliente.
+      <h3>D-54 / D-75 — Barrido de column-grants <span class="badge b-done">Completo</span></h3>
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px">
+      Unas <b>~44 tablas</b> de <code>public</code> tenían grant de INSERT/UPDATE/DELETE de tabla completa a
+      <code>authenticated</code> y/o <code>anon</code>, cuando el código real solo escribía 1-3 columnas.
+      Se redujeron a allow-lists de columnas verificados contra el código real, tabla por tabla, en
+      <b>14 migraciones (089–103)</b> + 2 cambios de código (<code>d61fd96</code>, <code>cfaa63d</code>).
       </p>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span><b>089</b>: revoca toda escritura de <code>anon</code> en las tablas base</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>090</b>: cierra un hueco crítico — la vista <code>public_profiles</code> (auto-actualizable, dueño <code>postgres</code>/bypass-RLS) dejaba a <code>anon</code> escribir <code>users</code> saltándose su RLS (podía cambiar <code>is_verified</code>, reescribir <code>username</code>/<code>bio</code>, o borrar filas)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>091–096, 100–101</b>: allow-lists de columnas (roles, promo codes, lealtad, suscripciones/trials, menú, ofertas, bloque social)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>097</b>: revoca UPDATE en 15 tablas sin ninguna política que lo permitiera (grant muerto)</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>098–099, 102</b>: tablas con <code>.upsert()</code> — se descubrió que un upsert con <code>onConflict</code> necesita permiso UPDATE también sobre las columnas clave (probado empíricamente), así que dos flujos (baneos/mutes de sala, mensajes fijados) se reescribieron a UPDATE+INSERT antes de recortar el grant</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>103</b>: cierra <code>room_access_attempts</code> — el lockout de contraseña de sala era auto-reseteable por el propio cliente; ahora solo la RPC <code>verify_room_password</code> (SECURITY DEFINER) puede escribirlo</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>104–110</b>: reconciliación — 7 migraciones que ya estaban aplicadas en producción (por sesiones anteriores) pero nunca se habían versionado en git, ahora con archivo idempotente para que un rebuild reproduzca el mismo estado</span></li>
+      </ul>
+      <p style="font-size:13px;color:var(--faint);margin-top:12px">Verificación final: escritura de <code>anon</code> en TODO <code>public</code> = 0. Detalle completo en D-75, <code>docs/DECISIONS.md</code>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Flujos que quedaron rotos por el barrido (preexistentes, no causados por él) <span class="badge b-done">Cerrados</span></h3>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span><b>Aceptar/rechazar invitación de empleado</b>: <code>employees</code> no tenía política RLS de UPDATE — el invitado nunca pudo aceptar. Arreglado: política + allow-list de <code>status</code>, reconciliado en git como migración <code>104</code>.</span></li>
+        <li><span class="ic ic-ok">✓</span><span><b>"Dismiss report"</b> de super-admin: la UI decía "dismissed" pero no cambiaba nada en BD (misma causa). Arreglado: política + allow-list de <code>status</code>, reconciliado en git como migración <code>105</code>.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Otros hallazgos verificados <span class="badge b-todo">Históricos</span></h3>
+      <table>
+        <tr><th>Tema</th><th>Estado</th></tr>
+        <tr><td>Totales de pedido no recalculados server-side (P0-2)</td><td><span class="prio p-lo">Cerrado</span> verificado — recalculados server-side</td></tr>
+        <tr><td>Edge Functions confiaban en IDs del cliente (P0-3)</td><td><span class="prio p-lo">Cerrado</span> verificado</td></tr>
+        <tr><td>Client secret (.p8) de Apple Sign In</td><td><span class="prio p-md">⚠️ Vigilar</span> nunca estuvo comprometido (premisa vieja falsa); caduca ~enero 2027, regenerar antes</td></tr>
+        <tr><td>Force Refund de super-admin escribía éxito sin llamar a Stripe</td><td><span class="prio p-lo">Neutralizado</span> commit <code>6eb4381</code> — sin escritura falsa ni copy que mienta</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- TECNICO -->
+  <section id="tecnico">
+    <h2><span class="dot" style="background:var(--purple)"></span>Estado técnico</h2>
+    <div class="section-desc">Stack, arquitectura, y deuda técnica actual.</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Stack</h3>
+        <ul class="items">
+          <li><span class="ic ic-no">·</span><span><b>Móvil:</b> React Native (Expo SDK 56, React 19), React Navigation v7</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Web:</b> Next.js 16.2.9 (Turbopack), Vercel — <code>jchat.cloud</code></span></li>
+          <li><span class="ic ic-no">·</span><span><b>Backend:</b> Supabase (Postgres, Edge Functions, Storage, Realtime, RLS), 60 tablas</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Pagos:</b> Stripe Connect (modo prueba) &nbsp;·&nbsp; <b>Mapas:</b> Apple/Google</span></li>
+          <li><span class="ic ic-no">·</span><span><b>Repo:</b> <code>jcgarcia007/jchat-3</code> &nbsp;·&nbsp; <code>com.juangarciacruz.jchatapp</code></span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Higiene de tipos y build <span class="badge b-done">Resuelto</span></h3>
+        <ul class="items">
+          <li><span class="ic ic-ok">✓</span><span><code>ignoreBuildErrors</code> ya <b>NO está presente</b> en <code>next.config.ts</code> — verificado directamente en el archivo. El riesgo de red de tipos apagada que arrastraba el reporte anterior ya no aplica.</span></li>
+          <li><span class="ic ic-ok">✓</span><span>Cada tarea de esta sesión corrió <code>tsc --noEmit</code> antes de commitear — en verde en todos los casos</span></li>
+          <li><span class="ic ic-x">!</span><span>Content-Security-Policy en <b>ENFORCE, sin validar</b> (verificado directamente en <code>web/next.config.ts</code>): el header enviado es <code>Content-Security-Policy</code>, no Report-Only — los comentarios del archivo dicen "Report-Only" por un revert que nunca cambió el <code>key</code>. <code>middleware.ts</code> no lo sobreescribe. Falta el walkthrough en preview; las violaciones son client-side y no aparecen en logs de Vercel</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Deuda técnica activa</h3>
+      <ul class="items">
+        <li><span class="ic ic-x">!</span><span><b>SMS de verificación</b> comentado: los secretos de Twilio existen pero el envío está en TODO — el usuario nunca recibe el código (hoy la verificación la hace el super-admin a mano)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Sin pruebas automatizadas — toda verificación es manual, sesión a sesión (riesgo explícito que mueve la estimación de lanzamiento)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Regla de "prueba vencida" duplicada entre el gate del dashboard y la pantalla de bienvenida — pendiente consolidar</span></li>
+        <li><span class="ic ic-no">·</span><span>Registro auditable del consentimiento de renovación automática (hoy vive solo en el navegador, no en BD)</span></li>
+        <li><span class="ic ic-no">·</span><span>Limpiar variables de entorno duplicadas + rama <code>feat/guest-checkout-ui</code> sin fusionar</span></li>
+      </ul>
     </div>
   </section>
 
   <!-- QUE FALTA -->
   <section id="falta">
     <h2><span class="dot" style="background:var(--amber)"></span>Qué falta (backlog priorizado)</h2>
-    <div class="section-desc">Lo pendiente, ordenado por prioridad.</div>
+    <div class="section-desc">Directo de "Bloqueantes de lanzamiento" en <code>docs/ESTADO.md</code>.</div>
+
     <div class="card">
+      <h3>No son código — decisiones y paneles</h3>
       <ul class="items">
-        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>Seguridad de dinero</b> (P0-2 + P0-3) — recálculo server-side antes de cobrar</span></li>
-        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>Re-habilitar TypeScript estricto</b> — arreglar ~33 errores, quitar ignoreBuildErrors</span></li>
-        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Chat Fase 2 — TTL 24h</b>: purga de mensajes (por-usuario al salir + global 24h, pg_cron/edge)</span></li>
-        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Chat Fase 3 — No leídos por usuario</b>: tabla de lectura, badges bidireccionales, "leído al ver"</span></li>
-        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Comprar (Stripe web checkout)</b>: el menú "comprar" sigue placeholder</span></li>
-        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Geo-verificación server-side</b>: la regla de oro del producto (PostGIS/Edge)</span></li>
-        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span>Fix Room Manager (PLACEHOLDER_BUSINESS_ID), limpiar working tree, consolidar copias del repo</span></li>
-        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span><code>/pricing</code>, gate super_admin, i18n bilingüe (textos sueltos en inglés), badge de plan real</span></li>
-        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span>POS: split checks, propinas, QR por mesa, floor plan, export CSV/PDF, centro de alertas</span></li>
-        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P3</span>Chat social: reacciones, reply, menciones @, voz, GIFs, encuestas, moderación IA</span></li>
+        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>SMTP propio</b> (Resend/SendGrid): Supabase limita a 2 correos/hora, necesario antes de activar verificación de correo</span></li>
+        <li><span class="ic ic-x">!</span><span><span class="prio p-hi">P0</span><b>Stripe a modo vivo</b>: recrear los 2 endpoints de webhook + eventos + secretos, rotar claves, redesplegar EFs, recorrer el Go-Live Checklist</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Verificación de correo</b> (hoy apagada — cualquiera se registra con correo falso)</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Correos de Stripe</b> (fin de prueba + renovación) — interruptor en panel, requisito legal en modo vivo</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Supabase Pro</b> ($25/mes) — protección de contraseñas filtradas + sube el límite de correos</span></li>
+        <li><span class="ic ic-no">·</span><span><span class="prio p-lo">P2</span><b>República Dominicana — DIFERIDA al último paso</b> (D-77): Stripe Connect no opera en RD; se lanza USA primero, RD se aborda al final (solo-social, o procesador local Azul/CardNet)</span></li>
       </ul>
+    </div>
+
+    <div class="card">
+      <h3>Sí son código</h3>
+      <ul class="items">
+        <li><span class="ic ic-ok">✓</span><span><b>Selector global de negocio — YA CONSTRUIDO</b>: <code>resolveActiveBusiness()</code> lee <code>users.active_business_id</code> con fallback al más reciente; switcher funcional en el <code>TopBar</code> actual y en el <code>BusinessSwitcher</code> del shell nuevo "4A". Falta: confirmar qué shell está en producción, cerrar un hueco de propagación en el 4A (la página no se re-resuelve al cambiar sin recargar), y un test en vivo con 2+ negocios</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>i18n EN/ES completo</b>: el bloque más grande. Base puesta (welcome bilingüe); falta el barrido de dashboard, móvil, super-admin y correos</span></li>
+        <li><span class="ic ic-wip">~</span><span><span class="prio p-md">P1</span><b>Tres features Stage-3 a medio construir</b> (D-76) — UI por delante del backend, ninguna hace daño hoy (inertes/neutralizadas):
+          <br>1) <b>Lealtad</b> — ganar puntos nunca cableado (función stub sin llamadores); canje sin RPC atómica.
+          <br>2) <b>Force-refund de super-admin</b> (Task 3.6) — hoy neutralizado, no llama a Stripe todavía.
+          <br>3) <b>Gestión de equipo de admins</b> (Task 3.13) — add/remove sin RPC con guardas; riesgo real si se parchea con una política simple (cualquier fila en <code>admin_roles</code> cuenta como poder total).
+        </span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Backlog (no bloqueante)</h3>
+      <p style="font-size:13.5px;color:#D4D9E1">
+      Afiliados (greenfield) · <code>UserProfileScreen</code> (hoy placeholder) · plantillas de menú en móvil (D-27) ·
+      GC de fotos huérfanas en <code>post-media</code> · 4 bloques de pruebas manuales en device (social, modificadores,
+      DM gate, TTL) · registro auditable del consentimiento en BD · consolidar la regla de prueba vencida
+      (duplicada gate/welcome) · limpiar env vars duplicadas + rama <code>feat/guest-checkout-ui</code>.
+      </p>
     </div>
   </section>
 
   <!-- MEJORAR -->
   <section id="mejorar">
     <h2><span class="dot" style="background:var(--blue)"></span>Mejoras recomendadas (investigación 2026)</h2>
-    <div class="section-desc">Basado en mejores prácticas actuales de la industria. Priorizadas.</div>
+    <div class="section-desc">Recomendaciones vigentes de mejores prácticas de industria. Se quitaron las que ya se implementaron.</div>
 
     <div class="card">
       <h3>⚡ Realtime a escala (Supabase)</h3>
       <div class="rec">
         <h4><span class="prio p-hi">Alta</span>Vigilar fugas de canales</h4>
-        <p>Los canales sin cerrar son la causa #1 de topar límites de conexión. Ya cuidamos <code>removeChannel</code> en el port móvil — mantenerlo como regla en todo canal nuevo (especialmente con presencia múltiple = 3 canales por usuario).</p>
+        <p>Los canales sin cerrar son la causa #1 de topar límites de conexión. Ya se cuida <code>removeChannel</code> en el port móvil — mantenerlo como regla en todo canal nuevo (especialmente con presencia múltiple = 3 canales por usuario).</p>
         <div class="src">Fuente: Supabase Realtime in Production (2026)</div>
       </div>
       <div class="rec">
         <h4><span class="prio p-md">Media</span>Presencia obsoleta tras cambio de visibilidad</h4>
-        <p>Presence se pone "stale" tras cambios de visibilidad de pestaña/app. El AppState que agregamos en móvil ataca esto; conviene una defensa equivalente en web (re-sync al volver a la pestaña).</p>
+        <p>Presence se pone "stale" tras cambios de visibilidad de pestaña/app. El AppState en móvil ataca esto; conviene una defensa equivalente en web (re-sync al volver a la pestaña).</p>
         <div class="src">Fuente: Supabase Realtime in Production (2026)</div>
-      </div>
-      <div class="rec">
-        <h4><span class="prio p-lo">Futuro</span>Broadcast-from-Database si crece la escala</h4>
-        <p>Hoy el chat usa <code>postgres_changes</code> (~50-200ms), correcto para persistencia. Si superan ~500 conexiones concurrentes o el CPU de la BD sube, migrar a "Broadcast from Database" (un trigger difunde a un canal en vez de que cada cliente escuche la tabla). No urgente ahora.</p>
-        <div class="src">Fuente: Supabase docs / TechLead 2026</div>
       </div>
     </div>
 
     <div class="card">
       <h3>💳 Seguridad de pagos (Stripe)</h3>
-      <div class="rec">
-        <h4><span class="prio p-hi">Alta</span>Idempotency keys en todo POST</h4>
-        <p>Añadir un idempotency key (UUID o customerID+orderID) a cada request de pago, para reintentar sin cobrar doble. Directamente aplicable al implementar el checkout.</p>
-        <div class="src">Fuente: Stripe Server-side integration (2026)</div>
+      <div class="rec" style="border-left-color:var(--green)">
+        <h4><span class="prio p-lo">Ya hecho</span>Webhooks como fuente de verdad, no el cliente</h4>
+        <p>Verificado: <code>stripe-webhook</code> y las EFs de pago gobiernan el estado real, no la confirmación del cliente — directamente aplicado en el flujo de pedidos y suscripciones.</p>
       </div>
       <div class="rec">
-        <h4><span class="prio p-hi">Alta</span>Webhooks como fuente de verdad, no el cliente</h4>
-        <p>Nunca confiar solo en la confirmación del cliente — verificar el estado del pago vía webhook (con verificación de firma). Hacer los handlers idempotentes (guardar <code>event.id</code>, saltar duplicados). Esto refuerza P0-2/P0-3.</p>
-        <div class="src">Fuente: Stripe Integration Guide 2026</div>
+        <h4><span class="prio p-hi">Alta</span>Idempotency keys en todo POST de pago</h4>
+        <p>Confirmar que cada request de pago lleva un idempotency key (UUID o customerID+orderID) para poder reintentar sin cobrar doble.</p>
+        <div class="src">Fuente: Stripe Server-side integration (2026)</div>
       </div>
       <div class="rec">
         <h4><span class="prio p-md">Media</span>Apple Pay / Google Pay para conversión</h4>
@@ -356,11 +387,11 @@
     </div>
 
     <div class="card">
-      <h3>🏗️ Arquitectura & proceso</h3>
+      <h3>🏗️ Arquitectura &amp; proceso</h3>
       <div class="rec">
-        <h4><span class="prio p-hi">Alta</span>Quitar ignoreBuildErrors ya</h4>
-        <p>La comunidad Supabase/Next 2026 es enfática: mantener el schema y los tipos en control de versiones y con el type-check activo evita el incidente clásico "funcionó en dev, cayó en prod". JChat ya vivió el riesgo (tipos corruptos ocultos).</p>
-        <div class="src">Fuente: Supabase Production Architecture 2026</div>
+        <h4><span class="prio p-hi">Alta</span>Validar la CSP ya en ENFORCE antes de tráfico real</h4>
+        <p>La Content-Security-Policy YA está en modo enforce (el header real es <code>Content-Security-Policy</code>, no Report-Only — los comentarios del archivo quedaron desactualizados). El allow-list está bien calibrado, pero el walkthrough en preview nunca se hizo y hay historial de un enforce previo que rompió producción. Recorrer login, mapa, checkout Stripe y hCaptcha con la consola abierta en un preview antes de tráfico real; si se prefiere diferir, cambiar el <code>key</code> a <code>Content-Security-Policy-Report-Only</code>.</p>
+        <div class="src">Verificado directamente en <code>web/next.config.ts</code> + <code>middleware.ts</code></div>
       </div>
       <div class="rec">
         <h4><span class="prio p-md">Media</span>Pooler en modo transacción para Vercel</h4>
@@ -368,9 +399,9 @@
         <div class="src">Fuente: Supabase Production Architecture 2026</div>
       </div>
       <div class="rec">
-        <h4><span class="prio p-md">Media</span>Consolidar las copias del repo</h4>
-        <p>Trabajar siempre en <code>/Users/jcgarcia/Projects/JchatVer3.0</code>. Archivar/borrar las otras copias (con espacios, jchat-main) para no commitear en la equivocada ni perder trabajo.</p>
-        <div class="src">Observado esta sesión</div>
+        <h4><span class="prio p-md">Media</span>Verificar políticas por MCP antes de dar una regresión por cierta</h4>
+        <p>Lección repetida esta sesión: una supuesta regresión de <code>story_views</code> resultó ser un flujo que ya estaba bloqueado por RLS desde antes — solo cambió el texto del error interno. Consultar <code>pg_policies</code> directamente evita conclusiones falsas.</p>
+        <div class="src">Observado en el barrido D-54, esta sesión</div>
       </div>
     </div>
   </section>
@@ -378,36 +409,36 @@
   <!-- ROADMAP -->
   <section id="roadmap">
     <h2><span class="dot" style="background:var(--green)"></span>Roadmap sugerido</h2>
-    <div class="section-desc">Orden recomendado para llegar a producción.</div>
+    <div class="section-desc">Orden recomendado para llegar a producción con cobros reales en USA. Estimación de <code>docs/ESTADO.md</code>: <b>12–18 sesiones (~50–75 h)</b>, sin contar la revisión de Apple (1–3 semanas de espera externa).</div>
     <div class="card">
-      <h3>🥇 Antes de cobrar dinero real</h3>
+      <h3>🥇 Papeleo de lanzamiento</h3>
       <ul class="items">
-        <li><span class="ic ic-x">!</span><span>Cerrar P0-2 + P0-3 (recálculo server-side + Edge Functions que no confían en el cliente)</span></li>
-        <li><span class="ic ic-x">!</span><span>Quitar ignoreBuildErrors (arreglar ~33 errores de tipo)</span></li>
-        <li><span class="ic ic-wip">~</span><span>Implementar checkout Stripe con idempotency + webhooks como fuente de verdad</span></li>
+        <li><span class="ic ic-x">!</span><span>SMTP propio + activar verificación de correo</span></li>
+        <li><span class="ic ic-x">!</span><span>Migrar Stripe a modo vivo (webhooks, secretos, Go-Live Checklist)</span></li>
+        <li><span class="ic ic-wip">~</span><span>Correos de Stripe (aviso de fin de prueba/renovación) + Supabase Pro</span></li>
       </ul>
     </div>
     <div class="card">
-      <h3>🥈 Retención & núcleo del producto</h3>
+      <h3>🥈 Producto core</h3>
       <ul class="items">
-        <li><span class="ic ic-wip">~</span><span>Chat Fase 2 (TTL 24h) y Fase 3 (no leídos por usuario)</span></li>
-        <li><span class="ic ic-wip">~</span><span>Geo-verificación server-side (la regla de oro que define a JChat)</span></li>
-        <li><span class="ic ic-no">·</span><span>i18n bilingüe completo (mercado USA + RD)</span></li>
+        <li><span class="ic ic-wip">~</span><span>i18n EN/ES completo (dashboard, móvil, super-admin, correos)</span></li>
+        <li><span class="ic ic-ok">✓</span><span>Selector global de negocio — ya construido; falta confirmar el shell en producción y probarlo en vivo</span></li>
+        <li><span class="ic ic-wip">~</span><span>Decidir y construir (o gatear/ocultar) el clúster de 3 features Stage-3: lealtad, force-refund real, equipo de admins</span></li>
       </ul>
     </div>
     <div class="card">
-      <h3>🥉 Crecimiento POS & social</h3>
+      <h3>🥉 Diferido (después del lanzamiento en USA)</h3>
       <ul class="items">
-        <li><span class="ic ic-no">·</span><span>Split checks, propinas, QR por mesa, floor plan, export de reportes</span></li>
-        <li><span class="ic ic-no">·</span><span>Chat social: reacciones, reply, menciones, voz, GIFs</span></li>
-        <li><span class="ic ic-no">·</span><span>Heatmap / pulse dots en el mapa</span></li>
+        <li><span class="ic ic-no">·</span><span><b>República Dominicana</b> (D-77) — RD solo-social, o procesador local propio, como fase final</span></li>
+        <li><span class="ic ic-no">·</span><span>Pruebas automatizadas — hoy todo es verificación manual sesión a sesión</span></li>
+        <li><span class="ic ic-no">·</span><span>Backlog no bloqueante: afiliados, plantillas de menú en móvil, GC de fotos huérfanas</span></li>
       </ul>
     </div>
   </section>
 
   <div class="footer">
-    JChat 3.0 — Status Report · Generado por Planning Claude · Actualizado 6 jul 2026<br>
-    Para actualizar: pídelo en chat ("actualiza el status") y se regenera leyendo el repo + commits.
+    JChat 3.0 — Status Report · Regenerado desde <code>docs/ESTADO.md</code> + <code>docs/DECISIONS.md</code> (D-74–D-77) · Actualizado 26 jul 2026<br>
+    Para actualizar: pídelo en chat ("actualiza el status") y se regenera leyendo el repo + <code>docs/ESTADO.md</code> + commits recientes.
   </div>
 
 </div>
