@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import { getTranslations } from 'next-intl/server';
 import { getChatTheme, type ChatTheme } from '@/constants/chatThemes';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -24,9 +25,10 @@ type Props =
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ChatThemePreview({ themeId, theme: themeProp }: Props) {
+export async function ChatThemePreview({ themeId, theme: themeProp }: Props) {
   const theme: ChatTheme =
     themeProp !== undefined ? themeProp : getChatTheme(themeId ?? 1);
+  const t = await getTranslations('dashboardCommon');
 
   return (
     <div
@@ -41,7 +43,7 @@ export function ChatThemePreview({ themeId, theme: themeProp }: Props) {
         boxSizing: 'border-box',
         userSelect: 'none',
       }}
-      aria-label={`Theme preview: ${theme.name}`}
+      aria-label={t('chatThemePreviewAria', { name: theme.name })}
     >
       {/* Header bar */}
       <div
@@ -106,7 +108,7 @@ export function ChatThemePreview({ themeId, theme: themeProp }: Props) {
               wordBreak: 'break-word',
             }}
           >
-            Hey! 👋
+            {t('chatSampleGreeting')}
           </div>
         </div>
 
@@ -124,7 +126,7 @@ export function ChatThemePreview({ themeId, theme: themeProp }: Props) {
               wordBreak: 'break-word',
             }}
           >
-            Hi there! 😊
+            {t('chatSampleReply')}
           </div>
         </div>
 
@@ -143,7 +145,7 @@ export function ChatThemePreview({ themeId, theme: themeProp }: Props) {
               wordBreak: 'break-word',
             }}
           >
-            Welcome!
+            {t('chatSampleWelcome')}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { IconTrendingUp, IconCurrencyDollar, IconUsers } from "@tabler/icons-react";
 
 interface ThemePreviewProps {
@@ -18,6 +19,7 @@ interface ThemePreviewProps {
  * All colours reference `var(--db-*)` tokens exclusively — no hardcoded hex.
  */
 export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
+  const t = useTranslations("dashboardCommon");
   // Simulated bar-chart heights (purely decorative)
   const bars = [40, 65, 50, 80, 60, 90, 70];
 
@@ -61,7 +63,7 @@ export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
               letterSpacing: "0.05em",
             }}
           >
-            Revenue
+            {t("themePreviewRevenue")}
           </span>
           <span
             style={{
@@ -122,7 +124,7 @@ export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
           }}
         >
           <IconUsers size={9} />
-          <span>128 visitors today</span>
+          <span>{t("themePreviewVisitors")}</span>
         </div>
       </div>
 
@@ -143,7 +145,7 @@ export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
             marginBottom: "6px",
           }}
         >
-          Weekly Sales
+          {t("themePreviewWeeklySales")}
         </span>
         <div
           style={{

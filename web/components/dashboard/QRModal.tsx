@@ -28,6 +28,7 @@ import {
   useState,
   useCallback,
 } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconDownload,
   IconCopy,
@@ -78,6 +79,7 @@ function safeFilename(name: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function QRModal({ room, business, open, onClose }: QRModalProps) {
+  const t = useTranslations("dashboardCommon");
   const theme = getChatTheme(room.chat_theme_id);
   const accentColor = theme.accent;
 
@@ -172,7 +174,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${room.name} on JChat`,
+          title: t("qrShareTitle", { name: room.name }),
           url: deepLink,
         });
       } catch {
@@ -191,7 +193,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
     printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>${room.name} — JChat QR Code</title>
+  <title>${t("qrPrintPageTitle", { name: room.name })}</title>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center;
            justify-content: center; min-height: 100vh; font-family: sans-serif; }
@@ -221,7 +223,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
-      aria-label={`QR code for ${room.name}`}
+      aria-label={t("qrAriaCode", { name: room.name })}
       style={{
         position: "fixed",
         inset: 0,
@@ -251,7 +253,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
         {/* Close button */}
         <button
           onClick={onClose}
-          aria-label="Close QR modal"
+          aria-label={t("qrAriaClose")}
           style={{
             position: "absolute",
             top: "16px",
@@ -295,7 +297,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
                 lineHeight: 1.4,
               }}
             >
-              Scanning enters Main Room + [{room.name}] simultaneously
+              {t("qrSubRoomNote", { name: room.name })}
             </p>
           )}
         </div>
@@ -315,7 +317,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
         >
           {svgContent ? (
             <div
-              aria-label="QR code preview"
+              aria-label={t("qrAriaPreview")}
               /* The SVG string from the qrcode library already contains a
                  white background rect — we render it directly into the DOM. */
               dangerouslySetInnerHTML={{ __html: svgContent }}
@@ -333,7 +335,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
                 fontSize: "13px",
               }}
             >
-              Generating…
+              {t("qrGenerating")}
             </div>
           )}
 
@@ -345,7 +347,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={business.logo_url}
-              alt={`${business.slug} logo`}
+              alt={t("qrLogoAlt", { slug: business.slug })}
               style={{
                 position: "absolute",
                 top: "50%",
@@ -388,7 +390,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
               color: "var(--db-text-tertiary)",
             }}
           >
-            Download
+            {t("qrDownloadLabel")}
           </p>
           <div style={{ display: "flex", gap: "8px" }}>
             {(
@@ -439,7 +441,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
               color: "var(--db-text-tertiary)",
             }}
           >
-            Share
+            {t("qrShareLabel")}
           </p>
           <div style={{ display: "flex", gap: "8px" }}>
             {/* Copy link */}
@@ -471,7 +473,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
               ) : (
                 <IconCopy size={14} stroke={1.8} />
               )}
-              {copied ? "Copied!" : "Copy link"}
+              {copied ? t("qrCopied") : t("qrCopyLink")}
             </button>
 
             {/* Share (Web Share API) */}
@@ -495,7 +497,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
               }}
             >
               <IconShare size={14} stroke={1.8} />
-              Share
+              {t("qrShareLabel")}
             </button>
 
             {/* Print */}
@@ -519,7 +521,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
               }}
             >
               <IconPrinter size={14} stroke={1.8} />
-              Print
+              {t("qrPrintLabel")}
             </button>
           </div>
         </div>

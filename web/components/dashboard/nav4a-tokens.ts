@@ -69,8 +69,18 @@ export function planLabel(plan: string | null | undefined): string | null {
   return null;
 }
 
-/** "Renueva el 12 jul 2026", or null when there is no renewal date. */
-export function renewLine(renewsAt: string | null | undefined): string | null {
+/**
+ * "Renews on 12 jul 2026" (or ES equivalent), or null when there is no renewal
+ * date. Takes `t` because it's a plain function, not a component — useTranslations()
+ * is a hook and can't run here. NOTE: the date itself is still formatted with the
+ * "es-ES" locale regardless of the UI language (same known gap as the checkout
+ * receipt date and the sales calendar month label — flagged, not fixed here, since
+ * it's more than a text substitution).
+ */
+export function renewLine(
+  renewsAt: string | null | undefined,
+  t: (key: string, values?: Record<string, string>) => string,
+): string | null {
   if (!renewsAt) return null;
   const d = new Date(renewsAt);
   if (Number.isNaN(d.getTime())) return null;
@@ -79,5 +89,5 @@ export function renewLine(renewsAt: string | null | undefined): string | null {
     month: "short",
     year: "numeric",
   });
-  return `Renueva el ${formatted}`;
+  return t("renewsOn", { date: formatted });
 }

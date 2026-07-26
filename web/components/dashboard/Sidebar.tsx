@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconLayoutDashboard,
@@ -29,33 +30,34 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ size?: number; stroke?: number }>;
   badgeKey?: "service_pending";
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Overview",       href: "/dashboard",               icon: IconLayoutDashboard },
-  { label: "Orders",         href: "/dashboard/orders",        icon: IconShoppingCart },
-  { label: "Kitchen",        href: "/dashboard/kds",           icon: IconChefHat },
-  { label: "Menu",           href: "/dashboard/menu",          icon: IconToolsKitchen2 },
-  { label: "Inventory",      href: "/dashboard/inventory",     icon: IconPackage },
-  { label: "Chat rooms",     href: "/dashboard/chat-rooms",    icon: IconMessages },
-  { label: "Employees",      href: "/dashboard/employees",     icon: IconUsers },
-  { label: "Roles",          href: "/dashboard/roles",         icon: IconShieldLock },
-  { label: "Reservations",   href: "/dashboard/reservations",  icon: IconCalendar },
-  { label: "Loyalty",        href: "/dashboard/loyalty",       icon: IconAward },
-  { label: "Servicio",       href: "/dashboard/service",       icon: IconBell, badgeKey: "service_pending" },
-  { label: "Payments",       href: "/dashboard/payments",      icon: IconCreditCard },
-  { label: "Disputes",       href: "/dashboard/disputes",      icon: IconReceiptRefund },
-  { label: "Reports",        href: "/dashboard/reports",       icon: IconChartBar },
-  { label: "Analytics",      href: "/dashboard/analytics",     icon: IconChartLine },
-  { label: "Offers",         href: "/dashboard/offers",        icon: IconTag },
-  { label: "Configuration",  href: "/dashboard/configuration", icon: IconSettings },
+  { labelKey: "navOverview",      href: "/dashboard",               icon: IconLayoutDashboard },
+  { labelKey: "navOrders",        href: "/dashboard/orders",        icon: IconShoppingCart },
+  { labelKey: "navKitchen",       href: "/dashboard/kds",           icon: IconChefHat },
+  { labelKey: "navMenu",          href: "/dashboard/menu",          icon: IconToolsKitchen2 },
+  { labelKey: "navInventory",     href: "/dashboard/inventory",     icon: IconPackage },
+  { labelKey: "navChatRooms",     href: "/dashboard/chat-rooms",    icon: IconMessages },
+  { labelKey: "navEmployees",     href: "/dashboard/employees",     icon: IconUsers },
+  { labelKey: "navRoles",         href: "/dashboard/roles",         icon: IconShieldLock },
+  { labelKey: "navReservations",  href: "/dashboard/reservations",  icon: IconCalendar },
+  { labelKey: "navLoyalty",       href: "/dashboard/loyalty",       icon: IconAward },
+  { labelKey: "navService",       href: "/dashboard/service",       icon: IconBell, badgeKey: "service_pending" },
+  { labelKey: "navPayments",      href: "/dashboard/payments",      icon: IconCreditCard },
+  { labelKey: "navDisputes",      href: "/dashboard/disputes",      icon: IconReceiptRefund },
+  { labelKey: "navReports",       href: "/dashboard/reports",       icon: IconChartBar },
+  { labelKey: "navAnalytics",     href: "/dashboard/analytics",     icon: IconChartLine },
+  { labelKey: "navOffers",        href: "/dashboard/offers",        icon: IconTag },
+  { labelKey: "navConfiguration", href: "/dashboard/configuration", icon: IconSettings },
 ];
 
 export function Sidebar() {
+  const t = useTranslations("dashboardCommon");
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
   const [servicePending, setServicePending] = useState(0);
@@ -114,7 +116,7 @@ export function Sidebar() {
 
   return (
     <nav
-      aria-label="Dashboard navigation"
+      aria-label={t("navAriaLabel")}
       style={{
         width: "48px",
         minWidth: "48px",
@@ -134,13 +136,14 @@ export function Sidebar() {
         scrollbarWidth: "none",
       }}
     >
-      {NAV_ITEMS.map(({ label, href, icon: Icon, badgeKey }) => {
+      {NAV_ITEMS.map(({ labelKey, href, icon: Icon, badgeKey }) => {
         const isActive =
           href === "/dashboard"
             ? pathname === "/dashboard"
             : pathname === href || pathname.startsWith(href + "/");
 
         const badge = badgeKey === "service_pending" ? servicePending : 0;
+        const label = t(labelKey);
 
         return (
           <Link
@@ -170,7 +173,7 @@ export function Sidebar() {
 
             {badge > 0 && (
               <span
-                aria-label={`${badge} pending`}
+                aria-label={t("pendingBadgeAria", { count: badge })}
                 style={{
                   position: "absolute",
                   top: "4px",
@@ -208,8 +211,8 @@ export function Sidebar() {
           />
           <Link
             href="/super-admin"
-            title="Super Admin"
-            aria-label="Super Admin"
+            title={t("superAdmin")}
+            aria-label={t("superAdmin")}
             aria-current={pathname.startsWith("/super-admin") ? "page" : undefined}
             style={{
               position: "relative",

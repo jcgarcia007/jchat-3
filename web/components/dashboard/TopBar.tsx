@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconSearch,
   IconChevronDown,
@@ -34,6 +35,7 @@ function useClock(): string {
 }
 
 export function TopBar() {
+  const t = useTranslations("dashboardCommon");
   const time = useClock();
 
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
@@ -82,7 +84,7 @@ export function TopBar() {
   }
 
   const hasSwitcher = businesses.length > 1;
-  const displayName = activeName || "Select business";
+  const displayName = activeName || t("selectBusinessFallback");
 
   return (
     <header
@@ -129,7 +131,7 @@ export function TopBar() {
             }}
           >
             <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" />
-            <span>{switching ? "Switching…" : displayName}</span>
+            <span>{switching ? t("switchingState") : displayName}</span>
             <IconChevronDown size={14} stroke={1.7} color="var(--db-text-tertiary)" />
           </button>
         ) : (
@@ -147,7 +149,7 @@ export function TopBar() {
             }}
           >
             <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" />
-            {switching ? "Switching…" : displayName}
+            {switching ? t("switchingState") : displayName}
           </span>
         )}
 
@@ -230,7 +232,7 @@ export function TopBar() {
         {/* TODO(Task 2.16): wire real Cmd+K command palette */}
         <button
           type="button"
-          aria-label="Open command palette (⌘K)"
+          aria-label={t("commandPaletteAria")}
           onClick={() => {
             // TODO(Task 2.16): open command palette
           }}
@@ -249,7 +251,7 @@ export function TopBar() {
           }}
         >
           <IconSearch size={13} stroke={1.6} />
-          <span>Search</span>
+          <span>{t("searchLabel")}</span>
           <kbd
             style={{
               fontSize: "10px",
@@ -268,7 +270,7 @@ export function TopBar() {
         {/* Live clock */}
         <span
           aria-live="polite"
-          aria-label={`Current time: ${time}`}
+          aria-label={t("currentTimeAria", { time })}
           style={{
             fontSize: "12px",
             color: "var(--db-text-tertiary)",
@@ -283,7 +285,7 @@ export function TopBar() {
         {/* Avatar stub */}
         {/* TODO(Task 1.7): replace with real user avatar from profiles.avatar_url */}
         <div
-          aria-label="User avatar"
+          aria-label={t("userAvatarAria")}
           style={{
             width: "28px",
             height: "28px",

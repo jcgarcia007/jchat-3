@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "./useActiveBusinessName";
@@ -31,8 +32,6 @@ function formatCents(cents: number): string {
   return money.format(cents / 100);
 }
 
-const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
 interface DayTotals {
   cents: number;
   count: number;
@@ -44,6 +43,9 @@ interface OrderRow {
 }
 
 export function SalesCalendar() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+  const WEEKDAYS = t.raw("weekdays") as string[];
   const { id: activeId } = useActiveBusinessName();
 
   // View month state (local time). Start on the current local month.
@@ -167,7 +169,7 @@ export function SalesCalendar() {
           borderRadius: "14px",
         }}
       >
-        Selecciona un negocio para ver sus ventas.
+        {t("noActiveBusinessMessage")}
       </div>
     );
   }
@@ -189,7 +191,7 @@ export function SalesCalendar() {
           <button
             type="button"
             onClick={goPrev}
-            aria-label="Mes anterior"
+            aria-label={t("prevMonthAria")}
             style={navBtn}
           >
             <IconChevronLeft size={18} />
@@ -209,7 +211,7 @@ export function SalesCalendar() {
           <button
             type="button"
             onClick={goNext}
-            aria-label="Mes siguiente"
+            aria-label={t("nextMonthAria")}
             disabled={!canGoNext}
             style={{ ...navBtn, opacity: canGoNext ? 1 : 0.4, cursor: canGoNext ? "pointer" : "default" }}
           >
@@ -223,10 +225,10 @@ export function SalesCalendar() {
           </div>
           <div style={{ fontSize: "12px", color: loadError ? "var(--db-danger)" : "var(--db-text-secondary)" }}>
             {loadError
-              ? "No se pudieron cargar las ventas"
+              ? t("loadErrorShort")
               : loading
-                ? "Cargando…"
-                : `${monthCount} ${monthCount === 1 ? "pedido" : "pedidos"} este mes`}
+                ? tCommon("loading")
+                : t("orderCountThisMonth", { count: monthCount })}
           </div>
         </div>
       </div>
@@ -314,7 +316,7 @@ export function SalesCalendar() {
       {loadError && (
         <div style={{ marginTop: "16px", textAlign: "center" }}>
           <p style={{ fontSize: "14px", color: "var(--db-danger)", margin: "0 0 10px" }}>
-            No se pudieron cargar las ventas. Revisa tu conexión e inténtalo de nuevo.
+            {t("loadErrorLong")}
           </p>
           <button
             type="button"
@@ -333,7 +335,7 @@ export function SalesCalendar() {
               cursor: "pointer",
             }}
           >
-            Reintentar
+            {t("retry")}
           </button>
         </div>
       )}
@@ -341,7 +343,7 @@ export function SalesCalendar() {
       {/* Empty state — only when the load SUCCEEDED with zero sales. */}
       {!loading && !loadError && !hasSales && (
         <p style={{ marginTop: "16px", fontSize: "14px", color: "var(--db-text-secondary)", textAlign: "center" }}>
-          Aún no hay ventas registradas este mes.
+          {t("emptyMonthMessage")}
         </p>
       )}
     </div>

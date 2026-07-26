@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconMapPin, IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
 import {
@@ -37,15 +38,17 @@ function RailChip({
   active: boolean;
   showBadge: boolean;
 }) {
+  const t = useTranslations("dashboardCommon");
   const Icon = mod.icon;
   const href = mod.pages[0]?.href ?? "/dashboard";
   const c = MODULE_COLORS[mod.id] ?? NEUTRAL_CHIP;
+  const label = t(mod.labelKey);
 
   return (
     <Link
       href={href}
-      title={mod.label}
-      aria-label={mod.label}
+      title={label}
+      aria-label={label}
       aria-current={active ? "page" : undefined}
       style={{
         display: "flex",
@@ -74,7 +77,7 @@ function RailChip({
 
         {showBadge && (
           <span
-            aria-label="Pendientes"
+            aria-label={t("pendingDotAria")}
             style={{
               position: "absolute",
               top: "-2px",
@@ -96,13 +99,14 @@ function RailChip({
           color: active ? NAV4A.railLabelActive : NAV4A.railLabelInactive,
         }}
       >
-        {mod.label}
+        {label}
       </span>
     </Link>
   );
 }
 
 export function ModuleRail() {
+  const t = useTranslations("dashboardCommon");
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
   const { name: bizName } = useActiveBusinessName();
@@ -124,7 +128,7 @@ export function ModuleRail() {
 
   return (
     <nav
-      aria-label="Dashboard navigation"
+      aria-label={t("navAriaLabel")}
       style={{
         width: "100px",
         minWidth: "100px",
@@ -189,8 +193,8 @@ export function ModuleRail() {
         {showAdmin && (
           <Link
             href="/super-admin"
-            title="Super Admin"
-            aria-label="Super Admin"
+            title={t("superAdmin")}
+            aria-label={t("superAdmin")}
             aria-current={adminActive ? "page" : undefined}
             style={{
               display: "flex",
@@ -223,15 +227,15 @@ export function ModuleRail() {
                 color: adminActive ? NAV4A.railLabelActive : NAV4A.railLabelInactive,
               }}
             >
-              Admin
+              {t("railAdminLabel")}
             </span>
           </Link>
         )}
 
         {/* User avatar — visual only. Logout lives in the Configuración subnav. */}
         <div
-          aria-label={bizName ? `Cuenta: ${bizName}` : "Cuenta"}
-          title={bizName || "Cuenta"}
+          aria-label={bizName ? t("accountAria", { name: bizName }) : t("accountFallback")}
+          title={bizName || t("accountFallback")}
           style={{
             width: "40px",
             height: "40px",

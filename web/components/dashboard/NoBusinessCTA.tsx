@@ -1,11 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { IconBuildingStore, IconArrowRight } from "@tabler/icons-react";
 
 /**
  * Shown on dashboard pages when the signed-in account has no business.
  * Uses --db-* design tokens only.
+ *
+ * Client Component: every caller today is a "use client" dashboard page.tsx,
+ * so this can't be an async Server Component (getTranslations() needs
+ * next/headers, which isn't available once bundled for the client).
  */
 export function NoBusinessCTA({ message }: { message?: string }) {
+  const t = useTranslations("dashboardCommon");
   return (
     <section
       style={{
@@ -33,7 +41,7 @@ export function NoBusinessCTA({ message }: { message?: string }) {
         <IconBuildingStore size={28} />
       </span>
       <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 6px" }}>
-        No business yet
+        {t("noBusinessTitle")}
       </h2>
       <p
         style={{
@@ -43,8 +51,7 @@ export function NoBusinessCTA({ message }: { message?: string }) {
           maxWidth: "420px",
         }}
       >
-        {message ??
-          "Register your business to start managing your menu, chat rooms, orders and more."}
+        {message ?? t("noBusinessDefaultMessage")}
       </p>
       <Link
         href="/business/register"
@@ -62,7 +69,7 @@ export function NoBusinessCTA({ message }: { message?: string }) {
         }}
       >
         <IconBuildingStore size={18} />
-        Register your business
+        {t("registerBusinessLink")}
         <IconArrowRight size={16} />
       </Link>
     </section>

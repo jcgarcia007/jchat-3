@@ -37,7 +37,8 @@ import {
 export type NavIcon = React.ComponentType<{ size?: number; stroke?: number }>;
 
 export interface NavPage {
-  label: string;
+  /** Key into the 'dashboardCommon' i18n namespace (e.g. "railMesas"). */
+  labelKey: string;
   href: string;
   icon: NavIcon;
   /** Live realtime badge; only "service_pending" exists today. */
@@ -46,7 +47,8 @@ export interface NavPage {
 
 export interface NavModule {
   id: string;
-  label: string;
+  /** Key into the 'dashboardCommon' i18n namespace (e.g. "railPedidos"). */
+  labelKey: string;
   icon: NavIcon;
   pages: NavPage[];
 }
@@ -55,62 +57,62 @@ export interface NavModule {
 export const NAV_MODULES: NavModule[] = [
   {
     id: "resumen",
-    label: "Resumen",
+    labelKey: "railResumen",
     icon: IconLayoutDashboard,
     pages: [
-      { label: "Resumen", href: "/dashboard", icon: IconLayoutDashboard },
+      { labelKey: "railResumen", href: "/dashboard", icon: IconLayoutDashboard },
     ],
   },
   {
     id: "pedidos",
-    label: "Pedidos",
+    labelKey: "railPedidos",
     icon: IconShoppingCart,
     pages: [
-      { label: "Mesas", href: "/dashboard/tables", icon: IconArmchair },
-      { label: "Pedidos", href: "/dashboard/orders", icon: IconShoppingCart },
-      { label: "Cocina", href: "/dashboard/kds", icon: IconChefHat },
-      { label: "Servicio", href: "/dashboard/service", icon: IconBell, badgeKey: "service_pending" },
-      { label: "Reservas", href: "/dashboard/reservations", icon: IconCalendar },
+      { labelKey: "railMesas", href: "/dashboard/tables", icon: IconArmchair },
+      { labelKey: "railPedidos", href: "/dashboard/orders", icon: IconShoppingCart },
+      { labelKey: "railCocina", href: "/dashboard/kds", icon: IconChefHat },
+      { labelKey: "railServicio", href: "/dashboard/service", icon: IconBell, badgeKey: "service_pending" },
+      { labelKey: "railReservas", href: "/dashboard/reservations", icon: IconCalendar },
     ],
   },
   {
     id: "menu",
-    label: "Menú",
+    labelKey: "railMenu",
     icon: IconToolsKitchen2,
     pages: [
-      { label: "Menú", href: "/dashboard/menu", icon: IconToolsKitchen2 },
-      { label: "Inventario", href: "/dashboard/inventory", icon: IconPackage },
-      { label: "Ofertas", href: "/dashboard/offers", icon: IconTag },
+      { labelKey: "railMenu", href: "/dashboard/menu", icon: IconToolsKitchen2 },
+      { labelKey: "railInventario", href: "/dashboard/inventory", icon: IconPackage },
+      { labelKey: "railOfertas", href: "/dashboard/offers", icon: IconTag },
     ],
   },
   {
     id: "datos",
-    label: "Datos",
+    labelKey: "railDatos",
     icon: IconChartBar,
     pages: [
-      { label: "Analítica", href: "/dashboard/analytics", icon: IconChartHistogram },
-      { label: "Reportes", href: "/dashboard/reports", icon: IconChartBar },
-      { label: "Reseñas", href: "/dashboard/reviews", icon: IconStar },
-      { label: "Lealtad", href: "/dashboard/loyalty", icon: IconAward },
+      { labelKey: "railAnalitica", href: "/dashboard/analytics", icon: IconChartHistogram },
+      { labelKey: "railReportes", href: "/dashboard/reports", icon: IconChartBar },
+      { labelKey: "railResenas", href: "/dashboard/reviews", icon: IconStar },
+      { labelKey: "railLealtad", href: "/dashboard/loyalty", icon: IconAward },
     ],
   },
   {
     id: "chat",
-    label: "Chat",
+    labelKey: "railChat",
     icon: IconMessages,
     pages: [
-      { label: "Chat", href: "/dashboard/chat", icon: IconMessageCircle },
-      { label: "Salas", href: "/dashboard/chat-rooms", icon: IconMessages },
+      { labelKey: "railChat", href: "/dashboard/chat", icon: IconMessageCircle },
+      { labelKey: "railSalas", href: "/dashboard/chat-rooms", icon: IconMessages },
     ],
   },
   {
     id: "pagos",
-    label: "Pagos",
+    labelKey: "railPagos",
     icon: IconCreditCard,
     pages: [
-      { label: "Pagos", href: "/dashboard/payments", icon: IconCreditCard },
-      { label: "Disputas", href: "/dashboard/disputes", icon: IconGavel },
-      { label: "Facturación", href: "/dashboard/billing", icon: IconReceipt },
+      { labelKey: "railPagos", href: "/dashboard/payments", icon: IconCreditCard },
+      { labelKey: "railDisputas", href: "/dashboard/disputes", icon: IconGavel },
+      { labelKey: "railFacturacion", href: "/dashboard/billing", icon: IconReceipt },
     ],
   },
 ];
@@ -118,13 +120,13 @@ export const NAV_MODULES: NavModule[] = [
 // Configuration lives apart, pinned to the bottom of the rail (engranaje).
 export const CONFIG_MODULE: NavModule = {
   id: "configuracion",
-  label: "Configuración",
+  labelKey: "railConfiguracion",
   icon: IconSettings,
   pages: [
-    { label: "Negocios", href: "/dashboard/configuration/businesses", icon: IconBuildingStore },
-    { label: "Configuración", href: "/dashboard/configuration", icon: IconSettings },
-    { label: "Empleados", href: "/dashboard/employees", icon: IconUsers },
-    { label: "Roles", href: "/dashboard/roles", icon: IconShieldLock },
+    { labelKey: "railNegocios", href: "/dashboard/configuration/businesses", icon: IconBuildingStore },
+    { labelKey: "railConfiguracion", href: "/dashboard/configuration", icon: IconSettings },
+    { labelKey: "railEmpleados", href: "/dashboard/employees", icon: IconUsers },
+    { labelKey: "railRoles", href: "/dashboard/roles", icon: IconShieldLock },
   ],
 };
 

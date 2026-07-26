@@ -11,6 +11,7 @@
  * are a selector, not a sort control.
  */
 
+import { useTranslations } from "next-intl";
 import { IconLayoutGrid } from "@tabler/icons-react";
 import { getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 
@@ -55,31 +56,32 @@ export function CategoryCards({
    */
   compact?: boolean;
 }) {
+  const t = useTranslations("dashboardCommon");
   if (loading) {
-    return <div style={noticeStyle}>Cargando categorías…</div>;
+    return <div style={noticeStyle}>{t("loadingCategories")}</div>;
   }
   if (loadError) {
     return (
       <div style={{ ...noticeStyle, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ color: "var(--db-danger)" }}>
-          No se pudieron cargar las categorías. Revisa tu conexión e inténtalo de nuevo.
+          {t("loadErrorCategories")}
         </span>
         {onRetry && (
           <button type="button" onClick={onRetry} style={retryStyle}>
-            Reintentar
+            {t("retry")}
           </button>
         )}
       </div>
     );
   }
   if (cards.length === 0) {
-    return <div style={noticeStyle}>Aún no has creado categorías.</div>;
+    return <div style={noticeStyle}>{t("noCategories")}</div>;
   }
 
   return (
     <div
       role="tablist"
-      aria-label="Categorías"
+      aria-label={t("categoriesAriaLabel")}
       style={{
         display: "flex",
         gap: 10,
@@ -100,8 +102,8 @@ export function CategoryCards({
         compact={compact}
         onClick={() => onSelect(null)}
         icon={<IconLayoutGrid size={compact ? 18 : 20} stroke={1.6} />}
-        name="Todas"
-        countLabel={`${totalPublished} ${totalPublished === 1 ? "plato" : "platos"}`}
+        name={t("allCategoriesLabel")}
+        countLabel={t("ownerDishCountPlural", { count: totalPublished })}
       />
 
       {cards.map((c) => (
@@ -113,13 +115,13 @@ export function CategoryCards({
           onClick={() => onSelect(c.id)}
           icon={<CategoryIcon iconUrl={c.iconUrl} icon={c.icon} active={activeId === c.id} />}
           name={c.name}
-          countLabel={c.publishedCount === 0 ? "Sin platos" : `${c.publishedCount} ${c.publishedCount === 1 ? "plato" : "platos"}`}
+          countLabel={c.publishedCount === 0 ? t("noDishes") : t("ownerDishCountPlural", { count: c.publishedCount })}
           countWarn={c.publishedCount === 0}
           badges={
             <>
-              {c.outOfStock > 0 && <Pill tone="warn">{c.outOfStock} agotado{c.outOfStock !== 1 ? "s" : ""}</Pill>}
-              {c.hidden && <Pill>Oculta</Pill>}
-              {c.untranslated && <Pill>Sin traducir</Pill>}
+              {c.outOfStock > 0 && <Pill tone="warn">{t("outOfStockBadge", { count: c.outOfStock })}</Pill>}
+              {c.hidden && <Pill>{t("hiddenBadge")}</Pill>}
+              {c.untranslated && <Pill>{t("untranslatedBadge")}</Pill>}
             </>
           }
         />

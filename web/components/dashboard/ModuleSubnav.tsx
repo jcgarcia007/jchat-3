@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconSelector, IconLogout, IconCheck, IconPlus } from "@tabler/icons-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -48,6 +49,8 @@ interface SwitcherItem {
 // subnav's overflow can't clip it; closes on select, click-away, and Escape.
 
 function BusinessSwitcher() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const { id: activeId, name: activeName } = useActiveBusinessName();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -121,8 +124,8 @@ function BusinessSwitcher() {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={activeName ? `Cambiar negocio, actual: ${activeName}` : "Cambiar negocio"}
-        title={activeName || "Cambiar negocio"}
+        aria-label={activeName ? t("switchBusinessAria", { name: activeName }) : t("switchBusiness")}
+        title={activeName || t("switchBusiness")}
         disabled={busy}
         style={{
           display: "flex",
@@ -166,10 +169,10 @@ function BusinessSwitcher() {
               whiteSpace: "nowrap",
             }}
           >
-            {activeName || "Selecciona negocio"}
+            {activeName || t("selectBusinessFallback")}
           </span>
           <span style={{ display: "block", fontSize: "11px", color: NAV4A.eyebrow }}>
-            Cambiar negocio
+            {t("switchBusiness")}
           </span>
         </span>
         <IconSelector size={16} stroke={1.7} color={NAV4A.eyebrow} />
@@ -202,7 +205,7 @@ function BusinessSwitcher() {
           >
             {loading && (
               <div style={{ padding: "10px 12px", fontSize: "13px", color: NAV4A.eyebrow }}>
-                Cargando…
+                {tCommon("loading")}
               </div>
             )}
 
@@ -278,7 +281,7 @@ function BusinessSwitcher() {
                           color: NAV4A.eventTagText,
                         }}
                       >
-                        Evento
+                        {t("eventTag")}
                       </span>
                     )}
                     {isActive && <IconCheck size={16} stroke={2} />}
@@ -288,7 +291,7 @@ function BusinessSwitcher() {
 
             {!loading && items.length === 0 && (
               <div style={{ padding: "8px 10px", fontSize: "13px", color: NAV4A.eyebrow }}>
-                No tienes negocios todavía.
+                {t("noBusinessesYet")}
               </div>
             )}
 
@@ -312,7 +315,7 @@ function BusinessSwitcher() {
               }}
             >
               <IconPlus size={16} stroke={2} />
-              <span>Crear negocio</span>
+              <span>{t("createBusiness")}</span>
             </Link>
           </div>
         </>
@@ -322,9 +325,10 @@ function BusinessSwitcher() {
 }
 
 function PlanCard({ info }: { info: PlanInfo | null }) {
+  const t = useTranslations("dashboardCommon");
   const label = planLabel(info?.plan);
   if (!label) return null; // No card for admin/regular — never fabricate a plan.
-  const line = renewLine(info?.renewsAt);
+  const line = renewLine(info?.renewsAt, t);
 
   return (
     <div
@@ -348,6 +352,7 @@ function PlanCard({ info }: { info: PlanInfo | null }) {
 }
 
 export function ModuleSubnav({ module }: { module: NavModule | null }) {
+  const t = useTranslations("dashboardCommon");
   const pathname = usePathname();
   const servicePending = useServicePending();
   const [plan, setPlan] = useState<PlanInfo | null>(null);
@@ -394,10 +399,11 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
   // Longest-prefix match so nested routes (e.g. /dashboard/configuration/businesses)
   // highlight only the most specific page, not its parent.
   const activeHref = module ? resolveActivePageHref(module.pages, pathname) : null;
+  const moduleLabel = module ? t(module.labelKey) : null;
 
   return (
     <nav
-      aria-label={module ? `${module.label} navigation` : "Dashboard subnavigation"}
+      aria-label={moduleLabel ? t("subnavAriaWithModule", { module: moduleLabel }) : t("subnavAriaFallback")}
       style={{
         width: "230px",
         minWidth: "230px",
@@ -416,7 +422,7 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
       <BusinessSwitcher />
 
       {/* Eyebrow — active module name */}
-      {module && (
+      {moduleLabel && (
         <div
           style={{
             padding: "0 6px 10px",
@@ -427,15 +433,16 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
             color: NAV4A.eyebrow,
           }}
         >
-          {module.label}
+          {moduleLabel}
         </div>
       )}
 
       {/* Section list — hidden for <2-page modules (Resumen) */}
       {showList &&
-        module!.pages.map(({ label, href, icon: Icon, badgeKey }) => {
+        module!.pages.map(({ labelKey, href, icon: Icon, badgeKey }) => {
           const isActive = href === activeHref;
           const badge = badgeKey === "service_pending" ? servicePending : 0;
+          const label = t(labelKey);
           return (
             <Link
               key={href}
@@ -461,7 +468,7 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
               </span>
               {badge > 0 && (
                 <span
-                  aria-label={`${badge} pendientes`}
+                  aria-label={t("pendingBadgeAria", { count: badge })}
                   style={{
                     minWidth: "18px",
                     height: "18px",
@@ -507,7 +514,7 @@ export function ModuleSubnav({ module }: { module: NavModule | null }) {
           }}
         >
           <IconLogout size={18} stroke={1.7} />
-          <span>Cerrar sesión</span>
+          <span>{t("logout")}</span>
         </button>
       )}
 
