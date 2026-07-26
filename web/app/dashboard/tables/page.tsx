@@ -17,6 +17,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconPlus,
   IconMinus,
@@ -58,6 +59,8 @@ interface FormState {
 const EMPTY_FORM: FormState = { id: null, label: "", floor: DEFAULT_FLOOR, seats: "4", is_active: true, roomId: null };
 
 export default function TablesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const { id: activeId } = useActiveBusinessName();
 
   const [rows, setRows] = useState<TableRow[]>([]);
@@ -162,15 +165,15 @@ export default function TablesPage() {
 
   function validate(f: FormState): string | null {
     const label = f.label.trim();
-    if (!label) return "La etiqueta es obligatoria.";
-    if (label.length > 20) return "La etiqueta no puede superar 20 caracteres.";
+    if (!label) return t("tablesLabelRequired");
+    if (label.length > 20) return t("tablesLabelTooLong");
     const seats = Number(f.seats);
-    if (!Number.isInteger(seats) || seats < 1 || seats > 50) return "Las sillas deben ser un número entre 1 y 50.";
+    if (!Number.isInteger(seats) || seats < 1 || seats > 50) return t("tablesSeatsRange");
     // Client-side duplicate check (case-insensitive), excluding the edited row.
     const dup = rows.some(
       (r) => r.id !== f.id && r.label.trim().toLowerCase() === label.toLowerCase(),
     );
-    if (dup) return "Ya existe una mesa con esa etiqueta.";
+    if (dup) return t("tablesDuplicateLabel");
     return null;
   }
 
@@ -211,8 +214,8 @@ export default function TablesPage() {
       // Postgres unique_violation (business_id, lower(label)) → friendly copy.
       setFormError(
         dbError.code === "23505"
-          ? "Ya existe una mesa con esa etiqueta."
-          : "No se pudo guardar la mesa. Inténtalo de nuevo.",
+          ? t("tablesDuplicateLabel")
+          : t("tablesSaveError"),
       );
       return;
     }
@@ -222,7 +225,7 @@ export default function TablesPage() {
   }
 
   async function remove(r: TableRow) {
-    if (!window.confirm(`¿Eliminar la mesa "${r.label}"? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(t("tablesDeleteConfirm", { label: r.label }))) return;
     // If the table has a subchat, deactivate it first (never delete the room —
     // it may hold messages). set_table_subchat(false) marks the room inactive
     // and clears the link, then the table row can be removed.
@@ -257,23 +260,23 @@ export default function TablesPage() {
     if (error) {
       // Roll back so the screen never shows a value that wasn't saved.
       setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, seats: prev } : x)));
-      setSeatError(`No se pudieron actualizar las sillas de "${r.label}". Inténtalo de nuevo.`);
+      setSeatError(t("tablesSeatUpdateError", { label: r.label }));
     }
   }
 
   // ── States ─────────────────────────────────────────────────────────────────
   if (!activeId) {
-    return <Shell><Notice>Selecciona un negocio para gestionar sus mesas.</Notice></Shell>;
+    return <Shell><Notice>{t("tablesNoActiveBusinessMessage")}</Notice></Shell>;
   }
 
   return (
     <Shell>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-          Mesas
+          {t("railMesas")}
         </h1>
         <button type="button" onClick={openCreate} style={CTA}>
-          <IconPlus size={18} /> Añadir mesa
+          <IconPlus size={18} /> {t("tablesAddButton")}
         </button>
       </div>
 
@@ -298,18 +301,18 @@ export default function TablesPage() {
       )}
 
       {loading ? (
-        <Notice>Cargando…</Notice>
+        <Notice>{tCommon("loading")}</Notice>
       ) : loadError ? (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
           <p style={{ color: "var(--db-danger)", fontSize: "14px", margin: "0 0 10px" }}>
-            No se pudieron cargar las mesas. Revisa tu conexión e inténtalo de nuevo.
+            {t("tablesLoadError")}
           </p>
           <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={SECONDARY_BTN}>
-            Reintentar
+            {t("retry")}
           </button>
         </div>
       ) : rows.length === 0 ? (
-        <Notice>Aún no has registrado mesas.</Notice>
+        <Notice>{t("tablesEmpty")}</Notice>
       ) : (
         floors.map((floor) => (
           <div key={floor} style={{ marginBottom: "28px" }}>
@@ -353,7 +356,7 @@ export default function TablesPage() {
                   <TableGlyph label={r.label} seats={r.seats} />
 
                   <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-                    {r.seats} {r.seats === 1 ? "silla" : "sillas"}
+                    {t("tablesSeatsCountPlural", { count: r.seats })}
                   </div>
                   {(() => {
                     const wc = waiterCounts[r.id] ?? 0;
@@ -365,18 +368,18 @@ export default function TablesPage() {
                           color: wc === 0 ? "var(--db-warning)" : "var(--db-text-tertiary)",
                         }}
                       >
-                        {wc === 0 ? "Sin mesero" : `${wc} ${wc === 1 ? "mesero" : "meseros"}`}
+                        {wc === 0 ? t("tablesNoWaiter") : t("tablesWaiterCountPlural", { count: wc })}
                       </div>
                     );
                   })()}
                   {r.room_id && (
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-                      <IconMessageCircle size={13} /> Chat
+                      <IconMessageCircle size={13} /> {t("tablesChatIndicator")}
                     </div>
                   )}
                   {!r.is_active && (
                     <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--db-text-tertiary)" }}>
-                      Inactiva
+                      {t("tablesInactiveIndicator")}
                     </div>
                   )}
 
@@ -391,24 +394,24 @@ export default function TablesPage() {
                             type="button"
                             onClick={() => void adjustSeats(r, -1)}
                             disabled={minusDisabled}
-                            aria-label={`Quitar una silla de ${r.label}`}
-                            title={`Quitar una silla de ${r.label}`}
+                            aria-label={t("tablesRemoveSeatAria", { label: r.label })}
+                            title={t("tablesRemoveSeatAria", { label: r.label })}
                             style={{ ...ICON_BTN, opacity: minusDisabled ? 0.4 : 1, cursor: minusDisabled ? "default" : "pointer" }}
                           >
                             <IconMinus size={16} />
                           </button>
-                          <button type="button" onClick={() => openEdit(r)} aria-label={`Editar ${r.label}`} style={ICON_BTN}>
+                          <button type="button" onClick={() => openEdit(r)} aria-label={t("tablesEditAria", { label: r.label })} style={ICON_BTN}>
                             <IconPencil size={16} />
                           </button>
-                          <button type="button" onClick={() => void remove(r)} aria-label={`Eliminar ${r.label}`} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
+                          <button type="button" onClick={() => void remove(r)} aria-label={t("tablesDeleteAria", { label: r.label })} style={{ ...ICON_BTN, color: "var(--db-danger)" }}>
                             <IconTrash size={16} />
                           </button>
                           <button
                             type="button"
                             onClick={() => void adjustSeats(r, 1)}
                             disabled={plusDisabled}
-                            aria-label={`Añadir una silla a ${r.label}`}
-                            title={`Añadir una silla a ${r.label}`}
+                            aria-label={t("tablesAddSeatAria", { label: r.label })}
+                            title={t("tablesAddSeatAria", { label: r.label })}
                             style={{ ...ICON_BTN, opacity: plusDisabled ? 0.4 : 1, cursor: plusDisabled ? "default" : "pointer" }}
                           >
                             <IconPlus size={16} />
@@ -416,8 +419,8 @@ export default function TablesPage() {
                           <button
                             type="button"
                             onClick={() => setQrTable({ id: r.id, label: r.label, qr_token: r.qr_token, room_id: r.room_id })}
-                            aria-label={`Código QR de ${r.label}`}
-                            title={`Código QR de ${r.label}`}
+                            aria-label={t("tablesQrAria", { label: r.label })}
+                            title={t("tablesQrAria", { label: r.label })}
                             style={ICON_BTN}
                           >
                             <IconQrcode size={16} />
@@ -476,6 +479,7 @@ function Notice({ children }: { children: React.ReactNode }) {
  * the exact count always shows in the caption below the glyph. Tokens only.
  */
 function TableGlyph({ label, seats }: { label: string; seats: number }) {
+  const t = useTranslations("dashboardCommon");
   const SIZE = 180;
   const C = SIZE / 2; // center
   const RING = 58; // chair distance from center
@@ -492,7 +496,7 @@ function TableGlyph({ label, seats }: { label: string; seats: number }) {
       width="150"
       height="150"
       role="img"
-      aria-label={`Mesa ${label}, ${seats} ${seats === 1 ? "silla" : "sillas"}`}
+      aria-label={t("tablesGlyphAria", { label, count: seats })}
     >
       {chairs.map((ch, i) => (
         <rect
@@ -541,6 +545,8 @@ function TableForm({
   onWaitersChanged: () => void;
   onSubchatChanged: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   return (
     <form
       onSubmit={(e) => {
@@ -559,23 +565,23 @@ function TableForm({
       }}
     >
       <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-        {form.id === null ? "Nueva mesa" : "Editar mesa"}
+        {form.id === null ? t("tablesNewTableTitle") : t("tablesEditTableTitle")}
       </div>
 
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
         <label style={FIELD}>
-          <span style={LABEL}>Etiqueta</span>
+          <span style={LABEL}>{t("tablesLabelField")}</span>
           <input
             value={form.label}
             onChange={(e) => onChange({ ...form, label: e.target.value })}
             maxLength={20}
-            placeholder="T1, Mesa 5"
+            placeholder={t("tablesLabelPlaceholder")}
             style={INPUT}
             autoFocus
           />
         </label>
         <label style={FIELD}>
-          <span style={LABEL}>Piso / zona</span>
+          <span style={LABEL}>{t("tablesFloorField")}</span>
           <input
             value={form.floor}
             onChange={(e) => onChange({ ...form, floor: e.target.value })}
@@ -585,7 +591,7 @@ function TableForm({
           />
         </label>
         <label style={{ ...FIELD, maxWidth: "120px" }}>
-          <span style={LABEL}>Sillas</span>
+          <span style={LABEL}>{t("tablesSeatsField")}</span>
           <input
             type="number"
             min={1}
@@ -603,7 +609,7 @@ function TableForm({
           checked={form.is_active}
           onChange={(e) => onChange({ ...form, is_active: e.target.checked })}
         />
-        Mesa activa
+        {t("tablesActiveCheckbox")}
       </label>
 
       {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
@@ -626,10 +632,10 @@ function TableForm({
 
       <div style={{ display: "flex", gap: "8px" }}>
         <button type="submit" disabled={saving} style={{ ...CTA, opacity: saving ? 0.6 : 1, cursor: saving ? "wait" : "pointer" }}>
-          <IconDeviceFloppy size={17} /> {saving ? "Guardando…" : "Guardar"}
+          <IconDeviceFloppy size={17} /> {saving ? t("tablesSavingState") : tCommon("save")}
         </button>
         <button type="button" onClick={onCancel} style={SECONDARY_BTN}>
-          <IconX size={16} /> Cancelar
+          <IconX size={16} /> {tCommon("cancel")}
         </button>
       </div>
     </form>
@@ -653,6 +659,7 @@ function SubchatToggle({
   onChange: (roomId: string | null) => void;
   onChanged: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -668,10 +675,10 @@ function SubchatToggle({
       const m = rpcErr.message;
       setError(
         m.includes("NO_MAIN_ROOM")
-          ? "El negocio no tiene sala principal para crear el chat."
+          ? t("tablesSubchatNoMainRoom")
           : m.includes("NOT_ALLOWED")
-            ? "No tienes permiso sobre esta mesa."
-            : "No se pudo actualizar el chat de la mesa.",
+            ? t("tablesNoPermission")
+            : t("tablesSubchatUpdateError"),
       );
       return;
     }
@@ -688,7 +695,7 @@ function SubchatToggle({
           disabled={busy}
           onChange={(e) => void toggle(e.target.checked)}
         />
-        <IconMessageCircle size={16} /> Chat para esta mesa
+        <IconMessageCircle size={16} /> {t("tablesSubchatCheckbox")}
       </label>
       {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
     </div>
@@ -718,6 +725,8 @@ function WaiterAssignment({
   businessId: string;
   onChanged: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [employees, setEmployees] = useState<AssignEmployee[]>([]);
   const [assigned, setAssigned] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -810,10 +819,10 @@ function WaiterAssignment({
       const code = (dbErr as { code?: string }).code;
       setError(
         code === "23505"
-          ? "Ese mesero ya estaba asignado."
+          ? t("tablesWaiterAlreadyAssigned")
           : code === "42501"
-            ? "No tienes permiso para asignar meseros a esta mesa."
-            : "No se pudo actualizar la asignación. Inténtalo de nuevo.",
+            ? t("tablesNoPermissionAssign")
+            : t("tablesAssignUpdateError"),
       );
       return;
     }
@@ -831,20 +840,20 @@ function WaiterAssignment({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-        <IconUsers size={16} /> Meseros asignados
+        <IconUsers size={16} /> {t("tablesWaitersAssignedHeader")}
       </div>
 
       {loading ? (
-        <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>Cargando…</div>
+        <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{tCommon("loading")}</div>
       ) : loadError ? (
         <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>
-          No se pudieron cargar los empleados.
+          {t("tablesWaitersLoadError")}
         </div>
       ) : employees.length === 0 ? (
         <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-          Este negocio no tiene empleados todavía.{" "}
+          {t("tablesNoEmployeesYet")}{" "}
           <Link href="/dashboard/employees" style={{ color: "var(--db-accent)", fontWeight: 600 }}>
-            Añadir empleados
+            {t("tablesAddEmployeesLink")}
           </Link>
         </div>
       ) : (

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconX, IconDownload, IconCopy, IconCheck, IconPrinter, IconMessageCircle } from "@tabler/icons-react";
 import {
   tableQrUrl,
@@ -24,6 +25,7 @@ export interface QrTable {
 }
 
 export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () => void }) {
+  const t = useTranslations("dashboardCommon");
   const url = tableQrUrl(table.qr_token);
   const [svg, setSvg] = useState<string>("");
   const [copied, setCopied] = useState(false);
@@ -61,8 +63,9 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
   function print() {
     const w = window.open("", "_blank", "width=480,height=640");
     if (!w) return;
+    const title = t("tablesQrModalTitle", { label: table.label });
     w.document.write(
-      `<!doctype html><title>${table.label}</title><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><h2>Mesa ${table.label}</h2><div style="width:320px">${svg}</div><script>window.onload=function(){window.print()}</script></body>`,
+      `<!doctype html><title>${title}</title><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><h2>${title}</h2><div style="width:320px">${svg}</div><script>window.onload=function(){window.print()}</script></body>`,
     );
     w.document.close();
   }
@@ -75,7 +78,7 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
       <div
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label={`QR de la mesa ${table.label}`}
+        aria-label={t("tablesQrAria", { label: table.label })}
         style={{
           width: "100%",
           maxWidth: "380px",
@@ -89,14 +92,14 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--db-text-primary)" }}>Mesa {table.label}</div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" style={iconBtn}>
+          <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--db-text-primary)" }}>{t("tablesQrModalTitle", { label: table.label })}</div>
+          <button type="button" onClick={onClose} aria-label={t("tablesQrModalCloseAria")} style={iconBtn}>
             <IconX size={18} />
           </button>
         </div>
 
         <div
-          aria-label="Código QR"
+          aria-label={t("tablesQrModalCodeAria")}
           style={{ background: "#ffffff", borderRadius: "12px", padding: "16px", display: "flex", justifyContent: "center" }}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
@@ -104,7 +107,7 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
         {table.room_id && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--db-text-secondary)" }}>
             <IconMessageCircle size={16} />
-            Al escanear también entra al chat de esta mesa.
+            {t("tablesQrModalChatHint")}
           </div>
         )}
 
@@ -115,14 +118,14 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
           <button type="button" onClick={() => void downloadQrSvg(url, filename)} style={btn}>
             <IconDownload size={15} /> SVG
           </button>
-          <button type="button" onClick={() => void downloadQrPdf(url, filename, `Mesa ${table.label}`)} style={btn}>
+          <button type="button" onClick={() => void downloadQrPdf(url, filename, t("tablesQrModalTitle", { label: table.label }))} style={btn}>
             <IconDownload size={15} /> PDF
           </button>
           <button type="button" onClick={print} style={btn}>
-            <IconPrinter size={15} /> Imprimir
+            <IconPrinter size={15} /> {t("qrPrintLabel")}
           </button>
           <button type="button" onClick={() => void copyLink()} style={btn}>
-            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />} {copied ? "Copiado" : "Copiar"}
+            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />} {copied ? t("qrCopied") : t("tablesQrModalCopy")}
           </button>
         </div>
       </div>
