@@ -17,17 +17,22 @@ import type { NextConfig } from "next";
 const SUPABASE = "https://klfsgcfoahdtkojyqspd.supabase.co";
 const SUPABASE_WS = "wss://klfsgcfoahdtkojyqspd.supabase.co";
 
-// CSP como allowlist. EN REPORT-ONLY (hallazgo #8): un flip prematuro a enforce llegó
-// a producción vía auto-deploy y se revirtió — vuelve a Report-Only hasta completar el
-// walkthrough en un PREVIEW. Incluye:
+// ── Modo del CSP ──────────────────────────────────────────────────────────────
+// true  = Report-Only: observa y REPORTA violaciones (a /api/csp-report), NO bloquea. Úsalo para VALIDAR.
+// false = enforce: bloquea de verdad. Poner en false SOLO cuando, tras recorrer los flujos en un preview,
+//         /api/csp-report NO haya logueado ninguna violación legítima en los logs de Vercel.
+const CSP_REPORT_ONLY = true;
+
+// CSP como allowlist. El MODO lo controla `CSP_REPORT_ONLY` (abajo): hoy en Report-Only para VALIDAR con
+// datos reales antes de enforzar. Las violaciones se reportan a /api/csp-report → visibles en logs de Vercel.
+// Historial (hallazgo #8): un flip prematuro a enforce llegó a prod vía auto-deploy y rompió cosas; por eso
+// ahora se valida en Report-Only y se pasa a enforce con un solo toggle, no a mano en el key. Incluye:
 //   · hCaptcha (D-38): script/style/frame/connect a hcaptcha.com y *.hcaptcha.com.
-//   · Stripe (ruta del dinero, doc oficial): Stripe.js carga m.stripe.network (fraude +
-//     3D Secure) y q.stripe.com (telemetría), además de js/hooks/api.stripe.com.
-//   · Google Maps: su JS inyecta en runtime un <link> a fonts.googleapis.com (Roboto),
-//     servida desde fonts.gstatic.com.
+//   · Stripe (ruta del dinero): js.stripe.com + m.stripe.network (fraude/3DS) + q.stripe.com (telemetría).
+//   · Google Maps: su JS inyecta en runtime un <link> a fonts.googleapis.com (Roboto), servida desde gstatic.
 //
-// SIGUIENTE PASO: desplegar a un PREVIEW, recorrer con la consola abierta y, sólo si NO
-// hay violaciones legítimas, cambiar el key del primer header a "Content-Security-Policy".
+// VALIDACIÓN → ENFORCE: desplegar a un preview, recorrer los flujos con la consola abierta, revisar que
+// /api/csp-report no loguee violaciones legítimas, y sólo entonces poner CSP_REPORT_ONLY = false.
 // Al añadir un origen externo nuevo: agrégalo al directivo correspondiente aquí.
 const csp = [
   `default-src 'self'`,
@@ -50,12 +55,15 @@ const csp = [
   `base-uri 'self'`,
   `form-action 'self'`,
   `frame-ancestors 'none'`,
+  // Reporta violaciones al endpoint interno (visibles en logs de Vercel). Relativa a propósito
+  // (funciona igual en preview y en prod).
+  `report-uri /api/csp-report`,
 ].join("; ");
 
 const securityHeaders = [
-  // CSP en Report-Only (revertida tras un enforce prematuro en prod — ver nota arriba).
-  // NO cambiar a "Content-Security-Policy" hasta pasar el walkthrough en un preview.
-  { key: "Content-Security-Policy", value: csp },
+  // Modo controlado por CSP_REPORT_ONLY (arriba). Con reporte activo (report-uri) las
+  // violaciones salen en los logs de Vercel en cualquiera de los dos modos.
+  { key: CSP_REPORT_ONLY ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", value: csp },
   // El resto SÍ en enforce (seguras, verificado que no rompen nada en esta app):
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Frame-Options", value: "DENY" },
