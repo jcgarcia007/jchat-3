@@ -17,7 +17,13 @@ export const ACTIVE_BUSINESS_CHANGED = "jchat:active-business-changed";
 /** Broadcast that the active business changed (call after setActiveBusiness OK). */
 export function notifyActiveBusinessChanged(): void {
   if (typeof window !== "undefined") {
+    // Recarga dura tras cambiar de negocio. Las ~16 páginas del dashboard resuelven el negocio
+    // activo en su propio useEffect([]) y NO reaccionan a un evento/router.refresh(); una recarga
+    // garantiza que TODA la app muestre el negocio nuevo (mismo enfoque probado que el shell viejo
+    // TopBar). El dispatch del evento se conserva para los consumidores reactivos del chrome que sí
+    // lo escuchan (useActiveBusinessName), aunque en la práctica la recarga los cubre igual.
     window.dispatchEvent(new Event(ACTIVE_BUSINESS_CHANGED));
+    window.location.reload();
   }
 }
 
