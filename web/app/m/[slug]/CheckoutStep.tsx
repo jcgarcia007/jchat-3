@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -83,6 +84,7 @@ export function CheckoutStep({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const t = useTranslations("checkout");
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("checking");
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
@@ -156,7 +158,7 @@ export function CheckoutStep({
       serverBreakdown?: ServerBreakdown;
     };
     if (!res?.clientSecret || !res?.publishableKey) {
-      setError("El servidor no devolvió los datos de pago.");
+      setError(t("errorNoPaymentData"));
       setPhase("error");
       return;
     }
@@ -167,7 +169,7 @@ export function CheckoutStep({
       breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken]);
+  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, t]);
 
   // Guest path (no session, D-64): invisible hCaptcha + the PUBLIC guest-pay EF.
   // Name is OPTIONAL (guest-pay v2). Prices from the server; nothing trusted.
@@ -179,7 +181,7 @@ export function CheckoutStep({
 
     const cap = await captchaRef.current?.getToken();
     if (cap && cap.status === "failed") {
-      setError("No pudimos verificar que eres una persona. Inténtalo de nuevo.");
+      setError(t("errorCaptchaFailed"));
       setPhase("error");
       return; // widget already reset → retry gets a new token
     }
@@ -209,9 +211,7 @@ export function CheckoutStep({
 
     if (fnErr) {
       const raw = await readFunctionError(fnErr);
-      const msg = /verific|captcha|persona/i.test(raw)
-        ? "No pudimos verificar que eres una persona. Inténtalo de nuevo."
-        : raw;
+      const msg = /verific|captcha|persona/i.test(raw) ? t("errorCaptchaFailed") : raw;
       setError(msg);
       setPhase("error");
       return;
@@ -222,7 +222,7 @@ export function CheckoutStep({
       serverTotalCents?: number; serverBreakdown?: ServerBreakdown;
     };
     if (!res?.clientSecret || !res?.publishableKey) {
-      setError("El servidor no devolvió los datos de pago. Inténtalo de nuevo.");
+      setError(t("errorNoPaymentDataRetry"));
       setPhase("error");
       return;
     }
@@ -233,12 +233,12 @@ export function CheckoutStep({
       breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken]);
+  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, t]);
 
   // Entry point: route to the right EF by session. Also the "Reintentar" target.
   const startPayment = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setError("El pago no está configurado.");
+      setError(t("errorPaymentNotConfigured"));
       setPhase("error");
       return;
     }
@@ -268,22 +268,22 @@ export function CheckoutStep({
       {/* Print rules: on window.print() show ONLY the receipt, clean on white. */}
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
       <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <button type="button" onClick={onBack} style={linkBtn}>← Volver</button>
+        <button type="button" onClick={onBack} style={linkBtn}>← {t("back")}</button>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{business.name}</div>
         <span style={{ width: 60 }} />
       </div>
 
-      {(phase === "checking" || phase === "creating") && <Muted>Preparando el pago…</Muted>}
+      {(phase === "checking" || phase === "creating") && <Muted>{t("preparingPayment")}</Muted>}
 
       {phase === "pay" && intent && stripePromise && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Estimated total — the definitive amount is the one on the receipt,
               computed server-side. Marked as estimated so nothing here is trusted. */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontSize: 14, color: "#374151" }}>Total estimado</span>
+            <span style={{ fontSize: 14, color: "#374151" }}>{t("estimatedTotal")}</span>
             <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(intent.serverTotalCents)}</span>
           </div>
-          <Muted>El importe definitivo aparecerá en tu recibo tras el pago.</Muted>
+          <Muted>{t("finalAmountNote")}</Muted>
           <Elements
             stripe={stripePromise}
             options={{ clientSecret: intent.clientSecret, appearance: { theme: "stripe" } }}
@@ -304,8 +304,8 @@ export function CheckoutStep({
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="no-print" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ fontSize: 40 }}>✓</div>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>¡Pago recibido!</div>
-            <Muted>El negocio ya tiene tu pedido y empezará a prepararlo.</Muted>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>{t("paymentReceived")}</div>
+            <Muted>{t("orderStartingNote")}</Muted>
           </div>
 
           {/* Receipt is the only thing that survives a print (co-print-area). */}
@@ -321,35 +321,32 @@ export function CheckoutStep({
           </div>
 
           <div className="no-print" style={{ fontSize: 13, color: "#b45309", fontWeight: 600, textAlign: "center" }}>
-            Guarda o imprime este recibo: no podrás volver a consultarlo.
+            {t("receiptWarning")}
           </div>
 
           <button type="button" onClick={() => window.print()} className="no-print" style={primaryBtn}>
-            Imprimir recibo
+            {t("printReceipt")}
           </button>
-          <button type="button" onClick={onDone} className="no-print" style={linkBtn}>Volver al menú</button>
+          <button type="button" onClick={onDone} className="no-print" style={linkBtn}>{t("backToMenu")}</button>
         </div>
       )}
 
       {phase === "success" && paidStatus === "processing" && (
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 40 }}>⏳</div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Tu pago se está procesando</div>
-          {intent && <div style={{ fontSize: 15 }}>Importe: {fmt(intent.serverTotalCents)}.</div>}
-          <Muted>
-            Aún no está confirmado. En cuanto el pago se confirme, el negocio recibirá tu pedido y
-            empezará a prepararlo.
-          </Muted>
-          <button type="button" onClick={onDone} style={primaryBtn}>Volver al menú</button>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{t("paymentProcessingTitle")}</div>
+          {intent && <div style={{ fontSize: 15 }}>{t("amountLabel", { amount: fmt(intent.serverTotalCents) })}</div>}
+          <Muted>{t("processingNote")}</Muted>
+          <button type="button" onClick={onDone} style={primaryBtn}>{t("backToMenu")}</button>
         </div>
       )}
 
       {phase === "error" && (
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#b91c1c" }}>No se pudo iniciar el pago</div>
-          <Muted>{error || "Inténtalo de nuevo."}</Muted>
-          <button type="button" onClick={() => void startPayment()} style={primaryBtn}>Reintentar</button>
-          <button type="button" onClick={onBack} style={linkBtn}>Volver al pedido</button>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#b91c1c" }}>{t("paymentFailedTitle")}</div>
+          <Muted>{error || t("tryAgain")}</Muted>
+          <button type="button" onClick={() => void startPayment()} style={primaryBtn}>{t("retry")}</button>
+          <button type="button" onClick={onBack} style={linkBtn}>{t("backToOrder")}</button>
         </div>
       )}
       {/* Invisible hCaptcha — always mounted so the guest path can fetch a token
@@ -369,6 +366,7 @@ function PaymentForm({
   returnUrl: string;
   onPaid: (status: PaidStatus) => void;
 }) {
+  const t = useTranslations("checkout");
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -384,7 +382,7 @@ function PaymentForm({
       redirect: "if_required",
     });
     if (error) {
-      setPayError(error.message ?? "El pago no se pudo completar.");
+      setPayError(error.message ?? t("errorPaymentFailed"));
       setSubmitting(false);
       return;
     }
@@ -406,7 +404,7 @@ function PaymentForm({
         disabled={!stripe || submitting}
         style={{ ...primaryBtn, opacity: !stripe || submitting ? 0.6 : 1 }}
       >
-        {submitting ? "Procesando…" : `Pagar ${fmt(total)}`}
+        {submitting ? t("payButtonProcessing") : t("payButton", { amount: fmt(total) })}
       </button>
     </div>
   );
@@ -435,6 +433,7 @@ function Receipt({
   breakdown: ServerBreakdown | null;
   tableLabel: string;
 }) {
+  const t = useTranslations("checkout");
   const when = new Date().toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fafafa", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -444,8 +443,10 @@ function Receipt({
       </div>
       {(name || tableLabel) && (
         <div style={{ fontSize: 13, color: "#374151" }}>
-          {name && <div>A nombre de <strong>{name}</strong></div>}
-          {tableLabel && <div>Mesa {tableLabel}</div>}
+          {name && (
+            <div>{t.rich("receiptOnBehalfOf", { name, b: (chunks) => <strong>{chunks}</strong> })}</div>
+          )}
+          {tableLabel && <div>{t("receiptTable", { tableLabel })}</div>}
         </div>
       )}
       {/* Items: quantity + name only. No per-line amount (the server doesn't
@@ -462,14 +463,16 @@ function Receipt({
       <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
         {breakdown && (
           <>
-            <ReceiptRow label="Subtotal" cents={breakdown.subtotalCents} />
-            {breakdown.taxCents > 0 && <ReceiptRow label="Impuestos" cents={breakdown.taxCents} />}
-            {breakdown.tipCents > 0 && <ReceiptRow label="Propina" cents={breakdown.tipCents} />}
-            {breakdown.discountCents > 0 && <ReceiptRow label="Descuento" cents={-breakdown.discountCents} />}
+            <ReceiptRow label={t("receiptSubtotal")} cents={breakdown.subtotalCents} />
+            {breakdown.taxCents > 0 && <ReceiptRow label={t("receiptTax")} cents={breakdown.taxCents} />}
+            {breakdown.tipCents > 0 && <ReceiptRow label={t("receiptTip")} cents={breakdown.tipCents} />}
+            {breakdown.discountCents > 0 && (
+              <ReceiptRow label={t("receiptDiscount")} cents={-breakdown.discountCents} />
+            )}
           </>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 16, color: "#111827", marginTop: 4 }}>
-          <span>Total</span>
+          <span>{t("receiptTotal")}</span>
           <span>{fmt(totalCents)}</span>
         </div>
       </div>
