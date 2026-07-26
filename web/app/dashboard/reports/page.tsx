@@ -1,4 +1,7 @@
-export default function ReportsPage() {
+import { getTranslations } from "next-intl/server";
+
+export default async function ReportsPage() {
+  const t = await getTranslations("dashboardCommon");
   return (
     <div>
       <h1
@@ -9,10 +12,10 @@ export default function ReportsPage() {
           marginBottom: "8px",
         }}
       >
-        Reports
+        {t("navReports")}
       </h1>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-        Revenue charts, visitor analytics, and exportable reports — coming in Task 3.12.
+        {t("reportsPlaceholderBody")}
       </p>
     </div>
   );

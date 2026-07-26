@@ -294,6 +294,31 @@
     "chatSampleReply": "¡Qué tal! 😊",
     "chatSampleWelcome": "¡Bienvenido!",
 
-    "renewsOn": "Renueva el {date}"
+    "renewsOn": "Renueva el {date}",
+
+    "usageSummary": "Negocios: {bizUsed}/{bizLimit} · Eventos: {evUsed}/{evLimit} · plan {plan}",
+    "createBusinessOrEvent": "Crear negocio o evento",
+    "yourBusinesses": "Tus negocios",
+    "venueSetupMessage": "Crea tu local para chatear con clientes, recibir pedidos y organizar eventos.",
+    "activeBadge": "Activo",
+    "noSlugYet": "Sin slug público todavía.",
+    "viewPublicPage": "Ver página pública",
+    "setActiveButton": "Activar",
+    "yourEvents": "Tus eventos",
+    "noEventsYet": "Aún no tienes eventos.",
+    "noStartDate": "Sin fecha de inicio",
+    "verifiedBadge": "Verificado",
+    "eventStatusUpcoming": "próximo",
+    "eventStatusEnded": "finalizado",
+    "eventStatusLive": "en curso",
+    "createBusinessLink": "Crear negocio",
+    "reportsPlaceholderBody": "Gráficas de ingresos, analítica de visitantes y reportes exportables — llegan en la Tarea 3.12.",
+    "backToDashboard": "Volver al panel",
+    "createChooserTitle": "¿Qué quieres crear?",
+    "createChooserSubtitle": "Ambos funcionan igual — un evento es solo temporal.",
+    "createLimitReached": "Límite alcanzado — contáctanos para un plan personalizado",
+    "createBusinessCardTitle": "Negocio",
+    "createBusinessCardText": "Un local permanente — bar, restaurante, café. Siempre en el mapa.",
+    "createEventCardText": "Un evento temporal con fecha de inicio y fin. Mismas funciones, tiempo limitado."
   }
 }

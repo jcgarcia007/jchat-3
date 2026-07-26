@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconBuildingStore,
   IconCalendarEvent,
@@ -58,6 +59,7 @@ function ChoiceCard({
   onHover: (v: boolean) => void;
   onClick: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   return (
     <div
       role="button"
@@ -82,7 +84,7 @@ function ChoiceCard({
       </p>
       {disabled && (
         <p style={{ fontSize: "12px", color: "var(--db-warning)", margin: "12px 0 0", fontWeight: 600 }}>
-          Limit reached — contact us for a custom plan
+          {t("createLimitReached")}
         </p>
       )}
     </div>
@@ -90,6 +92,7 @@ function ChoiceCard({
 }
 
 export default function CreateChooserPage() {
+  const t = useTranslations("dashboardCommon");
   const router = useRouter();
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [hovered, setHovered] = useState<"business" | "event" | null>(null);
@@ -124,21 +127,21 @@ export default function CreateChooserPage() {
           }}
         >
           <IconArrowLeft size={15} />
-          Back to dashboard
+          {t("backToDashboard")}
         </Link>
       </div>
 
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", textAlign: "center", margin: "0 0 6px" }}>
-        What do you want to create?
+        {t("createChooserTitle")}
       </h1>
       <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", textAlign: "center", margin: "0 0 28px" }}>
-        Both work the same — an event is just temporary.
+        {t("createChooserSubtitle")}
       </p>
 
       <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
         <ChoiceCard
-          title="Business"
-          text="A permanent venue — bar, restaurant, café. Always on the map."
+          title={t("createBusinessCardTitle")}
+          text={t("createBusinessCardText")}
           icon={<IconBuildingStore size={26} />}
           disabled={businessDisabled}
           hovered={hovered === "business"}
@@ -146,8 +149,8 @@ export default function CreateChooserPage() {
           onClick={() => router.push("/business/register")}
         />
         <ChoiceCard
-          title="Event"
-          text="A temporary happening with start and end dates. Same features, limited time."
+          title={t("eventTag")}
+          text={t("createEventCardText")}
           icon={<IconCalendarEvent size={26} />}
           disabled={eventDisabled}
           hovered={hovered === "event"}

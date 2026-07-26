@@ -294,6 +294,31 @@
     "chatSampleReply": "Hi there! 😊",
     "chatSampleWelcome": "Welcome!",
 
-    "renewsOn": "Renews on {date}"
+    "renewsOn": "Renews on {date}",
+
+    "usageSummary": "Businesses: {bizUsed}/{bizLimit} · Events: {evUsed}/{evLimit} · {plan} plan",
+    "createBusinessOrEvent": "Create new business or event",
+    "yourBusinesses": "Your businesses",
+    "venueSetupMessage": "Set up your venue to start chatting with customers, taking orders, and hosting events.",
+    "activeBadge": "Active",
+    "noSlugYet": "No public slug yet.",
+    "viewPublicPage": "View public page",
+    "setActiveButton": "Set as active",
+    "yourEvents": "Your events",
+    "noEventsYet": "No events yet.",
+    "noStartDate": "No start date",
+    "verifiedBadge": "Verified",
+    "eventStatusUpcoming": "upcoming",
+    "eventStatusEnded": "ended",
+    "eventStatusLive": "live",
+    "createBusinessLink": "Create business",
+    "reportsPlaceholderBody": "Revenue charts, visitor analytics, and exportable reports — coming in Task 3.12.",
+    "backToDashboard": "Back to dashboard",
+    "createChooserTitle": "What do you want to create?",
+    "createChooserSubtitle": "Both work the same — an event is just temporary.",
+    "createLimitReached": "Limit reached — contact us for a custom plan",
+    "createBusinessCardTitle": "Business",
+    "createBusinessCardText": "A permanent venue — bar, restaurant, café. Always on the map.",
+    "createEventCardText": "A temporary happening with start and end dates. Same features, limited time."
   }
 }

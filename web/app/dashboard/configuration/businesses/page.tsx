@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconBuildingStore,
   IconArrowRight,
@@ -93,6 +94,7 @@ const SECTION_TITLE: React.CSSProperties = {
 };
 
 function VerificationBadge({ isVerified }: { isVerified: boolean }) {
+  const t = useTranslations("dashboardCommon");
   if (!isVerified) return null;
   return (
     <span
@@ -109,12 +111,15 @@ function VerificationBadge({ isVerified }: { isVerified: boolean }) {
       }}
     >
       <IconCircleCheck size={13} />
-      Verificado
+      {t("verifiedBadge")}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("dashboardCommon");
+  const statusKey =
+    status === "upcoming" ? "eventStatusUpcoming" : status === "ended" ? "eventStatusEnded" : "eventStatusLive";
   return (
     <span
       style={{
@@ -127,7 +132,7 @@ function StatusBadge({ status }: { status: string }) {
         textTransform: "capitalize",
       }}
     >
-      {status.replace(/_/g, " ")}
+      {t(statusKey)}
     </span>
   );
 }
@@ -143,6 +148,8 @@ function eventStatus(startsAt: string | null, endsAt: string | null): string {
 }
 
 export default function ConfigBusinessesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
@@ -185,31 +192,36 @@ export default function ConfigBusinessesPage() {
 
   const loadingRow = (
     <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-      Cargando…
+      {tCommon("loading")}
     </div>
   );
 
   return (
     <div>
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
-        Negocios
+        {t("railNegocios")}
       </h1>
       {usage && (
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
-          Negocios: {usage.businesses.used}/{usage.businesses.limit} · Eventos:{" "}
-          {usage.events.used}/{usage.events.limit} · plan {usage.plan}
+          {t("usageSummary", {
+            bizUsed: usage.businesses.used,
+            bizLimit: usage.businesses.limit,
+            evUsed: usage.events.used,
+            evLimit: usage.events.limit,
+            plan: usage.plan,
+          })}
         </p>
       )}
 
       {/* Create entry point (reuses the existing chooser + wizard). */}
       <div style={{ marginBottom: "26px" }}>
         <Link href="/dashboard/create" style={{ ...CTA, fontSize: "15px", padding: "12px 22px", gap: "10px" }}>
-          <IconPlus size={18} /> Crear negocio o evento
+          <IconPlus size={18} /> {t("createBusinessOrEvent")}
         </Link>
       </div>
 
       {/* ═══ Businesses ═══ */}
-      <h2 style={SECTION_TITLE}>Tus negocios</h2>
+      <h2 style={SECTION_TITLE}>{t("yourBusinesses")}</h2>
 
       {loading ? (
         loadingRow
@@ -220,15 +232,15 @@ export default function ConfigBusinessesPage() {
           </span>
           <div style={{ flex: 1, minWidth: "200px" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-              Registra tu negocio
+              {t("registerBusinessLink")}
             </h3>
             <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-              Crea tu local para chatear con clientes, recibir pedidos y organizar eventos.
+              {t("venueSetupMessage")}
             </p>
           </div>
           <Link href="/dashboard/create" style={CTA}>
             <IconBuildingStore size={18} />
-            Crear negocio
+            {t("createBusinessLink")}
             <IconArrowRight size={16} />
           </Link>
         </section>
@@ -261,7 +273,7 @@ export default function ConfigBusinessesPage() {
                     <VerificationBadge isVerified={b.is_verified} />
                     {isActive && (
                       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
-                        Activo
+                        {t("activeBadge")}
                       </span>
                     )}
                   </div>
@@ -271,14 +283,14 @@ export default function ConfigBusinessesPage() {
                         jchat.app/b/<strong style={{ color: "var(--db-text-primary)" }}>{b.slug}</strong>
                       </>
                     ) : (
-                      "Sin slug público todavía."
+                      t("noSlugYet")
                     )}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   {b.slug && (
                     <a href={`/b/${b.slug}`} target="_blank" rel="noreferrer" style={CTA}>
-                      Ver página pública
+                      {t("viewPublicPage")}
                       <IconExternalLink size={16} />
                     </a>
                   )}
@@ -293,7 +305,7 @@ export default function ConfigBusinessesPage() {
                         opacity: switchingId !== null && switchingId !== b.id ? 0.6 : 1,
                       }}
                     >
-                      {switchingId === b.id ? "Activando…" : "Activar"}
+                      {switchingId === b.id ? t("switchingState") : t("setActiveButton")}
                     </button>
                   )}
                 </div>
@@ -304,13 +316,13 @@ export default function ConfigBusinessesPage() {
       )}
 
       {/* ═══ Events ═══ */}
-      <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>Tus eventos</h2>
+      <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>{t("yourEvents")}</h2>
 
       {loading ? (
         loadingRow
       ) : events.length === 0 ? (
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "0 0 4px" }}>
-          Aún no tienes eventos.
+          {t("noEventsYet")}
         </p>
       ) : (
         events.map((e) => {
@@ -340,13 +352,13 @@ export default function ConfigBusinessesPage() {
                   <StatusBadge status={eventStatus(e.event_starts_at, e.event_ends_at)} />
                   {isActive && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)" }}>
-                      Activo
+                      {t("activeBadge")}
                     </span>
                   )}
                 </div>
                 <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
                   <IconMapPin size={13} />
-                  {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : "Sin fecha de inicio"}
+                  {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : t("noStartDate")}
                   {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
                 </p>
               </div>
@@ -362,7 +374,7 @@ export default function ConfigBusinessesPage() {
                       opacity: switchingId !== null && switchingId !== e.id ? 0.6 : 1,
                     }}
                   >
-                    {switchingId === e.id ? "Activando…" : "Activar"}
+                    {switchingId === e.id ? t("switchingState") : t("setActiveButton")}
                   </button>
                 )}
               </div>
