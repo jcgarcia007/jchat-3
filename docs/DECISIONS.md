@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-22
+Last updated: 2026-07-25
 
 ## Maps
 
@@ -322,7 +322,7 @@ REGLA: toda tabla que el cliente pueda escribir necesita su allow-list de column
 (la RLS decide QUÉ FILAS; los column grants deciden QUÉ COLUMNAS). Y toda EF que dependa de
 un guard sobre una columna (`if (x.foo !== null)`) exige verificar que esa columna NO sea
 escribible por el cliente — o el guard es decorativo.
-PENDIENTE: barrer TODAS las tablas buscando este mismo patrón. Solo se han revisado tres.
+HECHO en D-75 (migraciones 089–102, 2026-07-25): barrido completo de las ~44 tablas. Solo queda `room_access_attempts` como fix de arquitectura (no de grants).
 
 ### D-55 — Mesas y Taps: modelo de cuentas por persona en la mesa
 
@@ -591,6 +591,58 @@ disputa real haría falta guardar en BD quién aceptó, qué texto y cuándo, y 
 Function antes de crear el checkout. Cumple el requisito de divulgación + consentimiento; NO da
 prueba auditable. Pendiente si alguna vez hace falta demostrarlo.
 El texto debe revisarlo un abogado antes de lanzar (EE.UU. + RD). Ref `af6b7b3`.
+
+### D-74 — Analytics y Disputas: solo datos reales, y enlazadas en el nav
+
+Decisión (2026-07-24/25): (a) Analytics muestra SOLO pestañas con datos reales de la BD — Revenue,
+Products, Loyalty (solo puntos) + la banda "Overview — live"; se quitaron las inventadas (Forecast,
+Customers, Chat, API) y el ROI falso de Loyalty (commits `dbde566`, `9b9afa6`), y se limpió el PDF.
+(b) "Approve Refund" en Disputas reembolsa de verdad: `handleApprove()` invoca la Edge Function
+`stripe-refund` y NO escribe `status='approved'` a mano — la EF y el webhook son autoritativos
+(verificado leyendo el código en `main`; la nota 🔴 previa era stale). (c) Ambas páginas existían
+pero estaban HUÉRFANAS (no aparecían en el sidebar); se enlazaron (`ffe204a`, NAV_ITEMS 15→17:
+Disputes tras Payments, Analytics tras Reports).
+Why: el patrón recurrente del proyecto es "pantallas que mienten" (D-46/D-69/D-70/D-72). Analytics con
+datos inventados y una nav que esconde features que SÍ funcionan son dos caras de lo mismo: la UI no
+refleja la verdad. Se prioriza mostrar solo lo real (aunque sea menos) y exponer lo que ya funciona.
+Pendiente: verificación VISUAL en vivo de las 3 pestañas de Analytics y los 2 iconos nuevos del nav
+(requiere sesión de dueño con negocio).
+
+### D-75 — Barrido completo de column-grants D-54 (migraciones 089–102): cierra el PENDIENTE de D-54
+
+Decisión (2026-07-25): se completó el barrido que D-54 dejó pendiente ("barrer TODAS las tablas"). Unas
+44 tablas de `public` tenían grant de UPDATE (y a veces INSERT/DELETE) de TABLA COMPLETA a `authenticated`
+y/o `anon`; se redujeron a allow-lists de columnas verificados contra el código real, tabla por tabla.
+14 migraciones (089–102) + 2 cambios de código (`d61fd96`, `cfaa63d`).
+Método: recon por Supabase MCP (esquema+políticas+grants) + rutas de escritura reales por grep global del
+checkout → spec de allow-list → apply por MCP `apply_migration` (nunca `db push`) → auditoría del diff
+full_patch → verificación por `has_column_privilege`. Hitos: **089** revoca escritura de `anon` en las
+tablas base; **090** cierra un HUECO CRÍTICO en la vista `public_profiles` (auto-actualizable, dueño
+`postgres`/bypassrls → una escritura de `anon` a través de la vista saltaba la RLS de `users` y corría como
+postgres: poner `is_verified`, reescribir `username`/`bio`, DELETE arbitrarios); **091–096, 100–101**
+allow-lists de columnas (custom_roles, promo_codes, loyalty, subscriptions/trials, menú, offers, y el
+bloque social); **097** revoca UPDATE en 15 tablas SIN política de UPDATE (no-breaking); **098–099, 102**
+las tablas con `.upsert()`.
+Lecciones (para futuras tandas): (1) un `.upsert(onConflict)` es un UPDATE ENCUBIERTO, y su
+`ON CONFLICT DO UPDATE SET` incluye TODAS las columnas del payload, INCLUIDAS las claves de conflicto —
+Postgres exige privilegio UPDATE sobre cada una aunque su valor no cambie (probado empíricamente con tabla
+temporal + ROLLBACK). Por eso un allow-list estricto exige CAMBIAR esos upserts a `UPDATE...WHERE(claves)
++ INSERT` (se hizo en `banUser`/`muteInRoom` y en `PinMessageSheet`) en vez de ensanchar el grant a las
+claves. (2) revisar SIEMPRE `.upsert(` además de `.update(` al derivar un allow-list. (3) verificar las
+políticas por MCP antes de afirmar que algo se rompió — una supuesta "regresión" de `story_views` resultó
+ser un flujo que ya estaba bloqueado por RLS desde antes (solo cambió el texto del error interno).
+Verificación global tras 102: escritura de `anon` en TODO `public` = 0; la ÚNICA tabla que conserva UPDATE
+de tabla completa a `authenticated` es `room_access_attempts`, dejada a propósito. `main` = `8bbb6df`.
+Consecuencia / pendientes derivados: (a) `room_access_attempts` — el lockout anti-fuerza-bruta de las
+contraseñas de sala es AUTO-RESETEABLE por el propio cliente (escribe sus `fail_count`/`locked_until`); fix
+= mover el incremento/chequeo a una RPC `SECURITY DEFINER`/EF (no es de grants). (b) El barrido destapó
+tres flujos ROTOS por falta de política RLS de UPDATE (preexistentes, no causados por la tanda): aceptar/
+rechazar invitación de empleado (el invitado no puede aceptar), "dismiss report" (la UI dice "dismissed"
+pero no cambia nada), y el propio room_access; su arreglo necesita AÑADIR la política RLS de UPDATE **y**
+re-otorgar el grant de columna (la tanda revocó el grant). En arreglo en tandas aparte. (c) Bugs de
+producto preexistentes hallados en la auditoría de upserts: `redeemReward`/`addPoints` (móvil) nunca
+pudieron escribir `loyalty_points` desde el cliente (la tabla solo permite `service_role`); `followUser`
+(follow directo) es código muerto (la app usa follow-requests + `unfollowUser`).
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.

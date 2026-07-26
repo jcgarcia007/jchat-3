@@ -1,8 +1,8 @@
 # JChat 3.0 — Estado
 
-Last updated: 2026-07-24
+Last updated: 2026-07-25
 Fuente de verdad de "cómo está la app HOY". La bitácora histórica (sesión por sesión) vive en
-`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-73).
+`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-75).
 
 Convención: ✅ verificado contra código/BD · 📼 según bitácora, sin reconfirmar · ⚠️ riesgo · 🔴 bloqueante
 
@@ -19,7 +19,7 @@ Mercados declarados: **USA + República Dominicana** (ver bloqueante RD abajo).
 | | |
 |---|---|
 | Tablas (public) | 60 |
-| Última migración | 088 (`088_revoke_anon_on_promo_functions`) |
+| Última migración | 102 (`102_pinned_messages_update_allowlist`) |
 | Usuarios | 67 (regular + 3 pro + 1 business) |
 | Negocios | 18 — **solo 1 con Stripe conectado** |
 | Pedidos | 17, todos pagados |
@@ -92,9 +92,12 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 
 ### Sí son código
 
-- 🟠 **Auditar las ~57 tablas restantes** buscando el patrón de permisos de D-54 (grant de UPDATE de
-  tabla completa a authenticated/anon). Solo se revisaron 3 de 60. Ese patrón casi provoca reembolsos
-  en bucle una vez.
+- ✅ **D-54 — barrido de column-grants COMPLETO** (D-75, migraciones 089–102, 2026-07-25): las ~44
+  tablas con grant de escritura de tabla completa a `authenticated`/`anon` quedaron con allow-lists de
+  columnas verificados contra el código; escritura de `anon` en todo `public` = 0. Queda solo
+  `room_access_attempts` (🔴 fix de arquitectura: lockout de contraseña de sala auto-reseteable) y tres
+  flujos rotos por falta de política RLS de UPDATE (invitación de empleado, dismiss-report), en arreglo
+  aparte.
 - 🟠 **Selector global de negocio** en el dashboard: sin él, el plan Pro (10 negocios) no es usable.
 - 🟠 **i18n EN/ES completo**: el bloque más grande. La base está puesta (welcome bilingüe); falta el
   barrido de dashboard, móvil, super-admin y correos.
