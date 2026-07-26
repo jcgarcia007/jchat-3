@@ -5,9 +5,12 @@
  * that received no owner response within 48 hours, or were manually escalated.
  *
  * Super Admin can:
- *   - Force a refund, overriding the owner → status = 'refunded' + refund_id stub.
- *       TODO(Task 3.6): Stripe force refund via 'stripe-refund' Edge Function.
  *   - View full dispute history (opened reason, description, order reference).
+ *   - Force Refund is DISABLED for now (see EscalatedRow's button): it used
+ *     to write status='refunded' + a placeholder refund_id straight to
+ *     `disputes` without ever calling Stripe, which would have permanently
+ *     blocked the real refund (D-53's refund_id !== null guard). Re-enable
+ *     once Task 3.6 wires the real 'stripe-refund' Edge Function call.
  *
  * TODO(roles): gate this entire page to Super Admin role once roles system exists.
  *
@@ -175,50 +178,15 @@ export default function SuperAdminDisputesPage() {
 
   // ── Force refund ──────────────────────────────────────────────────────────
 
+  // Inert on purpose: the trigger button below is disabled, so this can't
+  // fire from the UI. It used to write status='refunded' + a placeholder
+  // refund_id to `disputes` and claim success without ever calling Stripe —
+  // see the header comment. No DB write, no success claim, until Task 3.6
+  // wires the real 'stripe-refund' Edge Function call in here.
   async function handleForceRefund() {
     if (!activeDispute) return;
-    setSaveError(null);
-    setSaving(true);
-
-    // Generate a placeholder refund_id (real one comes from Stripe via Edge Function)
-    const placeholderRefundId = `sa_refund_${Date.now()}`;
-
-    if (isSupabaseConfigured) {
-      const { error } = await supabase
-        .from("disputes")
-        .update({
-          status: "refunded",
-          resolution: "Full refund forced by Super Admin.",
-          refund_id: placeholderRefundId,
-        })
-        .eq("id", activeDispute.id);
-
-      if (error) {
-        setSaveError(error.message);
-        setSaving(false);
-        return;
-      }
-    }
-
-    // TODO(Task 3.6): force Stripe refund via Edge Function.
-    //   const { data, error } = await supabase.functions.invoke('stripe-refund', {
-    //     body: {
-    //       dispute_id: activeDispute.id,
-    //       amount_cents: activeDispute.amount_cents,
-    //       force: true, // super-admin override
-    //     },
-    //   });
-    //   if (data?.refund_id) { /* update refund_id in DB */ }
-
-    // TODO(server): notify customer that refund was issued.
-    // TODO(server): notify business owner that Super Admin overrode the dispute.
-
     setSaving(false);
-    setSuccessMsg(
-      `Refund issued for dispute ${activeDispute.id.slice(0, 8)}…`
-    );
     setActiveDispute(null);
-    void fetchDisputes();
   }
 
   // ── Dismiss modal ─────────────────────────────────────────────────────────
@@ -266,8 +234,9 @@ export default function SuperAdminDisputesPage() {
             maxWidth: "600px",
           }}
         >
-          Disputes the business owner did not respond to within 48 hours. As
-          Super Admin you can force a refund regardless of owner status.
+          Disputes the business owner did not respond to within 48 hours.
+          Force Refund is coming soon (Task 3.6) — for now these are visible
+          for review only.
           {/* TODO(roles): this page must be gated to Super Admin role only */}
           {/* TODO(Task 3.6): Stripe force-refund routed through stripe-refund Edge Function */}
         </p>
@@ -561,6 +530,8 @@ function EscalatedRow({
         >
           <button
             onClick={onForceRefund}
+            disabled
+            title="No disponible aún — reembolso por Stripe pendiente (Task 3.6)"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -568,16 +539,16 @@ function EscalatedRow({
               padding: "6px 12px",
               borderRadius: "6px",
               border: "none",
-              background: "var(--color-danger)",
-              color: "#ffffff",
+              background: "var(--bg-elevated, var(--bg-surface))",
+              color: "var(--text-tertiary)",
               fontSize: "12px",
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: "default",
               whiteSpace: "nowrap",
             }}
           >
             <IconReceiptRefund size={13} stroke={2} />
-            Force Refund
+            Force Refund (soon)
           </button>
 
           <button
