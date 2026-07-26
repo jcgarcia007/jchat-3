@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconChefHat,
@@ -39,12 +40,14 @@ interface KdsOrder {
 
 const PENDING_STATUSES = ["pending", "confirmed"];
 
-function elapsed(iso: string): string {
+type Translator = (key: string, values?: Record<string, string | number>) => string;
+
+function elapsed(iso: string, t: Translator): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min`;
+  if (mins < 1) return t("timeJustNow");
+  if (mins < 60) return t("kdsElapsedMinutes", { count: mins });
   const h = Math.floor(mins / 60);
-  return `${h}h ${mins % 60}m`;
+  return t("kdsElapsedHoursMinutes", { hours: h, minutes: mins % 60 });
 }
 
 const DEMO_ORDERS: KdsOrder[] = [
@@ -62,6 +65,7 @@ const DEMO_ORDERS: KdsOrder[] = [
 ];
 
 export default function KdsPage() {
+  const t = useTranslations("dashboardCommon");
   const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsRegister, setNeedsRegister] = useState(false);
@@ -97,7 +101,7 @@ export default function KdsPage() {
           special_instructions: string | null; menu_items: { name: string } | { name: string }[] | null;
         };
         const mi = Array.isArray(r.menu_items) ? r.menu_items[0] : r.menu_items;
-        (acc[r.order_id] ||= []).push({ id: r.id, qty: r.qty, name: mi?.name ?? "Item", special_instructions: r.special_instructions });
+        (acc[r.order_id] ||= []).push({ id: r.id, qty: r.qty, name: mi?.name ?? t("ordersItemFallback"), special_instructions: r.special_instructions });
         return acc;
       }, {});
     }
@@ -145,7 +149,7 @@ export default function KdsPage() {
           if (businessIdRef.current) void loadOrders(businessIdRef.current).catch(() => {});
         }, 30_000);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load orders.");
+        if (active) setError(e instanceof Error ? e.message : t("ordersLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -177,7 +181,7 @@ export default function KdsPage() {
       if (upErr) throw upErr;
       if (businessIdRef.current) await loadOrders(businessIdRef.current);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update order.");
+      setError(e instanceof Error ? e.message : t("kdsUpdateOrderError"));
     } finally {
       setUpdatingId(null);
     }
@@ -186,8 +190,8 @@ export default function KdsPage() {
   if (!loading && needsRegister) {
     return (
       <div style={{ maxWidth: "960px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>Kitchen Display</h1>
-        <NoBusinessCTA message="Register your business to start receiving and preparing orders." />
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>{t("kdsPageTitle")}</h1>
+        <NoBusinessCTA message={t("kdsNoBusinessMessage")} />
       </div>
     );
   }
@@ -199,10 +203,10 @@ export default function KdsPage() {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
         <IconChefHat size={22} color="var(--db-accent)" />
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>Kitchen Display</h1>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>{t("kdsPageTitle")}</h1>
       </div>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
-        Active orders — updates live, refreshes every 30s.
+        {t("kdsSubtitle")}
       </p>
 
       {error && (
@@ -214,35 +218,35 @@ export default function KdsPage() {
 
       {loading ? (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-          <IconRefresh size={18} style={{ animation: "spin 1s linear infinite" }} /> Loading orders…
+          <IconRefresh size={18} style={{ animation: "spin 1s linear infinite" }} /> {t("kdsLoadingOrders")}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "start" }}>
-          <KanbanColumn title="Pending" count={pending.length} accent="var(--db-warning)">
+          <KanbanColumn title={t("orderStatusPending")} count={pending.length} accent="var(--db-warning)">
             {pending.length === 0 ? (
-              <EmptyColumn text="No pending orders." />
+              <EmptyColumn text={t("kdsEmptyPending")} />
             ) : (
               pending.map((o) => (
                 <OrderCard
                   key={o.id}
                   order={o}
                   updating={updatingId === o.id}
-                  action={{ label: "Start Preparing", icon: IconPlayerPlay, onClick: () => void setStatus(o, "preparing") }}
+                  action={{ label: t("kdsStartPreparing"), icon: IconPlayerPlay, onClick: () => void setStatus(o, "preparing") }}
                 />
               ))
             )}
           </KanbanColumn>
 
-          <KanbanColumn title="Preparing" count={preparing.length} accent="var(--db-accent)">
+          <KanbanColumn title={t("orderStatusPreparing")} count={preparing.length} accent="var(--db-accent)">
             {preparing.length === 0 ? (
-              <EmptyColumn text="Nothing in the kitchen." />
+              <EmptyColumn text={t("kdsEmptyPreparing")} />
             ) : (
               preparing.map((o) => (
                 <OrderCard
                   key={o.id}
                   order={o}
                   updating={updatingId === o.id}
-                  action={{ label: "Mark Ready", icon: IconCircleCheck, onClick: () => void setStatus(o, "ready") }}
+                  action={{ label: t("kdsMarkReady"), icon: IconCircleCheck, onClick: () => void setStatus(o, "ready") }}
                 />
               ))
             )}
@@ -283,6 +287,7 @@ function OrderCard({
   updating: boolean;
   action: { label: string; icon: React.ComponentType<{ size?: number }>; onClick: () => void };
 }) {
+  const t = useTranslations("dashboardCommon");
   const ActionIcon = action.icon;
   return (
     <div style={{ background: "var(--db-bg-base)", border: "1px solid var(--db-border)", borderRadius: "10px", padding: "14px" }}>
@@ -290,18 +295,20 @@ function OrderCard({
         <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>
           #{order.id.slice(0, 6)}
           {order.order_type && (
-            <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--db-text-tertiary)", marginLeft: "6px", textTransform: "capitalize" }}>{order.order_type}</span>
+            <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--db-text-tertiary)", marginLeft: "6px", textTransform: "capitalize" }}>
+              {t(order.order_type === "table" ? "orderTypeTable" : "orderTypeCounter")}
+            </span>
           )}
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--db-text-tertiary)" }}>
           <IconClock size={13} />
-          {elapsed(order.created_at)}
+          {elapsed(order.created_at, t)}
         </span>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
         {order.items.length === 0 ? (
-          <span style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>No items.</span>
+          <span style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>{t("kdsNoItems")}</span>
         ) : (
           order.items.map((it) => (
             <div key={it.id} style={{ fontSize: "13px", color: "var(--db-text-primary)" }}>
@@ -326,7 +333,7 @@ function OrderCard({
         }}
       >
         <ActionIcon size={15} />
-        {updating ? "Updating…" : action.label}
+        {updating ? t("kdsUpdating") : action.label}
       </button>
     </div>
   );

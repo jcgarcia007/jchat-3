@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconReceipt,
@@ -42,36 +43,45 @@ interface Order {
 
 type Filter = "all" | "pending" | "preparing" | "ready" | "delivered" | "cancelled";
 
-const FILTERS: { key: Filter; label: string; statuses: string[] | null }[] = [
-  { key: "all", label: "All", statuses: null },
-  { key: "pending", label: "Pending", statuses: ["confirmed", "pending"] },
-  { key: "preparing", label: "Preparing", statuses: ["preparing"] },
-  { key: "ready", label: "Ready", statuses: ["ready"] },
-  { key: "delivered", label: "Delivered", statuses: ["delivered"] },
-  { key: "cancelled", label: "Cancelled", statuses: ["cancelled"] },
-];
+type Translator = (key: string, values?: Record<string, string | number>) => string;
+
+// Filter labels + badge colors are functions (not module consts) because
+// useTranslations() is a hook and can't run at module scope — same pattern as
+// getBadgeConfig() in the menu templates.
+function getFilters(t: Translator): { key: Filter; label: string; statuses: string[] | null }[] {
+  return [
+    { key: "all", label: t("ordersFilterAll"), statuses: null },
+    { key: "pending", label: t("orderStatusPending"), statuses: ["confirmed", "pending"] },
+    { key: "preparing", label: t("orderStatusPreparing"), statuses: ["preparing"] },
+    { key: "ready", label: t("orderStatusReady"), statuses: ["ready"] },
+    { key: "delivered", label: t("orderStatusDelivered"), statuses: ["delivered"] },
+    { key: "cancelled", label: t("orderStatusCancelled"), statuses: ["cancelled"] },
+  ];
+}
 
 // Badge colors per spec: pending=amber, preparing=blue, ready=green, delivered=gray, cancelled=red.
-const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
-  pending: { label: "Pending", bg: "rgba(245,158,11,0.14)", color: "var(--db-warning)" },
-  confirmed: { label: "Pending", bg: "rgba(245,158,11,0.14)", color: "var(--db-warning)" },
-  preparing: { label: "Preparing", bg: "var(--db-accent-bg)", color: "var(--db-accent)" },
-  ready: { label: "Ready", bg: "rgba(34,197,94,0.14)", color: "var(--db-success)" },
-  delivered: { label: "Delivered", bg: "rgba(148,163,184,0.16)", color: "var(--db-text-secondary)" },
-  cancelled: { label: "Cancelled", bg: "rgba(239,68,68,0.14)", color: "var(--db-danger)" },
-};
+function getStatusMeta(t: Translator): Record<string, { label: string; bg: string; color: string }> {
+  return {
+    pending: { label: t("orderStatusPending"), bg: "rgba(245,158,11,0.14)", color: "var(--db-warning)" },
+    confirmed: { label: t("orderStatusPending"), bg: "rgba(245,158,11,0.14)", color: "var(--db-warning)" },
+    preparing: { label: t("orderStatusPreparing"), bg: "var(--db-accent-bg)", color: "var(--db-accent)" },
+    ready: { label: t("orderStatusReady"), bg: "rgba(34,197,94,0.14)", color: "var(--db-success)" },
+    delivered: { label: t("orderStatusDelivered"), bg: "rgba(148,163,184,0.16)", color: "var(--db-text-secondary)" },
+    cancelled: { label: t("orderStatusCancelled"), bg: "rgba(239,68,68,0.14)", color: "var(--db-danger)" },
+  };
+}
 
 function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: Translator): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("timeJustNow");
+  if (mins < 60) return t("ordersMinutesAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("ordersHoursAgo", { count: hrs });
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
@@ -94,6 +104,8 @@ const DEMO_ORDERS: Order[] = [
 ];
 
 export default function OrdersPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsRegister, setNeedsRegister] = useState(false);
@@ -120,7 +132,7 @@ export default function OrdersPage() {
     if (userIds.length > 0) {
       const { data: users } = await supabase.from("public_profiles").select("id, display_name, username").in("id", userIds);
       (users ?? []).forEach((u) => {
-        nameById[u.id as string] = (u.display_name as string) || (u.username ? `@${u.username}` : "Customer");
+        nameById[u.id as string] = (u.display_name as string) || (u.username ? `@${u.username}` : t("ordersColumnCustomer"));
       });
     }
 
@@ -140,7 +152,7 @@ export default function OrdersPage() {
         const mi = Array.isArray(r.menu_items) ? r.menu_items[0] : r.menu_items;
         (acc[r.order_id] ||= []).push({
           id: r.id, qty: r.qty, price_cents: r.price_cents,
-          special_instructions: r.special_instructions, name: mi?.name ?? "Item",
+          special_instructions: r.special_instructions, name: mi?.name ?? t("ordersItemFallback"),
         });
         return acc;
       }, {});
@@ -154,7 +166,7 @@ export default function OrdersPage() {
         total_cents: o.total_cents,
         created_at: o.created_at,
         eta_minutes: o.eta_minutes,
-        customer: o.user_id ? nameById[o.user_id] ?? "Customer" : "Guest",
+        customer: o.user_id ? nameById[o.user_id] ?? t("ordersColumnCustomer") : t("ordersGuestFallback"),
         items: itemsByOrder[o.id] ?? [],
       })),
     );
@@ -192,7 +204,7 @@ export default function OrdersPage() {
           )
           .subscribe();
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load orders.");
+        if (active) setError(e instanceof Error ? e.message : t("ordersLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -209,33 +221,43 @@ export default function OrdersPage() {
   if (!loading && needsRegister) {
     return (
       <div style={{ maxWidth: "960px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>Orders</h1>
-        <NoBusinessCTA message="Register your business to start taking orders." />
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>{t("navOrders")}</h1>
+        <NoBusinessCTA message={t("ordersNoBusinessMessage")} />
       </div>
     );
   }
 
-  const activeFilter = FILTERS.find((f) => f.key === filter)!;
+  const filters = getFilters(t);
+  const statusMeta = getStatusMeta(t);
+  const activeFilter = filters.find((f) => f.key === filter)!;
   const visible = activeFilter.statuses ? orders.filter((o) => activeFilter.statuses!.includes(o.status)) : orders;
 
   function countFor(f: Filter): number {
-    const def = FILTERS.find((x) => x.key === f)!;
+    const def = filters.find((x) => x.key === f)!;
     return def.statuses ? orders.filter((o) => def.statuses!.includes(o.status)).length : orders.length;
   }
+
+  const emptyMessageKey =
+    filter === "all" ? "ordersEmptyAll"
+    : filter === "pending" ? "ordersEmptyPending"
+    : filter === "preparing" ? "ordersEmptyPreparing"
+    : filter === "ready" ? "ordersEmptyReady"
+    : filter === "delivered" ? "ordersEmptyDelivered"
+    : "ordersEmptyCancelled";
 
   return (
     <div style={{ maxWidth: "960px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
         <IconReceipt size={22} color="var(--db-accent)" />
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>Orders</h1>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>{t("navOrders")}</h1>
       </div>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
-        Incoming, in-progress, and completed orders — updates live.
+        {t("ordersSubtitle")}
       </p>
 
       {/* Filter tabs */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-        {FILTERS.map((f) => {
+        {filters.map((f) => {
           const isActive = filter === f.key;
           return (
             <button
@@ -265,29 +287,29 @@ export default function OrdersPage() {
       )}
 
       {loading ? (
-        <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>Loading…</div>
+        <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>{tCommon("loading")}</div>
       ) : visible.length === 0 ? (
         <div style={{ padding: "48px 24px", textAlign: "center", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px" }}>
           <IconReceipt size={28} color="var(--db-text-tertiary)" />
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "10px 0 0" }}>
-            No {filter === "all" ? "" : activeFilter.label.toLowerCase() + " "}orders yet.
+            {t(emptyMessageKey)}
           </p>
         </div>
       ) : (
         <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", overflow: "hidden" }}>
           {/* header */}
           <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 80px", gap: "12px", padding: "12px 20px", fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--db-border)" }}>
-            <span>Order</span>
-            <span>Customer</span>
-            <span>Status</span>
-            <span style={{ textAlign: "right" }}>Items</span>
-            <span style={{ textAlign: "right" }}>Total</span>
-            <span style={{ textAlign: "right" }}>Time</span>
-            <span style={{ textAlign: "right" }}>Detail</span>
+            <span>{t("ordersColumnOrder")}</span>
+            <span>{t("ordersColumnCustomer")}</span>
+            <span>{t("ordersColumnStatus")}</span>
+            <span style={{ textAlign: "right" }}>{t("ordersColumnItems")}</span>
+            <span style={{ textAlign: "right" }}>{t("ordersColumnTotal")}</span>
+            <span style={{ textAlign: "right" }}>{t("ordersColumnTime")}</span>
+            <span style={{ textAlign: "right" }}>{t("ordersColumnDetail")}</span>
           </div>
 
           {visible.map((o) => {
-            const meta = STATUS_META[o.status] ?? { label: o.status, bg: "var(--db-bg-elevated)", color: "var(--db-text-secondary)" };
+            const meta = statusMeta[o.status] ?? { label: o.status, bg: "var(--db-bg-elevated)", color: "var(--db-text-secondary)" };
             const open = expanded === o.id;
             return (
               <div key={o.id} style={{ borderBottom: "1px solid var(--db-border)" }}>
@@ -302,14 +324,14 @@ export default function OrdersPage() {
                   </span>
                   <span style={{ textAlign: "right", fontSize: "14px", color: "var(--db-text-primary)" }}>{o.items.length}</span>
                   <span style={{ textAlign: "right", fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>{money(o.total_cents)}</span>
-                  <span style={{ textAlign: "right", fontSize: "13px", color: "var(--db-text-tertiary)" }}>{relativeTime(o.created_at)}</span>
+                  <span style={{ textAlign: "right", fontSize: "13px", color: "var(--db-text-tertiary)" }}>{relativeTime(o.created_at, t)}</span>
                   <span style={{ textAlign: "right" }}>
                     <button
                       type="button"
                       onClick={() => setExpanded(open ? null : o.id)}
                       style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
                     >
-                      View {open ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
+                      {t("ordersViewButton")} {open ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
                     </button>
                   </span>
                 </div>
@@ -317,7 +339,7 @@ export default function OrdersPage() {
                 {open && (
                   <div style={{ padding: "0 20px 16px 20px", background: "var(--db-bg-base)" }}>
                     {o.items.length === 0 ? (
-                      <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", margin: "12px 0 0" }}>No items recorded.</p>
+                      <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", margin: "12px 0 0" }}>{t("ordersNoItemsRecorded")}</p>
                     ) : (
                       o.items.map((it) => (
                         <div key={it.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderBottom: "1px solid var(--db-border)" }}>
@@ -333,7 +355,7 @@ export default function OrdersPage() {
                     )}
                     {o.eta_minutes != null && (
                       <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 0" }}>
-                        <IconClock size={13} /> ETA {o.eta_minutes} min · placed {relativeTime(o.created_at)}
+                        <IconClock size={13} /> {t("ordersEtaLine", { minutes: o.eta_minutes, time: relativeTime(o.created_at, t) })}
                       </p>
                     )}
                   </div>
