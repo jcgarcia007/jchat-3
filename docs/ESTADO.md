@@ -12,7 +12,7 @@ Convención: ✅ verificado contra código/BD · 📼 según bitácora, sin reco
 
 App social + comercio basada en ubicación. Chats de grupo por local físico, pedidos/pagos en el
 local vía Stripe, UI centrada en mapa, suscripciones de negocio en tres niveles.
-Mercados declarados: **USA + República Dominicana** (ver bloqueante RD abajo).
+Mercados: **USA en el lanzamiento; República Dominicana diferida a una fase final** (ver D-77).
 
 ## Números reales (BD, 2026-07-24)
 
@@ -74,10 +74,10 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 
 ### No son código (decisiones / paneles)
 
-- 🔴 **República Dominicana**: Stripe Connect NO opera en RD. Con mercado USA+RD declarado, un
-  negocio dominicano no puede cobrar hoy. **Pendiente de decisión desde el 2026-07-13.** Condiciona
-  el plan entero. Opciones: (a) lanzar USA con pagos + RD solo social; (b) procesador local
-  (Azul/CardNet) — proyecto propio; (c) aparcar RD.
+- 🟢 **República Dominicana — DIFERIDA al último paso** (decisión 2026-07-26, D-77): Stripe Connect no
+  opera en RD, así que RD NO entra en el lanzamiento inicial. Se lanza **USA primero, con pagos**; RD se
+  aborda como fase FINAL (RD solo-social, o un procesador local tipo Azul/CardNet como proyecto propio).
+  Ya NO bloquea el plan.
 - 🔴 **SMTP propio** (Resend/SendGrid) 📼: Supabase limita a 2 correos/hora → el 3er registro de la
   hora no recibe nada. Necesario ANTES de activar verificación de correo.
 - 🔴 **Stripe a modo vivo**: recrear los DOS endpoints de webhook, sus eventos y secretos; rotar

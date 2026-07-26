@@ -684,6 +684,18 @@ D-53 (reembolso por EF). Antes de lanzar: construir estas tres, o dejar sus pant
 enseñar features que no funcionan (coherente con D-74). CHIP de seguimiento por cada una (loyalty award+redeem,
 Task 3.6, Task 3.13).
 
+### D-77 — República Dominicana se difiere al ÚLTIMO paso: se lanza USA primero
+
+Decisión (Juan, 2026-07-26): todo lo relacionado con RD queda para una fase FINAL, después del resto del
+trabajo. El lanzamiento va **USA primero, con pagos**. Esto cierra la decisión que estaba pendiente desde
+2026-07-13 (el bloqueante RD de ESTADO.md).
+Why: Stripe Connect no opera en RD → un negocio dominicano no puede cobrar hoy. En vez de dejar que eso
+bloquee el plan entero, se separa: USA (con pagos) sale primero; RD se aborda AL FINAL, por una de dos vías —
+(a) RD solo-social (sin pagos), o (b) un procesador local (Azul/CardNet) como su propio proyecto. Así un
+problema de disponibilidad de pagos en un mercado no detiene el lanzamiento del otro.
+Consecuencia: RD sale de la ruta crítica de lanzamiento; ya NO es un 🔴 bloqueante. El trabajo de RD
+(procesador local, o gating social-only) se planifica como el último paso. ESTADO.md actualizado acorde.
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).
