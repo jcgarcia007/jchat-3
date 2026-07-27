@@ -22,6 +22,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -204,6 +205,7 @@ function StockRow({
   onChangeEdit: (patch: Partial<EditState>) => void;
   onSave: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const low = isLowStock(item);
   const out = isOutOfStock(item);
 
@@ -258,7 +260,7 @@ function StockRow({
             }}
           >
             <IconEyeOff size={10} />
-            Hidden
+            {t("hiddenBadge")}
           </span>
         )}
         {low && !out && (
@@ -279,7 +281,7 @@ function StockRow({
             }}
           >
             <IconAlertTriangle size={10} />
-            Low Stock
+            {t("inventoryLowStockBadge")}
           </span>
         )}
       </div>
@@ -319,7 +321,7 @@ function StockRow({
           value={editState.thresholdInput}
           onChange={(e) => onChangeEdit({ thresholdInput: e.target.value })}
           style={inputStyle}
-          placeholder="threshold"
+          placeholder={t("inventoryThresholdPlaceholder")}
         />
       ) : (
         <span style={{ fontSize: "13px", color: "var(--db-text-secondary)", textAlign: "right" }}>
@@ -334,7 +336,7 @@ function StockRow({
           value={editState.reasonInput}
           onChange={(e) => onChangeEdit({ reasonInput: e.target.value })}
           style={inputStyle}
-          placeholder="reason (optional)"
+          placeholder={t("inventoryReasonOptionalPlaceholder")}
         />
       ) : (
         <span />
@@ -363,7 +365,7 @@ function StockRow({
           <button
             onClick={onStartEdit}
             style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
-            title="Edit stock"
+            title={t("inventoryEditStockTitle")}
           >
             <IconEdit size={14} />
           </button>
@@ -453,6 +455,8 @@ function parseCsv(text: string): CsvRow[] {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
@@ -520,11 +524,11 @@ export default function InventoryPage() {
       if (err) throw err;
       setItems((data as MenuItem[]) ?? []);
     } catch (e: unknown) {
-      setError(`Failed to load products: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("inventoryLoadProductsError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setLoadingItems(false);
     }
-  }, []);
+  }, [t]);
 
   // ── Load movements ───────────────────────────────────────────────────────────
   const loadMovements = useCallback(async (bizId: string) => {
@@ -546,11 +550,11 @@ export default function InventoryPage() {
       }));
       setMovements(annotated);
     } catch (e: unknown) {
-      setError(`Failed to load history: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("inventoryLoadHistoryError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setLoadingMovements(false);
     }
-  }, [items]);
+  }, [items, t]);
 
   useEffect(() => {
     if (businessId) {
@@ -595,16 +599,16 @@ export default function InventoryPage() {
     const newThreshold = parseInt(state.thresholdInput, 10);
 
     if (isNaN(newStock) || newStock < 0) {
-      setError("Stock count must be a non-negative number.");
+      setError(t("inventoryStockCountNonNegativeError"));
       return;
     }
     if (isNaN(newThreshold) || newThreshold < 0) {
-      setError("Low-stock threshold must be a non-negative number.");
+      setError(t("inventoryLowStockThresholdError"));
       return;
     }
 
     const delta  = newStock - item.stock_count;
-    const reason = state.reasonInput.trim() || (delta >= 0 ? "Manual adjustment" : "Manual deduction");
+    const reason = state.reasonInput.trim() || (delta >= 0 ? t("inventoryManualAdjustmentReason") : t("inventoryManualDeductionReason"));
 
     if (!isSupabaseConfigured) {
       // Demo mode: update local state only
@@ -630,7 +634,7 @@ export default function InventoryPage() {
         ]);
       }
       cancelEdit(item.id);
-      setSuccess(`Stock updated for "${item.name}" (demo mode).`);
+      setSuccess(t("inventoryStockUpdatedDemoSuccess", { name: item.name }));
       return;
     }
 
@@ -672,11 +676,11 @@ export default function InventoryPage() {
         )
       );
       cancelEdit(item.id);
-      setSuccess(`Stock updated for "${item.name}".`);
+      setSuccess(t("inventoryStockUpdatedSuccess", { name: item.name }));
       // Refresh movements if history panel is open
       if (showHistory && businessId) void loadMovements(businessId);
     } catch (e: unknown) {
-      setError(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("inventorySaveFailedError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setSavingId(null);
     }
@@ -702,7 +706,7 @@ export default function InventoryPage() {
 
       const rows = parseCsv(text);
       if (rows.length === 0) {
-        setError("CSV parse failed. Expected columns: name, stock (or stock_count).");
+        setError(t("inventoryCsvParseError"));
         return;
       }
 
@@ -736,7 +740,7 @@ export default function InventoryPage() {
                 menu_item_id: match.id,
                 business_id:  match.business_id,
                 delta,
-                reason:       "CSV import",
+                reason:       t("inventoryCsvImportReason"),
                 created_at:   new Date().toISOString(),
                 item_name:    match.name,
               },
@@ -759,7 +763,7 @@ export default function InventoryPage() {
             menu_item_id: match.id,
             business_id:  businessId,
             delta,
-            reason:       "CSV import",
+            reason:       t("inventoryCsvImportReason"),
           });
         }
 
@@ -775,7 +779,7 @@ export default function InventoryPage() {
       }
 
       setImporting(false);
-      setCsvReport(`CSV import complete: ${updated} updated, ${skipped} skipped (not found in product list).`);
+      setCsvReport(t("inventoryCsvImportReport", { updated, skipped }));
       // Reset file input so the same file can be re-imported
       if (fileInputRef.current) fileInputRef.current.value = "";
       // Refresh movements if history is open
@@ -791,15 +795,15 @@ export default function InventoryPage() {
     const thresholdNum = newThreshold.trim() === "" ? 5 : parseInt(newThreshold, 10);
 
     if (!name) {
-      setError("Product name is required.");
+      setError(t("inventoryProductNameRequiredError"));
       return;
     }
     if (isNaN(stockNum) || stockNum < 0) {
-      setError("Initial stock must be a non-negative number.");
+      setError(t("inventoryInitialStockNonNegativeError"));
       return;
     }
     if (isNaN(thresholdNum) || thresholdNum < 0) {
-      setError("Alert threshold must be a non-negative number.");
+      setError(t("inventoryAlertThresholdNonNegativeError"));
       return;
     }
 
@@ -824,12 +828,12 @@ export default function InventoryPage() {
       setNewName("");
       setNewStock("");
       setNewThreshold("");
-      setSuccess(`Added "${name}" (demo mode).`);
+      setSuccess(t("inventoryAddedDemoSuccess", { name }));
       return;
     }
 
     if (!businessId) {
-      setError("No business found for this account. Register a business first.");
+      setError(t("inventoryNoBusinessError"));
       return;
     }
 
@@ -853,7 +857,7 @@ export default function InventoryPage() {
           .insert({ business_id: businessId, name: "Uncategorized" })
           .select("id")
           .single();
-        if (catInsErr || !newCat) throw new Error(catInsErr?.message ?? "Failed to create category.");
+        if (catInsErr || !newCat) throw new Error(catInsErr?.message ?? t("inventoryCreateCategoryError"));
         categoryId = newCat.id as string;
       }
 
@@ -869,7 +873,7 @@ export default function InventoryPage() {
         })
         .select("id, business_id, name, stock_count, low_stock_threshold, is_published")
         .single();
-      if (insErr || !inserted) throw new Error(insErr?.message ?? "Failed to add product.");
+      if (insErr || !inserted) throw new Error(insErr?.message ?? t("inventoryAddProductGenericError"));
 
       // Log the initial stock as a movement.
       if (stockNum > 0) {
@@ -877,7 +881,7 @@ export default function InventoryPage() {
           menu_item_id: (inserted as MenuItem).id,
           business_id: businessId,
           delta: stockNum,
-          reason: "Initial stock",
+          reason: t("inventoryInitialStockReason"),
         });
       }
 
@@ -887,10 +891,10 @@ export default function InventoryPage() {
       setNewName("");
       setNewStock("");
       setNewThreshold("");
-      setSuccess(`Added "${name}".`);
+      setSuccess(t("inventoryAddedSuccess", { name }));
       if (showHistory) void loadMovements(businessId);
     } catch (e: unknown) {
-      setError(`Add product failed: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("inventoryAddProductFailedError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setAdding(false);
     }
@@ -918,7 +922,7 @@ export default function InventoryPage() {
   if (loadingBiz) {
     return (
       <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-        Loading…
+        {tCommon("loading")}
       </div>
     );
   }
@@ -939,10 +943,10 @@ export default function InventoryPage() {
           }}
         >
           <IconBox size={22} color="var(--db-accent)" />
-          Inventory
+          {t("railInventario")}
         </h1>
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-          Manage stock counts, low-stock thresholds, and view movement history.
+          {t("inventorySubtitle")}
         </p>
         {!isSupabaseConfigured && (
           <span
@@ -957,7 +961,7 @@ export default function InventoryPage() {
               color: "var(--db-accent)",
             }}
           >
-            Demo mode — Supabase not configured
+            {t("inventoryDemoModeBadge")}
           </span>
         )}
       </div>
@@ -972,9 +976,9 @@ export default function InventoryPage() {
         }}
       >
         {[
-          { label: "Total Products",  value: items.length, color: "var(--db-text-primary)" },
-          { label: "Low Stock",       value: lowCount,     color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
-          { label: "Out of Stock",    value: outCount,     color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
+          { label: t("inventoryTotalProductsLabel"), value: items.length, color: "var(--db-text-primary)" },
+          { label: t("inventoryLowStockBadge"),       value: lowCount,     color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
+          { label: t("inventoryOutOfStockLabel"),     value: outCount,     color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
         ].map(({ label, value, color }) => (
           <div
             key={label}
@@ -1004,11 +1008,10 @@ export default function InventoryPage() {
       <SectionCard>
         <SectionTitle>
           <IconPlus size={16} color="var(--db-accent)" />
-          Add a Product
+          {t("inventoryAddProductSectionTitle")}
         </SectionTitle>
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
-          Add a product manually without a CSV. It will be created in your menu so
-          you can set a price later from the Menu page.
+          {t("inventoryAddProductDescription")}
         </p>
         <div
           style={{
@@ -1019,17 +1022,17 @@ export default function InventoryPage() {
           }}
         >
           <div>
-            <label style={addLabelStyle}>Product name *</label>
+            <label style={addLabelStyle}>{t("inventoryProductNameLabel")}</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Hamburger"
+              placeholder={t("inventoryProductNamePlaceholderExample")}
               style={inputStyle}
             />
           </div>
           <div>
-            <label style={addLabelStyle}>Initial stock *</label>
+            <label style={addLabelStyle}>{t("inventoryInitialStockLabel")}</label>
             <input
               type="number"
               min="0"
@@ -1040,7 +1043,7 @@ export default function InventoryPage() {
             />
           </div>
           <div>
-            <label style={addLabelStyle}>Alert threshold</label>
+            <label style={addLabelStyle}>{t("inventoryAlertThresholdLabel")}</label>
             <input
               type="number"
               min="0"
@@ -1062,7 +1065,7 @@ export default function InventoryPage() {
             }}
           >
             <IconPlus size={14} />
-            {adding ? "Adding…" : "Add Product"}
+            {adding ? t("employeesAddingState") : t("inventoryAddProductButton")}
           </button>
         </div>
       </SectionCard>
@@ -1071,12 +1074,14 @@ export default function InventoryPage() {
       <SectionCard>
         <SectionTitle>
           <IconUpload size={16} color="var(--db-accent)" />
-          Bulk Stock Import via CSV
+          {t("inventoryCsvImportSectionTitle")}
         </SectionTitle>
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
-          Upload a CSV with columns <code style={{ background: "var(--db-bg-elevated)", padding: "1px 5px", borderRadius: "4px" }}>name</code> and{" "}
-          <code style={{ background: "var(--db-bg-elevated)", padding: "1px 5px", borderRadius: "4px" }}>stock</code>.
-          Stock counts are matched by product name (case-insensitive) and a movement is logged for every change.
+          {t.rich("inventoryCsvUploadDescription", {
+            code: (chunks) => (
+              <code style={{ background: "var(--db-bg-elevated)", padding: "1px 5px", borderRadius: "4px" }}>{chunks}</code>
+            ),
+          })}
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <label
@@ -1087,7 +1092,7 @@ export default function InventoryPage() {
             }}
           >
             <IconUpload size={14} />
-            {importing ? "Importing…" : "Choose CSV"}
+            {importing ? t("inventoryImportingState") : t("inventoryChooseCsvButton")}
             <input
               ref={fileInputRef}
               type="file"
@@ -1098,7 +1103,7 @@ export default function InventoryPage() {
             />
           </label>
           <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-            Parses client-side — no file is uploaded to a server.
+            {t("inventoryCsvClientSideNote")}
           </span>
         </div>
 
@@ -1114,7 +1119,7 @@ export default function InventoryPage() {
               marginBottom: "8px",
             }}
           >
-            Example
+            {t("inventoryExampleLabel")}
           </div>
           <table
             style={{
@@ -1164,13 +1169,13 @@ export default function InventoryPage() {
             style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
           >
             <IconDownload size={14} />
-            Download template
+            {t("inventoryDownloadTemplateButton")}
           </button>
         </div>
 
         <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "10px", fontStyle: "italic" }}>
           {/* TODO(server/Edge Function): email owner on low stock */}
-          Email alerts when stock hits threshold — Edge Function integration pending.
+          {t("inventoryEmailAlertsNote")}
         </p>
       </SectionCard>
 
@@ -1178,7 +1183,7 @@ export default function InventoryPage() {
       <SectionCard>
         <SectionTitle>
           <IconBox size={16} color="var(--db-accent)" />
-          Products &amp; Stock Levels
+          {t("inventoryProductsSectionTitle")}
         </SectionTitle>
 
         {/* Table header */}
@@ -1197,20 +1202,20 @@ export default function InventoryPage() {
             marginBottom: "4px",
           }}
         >
-          <span>Product</span>
-          <span style={{ textAlign: "right" }}>Stock</span>
-          <span style={{ textAlign: "right" }}>Alert at ≤</span>
-          <span>Reason</span>
-          <span style={{ textAlign: "right" }}>Action</span>
+          <span>{t("analyticsProductColumnLabel")}</span>
+          <span style={{ textAlign: "right" }}>{t("inventoryStockColumnLabel")}</span>
+          <span style={{ textAlign: "right" }}>{t("inventoryAlertAtColumnLabel")}</span>
+          <span>{t("inventoryReasonColumnLabel")}</span>
+          <span style={{ textAlign: "right" }}>{t("chatRoomsColAction")}</span>
         </div>
 
         {loadingItems ? (
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-            Loading products…
+            {t("inventoryLoadingProductsState")}
           </div>
         ) : items.length === 0 ? (
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-            No products found. Add products from the Menu page first.
+            {t("inventoryNoProductsMessage")}
           </div>
         ) : (
           items.map((item) => (
@@ -1249,7 +1254,7 @@ export default function InventoryPage() {
         >
           <SectionTitle>
             <IconHistory size={16} color="var(--db-accent)" />
-            Stock Movement History
+            {t("inventoryMovementHistorySectionTitle")}
             {movements.length > 0 && (
               <span
                 style={{
@@ -1276,11 +1281,11 @@ export default function InventoryPage() {
           <>
             {loadingMovements ? (
               <div style={{ padding: "24px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-                Loading history…
+                {t("inventoryLoadingHistoryState")}
               </div>
             ) : movements.length === 0 ? (
               <div style={{ padding: "24px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
-                No movements recorded yet.
+                {t("inventoryNoMovementsMessage")}
               </div>
             ) : (
               <>
@@ -1300,10 +1305,10 @@ export default function InventoryPage() {
                     marginBottom: "4px",
                   }}
                 >
-                  <span>Product</span>
-                  <span style={{ textAlign: "right" }}>Delta</span>
-                  <span>Reason</span>
-                  <span style={{ textAlign: "right" }}>Date</span>
+                  <span>{t("analyticsProductColumnLabel")}</span>
+                  <span style={{ textAlign: "right" }}>{t("inventoryDeltaColumnLabel")}</span>
+                  <span>{t("inventoryReasonColumnLabel")}</span>
+                  <span style={{ textAlign: "right" }}>{t("inventoryDateColumnLabel")}</span>
                 </div>
 
                 {movements.map((mv) => (
