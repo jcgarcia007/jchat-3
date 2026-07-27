@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconArrowLeft, IconSend, IconAlertCircle } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -26,6 +27,7 @@ function timeOf(iso: string): string {
 }
 
 export function LiveChat({ roomId }: { roomId: string }) {
+  const t = useTranslations("dashboardCommon");
   const [roomName, setRoomName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +52,9 @@ export function LiveChat({ roomId }: { roomId: string }) {
     const { data } = await supabase.from("public_profiles").select("id, display_name, username").in("id", missing);
     (data ?? []).forEach((u) => {
       namesRef.current[u.id as string] =
-        (u.display_name as string) || (u.username ? `@${u.username}` : "User");
+        (u.display_name as string) || (u.username ? `@${u.username}` : t("liveChatUnknownAuthor"));
     });
-  }, []);
+  }, [t]);
 
   const loadMessages = useCallback(async () => {
     const { data, error: err } = await supabase
@@ -65,9 +67,9 @@ export function LiveChat({ roomId }: { roomId: string }) {
     if (err) throw err;
     const rows = (data ?? []) as Omit<Message, "author">[];
     await namesFor(rows.map((m) => m.user_id).filter(Boolean) as string[]);
-    setMessages(rows.map((m) => ({ ...m, author: m.user_id ? namesRef.current[m.user_id] ?? "User" : "System" })));
+    setMessages(rows.map((m) => ({ ...m, author: m.user_id ? namesRef.current[m.user_id] ?? t("liveChatUnknownAuthor") : t("liveChatSystemAuthor") })));
     scrollToBottom();
-  }, [roomId, namesFor, scrollToBottom]);
+  }, [roomId, namesFor, scrollToBottom, t]);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +105,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
           )
           .subscribe();
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load chat.");
+        if (active) setError(e instanceof Error ? e.message : t("liveChatLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -133,7 +135,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
         return;
       }
       if (!meId) {
-        setError("You must be signed in to send messages.");
+        setError(t("liveChatSignInRequired"));
         return;
       }
       const { error: insErr } = await supabase.from("messages").insert({ room_id: roomId, user_id: meId, body, type: "text" });
@@ -141,7 +143,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
       setInput("");
       await loadMessages();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to send.");
+      setError(e instanceof Error ? e.message : t("liveChatSendError"));
     } finally {
       setSending(false);
     }
@@ -153,26 +155,26 @@ export function LiveChat({ roomId }: { roomId: string }) {
       <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingBottom: "12px", borderBottom: "1px solid var(--db-border)" }}>
         <Link
           href="/dashboard/chat-rooms"
-          aria-label="Back to chat rooms"
+          aria-label={t("liveChatBackAria")}
           style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-secondary)" }}
         >
           <IconArrowLeft size={18} />
         </Link>
         <div>
           <h1 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-            {roomName || "Room chat"}
+            {roomName || t("liveChatRoomFallback")}
           </h1>
-          <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>Live · messages update in real time</p>
+          <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>{t("liveChatLiveIndicator")}</p>
         </div>
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 4px", display: "flex", flexDirection: "column", gap: "10px" }}>
         {loading ? (
-          <div style={{ color: "var(--db-text-secondary)", fontSize: "14px", padding: "20px" }}>Loading messages…</div>
+          <div style={{ color: "var(--db-text-secondary)", fontSize: "14px", padding: "20px" }}>{t("liveChatLoadingMessages")}</div>
         ) : messages.length === 0 ? (
           <div style={{ textAlign: "center", color: "var(--db-text-tertiary)", fontSize: "14px", padding: "40px" }}>
-            No messages yet. Say hello 👋
+            {t("liveChatEmptyState")}
           </div>
         ) : (
           messages.map((m) => {
@@ -226,7 +228,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
               void send();
             }
           }}
-          placeholder="Type a message…"
+          placeholder={t("liveChatInputPlaceholder")}
           style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
         />
         <button
@@ -240,7 +242,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
           }}
         >
           <IconSend size={16} />
-          Send
+          {t("liveChatSendButton")}
         </button>
       </div>
     </div>

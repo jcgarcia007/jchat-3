@@ -19,6 +19,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LiveChat } from "@/components/dashboard/LiveChat";
 
 export default function ChatPage() {
@@ -30,6 +31,7 @@ export default function ChatPage() {
 }
 
 function ChatRouter() {
+  const t = useTranslations("dashboardCommon");
   const params = useSearchParams();
   const router = useRouter();
   const roomId = params.get("room");
@@ -53,7 +55,7 @@ function ChatRouter() {
         fontSize: 14,
       }}
     >
-      Redirecting to Chat rooms…
+      {t("chatRedirectingMessage")}
     </div>
   );
 }

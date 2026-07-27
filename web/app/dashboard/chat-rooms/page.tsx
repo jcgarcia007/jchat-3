@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconMessages,
   IconLock,
@@ -30,6 +31,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import { CHAT_THEMES, getChatTheme } from "@/constants/chatThemes";
+import type { TFn } from "@/lib/tabSemantics";
 
 interface RoomRow {
   id: string;
@@ -59,6 +61,15 @@ const TYPE_META: Record<RoomType, { icon: React.ComponentType<{ size?: number }>
   "Sub-room": { icon: IconHash, color: "var(--db-text-secondary)" },
 };
 
+function roomTypeLabel(type: RoomType, t: TFn): string {
+  switch (type) {
+    case "Main": return t("roomTypeMain");
+    case "Event": return t("eventTag");
+    case "Private": return t("roomTypePrivate");
+    case "Sub-room": return t("roomTypeSubRoom");
+  }
+}
+
 const DEMO_ROOMS: RoomRow[] = [
   { id: "d1", name: "Main Room", icon: "💬", is_main: true, is_active: true, is_password_protected: false, ttl_hours: null, chat_theme_id: 1, member_count: 86 },
   { id: "d2", name: "VIP Lounge", icon: "🥂", is_main: false, is_active: true, is_password_protected: true, ttl_hours: null, chat_theme_id: 4, member_count: 12 },
@@ -72,6 +83,8 @@ function slugify(name: string): string {
 }
 
 export default function ChatRoomsPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [business, setBusiness] = useState<ActiveBusiness | null>(null);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +124,7 @@ export default function ChatRoomsPage() {
       } else {
         const { data, error: rpcErr } = await supabase.rpc("get_room_qr_token", { p_room_id: room.id });
         if (rpcErr || typeof data !== "string") {
-          setQrRenewError("No se pudo obtener el código QR.");
+          setQrRenewError(t("chatRoomsQrFetchError"));
           setQrGenerating(false);
           return;
         }
@@ -129,9 +142,7 @@ export default function ChatRoomsPage() {
 
   async function renewQr() {
     if (!qrRoom) return;
-    const confirmed = window.confirm(
-      "¿Renovar el código QR?\n\nEsto invalidará el QR actual de esta sala. Si ya lo imprimiste, deberás reimprimirlo.\n\nLas personas que ya están en el chat no se verán afectadas.",
-    );
+    const confirmed = window.confirm(t("chatRoomsRenewConfirm"));
     if (!confirmed) return;
 
     setQrRenewing(true);
@@ -149,8 +160,8 @@ export default function ChatRoomsPage() {
           const msg = (rpcErr as { message?: string }).message ?? "";
           setQrRenewError(
             msg.includes("not_authorized")
-              ? "No tienes permiso para renovar este código."
-              : "Error al renovar. Intenta de nuevo.",
+              ? t("chatRoomsRenewNoPermission")
+              : t("chatRoomsRenewError"),
           );
           return;
         }
@@ -165,7 +176,7 @@ export default function ChatRoomsPage() {
         .then((u) => { setQrDataUrl(u); setQrGenerating(false); })
         .catch(() => { setQrGenerating(false); });
     } catch {
-      setQrRenewError("Error al renovar. Intenta de nuevo.");
+      setQrRenewError(t("chatRoomsRenewError"));
     } finally {
       setQrRenewing(false);
     }
@@ -182,7 +193,7 @@ export default function ChatRoomsPage() {
       setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, chat_theme_id: themeId } : r)));
       setThemeRoom(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to change theme.");
+      setError(e instanceof Error ? e.message : t("chatRoomsChangeThemeError"));
     } finally {
       setSavingTheme(false);
     }
@@ -231,7 +242,7 @@ export default function ChatRoomsPage() {
         setBusiness(res.business);
         await load(res.business.id);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load chat rooms.");
+        if (active) setError(e instanceof Error ? e.message : t("chatRoomsLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -244,7 +255,7 @@ export default function ChatRoomsPage() {
   async function createRoom() {
     const name = newName.trim();
     if (!name) {
-      setError("Room name is required.");
+      setError(t("chatRoomsNameRequired"));
       return;
     }
     setCreating(true);
@@ -271,7 +282,7 @@ export default function ChatRoomsPage() {
       setNewEmoji("💬");
       setShowForm(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create room.");
+      setError(e instanceof Error ? e.message : t("chatRoomsCreateError"));
     } finally {
       setCreating(false);
     }
@@ -281,9 +292,9 @@ export default function ChatRoomsPage() {
     return (
       <div style={{ maxWidth: "960px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
-          Chat Rooms
+          {t("railSalas")}
         </h1>
-        <NoBusinessCTA message="Register your business to create and manage chat rooms." />
+        <NoBusinessCTA message={t("chatRoomsNoBusinessMessage")} />
       </div>
     );
   }
@@ -294,7 +305,7 @@ export default function ChatRoomsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <IconMessages size={22} color="var(--db-accent)" />
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-            Chat Rooms
+            {t("railSalas")}
           </h1>
         </div>
         {!loading && (
@@ -316,14 +327,14 @@ export default function ChatRoomsPage() {
             }}
           >
             {showForm ? <IconX size={16} /> : <IconPlus size={16} />}
-            {showForm ? "Cancel" : "New room"}
+            {showForm ? tCommon("cancel") : t("chatRoomsNewRoomButton")}
           </button>
         )}
       </div>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "20px" }}>
         {business
-          ? `Rooms for ${business.name}. Moderation, pinned messages and members are managed in the JChat app.`
-          : "Your venue's chat rooms."}
+          ? t("chatRoomsSubtitleWithBusiness", { name: business.name })
+          : t("chatRoomsSubtitleFallback")}
       </p>
 
       {/* Create form */}
@@ -342,18 +353,18 @@ export default function ChatRoomsPage() {
           }}
         >
           <div style={{ flex: 1, minWidth: "200px" }}>
-            <label style={labelStyle}>Room name *</label>
+            <label style={labelStyle}>{t("chatRoomsNameLabel")}</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. VIP Lounge"
+              placeholder={t("chatRoomsNamePlaceholder")}
               style={inputStyle}
               maxLength={60}
             />
           </div>
           <div>
-            <label style={labelStyle}>Emoji</label>
+            <label style={labelStyle}>{t("chatRoomsEmojiLabel")}</label>
             <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", maxWidth: "260px" }}>
               {ROOM_EMOJIS.map((e) => (
                 <button
@@ -395,7 +406,7 @@ export default function ChatRoomsPage() {
             }}
           >
             <IconPlus size={15} />
-            {creating ? "Creating…" : "Create room"}
+            {creating ? t("chatRoomsCreatingState") : t("chatRoomsCreateButton")}
           </button>
         </div>
       )}
@@ -420,7 +431,7 @@ export default function ChatRoomsPage() {
       )}
 
       {loading ? (
-        <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>Loading…</div>
+        <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>{tCommon("loading")}</div>
       ) : rooms.length === 0 && !error ? (
         <div
           style={{
@@ -433,7 +444,7 @@ export default function ChatRoomsPage() {
             borderRadius: "12px",
           }}
         >
-          No chat rooms yet. Create one above, or register a business to get a main room.
+          {t("chatRoomsEmptyState")}
         </div>
       ) : (
         <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", overflow: "hidden" }}>
@@ -452,10 +463,10 @@ export default function ChatRoomsPage() {
               borderBottom: "1px solid var(--db-border)",
             }}
           >
-            <span>Room</span>
-            <span>Type</span>
-            <span style={{ textAlign: "right" }}>Members</span>
-            <span style={{ textAlign: "right" }}>Action</span>
+            <span>{t("chatRoomsColRoom")}</span>
+            <span>{t("chatRoomsColType")}</span>
+            <span style={{ textAlign: "right" }}>{t("chatRoomsColMembers")}</span>
+            <span style={{ textAlign: "right" }}>{t("chatRoomsColAction")}</span>
           </div>
 
           {rooms.map((r) => {
@@ -488,12 +499,12 @@ export default function ChatRoomsPage() {
                   >
                     {r.name}
                   </span>
-                  {!r.is_active && <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>(inactive)</span>}
+                  {!r.is_active && <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>{t("chatRoomsInactiveBadge")}</span>}
                 </div>
 
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", color: meta.color, fontWeight: 600 }}>
                   <TypeIcon size={14} />
-                  {type}
+                  {roomTypeLabel(type, t)}
                 </span>
 
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)", justifyContent: "flex-end" }}>
@@ -519,12 +530,12 @@ export default function ChatRoomsPage() {
                     }}
                   >
                     <IconMessages size={14} />
-                    Open Chat
+                    {t("chatRoomsOpenChatButton")}
                   </Link>
                   <button
                     type="button"
                     onClick={() => setThemeRoom(r)}
-                    title="Change chat theme"
+                    title={t("chatRoomsChangeThemeTitle")}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -551,12 +562,12 @@ export default function ChatRoomsPage() {
                         flexShrink: 0,
                       }}
                     />
-                    Theme
+                    {t("chatRoomsThemeButton")}
                   </button>
                   <button
                     type="button"
                     onClick={() => { void openQr(r); }}
-                    title="Ver QR de esta sala"
+                    title={t("chatRoomsViewQrTitle")}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -574,7 +585,7 @@ export default function ChatRoomsPage() {
                     }}
                   >
                     <IconQrcode size={14} />
-                    QR
+                    {t("chatRoomsQrButton")}
                   </button>
                   {business?.slug && (
                     <a
@@ -593,7 +604,7 @@ export default function ChatRoomsPage() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Manage
+                      {t("eventsManageButton")}
                     </a>
                   )}
                 </div>
@@ -608,7 +619,7 @@ export default function ChatRoomsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`QR de ${qrRoom.name}`}
+          aria-label={t("chatRoomsQrModalAria", { name: qrRoom.name })}
           onClick={(e) => { if (e.target === e.currentTarget) { setQrRoom(null); setQrToken(null); setQrRenewError(null); } }}
           style={{
             position: "fixed",
@@ -645,7 +656,7 @@ export default function ChatRoomsPage() {
                   type="button"
                   onClick={() => void renewQr()}
                   disabled={qrRenewing || qrGenerating}
-                  title="Renovar código"
+                  title={t("chatRoomsRenewCodeTitle")}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -670,7 +681,7 @@ export default function ChatRoomsPage() {
               <button
                 type="button"
                 onClick={() => { setQrRoom(null); setQrToken(null); setQrRenewError(null); }}
-                aria-label="Cerrar"
+                aria-label={t("tablesQrModalCloseAria")}
                 style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer", padding: "4px" }}
               >
                 <IconX size={20} />
@@ -712,16 +723,16 @@ export default function ChatRoomsPage() {
               {qrGenerating ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", color: "#888", fontSize: "13px" }}>
                   <IconLoader2 size={28} className="spin" style={{ color: "#5C7CFA" }} />
-                  Generando QR…
+                  {t("chatRoomsGeneratingQr")}
                 </div>
               ) : qrDataUrl ? (
                 <img
                   src={qrDataUrl}
-                  alt={`QR ${qrRoom.name}`}
+                  alt={t("chatRoomsQrAltText", { name: qrRoom.name })}
                   style={{ width: "100%", maxWidth: "240px", height: "auto", display: "block" }}
                 />
               ) : (
-                <span style={{ color: "#888", fontSize: "13px" }}>Error al generar</span>
+                <span style={{ color: "#888", fontSize: "13px" }}>{t("chatRoomsQrGenerateError")}</span>
               )}
             </div>
 
@@ -810,7 +821,7 @@ export default function ChatRoomsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Change theme for ${themeRoom.name}`}
+          aria-label={t("chatRoomsThemeModalAria", { name: themeRoom.name })}
           onClick={(e) => {
             if (e.target === e.currentTarget && !savingTheme) setThemeRoom(null);
           }}
@@ -839,12 +850,12 @@ export default function ChatRoomsPage() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                Chat theme — {themeRoom.name}
+                {t("chatRoomsThemeModalTitle", { name: themeRoom.name })}
               </h2>
               <button
                 type="button"
                 onClick={() => !savingTheme && setThemeRoom(null)}
-                aria-label="Close"
+                aria-label={t("tablesQrModalCloseAria")}
                 style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer" }}
               >
                 <IconX size={20} />
@@ -852,20 +863,20 @@ export default function ChatRoomsPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
-              {CHAT_THEMES.map((t) => {
-                const selected = t.id === themeRoom.chat_theme_id;
+              {CHAT_THEMES.map((theme) => {
+                const selected = theme.id === themeRoom.chat_theme_id;
                 return (
                   <button
-                    key={t.id}
+                    key={theme.id}
                     type="button"
-                    onClick={() => void changeTheme(themeRoom, t.id)}
+                    onClick={() => void changeTheme(themeRoom, theme.id)}
                     disabled={savingTheme}
                     style={{
                       textAlign: "left",
                       padding: "12px",
                       borderRadius: "10px",
                       border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
-                      background: t.bg,
+                      background: theme.bg,
                       cursor: savingTheme ? "wait" : "pointer",
                       display: "flex",
                       flexDirection: "column",
@@ -874,25 +885,25 @@ export default function ChatRoomsPage() {
                   >
                     {/* Mini chat preview using the theme's own colors */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: t.bubbleInBg, color: t.bubbleInText, fontSize: "11px" }}>
-                        Hey there 👋
+                      <span style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: theme.bubbleInBg, color: theme.bubbleInText, fontSize: "11px" }}>
+                        {t("chatRoomsThemePreviewGreeting")}
                       </span>
-                      <span style={{ alignSelf: "flex-end", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: t.bubbleOutBg, color: t.bubbleOutText, fontSize: "11px" }}>
-                        Welcome!
+                      <span style={{ alignSelf: "flex-end", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: theme.bubbleOutBg, color: theme.bubbleOutText, fontSize: "11px" }}>
+                        {t("chatSampleWelcome")}
                       </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: t.bubbleInText }}>
-                        {t.id}. {t.name}
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: theme.bubbleInText }}>
+                        {theme.id}. {theme.name}
                       </span>
                       <span style={{ display: "flex", gap: "3px" }}>
-                        {[t.bg, t.accent, t.bubbleOutBg].map((col, i) => (
-                          <span key={i} style={{ width: "12px", height: "12px", borderRadius: "50%", background: col, border: `1px solid ${t.border}` }} />
+                        {[theme.bg, theme.accent, theme.bubbleOutBg].map((col, i) => (
+                          <span key={i} style={{ width: "12px", height: "12px", borderRadius: "50%", background: col, border: `1px solid ${theme.border}` }} />
                         ))}
                       </span>
                     </div>
                     {selected && (
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: t.accent }}>✓ Current</span>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: theme.accent }}>{t("chatRoomsCurrentBadge")}</span>
                     )}
                   </button>
                 );
