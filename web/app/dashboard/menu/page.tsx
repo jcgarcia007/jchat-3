@@ -1907,6 +1907,62 @@ function CategoryFormPanel({
 }) {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+  // Display-only labels for the icon picker — the persisted value (menu_categories.icon)
+  // never changes; getCategoryIcon()/CATEGORY_ICON_MAP key off it untouched.
+  const iconLabels: Record<string, string> = {
+    cocktail: t("menuIconCocktail"),
+    beer: t("menuIconBeer"),
+    beer_filled: t("menuIconBeerFilled"),
+    wine: t("menuIconWine"),
+    champagne: t("menuIconChampagne"),
+    spirits: t("menuIconSpirits"),
+    bottle: t("menuIconBottle"),
+    coffee: t("menuIconCoffee"),
+    milk: t("menuIconMilk"),
+    milkshake: t("menuIconMilkshake"),
+    juice: t("menuIconJuice"),
+    cup: t("menuIconCup"),
+    water: t("menuIconWater"),
+    lemon: t("menuIconLemon"),
+    pizza: t("menuIconPizza"),
+    burger: t("menuIconBurger"),
+    meat: t("menuIconMeat"),
+    sausage: t("menuIconSausage"),
+    grill: t("menuIconGrill"),
+    fish: t("menuIconFish"),
+    dumpling: t("menuIconDumpling"),
+    soup: t("menuIconSoup"),
+    bowl: t("menuIconBowl"),
+    salad: t("menuIconSalad"),
+    leaf: t("menuIconLeaf"),
+    plant: t("menuIconPlant"),
+    carrot: t("menuIconCarrot"),
+    mushroom: t("menuIconMushroom"),
+    pepper: t("menuIconPepper"),
+    bread: t("menuIconBread"),
+    baguette: t("menuIconBaguette"),
+    egg: t("menuIconEgg"),
+    eggs: t("menuIconEggs"),
+    cheese: t("menuIconCheese"),
+    cake: t("menuIconCake"),
+    ice_cream: t("menuIconIceCream"),
+    ice_cream2: t("menuIconIceCream2"),
+    cookie: t("menuIconCookie"),
+    candy: t("menuIconCandy"),
+    chocolate: t("menuIconChocolate"),
+    apple: t("menuIconApple"),
+    spicy: t("menuIconSpicy"),
+    star: t("menuIconStar"),
+    new: t("menuIconNew"),
+    heart: t("menuIconHeart"),
+    crown: t("menuIconCrown"),
+    salt: t("menuIconSalt"),
+    frozen: t("menuIconFrozen"),
+    kids: t("menuIconKids"),
+    chef: t("menuIconChef"),
+    kitchen: t("menuIconKitchen"),
+    category: t("menuIconCategory"),
+  };
   const [form, setForm] = useState<CategoryForm>(initial);
   const [iconMode, setIconMode] = useState<"icon" | "photo">(
     initial.icon_url ? "photo" : "icon"
@@ -2021,7 +2077,7 @@ function CategoryFormPanel({
                 <button
                   key={name}
                   type="button"
-                  title={label}
+                  title={iconLabels[name] ?? label}
                   onClick={() =>
                     setForm((p) => ({
                       ...p,
@@ -2066,7 +2122,7 @@ function CategoryFormPanel({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {label}
+                    {iconLabels[name] ?? label}
                   </span>
                 </button>
               );
