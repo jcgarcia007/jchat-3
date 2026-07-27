@@ -16,6 +16,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAward,
   IconAlertCircle,
@@ -149,6 +150,9 @@ function AlertBanner({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LoyaltyPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+
   // ── State ────────────────────────────────────────────────────────────────────
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
@@ -230,9 +234,9 @@ export default function LoyaltyPage() {
       setRewards(rewardsData);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Failed to load loyalty data: ${msg}`);
+      setError(t("loyaltyLoadError", { msg }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void resolveBusinessId();
@@ -248,42 +252,42 @@ export default function LoyaltyPage() {
     setSuccess(null);
     const pts = parseInt(pointsInput, 10);
     if (isNaN(pts) || pts < 1) {
-      setError("Points per dollar must be a positive number.");
+      setError(t("loyaltyPointsValidationError"));
       return;
     }
     if (!businessId) {
-      setError("Business not found for this account.");
+      setError(t("loyaltyBusinessNotFoundError"));
       return;
     }
     setSavingRule(true);
     try {
       const updated = await upsertRules(businessId, pts);
       setRule(updated);
-      setSuccess("Earn rule saved.");
+      setSuccess(t("loyaltyRuleSavedSuccess"));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Save failed: ${msg}`);
+      setError(t("loyaltyRuleSaveError", { msg }));
     } finally {
       setSavingRule(false);
     }
-  }, [businessId, pointsInput]);
+  }, [businessId, pointsInput, t]);
 
   // ── Save tiers ────────────────────────────────────────────────────────────────
   const handleSaveTiers = useCallback(async () => {
     setError(null);
     setSuccess(null);
     if (!businessId) {
-      setError("Business not found for this account.");
+      setError(t("loyaltyBusinessNotFoundError"));
       return;
     }
-    for (const t of tierDraft) {
-      if (!t.name.trim()) {
-        setError("Each tier must have a name.");
+    for (const row of tierDraft) {
+      if (!row.name.trim()) {
+        setError(t("loyaltyTierNameRequiredError"));
         return;
       }
-      const pts = parseInt(t.min_points, 10);
+      const pts = parseInt(row.min_points, 10);
       if (isNaN(pts) || pts < 0) {
-        setError(`Minimum points for tier "${t.name}" must be 0 or more.`);
+        setError(t("loyaltyTierMinPointsError", { name: row.name }));
         return;
       }
     }
@@ -291,21 +295,21 @@ export default function LoyaltyPage() {
     try {
       const saved = await upsertTiers({
         businessId,
-        tiers: tierDraft.map((t) => ({
-          name: t.name.trim(),
-          min_points: parseInt(t.min_points, 10),
+        tiers: tierDraft.map((row) => ({
+          name: row.name.trim(),
+          min_points: parseInt(row.min_points, 10),
         })),
       });
       setTiers(saved);
       setEditingTiers(false);
-      setSuccess("Tiers saved.");
+      setSuccess(t("loyaltyTiersSavedSuccess"));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Tiers save failed: ${msg}`);
+      setError(t("loyaltyTiersSaveError", { msg }));
     } finally {
       setSavingTiers(false);
     }
-  }, [businessId, tierDraft]);
+  }, [businessId, tierDraft, t]);
 
   // ── Tier draft helpers ────────────────────────────────────────────────────────
   const updateTierDraft = (
@@ -331,16 +335,16 @@ export default function LoyaltyPage() {
     setError(null);
     setSuccess(null);
     if (!rewardName.trim()) {
-      setError("Reward name is required.");
+      setError(t("loyaltyRewardNameRequiredError"));
       return;
     }
     const cost = parseInt(rewardCost, 10);
     if (isNaN(cost) || cost < 1) {
-      setError("Cost (points) must be a positive number.");
+      setError(t("loyaltyRewardCostValidationError"));
       return;
     }
     if (!businessId) {
-      setError("Business not found for this account.");
+      setError(t("loyaltyBusinessNotFoundError"));
       return;
     }
     setCreatingReward(true);
@@ -355,39 +359,35 @@ export default function LoyaltyPage() {
       setRewardDesc("");
       setRewardCost("100");
       setShowRewardForm(false);
-      setSuccess(`Reward "${rewardName.trim()}" added.`);
+      setSuccess(t("loyaltyRewardAddedSuccess", { name: rewardName.trim() }));
       await loadAll(businessId);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Create failed: ${msg}`);
+      setError(t("loyaltyRewardCreateError", { msg }));
     } finally {
       setCreatingReward(false);
     }
-  }, [businessId, rewardName, rewardDesc, rewardCost, loadAll]);
+  }, [businessId, rewardName, rewardDesc, rewardCost, loadAll, t]);
 
   // ── Delete reward ─────────────────────────────────────────────────────────────
   const handleDeleteReward = useCallback(
     async (reward: LoyaltyReward) => {
-      if (
-        !confirm(
-          `Remove reward "${reward.name}"? This cannot be undone (soft delete — existing redemptions are preserved).`
-        )
-      )
+      if (!confirm(t("loyaltyRewardRemoveConfirm", { name: reward.name })))
         return;
       setDeletingReward(reward.id);
       setError(null);
       try {
         await deleteReward(reward.id);
         setRewards((prev) => prev.filter((r) => r.id !== reward.id));
-        setSuccess(`Reward "${reward.name}" removed.`);
+        setSuccess(t("loyaltyRewardRemovedSuccess", { name: reward.name }));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Delete failed: ${msg}`);
+        setError(t("loyaltyRewardDeleteError", { msg }));
       } finally {
         setDeletingReward(null);
       }
     },
-    []
+    [t]
   );
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -403,10 +403,10 @@ export default function LoyaltyPage() {
             marginBottom: "4px",
           }}
         >
-          Loyalty Program
+          {t("loyaltyPageTitle")}
         </h1>
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-          Configure point earn rules, member tiers, and the rewards catalog.
+          {t("loyaltySubtitle")}
           {/* TODO(Task 3.x): points are awarded on order completion — wired in checkout */}
         </p>
       </div>
@@ -419,7 +419,7 @@ export default function LoyaltyPage() {
       {!isSupabaseConfigured && (
         <AlertBanner
           type="warning"
-          message="Demo mode: Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable live data."
+          message={t("demoModeSupabaseMessage")}
         />
       )}
 
@@ -427,15 +427,15 @@ export default function LoyaltyPage() {
       {!loadingBiz && isSupabaseConfigured && !businessId && (
         <AlertBanner
           type="warning"
-          message="No business found for this account. Loyalty rules cannot be saved."
+          message={t("loyaltyNoBusinessAlert")}
         />
       )}
 
       {/* ── Section 1: Earn Rule ───────────────────────────────────────────────── */}
       <Section
         icon={<IconCoin size={18} color="var(--db-accent)" />}
-        title="Earn Rule"
-        subtitle="How many points customers earn per $1 spent."
+        title={t("loyaltyEarnRuleTitle")}
+        subtitle={t("loyaltyEarnRuleSubtitle")}
       >
         <div
           style={{
@@ -446,12 +446,12 @@ export default function LoyaltyPage() {
           }}
         >
           <div style={{ flex: "0 0 200px" }}>
-            <Label>Points per $1 spent</Label>
+            <Label>{t("loyaltyPointsPerDollarLabel")}</Label>
             <TextInput
               type="number"
               value={pointsInput}
               onChange={setPointsInput}
-              placeholder="e.g. 10"
+              placeholder={t("loyaltyPointsPlaceholderExample")}
             />
           </div>
           <button
@@ -459,7 +459,7 @@ export default function LoyaltyPage() {
             disabled={savingRule || !isSupabaseConfigured}
             style={primaryBtnStyle(savingRule || !isSupabaseConfigured)}
           >
-            {savingRule ? "Saving…" : "Save Rule"}
+            {savingRule ? t("loyaltySavingState") : t("loyaltySaveRuleButton")}
           </button>
         </div>
 
@@ -471,11 +471,12 @@ export default function LoyaltyPage() {
               color: "var(--db-text-secondary)",
             }}
           >
-            Current rule: customers earn{" "}
-            <strong style={{ color: "var(--db-accent)" }}>
-              {formatPoints(rule.points_per_dollar)} pts
-            </strong>{" "}
-            per $1 spent.
+            {t.rich("loyaltyCurrentRuleText", {
+              pts: formatPoints(rule.points_per_dollar),
+              strong: (chunks) => (
+                <strong style={{ color: "var(--db-accent)" }}>{chunks}</strong>
+              ),
+            })}
             {/* TODO(Task 3.x): award_points() called in checkout Edge Function */}
           </p>
         )}
@@ -484,8 +485,8 @@ export default function LoyaltyPage() {
       {/* ── Section 2: Member Tiers ───────────────────────────────────────────── */}
       <Section
         icon={<IconStar size={18} color="var(--db-accent)" />}
-        title="Member Tiers"
-        subtitle="Bronze / Silver / Gold thresholds based on total points earned."
+        title={t("loyaltyMemberTiersTitle")}
+        subtitle={t("loyaltyMemberTiersSubtitle")}
       >
         {!editingTiers ? (
           <>
@@ -493,8 +494,7 @@ export default function LoyaltyPage() {
               <p
                 style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}
               >
-                No tiers configured yet. Click Edit to set up Bronze / Silver /
-                Gold.
+                {t("loyaltyNoTiersMessage")}
               </p>
             ) : (
               <div
@@ -527,7 +527,7 @@ export default function LoyaltyPage() {
               style={secondaryBtnStyle()}
             >
               <IconEdit size={14} />
-              Edit Tiers
+              {t("loyaltyEditTiersButton")}
             </button>
           </>
         ) : (
@@ -540,31 +540,31 @@ export default function LoyaltyPage() {
                 marginBottom: "16px",
               }}
             >
-              {tierDraft.map((t, idx) => (
+              {tierDraft.map((row, idx) => (
                 <div
                   key={idx}
                   style={{ display: "flex", gap: "10px", alignItems: "center" }}
                 >
                   <div style={{ flex: "1 1 140px" }}>
-                    {idx === 0 && <Label>Tier name</Label>}
+                    {idx === 0 && <Label>{t("loyaltyTierNameLabel")}</Label>}
                     <TextInput
-                      value={t.name}
+                      value={row.name}
                       onChange={(v) => updateTierDraft(idx, "name", v)}
-                      placeholder="e.g. Bronze"
+                      placeholder={t("loyaltyTierNamePlaceholderExample")}
                     />
                   </div>
                   <div style={{ flex: "1 1 120px" }}>
-                    {idx === 0 && <Label>Min points</Label>}
+                    {idx === 0 && <Label>{t("loyaltyMinPointsLabel")}</Label>}
                     <TextInput
                       type="number"
-                      value={t.min_points}
+                      value={row.min_points}
                       onChange={(v) => updateTierDraft(idx, "min_points", v)}
                       placeholder="0"
                     />
                   </div>
                   <button
                     onClick={() => removeTierRow(idx)}
-                    aria-label="Remove tier"
+                    aria-label={t("loyaltyRemoveTierAria")}
                     style={{
                       background: "none",
                       border: "none",
@@ -584,14 +584,14 @@ export default function LoyaltyPage() {
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={addTierRow} style={secondaryBtnStyle()}>
                 <IconPlus size={14} />
-                Add Tier
+                {t("loyaltyAddTierButton")}
               </button>
               <button
                 onClick={handleSaveTiers}
                 disabled={savingTiers || !isSupabaseConfigured}
                 style={primaryBtnStyle(savingTiers || !isSupabaseConfigured)}
               >
-                {savingTiers ? "Saving…" : "Save Tiers"}
+                {savingTiers ? t("loyaltySavingState") : t("loyaltySaveTiersButton")}
               </button>
               <button
                 onClick={() => {
@@ -600,7 +600,7 @@ export default function LoyaltyPage() {
                 }}
                 style={cancelBtnStyle()}
               >
-                Cancel
+                {tCommon("cancel")}
               </button>
             </div>
           </div>
@@ -610,8 +610,8 @@ export default function LoyaltyPage() {
       {/* ── Section 3: Rewards Catalog ─────────────────────────────────────────── */}
       <Section
         icon={<IconAward size={18} color="var(--db-accent)" />}
-        title="Rewards Catalog"
-        subtitle="Redeemable rewards customers can claim with their points."
+        title={t("loyaltyRewardsCatalogTitle")}
+        subtitle={t("loyaltyRewardsCatalogSubtitle")}
       >
         {/* Add reward button */}
         {!showRewardForm && (
@@ -624,7 +624,7 @@ export default function LoyaltyPage() {
             style={{ ...secondaryBtnStyle(), marginBottom: "16px" }}
           >
             <IconPlus size={14} />
-            Add Reward
+            {t("loyaltyAddRewardButton")}
           </button>
         )}
 
@@ -654,7 +654,7 @@ export default function LoyaltyPage() {
                   color: "var(--db-text-primary)",
                 }}
               >
-                New Reward
+                {t("loyaltyNewRewardFormTitle")}
               </h3>
               <button
                 onClick={() => {
@@ -664,7 +664,7 @@ export default function LoyaltyPage() {
                   setRewardCost("100");
                   setError(null);
                 }}
-                aria-label="Cancel"
+                aria-label={tCommon("cancel")}
                 style={{
                   background: "none",
                   border: "none",
@@ -687,23 +687,23 @@ export default function LoyaltyPage() {
               }}
             >
               <div style={{ gridColumn: "1 / -1" }}>
-                <Label>Reward name *</Label>
+                <Label>{t("loyaltyRewardNameLabel")}</Label>
                 <TextInput
                   value={rewardName}
                   onChange={setRewardName}
-                  placeholder="e.g. Free Coffee"
+                  placeholder={t("loyaltyRewardNamePlaceholderExample")}
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <Label>Description</Label>
+                <Label>{t("loyaltyRewardDescriptionLabel")}</Label>
                 <TextInput
                   value={rewardDesc}
                   onChange={setRewardDesc}
-                  placeholder="e.g. One free coffee of any size"
+                  placeholder={t("loyaltyRewardDescPlaceholderExample")}
                 />
               </div>
               <div>
-                <Label>Cost (points) *</Label>
+                <Label>{t("loyaltyRewardCostLabel")}</Label>
                 <TextInput
                   type="number"
                   value={rewardCost}
@@ -728,14 +728,14 @@ export default function LoyaltyPage() {
                 }}
                 style={cancelBtnStyle()}
               >
-                Cancel
+                {tCommon("cancel")}
               </button>
               <button
                 onClick={handleCreateReward}
                 disabled={creatingReward || !isSupabaseConfigured}
                 style={primaryBtnStyle(creatingReward || !isSupabaseConfigured)}
               >
-                {creatingReward ? "Adding…" : "Add Reward"}
+                {creatingReward ? t("loyaltyAddingRewardState") : t("loyaltyAddRewardButton")}
               </button>
             </div>
           </div>
@@ -744,7 +744,7 @@ export default function LoyaltyPage() {
         {/* Rewards list */}
         {rewards.length === 0 ? (
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            No rewards yet. Add your first reward above.
+            {t("loyaltyNoRewardsMessage")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -825,6 +825,7 @@ function Section({
 // ── Tier badge ─────────────────────────────────────────────────────────────────
 
 function TierBadge({ tier }: { tier: LoyaltyTier }) {
+  const t = useTranslations("dashboardCommon");
   return (
     <div
       style={{
@@ -847,8 +848,8 @@ function TierBadge({ tier }: { tier: LoyaltyTier }) {
       </div>
       <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
         {tier.min_points === 0
-          ? "Starting tier"
-          : `${formatPoints(tier.min_points)}+ pts`}
+          ? t("loyaltyStartingTierBadge")
+          : t("loyaltyTierPointsThreshold", { points: formatPoints(tier.min_points) })}
       </div>
     </div>
   );
@@ -865,6 +866,7 @@ function RewardRow({
   isDeleting: boolean;
   onDelete: (r: LoyaltyReward) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   return (
     <div
       style={{
@@ -933,14 +935,14 @@ function RewardRow({
           flexShrink: 0,
         }}
       >
-        {formatPoints(reward.cost_points)} pts
+        {t("loyaltyRewardCostBadge", { points: formatPoints(reward.cost_points) })}
       </div>
 
       {/* Delete */}
       <button
         onClick={() => onDelete(reward)}
         disabled={isDeleting}
-        aria-label={`Remove ${reward.name}`}
+        aria-label={t("loyaltyRemoveRewardAria", { name: reward.name })}
         style={{
           background: "none",
           border: "none",

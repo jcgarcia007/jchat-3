@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconStar,
   IconStarFilled,
@@ -110,10 +111,11 @@ async function computeAverage(reviews: ReviewRow[]): Promise<AverageRating> {
 
 async function submitResponse(
   reviewId: string,
-  response: string
+  response: string,
+  notConfiguredError: string
 ): Promise<void> {
   if (!isSupabaseConfigured)
-    throw new Error("Supabase is not configured");
+    throw new Error(notConfiguredError);
 
   const { error } = await supabase
     .from("reviews")
@@ -129,17 +131,17 @@ async function submitResponse(
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString("en-US", {
+  return new Date(isoString).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 }
 
-function authorLabel(review: ReviewRow): string {
+function authorLabel(review: ReviewRow, anonymousLabel: string): string {
   if (review.author?.display_name) return review.author.display_name;
   if (review.author?.username) return `@${review.author.username}`;
-  return "Anonymous";
+  return anonymousLabel;
 }
 
 function authorInitials(review: ReviewRow): string {
@@ -177,6 +179,7 @@ function StarDisplay({
 // ── AverageHeader ──────────────────────────────────────────────────────────
 
 function AverageHeader({ avg, count }: AverageRating) {
+  const t = useTranslations("dashboardCommon");
   return (
     <div
       style={{
@@ -206,8 +209,8 @@ function AverageHeader({ avg, count }: AverageRating) {
           style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}
         >
           {count > 0
-            ? `Based on ${count} review${count !== 1 ? "s" : ""}`
-            : "No reviews yet"}
+            ? t("reviewsAverageCountPlural", { count })
+            : t("reviewsAverageNoReviews")}
         </div>
       </div>
     </div>
@@ -222,6 +225,8 @@ interface ReviewCardProps {
 }
 
 function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [draft, setDraft] = useState(review.response ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -238,11 +243,11 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
       setShowResponseBox(false);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save response");
+      setError(err instanceof Error ? err.message : t("reviewsSaveResponseError"));
     } finally {
       setSaving(false);
     }
-  }, [draft, review.id, onResponseSubmit]);
+  }, [draft, review.id, onResponseSubmit, t]);
 
   const isReported = review.status === "reported";
   const isHidden = review.status === "hidden";
@@ -303,7 +308,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                 color: "var(--db-text-primary)",
               }}
             >
-              {authorLabel(review)}
+              {authorLabel(review, t("reviewsAnonymousAuthor"))}
             </span>
 
             {isReported && (
@@ -321,7 +326,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                 }}
               >
                 <IconFlag size={11} />
-                Reported
+                {t("reviewsReportedBadge")}
                 {/* TODO(Super Admin): reported reviews route to the Super Admin queue */}
               </span>
             )}
@@ -337,7 +342,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                   padding: "2px 7px",
                 }}
               >
-                Hidden
+                {t("reviewsHiddenBadge")}
               </span>
             )}
           </div>
@@ -398,7 +403,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
             }}
           >
             <IconMessageCircle size={13} />
-            Owner response
+            {t("reviewsOwnerResponseLabel")}
             {review.responded_at && (
               <span
                 style={{
@@ -438,7 +443,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
               textDecoration: "underline",
             }}
           >
-            Edit response
+            {t("reviewsEditResponseButton")}
           </button>
         </div>
       )}
@@ -451,8 +456,8 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder={
               review.response
-                ? "Edit your response…"
-                : "Reply publicly to this review…"
+                ? t("reviewsEditPlaceholder")
+                : t("reviewsReplyPlaceholder")
             }
             rows={3}
             maxLength={1000}
@@ -500,7 +505,11 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                 opacity: saving || !draft.trim() ? 0.5 : 1,
               }}
             >
-              {saving ? "Saving…" : review.response ? "Update" : "Post Response"}
+              {saving
+                ? t("reviewsSavingState")
+                : review.response
+                ? t("reviewsUpdateResponseButton")
+                : t("reviewsPostResponseButton")}
             </button>
 
             {showResponseBox && review.response && (
@@ -516,7 +525,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                   cursor: "pointer",
                 }}
               >
-                Cancel
+                {tCommon("cancel")}
               </button>
             )}
 
@@ -524,7 +533,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
               <span
                 style={{ fontSize: "12px", color: "var(--db-success)" }}
               >
-                Saved!
+                {t("reviewsSavedConfirmation")}
               </span>
             )}
           </div>
@@ -537,6 +546,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ReviewsPage() {
+  const t = useTranslations("dashboardCommon");
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [average, setAverage] = useState<AverageRating>({ avg: 0, count: 0 });
   const [loading, setLoading] = useState(true);
@@ -554,12 +564,12 @@ export default function ReviewsPage() {
       setAverage(avg);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to load reviews"
+        err instanceof Error ? err.message : t("reviewsLoadError")
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let active = true;
@@ -581,7 +591,7 @@ export default function ReviewsPage() {
         setBusiness(res.business);
         await load(res.business.id);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load reviews.");
+        if (active) setError(e instanceof Error ? e.message : t("reviewsLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -589,11 +599,11 @@ export default function ReviewsPage() {
     return () => {
       active = false;
     };
-  }, [load]);
+  }, [load, t]);
 
   const handleResponseSubmit = useCallback(
     async (reviewId: string, response: string) => {
-      await submitResponse(reviewId, response);
+      await submitResponse(reviewId, response, t("reviewsNotConfiguredError"));
       // Optimistically update local state so the card reflects the saved response.
       setReviews((prev) =>
         prev.map((r) =>
@@ -603,16 +613,16 @@ export default function ReviewsPage() {
         )
       );
     },
-    []
+    [t]
   );
 
   if (!loading && needsRegister) {
     return (
       <div style={{ maxWidth: "760px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-          Reviews
+          {t("railResenas")}
         </h1>
-        <NoBusinessCTA message="Register your business to see and respond to reviews." />
+        <NoBusinessCTA message={t("reviewsNoBusinessMessage")} />
       </div>
     );
   }
@@ -639,7 +649,7 @@ export default function ReviewsPage() {
               margin: 0,
             }}
           >
-            Reviews
+            {t("railResenas")}
           </h1>
           <p
             style={{
@@ -648,15 +658,15 @@ export default function ReviewsPage() {
               margin: "4px 0 0",
             }}
           >
-            Read and respond to customer reviews for your venue.
+            {t("reviewsSubtitle")}
           </p>
         </div>
 
         <button
           onClick={() => { if (business) void load(business.id); }}
           disabled={loading}
-          title="Refresh"
-          aria-label="Refresh reviews"
+          title={t("serviceRefreshAria")}
+          aria-label={t("reviewsRefreshAriaLabel")}
           style={{
             display: "flex",
             alignItems: "center",
@@ -672,7 +682,7 @@ export default function ReviewsPage() {
           }}
         >
           <IconRefresh size={15} />
-          Refresh
+          {t("serviceRefreshAria")}
         </button>
       </div>
 
@@ -689,7 +699,7 @@ export default function ReviewsPage() {
             fontSize: "14px",
           }}
         >
-          Loading reviews…
+          {t("reviewsLoadingList")}
         </div>
       )}
 
@@ -719,7 +729,7 @@ export default function ReviewsPage() {
             fontSize: "14px",
           }}
         >
-          No reviews yet. They will appear here once customers leave feedback.
+          {t("reviewsEmptyMessage")}
         </div>
       )}
 
