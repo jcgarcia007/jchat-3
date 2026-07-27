@@ -1288,6 +1288,17 @@
     "locationSavedSuccess": "Location saved.",
     "locationRadiusMustExceedError": "Requested radius must be greater than {m} m.",
     "locationReasonRequiredError": "Please provide a reason.",
-    "locationSubmitFailedFallback": "Failed to submit request."
+    "locationSubmitFailedFallback": "Failed to submit request.",
+    "menuDietaryVegetarian": "Vegetarian",
+    "menuDietaryVegan": "Vegan",
+    "menuDietaryGlutenFree": "Gluten Free",
+    "menuDietaryDairyFree": "Dairy Free",
+    "menuDietaryNutFree": "Nut Free",
+    "menuDietarySeafood": "Seafood",
+    "menuDietarySpicy": "Spicy",
+    "menuBadgeNone": "None",
+    "menuBadgeBestSeller": "Best Seller",
+    "menuBadgeNew": "New",
+    "menuBadgeHot": "Hot"
   }
 }

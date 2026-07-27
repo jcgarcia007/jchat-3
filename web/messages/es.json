@@ -1288,6 +1288,17 @@
     "locationSavedSuccess": "Ubicación guardada.",
     "locationRadiusMustExceedError": "El radio solicitado debe ser mayor que {m} m.",
     "locationReasonRequiredError": "Por favor, indica un motivo.",
-    "locationSubmitFailedFallback": "No se pudo enviar la solicitud."
+    "locationSubmitFailedFallback": "No se pudo enviar la solicitud.",
+    "menuDietaryVegetarian": "Vegetariano",
+    "menuDietaryVegan": "Vegano",
+    "menuDietaryGlutenFree": "Sin gluten",
+    "menuDietaryDairyFree": "Sin lácteos",
+    "menuDietaryNutFree": "Sin frutos secos",
+    "menuDietarySeafood": "Mariscos",
+    "menuDietarySpicy": "Picante",
+    "menuBadgeNone": "Ninguno",
+    "menuBadgeBestSeller": "Más vendido",
+    "menuBadgeNew": "Nuevo",
+    "menuBadgeHot": "Popular"
   }
 }
