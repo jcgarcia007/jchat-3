@@ -1,0 +1,26 @@
+{
+  "steps": {
+    "step1": {
+      "title": "Las personas a tu alrededor te están esperando",
+      "description": "JChat te conecta con todos los que están físicamente en el mismo lugar. Entra y únete a la conversación."
+    },
+    "step2": {
+      "title": "Mira qué está pasando ahora mismo",
+      "description": "El mapa muestra cada local activo cerca de ti. Mientras más intenso el color, más gente hay dentro."
+    },
+    "step3": {
+      "title": "Chatea, pide y conecta",
+      "description": "Habla con todos en la sala, llama al mesero, o pide directamente desde el menú — todo sin salir de la conversación."
+    },
+    "step4": {
+      "title": "Ya estás listo",
+      "description": "Encuentra un lugar cerca de ti, entra y empieza a conectar. Tu próxima gran noche empieza aquí."
+    }
+  },
+  "skip": "Omitir",
+  "skipAccessibilityLabel": "Omitir introducción",
+  "next": "Siguiente",
+  "nextAccessibilityLabel": "Siguiente",
+  "exploreMap": "Explorar el mapa",
+  "exploreMapAccessibilityLabel": "Explorar el mapa"
+}

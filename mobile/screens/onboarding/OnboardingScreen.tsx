@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import {
   IconMessages,
   IconMap,
@@ -63,41 +64,32 @@ const ONBOARDING_COLORS = {
 type StepConfig = {
   icon: React.ElementType;
   iconColor: string;
-  title: string;
-  description: string;
+  /** Key into the onboarding.json `steps` object (title/description looked up via t()). */
+  key: 'step1' | 'step2' | 'step3' | 'step4';
   glow?: boolean;
 };
 
-// Copy sourced from MASTER_SPEC Section 4.3 (verbatim).
-// TODO(i18n): replace hard-coded strings with t('onboarding.stepN.*')
+// Copy sourced from MASTER_SPEC Section 4.3 (verbatim) — see i18n/locales/{en,es}/onboarding.json.
 const STEPS: StepConfig[] = [
   {
     icon: IconUsers,
     iconColor: palette.brand,
-    title: 'The people around you are waiting',
-    description:
-      'JChat connects you with everyone physically at the same place. Walk in, join the conversation.',
+    key: 'step1',
   },
   {
     icon: IconMap,
     iconColor: palette.success,
-    title: 'See what’s happening right now',
-    description:
-      'The map shows every active venue near you. The hotter the color, the more people inside.',
+    key: 'step2',
   },
   {
     icon: IconMessages,
     iconColor: ONBOARDING_COLORS.accent3,
-    title: 'Chat, order, and connect',
-    description:
-      'Talk to everyone in the room, call for service, or order directly from the menu — all without leaving the conversation.',
+    key: 'step3',
   },
   {
     icon: IconRocket,
     iconColor: palette.brand,
-    title: 'You’re all set',
-    description:
-      'Find a place near you, walk in, and start connecting. Your next great night out starts here.',
+    key: 'step4',
     glow: true,
   },
 ];
@@ -177,6 +169,7 @@ async function markOnboardingComplete(userId: string): Promise<void> {
 // Main Screen
 // ---------------------------------------------------------------------------
 export default function OnboardingScreen() {
+  const { t } = useTranslation('onboarding');
   const navigation = useNavigation<OnboardingNav>();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
@@ -252,10 +245,9 @@ export default function OnboardingScreen() {
             hitSlop={12}
             style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.6 }]}
             accessibilityRole="button"
-            accessibilityLabel="Skip onboarding"
+            accessibilityLabel={t('skipAccessibilityLabel')}
           >
-            {/* TODO(i18n): translate "Skip" */}
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{t('skip')}</Text>
           </Pressable>
         )}
       </View>
@@ -264,9 +256,8 @@ export default function OnboardingScreen() {
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <IllustrationIcon step={step} />
 
-        {/* TODO(i18n): wrap title + description in t() */}
-        <Text style={styles.title}>{step.title}</Text>
-        <Text style={styles.description}>{step.description}</Text>
+        <Text style={styles.title}>{t(`steps.${step.key}.title`)}</Text>
+        <Text style={styles.description}>{t(`steps.${step.key}.description`)}</Text>
       </Animated.View>
 
       {/* Bottom controls */}
@@ -285,7 +276,7 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             style={({ pressed }) => [pressed && { opacity: 0.88 }]}
             accessibilityRole="button"
-            accessibilityLabel="Explore the map"
+            accessibilityLabel={t('exploreMapAccessibilityLabel')}
           >
             <LinearGradient
               colors={[palette.brand, palette.brandPurple]}
@@ -293,8 +284,7 @@ export default function OnboardingScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.ctaButton}
             >
-              {/* TODO(i18n): translate "Explore the map" */}
-              <Text style={styles.ctaText}>Explore the map</Text>
+              <Text style={styles.ctaText}>{t('exploreMap')}</Text>
             </LinearGradient>
           </Pressable>
         ) : (
@@ -307,10 +297,9 @@ export default function OnboardingScreen() {
               pressed && { opacity: 0.85 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Next"
+            accessibilityLabel={t('nextAccessibilityLabel')}
           >
-            {/* TODO(i18n): translate "Next" */}
-            <Text style={styles.ctaText}>Next</Text>
+            <Text style={styles.ctaText}>{t('next')}</Text>
           </Pressable>
         )}
       </View>

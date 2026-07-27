@@ -13,6 +13,7 @@ import type settings from './locales/en/settings.json';
 import type social from './locales/en/social.json';
 import type pos from './locales/en/pos.json';
 import type feed from './locales/en/feed.json';
+import type onboarding from './locales/en/onboarding.json';
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {
@@ -26,6 +27,7 @@ declare module 'react-i18next' {
       social: typeof social;
       pos: typeof pos;
       feed: typeof feed;
+      onboarding: typeof onboarding;
     };
   }
 }
