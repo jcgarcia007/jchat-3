@@ -3474,6 +3474,79 @@ export default function MenuPage() {
     ? sortedCategories.filter((c) => c.id === activeCategoryId)
     : sortedCategories;
 
+  // Display-only label/desc maps for the template & effect pickers — the
+  // persisted id (businesses.menu_template_id / menu_card_effect) never changes.
+  const templateLabels: Record<string, string> = {
+    classic: t("menuTemplateClassic"),
+    "bottom-nav": t("menuTemplateBottomNav"),
+    "left-drawer": t("menuTemplateLeftDrawer"),
+    "icon-rail": t("menuTemplateIconRail"),
+    "sticky-tabs": t("menuTemplateStickyTabs"),
+    "category-sidebar": t("menuTemplateCategorySidebar"),
+    "fullscreen-type": t("menuTemplateFullscreenType"),
+    "glass-chips": t("menuTemplateGlassChips"),
+    "infinite-feed": t("menuTemplateInfiniteFeed"),
+    carousel: t("menuTemplateCarousel"),
+    "masonry-search": t("menuTemplateMasonrySearch"),
+    magazine: t("menuTemplateMagazine"),
+    "store-sections": t("menuTemplateStoreSections"),
+    "streaming-rows": t("menuTemplateStreamingRows"),
+    timeline: t("menuTemplateTimeline"),
+    stories: t("menuTemplateStories"),
+    gesture: t("menuTemplateGesture"),
+    "card-stack": t("menuTemplateCardStack"),
+    "ai-personalized": t("menuTemplateAiPersonalized"),
+    immersive: t("menuTemplateImmersive"),
+    luxury: t("menuTemplateLuxury"),
+  };
+  const templateDescs: Record<string, string> = {
+    classic: t("menuTemplateDescClassic"),
+    "bottom-nav": t("menuTemplateDescBottomNav"),
+    "left-drawer": t("menuTemplateDescLeftDrawer"),
+    "icon-rail": t("menuTemplateDescIconRail"),
+    "sticky-tabs": t("menuTemplateDescStickyTabs"),
+    "category-sidebar": t("menuTemplateDescCategorySidebar"),
+    "fullscreen-type": t("menuTemplateDescFullscreenType"),
+    "glass-chips": t("menuTemplateDescGlassChips"),
+    "infinite-feed": t("menuTemplateDescInfiniteFeed"),
+    carousel: t("menuTemplateDescCarousel"),
+    "masonry-search": t("menuTemplateDescMasonrySearch"),
+    magazine: t("menuTemplateDescMagazine"),
+    "store-sections": t("menuTemplateDescStoreSections"),
+    "streaming-rows": t("menuTemplateDescStreamingRows"),
+    timeline: t("menuTemplateDescTimeline"),
+    stories: t("menuTemplateDescStories"),
+    gesture: t("menuTemplateDescGesture"),
+    "card-stack": t("menuTemplateDescCardStack"),
+    "ai-personalized": t("menuTemplateDescAiPersonalized"),
+    immersive: t("menuTemplateDescImmersive"),
+    luxury: t("menuTemplateDescLuxury"),
+  };
+  const effectLabels: Record<string, string> = {
+    lift: t("menuEffectLift"),
+    reveal: t("menuEffectReveal"),
+    tilt: t("menuEffectTilt"),
+    spotlight: t("menuEffectSpotlight"),
+    duotone: t("menuEffectDuotone"),
+    glass: t("menuEffectGlass"),
+    shine: t("menuEffectShine"),
+    focus: t("menuEffectFocus"),
+    neon: t("menuEffectNeon"),
+    polaroid: t("menuEffectPolaroid"),
+  };
+  const effectDescs: Record<string, string> = {
+    lift: t("menuEffectDescLift"),
+    reveal: t("menuEffectDescReveal"),
+    tilt: t("menuEffectDescTilt"),
+    spotlight: t("menuEffectDescSpotlight"),
+    duotone: t("menuEffectDescDuotone"),
+    glass: t("menuEffectDescGlass"),
+    shine: t("menuEffectDescShine"),
+    focus: t("menuEffectDescFocus"),
+    neon: t("menuEffectDescNeon"),
+    polaroid: t("menuEffectDescPolaroid"),
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (noBusiness) {
     return (
@@ -3789,18 +3862,17 @@ export default function MenuPage() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                Plantilla de menú
+                {t("menuTemplateSectionTitle")}
               </h2>
               {showTemplates ? (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Elige cómo navegan tus clientes tu menú web. Cada plantilla cambia la
-                  estructura, las categorías y la forma de explorar los platillos.
+                  {t("menuTemplateSectionDesc")}
                 </p>
               ) : (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Plantilla activa ·{" "}
+                  {t("menuTemplateActiveLabel")}{" "}
                   <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
-                    {MENU_TEMPLATE_OPTIONS.find((o) => o.id === menuTemplate)?.name ?? menuTemplate}
+                    {templateLabels[menuTemplate] ?? menuTemplate}
                   </strong>
                 </p>
               )}
@@ -3871,7 +3943,7 @@ export default function MenuPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/menu-templates/${opt.id}.png`}
-                      alt={`Vista previa: ${opt.name}`}
+                      alt={t("menuTemplatePreviewAlt", { name: templateLabels[opt.id] ?? opt.id })}
                       loading="lazy"
                       style={{
                         width: "100%",
@@ -3895,7 +3967,7 @@ export default function MenuPage() {
                           fontWeight: 600,
                         }}
                       >
-                        Guardando…
+                        {t("menuTemplateSavingState")}
                       </div>
                     )}
                   </div>
@@ -3913,16 +3985,16 @@ export default function MenuPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {opt.name}
+                        {templateLabels[opt.id] ?? opt.id}
                       </span>
                       {active && (
                         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--db-accent)", flexShrink: 0 }}>
-                          ✓ Activa
+                          {t("menuTemplateActiveBadge")}
                         </span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 2, lineHeight: 1.35 }}>
-                      {opt.desc}
+                      {templateDescs[opt.id] ?? opt.desc}
                     </div>
                   </div>
                 </button>
@@ -3932,15 +4004,18 @@ export default function MenuPage() {
 
           {bizSlug && (
             <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
-              <a
-                href={`/m/${bizSlug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
-              >
-                Ver menú público →
-              </a>
-              {" "}para ver la plantilla aplicada.
+              {t.rich("menuTemplateViewPublicMessage", {
+                link: (chunks) => (
+                  <a
+                    href={`/m/${bizSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}
             </div>
           )}
           </>
@@ -4241,17 +4316,17 @@ export default function MenuPage() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                Efecto de tarjetas
+                {t("menuEffectSectionTitle")}
               </h2>
               {showEffects ? (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Elige la animación que verán tus clientes al pasar el cursor sobre cada platillo.
+                  {t("menuEffectSectionDesc")}
                 </p>
               ) : (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Efecto activo ·{" "}
+                  {t("menuEffectActiveLabel")}{" "}
                   <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
-                    {CARD_EFFECT_OPTIONS.find((o) => o.id === cardEffect)?.name ?? cardEffect}
+                    {effectLabels[cardEffect] ?? cardEffect}
                   </strong>
                 </p>
               )}
@@ -4308,10 +4383,10 @@ export default function MenuPage() {
                   <span style={{ fontSize: 16, flexShrink: 0 }}>{opt.emoji}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--db-text-primary)" }}>
-                      {opt.name}
+                      {effectLabels[opt.id] ?? opt.id}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--db-text-secondary)" }}>
-                      {opt.desc}
+                      {effectDescs[opt.id] ?? opt.desc}
                     </div>
                   </div>
                 </label>
@@ -4321,15 +4396,18 @@ export default function MenuPage() {
 
           {bizSlug && (
             <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
-              <a
-                href={`/m/${bizSlug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
-              >
-                Ver menú público →
-              </a>
-              {" "}para ver el efecto aplicado.
+              {t.rich("menuEffectViewPublicMessage", {
+                link: (chunks) => (
+                  <a
+                    href={`/m/${bizSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}
             </div>
           )}
           </>
