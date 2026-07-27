@@ -14,19 +14,22 @@
 export type TabKind = "customer" | "waiter";
 export type TabStatus = "open" | "paid" | "closed";
 
+/** A next-intl `t` bound to the "dashboardCommon" namespace. */
+export type TFn = (key: string, values?: Record<string, string | number>) => string;
+
 export const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
 export const fmtCents = (cents: number) => money.format((cents ?? 0) / 100);
 
-export function kindLabel(kind: TabKind): string {
-  return kind === "customer" ? "Cliente" : "Mesero";
+export function kindLabel(kind: TabKind, t: TFn): string {
+  return kind === "customer" ? t("tabKindCustomer") : t("tabKindWaiter");
 }
 
 // Status meaning depends on the tab kind. "open" = still at the table, NOT debt.
-export function tabStatusLabel(kind: TabKind, status: TabStatus): string {
+export function tabStatusLabel(kind: TabKind, status: TabStatus, t: TFn): string {
   if (kind === "customer") {
-    return status === "open" ? "Pagado · en mesa" : status === "paid" ? "Pagado" : "Cerrado";
+    return status === "open" ? t("tabStatusCustomerOpen") : status === "paid" ? t("tabStatusCustomerPaid") : t("tabStatusClosed");
   }
-  return status === "open" ? "Por cobrar" : status === "paid" ? "Cobrado" : "Cerrado";
+  return status === "open" ? t("tabStatusWaiterOpen") : status === "paid" ? t("tabStatusWaiterPaid") : t("tabStatusClosed");
 }
 
 /** A tab is real debt only when a waiter created it (postpay) and it's still open. */

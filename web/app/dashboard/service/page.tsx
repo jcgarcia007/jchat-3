@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconBell,
@@ -27,6 +28,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import type { TFn } from "@/lib/tabSemantics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,24 +44,24 @@ interface ServiceCall {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function elapsed(iso: string): string {
+function elapsed(iso: string, t: TFn): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (secs < 60) return "justo ahora";
+  if (secs < 60) return t("serviceJustNow");
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `hace ${mins} min`;
+  if (mins < 60) return t("serviceMinutesAgo", { mins });
   const h = Math.floor(mins / 60);
-  return `hace ${h}h ${mins % 60}m`;
+  return t("serviceHoursMinutesAgo", { h, m: mins % 60 });
 }
 
-function typeLabel(type: string): string {
-  if (type === "waiter") return "Mesero";
-  if (type === "bill")   return "Cuenta";
-  return "Otro";
+function typeLabel(type: string, t: TFn): string {
+  if (type === "waiter") return t("tabKindWaiter");
+  if (type === "bill")   return t("serviceTypeBill");
+  return t("serviceTypeOther");
 }
 
-function statusLabel(status: string): string {
-  if (status === "pending")      return "Pendiente";
-  if (status === "acknowledged") return "Atendiendo";
+function statusLabel(status: string, t: TFn): string {
+  if (status === "pending")      return t("orderStatusPending");
+  if (status === "acknowledged") return t("serviceStatusAcknowledged");
   return status;
 }
 
@@ -89,6 +91,7 @@ const DEMO_CALLS: ServiceCall[] = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ServicePage() {
+  const t = useTranslations("dashboardCommon");
   const [calls, setCalls] = useState<ServiceCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsRegister, setNeedsRegister] = useState(false);
@@ -164,7 +167,7 @@ export default function ServicePage() {
           }
         }, 30_000);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Error al cargar las llamadas.");
+        if (active) setError(e instanceof Error ? e.message : t("serviceLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -216,9 +219,9 @@ export default function ServicePage() {
         <div className="service-header-left">
           <IconBell size={22} className="service-header-icon" />
           <div>
-            <h1 className="service-title">Llamadas de servicio</h1>
+            <h1 className="service-title">{t("serviceTitle")}</h1>
             <p className="service-subtitle">
-              Solicitudes activas de mesero en tiempo real
+              {t("serviceSubtitle")}
             </p>
           </div>
         </div>
@@ -227,7 +230,7 @@ export default function ServicePage() {
           onClick={() => {
             if (businessIdRef.current) void loadCalls(businessIdRef.current).catch(() => {});
           }}
-          aria-label="Refrescar"
+          aria-label={t("serviceRefreshAria")}
         >
           <IconRefresh size={16} />
         </button>
@@ -243,13 +246,13 @@ export default function ServicePage() {
       {loading ? (
         <div className="service-loading">
           <div className="service-spinner" />
-          <span>Cargando llamadas…</span>
+          <span>{t("serviceLoadingCalls")}</span>
         </div>
       ) : calls.length === 0 ? (
         <div className="service-empty">
           <IconChecks size={40} className="service-empty-icon" />
-          <p className="service-empty-title">Sin llamadas pendientes</p>
-          <p className="service-empty-sub">Aquí aparecerán las solicitudes de los clientes en tiempo real.</p>
+          <p className="service-empty-title">{t("serviceEmptyTitle")}</p>
+          <p className="service-empty-sub">{t("serviceEmptySub")}</p>
         </div>
       ) : (
         <ul className="service-list">
@@ -258,23 +261,23 @@ export default function ServicePage() {
               <div className="service-card-top">
                 <div className="service-card-left">
                   <span className={`service-badge service-badge--${call.status}`}>
-                    {statusLabel(call.status)}
+                    {statusLabel(call.status, t)}
                   </span>
-                  <span className="service-type">{typeLabel(call.type)}</span>
+                  <span className="service-type">{typeLabel(call.type, t)}</span>
                 </div>
                 <div className="service-card-time">
                   <IconClock size={13} />
-                  <span>{elapsed(call.created_at)}</span>
+                  <span>{elapsed(call.created_at, t)}</span>
                 </div>
               </div>
 
               {call.table_label && (
                 <p className="service-table">
-                  <strong>Mesa:</strong> {call.table_label}
+                  <strong>{t("serviceTableLabel")}</strong> {call.table_label}
                 </p>
               )}
               {!call.table_label && (
-                <p className="service-table service-table--none">Sin mesa especificada</p>
+                <p className="service-table service-table--none">{t("serviceNoTable")}</p>
               )}
 
               {call.notes && (
@@ -289,7 +292,7 @@ export default function ServicePage() {
                     onClick={() => void handleStatusChange(call.id, "acknowledged")}
                   >
                     <IconCheck size={15} />
-                    Atender
+                    {t("serviceAttendButton")}
                   </button>
                 )}
                 <button
@@ -298,7 +301,7 @@ export default function ServicePage() {
                   onClick={() => void handleStatusChange(call.id, "resolved")}
                 >
                   <IconChecks size={15} />
-                  Resuelto
+                  {t("serviceResolveButton")}
                 </button>
               </div>
             </li>

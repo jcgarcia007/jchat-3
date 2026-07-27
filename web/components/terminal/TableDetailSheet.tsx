@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconX, IconPlus, IconMinus, IconCheck, IconTrash, IconAdjustments, IconLock } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { TakeOrderScreen } from "./TakeOrderScreen";
@@ -93,6 +94,9 @@ export function TableDetailSheet({
   businessId: string;
   onClose: () => void;
 }) {
+  // B1: only this hook + the two tabSemantics calls below are wired for i18n —
+  // the rest of this file's copy stays hardcoded in Spanish until B2.
+  const t = useTranslations("dashboardCommon");
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -406,8 +410,8 @@ export function TableDetailSheet({
                   <div style={cardHead}>
                     <span style={{ fontSize: 17, fontWeight: 800 }}>{tab.name}</span>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <Badge>{kindLabel(tab.kind)}</Badge>
-                      <Badge tone={isTabDebt(tab) ? "warn" : "muted"}>{tabStatusLabel(tab.kind, tab.status)}</Badge>
+                      <Badge>{kindLabel(tab.kind, t)}</Badge>
+                      <Badge tone={isTabDebt(tab) ? "warn" : "muted"}>{tabStatusLabel(tab.kind, tab.status, t)}</Badge>
                       <span style={{ fontWeight: 800, minWidth: 72, textAlign: "right" }}>{fmtCents(tabTotal)}</span>
                     </div>
                   </div>

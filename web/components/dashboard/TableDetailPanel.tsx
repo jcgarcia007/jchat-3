@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconX,
   IconChevronRight,
@@ -34,6 +35,7 @@ import {
   modifierLabels,
   type TabKind,
   type TabStatus,
+  type TFn,
 } from "@/lib/tabSemantics";
 
 export interface PanelTable {
@@ -70,13 +72,25 @@ interface Item {
   special_instructions: string | null;
 }
 
-function rpcErrorMessage(msg: string): string {
-  if (msg.includes("NOT_ALLOWED")) return "No tienes permiso sobre esta mesa.";
-  if (msg.includes("CROSS_BUSINESS")) return "Ese pedido es de otro negocio.";
-  if (msg.includes("TAB_NOT_FOUND")) return "El tap ya no existe.";
-  if (msg.includes("ORDER_NOT_FOUND")) return "El pedido ya no existe.";
-  if (msg.includes("ORDER_NOT_ATTACHED")) return "El pedido no estaba atado a ningún tap.";
-  return "No se pudo actualizar el pedido. Inténtalo de nuevo.";
+function rpcErrorMessage(msg: string, t: TFn): string {
+  if (msg.includes("NOT_ALLOWED")) return t("tablesNoPermission");
+  if (msg.includes("CROSS_BUSINESS")) return t("tablesDetailCrossBusiness");
+  if (msg.includes("TAB_NOT_FOUND")) return t("tablesDetailTabNotFound");
+  if (msg.includes("ORDER_NOT_FOUND")) return t("tablesDetailOrderNotFound");
+  if (msg.includes("ORDER_NOT_ATTACHED")) return t("tablesDetailOrderNotAttached");
+  return t("tablesDetailUpdateOrderError");
+}
+
+/** order.status / item.item_status share the same pending|preparing|ready|… enum. */
+function orderStatusLabel(status: string, t: TFn): string {
+  switch (status) {
+    case "pending": return t("orderStatusPending");
+    case "preparing": return t("orderStatusPreparing");
+    case "ready": return t("orderStatusReady");
+    case "delivered": return t("orderStatusDelivered");
+    case "cancelled": return t("orderStatusCancelled");
+    default: return status;
+  }
 }
 
 export function TableDetailPanel({
@@ -88,6 +102,8 @@ export function TableDetailPanel({
   businessId: string;
   onClose: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<OrderLite[]>([]); // attached orders
   const [items, setItems] = useState<Item[]>([]);
@@ -231,7 +247,7 @@ export function TableDetailPanel({
 
   async function setTabStatus(tab: Tab, status: "paid" | "closed") {
     if (busyTab.has(tab.id)) return;
-    if (status === "closed" && !window.confirm(`¿Cerrar el tap "${tab.name}"? No se podrá reabrir.`)) return;
+    if (status === "closed" && !window.confirm(t("tablesDetailCloseTabConfirm", { name: tab.name }))) return;
     setBusyTab((s) => new Set(s).add(tab.id));
     setActionError(null);
 
@@ -249,8 +265,8 @@ export function TableDetailPanel({
     if (error) {
       setActionError(
         (error as { code?: string }).code === "42501"
-          ? "No tienes permiso sobre esta mesa."
-          : "No se pudo actualizar el tap.",
+          ? t("tablesNoPermission")
+          : t("tablesDetailUpdateTabError"),
       );
       return;
     }
@@ -270,8 +286,8 @@ export function TableDetailPanel({
     if (error) {
       setActionError(
         (error as { code?: string }).code === "42501"
-          ? "No estás asignado a esta mesa."
-          : "No se pudo crear el tap.",
+          ? t("tablesDetailNotAssigned")
+          : t("tablesDetailCreateTabError"),
       );
       return;
     }
@@ -283,7 +299,7 @@ export function TableDetailPanel({
     setActionError(null);
     const { error } = await supabase.rpc("attach_order_to_tab", { p_order_id: orderId, p_tab_id: tabId as string });
     if (error) {
-      setActionError(rpcErrorMessage(error.message));
+      setActionError(rpcErrorMessage(error.message, t));
       return;
     }
     await load();
@@ -292,7 +308,7 @@ export function TableDetailPanel({
   return (
     <aside
       role="dialog"
-      aria-label={`Detalle de mesa ${table.label}`}
+      aria-label={t("tablesDetailAria", { label: table.label })}
       style={{
         position: "fixed",
         top: 0,
@@ -314,21 +330,21 @@ export function TableDetailPanel({
           <div>
             <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--db-text-primary)" }}>{table.label}</div>
             <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-              {table.floor} · {table.seats} {table.seats === 1 ? "silla" : "sillas"}
+              {table.floor} · {t("tablesSeatsCountPlural", { count: table.seats })}
             </div>
             <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginTop: "2px" }}>
-              {waiterNames.length === 0 ? "Sin mesero asignado" : `Meseros: ${waiterNames.join(", ")}`}
+              {waiterNames.length === 0 ? t("tablesDetailNoWaiterAssigned") : t("tablesDetailWaitersList", { names: waiterNames.join(", ") })}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar panel" style={iconBtn}>
+          <button type="button" onClick={onClose} aria-label={t("tablesDetailCloseAria")} style={iconBtn}>
             <IconX size={18} />
           </button>
         </div>
         {!loading && !loadError && (
           <div style={{ display: "flex", gap: "16px", marginTop: "12px", flexWrap: "wrap" }}>
-            <Metric label="Total mesa" value={fmt(tableTotal)} />
-            <Metric label="Ya cobrado" value={fmt(collectedTotal)} />
-            <Metric label="Por cobrar" value={fmt(unpaidTotal)} warn={unpaidTotal > 0} />
+            <Metric label={t("tablesMetricTotal")} value={fmt(tableTotal)} />
+            <Metric label={t("tablesMetricCollected")} value={fmt(collectedTotal)} />
+            <Metric label={t("tabStatusWaiterOpen")} value={fmt(unpaidTotal)} warn={unpaidTotal > 0} />
           </div>
         )}
       </div>
@@ -337,22 +353,22 @@ export function TableDetailPanel({
         {actionError && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{actionError}</div>}
 
         {loading ? (
-          <div style={{ color: "var(--db-text-secondary)", fontSize: "14px" }}>Cargando…</div>
+          <div style={{ color: "var(--db-text-secondary)", fontSize: "14px" }}>{tCommon("loading")}</div>
         ) : loadError ? (
           <div>
             <p style={{ color: "var(--db-danger)", fontSize: "14px", margin: "0 0 10px" }}>
-              No se pudo cargar el detalle de la mesa. Inténtalo de nuevo.
+              {t("tablesDetailLoadError")}
             </p>
             <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={secondaryBtn}>
-              Reintentar
+              {t("retry")}
             </button>
           </div>
         ) : (
           <>
             {/* Tabs */}
-            <Section title="Taps">
+            <Section title={t("tablesDetailTabsSection")}>
               {tabs.length === 0 ? (
-                <Empty>Esta mesa no tiene taps abiertos.</Empty>
+                <Empty>{t("tablesDetailNoTabs")}</Empty>
               ) : (
                 tabs.map((tab) => {
                   const isOpen = expanded.has(tab.id);
@@ -363,8 +379,8 @@ export function TableDetailPanel({
                       <button type="button" onClick={() => toggleExpand(tab.id)} style={tabHeaderBtn}>
                         {isOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                         <span style={{ flex: 1, textAlign: "left", fontWeight: 700, color: "var(--db-text-primary)" }}>{tab.name}</span>
-                        <Badge>{kindLabel(tab.kind)}</Badge>
-                        <Badge tone={isTabDebt(tab) ? "warn" : "muted"}>{tabStatusLabel(tab.kind, tab.status)}</Badge>
+                        <Badge>{kindLabel(tab.kind, t)}</Badge>
+                        <Badge tone={isTabDebt(tab) ? "warn" : "muted"}>{tabStatusLabel(tab.kind, tab.status, t)}</Badge>
                         <span style={{ fontWeight: 700, color: "var(--db-text-primary)", minWidth: "64px", textAlign: "right" }}>
                           {fmt(tabTotal(tab.id))}
                         </span>
@@ -373,7 +389,7 @@ export function TableDetailPanel({
                       {isOpen && (
                         <div style={{ padding: "8px 12px 12px", borderTop: "1px solid var(--db-border)" }}>
                           {tabOrders.length === 0 ? (
-                            <Empty>Sin pedidos en este tap.</Empty>
+                            <Empty>{t("tablesDetailNoOrdersInTab")}</Empty>
                           ) : (
                             tabOrders.map((o) => {
                               const oItems = items.filter((it) => it.order_id === o.id);
@@ -381,14 +397,14 @@ export function TableDetailPanel({
                                 <div key={o.id} style={{ marginBottom: "10px" }}>
                                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
                                     <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-                                      Pedido · {o.status}
+                                      {t("tablesDetailOrderStatusLine", { status: orderStatusLabel(o.status, t) })}
                                     </span>
-                                    <button type="button" onClick={() => void attach(o.id, null)} style={miniBtn} title="Desatar del tap">
-                                      <IconUnlink size={13} /> Desatar
+                                    <button type="button" onClick={() => void attach(o.id, null)} style={miniBtn} title={t("tablesDetailDetachTitle")}>
+                                      <IconUnlink size={13} /> {t("tablesDetailDetachButton")}
                                     </button>
                                   </div>
                                   {oItems.map((it) => (
-                                    <ItemRow key={it.id} item={it} name={menuNames.get(it.menu_item_id) ?? "Plato"} />
+                                    <ItemRow key={it.id} item={it} name={menuNames.get(it.menu_item_id) ?? t("tablesDetailDishFallback")} t={t} />
                                   ))}
                                 </div>
                               );
@@ -400,11 +416,11 @@ export function TableDetailPanel({
                               {/* Customer tabs are prepaid → no "Marcar pagado". "Cerrar" for both. */}
                               {tab.kind === "waiter" && (
                                 <button type="button" disabled={busy} onClick={() => void setTabStatus(tab, "paid")} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
-                                  <IconCheck size={15} /> Marcar pagado
+                                  <IconCheck size={15} /> {t("tablesDetailMarkPaid")}
                                 </button>
                               )}
                               <button type="button" disabled={busy} onClick={() => void setTabStatus(tab, "closed")} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
-                                <IconLock size={15} /> Cerrar
+                                <IconLock size={15} /> {t("tablesDetailCloseTabButton")}
                               </button>
                             </div>
                           )}
@@ -417,31 +433,31 @@ export function TableDetailPanel({
             </Section>
 
             {/* Create waiter tab */}
-            <Section title="Crear tap (mesero)">
+            <Section title={t("tablesDetailCreateTabSection")}>
               <div style={{ display: "flex", gap: "8px" }}>
                 <input
                   value={newTabName}
                   onChange={(e) => setNewTabName(e.target.value)}
                   maxLength={40}
-                  placeholder="Nombre del tap"
+                  placeholder={t("tablesDetailTabNamePlaceholder")}
                   style={inputStyle}
                 />
                 <button type="button" disabled={creating || !newTabName.trim()} onClick={() => void createTab()} style={{ ...primaryBtn, opacity: creating || !newTabName.trim() ? 0.6 : 1 }}>
-                  <IconPlus size={15} /> Crear
+                  <IconPlus size={15} /> {t("tablesDetailCreateButton")}
                 </button>
               </div>
             </Section>
 
             {/* Unassigned orders */}
-            <Section title="Pedidos sin asignar (últimas 24 h)">
+            <Section title={t("tablesDetailUnassignedSection")}>
               {unassigned.length === 0 ? (
-                <Empty>No hay pedidos sin asignar.</Empty>
+                <Empty>{t("tablesDetailNoUnassigned")}</Empty>
               ) : (
                 unassigned.map((o) => (
                   <div key={o.id} style={{ ...cardStyle, padding: "10px 12px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "var(--db-text-primary)", fontSize: "14px" }}>{fmt(o.total_cents)}</div>
-                      <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{o.status}</div>
+                      <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{orderStatusLabel(o.status, t)}</div>
                     </div>
                     <select
                       value={attachSel[o.id] ?? ""}
@@ -449,9 +465,9 @@ export function TableDetailPanel({
                       style={{ ...inputStyle, maxWidth: "140px" }}
                       disabled={tabs.length === 0}
                     >
-                      <option value="">{tabs.length === 0 ? "Sin taps" : "Elegir tap…"}</option>
-                      {tabs.map((t) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
+                      <option value="">{tabs.length === 0 ? t("tablesDetailNoTabsOption") : t("tablesDetailChooseTabOption")}</option>
+                      {tabs.map((tabOpt) => (
+                        <option key={tabOpt.id} value={tabOpt.id}>{tabOpt.name}</option>
                       ))}
                     </select>
                     <button
@@ -460,7 +476,7 @@ export function TableDetailPanel({
                       onClick={() => void attach(o.id, attachSel[o.id])}
                       style={{ ...secondaryBtn, opacity: attachSel[o.id] ? 1 : 0.5 }}
                     >
-                      Atar
+                      {t("tablesDetailAttachButton")}
                     </button>
                   </div>
                 ))
@@ -506,7 +522,7 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
   );
 }
 
-function ItemRow({ item, name }: { item: Item; name: string }) {
+function ItemRow({ item, name, t }: { item: Item; name: string; t: TFn }) {
   const mods = modifierLabels(item.options);
   const note = item.notes || item.special_instructions;
   return (
@@ -518,7 +534,7 @@ function ItemRow({ item, name }: { item: Item; name: string }) {
           <span style={{ color: "var(--db-text-secondary)" }}>{fmt(item.price_cents)}</span>
         </div>
         <div style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-          {item.item_status}
+          {orderStatusLabel(item.item_status, t)}
           {mods ? ` · ${mods}` : ""}
           {note ? ` · ${note}` : ""}
         </div>
