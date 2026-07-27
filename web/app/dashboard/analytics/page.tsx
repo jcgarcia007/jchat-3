@@ -20,6 +20,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Bar,
   BarChart,
@@ -232,10 +233,11 @@ function TabBar({
   active: Tab;
   onChange: (t: Tab) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const tabs: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "revenue",  label: "Revenue",  icon: IconChartBar },
-    { id: "products", label: "Products", icon: IconStar },
-    { id: "loyalty",  label: "Loyalty",  icon: IconCoin },
+    { id: "revenue",  label: t("analyticsRevenueSeriesLabel"), icon: IconChartBar },
+    { id: "products", label: t("analyticsProductsTabLabel"),   icon: IconStar },
+    { id: "loyalty",  label: t("navLoyalty"),                  icon: IconCoin },
   ];
 
   return (
@@ -289,7 +291,12 @@ function dollarFormatter(value: number): string {
 // ── Revenue Tab ───────────────────────────────────────────────────────────────
 
 function RevenueTab({ data }: { data: DailyRevenue[] }) {
+  const t = useTranslations("dashboardCommon");
   const { accent, warning } = useChartColors();
+  const dayLabels: Record<string, string> = {
+    Mon: t("analyticsDayMon"), Tue: t("analyticsDayTue"), Wed: t("analyticsDayWed"),
+    Thu: t("analyticsDayThu"), Fri: t("analyticsDayFri"), Sat: t("analyticsDaySat"), Sun: t("analyticsDaySun"),
+  };
 
   const totalRev = data.reduce((s, d) => s + d.revenue, 0);
   const totalTips = data.reduce((s, d) => s + d.tips, 0);
@@ -308,27 +315,28 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* KPI row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" }}>
-        <KpiCard label="Weekly Revenue" value={`$${totalRev.toLocaleString()}`} icon={IconChartBar} sub="Last 7 days" />
-        <KpiCard label="Tips" value={`$${totalTips.toLocaleString()}`} icon={IconCoin} sub={`${((totalTips / totalRev) * 100).toFixed(1)}% of revenue`} />
-        <KpiCard label="Orders" value={String(totalOrders)} icon={IconTrendingUp} sub={`Avg $${avgOrder} / order`} />
-        <KpiCard label="Peak Day" value={peakDay?.date ?? "—"} icon={IconFlame} sub={`$${peakDay?.revenue.toLocaleString() ?? 0}`} />
+        <KpiCard label={t("analyticsWeeklyRevenueLabel")} value={`$${totalRev.toLocaleString()}`} icon={IconChartBar} sub={t("analyticsLast7DaysSub")} />
+        <KpiCard label={t("analyticsTipsSeriesLabel")} value={`$${totalTips.toLocaleString()}`} icon={IconCoin} sub={t("analyticsTipsPercentSub", { pct: ((totalTips / totalRev) * 100).toFixed(1) })} />
+        <KpiCard label={t("analyticsOrdersLabel")} value={String(totalOrders)} icon={IconTrendingUp} sub={t("analyticsAvgPerOrderSub", { amount: `$${avgOrder}` })} />
+        <KpiCard label={t("analyticsPeakDayLabel")} value={peakDay?.date ?? "—"} icon={IconFlame} sub={`$${peakDay?.revenue.toLocaleString() ?? 0}`} />
       </div>
 
       {/* Daily bar chart */}
       <Card>
-        <SectionTitle>Daily Revenue & Tips</SectionTitle>
+        <SectionTitle>{t("analyticsDailyRevenueTipsTitle")}</SectionTitle>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="date" tickFormatter={(v: string) => dayLabels[v] ?? v} tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={(v: number) => `$${(v / 100).toFixed(0)}`} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
             <Tooltip
-              formatter={(value: unknown, name: unknown) => [dollarFormatter(value as number), (name as string) === "revenue" ? "Revenue" : "Tips"]}
+              labelFormatter={(v) => dayLabels[v as string] ?? (v as React.ReactNode)}
+              formatter={(value: unknown, name: unknown) => [dollarFormatter(value as number), (name as string) === "revenue" ? t("analyticsRevenueSeriesLabel") : t("analyticsTipsSeriesLabel")]}
               contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
             />
             <Legend wrapperStyle={{ fontSize: "12px", color: "var(--db-text-secondary)" }} />
-            <Bar dataKey="revenue" name="Revenue" fill={accent} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="tips" name="Tips" fill={warning} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="revenue" name={t("analyticsRevenueSeriesLabel")} fill={accent} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="tips" name={t("analyticsTipsSeriesLabel")} fill={warning} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </Card>
@@ -339,6 +347,7 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
 // ── Products Tab ──────────────────────────────────────────────────────────────
 
 function ProductsTab({ data }: { data: ProductStat[] }) {
+  const t = useTranslations("dashboardCommon");
   const { accent, warning } = useChartColors();
 
   return (
@@ -346,14 +355,14 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
         {/* Units chart */}
         <Card>
-          <SectionTitle>Top Products by Units Sold</SectionTitle>
+          <SectionTitle>{t("analyticsTopProductsUnitsTitle")}</SectionTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" horizontal={false} />
               <XAxis type="number" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(value: unknown) => [value as number, "Units"]}
+                formatter={(value: unknown) => [value as number, t("analyticsUnitsLabel")]}
                 contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
               />
               <Bar dataKey="units" fill={accent} radius={[0, 4, 4, 0]}>
@@ -367,14 +376,14 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
 
         {/* Revenue chart */}
         <Card>
-          <SectionTitle>Top Products by Revenue</SectionTitle>
+          <SectionTitle>{t("analyticsTopProductsRevenueTitle")}</SectionTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" horizontal={false} />
               <XAxis type="number" tickFormatter={(v: number) => `$${v}`} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(value: unknown) => [`$${(value as number).toLocaleString()}`, "Revenue"]}
+                formatter={(value: unknown) => [`$${(value as number).toLocaleString()}`, t("analyticsRevenueSeriesLabel")]}
                 contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
               />
               <Bar dataKey="revenue" fill={warning} radius={[0, 4, 4, 0]} />
@@ -385,14 +394,14 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
 
       {/* Rank table */}
       <Card>
-        <SectionTitle>Product Rankings</SectionTitle>
+        <SectionTitle>{t("analyticsProductRankingsTitle")}</SectionTitle>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
           <thead>
             <tr style={{ color: "var(--db-text-secondary)", textAlign: "left" }}>
               <th style={{ padding: "8px 12px", fontWeight: 600 }}>#</th>
-              <th style={{ padding: "8px 12px", fontWeight: 600 }}>Product</th>
-              <th style={{ padding: "8px 12px", fontWeight: 600, textAlign: "right" }}>Units</th>
-              <th style={{ padding: "8px 12px", fontWeight: 600, textAlign: "right" }}>Revenue</th>
+              <th style={{ padding: "8px 12px", fontWeight: 600 }}>{t("analyticsProductColumnLabel")}</th>
+              <th style={{ padding: "8px 12px", fontWeight: 600, textAlign: "right" }}>{t("analyticsUnitsLabel")}</th>
+              <th style={{ padding: "8px 12px", fontWeight: 600, textAlign: "right" }}>{t("analyticsRevenueSeriesLabel")}</th>
             </tr>
           </thead>
           <tbody>
@@ -417,30 +426,31 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
 // ── Loyalty Tab (points only) ─────────────────────────────────────────────────
 
 function LoyaltyTab({ data }: { data: LoyaltyROI }) {
+  const t = useTranslations("dashboardCommon");
   const { success } = useChartColors();
 
   const pointsFlow = [
-    { label: "Issued", points: data.points_issued },
-    { label: "Redeemed", points: data.points_redeemed },
-    { label: "Outstanding", points: data.points_issued - data.points_redeemed },
+    { label: t("analyticsIssuedShort"), points: data.points_issued },
+    { label: t("analyticsRedeemedShort"), points: data.points_redeemed },
+    { label: t("analyticsOutstandingShort"), points: data.points_issued - data.points_redeemed },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" }}>
-        <KpiCard label="Points Issued" value={fmtK(data.points_issued)} icon={IconCoin} />
-        <KpiCard label="Points Redeemed" value={fmtK(data.points_redeemed)} icon={IconArrowUpRight} sub={`${data.redemption_rate}% redemption rate`} />
+        <KpiCard label={t("analyticsPointsIssuedLabel")} value={fmtK(data.points_issued)} icon={IconCoin} />
+        <KpiCard label={t("analyticsPointsRedeemedLabel")} value={fmtK(data.points_redeemed)} icon={IconArrowUpRight} sub={t("analyticsRedemptionRateSub", { rate: data.redemption_rate })} />
       </div>
 
       <Card>
-        <SectionTitle>Points Flow</SectionTitle>
+        <SectionTitle>{t("analyticsPointsFlowTitle")}</SectionTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={pointsFlow} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtK} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
-              formatter={(value: unknown) => [fmtK(value as number), "Points"]}
+              formatter={(value: unknown) => [fmtK(value as number), t("analyticsPointsUnitLabel")]}
               contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
             />
             <Bar dataKey="points" fill={success} radius={[6, 6, 0, 0]} />
@@ -454,6 +464,7 @@ function LoyaltyTab({ data }: { data: LoyaltyROI }) {
 // ── Plan Gate ─────────────────────────────────────────────────────────────────
 
 function UpgradePrompt() {
+  const t = useTranslations("dashboardCommon");
   return (
     <div
       style={{
@@ -468,11 +479,12 @@ function UpgradePrompt() {
     >
       <IconCrown size={48} color="var(--db-accent)" />
       <h2 style={{ fontSize: "22px", fontWeight: 800, color: "var(--db-text-primary)", margin: 0 }}>
-        Analytics Pro — Business Pro only
+        {t("analyticsUpgradeTitle")}
       </h2>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", maxWidth: "420px", lineHeight: 1.6, margin: 0 }}>
-        Upgrade to <strong style={{ color: "var(--db-accent)" }}>Business Pro</strong> to unlock
-        revenue, product and loyalty analytics with CSV and PDF export.
+        {t.rich("analyticsUpgradeMessage", {
+          strong: (chunks) => <strong style={{ color: "var(--db-accent)" }}>{chunks}</strong>,
+        })}
       </p>
       {/* TODO(plan gate): wire onClick to stripe-connect Edge Function upgrade flow */}
       <button
@@ -487,11 +499,13 @@ function UpgradePrompt() {
           cursor: "pointer",
         }}
       >
-        Upgrade to Business Pro
+        {t("analyticsUpgradeButton")}
       </button>
       <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
         {/* TODO(plan gate): read businesses.plan from Supabase and remove this prompt when plan === 'pro' */}
-        Read plan from <code>businesses.plan</code> — remove gate when <code>plan === &apos;pro&apos;</code>.
+        {t.rich("analyticsGateDevNote", {
+          code: (chunks) => <code>{chunks}</code>,
+        })}
       </p>
     </div>
   );
@@ -518,7 +532,25 @@ function exportCSV(revenue: DailyRevenue[], products: ProductStat[]) {
   URL.revokeObjectURL(url);
 }
 
-async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyalty: LoyaltyROI) {
+interface PdfLabels {
+  reportTitle: string;
+  generatedLabel: (date: string) => string;
+  weeklyRevenueLabel: string;
+  dayColumnLabel: string;
+  revenueLabel: string;
+  tipsLabel: string;
+  ordersLabel: string;
+  topProductsLabel: string;
+  productLabel: string;
+  unitsLabel: string;
+  loyaltyPointsLabel: string;
+  pointsIssuedLabel: string;
+  pointsRedeemedLabel: string;
+  redemptionRateLabel: string;
+  dayLabels: Record<string, string>;
+}
+
+async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyalty: LoyaltyROI, labels: PdfLabels) {
   // Dynamic import — jspdf is large; only load on demand
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -527,29 +559,29 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
 
   doc.setFontSize(18);
   doc.setTextColor(accent);
-  doc.text("JChat 3.0 — Analytics Report", 15, 20);
+  doc.text(labels.reportTitle, 15, 20);
 
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 15, 28);
+  doc.text(labels.generatedLabel(new Date().toLocaleDateString()), 15, 28);
 
   // Revenue table
   doc.setFontSize(13);
   doc.setTextColor(30, 30, 30);
-  doc.text("Weekly Revenue", 15, 42);
+  doc.text(labels.weeklyRevenueLabel, 15, 42);
 
   let y = 50;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text("Day", 15, y);
-  doc.text("Revenue", 60, y);
-  doc.text("Tips", 100, y);
-  doc.text("Orders", 140, y);
+  doc.text(labels.dayColumnLabel, 15, y);
+  doc.text(labels.revenueLabel, 60, y);
+  doc.text(labels.tipsLabel, 100, y);
+  doc.text(labels.ordersLabel, 140, y);
   y += 6;
 
   doc.setTextColor(30, 30, 30);
   revenue.forEach((d) => {
-    doc.text(d.date, 15, y);
+    doc.text(labels.dayLabels[d.date] ?? d.date, 15, y);
     doc.text(`$${d.revenue.toLocaleString()}`, 60, y);
     doc.text(`$${d.tips.toLocaleString()}`, 100, y);
     doc.text(String(d.orders), 140, y);
@@ -559,13 +591,13 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
   y += 10;
   doc.setFontSize(13);
   doc.setTextColor(30, 30, 30);
-  doc.text("Top Products", 15, y);
+  doc.text(labels.topProductsLabel, 15, y);
   y += 10;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text("Product", 15, y);
-  doc.text("Units", 100, y);
-  doc.text("Revenue", 140, y);
+  doc.text(labels.productLabel, 15, y);
+  doc.text(labels.unitsLabel, 100, y);
+  doc.text(labels.revenueLabel, 140, y);
   y += 6;
   doc.setTextColor(30, 30, 30);
   products.forEach((p) => {
@@ -577,14 +609,14 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
 
   y += 10;
   doc.setFontSize(13);
-  doc.text("Loyalty Points", 15, y);
+  doc.text(labels.loyaltyPointsLabel, 15, y);
   y += 10;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   [
-    ["Points Issued", String(loyalty.points_issued)],
-    ["Points Redeemed", String(loyalty.points_redeemed)],
-    ["Redemption Rate", `${loyalty.redemption_rate}%`],
+    [labels.pointsIssuedLabel, String(loyalty.points_issued)],
+    [labels.pointsRedeemedLabel, String(loyalty.points_redeemed)],
+    [labels.redemptionRateLabel, `${loyalty.redemption_rate}%`],
   ].forEach(([label, value]) => {
     doc.text(label, 15, y);
     doc.text(value, 100, y);
@@ -609,26 +641,32 @@ interface RealKpis {
 }
 
 function RealKpiBand({ kpis }: { kpis: RealKpis }) {
+  const t = useTranslations("dashboardCommon");
   const { accent } = useChartColors();
+  const dayLabels: Record<string, string> = {
+    Mon: t("analyticsDayMon"), Tue: t("analyticsDayTue"), Wed: t("analyticsDayWed"),
+    Thu: t("analyticsDayThu"), Fri: t("analyticsDayFri"), Sat: t("analyticsDaySat"), Sun: t("analyticsDaySun"),
+  };
   return (
     <div style={{ marginBottom: "24px" }}>
-      <SectionTitle>Overview — live</SectionTitle>
+      <SectionTitle>{t("analyticsOverviewLiveTitle")}</SectionTitle>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px", marginBottom: "16px" }}>
-        <KpiCard label="Revenue" value={fmt$(kpis.revenueTotal)} icon={IconCoin} sub={`${fmt$(kpis.revenueMonth)} this month`} />
-        <KpiCard label="Orders" value={String(kpis.ordersTotal)} icon={IconTrendingUp} sub={`${kpis.ordersToday} today`} />
-        <KpiCard label="Unique customers" value={String(kpis.uniqueCustomers)} icon={IconUsers} sub="Orders + check-ins" />
-        <KpiCard label="Unique check-ins" value={String(kpis.uniqueCheckins)} icon={IconBolt} sub="Distinct visitors" />
-        <KpiCard label="Most active room" value={kpis.topRoom ?? "—"} icon={IconMessage} sub={`${kpis.topRoomMessages} messages`} />
+        <KpiCard label={t("analyticsRevenueSeriesLabel")} value={fmt$(kpis.revenueTotal)} icon={IconCoin} sub={t("analyticsThisMonthSub", { amount: fmt$(kpis.revenueMonth) })} />
+        <KpiCard label={t("analyticsOrdersLabel")} value={String(kpis.ordersTotal)} icon={IconTrendingUp} sub={t("analyticsTodaySub", { count: kpis.ordersToday })} />
+        <KpiCard label={t("analyticsUniqueCustomersLabel")} value={String(kpis.uniqueCustomers)} icon={IconUsers} sub={t("analyticsOrdersCheckinsSub")} />
+        <KpiCard label={t("analyticsUniqueCheckinsLabel")} value={String(kpis.uniqueCheckins)} icon={IconBolt} sub={t("analyticsDistinctVisitorsSub")} />
+        <KpiCard label={t("analyticsMostActiveRoomLabel")} value={kpis.topRoom ?? "—"} icon={IconMessage} sub={t("analyticsMessagesCountSub", { count: kpis.topRoomMessages })} />
       </div>
       <Card>
-        <SectionTitle>Orders — last 7 days</SectionTitle>
+        <SectionTitle>{t("analyticsOrdersLast7DaysTitle")}</SectionTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={kpis.ordersByDay} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="date" tickFormatter={(v: string) => dayLabels[v] ?? v} tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
             <YAxis allowDecimals={false} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
             <Tooltip
-              formatter={(value: unknown) => [value as number, "Orders"]}
+              labelFormatter={(v) => dayLabels[v as string] ?? (v as React.ReactNode)}
+              formatter={(value: unknown) => [value as number, t("analyticsOrdersLabel")]}
               contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
             />
             <Bar dataKey="orders" fill={accent} radius={[4, 4, 0, 0]} />
@@ -642,6 +680,7 @@ function RealKpiBand({ kpis }: { kpis: RealKpis }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const t = useTranslations("dashboardCommon");
   const [business, setBusiness] = useState<ActiveBusiness | null>(null);
   const [needsRegister, setNeedsRegister] = useState(false);
   const [realKpis, setRealKpis] = useState<RealKpis | null>(null);
@@ -796,7 +835,7 @@ export default function AnalyticsPage() {
       if (items && items.length > 0) {
         const byName: Record<string, { units: number; revenue: number }> = {};
         items.forEach((it) => {
-          const n = (it.menu_items as { name: string } | null)?.name ?? "Unknown";
+          const n = (it.menu_items as { name: string } | null)?.name ?? t("analyticsUnknownProductLabel");
           if (!byName[n]) byName[n] = { units: 0, revenue: 0 };
           byName[n].units += it.qty ?? 1;
           byName[n].revenue += Math.round((it.price_cents ?? 0) * (it.qty ?? 1) / 100);
@@ -830,7 +869,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadData();
@@ -843,11 +882,30 @@ export default function AnalyticsPage() {
   const handleExportPDF = useCallback(async () => {
     setExporting(true);
     try {
-      await exportPDF(revenue, products, loyalty);
+      await exportPDF(revenue, products, loyalty, {
+        reportTitle: t("analyticsPdfReportTitle"),
+        generatedLabel: (date) => t("analyticsPdfGeneratedLabel", { date }),
+        weeklyRevenueLabel: t("analyticsWeeklyRevenueLabel"),
+        dayColumnLabel: t("analyticsPdfDayColumnLabel"),
+        revenueLabel: t("analyticsRevenueSeriesLabel"),
+        tipsLabel: t("analyticsTipsSeriesLabel"),
+        ordersLabel: t("analyticsOrdersLabel"),
+        topProductsLabel: t("analyticsPdfTopProductsTitle"),
+        productLabel: t("analyticsProductColumnLabel"),
+        unitsLabel: t("analyticsUnitsLabel"),
+        loyaltyPointsLabel: t("analyticsPdfLoyaltyPointsTitle"),
+        pointsIssuedLabel: t("analyticsPointsIssuedLabel"),
+        pointsRedeemedLabel: t("analyticsPointsRedeemedLabel"),
+        redemptionRateLabel: t("analyticsRedemptionRateLabel"),
+        dayLabels: {
+          Mon: t("analyticsDayMon"), Tue: t("analyticsDayTue"), Wed: t("analyticsDayWed"),
+          Thu: t("analyticsDayThu"), Fri: t("analyticsDayFri"), Sat: t("analyticsDaySat"), Sun: t("analyticsDaySun"),
+        },
+      });
     } finally {
       setExporting(false);
     }
-  }, [revenue, products, loyalty]);
+  }, [revenue, products, loyalty, t]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -856,7 +914,7 @@ export default function AnalyticsPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
         <div style={{ textAlign: "center", color: "var(--db-text-secondary)" }}>
           <IconRefresh size={32} color="var(--db-accent)" style={{ animation: "spin 1s linear infinite" }} />
-          <div style={{ marginTop: "12px", fontSize: "14px" }}>Loading analytics…</div>
+          <div style={{ marginTop: "12px", fontSize: "14px" }}>{t("analyticsLoadingState")}</div>
         </div>
       </div>
     );
@@ -866,9 +924,9 @@ export default function AnalyticsPage() {
     return (
       <div style={{ maxWidth: "960px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 800, color: "var(--db-text-primary)", marginBottom: "16px" }}>
-          Analytics
+          {t("navAnalytics")}
         </h1>
-        <NoBusinessCTA message="Register your business to see revenue, orders and customer analytics." />
+        <NoBusinessCTA message={t("analyticsNoBusinessMessage")} />
       </div>
     );
   }
@@ -901,12 +959,12 @@ export default function AnalyticsPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Analytics Pro
+            {t("analyticsPageTitle")}
           </h1>
           <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
             {business ? business.name + " · " : ""}
-            {isSupabaseConfigured ? "Live data" : "Demo data — connect Supabase to see live metrics"}
-            {" · "}Business Pro
+            {isSupabaseConfigured ? t("analyticsLiveDataLabel") : t("analyticsDemoDataLabel")}
+            {" · "}{t("analyticsBusinessProBadge")}
           </p>
         </div>
 
@@ -929,7 +987,7 @@ export default function AnalyticsPage() {
             }}
           >
             <IconFileSpreadsheet size={15} />
-            CSV
+            {t("analyticsExportCsvButton")}
           </button>
           <button
             onClick={() => void handleExportPDF()}
@@ -950,7 +1008,7 @@ export default function AnalyticsPage() {
             }}
           >
             <IconFilePdf size={15} />
-            {exporting ? "Exporting…" : "PDF"}
+            {exporting ? t("analyticsExportingState") : t("analyticsExportPdfButton")}
           </button>
         </div>
       </div>
