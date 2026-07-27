@@ -21,8 +21,6 @@
  *   - Colors: useThemeColors() only.
  *   - No hardcoded hex.
  *   - Icons: @tabler/icons-react-native.
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -36,6 +34,8 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { IconFlag, IconMessageCircle } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { StarRating } from './StarRating';
@@ -54,15 +54,15 @@ export interface ReviewListProps {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatRelativeDate(isoString: string): string {
+function formatRelativeDate(isoString: string, t: TFunction<'reviews'>): string {
   const diff = Date.now() - new Date(isoString).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Today'; // TODO(i18n)
-  if (days === 1) return 'Yesterday'; // TODO(i18n)
-  if (days < 30) return `${days}d ago`; // TODO(i18n)
+  if (days === 0) return t('reviewList.today');
+  if (days === 1) return t('reviewList.yesterday');
+  if (days < 30) return t('reviewList.relativeDays', { count: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`; // TODO(i18n)
-  return `${Math.floor(months / 12)}yr ago`; // TODO(i18n)
+  if (months < 12) return t('reviewList.relativeMonths', { count: months });
+  return t('reviewList.relativeYears', { count: Math.floor(months / 12) });
 }
 
 function authorInitials(review: ReviewWithAuthor): string {
@@ -73,10 +73,10 @@ function authorInitials(review: ReviewWithAuthor): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function authorLabel(review: ReviewWithAuthor): string {
+function authorLabel(review: ReviewWithAuthor, t: TFunction<'reviews'>): string {
   if (review.author?.display_name) return review.author.display_name;
   if (review.author?.username) return `@${review.author.username}`;
-  return 'Anonymous'; // TODO(i18n)
+  return t('reviewList.anonymous');
 }
 
 // ── Review card ────────────────────────────────────────────────────────────
@@ -88,22 +88,23 @@ interface ReviewCardProps {
 }
 
 function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.ReactElement {
+  const { t } = useTranslation('reviews');
   const styles = makeCardStyles(c);
 
   const handleReport = useCallback(() => {
     Alert.alert(
-      'Report this review?', // TODO(i18n)
-      'Reported reviews are sent to moderation.', // TODO(i18n)
+      t('reviewList.reportConfirmTitle'),
+      t('reviewList.reportConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' }, // TODO(i18n)
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
         {
-          text: 'Report', // TODO(i18n)
+          text: t('reviewList.reportConfirmAction'),
           style: 'destructive',
           onPress: () => onReport(review.id),
         },
       ],
     );
-  }, [onReport, review.id]);
+  }, [onReport, review.id, t]);
 
   return (
     <View style={styles.card}>
@@ -115,9 +116,9 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
 
         <View style={styles.authorBlock}>
           <Text style={styles.authorName} numberOfLines={1}>
-            {authorLabel(review)}
+            {authorLabel(review, t)}
           </Text>
-          <Text style={styles.date}>{formatRelativeDate(review.created_at)}</Text>
+          <Text style={styles.date}>{formatRelativeDate(review.created_at, t)}</Text>
         </View>
 
         <StarRating value={review.rating} size={14} readonly />
@@ -126,7 +127,7 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
           onPress={handleReport}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Report review" // TODO(i18n)
+          accessibilityLabel={t('reviewList.reportAccessibilityLabel')}
           style={styles.reportButton}
         >
           <IconFlag size={14} color={c.textTertiary} />
@@ -143,11 +144,10 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
         <View style={styles.responseBlock}>
           <View style={styles.responseHeader}>
             <IconMessageCircle size={14} color={c.brand} />
-            <Text style={styles.responseLabel}>Owner response</Text>
-            {/* TODO(i18n) */}
+            <Text style={styles.responseLabel}>{t('reviewList.ownerResponseLabel')}</Text>
             {review.responded_at ? (
               <Text style={styles.responseDate}>
-                {formatRelativeDate(review.responded_at)}
+                {formatRelativeDate(review.responded_at, t)}
               </Text>
             ) : null}
           </View>
@@ -161,6 +161,7 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
 // ── ReviewList ─────────────────────────────────────────────────────────────
 
 export function ReviewList({ businessId }: ReviewListProps): React.ReactElement {
+  const { t } = useTranslation('reviews');
   const c = useThemeColors();
   const [reviews, setReviews] = useState<ReviewWithAuthor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -176,12 +177,12 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       const data = await getBusinessReviews(businessId);
       setReviews(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load reviews'); // TODO(i18n)
+      setError(err instanceof Error ? err.message : t('reviewList.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [businessId]);
+  }, [businessId, t]);
 
   useEffect(() => {
     void load();
@@ -193,10 +194,10 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       // Optimistically remove the reported review from local state.
       setReviews((prev) => prev.filter((r) => r.id !== reviewId));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Could not report review'; // TODO(i18n)
-      Alert.alert('Error', msg); // TODO(i18n)
+      const msg = err instanceof Error ? err.message : t('reviewList.reportError');
+      Alert.alert(t('reviewList.errorAlertTitle'), msg);
     }
-  }, []);
+  }, [t]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ReviewWithAuthor>) => (
@@ -222,8 +223,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       <View style={styles.center}>
         <Text style={styles.errorText}>{error}</Text>
         <Pressable onPress={() => void load()} style={styles.retryButton}>
-          <Text style={styles.retryLabel}>Retry</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.retryLabel}>{t('actions.retry', { ns: 'common' })}</Text>
         </Pressable>
       </View>
     );
@@ -239,8 +239,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       refreshing={refreshing}
       ListEmptyComponent={
         <View style={styles.center}>
-          <Text style={styles.emptyText}>No reviews yet.</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.emptyText}>{t('reviewList.emptyMessage')}</Text>
         </View>
       }
     />

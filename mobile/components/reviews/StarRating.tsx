@@ -16,12 +16,11 @@
  *     commented block per design guidance. All other colors use useThemeColors().
  *   - Filled star = IconStarFilled, empty star = IconStar.
  *   - Icons: @tabler/icons-react-native.
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconStar, IconStarFilled } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 
@@ -54,6 +53,7 @@ export function StarRating({
   size = 24,
   readonly = false,
 }: StarRatingProps): React.ReactElement {
+  const { t } = useTranslation('reviews');
   const c = useThemeColors();
   const interactive = !!onChange && !readonly;
 
@@ -80,7 +80,7 @@ export function StarRating({
               onPress={() => handlePress(star)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={`Rate ${star} star${star !== 1 ? 's' : ''}`} // TODO(i18n)
+              accessibilityLabel={t('starRating.rateStarAccessibilityLabel', { count: star })}
               style={({ pressed }) => [
                 styles.star,
                 pressed && styles.starPressed,

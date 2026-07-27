@@ -17,8 +17,6 @@
  *   - Colors: useThemeColors() only — no hardcoded hex.
  *   - Star gold: REVIEW_COLORS.starGold local block (see StarRating.tsx).
  *   - Icons: @tabler/icons-react-native.
- *
- * // TODO(i18n)
  */
 
 import React, { useCallback, useState } from 'react';
@@ -31,6 +29,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { StarRating } from './StarRating';
 import { createReview } from '../../services/reviews';
@@ -53,6 +52,7 @@ export function RatingPrompt({
   businessName,
   onDone,
 }: RatingPromptProps): React.ReactElement {
+  const { t } = useTranslation('reviews');
   const c = useThemeColors();
   const [rating, setRating] = useState<number>(0);
   const [body, setBody] = useState<string>('');
@@ -61,8 +61,8 @@ export function RatingPrompt({
   const handleSubmit = useCallback(async () => {
     if (rating === 0) {
       Alert.alert(
-        'Select a rating', // TODO(i18n)
-        'Please tap a star before submitting.', // TODO(i18n)
+        t('ratingPrompt.selectRatingTitle'),
+        t('ratingPrompt.selectRatingMessage'),
       );
       return;
     }
@@ -77,12 +77,12 @@ export function RatingPrompt({
       onDone();
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Something went wrong'; // TODO(i18n)
-      Alert.alert('Could not submit review', message); // TODO(i18n)
+        err instanceof Error ? err.message : t('state.error', { ns: 'common' });
+      Alert.alert(t('ratingPrompt.submitErrorTitle'), message);
     } finally {
       setLoading(false);
     }
-  }, [businessId, rating, body, onDone]);
+  }, [businessId, rating, body, onDone, t]);
 
   const handleSkip = useCallback(() => {
     onDone();
@@ -94,10 +94,10 @@ export function RatingPrompt({
     <View style={styles.container}>
       {/* Title */}
       <Text style={styles.title}>
-        How was {businessName}? {/* TODO(i18n) */}
+        {t('ratingPrompt.title', { businessName })}
       </Text>
       <Text style={styles.subtitle}>
-        Share your experience to help others. {/* TODO(i18n) */}
+        {t('ratingPrompt.subtitle')}
       </Text>
 
       {/* Stars */}
@@ -108,7 +108,7 @@ export function RatingPrompt({
       {/* Optional text */}
       <TextInput
         style={styles.textInput}
-        placeholder="Tell us more (optional)" // TODO(i18n)
+        placeholder={t('ratingPrompt.bodyPlaceholder')}
         placeholderTextColor={c.textTertiary}
         multiline
         numberOfLines={3}
@@ -116,7 +116,7 @@ export function RatingPrompt({
         value={body}
         onChangeText={setBody}
         editable={!loading}
-        accessibilityLabel="Review text" // TODO(i18n)
+        accessibilityLabel={t('ratingPrompt.bodyAccessibilityLabel')}
       />
 
       {/* Actions */}
@@ -126,10 +126,9 @@ export function RatingPrompt({
           disabled={loading}
           style={styles.skipButton}
           accessibilityRole="button"
-          accessibilityLabel="Skip" // TODO(i18n)
+          accessibilityLabel={t('ratingPrompt.skipAccessibilityLabel')}
         >
-          <Text style={styles.skipLabel}>Skip</Text>
-          {/* TODO(i18n) */}
+          <Text style={styles.skipLabel}>{t('ratingPrompt.skip')}</Text>
         </Pressable>
 
         <Pressable
@@ -140,15 +139,14 @@ export function RatingPrompt({
             (loading || rating === 0) && styles.submitButtonDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Submit review" // TODO(i18n)
+          accessibilityLabel={t('ratingPrompt.submitAccessibilityLabel')}
           accessibilityState={{ disabled: loading || rating === 0 }}
         >
           {loading ? (
             <ActivityIndicator size="small" color={c.bgSurface} />
           ) : (
-            <Text style={styles.submitLabel}>Submit</Text>
+            <Text style={styles.submitLabel}>{t('ratingPrompt.submit')}</Text>
           )}
-          {/* TODO(i18n) */}
         </Pressable>
       </View>
     </View>

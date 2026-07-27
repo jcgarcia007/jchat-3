@@ -1,0 +1,39 @@
+{
+  "ratingPrompt": {
+    "selectRatingTitle": "Select a rating",
+    "selectRatingMessage": "Please tap a star before submitting.",
+    "submitErrorTitle": "Could not submit review",
+    "title": "How was {{businessName}}?",
+    "subtitle": "Share your experience to help others.",
+    "bodyPlaceholder": "Tell us more (optional)",
+    "bodyAccessibilityLabel": "Review text",
+    "skip": "Skip",
+    "skipAccessibilityLabel": "Skip",
+    "submit": "Submit",
+    "submitAccessibilityLabel": "Submit review"
+  },
+  "reviewList": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "relativeDays_one": "{{count}} day ago",
+    "relativeDays_other": "{{count}} days ago",
+    "relativeMonths_one": "{{count}} month ago",
+    "relativeMonths_other": "{{count}} months ago",
+    "relativeYears_one": "{{count}} year ago",
+    "relativeYears_other": "{{count}} years ago",
+    "anonymous": "Anonymous",
+    "reportConfirmTitle": "Report this review?",
+    "reportConfirmMessage": "Reported reviews are sent to moderation.",
+    "reportConfirmAction": "Report",
+    "reportAccessibilityLabel": "Report review",
+    "ownerResponseLabel": "Owner response",
+    "loadError": "Failed to load reviews",
+    "reportError": "Could not report review",
+    "errorAlertTitle": "Error",
+    "emptyMessage": "No reviews yet."
+  },
+  "starRating": {
+    "rateStarAccessibilityLabel_one": "Rate {{count}} star",
+    "rateStarAccessibilityLabel_other": "Rate {{count}} stars"
+  }
+}

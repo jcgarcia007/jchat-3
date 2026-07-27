@@ -1,0 +1,39 @@
+{
+  "ratingPrompt": {
+    "selectRatingTitle": "Selecciona una calificación",
+    "selectRatingMessage": "Toca una estrella antes de enviar.",
+    "submitErrorTitle": "No se pudo enviar la reseña",
+    "title": "¿Qué tal estuvo {{businessName}}?",
+    "subtitle": "Comparte tu experiencia para ayudar a otros.",
+    "bodyPlaceholder": "Cuéntanos más (opcional)",
+    "bodyAccessibilityLabel": "Texto de la reseña",
+    "skip": "Omitir",
+    "skipAccessibilityLabel": "Omitir",
+    "submit": "Enviar",
+    "submitAccessibilityLabel": "Enviar reseña"
+  },
+  "reviewList": {
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "relativeDays_one": "hace {{count}} día",
+    "relativeDays_other": "hace {{count}} días",
+    "relativeMonths_one": "hace {{count}} mes",
+    "relativeMonths_other": "hace {{count}} meses",
+    "relativeYears_one": "hace {{count}} año",
+    "relativeYears_other": "hace {{count}} años",
+    "anonymous": "Anónimo",
+    "reportConfirmTitle": "¿Reportar esta reseña?",
+    "reportConfirmMessage": "Las reseñas reportadas se envían a moderación.",
+    "reportConfirmAction": "Reportar",
+    "reportAccessibilityLabel": "Reportar reseña",
+    "ownerResponseLabel": "Respuesta del negocio",
+    "loadError": "No se pudieron cargar las reseñas",
+    "reportError": "No se pudo reportar la reseña",
+    "errorAlertTitle": "Error",
+    "emptyMessage": "Aún no hay reseñas."
+  },
+  "starRating": {
+    "rateStarAccessibilityLabel_one": "Calificar {{count}} estrella",
+    "rateStarAccessibilityLabel_other": "Calificar {{count}} estrellas"
+  }
+}
