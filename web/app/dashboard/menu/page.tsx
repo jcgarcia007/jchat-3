@@ -4483,10 +4483,10 @@ export default function MenuPage() {
       >
         <div style={{ minWidth: 0 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-            Categorías del menú
+            {t("menuCategoriesSectionTitle")}
           </h2>
           <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-            Organiza tu menú en secciones.
+            {t("menuCategoriesSectionDesc")}
           </p>
         </div>
 
@@ -4515,7 +4515,7 @@ export default function MenuPage() {
             }}
           >
             <IconPlus size={16} />
-            Nueva categoría
+            {t("menuAddCategoryButton")}
           </button>
         )}
       </div>
@@ -4546,7 +4546,7 @@ export default function MenuPage() {
             fontSize: "14px",
           }}
         >
-          Loading menu…
+          {t("menuLoadingState")}
         </div>
       )}
 
@@ -4619,18 +4619,18 @@ export default function MenuPage() {
           }}
         >
           {[
-            { label: "Categories", value: categories.length },
+            { label: t("menuFooterCategoriesLabel"), value: categories.length },
             {
-              label: "Published categories",
+              label: t("menuFooterPublishedCategoriesLabel"),
               value: categories.filter((c) => c.is_published).length,
             },
-            { label: "Total products", value: items.length },
+            { label: t("menuFooterTotalProductsLabel"), value: items.length },
             {
-              label: "Published products",
+              label: t("menuFooterPublishedProductsLabel"),
               value: items.filter((it) => it.is_published).length,
             },
             {
-              label: "Hidden products",
+              label: t("menuFooterHiddenProductsLabel"),
               value: items.filter((it) => !it.is_published).length,
             },
           ].map((s) => (

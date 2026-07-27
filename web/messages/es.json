@@ -1552,6 +1552,15 @@
     "menuIconKids": "Niños",
     "menuIconChef": "Chef",
     "menuIconKitchen": "Cocina",
-    "menuIconCategory": "General"
+    "menuIconCategory": "General",
+    "menuLoadingState": "Cargando menú…",
+    "menuCategoriesSectionTitle": "Categorías del menú",
+    "menuCategoriesSectionDesc": "Organiza tu menú en secciones.",
+    "menuAddCategoryButton": "Nueva categoría",
+    "menuFooterCategoriesLabel": "Categorías",
+    "menuFooterPublishedCategoriesLabel": "Categorías publicadas",
+    "menuFooterTotalProductsLabel": "Total de productos",
+    "menuFooterPublishedProductsLabel": "Productos publicados",
+    "menuFooterHiddenProductsLabel": "Productos ocultos"
   }
 }
