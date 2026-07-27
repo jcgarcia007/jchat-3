@@ -28,6 +28,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconCheck,
@@ -260,13 +261,13 @@ function formatDateShort(iso: string): string {
   });
 }
 
-function offerTypeLabel(type: string | null): string {
+function offerTypeLabel(type: string | null, labels: Record<OfferType, string>): string {
   const found = OFFER_TYPES.find((t) => t.value === type);
-  return found?.label ?? (type ?? "—");
+  return found ? labels[found.value] : (type ?? "—");
 }
 
-function targetingLabel(t: OfferTargeting): string {
-  return TARGETING_OPTIONS.find((o) => o.value === t)?.label ?? t;
+function targetingLabel(targeting: OfferTargeting, labels: Record<OfferTargeting, string>): string {
+  return labels[targeting] ?? targeting;
 }
 
 function computeStatus(startAt: string | null, currentStatus: OfferStatus): OfferStatus {
@@ -391,8 +392,28 @@ function OfferRow({
   toggling: boolean;
   onToggle: (offer: Offer) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [expanded, setExpanded] = useState(false);
   const canToggle = offer.status === "active" || offer.status === "paused";
+
+  const offerTypeLabels: Record<OfferType, string> = {
+    happy_hour: t("offersTypeHappyHour"),
+    bundle: t("offersTypeBundle"),
+    flash_sale: t("offersTypeFlashSale"),
+    bogo: t("offersTypeBogo"),
+    discount_code: t("offersTypeDiscountCode"),
+  };
+  const targetingLabels: Record<OfferTargeting, string> = {
+    all: t("offersTargetAll"),
+    verified: t("offersTargetVerified"),
+    new: t("offersTargetNew"),
+  };
+  const statusLabels: Record<OfferStatus, string> = {
+    active: t("activeBadge"),
+    paused: t("offersStatusPaused"),
+    scheduled: t("offersStatusScheduled"),
+    ended: t("offersStatusEnded"),
+  };
 
   return (
     <div
@@ -452,7 +473,7 @@ function OfferRow({
             >
               {offer.title}
             </span>
-            <span style={statusStyle(offer.status)}>{offer.status}</span>
+            <span style={statusStyle(offer.status)}>{statusLabels[offer.status]}</span>
             {offer.discount && (
               <span
                 style={{
@@ -479,7 +500,7 @@ function OfferRow({
               color: "var(--db-text-tertiary)",
             }}
           >
-            <span>{offerTypeLabel(offer.type)}</span>
+            <span>{offerTypeLabel(offer.type, offerTypeLabels)}</span>
             {offer.targeting !== "all" && (
               <span
                 style={{
@@ -489,7 +510,7 @@ function OfferRow({
                 }}
               >
                 <IconTargetArrow size={11} />
-                {targetingLabel(offer.targeting)}
+                {targetingLabel(offer.targeting, targetingLabels)}
               </span>
             )}
             {offer.expires_at && (
@@ -501,7 +522,7 @@ function OfferRow({
                 }}
               >
                 <IconClock size={11} />
-                Expires {formatDateShort(offer.expires_at)}
+                {t("offersExpiresLabel", { date: formatDateShort(offer.expires_at) })}
               </span>
             )}
             {offer.start_at && offer.status === "scheduled" && (
@@ -513,7 +534,7 @@ function OfferRow({
                 }}
               >
                 <IconClock size={11} />
-                Starts {formatDateShort(offer.start_at)}
+                {t("offersStartsLabel", { date: formatDateShort(offer.start_at) })}
               </span>
             )}
             {offer.code && (
@@ -539,7 +560,7 @@ function OfferRow({
             <button
               onClick={() => onToggle(offer)}
               disabled={toggling}
-              title={offer.status === "active" ? "Pause offer" : "Resume offer"}
+              title={offer.status === "active" ? t("offersPauseTitleAttr") : t("offersResumeTitleAttr")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -563,14 +584,14 @@ function OfferRow({
               ) : (
                 <IconPlayerPlay size={13} />
               )}
-              {offer.status === "active" ? "Pause" : "Resume"}
+              {offer.status === "active" ? t("offersPauseButton") : t("offersResumeButton")}
             </button>
           )}
 
           {/* Expand analytics */}
           <button
             onClick={() => setExpanded((v) => !v)}
-            title="Toggle analytics"
+            title={t("offersToggleAnalyticsTitle")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -608,19 +629,19 @@ function OfferRow({
               textTransform: "uppercase",
             }}
           >
-            Analytics
+            {t("offersAnalyticsSectionLabel")}
           </span>
 
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <StatBadge icon={<IconEye size={12} />} label="views" value={offer.views} />
+            <StatBadge icon={<IconEye size={12} />} label={t("offersViewsLabel")} value={offer.views} />
             <StatBadge
               icon={<IconTargetArrow size={12} />}
-              label="taps (Order now)"
+              label={t("offersTapsLabel")}
               value={offer.taps}
             />
             <StatBadge
               icon={<IconCheck size={12} />}
-              label="conversions"
+              label={t("offersConversionsLabel")}
               value={offer.redemption_count}
             />
           </div>
@@ -633,11 +654,11 @@ function OfferRow({
                 color: "var(--db-text-tertiary)",
               }}
             >
-              Tap rate:{" "}
+              {t("offersTapRateLabel")}{" "}
               <strong style={{ color: "var(--db-text-secondary)" }}>
                 {((offer.taps / offer.views) * 100).toFixed(1)}%
               </strong>{" "}
-              &nbsp;|&nbsp; Conversion rate:{" "}
+              &nbsp;|&nbsp; {t("offersConversionRateLabel")}{" "}
               <strong style={{ color: "var(--db-text-secondary)" }}>
                 {((offer.redemption_count / offer.views) * 100).toFixed(1)}%
               </strong>
@@ -659,7 +680,7 @@ function OfferRow({
 
           {offer.min_purchase_cents != null && (
             <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-              Min. purchase:{" "}
+              {t("offersMinPurchaseInlineLabel")}{" "}
               <strong style={{ color: "var(--db-text-secondary)" }}>
                 ${(offer.min_purchase_cents / 100).toFixed(2)}
               </strong>
@@ -679,8 +700,7 @@ function OfferRow({
                    message to chat at start_at. See supabase/functions/offers-scheduler/.
                    Until that lands, the offer will appear in chat only when manually
                    set active from this dashboard. */}
-              Scheduled offer: will auto-publish to chat at start time via server cron
-              (see supabase/functions/offers-scheduler/ — TODO).
+              {t("offersScheduledAutoPublishNote")}
             </p>
           )}
         </div>
@@ -692,6 +712,8 @@ function OfferRow({
 // ── Main page component ───────────────────────────────────────────────────────
 
 export default function OffersPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [offers, setOffers] = useState<Offer[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
@@ -721,11 +743,11 @@ export default function OffersPage() {
       setOffers((data as Offer[]) ?? []);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Failed to load offers: ${msg}`);
+      setError(t("offersLoadError", { msg }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // ── Load rooms (for targeting a specific room) ───────────────────────────────
   const loadRooms = useCallback(async () => {
@@ -966,12 +988,12 @@ export default function OffersPage() {
         await loadOffers();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Toggle failed: ${msg}`);
+        setError(t("offersToggleFailedError", { msg }));
       } finally {
         setToggling(null);
       }
     },
-    [publishOfferToChat, loadOffers]
+    [publishOfferToChat, loadOffers, t]
   );
 
   // ── Form field helper ────────────────────────────────────────────────────────
@@ -1007,11 +1029,10 @@ export default function OffersPage() {
               marginBottom: "4px",
             }}
           >
-            Offers &amp; Promotions
+            {t("offersPageTitle")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            Build and schedule promotional offers — they auto-publish as OfferCards
-            in the chat room when they go live.
+            {t("offersSubtitle")}
           </p>
         </div>
         {!showForm && (
@@ -1038,7 +1059,7 @@ export default function OffersPage() {
             }}
           >
             <IconPlus size={16} />
-            New Offer
+            {t("offersNewOfferButton")}
           </button>
         )}
       </div>
@@ -1054,11 +1075,11 @@ export default function OffersPage() {
           }}
         >
           {[
-            { label: "Total", value: offers.length, color: "var(--db-text-primary)" },
-            { label: "Active", value: activeCount, color: "var(--db-success)" },
-            { label: "Scheduled", value: scheduledCount, color: "var(--db-accent)" },
+            { label: t("disputesTotalLabel"), value: offers.length, color: "var(--db-text-primary)" },
+            { label: t("activeBadge"), value: activeCount, color: "var(--db-success)" },
+            { label: t("offersStatusScheduled"), value: scheduledCount, color: "var(--db-accent)" },
             {
-              label: "Redemptions",
+              label: t("offersRedemptionsLabel"),
               value: offers.reduce((s, o) => s + o.redemption_count, 0),
               color: "var(--db-warning)",
             },
@@ -1112,9 +1133,10 @@ export default function OffersPage() {
             lineHeight: 1.5,
           }}
         >
-          <strong>Demo mode:</strong> Supabase is not configured. Set{" "}
-          <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable live data.
+          {t.rich("offersDemoModeMessage", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+            code: (chunks) => <code>{chunks}</code>,
+          })}
         </div>
       )}
 
@@ -1602,10 +1624,10 @@ export default function OffersPage() {
           }}
         >
           {loading
-            ? "Loading…"
+            ? tCommon("loading")
             : offers.length === 0
-            ? "No offers yet"
-            : `${offers.length} offer${offers.length === 1 ? "" : "s"}`}
+            ? t("offersEmptyHeading")
+            : t("offersCountHeading", { count: offers.length })}
         </h2>
 
         {offers.length > 0 && (
@@ -1634,7 +1656,7 @@ export default function OffersPage() {
           >
             <IconTag size={36} style={{ opacity: 0.3, marginBottom: "12px" }} />
             <p style={{ fontSize: "14px" }}>
-              No offers yet. Create your first promotion above.
+              {t("offersEmptyMessage")}
             </p>
           </div>
         )}
