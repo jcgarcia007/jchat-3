@@ -19,6 +19,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconBuilding,
   IconClock,
@@ -316,6 +317,7 @@ function PrimaryBtn({
   loading?: boolean;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("dashboardCommon");
   const dis = disabled ?? loading ?? false;
   return (
     <button
@@ -336,7 +338,7 @@ function PrimaryBtn({
         whiteSpace: "nowrap",
       }}
     >
-      {loading ? "Saving…" : children}
+      {loading ? t("tablesSavingState") : children}
     </button>
   );
 }
@@ -344,6 +346,19 @@ function PrimaryBtn({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ConfigurationPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+
+  const dayLabels: Record<Day, string> = {
+    Monday: t("configurationDayMonday"),
+    Tuesday: t("configurationDayTuesday"),
+    Wednesday: t("configurationDayWednesday"),
+    Thursday: t("configurationDayThursday"),
+    Friday: t("configurationDayFriday"),
+    Saturday: t("configurationDaySaturday"),
+    Sunday: t("configurationDaySunday"),
+  };
+
   // ── Business state ────────────────────────────────────────────────────────────
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
@@ -483,10 +498,10 @@ export default function ConfigurationPage() {
   // ── Section handlers ──────────────────────────────────────────────────────────
 
   const handleSaveInfo = () =>
-    withSave(setSavingInfo, { name, description, category, address, phone, website }, "Business info saved.");
+    withSave(setSavingInfo, { name, description, category, address, phone, website }, t("configurationInfoSavedSuccess"));
 
   const handleSaveHours = () =>
-    withSave(setSavingHours, { hours }, "Operating hours saved.");
+    withSave(setSavingHours, { hours }, t("configurationHoursSavedSuccess"));
 
   const handleSaveCover = () =>
     withSave(setSavingCover, { cover_url: coverUrl || null, icon_emoji: iconEmoji || null }, "Cover & emoji saved.");
@@ -587,10 +602,10 @@ export default function ConfigurationPage() {
             marginBottom: "4px",
           }}
         >
-          Configuration
+          {t("railConfiguracion")}
         </h1>
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-          Business profile, operating hours, dashboard theme, and payment settings.
+          {t("configurationSubtitle")}
         </p>
       </div>
 
@@ -600,21 +615,21 @@ export default function ConfigurationPage() {
       {noSupabase && (
         <AlertBanner
           type="warning"
-          message="Demo mode: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable live saves."
+          message={t("configurationDemoModeMessage")}
         />
       )}
       {noBiz && (
         <AlertBanner
           type="warning"
-          message="No business found for this account. Settings cannot be saved."
+          message={t("configurationNoBusinessMessage")}
         />
       )}
 
       {/* ── 1. Business Info ─────────────────────────────────────────────────── */}
       <Section
         icon={<IconBuilding size={18} color="var(--db-accent)" />}
-        title="Business Info"
-        subtitle="Public-facing details shown on your venue profile."
+        title={t("configurationBusinessInfoTitle")}
+        subtitle={t("configurationBusinessInfoSubtitle")}
       >
         <div
           style={{
@@ -625,19 +640,19 @@ export default function ConfigurationPage() {
           }}
         >
           <div>
-            <FieldLabel>Business name *</FieldLabel>
-            <TextInput value={name} onChange={setName} placeholder="e.g. The Rusty Anchor" />
+            <FieldLabel>{t("configurationBusinessNameLabel")}</FieldLabel>
+            <TextInput value={name} onChange={setName} placeholder={t("configurationBusinessNamePlaceholder")} />
           </div>
           <div>
-            <FieldLabel>Category</FieldLabel>
-            <TextInput value={category} onChange={setCategory} placeholder="e.g. Bar, Restaurant, Club…" />
+            <FieldLabel>{t("configurationCategoryLabel")}</FieldLabel>
+            <TextInput value={category} onChange={setCategory} placeholder={t("configurationCategoryPlaceholder")} />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t("loyaltyRewardDescriptionLabel")}</FieldLabel>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="A short description visible on the map pin and profile…"
+              placeholder={t("configurationDescriptionPlaceholder")}
               rows={3}
               style={{
                 width: "100%",
@@ -655,15 +670,15 @@ export default function ConfigurationPage() {
             />
           </div>
           <div>
-            <FieldLabel>Address</FieldLabel>
-            <TextInput value={address} onChange={setAddress} placeholder="123 Main St, City, State" />
+            <FieldLabel>{t("configurationAddressLabel")}</FieldLabel>
+            <TextInput value={address} onChange={setAddress} placeholder={t("configurationAddressPlaceholder")} />
           </div>
           <div>
-            <FieldLabel>Phone</FieldLabel>
+            <FieldLabel>{t("configurationPhoneLabel")}</FieldLabel>
             <TextInput value={phone} onChange={setPhone} placeholder="+1 (555) 000-0000" type="tel" />
           </div>
           <div>
-            <FieldLabel>Website</FieldLabel>
+            <FieldLabel>{t("configurationWebsiteLabel")}</FieldLabel>
             <TextInput value={website} onChange={setWebsite} placeholder="https://yourbusiness.com" type="url" />
           </div>
         </div>
@@ -672,15 +687,15 @@ export default function ConfigurationPage() {
           disabled={noSupabase || noBiz}
           loading={savingInfo}
         >
-          Save Info
+          {t("configurationSaveInfoButton")}
         </PrimaryBtn>
       </Section>
 
       {/* ── 📍 Location & Geofence ───────────────────────────────────────────── */}
       <Section
         icon={<IconMapPin size={18} color="var(--db-accent)" />}
-        title="Location & Geofence"
-        subtitle="Set your venue's map position and geofence radius, or draw a custom area for an event."
+        title={t("configurationLocationSectionTitle")}
+        subtitle={t("configurationLocationSectionSubtitle")}
       >
         <LocationEditor businessId={businessId} />
       </Section>
@@ -688,8 +703,8 @@ export default function ConfigurationPage() {
       {/* ── 2. Operating Hours ───────────────────────────────────────────────── */}
       <Section
         icon={<IconClock size={18} color="var(--db-accent)" />}
-        title="Operating Hours"
-        subtitle="Set open/close times per day. Toggle 'Closed' to mark a day as unavailable."
+        title={t("configurationHoursSectionTitle")}
+        subtitle={t("configurationHoursSectionSubtitle")}
       >
         <div
           style={{
@@ -708,10 +723,10 @@ export default function ConfigurationPage() {
               alignItems: "center",
             }}
           >
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Day</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Open</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Close</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Closed</span>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationDayColumnLabel")}</span>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationOpenColumnLabel")}</span>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationCloseColumnLabel")}</span>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationClosedColumnLabel")}</span>
           </div>
 
           {DAYS.map((day) => {
@@ -735,7 +750,7 @@ export default function ConfigurationPage() {
                     fontWeight: 500,
                   }}
                 >
-                  {day}
+                  {dayLabels[day]}
                 </span>
                 <input
                   type="time"
@@ -786,15 +801,15 @@ export default function ConfigurationPage() {
           disabled={noSupabase || noBiz}
           loading={savingHours}
         >
-          Save Hours
+          {t("configurationSaveHoursButton")}
         </PrimaryBtn>
       </Section>
 
       {/* ── 3. Coverage Radius (read-only) ──────────────────────────────────── */}
       <Section
         icon={<IconMapPin size={18} color="var(--db-accent)" />}
-        title="Coverage Radius"
-        subtitle="Determines the geofencing area. Contact support to adjust."
+        title={t("configurationRadiusSectionTitle")}
+        subtitle={t("configurationRadiusSectionSubtitle")}
       >
         <div
           style={{
@@ -810,15 +825,15 @@ export default function ConfigurationPage() {
         >
           <IconLock size={16} color="var(--db-text-tertiary)" />
           <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-            {radiusM != null ? `${radiusM.toLocaleString()} m` : loadingBiz ? "Loading…" : "Not set"}
+            {radiusM != null ? `${radiusM.toLocaleString()} m` : loadingBiz ? tCommon("loading") : t("configurationRadiusNotSet")}
           </span>
           <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-            — read-only
+            {t("configurationRadiusReadOnlySuffix")}
           </span>
         </div>
         <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
           {/* TODO(Super Admin): radius change request — only Super Admin can modify coverage radius */}
-          To change your coverage radius, submit a support request to your JChat administrator.
+          {t("configurationRadiusSupportNote")}
         </p>
       </Section>
 
