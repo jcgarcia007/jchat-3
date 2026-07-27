@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconX, IconPlus, IconMinus, IconCopy, IconTrash, IconAlertTriangle } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { readFunctionError } from "@/lib/functionError";
@@ -24,6 +25,7 @@ import { buildOrderOptions, summarizeOptions, type OrderLineOptions } from "@/li
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
 import { ModifierSheet, type ModGroup } from "./ModifierSheet";
 import { loadModifierGroups } from "@/lib/menuGroups";
+import type { TFn } from "@/lib/tabSemantics";
 
 // ── Menu shapes (mirrors what /m/[slug] loads) ───────────────────────────────
 type Group = ModGroup;
@@ -64,16 +66,16 @@ function isSellable(d: Dish): boolean {
 }
 
 // Translate the EF's messages into terminal-friendly copy. Never show a raw error.
-function friendlyError(msg: string): string {
-  if (msg.includes("Esta mesa no está asignada a ti")) return "Esta mesa no está asignada a ti.";
-  if (msg.includes("Esa cuenta ya está cerrada")) return "Esa cuenta ya está cerrada. Abre una nueva.";
-  if (msg.includes("Tab not found")) return "Esa cuenta ya no existe.";
-  if (msg.includes("Item not available")) return "Uno de los platos se acaba de agotar. Quítalo y vuelve a intentarlo.";
-  if (msg.includes("Item not found") || msg.includes("does not belong")) return "Uno de los platos ya no está en el menú.";
-  if (msg.includes("Cart is empty")) return "No has añadido ningún plato.";
-  if (msg.includes("Invalid seat")) return "El asiento no es válido.";
-  if (msg.includes("Unauthorized") || msg.includes("Authorization")) return "Tu sesión expiró. Vuelve a entrar.";
-  return "No se pudo enviar el pedido. Inténtalo de nuevo.";
+function friendlyError(msg: string, t: TFn): string {
+  if (msg.includes("Esta mesa no está asignada a ti")) return t("terminalTakeOrderTableNotAssigned");
+  if (msg.includes("Esa cuenta ya está cerrada")) return t("terminalTakeOrderTabClosed");
+  if (msg.includes("Tab not found")) return t("terminalTakeOrderTabNotFound");
+  if (msg.includes("Item not available")) return t("terminalTakeOrderItemSoldOutError");
+  if (msg.includes("Item not found") || msg.includes("does not belong")) return t("terminalTakeOrderDishNotInMenu");
+  if (msg.includes("Cart is empty")) return t("terminalTakeOrderCartEmpty");
+  if (msg.includes("Invalid seat")) return t("terminalTakeOrderInvalidSeat");
+  if (msg.includes("Unauthorized") || msg.includes("Authorization")) return t("terminalSessionExpired");
+  return t("terminalTakeOrderSendError");
 }
 
 export function TakeOrderScreen({
@@ -93,6 +95,7 @@ export function TakeOrderScreen({
   onClose: () => void;
   onSent: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -302,7 +305,7 @@ export function TakeOrderScreen({
       });
 
       if (error) {
-        setSendError(friendlyError(await readFunctionError(error)));
+        setSendError(friendlyError(await readFunctionError(error), t));
         return;
       }
 
@@ -313,7 +316,7 @@ export function TakeOrderScreen({
       setReviewing(false); // leave the review step only once it actually landed
       onSent(); // parent reloads the table detail so the new order appears
     } catch {
-      setSendError("No se pudo enviar el pedido. Revisa la conexión.");
+      setSendError(t("terminalTakeOrderSendConnectionError"));
     } finally {
       setSending(false);
       inFlight.current = false;
@@ -323,7 +326,7 @@ export function TakeOrderScreen({
   const seatOptions: (number | null)[] = [...Array.from({ length: seats }, (_, i) => i + 1), null];
 
   return (
-    <div style={overlay} role="dialog" aria-label={`Tomar pedido — ${tableLabel}`}>
+    <div style={overlay} role="dialog" aria-label={t("terminalTakeOrderAria", { label: tableLabel })}>
       {/* ── Pinned block: table + tab + seats + categories ─────────────────
           All of it is ONE opaque, non-scrolling block. The category row used to
           live in the scrolling body, so it slid up and got clipped at the top of
@@ -338,14 +341,14 @@ export function TakeOrderScreen({
               {tabName}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" style={closeBtn}>
+          <button type="button" onClick={onClose} aria-label={t("tablesQrModalCloseAria")} style={closeBtn}>
             <IconX size={22} />
           </button>
         </div>
 
         {/* Seats — horizontal, snapped, with a fade when there's more to the right */}
         <div style={{ marginTop: 10 }}>
-          <div style={pinnedLabel}>Asiento — se aplica a lo que añadas</div>
+          <div style={pinnedLabel}>{t("terminalTakeOrderSeatLabel")}</div>
           <ScrollRow>
             {seatOptions.map((s) => {
               const on = seat === s;
@@ -361,8 +364,8 @@ export function TakeOrderScreen({
                   aria-pressed={on}
                   aria-label={
                     s === null
-                      ? `Sin asiento, ${n} platos`
-                      : `Asiento ${s}, ${n} platos`
+                      ? t("terminalTakeOrderSeatNoneAria", { count: n })
+                      : t("terminalTakeOrderSeatNumAria", { seat: s, count: n })
                   }
                   style={{
                     position: "relative",
@@ -380,7 +383,7 @@ export function TakeOrderScreen({
                     overflow: "visible",
                   }}
                 >
-                  {s === null ? "Sin asiento" : s}
+                  {s === null ? t("terminalTakeOrderNoSeat") : s}
                   {n > 0 && (
                     <span
                       aria-hidden
@@ -428,26 +431,25 @@ export function TakeOrderScreen({
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div style={body}>
         {loading ? (
-          <Notice>Cargando el menú…</Notice>
+          <Notice>{t("terminalTakeOrderLoadingMenu")}</Notice>
         ) : loadError ? (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <p style={{ color: "var(--db-danger)", fontSize: 15, margin: "0 0 12px" }}>
-              No se pudo cargar el menú. Revisa la conexión e inténtalo de nuevo.
+              {t("terminalTakeOrderMenuLoadError")}
             </p>
             <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={secondaryBtn}>
-              Reintentar
+              {t("retry")}
             </button>
           </div>
         ) : categories.length === 0 || totalPublished === 0 ? (
           <Notice>
-            Este negocio todavía no tiene menú publicado. Pide al encargado que publique platos
-            antes de tomar pedidos.
+            {t("terminalTakeOrderNoMenuPublished")}
           </Notice>
         ) : (
           <>
             {/* The category row is pinned in the header above — not here. */}
             {shownDishes.length === 0 ? (
-              <Notice>Esta categoría no tiene platos.</Notice>
+              <Notice>{t("terminalTakeOrderEmptyCategory")}</Notice>
             ) : (
               <div style={dishGrid}>
                 {shownDishes.map((d) => {
@@ -480,9 +482,9 @@ export function TakeOrderScreen({
                         {fmt(d.price_cents)}
                       </span>
                       {!sellable ? (
-                        <span style={{ fontSize: 12, fontWeight: 800, color: "var(--db-warning)" }}>Agotado</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "var(--db-warning)" }}>{t("terminalTakeOrderSoldOut")}</span>
                       ) : d.groups.length > 0 ? (
-                        <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>Con opciones</span>
+                        <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>{t("terminalTakeOrderHasOptions")}</span>
                       ) : null}
                     </button>
                   );
@@ -495,16 +497,16 @@ export function TakeOrderScreen({
               {/* The list is scoped to the ACTIVE SEAT. The whole-ticket count lives
                   on the send button below, so a filtered view can't hide dishes. */}
               <SectionTitle>
-                {seat === null ? "Sin asiento" : `Silla ${seat}`}
-                {seatLines.length > 0 && ` · ${seatLines.reduce((s, l) => s + l.qty, 0)} en esta silla`}
+                {seat === null ? t("terminalTakeOrderNoSeat") : t("terminalTakeOrderSeatChip", { seat })}
+                {seatLines.length > 0 && ` · ${t("terminalTakeOrderInThisSeat", { count: seatLines.reduce((s, l) => s + l.qty, 0) })}`}
               </SectionTitle>
               {seatLines.length === 0 ? (
                 <Empty>
                   {lines.length === 0
-                    ? "Toca un plato para añadirlo."
+                    ? t("terminalTakeOrderEmptyTapDish")
                     : seat === null
-                      ? "No hay platos sin asiento."
-                      : `La silla ${seat} todavía no ha pedido.`}
+                      ? t("terminalTakeOrderEmptyNoSeatDishes")
+                      : t("terminalTakeOrderEmptySeatNotOrdered", { seat })}
                 </Empty>
               ) : (
                 seatLines.map((l) => {
@@ -526,11 +528,11 @@ export function TakeOrderScreen({
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {/* qty */}
                         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <button type="button" onClick={() => setQty(l.key, -1)} aria-label="Menos" style={iconBtn}>
+                          <button type="button" onClick={() => setQty(l.key, -1)} aria-label={t("terminalTakeOrderLessAria")} style={iconBtn}>
                             <IconMinus size={18} />
                           </button>
                           <span style={{ minWidth: 28, textAlign: "center", fontSize: 16, fontWeight: 800 }}>{l.qty}</span>
-                          <button type="button" onClick={() => setQty(l.key, +1)} aria-label="Más" style={iconBtn}>
+                          <button type="button" onClick={() => setQty(l.key, +1)} aria-label={t("terminalTakeOrderMoreAria")} style={iconBtn}>
                             <IconPlus size={18} />
                           </button>
                         </div>
@@ -539,20 +541,20 @@ export function TakeOrderScreen({
                         <select
                           value={l.seat ?? ""}
                           onChange={(e) => setLineSeat(l.key, e.target.value === "" ? null : Number(e.target.value))}
-                          aria-label="Asiento de esta línea"
+                          aria-label={t("terminalTakeOrderLineSeatAria")}
                           style={selectStyle}
                         >
-                          <option value="">Sin asiento</option>
+                          <option value="">{t("terminalTakeOrderNoSeat")}</option>
                           {Array.from({ length: seats }, (_, i) => i + 1).map((s) => (
-                            <option key={s} value={s}>Asiento {s}</option>
+                            <option key={s} value={s}>{t("terminalTakeOrderSeatOption", { s })}</option>
                           ))}
                         </select>
 
                         <button type="button" onClick={() => duplicateLine(l.key)} style={miniBtn}>
-                          <IconCopy size={16} /> Duplicar
+                          <IconCopy size={16} /> {t("terminalTakeOrderDuplicateButton")}
                         </button>
                         <button type="button" onClick={() => removeLine(l.key)} style={{ ...miniBtn, color: "var(--db-danger)" }}>
-                          <IconTrash size={16} /> Quitar
+                          <IconTrash size={16} /> {t("terminalRemoveButton")}
                         </button>
                       </div>
                     </div>
@@ -573,7 +575,7 @@ export function TakeOrderScreen({
         )}
         {sentTotal !== null && (
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--db-success)", marginBottom: 10 }}>
-            Pedido enviado a cocina · total {fmt(sentTotal)} (calculado por el servidor)
+            {t("terminalTakeOrderSentNotice", { total: fmt(sentTotal) })}
           </div>
         )}
         {/* Opens the REVIEW step — never sends straight from here. The count is the
@@ -590,26 +592,26 @@ export function TakeOrderScreen({
           }}
         >
           {sending
-            ? "Enviando…"
-            : `${dishCount} ${dishCount === 1 ? "plato" : "platos"} · ${fmt(estimateTotal)} · Enviar a cocina`}
+            ? t("terminalTakeOrderSending")
+            : t("terminalTakeOrderSendButton", { count: dishCount, total: fmt(estimateTotal) })}
         </button>
         <div style={{ fontSize: 11, color: "var(--db-text-tertiary)", textAlign: "center", marginTop: 6 }}>
-          Importe estimado — el total lo calcula el servidor al enviar.
+          {t("terminalTakeOrderEstimateDisclaimer")}
         </div>
       </div>
 
       {/* ── Review step: the only door to sending ─────────────────────────── */}
       {reviewing && (
-        <div style={sheetOverlay} role="dialog" aria-label="Resumen del pedido">
+        <div style={sheetOverlay} role="dialog" aria-label={t("terminalTakeOrderReviewAria")}>
           <div style={{ ...sheetPanel, maxHeight: "92vh" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 900 }}>Revisa el pedido</div>
+              <div style={{ fontSize: 18, fontWeight: 900 }}>{t("terminalTakeOrderReviewTitle")}</div>
               <span style={{ fontSize: 13, color: "var(--db-text-secondary)" }}>
                 {tableLabel} · {tabName}
               </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--db-text-tertiary)", marginBottom: 12 }}>
-              {dishCount} {dishCount === 1 ? "plato" : "platos"} en total
+              {t("terminalTakeOrderTotalDishCount", { count: dishCount })}
             </div>
 
             {/* Grouped BY SEAT — that's how the food reaches the table. */}
@@ -617,10 +619,9 @@ export function TakeOrderScreen({
               {bySeat.map(([key, group]) => (
                 <div key={String(key)}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "var(--db-accent)", marginBottom: 6 }}>
-                    {key === "none" ? "Sin asiento" : `Silla ${key}`}
+                    {key === "none" ? t("terminalTakeOrderNoSeat") : t("terminalTakeOrderSeatChip", { seat: key })}
                     <span style={{ color: "var(--db-text-tertiary)", fontWeight: 600 }}>
-                      {" "}· {group.reduce((s, l) => s + l.qty, 0)}{" "}
-                      {group.reduce((s, l) => s + l.qty, 0) === 1 ? "plato" : "platos"}
+                      {" "}· {t("ownerDishCountPlural", { count: group.reduce((s, l) => s + l.qty, 0) })}
                     </span>
                   </div>
                   {group.map((l) => {
@@ -650,11 +651,11 @@ export function TakeOrderScreen({
 
             <div style={{ borderTop: "1px solid var(--db-border)", marginTop: 12, paddingTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 900 }}>
-                <span>Total estimado</span>
+                <span>{t("terminalTakeOrderEstimatedTotal")}</span>
                 <span>{fmt(estimateTotal)}</span>
               </div>
               <div style={{ fontSize: 11, color: "var(--db-text-tertiary)", marginTop: 4 }}>
-                Estimación — el importe real lo calcula el servidor al enviar.
+                {t("terminalTakeOrderReviewEstimateDisclaimer")}
               </div>
 
               {sendError && (
@@ -670,7 +671,7 @@ export function TakeOrderScreen({
                 disabled={sending}
                 style={{ ...primaryBtn, width: "100%", marginTop: 12, opacity: sending ? 0.6 : 1 }}
               >
-                {sending ? "Enviando…" : "Confirmar y enviar a cocina"}
+                {sending ? t("terminalTakeOrderSending") : t("terminalTakeOrderConfirmSendButton")}
               </button>
 
               {/* Secondary → back, draft untouched. */}
@@ -680,7 +681,7 @@ export function TakeOrderScreen({
                 disabled={sending}
                 style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
               >
-                Editar
+                {t("terminalTakeOrderEditButton")}
               </button>
 
               {/* Destructive → discards the DRAFT only. Nothing was sent, so this
@@ -698,7 +699,7 @@ export function TakeOrderScreen({
                   borderColor: "var(--db-danger)",
                 }}
               >
-                <IconTrash size={16} /> Cancelar pedido
+                <IconTrash size={16} /> {t("terminalTakeOrderCancelOrderButton")}
               </button>
             </div>
           </div>
@@ -708,13 +709,11 @@ export function TakeOrderScreen({
       {/* Discard confirmation — losing 8 dishes to a stray tap in a rush is exactly
           what must not happen. */}
       {confirmDiscard && (
-        <div style={{ ...sheetOverlay, alignItems: "center", zIndex: 90 }} role="dialog" aria-label="Confirmar cancelación">
+        <div style={{ ...sheetOverlay, alignItems: "center", zIndex: 90 }} role="dialog" aria-label={t("terminalTakeOrderConfirmCancelAria")}>
           <div style={{ ...sheetPanel, borderRadius: 18, maxWidth: 420, margin: "0 16px", maxHeight: "auto" }}>
-            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>¿Cancelar el pedido?</div>
+            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>{t("terminalTakeOrderCancelTitle")}</div>
             <p style={{ fontSize: 14, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-              Se descartará lo que llevas sin enviar ({dishCount}{" "}
-              {dishCount === 1 ? "plato" : "platos"}). No se ha enviado nada a cocina, así que no
-              se borra ningún pedido — solo se vacía esta pantalla.
+              {t("terminalTakeOrderDiscardBody", { count: dishCount })}
             </p>
             <button
               type="button"
@@ -732,14 +731,14 @@ export function TakeOrderScreen({
                 color: "var(--db-bg-base)",
               }}
             >
-              Sí, descartar
+              {t("terminalTakeOrderConfirmDiscardButton")}
             </button>
             <button
               type="button"
               onClick={() => setConfirmDiscard(false)}
               style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
             >
-              Seguir con el pedido
+              {t("terminalTakeOrderKeepOrderButton")}
             </button>
           </div>
         </div>
