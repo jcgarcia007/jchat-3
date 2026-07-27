@@ -21,6 +21,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconBolt,
@@ -96,11 +97,11 @@ function daysLeft(iso: string | null): number | null {
   return Math.max(0, Math.ceil(diff / 86_400_000));
 }
 
-function statusLabel(status: PlanStatus): string {
-  if (status === "trialing") return "Free Trial";
-  if (status === "active") return "Active";
-  if (status === "past_due") return "Payment issue";
-  if (status === "canceled") return "Canceled";
+function statusLabel(status: PlanStatus, t: (key: string) => string): string {
+  if (status === "trialing") return t("billingStatusTrialing");
+  if (status === "active") return t("activeBadge");
+  if (status === "past_due") return t("billingStatusPastDue");
+  if (status === "canceled") return t("billingStatusCanceled");
   return status;
 }
 
@@ -119,8 +120,8 @@ function statusColor(status: PlanStatus): string {
 
 type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
 
-async function readFunctionError(error: unknown): Promise<string> {
-  const fallback = error instanceof Error ? error.message : "Something went wrong";
+async function readFunctionError(error: unknown, genericFallback: string): Promise<string> {
+  const fallback = error instanceof Error ? error.message : genericFallback;
   const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
   if (!ctx || typeof ctx !== "object") return fallback;
   const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
@@ -238,6 +239,7 @@ const DEMO_SUB: Subscription = {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
+  const t = useTranslations("dashboardCommon");
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<PlanId | null>(null);
@@ -309,11 +311,11 @@ export default function BillingPage() {
       });
     } catch (err) {
       console.error("[billing] loadSub error:", err);
-      showToast("error", "Failed to load plan data.");
+      showToast("error", t("billingLoadPlanDataError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadSub();
@@ -328,7 +330,7 @@ export default function BillingPage() {
   // ── Open the Stripe Customer Portal (change plan / card / invoices / cancel) ─
   async function handleOpenPortal() {
     if (!isSupabaseConfigured) {
-      showToast("success", "Demo mode — in production this opens the Stripe billing portal.");
+      showToast("success", t("billingPortalDemoToast"));
       return;
     }
     setPortalLoading(true);
@@ -340,7 +342,7 @@ export default function BillingPage() {
 
       if (error) {
         // Show the SERVER's real message (e.g. "No billing account yet…"), not the generic.
-        showToast("error", await readFunctionError(error));
+        showToast("error", await readFunctionError(error, t("billingGenericFunctionError")));
         setPortalLoading(false);
         return;
       }
@@ -348,11 +350,11 @@ export default function BillingPage() {
       if (data?.url) {
         window.location.href = data.url as string;
       } else {
-        throw new Error("No portal URL returned.");
+        throw new Error(t("billingNoPortalUrlError"));
       }
     } catch (err) {
       console.error("[billing] handleOpenPortal error:", err);
-      showToast("error", err instanceof Error ? err.message : "Could not open the billing portal.");
+      showToast("error", err instanceof Error ? err.message : t("billingOpenPortalError"));
       setPortalLoading(false);
     }
   }
@@ -367,7 +369,7 @@ export default function BillingPage() {
         setActionLoading(null);
         showToast(
           "success",
-          `Demo mode — in production this would open Stripe Checkout for the ${targetPlan} plan.`,
+          t("billingCheckoutDemoToast", { plan: targetPlan }),
         );
       }, 1200);
       return;
@@ -388,7 +390,7 @@ export default function BillingPage() {
 
       // Downgrade to free with NO live subscription → applied immediately.
       if (data?.downgraded) {
-        showToast("success", "You're now on the Regular (free) plan.");
+        showToast("success", t("billingDowngradedSuccess"));
         await loadSub();
         return;
       }
@@ -399,8 +401,8 @@ export default function BillingPage() {
         showToast(
           "success",
           eff
-            ? `Your plan stays active until ${eff} and won't renew.`
-            : "Your plan stays active until the end of the period and won't renew.",
+            ? t("billingScheduledCancelWithDate", { date: eff })
+            : t("billingScheduledCancelNoDate"),
         );
         await loadSub();
         return;
@@ -414,7 +416,7 @@ export default function BillingPage() {
       }
     } catch (err) {
       console.error("[billing] handleUpgrade error:", err);
-      showToast("error", "Could not start checkout. Please try again.");
+      showToast("error", t("billingCheckoutError"));
       setActionLoading(null);
     }
   }
@@ -436,10 +438,10 @@ export default function BillingPage() {
             marginBottom: "4px",
           }}
         >
-          Billing & Subscription
+          {t("billingPageTitle")}
         </h1>
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-          Manage your plan, view payment history, and update billing details.
+          {t("billingSubtitle")}
         </p>
       </div>
 
@@ -447,14 +449,14 @@ export default function BillingPage() {
       {checkoutResult === "success" && (
         <AlertBanner
           icon={<IconCircleCheck size={18} />}
-          message="Subscription updated! It may take a moment to reflect below."
+          message={t("billingCheckoutSuccessMessage")}
           color="var(--db-success)"
         />
       )}
       {checkoutResult === "cancel" && (
         <AlertBanner
           icon={<IconInfoCircle size={18} />}
-          message="Checkout was cancelled. Your plan was not changed."
+          message={t("billingCheckoutCancelMessage")}
           color="var(--db-text-secondary)"
         />
       )}
@@ -463,23 +465,23 @@ export default function BillingPage() {
       {!isSupabaseConfigured && (
         <AlertBanner
           icon={<IconAlertCircle size={18} />}
-          message="Demo mode — connect Supabase to see live subscription data and enable real Stripe Checkout."
+          message={t("billingDemoModeMessage")}
           color="var(--db-warning)"
         />
       )}
 
       {/* ── Current plan status ─────────────────────────────────────────── */}
-      <SectionTitle>Current plan</SectionTitle>
+      <SectionTitle>{t("billingCurrentPlanSectionTitle")}</SectionTitle>
 
       {loading ? (
         <Card style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)" }}>
           <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-          <span style={{ fontSize: "14px" }}>Loading subscription…</span>
+          <span style={{ fontSize: "14px" }}>{t("billingLoadingSubscription")}</span>
         </Card>
       ) : !sub ? (
         <Card style={{ marginBottom: "32px" }}>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            No business account found. Register your business to get started.
+            {t("billingNoBusinessAccountMessage")}
           </p>
         </Card>
       ) : onBusinessPlan ? (
@@ -517,7 +519,7 @@ export default function BillingPage() {
                     color: "var(--db-text-primary)",
                   }}
                 >
-                  {OFFERED_PLANS.find((p) => p.id === sub.plan)?.label ?? sub.plan} Plan
+                  {OFFERED_PLANS.find((p) => p.id === sub.plan)?.label ?? sub.plan} {t("billingPlanSuffix")}
                 </span>
                 {/* Status badge */}
                 <span
@@ -535,7 +537,7 @@ export default function BillingPage() {
                     background: `color-mix(in srgb, ${statusColor(sub.status)} 12%, transparent)`,
                   }}
                 >
-                  {statusLabel(sub.status)}
+                  {statusLabel(sub.status, t)}
                 </span>
               </div>
 
@@ -551,7 +553,7 @@ export default function BillingPage() {
                     <div
                       style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}
                     >
-                      Trial ends
+                      {t("billingTrialEndsLabel")}
                     </div>
                     <div
                       style={{
@@ -563,7 +565,7 @@ export default function BillingPage() {
                       {formatDate(sub.trial_end)}
                       {daysLeft(sub.trial_end) !== null && (
                         <span style={{ color: "var(--db-warning)", marginLeft: "6px", fontWeight: 400 }}>
-                          ({daysLeft(sub.trial_end)} days left)
+                          {t("billingDaysLeftParenthetical", { count: daysLeft(sub.trial_end) ?? 0 })}
                         </span>
                       )}
                     </div>
@@ -574,7 +576,7 @@ export default function BillingPage() {
                     <div
                       style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}
                     >
-                      Renews
+                      {t("billingRenewsLabel")}
                     </div>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
                       {formatDate(sub.current_period_end)}
@@ -600,10 +602,7 @@ export default function BillingPage() {
                   }}
                 >
                   <IconAlertCircle size={16} />
-                  <span>
-                    There&apos;s a problem with your payment. Update your payment method to keep
-                    your plan active.
-                  </span>
+                  <span>{t("billingPastDueWarning")}</span>
                 </div>
               )}
 
@@ -627,9 +626,7 @@ export default function BillingPage() {
                   >
                     <IconClock size={16} />
                     <span>
-                      Your free trial ends in {daysLeft(sub.trial_end)} day
-                      {daysLeft(sub.trial_end) !== 1 ? "s" : ""}. Add a payment method to continue
-                      without interruption.
+                      {t("billingTrialReminderText", { count: daysLeft(sub.trial_end) ?? 0 })}
                     </span>
                   </div>
                 )}
@@ -652,23 +649,23 @@ export default function BillingPage() {
               }}
             >
               <IconRefresh size={14} />
-              Refresh
+              {t("serviceRefreshAria")}
             </button>
           </div>
         </Card>
       ) : (
         <Card style={{ marginBottom: "32px" }}>
           <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-            No tienes un plan de negocio activo
+            {t("billingNoBusinessPlanTitle")}
           </p>
           <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-            Elige Business, Pro o Custom abajo para desbloquear el panel de negocio.
+            {t("billingNoBusinessPlanMessage")}
           </p>
         </Card>
       )}
 
       {/* ── Plan cards ──────────────────────────────────────────────────── */}
-      <SectionTitle>Available plans</SectionTitle>
+      <SectionTitle>{t("billingAvailablePlansSectionTitle")}</SectionTitle>
 
       <div
         style={{
@@ -724,7 +721,7 @@ export default function BillingPage() {
                     textTransform: "uppercase",
                   }}
                 >
-                  Current
+                  {t("billingCurrentPlanBadge")}
                 </div>
               )}
 
@@ -794,7 +791,7 @@ export default function BillingPage() {
                 onClick={() => {
                   if (plan.cta === "contact") {
                     window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
-                      "Plan Custom JChat",
+                      t("billingContactMailtoSubject"),
                     )}`;
                   } else if (isCurrent) {
                     return;
@@ -832,24 +829,24 @@ export default function BillingPage() {
                 {busy ? (
                   <>
                     <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                    Redirecting…
+                    {t("billingRedirectingState")}
                   </>
                 ) : plan.cta === "contact" ? (
-                  "Contactar"
+                  t("billingContactButton")
                 ) : isCurrent ? (
                   <>
                     <IconCircleCheck size={14} />
-                    Plan actual
+                    {t("billingCurrentPlanSectionTitle")}
                   </>
                 ) : onBusinessPlan ? (
                   <>
-                    Cambiar plan
+                    {t("billingChangeButton")}
                     <IconExternalLink size={12} style={{ opacity: 0.7 }} />
                   </>
                 ) : (
                   <>
                     <IconRocket size={14} />
-                    Suscribirme
+                    {t("billingSubscribeButton")}
                     <IconExternalLink size={12} style={{ opacity: 0.7 }} />
                   </>
                 )}
@@ -860,7 +857,7 @@ export default function BillingPage() {
       </div>
 
       {/* ── Payment history ──────────────────────────────────────────────── */}
-      <SectionTitle>Payment history</SectionTitle>
+      <SectionTitle>{t("billingPaymentHistorySectionTitle")}</SectionTitle>
       <Card style={{ marginBottom: "32px" }}>
         <div
           style={{
@@ -874,13 +871,13 @@ export default function BillingPage() {
           <IconReceipt size={18} />
           <div>
             <p style={{ margin: 0, fontWeight: 500, color: "var(--db-text-primary)" }}>
-              Payment history
+              {t("billingPaymentHistorySectionTitle")}
             </p>
             <p style={{ margin: 0, marginTop: "2px" }}>
               {/* TODO: Query Stripe invoices via Edge Function and render table:
                   columns: Date, Description, Amount, Status (paid/failed), PDF download link.
                   The Stripe Customer Portal already exposes invoices — prefer linking there. */}
-              Invoice history will be available here once Stripe is connected.
+              {t("billingInvoiceHistoryPlaceholder")}
             </p>
           </div>
         </div>
@@ -900,7 +897,7 @@ export default function BillingPage() {
                 marginBottom: "4px",
               }}
             >
-              Update payment method or billing details
+              {t("billingUpdatePaymentTitle")}
             </p>
             <p
               style={{
@@ -911,8 +908,7 @@ export default function BillingPage() {
                 marginBottom: "12px",
               }}
             >
-              Update your card, download invoices, or cancel your subscription in the Stripe
-              billing portal.
+              {t("billingUpdatePaymentMessage")}
             </p>
             <button
               onClick={() => void handleOpenPortal()}
@@ -935,12 +931,12 @@ export default function BillingPage() {
               {portalLoading ? (
                 <>
                   <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                  Opening…
+                  {t("eventsOpeningState")}
                 </>
               ) : (
                 <>
                   <IconCreditCard size={14} />
-                  Manage billing
+                  {t("billingManageBillingButton")}
                   <IconExternalLink size={12} style={{ opacity: 0.7 }} />
                 </>
               )}
