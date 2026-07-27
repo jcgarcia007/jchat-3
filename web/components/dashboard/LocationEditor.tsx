@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { APIProvider, Map as GMap, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
   IconMapPin,
@@ -71,6 +72,7 @@ function Recenter({ target }: { target: LatLng | null }) {
 
 // ── Places Autocomplete search box ──────────────────────────────────────────────
 function PlacesSearch({ onPlace }: { onPlace: (p: LatLng) => void }) {
+  const t = useTranslations("dashboardCommon");
   const places = useMapsLibrary("places");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const onPlaceRef = useRef(onPlace);
@@ -92,7 +94,7 @@ function PlacesSearch({ onPlace }: { onPlace: (p: LatLng) => void }) {
   return (
     <input
       ref={inputRef}
-      placeholder="Search an address…"
+      placeholder={t("locationSearchPlaceholder")}
       style={{
         width: "100%",
         padding: "10px 12px",
@@ -141,13 +143,13 @@ function GeofenceLayer({
   onShapeRef.current = onShapeChange;
 
   const emitShape = useCallback(() => {
-    const t = toolRef.current;
-    if (t === "circle" && circleRef.current) {
+    const toolValue = toolRef.current;
+    if (toolValue === "circle" && circleRef.current) {
       const c = circleRef.current.getCenter();
       if (c) onShapeRef.current({ type: "Circle", center: [c.lng(), c.lat()], radius: circleRef.current.getRadius() });
       return;
     }
-    if (t === "polygon" && polygonRef.current) {
+    if (toolValue === "polygon" && polygonRef.current) {
       const path = polygonRef.current.getPath();
       const coords: LatLng[] = [];
       path.forEach((ll) => coords.push({ lat: ll.lat(), lng: ll.lng() }));
@@ -184,11 +186,11 @@ function GeofenceLayer({
       const ll = e.latLng;
       if (!ll) return;
       const pos: LatLng = { lat: ll.lat(), lng: ll.lng() };
-      const t = toolRef.current;
+      const toolValue = toolRef.current;
 
-      if (t === "pin") {
+      if (toolValue === "pin") {
         onPinMoveRef.current(pos);
-      } else if (t === "circle") {
+      } else if (toolValue === "circle") {
         if (!circleRef.current) {
           const circle = new google.maps.Circle({
             map,
@@ -214,7 +216,7 @@ function GeofenceLayer({
           circleRef.current.setCenter(ll);
         }
         emitShape();
-      } else if (t === "polygon") {
+      } else if (toolValue === "polygon") {
         pathRef.current = [...pathRef.current, pos];
         const gpath = pathRef.current.map((p) => ({ lat: p.lat, lng: p.lng }));
         if (!polygonRef.current) {
@@ -314,6 +316,7 @@ function GeofenceLayer({
 // ── Main editor ─────────────────────────────────────────────────────────────────
 
 export function LocationEditor({ businessId }: { businessId: string | null }) {
+  const t = useTranslations("dashboardCommon");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [radius, setRadius] = useState<number>(200);
@@ -382,7 +385,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
     setSuccess(null);
     try {
       if (lat == null || lng == null) {
-        setError("Set a location on the map (or enter lat/lng) first.");
+        setError(t("locationSetLocationFirstError"));
         return;
       }
       if (isSupabaseConfigured) {
@@ -400,13 +403,13 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
           .eq("id", businessId);
         if (e) throw e;
       }
-      setSuccess("Location saved.");
+      setSuccess(t("locationSavedSuccess"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save location.");
+      setError(e instanceof Error ? e.message : t("locationSaveFailedFallback"));
     } finally {
       setSaving(false);
     }
-  }, [businessId, lat, lng, radius, shape]);
+  }, [businessId, lat, lng, radius, shape, t]);
 
   const openRequest = useCallback(() => {
     setReqError(null);
@@ -419,11 +422,11 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
   const submitRequest = useCallback(async () => {
     const rr = parseInt(reqRadius, 10);
     if (isNaN(rr) || rr <= grantedMax) {
-      setReqError(`Requested radius must be greater than ${grantedMax} m.`);
+      setReqError(t("locationRadiusMustExceedError", { m: grantedMax.toLocaleString() }));
       return;
     }
     if (!reqReason.trim()) {
-      setReqError("Please provide a reason.");
+      setReqError(t("locationReasonRequiredError"));
       return;
     }
     setReqSubmitting(true);
@@ -442,26 +445,26 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
       }
       setReqDone(true);
     } catch (e) {
-      setReqError(e instanceof Error ? e.message : "Failed to submit request.");
+      setReqError(e instanceof Error ? e.message : t("locationSubmitFailedFallback"));
     } finally {
       setReqSubmitting(false);
     }
-  }, [reqRadius, reqReason, grantedMax, businessId, radius]);
+  }, [reqRadius, reqReason, grantedMax, businessId, radius, t]);
 
   const hasKey = MAPS_KEY.length > 0;
   const atCap = radius >= grantedMax;
 
   const TOOLS: { id: Tool; label: string; icon: typeof IconPointer }[] = [
-    { id: "pin", label: "Pin", icon: IconMapPin },
-    { id: "circle", label: "Circle", icon: IconCircle },
-    { id: "polygon", label: "Polygon", icon: IconPolygon },
+    { id: "pin", label: t("locationToolPin"), icon: IconMapPin },
+    { id: "circle", label: t("locationToolCircle"), icon: IconCircle },
+    { id: "polygon", label: t("locationToolPolygon"), icon: IconPolygon },
   ];
 
   const controls = (
     <>
       <div style={{ marginTop: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <FieldLabel>Geofence radius{tool === "circle" ? " (circle)" : ""}</FieldLabel>
+          <FieldLabel>{tool === "circle" ? t("locationRadiusCircleLabel") : t("locationRadiusLabel")}</FieldLabel>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-accent)" }}>{radius.toLocaleString()} m</span>
         </div>
         <input
@@ -475,7 +478,9 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
           <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-            Max {grantedMax.toLocaleString()} m{atCap ? " — limit reached" : ""}
+            {atCap
+              ? t("locationMaxRadiusAtCapLabel", { m: grantedMax.toLocaleString() })
+              : t("locationMaxRadiusLabel", { m: grantedMax.toLocaleString() })}
           </span>
           {atCap && (
             <button
@@ -488,7 +493,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                 fontSize: "12px", fontWeight: 600, cursor: "pointer",
               }}
             >
-              Request larger radius <IconArrowRight size={13} />
+              {t("locationRequestLargerButton")} <IconArrowRight size={13} />
             </button>
           )}
         </div>
@@ -496,11 +501,11 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
 
       <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 16px" }}>
         <IconMapPin size={12} style={{ verticalAlign: "middle" }} />{" "}
-        {lat != null && lng != null ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "No location set"}
-        {shape ? ` · ${(shape as { type: string }).type} geofence drawn` : ""}
+        {lat != null && lng != null ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : t("locationNoLocationSet")}
+        {shape ? ` · ${t("locationGeofenceDrawn", { type: (shape as { type: string }).type })}` : ""}
       </p>
 
-      <SaveBtn onClick={() => void saveBusiness()} loading={saving} label="Save Location" />
+      <SaveBtn onClick={() => void saveBusiness()} loading={saving} label={t("locationSaveButtonLabel")} />
     </>
   );
 
@@ -552,7 +557,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                 fontSize: "13px", fontWeight: 600, cursor: "pointer",
               }}
             >
-              <IconTrash size={14} /> Clear
+              <IconTrash size={14} /> {t("locationClearButton")}
             </button>
           </div>
 
@@ -580,25 +585,27 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
           </div>
           <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: "6px 0 0" }}>
             {tool === "pin"
-              ? "Pin: click the map or drag the marker to set your location."
+              ? t("locationInstructionsPin")
               : tool === "circle"
-                ? "Circle: click to place, then drag/resize. Slider sets the radius."
-                : "Polygon: click to add points, double-click to close."}
+                ? t("locationInstructionsCircle")
+                : t("locationInstructionsPolygon")}
           </p>
           {controls}
         </APIProvider>
       ) : (
         <>
           <div style={{ padding: "10px 14px", borderRadius: "8px", background: "rgba(245,158,11,0.10)", color: "var(--db-warning)", fontSize: "13px", marginBottom: "12px" }}>
-            Set <code>NEXT_PUBLIC_GOOGLE_MAPS_KEY</code> in .env.local to enable the interactive map. You can still set coordinates manually below.
+            {t.rich("locationNoApiKeyMessage", {
+              code: (chunks) => <code>{chunks}</code>,
+            })}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <FieldLabel>Latitude</FieldLabel>
+              <FieldLabel>{t("locationLatitudeLabel")}</FieldLabel>
               <NumberInput value={lat} onChange={setLat} placeholder="25.7617" />
             </div>
             <div>
-              <FieldLabel>Longitude</FieldLabel>
+              <FieldLabel>{t("locationLongitudeLabel")}</FieldLabel>
               <NumberInput value={lng} onChange={setLng} placeholder="-80.1918" />
             </div>
           </div>
@@ -611,14 +618,14 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Request radius increase"
+          aria-label={t("locationRequestModalAria")}
           onClick={(e) => { if (e.target === e.currentTarget && !reqSubmitting) setShowReqModal(false); }}
           style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: "16px" }}
         >
           <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "14px", padding: "22px", width: "420px", maxWidth: "100%" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>Request Radius Increase</h2>
-              <button type="button" onClick={() => !reqSubmitting && setShowReqModal(false)} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>{t("locationRequestModalTitle")}</h2>
+              <button type="button" onClick={() => !reqSubmitting && setShowReqModal(false)} aria-label={t("tablesQrModalCloseAria")} style={{ border: "none", background: "transparent", color: "var(--db-text-secondary)", cursor: "pointer" }}>
                 <IconX size={20} />
               </button>
             </div>
@@ -626,25 +633,28 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
             {reqDone ? (
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 14px", borderRadius: "8px", background: "rgba(29,158,117,0.10)", color: "var(--db-success)", fontSize: "13px", marginBottom: "16px" }}>
-                  <IconCheck size={16} /> Request submitted! A super admin will review your request.
+                  <IconCheck size={16} /> {t("locationRequestSubmittedSuccess")}
                 </div>
-                <SaveBtn onClick={() => setShowReqModal(false)} loading={false} label="Done" />
+                <SaveBtn onClick={() => setShowReqModal(false)} loading={false} label={t("locationDoneButton")} />
               </div>
             ) : (
               <>
                 <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 14px" }}>
-                  Your current limit is <strong style={{ color: "var(--db-text-primary)" }}>{grantedMax.toLocaleString()} m</strong>. Tell us the radius you need and why.
+                  {t.rich("locationCurrentLimitMessage", {
+                    m: grantedMax.toLocaleString(),
+                    strong: (chunks) => <strong style={{ color: "var(--db-text-primary)" }}>{chunks}</strong>,
+                  })}
                 </p>
                 <div style={{ marginBottom: "12px" }}>
-                  <FieldLabel>Requested radius (m)</FieldLabel>
+                  <FieldLabel>{t("locationRequestedRadiusLabel")}</FieldLabel>
                   <NumberInput value={reqRadius === "" ? null : Number(reqRadius)} onChange={(v) => setReqRadius(v == null ? "" : String(v))} placeholder={String(grantedMax * 2)} />
                 </div>
                 <div style={{ marginBottom: "14px" }}>
-                  <FieldLabel>Reason *</FieldLabel>
+                  <FieldLabel>{t("locationReasonLabel")}</FieldLabel>
                   <textarea
                     value={reqReason}
                     onChange={(e) => setReqReason(e.target.value)}
-                    placeholder="Why do you need a larger geofence?"
+                    placeholder={t("locationReasonPlaceholder")}
                     rows={3}
                     style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", resize: "vertical", fontFamily: "inherit" }}
                   />
@@ -654,7 +664,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                     <IconAlertCircle size={15} /> {reqError}
                   </div>
                 )}
-                <SaveBtn onClick={() => void submitRequest()} loading={reqSubmitting} label="Submit Request" />
+                <SaveBtn onClick={() => void submitRequest()} loading={reqSubmitting} label={t("locationSubmitRequestButton")} />
               </>
             )}
           </div>
@@ -686,6 +696,7 @@ function NumberInput({ value, onChange, placeholder }: { value: number | null; o
 }
 
 function SaveBtn({ onClick, loading, label }: { onClick: () => void; loading: boolean; label: string }) {
+  const t = useTranslations("dashboardCommon");
   return (
     <button
       type="button"
@@ -700,7 +711,7 @@ function SaveBtn({ onClick, loading, label }: { onClick: () => void; loading: bo
       }}
     >
       <IconCheck size={15} />
-      {loading ? "Saving…" : label}
+      {loading ? t("tablesSavingState") : label}
     </button>
   );
 }
