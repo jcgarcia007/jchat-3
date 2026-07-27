@@ -1337,6 +1337,24 @@
     "menuItemIdRequiredToggle": "Requiere verificación de identificación (21+)",
     "menuItemModifierGroupsHeading": "Grupos de opciones",
     "menuItemSavingState": "Guardando…",
-    "menuItemSaveButton": "Guardar producto"
+    "menuItemSaveButton": "Guardar producto",
+    "menuModifierEmptyMessage": "No hay grupos de opciones. Agrega uno nuevo o reutiliza un grupo existente del negocio.",
+    "menuModifierAddGroupButton": "Nuevo grupo",
+    "menuModifierClosePickerButton": "Cerrar",
+    "menuModifierReuseGroupButton": "Reutilizar grupo del negocio",
+    "menuModifierExistingGroupsHeading": "GRUPOS EXISTENTES DEL NEGOCIO",
+    "menuModifierTypeSingle": "Único",
+    "menuModifierTypeMulti": "Múltiple",
+    "menuModifierChoicesCount": "{count, plural, one {# opción} other {# opciones}}",
+    "menuModifierAlreadyLinkedBadge": "ya vinculado",
+    "menuModifierAddToItemButton": "+ Agregar",
+    "menuModifierGroupNamePlaceholder": "Nombre del grupo (ej. Tamaño)",
+    "menuModifierMinLabel": "Mín:",
+    "menuModifierMaxLabel": "Máx:",
+    "menuModifierRequired": "requerido",
+    "menuModifierOptional": "opcional",
+    "menuModifierNoChoicesMessage": "Sin opciones — agrega al menos una.",
+    "menuModifierChoicePlaceholder": "Opción {n}",
+    "menuModifierAddChoiceButton": "Agregar opción"
   }
 }

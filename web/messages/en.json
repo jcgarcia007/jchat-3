@@ -1337,6 +1337,24 @@
     "menuItemIdRequiredToggle": "ID check required (21+)",
     "menuItemModifierGroupsHeading": "Option groups",
     "menuItemSavingState": "Saving…",
-    "menuItemSaveButton": "Save Product"
+    "menuItemSaveButton": "Save Product",
+    "menuModifierEmptyMessage": "No option groups yet. Add a new one or reuse an existing group from your business.",
+    "menuModifierAddGroupButton": "New group",
+    "menuModifierClosePickerButton": "Close",
+    "menuModifierReuseGroupButton": "Reuse group from business",
+    "menuModifierExistingGroupsHeading": "EXISTING GROUPS FROM YOUR BUSINESS",
+    "menuModifierTypeSingle": "Single",
+    "menuModifierTypeMulti": "Multiple",
+    "menuModifierChoicesCount": "{count, plural, one {# option} other {# options}}",
+    "menuModifierAlreadyLinkedBadge": "already linked",
+    "menuModifierAddToItemButton": "+ Add",
+    "menuModifierGroupNamePlaceholder": "Group name (e.g. Size)",
+    "menuModifierMinLabel": "Min:",
+    "menuModifierMaxLabel": "Max:",
+    "menuModifierRequired": "required",
+    "menuModifierOptional": "optional",
+    "menuModifierNoChoicesMessage": "No options yet — add at least one.",
+    "menuModifierChoicePlaceholder": "Option {n}",
+    "menuModifierAddChoiceButton": "Add option"
   }
 }

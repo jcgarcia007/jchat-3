@@ -710,6 +710,7 @@ function ModifierGroupsEditor({
   groups: DashModifierGroup[];
   onChange: (groups: DashModifierGroup[]) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [bizGroups, setBizGroups] = useState<DashModifierGroup[]>([]);
   const [loadingBiz, setLoadingBiz] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -825,7 +826,7 @@ function ModifierGroupsEditor({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {groups.length === 0 && (
         <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", fontStyle: "italic", margin: 0 }}>
-          No hay grupos de opciones. Agrega uno nuevo o reutiliza un grupo existente del negocio.
+          {t("menuModifierEmptyMessage")}
         </p>
       )}
 
@@ -847,7 +848,7 @@ function ModifierGroupsEditor({
       {/* Action row */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" onClick={addNewGroup} style={smallAddBtnStyle}>
-          <IconPlus size={12} /> Nuevo grupo
+          <IconPlus size={12} /> {t("menuModifierAddGroupButton")}
         </button>
         {!loadingBiz && bizGroups.length > 0 && (
           <button
@@ -856,7 +857,7 @@ function ModifierGroupsEditor({
             style={{ ...smallAddBtnStyle, borderColor: showPicker ? "var(--db-accent)" : undefined }}
           >
             <IconAdjustments size={12} />
-            {showPicker ? "Cerrar" : "Reutilizar grupo del negocio"}
+            {showPicker ? t("menuModifierClosePickerButton") : t("menuModifierReuseGroupButton")}
           </button>
         )}
       </div>
@@ -875,7 +876,7 @@ function ModifierGroupsEditor({
           }}
         >
           <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px", fontWeight: 600 }}>
-            GRUPOS EXISTENTES DEL NEGOCIO
+            {t("menuModifierExistingGroupsHeading")}
           </p>
           {bizGroups.map((bg) => {
             const linked = alreadyLinkedIds.has(bg.groupId);
@@ -903,13 +904,13 @@ function ModifierGroupsEditor({
                 <span>
                   <strong>{bg.label}</strong>
                   <span style={{ color: "var(--db-text-tertiary)", marginLeft: 8, fontSize: 11 }}>
-                    {bg.type === "single" ? "único" : "múltiple"} · {bg.choices.length} opciones
+                    {bg.type === "single" ? t("menuModifierTypeSingle") : t("menuModifierTypeMulti")} · {t("menuModifierChoicesCount", { count: bg.choices.length })}
                   </span>
                 </span>
                 {linked ? (
-                  <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>ya vinculado</span>
+                  <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>{t("menuModifierAlreadyLinkedBadge")}</span>
                 ) : (
-                  <span style={{ fontSize: 11, color: "var(--db-accent)" }}>+ Agregar</span>
+                  <span style={{ fontSize: 11, color: "var(--db-accent)" }}>{t("menuModifierAddToItemButton")}</span>
                 )}
               </button>
             );
@@ -942,6 +943,7 @@ function GroupCard({
   onUpdateChoice: (ci: number, field: keyof DashChoice, val: string) => void;
   onRemoveChoice: (ci: number) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -988,7 +990,7 @@ function GroupCard({
         <input
           value={group.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
-          placeholder="Nombre del grupo (ej. Tamaño)"
+          placeholder={t("menuModifierGroupNamePlaceholder")}
           style={{
             flex: 1,
             padding: "6px 10px",
@@ -1005,11 +1007,11 @@ function GroupCard({
         <select
           value={group.type}
           onChange={(e) => {
-            const t = e.target.value as "single" | "multi";
+            const newType = e.target.value as "single" | "multi";
             onUpdate({
-              type: t,
-              min_select: t === "single" ? 1 : 0,
-              max_select: t === "single" ? 1 : group.choices.length || 1,
+              type: newType,
+              min_select: newType === "single" ? 1 : 0,
+              max_select: newType === "single" ? 1 : group.choices.length || 1,
             });
           }}
           style={{
@@ -1022,8 +1024,8 @@ function GroupCard({
             outline: "none",
           }}
         >
-          <option value="single">Único</option>
-          <option value="multi">Múltiple</option>
+          <option value="single">{t("menuModifierTypeSingle")}</option>
+          <option value="multi">{t("menuModifierTypeMulti")}</option>
         </select>
 
         {/* Expand/collapse */}
@@ -1052,7 +1054,7 @@ function GroupCard({
           {group.type === "multi" && (
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>Mín:</span>
+                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>{t("menuModifierMinLabel")}</span>
                 <input
                   type="number"
                   min={0}
@@ -1063,7 +1065,7 @@ function GroupCard({
                 />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>Máx:</span>
+                <span style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>{t("menuModifierMaxLabel")}</span>
                 <input
                   type="number"
                   min={1}
@@ -1073,7 +1075,7 @@ function GroupCard({
                 />
               </div>
               <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>
-                {group.min_select > 0 ? "requerido" : "opcional"}
+                {group.min_select > 0 ? t("menuModifierRequired") : t("menuModifierOptional")}
               </span>
             </div>
           )}
@@ -1082,7 +1084,7 @@ function GroupCard({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {group.choices.length === 0 && (
               <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", fontStyle: "italic", margin: 0 }}>
-                Sin opciones — agrega al menos una.
+                {t("menuModifierNoChoicesMessage")}
               </p>
             )}
             {group.choices.map((c, ci) => (
@@ -1090,7 +1092,7 @@ function GroupCard({
                 <input
                   value={c.label}
                   onChange={(e) => onUpdateChoice(ci, "label", e.target.value)}
-                  placeholder={`Opción ${ci + 1}`}
+                  placeholder={t("menuModifierChoicePlaceholder", { n: ci + 1 })}
                   style={{ ...optionInputStyle, flex: 1 }}
                 />
                 <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -1114,7 +1116,7 @@ function GroupCard({
               </div>
             ))}
             <button type="button" onClick={onAddChoice} style={{ ...smallAddBtnStyle, alignSelf: "flex-start" }}>
-              <IconPlus size={11} /> Agregar opción
+              <IconPlus size={11} /> {t("menuModifierAddChoiceButton")}
             </button>
           </div>
         </div>
