@@ -409,7 +409,7 @@ function OfferRow({
     new: t("offersTargetNew"),
   };
   const statusLabels: Record<OfferStatus, string> = {
-    active: t("activeBadge"),
+    active: t("offersStatusActive"),
     paused: t("offersStatusPaused"),
     scheduled: t("offersStatusScheduled"),
     ended: t("offersStatusEnded"),
@@ -447,7 +447,7 @@ function OfferRow({
             color: "var(--db-accent)",
           }}
         >
-          {OFFER_TYPES.find((t) => t.value === offer.type)?.icon ?? <IconTag size={18} />}
+          {OFFER_TYPES.find((ot) => ot.value === offer.type)?.icon ?? <IconTag size={18} />}
         </div>
 
         {/* Info */}
@@ -714,6 +714,32 @@ function OfferRow({
 export default function OffersPage() {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+
+  const offerTypeLabels: Record<OfferType, string> = {
+    happy_hour: t("offersTypeHappyHour"),
+    bundle: t("offersTypeBundle"),
+    flash_sale: t("offersTypeFlashSale"),
+    bogo: t("offersTypeBogo"),
+    discount_code: t("offersTypeDiscountCode"),
+  };
+  const offerTypeHints: Record<OfferType, string> = {
+    happy_hour: t("offersTypeHintHappyHour"),
+    bundle: t("offersTypeHintBundle"),
+    flash_sale: t("offersTypeHintFlashSale"),
+    bogo: t("offersTypeHintBogo"),
+    discount_code: t("offersTypeHintDiscountCode"),
+  };
+  const targetingLabels: Record<OfferTargeting, string> = {
+    all: t("offersTargetAll"),
+    verified: t("offersTargetVerified"),
+    new: t("offersTargetNew"),
+  };
+  const targetingDescriptions: Record<OfferTargeting, string> = {
+    all: t("offersTargetDescAll"),
+    verified: t("offersTargetDescVerified"),
+    new: t("offersTargetDescNew"),
+  };
+
   const [offers, setOffers] = useState<Offer[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
@@ -836,13 +862,11 @@ export default function OffersPage() {
     setSuccess(null);
 
     if (!form.title.trim()) {
-      setError("Offer title is required.");
+      setError(t("offersTitleRequiredError"));
       return;
     }
     if (!isSupabaseConfigured) {
-      setError(
-        "Supabase is not configured — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
-      );
+      setError(t("offersSupabaseNotConfiguredError"));
       return;
     }
 
@@ -851,7 +875,7 @@ export default function OffersPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated.");
+      if (!user) throw new Error(t("offersNotAuthenticatedError"));
 
       // Shared resolver: tolerant of multiple businesses per owner.
       const res = await resolveActiveBusiness();
@@ -898,7 +922,7 @@ export default function OffersPage() {
         .select()
         .single();
 
-      if (offerErr || !newOffer) throw offerErr ?? new Error("Offer insert failed.");
+      if (offerErr || !newOffer) throw offerErr ?? new Error(t("offersInsertFailedError"));
 
       const offerId: string = (newOffer as Offer).id;
 
@@ -919,21 +943,26 @@ export default function OffersPage() {
       // publishOfferToChat server-side. Until that lands, the owner must manually
       // activate the scheduled offer from this dashboard to push the chat message.
 
+      const titleTrimmed = form.title.trim();
       setSuccess(
         status === "scheduled"
-          ? `Offer "${form.title.trim()}" scheduled for ${startAt ? formatDateShort(startAt) : "future"}.`
-          : `Offer "${form.title.trim()}" published${roomId ? " to chat" : ""}.`
+          ? startAt
+            ? t("offersScheduledSuccess", { title: titleTrimmed, date: formatDateShort(startAt) })
+            : t("offersScheduledNoDateSuccess", { title: titleTrimmed })
+          : roomId
+          ? t("offersPublishedToChatSuccess", { title: titleTrimmed })
+          : t("offersPublishedSuccess", { title: titleTrimmed })
       );
       setForm(EMPTY_FORM);
       setShowForm(false);
       await loadOffers();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Create failed: ${msg}`);
+      setError(t("offersCreateFailedError", { msg }));
     } finally {
       setCreating(false);
     }
-  }, [form, selectedRoomId, publishOfferToChat, loadOffers]);
+  }, [form, selectedRoomId, publishOfferToChat, loadOffers, t]);
 
   // ── Pause / Resume toggle ────────────────────────────────────────────────────
   const handleToggle = useCallback(
@@ -1076,7 +1105,7 @@ export default function OffersPage() {
         >
           {[
             { label: t("disputesTotalLabel"), value: offers.length, color: "var(--db-text-primary)" },
-            { label: t("activeBadge"), value: activeCount, color: "var(--db-success)" },
+            { label: t("offersStatusActive"), value: activeCount, color: "var(--db-success)" },
             { label: t("offersStatusScheduled"), value: scheduledCount, color: "var(--db-accent)" },
             {
               label: t("offersRedemptionsLabel"),
@@ -1217,7 +1246,7 @@ export default function OffersPage() {
                 color: "var(--db-text-primary)",
               }}
             >
-              New Offer
+              {t("offersNewOfferButton")}
             </h2>
             <button
               onClick={() => {
@@ -1234,7 +1263,7 @@ export default function OffersPage() {
                 display: "flex",
                 alignItems: "center",
               }}
-              aria-label="Cancel"
+              aria-label={tCommon("cancel")}
             >
               <IconX size={18} />
             </button>
@@ -1242,7 +1271,7 @@ export default function OffersPage() {
 
           {/* Offer type selector */}
           <div style={{ marginBottom: "20px" }}>
-            <Label>Offer type *</Label>
+            <Label>{t("offersTypeFieldLabel")}</Label>
             <div
               style={{
                 display: "grid",
@@ -1250,13 +1279,13 @@ export default function OffersPage() {
                 gap: "10px",
               }}
             >
-              {OFFER_TYPES.map((t) => {
-                const selected = form.offerType === t.value;
+              {OFFER_TYPES.map((ot) => {
+                const selected = form.offerType === ot.value;
                 return (
                   <button
-                    key={t.value}
-                    onClick={() => setField("offerType", t.value)}
-                    title={t.hint}
+                    key={ot.value}
+                    onClick={() => setField("offerType", ot.value)}
+                    title={offerTypeHints[ot.value]}
                     style={{
                       display: "flex",
                       flexDirection: "column",
@@ -1278,8 +1307,8 @@ export default function OffersPage() {
                       transition: "border-color 0.15s",
                     }}
                   >
-                    {t.icon}
-                    {t.label}
+                    {ot.icon}
+                    {offerTypeLabels[ot.value]}
                   </button>
                 );
               })}
@@ -1291,7 +1320,7 @@ export default function OffersPage() {
                 marginTop: "6px",
               }}
             >
-              {OFFER_TYPES.find((t) => t.value === form.offerType)?.hint}
+              {offerTypeHints[form.offerType]}
             </p>
           </div>
 
@@ -1304,11 +1333,11 @@ export default function OffersPage() {
           >
             {/* Title */}
             <div style={{ gridColumn: "1 / -1" }}>
-              <Label>Offer title *</Label>
+              <Label>{t("offersTitleFieldLabel")}</Label>
               <FieldInput
                 value={form.title}
                 onChange={(v) => setField("title", v)}
-                placeholder='e.g. "Happy Hour — 2-for-1 cocktails"'
+                placeholder={t("offersTitlePlaceholder")}
               />
             </div>
 
@@ -1317,24 +1346,24 @@ export default function OffersPage() {
               <Label>
                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <IconPercentage size={12} />
-                  Discount value
+                  {t("offersDiscountFieldLabel")}
                 </span>
               </Label>
               <FieldInput
                 value={form.discount}
                 onChange={(v) => setField("discount", v)}
-                placeholder='e.g. "20%" or "$5 off"'
+                placeholder={t("offersDiscountPlaceholder")}
               />
             </div>
 
             {/* Min purchase */}
             <div>
-              <Label>Min. purchase ($)</Label>
+              <Label>{t("offersMinPurchaseFieldLabel")}</Label>
               <FieldInput
                 value={form.minPurchase}
                 onChange={(v) => setField("minPurchase", v)}
                 type="number"
-                placeholder="0.00 (leave blank for none)"
+                placeholder={t("offersMinPurchasePlaceholder")}
               />
             </div>
 
@@ -1344,13 +1373,13 @@ export default function OffersPage() {
                 <Label>
                   <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                     <IconHash size={12} />
-                    Promo code *
+                    {t("offersPromoCodeFieldLabel")}
                   </span>
                 </Label>
                 <FieldInput
                   value={form.code}
                   onChange={(v) => setField("code", v.toUpperCase())}
-                  placeholder="e.g. SAVE20"
+                  placeholder={t("offersPromoCodePlaceholder")}
                 />
                 <p
                   style={{
@@ -1359,19 +1388,20 @@ export default function OffersPage() {
                     marginTop: "4px",
                   }}
                 >
-                  Stored in <code>offers.code</code>. Displayed in the OfferCard
-                  so customers can quote it at the counter.
+                  {t.rich("offersPromoCodeHelper", {
+                    code: (chunks) => <code>{chunks}</code>,
+                  })}
                 </p>
               </div>
             )}
 
             {/* Description */}
             <div style={{ gridColumn: "1 / -1" }}>
-              <Label>Description</Label>
+              <Label>{t("offersDescriptionFieldLabel")}</Label>
               <textarea
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
-                placeholder="Tell customers what's included…"
+                placeholder={t("offersDescriptionPlaceholder")}
                 rows={2}
                 style={{
                   width: "100%",
@@ -1393,7 +1423,7 @@ export default function OffersPage() {
               <Label>
                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <IconTargetArrow size={12} />
-                  Targeting
+                  {t("offersTargetingFieldLabel")}
                 </span>
               </Label>
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -1403,7 +1433,7 @@ export default function OffersPage() {
                     <button
                       key={opt.value}
                       onClick={() => setField("targeting", opt.value)}
-                      title={opt.description}
+                      title={targetingDescriptions[opt.value]}
                       style={{
                         padding: "7px 14px",
                         borderRadius: "8px",
@@ -1427,7 +1457,7 @@ export default function OffersPage() {
                       {opt.value === "all" && <IconUsers size={13} />}
                       {opt.value === "verified" && <IconCheck size={13} />}
                       {opt.value === "new" && <IconBolt size={13} />}
-                      {opt.label}
+                      {targetingLabels[opt.value]}
                     </button>
                   );
                 })}
@@ -1439,14 +1469,14 @@ export default function OffersPage() {
                   marginTop: "6px",
                 }}
               >
-                {TARGETING_OPTIONS.find((o) => o.value === form.targeting)?.description}
+                {targetingDescriptions[form.targeting]}
               </p>
             </div>
 
             {/* Room selector */}
             {rooms.length > 0 && (
               <div style={{ gridColumn: "1 / -1" }}>
-                <Label>Publish to chat room</Label>
+                <Label>{t("offersRoomFieldLabel")}</Label>
                 <select
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
@@ -1461,7 +1491,7 @@ export default function OffersPage() {
                     boxSizing: "border-box",
                   }}
                 >
-                  <option value="">— Select a room (optional) —</option>
+                  <option value="">{t("offersRoomSelectOption")}</option>
                   {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -1475,7 +1505,7 @@ export default function OffersPage() {
                     marginTop: "4px",
                   }}
                 >
-                  When active, an OfferCard message is auto-inserted into this room.
+                  {t("offersRoomHelper")}
                 </p>
               </div>
             )}
@@ -1485,7 +1515,7 @@ export default function OffersPage() {
               <Label>
                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <IconClock size={12} />
-                  Start date (optional)
+                  {t("offersStartDateFieldLabel")}
                 </span>
               </Label>
               <FieldInput
@@ -1495,7 +1525,7 @@ export default function OffersPage() {
               />
             </div>
             <div>
-              <Label>Start time</Label>
+              <Label>{t("offersStartTimeFieldLabel")}</Label>
               <FieldInput
                 type="time"
                 value={form.startTime}
@@ -1505,7 +1535,7 @@ export default function OffersPage() {
             </div>
 
             <div>
-              <Label>End date (expires_at)</Label>
+              <Label>{t("offersEndDateFieldLabel")}</Label>
               <FieldInput
                 type="date"
                 value={form.endDate}
@@ -1513,7 +1543,7 @@ export default function OffersPage() {
               />
             </div>
             <div>
-              <Label>End time</Label>
+              <Label>{t("offersEndTimeFieldLabel")}</Label>
               <FieldInput
                 type="time"
                 value={form.endTime}
@@ -1538,22 +1568,24 @@ export default function OffersPage() {
                 {combineDatetime(form.startDate, form.startTime) &&
                 new Date(combineDatetime(form.startDate, form.startTime)!) > new Date() ? (
                   <>
-                    <strong>Scheduled offer:</strong> status will be set to{" "}
-                    <em>scheduled</em>. The OfferCard will be published to chat
-                    automatically at start time via server cron.
+                    {t.rich("offersSchedulingScheduledNote", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                      em: (chunks) => <em>{chunks}</em>,
+                    })}
                     <br />
                     {/* TODO(cron): implement supabase/functions/offers-scheduler/ to call
                          publishOfferToChat at start_at. Until then, the owner must manually
                          resume the offer from this dashboard to trigger the chat message. */}
                     <span style={{ color: "var(--db-text-tertiary)", fontSize: "11px" }}>
-                      TODO(cron): supabase/functions/offers-scheduler/ not yet deployed —
-                      manual activation needed until then.
+                      {t("offersSchedulingTodoNote")}
                     </span>
                   </>
                 ) : (
                   <>
-                    <strong>Immediate:</strong> start date is in the past or now —
-                    offer will be created as <em>active</em>.
+                    {t.rich("offersSchedulingImmediateNote", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                      em: (chunks) => <em>{chunks}</em>,
+                    })}
                   </>
                 )}
               </div>
@@ -1585,7 +1617,7 @@ export default function OffersPage() {
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
             <button
               onClick={handleCreate}
@@ -1605,7 +1637,7 @@ export default function OffersPage() {
               }}
             >
               <IconPlus size={15} />
-              {creating ? "Publishing…" : "Create Offer"}
+              {creating ? t("offersPublishingState") : t("offersCreateButton")}
             </button>
           </div>
         </div>
