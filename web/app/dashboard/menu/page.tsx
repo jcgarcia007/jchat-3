@@ -348,8 +348,8 @@ function formatDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-function badgeLabel(badge: Badge): string {
-  return BADGE_OPTIONS.find((b) => b.value === badge)?.label ?? "None";
+function badgeLabel(badge: Badge, labels: Record<string, string>): string {
+  return labels[String(badge)] ?? labels.null;
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -1905,6 +1905,8 @@ function CategoryFormPanel({
   onCancel: () => void;
   saving: boolean;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [form, setForm] = useState<CategoryForm>(initial);
   const [iconMode, setIconMode] = useState<"icon" | "photo">(
     initial.icon_url ? "photo" : "icon"
@@ -1962,17 +1964,17 @@ function CategoryFormPanel({
     >
       {/* Name row */}
       <div>
-        <SectionLabel>Category name *</SectionLabel>
+        <SectionLabel>{t("menuCategoryNameLabel")}</SectionLabel>
         <FieldInput
           value={form.name}
           onChange={(v) => setForm((p) => ({ ...p, name: v }))}
-          placeholder="e.g. Cocktails"
+          placeholder={t("menuCategoryNamePlaceholder")}
         />
       </div>
 
       {/* Icon section */}
       <div>
-        <SectionLabel>Icono</SectionLabel>
+        <SectionLabel>{t("menuCategoryIconLabel")}</SectionLabel>
         {/* Mode toggle */}
         <div
           style={{
@@ -1990,14 +1992,14 @@ function CategoryFormPanel({
             onClick={() => setIconMode("icon")}
             style={tabStyle(iconMode === "icon")}
           >
-            Icono
+            {t("menuCategoryIconLabel")}
           </button>
           <button
             type="button"
             onClick={() => setIconMode("photo")}
             style={tabStyle(iconMode === "photo")}
           >
-            Foto
+            {t("menuCategoryPhotoTab")}
           </button>
         </div>
 
@@ -2152,7 +2154,7 @@ function CategoryFormPanel({
             cursor: "pointer",
           }}
         >
-          Cancel
+          {tCommon("cancel")}
         </button>
         <button
           onClick={() => onSave(form)}
@@ -2172,7 +2174,7 @@ function CategoryFormPanel({
           }}
         >
           <IconCheck size={13} />
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("menuCategorySavingState") : tCommon("save")}
         </button>
       </div>
     </div>
@@ -2196,6 +2198,22 @@ function ItemCard({
   toggling: boolean;
   deleting: boolean;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const dietaryLabels: Record<string, string> = {
+    vegetarian: t("menuDietaryVegetarian"),
+    vegan: t("menuDietaryVegan"),
+    gluten_free: t("menuDietaryGlutenFree"),
+    dairy_free: t("menuDietaryDairyFree"),
+    nut_free: t("menuDietaryNutFree"),
+    seafood: t("menuDietarySeafood"),
+    spicy: t("menuDietarySpicy"),
+  };
+  const badgeLabels: Record<string, string> = {
+    null: t("menuBadgeNone"),
+    best_seller: t("menuBadgeBestSeller"),
+    new: t("menuBadgeNew"),
+    hot: t("menuBadgeHot"),
+  };
   return (
     <div
       style={{
@@ -2277,7 +2295,7 @@ function ItemCard({
                     : "var(--db-success)",
               }}
             >
-              {badgeLabel(item.badge)}
+              {badgeLabel(item.badge, badgeLabels)}
             </span>
           )}
           {!item.is_published && (
@@ -2291,7 +2309,7 @@ function ItemCard({
                 color: "var(--db-text-tertiary)",
               }}
             >
-              Hidden
+              {t("hiddenBadge")}
             </span>
           )}
           {item.id_required && (
@@ -2330,7 +2348,9 @@ function ItemCard({
               }}
             >
               <IconPackage size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />
-              {item.stock_count === 0 ? "Out of stock" : `${item.stock_count} left`}
+              {item.stock_count === 0
+                ? t("menuItemCardOutOfStockBadge")
+                : t("menuItemCardStockLeftCount", { count: item.stock_count })}
             </span>
           )}
         </div>
@@ -2368,7 +2388,7 @@ function ItemCard({
                     color: "var(--db-text-tertiary)",
                   }}
                 >
-                  {tag.replace("_", " ")}
+                  {dietaryLabels[tag] ?? tag}
                 </span>
               ))}
             </div>
@@ -2377,9 +2397,9 @@ function ItemCard({
           {item.options &&
             ((item.options.sizes?.length ?? 0) > 0 || (item.options.extras?.length ?? 0) > 0) && (
               <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-                {(item.options.sizes?.length ?? 0) > 0 && `${item.options.sizes!.length} size${item.options.sizes!.length !== 1 ? "s" : ""}`}
+                {(item.options.sizes?.length ?? 0) > 0 && t("menuItemCardSizesCount", { count: item.options.sizes!.length })}
                 {(item.options.sizes?.length ?? 0) > 0 && (item.options.extras?.length ?? 0) > 0 && " · "}
-                {(item.options.extras?.length ?? 0) > 0 && `${item.options.extras!.length} extra${item.options.extras!.length !== 1 ? "s" : ""}`}
+                {(item.options.extras?.length ?? 0) > 0 && t("menuItemCardExtrasCount", { count: item.options.extras!.length })}
               </span>
             )}
         </div>
@@ -2389,7 +2409,7 @@ function ItemCard({
       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
         <button
           onClick={onEdit}
-          title="Edit product"
+          title={t("menuItemCardEditTitle")}
           style={iconBtnStyle}
         >
           <IconEdit size={14} />
@@ -2397,7 +2417,7 @@ function ItemCard({
         <button
           onClick={onTogglePublish}
           disabled={toggling}
-          title={item.is_published ? "Hide from menu" : "Show on menu"}
+          title={item.is_published ? t("menuItemCardHideTitle") : t("menuItemCardShowTitle")}
           style={{ ...iconBtnStyle, opacity: toggling ? 0.5 : 1 }}
         >
           {item.is_published ? <IconEyeOff size={14} /> : <IconEye size={14} />}
@@ -2405,7 +2425,7 @@ function ItemCard({
         <button
           onClick={onDelete}
           disabled={deleting}
-          title="Delete product"
+          title={t("menuItemCardDeleteTitle")}
           style={{
             ...iconBtnStyle,
             color: "var(--db-danger)",
@@ -2420,6 +2440,13 @@ function ItemCard({
 }
 
 // ── CategorySection ────────────────────────────────────────────────────────────
+
+// "Uncategorized" is a data literal created by inventory/page.tsx's addProduct()
+// as the default category name — map it to a translated label at display time only,
+// never touch the persisted menu_categories.name value itself.
+function displayCategoryName(name: string, t: (key: string) => string): string {
+  return name === "Uncategorized" ? t("menuUncategorizedLabel") : name;
+}
 
 function CategorySection({
   category,
@@ -2462,6 +2489,7 @@ function CategorySection({
   onItemSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[], groups: DashModifierGroup[]) => void;
   onItemEditCancel: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const [collapsed, setCollapsed] = useState(false);
   const isFirst = allCategories[0]?.id === category.id;
   const isLast = allCategories[allCategories.length - 1]?.id === category.id;
@@ -2494,7 +2522,7 @@ function CategorySection({
           <button
             onClick={() => onMoveUp(category)}
             disabled={isFirst}
-            title="Move category up"
+            title={t("menuCategoryMoveUpTitle")}
             style={{
               ...reorderBtnStyle,
               opacity: isFirst ? 0.25 : 1,
@@ -2506,7 +2534,7 @@ function CategorySection({
           <button
             onClick={() => onMoveDown(category)}
             disabled={isLast}
-            title="Move category down"
+            title={t("menuCategoryMoveDownTitle")}
             style={{
               ...reorderBtnStyle,
               opacity: isLast ? 0.25 : 1,
@@ -2553,9 +2581,9 @@ function CategorySection({
             if (category.icon) return <span style={{ fontSize: "18px", lineHeight: 1 }}>{category.icon}</span>;
             return <CategoryFallbackIcon size={20} stroke={1.5} color="var(--db-text-tertiary)" />;
           })()}
-          <span style={{ fontSize: "15px", fontWeight: 700 }}>{category.name}</span>
+          <span style={{ fontSize: "15px", fontWeight: 700 }}>{displayCategoryName(category.name, t)}</span>
           <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginLeft: 2 }}>
-            ({items.length} item{items.length !== 1 ? "s" : ""})
+            {t("menuCategoryItemCount", { count: items.length })}
           </span>
           {!category.is_published && (
             <span
@@ -2568,7 +2596,7 @@ function CategorySection({
                 color: "var(--db-text-tertiary)",
               }}
             >
-              Hidden
+              {t("hiddenBadge")}
             </span>
           )}
           <span style={{ marginLeft: "auto", color: "var(--db-text-tertiary)" }}>
@@ -2580,7 +2608,7 @@ function CategorySection({
         <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
           <button
             onClick={() => onEditCategory(category)}
-            title="Edit category"
+            title={t("menuCategoryEditTitle")}
             style={iconBtnStyle}
           >
             <IconEdit size={14} />
@@ -2588,14 +2616,14 @@ function CategorySection({
           <button
             onClick={() => onToggleCategoryPublish(category)}
             disabled={togglingCat}
-            title={category.is_published ? "Hide category" : "Show category"}
+            title={category.is_published ? t("menuCategoryHideTitle") : t("menuCategoryShowTitle")}
             style={{ ...iconBtnStyle, opacity: togglingCat ? 0.5 : 1 }}
           >
             {category.is_published ? <IconEyeOff size={14} /> : <IconEye size={14} />}
           </button>
           <button
             onClick={() => onDeleteCategory(category)}
-            title="Delete category"
+            title={t("menuCategoryDeleteTitle")}
             style={{ ...iconBtnStyle, color: "var(--db-danger)" }}
           >
             <IconTrash size={14} />
@@ -2608,7 +2636,7 @@ function CategorySection({
         <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "8px" }}>
           {items.length === 0 && (
             <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", fontStyle: "italic", margin: 0 }}>
-              No items yet — add the first product below.
+              {t("menuCategoryNoItemsMessage")}
             </p>
           )}
 
@@ -2643,7 +2671,7 @@ function CategorySection({
             }}
           >
             <IconPlus size={14} />
-            Add product
+            {t("menuCategoryAddProductButton")}
           </button>
         </div>
       )}
@@ -2667,6 +2695,7 @@ function CategorySection({
 // ── Main page component ────────────────────────────────────────────────────────
 
 export default function MenuPage() {
+  const t = useTranslations("dashboardCommon");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   // Category card selector: null = "Todas" (show every category).
@@ -3429,7 +3458,7 @@ export default function MenuPage() {
     ).length;
     return {
       id: cat.id,
-      name: cat.name,
+      name: displayCategoryName(cat.name, t),
       iconUrl: cat.icon_url,
       icon: cat.icon,
       publishedCount: published.length,
