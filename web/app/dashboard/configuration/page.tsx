@@ -359,6 +359,12 @@ export default function ConfigurationPage() {
     Sunday: t("configurationDaySunday"),
   };
 
+  const payoutLabels: Record<"daily" | "weekly" | "monthly", string> = {
+    daily: t("configurationPayoutDaily"),
+    weekly: t("configurationPayoutWeekly"),
+    monthly: t("configurationPayoutMonthly"),
+  };
+
   // ── Business state ────────────────────────────────────────────────────────────
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
@@ -504,14 +510,18 @@ export default function ConfigurationPage() {
     withSave(setSavingHours, { hours }, t("configurationHoursSavedSuccess"));
 
   const handleSaveCover = () =>
-    withSave(setSavingCover, { cover_url: coverUrl || null, icon_emoji: iconEmoji || null }, "Cover & emoji saved.");
+    withSave(setSavingCover, { cover_url: coverUrl || null, icon_emoji: iconEmoji || null }, t("configurationCoverSavedSuccess"));
 
   const handleSaveGallery = () =>
-    withSave(setSavingGallery, { gallery_urls: galleryUrls }, "Gallery saved.");
+    withSave(setSavingGallery, { gallery_urls: galleryUrls }, t("configurationGallerySavedSuccess"));
 
   const handleSaveMenu = async (v: boolean) => {
     setMenuEnabled(v);
-    await withSave(setSavingMenu, { menu_enabled: v }, `Menu ${v ? "enabled" : "disabled"}.`);
+    await withSave(
+      setSavingMenu,
+      { menu_enabled: v },
+      v ? t("configurationMenuEnabledSuccess") : t("configurationMenuDisabledSuccess")
+    );
   };
 
   const handleThemePick = useCallback(
@@ -522,22 +532,22 @@ export default function ConfigurationPage() {
       setSuccess(null);
       try {
         await patch({ dashboard_theme_id: id });
-        setSuccess("Dashboard theme saved.");
+        setSuccess(t("configurationThemeSavedSuccess"));
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setSavingTheme(false);
       }
     },
-    [patch, setThemeId]
+    [patch, setThemeId, t]
   );
 
   const handleSaveTips = () =>
-    withSave(setSavingTips, { tips_enabled: tipsEnabled, tip_percentages: tipPercentages }, "Tip settings saved.");
+    withSave(setSavingTips, { tips_enabled: tipsEnabled, tip_percentages: tipPercentages }, t("configurationTipsSavedSuccess"));
 
   const handleSavePayout = () => {
     // TODO(Task 3.6): call Stripe payout schedule API to update the connected account's payout interval
-    void withSave(setSavingPayout, { payout_frequency: payoutFrequency }, "Payout frequency saved.");
+    void withSave(setSavingPayout, { payout_frequency: payoutFrequency }, t("configurationPayoutSavedSuccess"));
   };
 
   // ── Hours helpers ─────────────────────────────────────────────────────────────
@@ -840,8 +850,8 @@ export default function ConfigurationPage() {
       {/* ── 4. Cover Photo + Icon Emoji ─────────────────────────────────────── */}
       <Section
         icon={<IconPhoto size={18} color="var(--db-accent)" />}
-        title="Cover Photo & Icon"
-        subtitle="Displayed on your map pin and public venue profile."
+        title={t("configurationCoverSectionTitle")}
+        subtitle={t("configurationCoverSectionSubtitle")}
       >
         {/* Cover URL preview */}
         {coverUrl && (
@@ -859,7 +869,7 @@ export default function ConfigurationPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverUrl}
-              alt="Cover preview"
+              alt={t("configurationCoverPreviewAlt")}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           </div>
@@ -875,16 +885,16 @@ export default function ConfigurationPage() {
           }}
         >
           <div>
-            <FieldLabel>Cover photo URL</FieldLabel>
+            <FieldLabel>{t("configurationCoverUrlLabel")}</FieldLabel>
             {/* TODO(storage): replace with Supabase Storage upload when wired */}
-            <TextInput value={coverUrl} onChange={setCoverUrl} placeholder="https://… (Supabase Storage URL)" type="url" />
+            <TextInput value={coverUrl} onChange={setCoverUrl} placeholder={t("configurationStorageUrlPlaceholder")} type="url" />
             <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "4px", marginBottom: 0 }}>
               {/* TODO(storage): real upload via Supabase Storage */}
-              Paste a URL for now; file upload coming when Storage is wired.
+              {t("configurationCoverUploadNote")}
             </p>
           </div>
           <div>
-            <FieldLabel>Icon emoji</FieldLabel>
+            <FieldLabel>{t("configurationIconEmojiLabel")}</FieldLabel>
             <input
               type="text"
               value={iconEmoji}
@@ -910,15 +920,15 @@ export default function ConfigurationPage() {
           disabled={noSupabase || noBiz}
           loading={savingCover}
         >
-          Save Cover & Emoji
+          {t("configurationSaveCoverButton")}
         </PrimaryBtn>
       </Section>
 
       {/* ── 5. Photo Gallery ────────────────────────────────────────────────── */}
       <Section
         icon={<IconPhoto size={18} color="var(--db-accent)" />}
-        title="Photo Gallery"
-        subtitle="Upload and reorder photos shown on your public venue profile."
+        title={t("configurationGallerySectionTitle")}
+        subtitle={t("configurationGallerySectionSubtitle")}
       >
         {/* Add URL row */}
         <div
@@ -930,12 +940,12 @@ export default function ConfigurationPage() {
           }}
         >
           <div style={{ flex: 1 }}>
-            <FieldLabel>Image URL</FieldLabel>
+            <FieldLabel>{t("configurationImageUrlLabel")}</FieldLabel>
             {/* TODO(storage): replace URL input with file upload when Supabase Storage is wired */}
             <TextInput
               value={newGalleryUrl}
               onChange={setNewGalleryUrl}
-              placeholder="https://… (Supabase Storage URL)"
+              placeholder={t("configurationStorageUrlPlaceholder")}
               type="url"
             />
           </div>
@@ -955,14 +965,14 @@ export default function ConfigurationPage() {
               whiteSpace: "nowrap",
             }}
           >
-            <IconPlus size={14} /> Add
+            <IconPlus size={14} /> {t("terminalModifierAddDefault")}
           </button>
         </div>
 
         {/* Gallery list */}
         {galleryUrls.length === 0 ? (
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "16px" }}>
-            No photos yet. Paste an image URL above to add one.
+            {t("configurationNoPhotosMessage")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
@@ -1012,7 +1022,7 @@ export default function ConfigurationPage() {
                   <button
                     onClick={() => moveGalleryUrl(idx, -1)}
                     disabled={idx === 0}
-                    aria-label="Move up"
+                    aria-label={t("configurationMoveUpAria")}
                     style={{
                       background: "none",
                       border: "none",
@@ -1027,7 +1037,7 @@ export default function ConfigurationPage() {
                   <button
                     onClick={() => moveGalleryUrl(idx, 1)}
                     disabled={idx === galleryUrls.length - 1}
-                    aria-label="Move down"
+                    aria-label={t("configurationMoveDownAria")}
                     style={{
                       background: "none",
                       border: "none",
@@ -1043,7 +1053,7 @@ export default function ConfigurationPage() {
                 {/* Delete */}
                 <button
                   onClick={() => removeGalleryUrl(idx)}
-                  aria-label="Remove photo"
+                  aria-label={t("configurationRemovePhotoAria")}
                   style={{
                     background: "none",
                     border: "none",
@@ -1066,29 +1076,29 @@ export default function ConfigurationPage() {
           disabled={noSupabase || noBiz}
           loading={savingGallery}
         >
-          Save Gallery
+          {t("configurationSaveGalleryButton")}
         </PrimaryBtn>
       </Section>
 
       {/* ── 6. Menu Enabled ─────────────────────────────────────────────────── */}
       <Section
         icon={<IconMenu2 size={18} color="var(--db-accent)" />}
-        title="Menu"
-        subtitle="Show the menu icon in your chat room. Requires at least one menu item (Task 3.1)."
+        title={t("navMenu")}
+        subtitle={t("configurationMenuSectionSubtitle")}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <Toggle
             checked={menuEnabled}
             onChange={handleSaveMenu}
-            label="Menu enabled"
+            label={t("configurationMenuEnabledLabel")}
             disabled={noSupabase || noBiz || savingMenu}
           />
           {savingMenu && (
-            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>Saving…</span>
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
           )}
         </div>
         <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginTop: "12px", marginBottom: 0 }}>
-          When disabled, the menu icon is hidden from chat room members.
+          {t("configurationMenuDisabledNote")}
           {/* Controls businesses.menu_enabled → read by chat room icon logic */}
         </p>
       </Section>
@@ -1096,8 +1106,8 @@ export default function ConfigurationPage() {
       {/* ── 7. Dashboard Theme ──────────────────────────────────────────────── */}
       <Section
         icon={<IconPalette size={18} color="var(--db-accent)" />}
-        title="Dashboard Theme"
-        subtitle="Applies instantly. Saved to your business profile so it persists across sessions."
+        title={t("configurationThemeSectionTitle")}
+        subtitle={t("configurationThemeSectionSubtitle")}
       >
         <div
           style={{
@@ -1107,12 +1117,12 @@ export default function ConfigurationPage() {
             marginBottom: "16px",
           }}
         >
-          {DASHBOARD_THEMES.map((t) => {
-            const isActive = themeId === t.id;
+          {DASHBOARD_THEMES.map((ot) => {
+            const isActive = themeId === ot.id;
             return (
               <button
-                key={t.id}
-                onClick={() => void handleThemePick(t.id)}
+                key={ot.id}
+                onClick={() => void handleThemePick(ot.id)}
                 style={{
                   background: "none",
                   border: isActive
@@ -1124,17 +1134,17 @@ export default function ConfigurationPage() {
                   transition: "border-color 0.15s",
                   outline: "none",
                 }}
-                aria-label={`Select ${t.name} theme`}
+                aria-label={t("configurationSelectThemeAria", { name: ot.name })}
                 aria-pressed={isActive}
               >
-                <ThemePreview themeKey={t.key} label={t.name} />
+                <ThemePreview themeKey={ot.key} label={ot.name} />
               </button>
             );
           })}
         </div>
         {savingTheme && (
           <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-            Saving theme…
+            {t("configurationSavingThemeState")}
           </span>
         )}
       </Section>
@@ -1142,20 +1152,20 @@ export default function ConfigurationPage() {
       {/* ── 8. Tip Configuration ────────────────────────────────────────────── */}
       <Section
         icon={<IconCurrencyDollar size={18} color="var(--db-accent)" />}
-        title="Tip Configuration"
-        subtitle="Enable tips and set the suggested percentages shown to customers at checkout."
+        title={t("configurationTipsSectionTitle")}
+        subtitle={t("configurationTipsSectionSubtitle")}
       >
         <div style={{ marginBottom: "20px" }}>
           <Toggle
             checked={tipsEnabled}
             onChange={setTipsEnabled}
-            label="Tips enabled"
+            label={t("configurationTipsEnabledLabel")}
           />
         </div>
 
         {tipsEnabled && (
           <>
-            <FieldLabel>Suggested percentages</FieldLabel>
+            <FieldLabel>{t("configurationSuggestedPercentagesLabel")}</FieldLabel>
             <div
               style={{
                 display: "flex",
@@ -1182,7 +1192,7 @@ export default function ConfigurationPage() {
                   {pct}%
                   <button
                     onClick={() => removeTipPercentage(pct)}
-                    aria-label={`Remove ${pct}%`}
+                    aria-label={t("configurationRemovePercentAria", { pct })}
                     style={{
                       background: "none",
                       border: "none",
@@ -1202,7 +1212,7 @@ export default function ConfigurationPage() {
 
             <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", marginBottom: "16px" }}>
               <div style={{ flex: "0 0 120px" }}>
-                <FieldLabel>Add percentage</FieldLabel>
+                <FieldLabel>{t("configurationAddPercentageLabel")}</FieldLabel>
                 <TextInput
                   value={tipInput}
                   onChange={setTipInput}
@@ -1225,7 +1235,7 @@ export default function ConfigurationPage() {
                   cursor: "pointer",
                 }}
               >
-                <IconPlus size={14} /> Add
+                <IconPlus size={14} /> {t("terminalModifierAddDefault")}
               </button>
             </div>
           </>
@@ -1236,15 +1246,15 @@ export default function ConfigurationPage() {
           disabled={noSupabase || noBiz}
           loading={savingTips}
         >
-          Save Tip Settings
+          {t("configurationSaveTipsButton")}
         </PrimaryBtn>
       </Section>
 
       {/* ── 9. Payout Frequency ─────────────────────────────────────────────── */}
       <Section
         icon={<IconCalendarTime size={18} color="var(--db-accent)" />}
-        title="Payout Frequency"
-        subtitle="How often Stripe transfers your earnings to your bank account."
+        title={t("configurationPayoutSectionTitle")}
+        subtitle={t("configurationPayoutSectionSubtitle")}
       >
         <div
           style={{
@@ -1275,21 +1285,21 @@ export default function ConfigurationPage() {
                 }}
                 aria-pressed={isActive}
               >
-                {opt.label}
+                {payoutLabels[opt.value]}
               </button>
             );
           })}
         </div>
         <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginBottom: "16px" }}>
           {/* TODO(Task 3.6): call Stripe payout schedule API to update the connected account's interval_count + interval */}
-          Payout schedule is managed via Stripe Connect. Changes apply from the next settlement cycle.
+          {t("configurationPayoutNote")}
         </p>
         <PrimaryBtn
           onClick={handleSavePayout}
           disabled={noSupabase || noBiz}
           loading={savingPayout}
         >
-          Save Payout Frequency
+          {t("configurationSavePayoutButton")}
         </PrimaryBtn>
       </Section>
     </div>
