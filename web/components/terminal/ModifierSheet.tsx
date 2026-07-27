@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconX } from "@tabler/icons-react";
 import { buildOrderOptions, type OrderLineOptions } from "@/lib/orderOptions";
 
@@ -43,7 +44,7 @@ const fmt = (c: number) => money.format(c / 100);
 export function ModifierSheet({
   dish,
   initialLabels,
-  confirmVerb = "Añadir",
+  confirmVerb,
   onCancel,
   onConfirm,
 }: {
@@ -56,10 +57,14 @@ export function ModifierSheet({
    * changed, and we'd rather lose a stale choice than fabricate one.
    */
   initialLabels?: string[];
+  /** Defaults to the translated "Add" verb — callers override for e.g. "Save". */
   confirmVerb?: string;
   onCancel: () => void;
   onConfirm: (options: OrderLineOptions, unitCents: number) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+  const resolvedConfirmVerb = confirmVerb ?? t("terminalModifierAddDefault");
   const preset = initialLabels ?? null;
 
   const [single, setSingle] = useState<Record<string, ModChoice | null>>(() => {
@@ -120,11 +125,11 @@ export function ModifierSheet({
   });
 
   return (
-    <div style={sheetOverlay} role="dialog" aria-label={`Opciones de ${dish.name}`}>
+    <div style={sheetOverlay} role="dialog" aria-label={t("terminalModifierOptionsAria", { name: dish.name })}>
       <div style={sheetPanel}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 900 }}>{dish.name}</div>
-          <button type="button" onClick={onCancel} aria-label="Cancelar" style={closeBtn}>
+          <button type="button" onClick={onCancel} aria-label={tCommon("cancel")} style={closeBtn}>
             <IconX size={20} />
           </button>
         </div>
@@ -135,9 +140,9 @@ export function ModifierSheet({
               <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>
                 {g.label}
                 <span style={{ fontWeight: 600, color: "var(--db-text-tertiary)", marginLeft: 6 }}>
-                  {g.type === "single"
-                    ? g.min_select > 0 ? "· obligatorio" : "· elige uno"
-                    : `· hasta ${g.max_select}`}
+                  · {g.type === "single"
+                    ? (g.min_select > 0 ? t("terminalModifierRequired") : t("terminalModifierChooseOne"))
+                    : t("terminalModifierUpTo", { max: g.max_select })}
                 </span>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -186,7 +191,7 @@ export function ModifierSheet({
           onClick={() => onConfirm(buildOrderOptions({ groupSelections }), unitCents)}
           style={{ ...primaryBtn, width: "100%", marginTop: 14, opacity: unmet.length > 0 ? 0.55 : 1 }}
         >
-          {unmet.length > 0 ? `Elige: ${unmet[0].label}` : `${confirmVerb} · ${fmt(unitCents)}`}
+          {unmet.length > 0 ? t("terminalModifierChooseLabel", { label: unmet[0].label }) : `${resolvedConfirmVerb} · ${fmt(unitCents)}`}
         </button>
       </div>
     </div>

@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 
-export const metadata: Metadata = {
-  title: "Terminal del mesero — JChat",
-  description: "Terminal del mesero (B6)",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboardCommon");
+  return {
+    title: t("terminalMetaTitle"),
+    description: t("terminalMetaDescription"),
+  };
+}
 
 // Waiter terminal (B6.2). Lives OUTSIDE /dashboard and does NOT use the plan
 // gate — an employee has no business plan. The gate here is: authenticated AND
@@ -61,7 +65,8 @@ export default async function TerminalLayout({
 
 // Honest screen for a logged-in user who isn't an employee — NOT a 403, NOT a
 // redirect to the dashboard.
-function NotEmployeeScreen() {
+async function NotEmployeeScreen() {
+  const t = await getTranslations("dashboardCommon");
   return (
     <div
       style={{
@@ -86,10 +91,9 @@ function NotEmployeeScreen() {
         }}
       >
         <div style={{ fontSize: 40 }}>🔒</div>
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Terminal del mesero</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{t("terminalNotEmployeeTitle")}</h1>
         <p style={{ fontSize: 15, color: "var(--db-text-secondary)", margin: 0, lineHeight: 1.5 }}>
-          Tu cuenta no está registrada como empleado de ningún negocio. Pídele a tu encargado que
-          te añada.
+          {t("terminalNotEmployeeBody")}
         </p>
       </div>
     </div>

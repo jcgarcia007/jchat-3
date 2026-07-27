@@ -13,8 +13,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { TableDetailSheet, type SheetTable } from "@/components/terminal/TableDetailSheet";
+import type { TFn } from "@/lib/tabSemantics";
 
 interface Biz {
   id: string;
@@ -41,15 +43,19 @@ interface OrderRow {
 
 type TableState = "free" | "busy" | "toCollect";
 
-const STATE_META: Record<TableState, { label: string; color: string }> = {
-  free: { label: "Libre", color: "var(--db-success)" },
-  busy: { label: "Ocupada", color: "var(--db-warning)" },
-  toCollect: { label: "Pendiente de cobro", color: "var(--db-danger)" },
-};
+function getStateMeta(t: TFn): Record<TableState, { label: string; color: string }> {
+  return {
+    free: { label: t("terminalStateFree"), color: "var(--db-success)" },
+    busy: { label: t("terminalStateBusy"), color: "var(--db-warning)" },
+    toCollect: { label: t("terminalStateToCollect"), color: "var(--db-danger)" },
+  };
+}
 
 const ACTIVE_ORDER_EXCLUDE = "(delivered,cancelled)";
 
 export default function TerminalTablesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   // Businesses where the user is an accepted employee.
   const [businesses, setBusinesses] = useState<Biz[]>([]);
   const [activeBiz, setActiveBiz] = useState<string | null>(null);
@@ -142,12 +148,12 @@ export default function TerminalTablesPage() {
   }, [load, reloadKey]);
 
   // Map tab_id → table_id (from readable tabs) so tab-linked orders count too.
-  const tabToTable = useMemo(() => new Map(tabs.map((t) => [t.id, t.table_id])), [tabs]);
+  const tabToTable = useMemo(() => new Map(tabs.map((tb) => [tb.id, tb.table_id])), [tabs]);
 
   const stateOf = useCallback(
     (tableId: string): TableState => {
-      const tableTabs = tabs.filter((t) => t.table_id === tableId);
-      const hasWaiterOpen = tableTabs.some((t) => t.kind === "waiter" && t.status === "open");
+      const tableTabs = tabs.filter((tb) => tb.table_id === tableId);
+      const hasWaiterOpen = tableTabs.some((tb) => tb.kind === "waiter" && tb.status === "open");
       if (hasWaiterOpen) return "toCollect";
       const hasOpenTab = tableTabs.length > 0;
       const hasActiveOrder = orders.some(
@@ -160,18 +166,18 @@ export default function TerminalTablesPage() {
 
   const floors = useMemo(() => {
     const seen: string[] = [];
-    for (const t of tables) if (!seen.includes(t.floor)) seen.push(t.floor);
+    for (const row of tables) if (!seen.includes(row.floor)) seen.push(row.floor);
     return seen;
   }, [tables]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   if (!bizLoaded || loading) {
-    return <Screen><Notice>Cargando…</Notice></Screen>;
+    return <Screen><Notice>{tCommon("loading")}</Notice></Screen>;
   }
   if (businesses.length === 0) {
     return (
       <Screen>
-        <Notice>No estás asignado como empleado activo de ningún negocio.</Notice>
+        <Notice>{t("terminalNoBusinessAssigned")}</Notice>
       </Screen>
     );
   }
@@ -207,19 +213,19 @@ export default function TerminalTablesPage() {
         </div>
       )}
 
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "4px 0 16px" }}>Mesas</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "4px 0 16px" }}>{t("railMesas")}</h1>
 
       {loadError ? (
         <div style={{ textAlign: "center", padding: "12px 0" }}>
           <p style={{ color: "var(--db-danger)", fontSize: 15, margin: "0 0 12px" }}>
-            No se pudieron cargar las mesas. Revisa tu conexión e inténtalo de nuevo.
+            {t("tablesLoadError")}
           </p>
           <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={retryBtn}>
-            Reintentar
+            {t("retry")}
           </button>
         </div>
       ) : tables.length === 0 ? (
-        <Notice>No tienes mesas asignadas ni hay mesas libres de asignación.</Notice>
+        <Notice>{t("terminalNoTablesAssigned")}</Notice>
       ) : (
         floors.map((floor) => (
           <div key={floor} style={{ marginBottom: 28 }}>
@@ -235,18 +241,19 @@ export default function TerminalTablesPage() {
                 gap: 14,
               }}
             >
-              {tables.filter((t) => t.floor === floor).map((t) => {
-                const unassigned = !assignedIds.has(t.id);
+              {tables.filter((row) => row.floor === floor).map((row) => {
+                const unassigned = !assignedIds.has(row.id);
                 return (
                   <TableCard
-                    key={t.id}
-                    table={t}
-                    state={stateOf(t.id)}
+                    key={row.id}
+                    table={row}
+                    state={stateOf(row.id)}
                     unassigned={unassigned}
-                    selected={detail?.id === t.id}
+                    selected={detail?.id === row.id}
                     onSelect={() =>
-                      setDetail({ id: t.id, label: t.label, floor: t.floor, seats: t.seats, unassigned })
+                      setDetail({ id: row.id, label: row.label, floor: row.floor, seats: row.seats, unassigned })
                     }
+                    t={t}
                   />
                 );
               })}
@@ -277,14 +284,16 @@ function TableCard({
   unassigned,
   selected,
   onSelect,
+  t,
 }: {
   table: TableRow;
   state: TableState;
   unassigned: boolean;
   selected: boolean;
   onSelect: () => void;
+  t: TFn;
 }) {
-  const meta = STATE_META[state];
+  const meta = getStateMeta(t)[state];
   return (
     <button
       type="button"
@@ -313,14 +322,14 @@ function TableCard({
         />
       </div>
       <span style={{ fontSize: 13, color: "var(--db-text-secondary)" }}>
-        {table.seats} {table.seats === 1 ? "silla" : "sillas"}
+        {t("tablesSeatsCountPlural", { count: table.seats })}
       </span>
       <span style={{ marginTop: "auto", fontSize: 13, fontWeight: 700, color: meta.color }}>
         {meta.label}
       </span>
       {unassigned && (
         <span style={{ fontSize: 11, fontWeight: 600, color: "var(--db-text-tertiary)" }}>
-          Sin asignar
+          {t("terminalUnassignedBadge")}
         </span>
       )}
     </button>

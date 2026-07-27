@@ -33,6 +33,7 @@ import {
   modifierLabels,
   type TabKind,
   type TabStatus,
+  type TFn,
 } from "@/lib/tabSemantics";
 
 export interface SheetTable {
@@ -74,15 +75,27 @@ const ORDER_COLS = "id, tab_id, table_id, contact_name, total_cents, status, pai
 
 // Translate the RPC's raised exceptions into friendly copy — never the raw
 // Postgres error.
-function rpcMessage(msg: string): string {
-  if (msg.includes("NOT_ASSIGNED")) return "Esta mesa está asignada a otro mesero.";
-  if (msg.includes("NOT_EMPLOYEE")) return "No eres empleado de este negocio.";
+function rpcMessage(msg: string, t: TFn): string {
+  if (msg.includes("NOT_ASSIGNED")) return t("terminalTableAssignedOther");
+  if (msg.includes("NOT_EMPLOYEE")) return t("terminalNotEmployeeOfBusiness");
   // NAME_REQUIRED ya no puede ocurrir: desde 082 el nombre es opcional y lo genera
   // el servidor. NAME_TOO_LONG sigue vivo por si algún día se pasa uno a mano.
-  if (msg.includes("NAME_TOO_LONG")) return "El nombre es demasiado largo (máx. 40 caracteres).";
-  if (msg.includes("TABLE_NOT_FOUND")) return "Esta mesa ya no existe.";
-  if (msg.includes("NOT_AUTHENTICATED")) return "Tu sesión expiró. Vuelve a entrar.";
-  return "No se pudo crear la cuenta. Inténtalo de nuevo.";
+  if (msg.includes("NAME_TOO_LONG")) return t("terminalNameTooLong");
+  if (msg.includes("TABLE_NOT_FOUND")) return t("terminalTableNotFound");
+  if (msg.includes("NOT_AUTHENTICATED")) return t("terminalSessionExpired");
+  return t("terminalCreateTabError");
+}
+
+/** order.status / item.item_status share the same pending|preparing|ready|… enum. */
+function orderStatusLabel(status: string, t: TFn): string {
+  switch (status) {
+    case "pending": return t("orderStatusPending");
+    case "preparing": return t("orderStatusPreparing");
+    case "ready": return t("orderStatusReady");
+    case "delivered": return t("orderStatusDelivered");
+    case "cancelled": return t("orderStatusCancelled");
+    default: return status;
+  }
 }
 
 export function TableDetailSheet({
@@ -94,9 +107,8 @@ export function TableDetailSheet({
   businessId: string;
   onClose: () => void;
 }) {
-  // B1: only this hook + the two tabSemantics calls below are wired for i18n —
-  // the rest of this file's copy stays hardcoded in Spanish until B2.
   const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -222,26 +234,26 @@ export function TableDetailSheet({
    * defence — update_waiter_order_item re-checks every one of these.
    */
   function editState(order: Order): { editable: true } | { editable: false; reason: string } {
-    if (order.paid_at != null) return { editable: false, reason: "Pedido pagado — ya no se puede modificar." };
+    if (order.paid_at != null) return { editable: false, reason: t("terminalOrderPaidLocked") };
     if (["cancelled", "delivered", "refunded"].includes(order.status)) {
-      return { editable: false, reason: "Este pedido ya está cerrado." };
+      return { editable: false, reason: t("terminalOrderClosedLocked") };
     }
     const started = items.some(
       (it) => it.order_id === order.id && (it.item_status === "preparing" || it.item_status === "ready"),
     );
-    if (started) return { editable: false, reason: "La cocina ya empezó este pedido." };
+    if (started) return { editable: false, reason: t("terminalKitchenStartedLocked") };
     return { editable: true };
   }
 
   /** Translate the EF's errors. Never show a raw one. */
   function editMessage(msg: string): string {
-    if (msg.includes("La cocina ya empezó")) return "La cocina ya empezó este pedido, no se puede modificar.";
-    if (msg.includes("ya está pagado")) return "Este pedido ya está pagado.";
-    if (msg.includes("No puedes editar")) return "No tienes permiso para modificar este pedido.";
-    if (msg.includes("ya está cerrado")) return "Este pedido ya está cerrado.";
-    if (msg.includes("Item not available")) return "Ese plato se acaba de agotar.";
-    if (msg.includes("not found")) return "Ese plato ya no existe en el pedido.";
-    return "No se pudo modificar el pedido. Inténtalo de nuevo.";
+    if (msg.includes("La cocina ya empezó")) return t("terminalKitchenStartedError");
+    if (msg.includes("ya está pagado")) return t("terminalOrderAlreadyPaid");
+    if (msg.includes("No puedes editar")) return t("terminalNoPermissionEditOrder");
+    if (msg.includes("ya está cerrado")) return t("terminalOrderClosedLocked");
+    if (msg.includes("Item not available")) return t("terminalDishSoldOut");
+    if (msg.includes("not found")) return t("terminalDishNotInOrder");
+    return t("terminalEditOrderError");
   }
 
   /**
@@ -270,7 +282,7 @@ export function TableDetailSheet({
       // Totals (line, order, tab) all come back from the server.
       await load();
     } catch {
-      setEditError("No se pudo modificar el pedido. Revisa la conexión.");
+      setEditError(t("terminalEditOrderConnectionError"));
     } finally {
       setBusyItems((s) => {
         const n = new Set(s);
@@ -289,7 +301,7 @@ export function TableDetailSheet({
     try {
       const groups = (await loadModifierGroups([item.menu_item_id])).get(item.menu_item_id) ?? [];
       if (groups.length === 0) {
-        setEditError("Este plato no tiene opciones que cambiar.");
+        setEditError(t("terminalNoModifiersAvailable"));
         return;
       }
       // Stored options are verified LABELS; the sheet matches them back to groups.
@@ -299,7 +311,7 @@ export function TableDetailSheet({
         .filter(Boolean);
       setEditingMods({ item, name: info.name, price_cents: info.price_cents, groups, labels });
     } catch {
-      setEditError("No se pudieron cargar las opciones del plato.");
+      setEditError(t("terminalLoadModifiersError"));
     } finally {
       setLoadingMods(false);
     }
@@ -324,17 +336,19 @@ export function TableDetailSheet({
     });
     setCreating(false);
     if (error) {
-      setActionError(rpcMessage(error.message));
+      setActionError(rpcMessage(error.message, t));
       return;
     }
     const res = data as unknown as { claimed_table?: boolean; tab_name?: string } | null;
     // Tell the waiter WHICH tab was created — with several groups at a table, "done"
     // isn't enough to know where the next dishes will go.
-    const opened = res?.tab_name ? `${res.tab_name} abierta.` : "Cuenta abierta.";
+    const opened = res?.tab_name
+      ? t("terminalTabOpenedNamed", { name: res.tab_name })
+      : t("terminalTabOpenedGeneric");
     if (res?.claimed_table) {
       setJustClaimed(true);
       // D-61: claiming the table is a responsibility the waiter just took on.
-      setNotice(`${opened} Te has asignado esta mesa.`);
+      setNotice(t("terminalTabOpenedAndClaimed", { opened }));
     } else {
       setNotice(opened);
     }
@@ -342,19 +356,19 @@ export function TableDetailSheet({
   }
 
   return (
-    <div style={overlay} role="dialog" aria-label={`Detalle de mesa ${table.label}`}>
+    <div style={overlay} role="dialog" aria-label={t("tablesDetailAria", { label: table.label })}>
       {/* Header */}
       <div style={header}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 900 }}>{table.label}</div>
           <div style={{ fontSize: 14, color: "var(--db-text-secondary)" }}>
-            {table.floor} · {table.seats} {table.seats === 1 ? "silla" : "sillas"}
+            {table.floor} · {t("tablesSeatsCountPlural", { count: table.seats })}
             {table.unassigned && !justClaimed && (
-              <span style={{ marginLeft: 8, color: "var(--db-text-tertiary)", fontWeight: 600 }}>· Sin asignar</span>
+              <span style={{ marginLeft: 8, color: "var(--db-text-tertiary)", fontWeight: 600 }}>· {t("terminalUnassignedBadge")}</span>
             )}
           </div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Cerrar" style={closeBtn}>
+        <button type="button" onClick={onClose} aria-label={t("tablesQrModalCloseAria")} style={closeBtn}>
           <IconX size={22} />
         </button>
       </div>
@@ -362,9 +376,9 @@ export function TableDetailSheet({
       {/* Totals */}
       {!loading && !loadError && (
         <div style={totalsRow}>
-          <Metric label="Consumido" value={fmtCents(consumed)} />
-          <Metric label="Ya cobrado" value={fmtCents(collected)} />
-          <Metric label="Por cobrar" value={fmtCents(owed)} warn={owed > 0} />
+          <Metric label={t("terminalMetricConsumed")} value={fmtCents(consumed)} />
+          <Metric label={t("tablesMetricCollected")} value={fmtCents(collected)} />
+          <Metric label={t("tabStatusWaiterOpen")} value={fmtCents(owed)} warn={owed > 0} />
         </div>
       )}
 
@@ -387,19 +401,19 @@ export function TableDetailSheet({
         )}
 
         {loading ? (
-          <Notice>Cargando…</Notice>
+          <Notice>{tCommon("loading")}</Notice>
         ) : loadError ? (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: "var(--db-danger)", fontSize: 15, margin: "0 0 12px" }}>
-              No se pudo cargar el detalle de la mesa. Revisa tu conexión e inténtalo de nuevo.
+              {t("terminalLoadDetailError")}
             </p>
             <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={secondaryBtn}>
-              Reintentar
+              {t("retry")}
             </button>
           </div>
         ) : (
           <>
-            {nothing && <Notice>Esta mesa no tiene cuentas ni pedidos.</Notice>}
+            {nothing && <Notice>{t("terminalNothingAtTable")}</Notice>}
 
             {/* Tabs (cuentas) */}
             {tabs.map((tab) => {
@@ -416,7 +430,7 @@ export function TableDetailSheet({
                     </div>
                   </div>
                   {tabOrders.length === 0 ? (
-                    <Empty>Sin pedidos todavía.</Empty>
+                    <Empty>{t("terminalNoOrdersYet")}</Empty>
                   ) : (
                     tabOrders.map((o) => (
                       <OrderBlock
@@ -424,6 +438,7 @@ export function TableDetailSheet({
                         order={o}
                         items={items}
                         names={menuInfo}
+                        t={t}
                         edit={{
                           state: editState(o),
                           busy: busyItems,
@@ -442,7 +457,7 @@ export function TableDetailSheet({
                       onClick={() => setTakingOrderFor({ id: tab.id, name: tab.name })}
                       style={addOrderBtn}
                     >
-                      <IconPlus size={18} /> Añadir pedido
+                      <IconPlus size={18} /> {t("terminalAddOrderButton")}
                     </button>
                   )}
                 </Card>
@@ -452,10 +467,10 @@ export function TableDetailSheet({
             {/* Direct orders (customer scanned the QR and paid — no waiter tab) */}
             {directOrders.length > 0 && (
               <div>
-                <SectionTitle>Pedidos directos (QR)</SectionTitle>
+                <SectionTitle>{t("terminalDirectOrdersSection")}</SectionTitle>
                 {directOrders.map((o) => (
                   <Card key={o.id}>
-                    <OrderBlock order={o} items={items} names={menuInfo} showName />
+                    <OrderBlock order={o} items={items} names={menuInfo} showName t={t} />
                   </Card>
                 ))}
               </div>
@@ -469,7 +484,7 @@ export function TableDetailSheet({
                 onClick={() => void createTab()}
                 style={{ ...primaryBtn, width: "100%", opacity: creating ? 0.6 : 1 }}
               >
-                <IconPlus size={18} /> {creating ? "Abriendo…" : "Nueva cuenta"}
+                <IconPlus size={18} /> {creating ? t("terminalOpeningState") : t("terminalNewTabButton")}
               </button>
             </div>
           </>
@@ -478,16 +493,16 @@ export function TableDetailSheet({
 
       {/* Remove confirmation — and the honest warning when it's the last dish. */}
       {removing && (
-        <div style={confirmOverlay} role="dialog" aria-label="Confirmar quitar plato">
+        <div style={confirmOverlay} role="dialog" aria-label={t("terminalRemoveDishAria")}>
           <div style={confirmPanel}>
-            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>¿Quitar este plato?</div>
+            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>{t("terminalRemoveDishTitle")}</div>
             <p style={{ fontSize: 14, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-              {menuInfo.get(removing.item.menu_item_id)?.name ?? "Este plato"} ({removing.item.qty}×).
+              {menuInfo.get(removing.item.menu_item_id)?.name ?? t("terminalRemoveDishFallback")} ({removing.item.qty}×).
               {removing.isLast && (
                 <>
                   {" "}
                   <strong style={{ color: "var(--db-warning)" }}>
-                    Es el último plato: el pedido quedará cancelado.
+                    {t("terminalLastDishWarning")}
                   </strong>
                 </>
               )}
@@ -501,14 +516,14 @@ export function TableDetailSheet({
               }}
               style={{ ...primaryBtn, width: "100%", background: "var(--db-danger)", color: "var(--db-bg-base)" }}
             >
-              Sí, quitar
+              {t("terminalConfirmRemoveButton")}
             </button>
             <button
               type="button"
               onClick={() => setRemoving(null)}
               style={{ ...secondaryBtn, width: "100%", marginTop: 8, justifyContent: "center" }}
             >
-              Cancelar
+              {tCommon("cancel")}
             </button>
           </div>
         </div>
@@ -523,7 +538,7 @@ export function TableDetailSheet({
             groups: editingMods.groups,
           }}
           initialLabels={editingMods.labels}
-          confirmVerb="Guardar"
+          confirmVerb={tCommon("save")}
           onCancel={() => setEditingMods(null)}
           onConfirm={(options) => {
             const it = editingMods.item;
@@ -556,6 +571,7 @@ function OrderBlock({
   names,
   showName = false,
   edit,
+  t,
 }: {
   order: Order;
   items: Item[];
@@ -569,6 +585,7 @@ function OrderBlock({
     onRemove: (item: Item, isLast: boolean) => void;
     onModifiers: (item: Item) => void;
   };
+  t: TFn;
 }) {
   const oItems = items.filter((it) => it.order_id === order.id);
   const paid = order.paid_at != null;
@@ -577,12 +594,13 @@ function OrderBlock({
     <div style={{ padding: "8px 0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <span style={{ fontSize: 13, color: "var(--db-text-tertiary)" }}>
-          {showName && order.contact_name ? order.contact_name + " · " : ""}Pedido · {order.status}
+          {showName && order.contact_name ? order.contact_name + " · " : ""}
+          {t("tablesDetailOrderStatusLine", { status: orderStatusLabel(order.status, t) })}
         </span>
         {paid ? (
-          <Badge tone="paid"><IconCheck size={12} style={{ marginRight: 2 }} />Pagado</Badge>
+          <Badge tone="paid"><IconCheck size={12} style={{ marginRight: 2 }} />{t("tabStatusCustomerPaid")}</Badge>
         ) : (
-          <Badge tone="warn">Por cobrar</Badge>
+          <Badge tone="warn">{t("tabStatusWaiterOpen")}</Badge>
         )}
       </div>
 
@@ -596,11 +614,11 @@ function OrderBlock({
               <span style={{ color: "var(--db-text-secondary)", minWidth: 24 }}>{it.qty}×</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <span>{names.get(it.menu_item_id)?.name ?? "Plato"}</span>
+                  <span>{names.get(it.menu_item_id)?.name ?? t("tablesDetailDishFallback")}</span>
                   <span style={{ color: "var(--db-text-secondary)" }}>{fmtCents(it.price_cents)}</span>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--db-text-tertiary)" }}>
-                  {it.item_status}
+                  {orderStatusLabel(it.item_status, t)}
                   {mods ? ` · ${mods}` : ""}
                   {note ? ` · ${note}` : ""}
                 </div>
@@ -615,7 +633,7 @@ function OrderBlock({
                   type="button"
                   disabled={busy || it.qty <= 1}
                   onClick={() => edit.onQty(it, it.qty - 1)}
-                  aria-label="Quitar uno"
+                  aria-label={t("terminalRemoveOneAria")}
                   style={{ ...miniIconBtn, opacity: it.qty <= 1 ? 0.4 : 1 }}
                 >
                   <IconMinus size={16} />
@@ -625,7 +643,7 @@ function OrderBlock({
                   type="button"
                   disabled={busy}
                   onClick={() => edit.onQty(it, it.qty + 1)}
-                  aria-label="Añadir uno"
+                  aria-label={t("terminalAddOneAria")}
                   style={miniIconBtn}
                 >
                   <IconPlus size={16} />
@@ -636,7 +654,7 @@ function OrderBlock({
                   onClick={() => edit.onModifiers(it)}
                   style={miniActionBtn}
                 >
-                  <IconAdjustments size={15} /> Opciones
+                  <IconAdjustments size={15} /> {t("terminalOptionsButton")}
                 </button>
                 <button
                   type="button"
@@ -644,7 +662,7 @@ function OrderBlock({
                   onClick={() => edit.onRemove(it, oItems.length === 1)}
                   style={{ ...miniActionBtn, color: "var(--db-danger)" }}
                 >
-                  <IconTrash size={15} /> Quitar
+                  <IconTrash size={15} /> {t("terminalRemoveButton")}
                 </button>
               </div>
             )}
