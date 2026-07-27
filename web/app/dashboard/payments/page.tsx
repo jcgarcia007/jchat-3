@@ -13,6 +13,7 @@
 
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconBuildingStore,
@@ -149,6 +150,8 @@ function PrimaryButton({
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 function PaymentsInner() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const searchParams = useSearchParams();
 
   // An owner can have several businesses (Pro plan: up to 10). Each needs its OWN
@@ -206,11 +209,11 @@ function PaymentsInner() {
       }
     } catch (err) {
       console.error("[payments] loadBusinesses error:", err);
-      showToast("error", "No se pudieron cargar tus negocios.");
+      showToast("error", t("paymentsLoadBusinessesError"));
     } finally {
       setLoading(false);
     }
-  }, [searchParams, showToast]);
+  }, [searchParams, showToast, t]);
 
   useEffect(() => {
     void loadBusinesses();
@@ -229,12 +232,12 @@ function PaymentsInner() {
         setStatus(data as AccountStatus);
       } catch (err) {
         console.error("[payments] loadStatus error:", err);
-        showToast("error", "No se pudo cargar el estado de Stripe.");
+        showToast("error", t("paymentsLoadStatusError"));
       } finally {
         setStatusLoading(false);
       }
     },
-    [showToast],
+    [showToast, t],
   );
 
   // Reload status whenever the selected business changes.
@@ -247,8 +250,8 @@ function PaymentsInner() {
   useEffect(() => {
     const connect = searchParams.get("connect");
     if (!connect) return;
-    if (connect === "success") showToast("success", "Verificación completada.");
-    else if (connect === "refresh") showToast("error", "El enlace expiró, inténtalo de nuevo.");
+    if (connect === "success") showToast("success", t("paymentsVerificationCompleteToast"));
+    else if (connect === "refresh") showToast("error", t("paymentsLinkExpiredToast"));
     // Clean the URL so a refresh doesn't re-toast (keep business_id for preselection).
     const url = new URL(window.location.href);
     url.searchParams.delete("connect");
@@ -276,15 +279,15 @@ function PaymentsInner() {
       if (url) {
         window.location.href = url;
       } else {
-        showToast("error", "No se recibió el enlace de onboarding.");
+        showToast("error", t("paymentsNoOnboardingLinkError"));
         setConnecting(false);
       }
     } catch (err) {
       console.error("[payments] handleConnect error:", err);
-      showToast("error", "No se pudo iniciar la conexión con Stripe.");
+      showToast("error", t("paymentsConnectError"));
       setConnecting(false);
     }
-  }, [selectedBusiness, userEmail, showToast]);
+  }, [selectedBusiness, userEmail, showToast, t]);
 
   const handleOpenPanel = useCallback(async () => {
     if (!selectedBusinessId) return;
@@ -296,14 +299,14 @@ function PaymentsInner() {
       if (error) throw error;
       const url = (data as { url?: string }).url;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
-      else showToast("error", "No se pudo abrir el panel de Stripe.");
+      else showToast("error", t("paymentsOpenPanelError"));
     } catch (err) {
       console.error("[payments] handleOpenPanel error:", err);
-      showToast("error", "No se pudo abrir el panel de Stripe.");
+      showToast("error", t("paymentsOpenPanelError"));
     } finally {
       setOpeningPanel(false);
     }
-  }, [selectedBusinessId, showToast]);
+  }, [selectedBusinessId, showToast, t]);
 
   // ── Derived state ─────────────────────────────────────────────────────────────
   const hasAccount = !!status?.account_id;
@@ -314,16 +317,16 @@ function PaymentsInner() {
   return (
     <div>
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "6px" }}>
-        Pagos
+        {t("railPagos")}
       </h1>
       <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "24px" }}>
-        Conecta tu cuenta de Stripe para recibir el dinero de los pedidos.
+        {t("paymentsSubtitle")}
       </p>
 
       {!isSupabaseConfigured && (
         <AlertBanner
           icon={<IconAlertCircle size={18} />}
-          message="Modo demo — conecta Supabase para gestionar tu cuenta de Stripe."
+          message={t("paymentsDemoModeMessage")}
           color="var(--db-warning)"
         />
       )}
@@ -332,7 +335,7 @@ function PaymentsInner() {
       {loading ? (
         <Card style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)" }}>
           <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-          <span style={{ fontSize: "14px" }}>Cargando…</span>
+          <span style={{ fontSize: "14px" }}>{tCommon("loading")}</span>
         </Card>
       ) : businesses.length === 0 ? (
         /* B) No business */
@@ -340,10 +343,10 @@ function PaymentsInner() {
           <IconBuildingStore size={22} style={{ color: "var(--db-text-secondary)" }} />
           <div>
             <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-              No hay un negocio asociado a esta cuenta
+              {t("paymentsNoBusinessTitle")}
             </div>
             <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-              Registra tu negocio para poder conectar Stripe y recibir pagos.
+              {t("paymentsNoBusinessMessage")}
             </div>
           </div>
         </Card>
@@ -356,7 +359,7 @@ function PaymentsInner() {
                 htmlFor="payments-business"
                 style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "6px" }}
               >
-                Negocio
+                {t("createBusinessCardTitle")}
               </label>
               <select
                 id="payments-business"
@@ -386,7 +389,7 @@ function PaymentsInner() {
           {statusLoading || !status ? (
             <Card style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)" }}>
               <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-              <span style={{ fontSize: "14px" }}>Cargando estado de pagos…</span>
+              <span style={{ fontSize: "14px" }}>{t("paymentsLoadingStatus")}</span>
             </Card>
           ) : isActive ? (
         /* E) Active */
@@ -394,20 +397,20 @@ function PaymentsInner() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
             <IconCircleCheck size={22} style={{ color: "var(--db-success)" }} />
             <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-              Conectado — recibes los pagos de tus pedidos
+              {t("paymentsActiveTitle")}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-            <FlagRow label="Cobros habilitados (charges)" ok={status?.charges_enabled === true} />
-            <FlagRow label="Retiros habilitados (payouts)" ok={status?.payouts_enabled === true} />
+            <FlagRow label={t("paymentsChargesEnabledLabel")} ok={status?.charges_enabled === true} />
+            <FlagRow label={t("paymentsPayoutsEnabledLabel")} ok={status?.payouts_enabled === true} />
           </div>
           {status?.account_id && (
             <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: "16px" }}>
-              Cuenta: <code>{status.account_id.slice(0, 12)}…</code>
+              {t("paymentsAccountLabel")} <code>{status.account_id.slice(0, 12)}…</code>
             </div>
           )}
           <PrimaryButton onClick={handleOpenPanel} loading={openingPanel} icon={<IconExternalLink size={16} />}>
-            Abrir panel de Stripe
+            {t("paymentsOpenPanelButton")}
           </PrimaryButton>
         </Card>
       ) : isIncomplete ? (
@@ -416,19 +419,19 @@ function PaymentsInner() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
             <IconAlertCircle size={22} style={{ color: "var(--db-warning)" }} />
             <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-              Verificación pendiente — aún no puedes recibir pagos
+              {t("paymentsIncompleteTitle")}
             </div>
           </div>
           <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 14px" }}>
-            Stripe necesita más información para activar tu cuenta.
+            {t("paymentsIncompleteMessage")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-            <FlagRow label="Datos enviados (details submitted)" ok={status?.details_submitted === true} />
-            <FlagRow label="Cobros habilitados (charges)" ok={status?.charges_enabled === true} />
-            <FlagRow label="Retiros habilitados (payouts)" ok={status?.payouts_enabled === true} />
+            <FlagRow label={t("paymentsDetailsSubmittedLabel")} ok={status?.details_submitted === true} />
+            <FlagRow label={t("paymentsChargesEnabledLabel")} ok={status?.charges_enabled === true} />
+            <FlagRow label={t("paymentsPayoutsEnabledLabel")} ok={status?.payouts_enabled === true} />
           </div>
           <PrimaryButton onClick={handleConnect} loading={connecting} icon={<IconShield size={16} />}>
-            Completar verificación
+            {t("paymentsCompleteVerificationButton")}
           </PrimaryButton>
         </Card>
       ) : (
@@ -437,15 +440,14 @@ function PaymentsInner() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
             <IconCreditCard size={22} style={{ color: "var(--db-accent)" }} />
             <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-              Conecta Stripe para recibir tus pagos
+              {t("paymentsNoAccountTitle")}
             </div>
           </div>
           <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-            Los clientes pagan sus pedidos con tarjeta dentro de JChat. Para que el dinero
-            llegue a tu cuenta, conecta tu negocio con Stripe (verificación segura de Stripe).
+            {t("paymentsNoAccountMessage")}
           </p>
           <PrimaryButton onClick={handleConnect} loading={connecting} icon={<IconCreditCard size={16} />}>
-            Conectar con Stripe
+            {t("paymentsConnectButton")}
           </PrimaryButton>
         </Card>
           )}
