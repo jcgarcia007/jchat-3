@@ -10,8 +10,6 @@
  *    dailySlots capacity), customer is offered to join the waitlist.
  *    is_waitlist=true is set in that case.
  *
- * TODO(i18n): Replace all user-facing strings with t() calls once the
- *             reservations locale keys are added.
  * TODO(server): Push notification sent to business owner on new request
  *               (Edge Function trigger on reservations INSERT).
  * TODO(server): Scheduled reminders to customer at 24h + 2h before
@@ -31,6 +29,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   IconCalendarEvent,
@@ -143,6 +142,7 @@ function Stepper({
   max: number;
   onChange: (n: number) => void;
 }) {
+  const { t } = useTranslation('reservations');
   const c = useThemeColors();
   return (
     <View style={styles.stepper}>
@@ -157,7 +157,7 @@ function Stepper({
             opacity: value <= min ? 0.4 : 1,
           },
         ]}
-        accessibilityLabel="Decrease party size"
+        accessibilityLabel={t('decreasePartySizeA11y')}
       >
         <IconChevronDown size={16} color={c.textSecondary} />
       </Pressable>
@@ -184,7 +184,7 @@ function Stepper({
             opacity: value >= max ? 0.4 : 1,
           },
         ]}
-        accessibilityLabel="Increase party size"
+        accessibilityLabel={t('increasePartySizeA11y')}
       >
         <IconChevronUp size={16} color={c.textSecondary} />
       </Pressable>
@@ -199,6 +199,7 @@ export default function ReservationScreen({
   onSuccess,
   onCancel,
 }: Props) {
+  const { t } = useTranslation('reservations');
   const { user } = useAuth();
   const c = useThemeColors();
 
@@ -278,23 +279,23 @@ export default function ReservationScreen({
   // ── Validate form ─────────────────────────────────────────────────────────
   const validate = useCallback((): string | null => {
     if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      return 'Please enter a valid date (YYYY-MM-DD).';
+      return t('invalidDateError');
     }
     if (!time.match(/^\d{2}:\d{2}$/)) {
-      return 'Please enter a valid time (HH:MM).';
+      return t('invalidTimeError');
     }
     const dt = new Date(combineDateTime(date, time));
     if (isNaN(dt.getTime())) {
-      return 'Invalid date or time.';
+      return t('invalidDateTimeError');
     }
     if (dt < new Date()) {
-      return 'Reservation must be in the future.';
+      return t('reservationMustBeFutureError');
     }
     if (partySize < 1 || partySize > 20) {
-      return 'Party size must be between 1 and 20.';
+      return t('partySizeRangeError');
     }
     return null;
-  }, [date, time, partySize]);
+  }, [date, time, partySize, t]);
 
   // ── Submit reservation ────────────────────────────────────────────────────
   const handleSubmit = useCallback(async () => {
@@ -314,12 +315,12 @@ export default function ReservationScreen({
     }
 
     if (!user) {
-      setError('You must be signed in to make a reservation.');
+      setError(t('mustSignInError'));
       return;
     }
 
     if (!businessId) {
-      setError('No business selected.');
+      setError(t('noBusinessSelectedError'));
       return;
     }
 
@@ -343,7 +344,7 @@ export default function ReservationScreen({
         .single();
 
       if (insertErr || !data) {
-        throw insertErr ?? new Error('Insert failed — no data returned.');
+        throw insertErr ?? new Error(t('insertFailedError'));
       }
 
       // TODO(server): business owner push notification is sent server-side via
@@ -357,7 +358,7 @@ export default function ReservationScreen({
       onSuccess?.(resId, is_waitlist);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Booking failed: ${msg}`);
+      setError(t('bookingFailedError', { msg }));
     } finally {
       setSubmitting(false);
     }
@@ -372,6 +373,7 @@ export default function ReservationScreen({
     slotFull,
     wantsWaitlist,
     onSuccess,
+    t,
   ]);
 
   // ── Success screen ────────────────────────────────────────────────────────
@@ -395,14 +397,13 @@ export default function ReservationScreen({
           )}
         </View>
         <Text style={[styles.successTitle, { color: c.textPrimary }]}>
-          {submittedWaitlist ? "You're on the waitlist!" : 'Request sent!'}
+          {submittedWaitlist ? t('waitlistSuccessTitle') : t('requestSentTitle')}
         </Text>
         <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>
           {submittedWaitlist
-            ? "We'll notify you if a slot opens up for your selected date."
-            : "The business will confirm or reject your reservation shortly. We'll send you a notification."}
+            ? t('waitlistSuccessSubtitle')
+            : t('requestSentSubtitle')}
         </Text>
-        {/* TODO(i18n) */}
         {onCancel && (
           <Pressable
             onPress={onCancel}
@@ -415,7 +416,7 @@ export default function ReservationScreen({
               },
             ]}
           >
-            <Text style={styles.doneBtnText}>Done</Text>
+            <Text style={styles.doneBtnText}>{t('doneButton')}</Text>
           </Pressable>
         )}
       </View>
@@ -437,11 +438,10 @@ export default function ReservationScreen({
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: c.textPrimary }]}>
-            Make a Reservation
+            {t('headerTitle')}
           </Text>
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            Fill in the details below and we'll send your request to the venue.
-            {/* TODO(i18n) */}
+            {t('headerSubtitle')}
           </Text>
         </View>
 
@@ -455,8 +455,7 @@ export default function ReservationScreen({
           >
             <IconAlertCircle size={14} color={palette.warning} />
             <Text style={[styles.bannerText, { color: palette.warning }]}>
-              Demo mode — connect Supabase to submit live reservations
-              {/* TODO(i18n) */}
+              {t('demoModeMessage')}
             </Text>
           </View>
         )}
@@ -492,8 +491,7 @@ export default function ReservationScreen({
             <Text
               style={[styles.bannerText, { color: palette.brandPurple }]}
             >
-              This date appears fully booked. You can join the waitlist instead.
-              {/* TODO(i18n) */}
+              {t('slotFullWarning')}
             </Text>
           </View>
         )}
@@ -514,8 +512,7 @@ export default function ReservationScreen({
                 style={styles.infoIcon}
               />
             }
-            label="Date (YYYY-MM-DD)"
-            // TODO(i18n)
+            label={t('dateFieldLabel')}
           >
             <TextInput
               value={date}
@@ -532,7 +529,7 @@ export default function ReservationScreen({
                   borderColor: c.borderSubtle,
                 },
               ]}
-              accessibilityLabel="Reservation date"
+              accessibilityLabel={t('dateAccessibilityLabel')}
             />
           </InfoRow>
 
@@ -547,8 +544,7 @@ export default function ReservationScreen({
                 style={styles.infoIcon}
               />
             }
-            label="Time (HH:MM)"
-            // TODO(i18n)
+            label={t('timeFieldLabel')}
           >
             <TextInput
               value={time}
@@ -565,7 +561,7 @@ export default function ReservationScreen({
                   borderColor: c.borderSubtle,
                 },
               ]}
-              accessibilityLabel="Reservation time"
+              accessibilityLabel={t('timeAccessibilityLabel')}
             />
             {checkingFull && (
               <ActivityIndicator
@@ -587,8 +583,7 @@ export default function ReservationScreen({
                 style={styles.infoIcon}
               />
             }
-            label="Party size"
-            // TODO(i18n)
+            label={t('partySizeFieldLabel')}
           >
             <Stepper
               value={partySize}
@@ -609,13 +604,12 @@ export default function ReservationScreen({
                 style={styles.infoIcon}
               />
             }
-            label="Special requests (optional)"
-            // TODO(i18n)
+            label={t('specialRequestsFieldLabel')}
           >
             <TextInput
               value={specialRequests}
               onChangeText={setSpecialRequests}
-              placeholder="Allergies, seating preferences, celebrations…"
+              placeholder={t('specialRequestsPlaceholder')}
               placeholderTextColor={c.textTertiary}
               multiline
               numberOfLines={3}
@@ -627,7 +621,7 @@ export default function ReservationScreen({
                   borderColor: c.borderSubtle,
                 },
               ]}
-              accessibilityLabel="Special requests"
+              accessibilityLabel={t('specialRequestsAccessibilityLabel')}
             />
           </InfoRow>
         </View>
@@ -669,14 +663,12 @@ export default function ReservationScreen({
               <Text
                 style={[styles.waitlistTitle, { color: c.textPrimary }]}
               >
-                Join the waitlist
-                {/* TODO(i18n) */}
+                {t('waitlistTitle')}
               </Text>
               <Text
                 style={[styles.waitlistSub, { color: c.textSecondary }]}
               >
-                You'll be notified if a slot opens up for this date.
-                {/* TODO(i18n) */}
+                {t('waitlistSubtitle')}
               </Text>
             </View>
           </Pressable>
@@ -694,8 +686,7 @@ export default function ReservationScreen({
               disabled={submitting}
             >
               <Text style={[styles.cancelBtnText, { color: c.textSecondary }]}>
-                Cancel
-                {/* TODO(i18n) */}
+                {t('actions.cancel', { ns: 'common' })}
               </Text>
             </Pressable>
           )}
@@ -720,9 +711,8 @@ export default function ReservationScreen({
             ) : (
               <Text style={styles.submitBtnText}>
                 {slotFull && wantsWaitlist
-                  ? 'Join Waitlist'
-                  : 'Request Reservation'}
-                {/* TODO(i18n) */}
+                  ? t('joinWaitlistButton')
+                  : t('requestReservationButton')}
               </Text>
             )}
           </Pressable>
@@ -730,10 +720,7 @@ export default function ReservationScreen({
 
         {/* Footer note */}
         <Text style={[styles.footerNote, { color: c.textTertiary }]}>
-          Your request will be reviewed by the venue. You'll receive a
-          notification once it's confirmed or rejected.
-          {/* TODO(i18n) */}
-          {'\n'}
+          {t('footerNote')}
           {/* TODO(server): reminders sent 24h and 2h before via server job */}
         </Text>
       </ScrollView>
