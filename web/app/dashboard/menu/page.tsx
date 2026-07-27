@@ -26,6 +26,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
 import {
@@ -512,6 +513,7 @@ function OptionsEditor({
   options: ItemOptions;
   onChange: (opts: ItemOptions) => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const addSize = () =>
     onChange({
       ...options,
@@ -573,9 +575,9 @@ function OptionsEditor({
           }}
         >
           <div>
-            <SectionLabel>Sizes (required — single choice)</SectionLabel>
+            <SectionLabel>{t("menuOptionsSizesLabel")}</SectionLabel>
             <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: 0 }}>
-              Customer must pick exactly one. Price is added to base price.
+              {t("menuOptionsSizesHint")}
             </p>
           </div>
           <button
@@ -583,12 +585,12 @@ function OptionsEditor({
             onClick={addSize}
             style={smallAddBtnStyle}
           >
-            <IconPlus size={12} /> Add size
+            <IconPlus size={12} /> {t("menuOptionsAddSizeButton")}
           </button>
         </div>
         {options.sizes.length === 0 ? (
           <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", fontStyle: "italic" }}>
-            No sizes — item has a single fixed price.
+            {t("menuOptionsNoSizesMessage")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -597,7 +599,7 @@ function OptionsEditor({
                 <input
                   value={size.label}
                   onChange={(e) => updateSize(i, "label", e.target.value)}
-                  placeholder="e.g. Regular"
+                  placeholder={t("menuOptionsSizePlaceholder")}
                   style={{ ...optionInputStyle, flex: 1 }}
                 />
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -616,7 +618,7 @@ function OptionsEditor({
                   type="button"
                   onClick={() => removeSize(i)}
                   style={removeOptionBtnStyle}
-                  title="Remove size"
+                  title={t("menuOptionsRemoveSizeTitle")}
                 >
                   <IconX size={13} />
                 </button>
@@ -637,9 +639,9 @@ function OptionsEditor({
           }}
         >
           <div>
-            <SectionLabel>Extras (optional — multi-choice)</SectionLabel>
+            <SectionLabel>{t("menuOptionsExtrasLabel")}</SectionLabel>
             <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: 0 }}>
-              Customer can pick any combination. Each is added to the total.
+              {t("menuOptionsExtrasHint")}
             </p>
           </div>
           <button
@@ -647,12 +649,12 @@ function OptionsEditor({
             onClick={addExtra}
             style={smallAddBtnStyle}
           >
-            <IconPlus size={12} /> Add extra
+            <IconPlus size={12} /> {t("menuOptionsAddExtraButton")}
           </button>
         </div>
         {options.extras.length === 0 ? (
           <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", fontStyle: "italic" }}>
-            No extras configured.
+            {t("menuOptionsNoExtrasMessage")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -661,7 +663,7 @@ function OptionsEditor({
                 <input
                   value={extra.label}
                   onChange={(e) => updateExtra(i, "label", e.target.value)}
-                  placeholder="e.g. Extra shot"
+                  placeholder={t("menuOptionsExtraPlaceholder")}
                   style={{ ...optionInputStyle, flex: 1 }}
                 />
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -680,7 +682,7 @@ function OptionsEditor({
                   type="button"
                   onClick={() => removeExtra(i)}
                   style={removeOptionBtnStyle}
-                  title="Remove extra"
+                  title={t("menuOptionsRemoveExtraTitle")}
                 >
                   <IconX size={13} />
                 </button>
@@ -1205,6 +1207,23 @@ function ItemEditorModal({
   onCancel: () => void;
   saving: boolean;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+  const dietaryLabels: Record<string, string> = {
+    vegetarian: t("menuDietaryVegetarian"),
+    vegan: t("menuDietaryVegan"),
+    gluten_free: t("menuDietaryGlutenFree"),
+    dairy_free: t("menuDietaryDairyFree"),
+    nut_free: t("menuDietaryNutFree"),
+    seafood: t("menuDietarySeafood"),
+    spicy: t("menuDietarySpicy"),
+  };
+  const badgeLabels: Record<string, string> = {
+    null: t("menuBadgeNone"),
+    best_seller: t("menuBadgeBestSeller"),
+    new: t("menuBadgeNew"),
+    hot: t("menuBadgeHot"),
+  };
   const [form, setForm] = useState<ItemForm>(item);
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -1315,7 +1334,7 @@ function ItemEditorModal({
 
   const toggleTag = (tag: string) => {
     const tags = form.dietary_tags.includes(tag)
-      ? form.dietary_tags.filter((t) => t !== tag)
+      ? form.dietary_tags.filter((tg) => tg !== tag)
       : [...form.dietary_tags, tag];
     set("dietary_tags", tags);
   };
@@ -1365,7 +1384,7 @@ function ItemEditorModal({
               margin: 0,
             }}
           >
-            {item.name ? `Edit: ${item.name}` : "New Product"}
+            {item.name ? t("menuItemEditTitle", { name: item.name }) : t("menuItemNewTitle")}
           </h2>
           <button
             onClick={onCancel}
@@ -1386,21 +1405,21 @@ function ItemEditorModal({
         <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
           {/* Name */}
           <div>
-            <SectionLabel>Product name *</SectionLabel>
+            <SectionLabel>{t("menuItemNameLabel")}</SectionLabel>
             <FieldInput
               value={form.name}
               onChange={(v) => set("name", v)}
-              placeholder='e.g. "Mango Daiquiri"'
+              placeholder={t("menuItemNamePlaceholder")}
             />
           </div>
 
           {/* Description */}
           <div>
-            <SectionLabel>Description</SectionLabel>
+            <SectionLabel>{t("menuItemDescriptionLabel")}</SectionLabel>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              placeholder="Short description of ingredients / prep style…"
+              placeholder={t("menuItemDescriptionPlaceholder")}
               rows={2}
               style={{
                 width: "100%",
@@ -1421,7 +1440,7 @@ function ItemEditorModal({
           {/* Price */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <SectionLabel>Base price (USD) *</SectionLabel>
+              <SectionLabel>{t("menuItemBasePriceLabel")}</SectionLabel>
               <div style={{ position: "relative" }}>
                 <span
                   style={{
@@ -1460,15 +1479,15 @@ function ItemEditorModal({
 
             {/* Stock count */}
             <div>
-              <SectionLabel>Stock count</SectionLabel>
+              <SectionLabel>{t("menuItemStockCountLabel")}</SectionLabel>
               <FieldInput
                 type="number"
                 value={form.stock_count}
                 onChange={(v) => set("stock_count", v)}
-                placeholder="Leave blank = unlimited"
+                placeholder={t("menuItemStockPlaceholder")}
               />
               <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: 4 }}>
-                Auto-hidden when stock reaches 0 (handled by getMenu).
+                {t("menuItemStockAutoHiddenHint")}
               </p>
             </div>
           </div>
@@ -1476,23 +1495,23 @@ function ItemEditorModal({
           {/* Low stock threshold */}
           {form.stock_count !== "" && (
             <div>
-              <SectionLabel>Low stock alert threshold</SectionLabel>
+              <SectionLabel>{t("menuItemLowStockThresholdLabel")}</SectionLabel>
               <FieldInput
                 type="number"
                 value={form.low_stock_threshold}
                 onChange={(v) => set("low_stock_threshold", v)}
-                placeholder="e.g. 5 — shows warning badge at this count"
+                placeholder={t("menuItemLowStockPlaceholder")}
               />
             </div>
           )}
 
-          {/* Fotos del producto */}
+          {/* Product photos */}
           <div>
-            <SectionLabel>Fotos del producto</SectionLabel>
+            <SectionLabel>{t("menuItemPhotosLabel")}</SectionLabel>
 
             {loadingPhotos ? (
               <p style={{ fontSize: 12, color: "var(--db-text-tertiary)", margin: "0 0 8px" }}>
-                Cargando fotos…
+                {t("menuItemLoadingPhotos")}
               </p>
             ) : (
               <>
@@ -1534,7 +1553,7 @@ function ItemEditorModal({
                               pointerEvents: "none",
                             }}
                           >
-                            Principal
+                            {t("menuItemPrimaryPhotoBadge")}
                           </span>
                         )}
                         <button
@@ -1596,7 +1615,7 @@ function ItemEditorModal({
                               pointerEvents: "none",
                             }}
                           >
-                            Principal
+                            {t("menuItemPrimaryPhotoBadge")}
                           </span>
                         )}
                         <span
@@ -1613,7 +1632,7 @@ function ItemEditorModal({
                             pointerEvents: "none",
                           }}
                         >
-                          Nueva
+                          {t("menuItemNewPhotoBadge")}
                         </span>
                         <button
                           type="button"
@@ -1667,18 +1686,18 @@ function ItemEditorModal({
                     onChange={handleFileSelect}
                   />
                   <IconPhoto size={14} />
-                  Agregar fotos (jpeg, png, webp · máx 5 MB)
+                  {t("menuItemAddPhotosButton")}
                 </label>
 
                 {/* Legacy photo_url — kept for backwards compatibility */}
                 <div style={{ marginTop: 12 }}>
                   <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px" }}>
-                    O pega una URL directamente (campo heredado):
+                    {t("menuItemLegacyUrlHint")}
                   </p>
                   <FieldInput
                     value={form.photo_url}
                     onChange={(v) => set("photo_url", v)}
-                    placeholder="https://… (URL de imagen)"
+                    placeholder={t("menuItemPhotoUrlPlaceholder")}
                   />
                   {form.photo_url && savedPhotos.length === 0 && stagedPhotos.length === 0 && (
                     <div
@@ -1695,7 +1714,7 @@ function ItemEditorModal({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={form.photo_url}
-                        alt="preview"
+                        alt={t("menuItemPhotoPreviewAlt")}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -1710,7 +1729,7 @@ function ItemEditorModal({
 
           {/* Dietary tags */}
           <div>
-            <SectionLabel>Dietary tags</SectionLabel>
+            <SectionLabel>{t("menuItemDietaryTagsLabel")}</SectionLabel>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {DIETARY_TAG_OPTIONS.map((opt) => {
                 const active = form.dietary_tags.includes(opt.value);
@@ -1736,7 +1755,7 @@ function ItemEditorModal({
                     }}
                   >
                     {opt.icon}
-                    {opt.label}
+                    {dietaryLabels[opt.value]}
                   </button>
                 );
               })}
@@ -1745,7 +1764,7 @@ function ItemEditorModal({
 
           {/* Badge */}
           <div>
-            <SectionLabel>Badge</SectionLabel>
+            <SectionLabel>{t("menuItemBadgeLabel")}</SectionLabel>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {BADGE_OPTIONS.map((b) => {
                 const sel = form.badge === b.value;
@@ -1770,7 +1789,7 @@ function ItemEditorModal({
                     {b.value === "best_seller" && <IconStar size={11} style={{ marginRight: 4, verticalAlign: "middle" }} />}
                     {b.value === "hot" && <IconFlame size={11} style={{ marginRight: 4, verticalAlign: "middle" }} />}
                     {b.value === "new" && <IconStar size={11} style={{ marginRight: 4, verticalAlign: "middle" }} />}
-                    {b.label}
+                    {badgeLabels[String(b.value)]}
                   </button>
                 );
               })}
@@ -1782,7 +1801,7 @@ function ItemEditorModal({
             <Toggle
               checked={form.id_required}
               onChange={(v) => set("id_required", v)}
-              label="ID check required (21+)"
+              label={t("menuItemIdRequiredToggle")}
             />
           </div>
 
@@ -1796,10 +1815,10 @@ function ItemEditorModal({
             <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: 8 }}>
               <IconAdjustments size={16} color="var(--db-accent)" />
               <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                Grupos de opciones
+                {t("menuItemModifierGroupsHeading")}
               </span>
               {loadingGroups && (
-                <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>Cargando…</span>
+                <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>{tCommon("loading")}</span>
               )}
             </div>
             {!loadingGroups && (
@@ -1836,7 +1855,7 @@ function ItemEditorModal({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={() => onSave(form, stagedPhotos, photosToDelete, modGroups)}
@@ -1863,7 +1882,7 @@ function ItemEditorModal({
             }}
           >
             <IconCheck size={15} />
-            {saving ? "Saving…" : "Save Product"}
+            {saving ? t("menuItemSavingState") : t("menuItemSaveButton")}
           </button>
         </div>
       </div>
