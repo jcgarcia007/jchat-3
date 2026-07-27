@@ -26,6 +26,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconBriefcase,
@@ -40,6 +41,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import type { TFn } from "@/lib/tabSemantics";
 
 // ─── Co-located types ─────────────────────────────────────────────────────────
 
@@ -101,15 +103,41 @@ function statusColor(status: EmployeeStatus): string {
   }
 }
 
-function statusLabel(status: EmployeeStatus): string {
+function statusLabel(status: EmployeeStatus, t: TFn): string {
   switch (status) {
     case "accepted":
-      return "Active";
+      return t("employeesStatusActive");
     case "pending":
-      return "Pending";
+      return t("orderStatusPending");
     case "declined":
-      return "Declined";
+      return t("employeesStatusDeclined");
   }
+}
+
+/**
+ * The 6 built-in role names are fixed system chrome — always safe to translate.
+ * Any other string (an owner-typed custom role name) falls through untouched.
+ */
+function fixedRoleLabel(role: string, t: TFn): string {
+  switch (role) {
+    case "Manager": return t("roleManager");
+    case "Cashier": return t("roleCashier");
+    case "Waiter": return t("tabKindWaiter");
+    case "Kitchen": return t("roleKitchen");
+    case "Chat Moderator": return t("roleChatModerator");
+    case "Analyst": return t("roleAnalyst");
+    default: return role;
+  }
+}
+
+/**
+ * employees.role is TEXT and holds EITHER one of the 6 fixed role names OR a
+ * custom role's free-text name (when custom_role_id is set) — in that case the
+ * text is the owner's own data and must never be translated.
+ */
+function roleLabel(emp: { role: string; custom_role_id?: string | null }, t: TFn): string {
+  if (emp.custom_role_id) return emp.role;
+  return fixedRoleLabel(emp.role, t);
 }
 
 function StatusIcon({ status }: { status: EmployeeStatus }) {
@@ -164,9 +192,11 @@ function AlertBanner({
 function PlanUsageBar({
   used,
   cap,
+  t,
 }: {
   used: number;
   cap: number;
+  t: TFn;
 }) {
   const pct = Math.min(100, Math.round((used / cap) * 100));
   const atLimit = used >= cap;
@@ -181,7 +211,7 @@ function PlanUsageBar({
         }}
       >
         <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-          Staff usage
+          {t("employeesStaffUsageLabel")}
         </span>
         <span
           style={{
@@ -220,8 +250,7 @@ function PlanUsageBar({
             marginTop: "6px",
           }}
         >
-          You have reached the employee limit on your current plan. Upgrade to Pro
-          for unlimited staff.
+          {t("employeesLimitReachedMsg")}
           {/* TODO: link to billing/upgrade page */}
         </p>
       )}
@@ -233,10 +262,12 @@ function EmployeeRow({
   employee,
   isRemoving,
   onRemove,
+  t,
 }: {
   employee: EmployeeWithProfile;
   isRemoving: boolean;
   onRemove: (emp: EmployeeWithProfile) => void;
+  t: TFn;
 }) {
   const initials = (employee.display_name ?? employee.username)
     .slice(0, 2)
@@ -331,7 +362,7 @@ function EmployeeRow({
             whiteSpace: "nowrap",
           }}
         >
-          {employee.role}
+          {roleLabel(employee, t)}
         </div>
         {employee.custom_role_id && (
           <div
@@ -345,7 +376,7 @@ function EmployeeRow({
               whiteSpace: "nowrap",
             }}
           >
-            Custom
+            {t("customRoleBadge")}
           </div>
         )}
       </div>
@@ -365,7 +396,7 @@ function EmployeeRow({
         }}
       >
         <StatusIcon status={employee.status} />
-        {statusLabel(employee.status)}
+        {statusLabel(employee.status, t)}
       </div>
 
       {/* Last active */}
@@ -381,15 +412,15 @@ function EmployeeRow({
       >
         {employee.last_active_at
           ? formatDate(employee.last_active_at)
-          : "Never active"}
+          : t("employeesNeverActive")}
       </div>
 
       {/* Remove */}
       <button
         onClick={() => onRemove(employee)}
         disabled={isRemoving}
-        aria-label={`Remove ${employee.username}`}
-        title="Remove employee"
+        aria-label={t("employeesRemoveAria", { username: employee.username })}
+        title={t("employeesRemoveTitle")}
         style={{
           background: "none",
           border: "none",
@@ -411,6 +442,8 @@ function EmployeeRow({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EmployeesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
@@ -517,7 +550,7 @@ export default function EmployeesPage() {
       const enriched: EmployeeWithProfile[] = empRows.map((emp) => {
         const profile = userMap.get(emp.user_id) ?? {
           id: emp.user_id,
-          username: "Unknown",
+          username: t("employeesUnknownUser"),
           display_name: null,
           avatar_url: null,
         };
@@ -532,21 +565,18 @@ export default function EmployeesPage() {
       setEmployees(enriched);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Failed to load employees: ${msg}`);
+      setError(t("employeesLoadError", { msg }));
     } finally {
       setLoadingEmployees(false);
     }
-  }, []);
+  }, [t]);
 
   // ── Remove employee ────────────────────────────────────────────────────────
 
   const handleRemove = useCallback(
     async (emp: EmployeeWithProfile) => {
-      if (
-        !confirm(
-          `Remove ${emp.display_name ?? emp.username} (${emp.role}) from your staff? This cannot be undone.`
-        )
-      )
+      const name = emp.display_name ?? emp.username;
+      if (!confirm(t("employeesRemoveConfirm", { name, role: roleLabel(emp, t) })))
         return;
 
       setRemovingId(emp.id);
@@ -562,17 +592,15 @@ export default function EmployeesPage() {
         if (delErr) throw delErr;
 
         setEmployees((prev) => prev.filter((e) => e.id !== emp.id));
-        setSuccessMsg(
-          `${emp.display_name ?? emp.username} has been removed from the staff.`
-        );
+        setSuccessMsg(t("employeesRemovedSuccess", { name }));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Remove failed: ${msg}`);
+        setError(t("employeesRemoveError", { msg }));
       } finally {
         setRemovingId(null);
       }
     },
-    []
+    [t]
   );
 
   // ── Add employee (look up user by username → insert) ─────────────────────────
@@ -581,7 +609,7 @@ export default function EmployeesPage() {
     if (!businessId) return;
     const uname = addUsername.trim().replace(/^@/, "");
     if (!uname) {
-      setError("Enter the employee's username.");
+      setError(t("employeesUsernameRequired"));
       return;
     }
     setAdding(true);
@@ -595,7 +623,7 @@ export default function EmployeesPage() {
         .maybeSingle();
       if (uErr) throw uErr;
       if (!u) {
-        setError(`No user found with username @${uname}.`);
+        setError(t("employeesUserNotFound", { username: uname }));
         return;
       }
       const insertPayload: Database["public"]["Tables"]["employees"]["Insert"] = {
@@ -607,18 +635,21 @@ export default function EmployeesPage() {
       if (addCustomRoleId) insertPayload.custom_role_id = addCustomRoleId;
       const { error: insErr } = await supabase.from("employees").insert(insertPayload);
       if (insErr) throw insErr;
-      setSuccessMsg(`Added @${(u as { username: string }).username} as ${addRole}.`);
+      // addRole is either one of the 6 fixed names or a custom role's free-text
+      // name (addCustomRoleId set) — same fallback rule as roleLabel().
+      const roleText = addCustomRoleId ? addRole : fixedRoleLabel(addRole, t);
+      setSuccessMsg(t("employeesAddedSuccess", { username: (u as { username: string }).username, role: roleText }));
       setAddUsername("");
       setAddCustomRoleId(null);
       setAddRole("Cashier");
       setShowAdd(false);
       await loadEmployees(businessId);
     } catch (e: unknown) {
-      setError(`Add failed: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("employeesAddError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setAdding(false);
     }
-  }, [businessId, addUsername, addRole, addCustomRoleId, loadEmployees]);
+  }, [businessId, addUsername, addRole, addCustomRoleId, loadEmployees, t]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -653,11 +684,10 @@ export default function EmployeesPage() {
             marginBottom: "4px",
           }}
         >
-          Employees
+          {t("railEmpleados")}
         </h1>
         <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-          Manage your staff roster, roles, and access. Invites are sent from
-          within the business chat room on the mobile app.
+          {t("employeesSubtitle")}
           {/* Staff section on business profile is visible only to linked employees
               (status='accepted') — enforced in mobile profile layer (Task 1.7). */}
         </p>
@@ -671,13 +701,13 @@ export default function EmployeesPage() {
       {!isSupabaseConfigured && (
         <AlertBanner
           type="warning"
-          message="Demo mode: Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable live data."
+          message={t("demoModeSupabaseMessage")}
         />
       )}
 
       {/* No business */}
       {!loadingBiz && isSupabaseConfigured && !businessId && (
-        <NoBusinessCTA message="Register your business to manage employees." />
+        <NoBusinessCTA message={t("employeesNoBusinessMessage")} />
       )}
 
       {/* Content card */}
@@ -703,7 +733,7 @@ export default function EmployeesPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <IconUsers size={18} color="var(--db-accent)" />
               <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                Staff Roster
+                {t("employeesRosterTitle")}
               </h2>
             </div>
             {businessId && (
@@ -718,7 +748,7 @@ export default function EmployeesPage() {
                   fontSize: "13px", fontWeight: 600, cursor: "pointer",
                 }}
               >
-                {showAdd ? "Cancel" : "+ Add employee"}
+                {showAdd ? tCommon("cancel") : t("employeesAddButton")}
               </button>
             )}
           </div>
@@ -734,19 +764,19 @@ export default function EmployeesPage() {
             >
               <div style={{ flex: 1, minWidth: "180px" }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Username
+                  {t("employeesUsernameLabel")}
                 </label>
                 <input
                   type="text"
                   value={addUsername}
                   onChange={(e) => setAddUsername(e.target.value)}
-                  placeholder="@username"
+                  placeholder={t("employeesUsernamePlaceholder")}
                   style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
                 />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Role
+                  {t("employeesRoleLabel")}
                 </label>
                 <select
                   value={addCustomRoleId ? `custom:${addCustomRoleId}` : addRole}
@@ -763,13 +793,13 @@ export default function EmployeesPage() {
                   }}
                   style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", cursor: "pointer" }}
                 >
-                  <optgroup label="Standard">
+                  <optgroup label={t("employeesStandardGroup")}>
                     {(["Manager", "Cashier", "Waiter", "Kitchen", "Chat Moderator", "Analyst"] as EmployeeRole[]).map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                      <option key={r} value={r}>{fixedRoleLabel(r, t)}</option>
                     ))}
                   </optgroup>
                   {customRoles.length > 0 && (
-                    <optgroup label="Custom">
+                    <optgroup label={t("customRoleBadge")}>
                       {customRoles.map((cr) => (
                         <option key={cr.id} value={`custom:${cr.id}`}>{cr.name}</option>
                       ))}
@@ -783,7 +813,7 @@ export default function EmployeesPage() {
                 disabled={adding}
                 style={{ padding: "9px 16px", borderRadius: "8px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "14px", fontWeight: 600, cursor: adding ? "wait" : "pointer", opacity: adding ? 0.7 : 1 }}
               >
-                {adding ? "Adding…" : "Add"}
+                {adding ? t("employeesAddingState") : t("employeesAddSubmitButton")}
               </button>
             </div>
           )}
@@ -794,17 +824,16 @@ export default function EmployeesPage() {
               marginBottom: "20px",
             }}
           >
-            Pending invites count toward your plan limit. Declined employees do
-            not count.
+            {t("employeesPendingCountNote")}
             {/* Role determines which chat actions are available (Task 2.10). */}
             {/* TODO(Stage 4): physical-presence check for Chat Moderator via geofence */}
           </p>
 
           {/* Plan usage bar */}
           {!isSupabaseConfigured ? (
-            <PlanUsageBar used={0} cap={DEFAULT_PLAN_CAP} />
+            <PlanUsageBar used={0} cap={DEFAULT_PLAN_CAP} t={t} />
           ) : (
-            <PlanUsageBar used={activeCount} cap={DEFAULT_PLAN_CAP} />
+            <PlanUsageBar used={activeCount} cap={DEFAULT_PLAN_CAP} t={t} />
           )}
 
           {/* Employee list */}
@@ -817,10 +846,10 @@ export default function EmployeesPage() {
                 fontSize: "14px",
               }}
             >
-              Loading employees…
+              {t("employeesLoadingList")}
             </div>
           ) : employees.length === 0 ? (
-            <EmptyState />
+            <EmptyState t={t} />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {employees.map((emp) => (
@@ -829,13 +858,14 @@ export default function EmployeesPage() {
                   employee={emp}
                   isRemoving={removingId === emp.id}
                   onRemove={handleRemove}
+                  t={t}
                 />
               ))}
             </div>
           )}
 
           {/* Roles legend */}
-          <RolesLegend />
+          <RolesLegend t={t} />
         </div>
       )}
     </div>
@@ -844,7 +874,7 @@ export default function EmployeesPage() {
 
 // ─── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ t }: { t: TFn }) {
   return (
     <div
       style={{
@@ -874,11 +904,10 @@ function EmptyState() {
           marginBottom: "6px",
         }}
       >
-        No employees yet
+        {t("employeesEmptyTitle")}
       </p>
       <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", maxWidth: 340, margin: "0 auto" }}>
-        To add a team member, long-press their message or avatar in the business
-        chat room on the JChat mobile app and select &quot;Add as employee&quot;.
+        {t("employeesEmptyBody")}
       </p>
     </div>
   );
@@ -886,16 +915,17 @@ function EmptyState() {
 
 // ─── Roles legend ──────────────────────────────────────────────────────────────
 
-const ROLE_DESCRIPTIONS: { role: string; desc: string }[] = [
-  { role: "Manager", desc: "Full access: settings, offers, reports, staff." },
-  { role: "Cashier", desc: "Processes orders and payments." },
-  { role: "Waiter", desc: "Takes orders and manages table service." },
-  { role: "Kitchen", desc: "Views and updates KDS order queue." },
-  { role: "Chat Moderator", desc: "Manages chat room content and users." },
-  { role: "Analyst", desc: "Read-only access to analytics and reports." },
+/** The 6 fixed system roles, with a description key per role — always chrome. */
+const ROLE_DESCRIPTION_KEYS: { role: string; descKey: string }[] = [
+  { role: "Manager", descKey: "employeesRoleDescManager" },
+  { role: "Cashier", descKey: "employeesRoleDescCashier" },
+  { role: "Waiter", descKey: "employeesRoleDescWaiter" },
+  { role: "Kitchen", descKey: "employeesRoleDescKitchen" },
+  { role: "Chat Moderator", descKey: "employeesRoleDescChatModerator" },
+  { role: "Analyst", descKey: "employeesRoleDescAnalyst" },
 ];
 
-function RolesLegend() {
+function RolesLegend({ t }: { t: TFn }) {
   return (
     <div
       style={{
@@ -922,7 +952,7 @@ function RolesLegend() {
             letterSpacing: "0.04em",
           }}
         >
-          Role Reference
+          {t("employeesRoleReferenceLabel")}
           {/* Role → chat permissions enforced in Task 2.10 (UserActionSheet) */}
         </span>
       </div>
@@ -933,7 +963,7 @@ function RolesLegend() {
           gap: "8px",
         }}
       >
-        {ROLE_DESCRIPTIONS.map(({ role, desc }) => (
+        {ROLE_DESCRIPTION_KEYS.map(({ role, descKey }) => (
           <div
             key={role}
             style={{
@@ -950,10 +980,10 @@ function RolesLegend() {
                 marginBottom: "2px",
               }}
             >
-              {role}
+              {fixedRoleLabel(role, t)}
             </div>
             <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-              {desc}
+              {t(descKey)}
             </div>
           </div>
         ))}
