@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconEdit,
@@ -23,6 +24,7 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import type { TFn } from "@/lib/tabSemantics";
 
 // ─── Permission system ─────────────────────────────────────────────────────────
 
@@ -59,43 +61,48 @@ const ALL_PERMISSIONS: PermissionKey[] = [
   "reports_view", "analytics_view", "exports_manage", "loyalty_manage",
 ];
 
-const PERMISSION_LABELS: Record<PermissionKey, string> = {
-  orders_view:           "View orders",
-  orders_process:        "Process orders",
-  orders_mark_delivered: "Mark as delivered",
-  orders_assigned_only:  "See only assigned orders",
-  kds_view:              "View KDS",
-  kds_mark_ready:        "Mark items ready on KDS",
-  menu_edit:             "Edit menu items",
-  inventory_manage:      "Manage inventory",
-  offers_manage:         "Create / edit offers",
-  availability_toggle:   "Toggle item availability",
-  chat_moderate:         "Moderate chat",
-  chat_ban:              "Ban users from chat",
-  chat_pin:              "Pin messages",
-  rooms_passwords:       "Manage room passwords",
-  rooms_manage:          "Create / edit rooms",
-  service_receive:       "Receive service alerts",
-  alerts_view:           "View alerts",
-  reservations_manage:   "Manage reservations",
-  reports_view:          "View reports",
-  analytics_view:        "View analytics",
-  exports_manage:        "Export data",
-  loyalty_manage:        "Manage loyalty",
-};
+/** Permission KEYS (used in logic/DB) never change — only their visible label does. */
+function getPermissionLabels(t: TFn): Record<PermissionKey, string> {
+  return {
+    orders_view:           t("permLabelOrdersView"),
+    orders_process:        t("permLabelOrdersProcess"),
+    orders_mark_delivered: t("permLabelOrdersMarkDelivered"),
+    orders_assigned_only:  t("permLabelOrdersAssignedOnly"),
+    kds_view:              t("permLabelKdsView"),
+    kds_mark_ready:        t("permLabelKdsMarkReady"),
+    menu_edit:             t("permLabelMenuEdit"),
+    inventory_manage:      t("permLabelInventoryManage"),
+    offers_manage:         t("permLabelOffersManage"),
+    availability_toggle:   t("permLabelAvailabilityToggle"),
+    chat_moderate:         t("permLabelChatModerate"),
+    chat_ban:              t("permLabelChatBan"),
+    chat_pin:              t("permLabelChatPin"),
+    rooms_passwords:       t("permLabelRoomsPasswords"),
+    rooms_manage:          t("permLabelRoomsManage"),
+    service_receive:       t("permLabelServiceReceive"),
+    alerts_view:           t("permLabelAlertsView"),
+    reservations_manage:   t("permLabelReservationsManage"),
+    reports_view:          t("permLabelReportsView"),
+    analytics_view:        t("permLabelAnalyticsView"),
+    exports_manage:        t("permLabelExportsManage"),
+    loyalty_manage:        t("permLabelLoyaltyManage"),
+  };
+}
 
 interface PermGroup {
   label: string;
   keys: PermissionKey[];
 }
 
-const PERM_GROUPS: PermGroup[] = [
-  { label: "Orders / POS",       keys: ["orders_view", "orders_process", "orders_mark_delivered", "orders_assigned_only", "kds_view", "kds_mark_ready"] },
-  { label: "Menu / Inventory",   keys: ["menu_edit", "inventory_manage", "offers_manage", "availability_toggle"] },
-  { label: "Chat / Moderation",  keys: ["chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage"] },
-  { label: "Service / Alerts",   keys: ["service_receive", "alerts_view", "reservations_manage"] },
-  { label: "Reports / Data",     keys: ["reports_view", "analytics_view", "exports_manage", "loyalty_manage"] },
-];
+function getPermGroups(t: TFn): PermGroup[] {
+  return [
+    { label: t("permGroupOrdersPos"),      keys: ["orders_view", "orders_process", "orders_mark_delivered", "orders_assigned_only", "kds_view", "kds_mark_ready"] },
+    { label: t("permGroupMenuInventory"),  keys: ["menu_edit", "inventory_manage", "offers_manage", "availability_toggle"] },
+    { label: t("permGroupChatModeration"), keys: ["chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage"] },
+    { label: t("permGroupServiceAlerts"),  keys: ["service_receive", "alerts_view", "reservations_manage"] },
+    { label: t("permGroupReportsData"),    keys: ["reports_view", "analytics_view", "exports_manage", "loyalty_manage"] },
+  ];
+}
 
 // ─── Templates ────────────────────────────────────────────────────────────────
 
@@ -124,6 +131,23 @@ const BASE_TEMPLATES: Record<TemplateName, Record<PermissionKey, boolean>> = {
   "Chat Moderator": fullPerms({ chat_moderate: true, chat_ban: true, chat_pin: true }),
   Analyst:         fullPerms({ analytics_view: true, reports_view: true }),
 };
+
+/**
+ * Same 6-name fixed enum as employees/page.tsx's role — copied here (not
+ * imported, to keep this chunk scoped to roles/page.tsx). Any other string
+ * (a custom role's own name, or unexpected data) falls through untouched.
+ */
+function fixedRoleLabel(role: string, t: TFn): string {
+  switch (role) {
+    case "Manager": return t("roleManager");
+    case "Cashier": return t("roleCashier");
+    case "Waiter": return t("tabKindWaiter");
+    case "Kitchen": return t("roleKitchen");
+    case "Chat Moderator": return t("roleChatModerator");
+    case "Analyst": return t("roleAnalyst");
+    default: return role;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -188,11 +212,14 @@ function PermGroupSection({
   group,
   permissions,
   onChange,
+  t,
 }: {
   group: PermGroup;
   permissions: Record<PermissionKey, boolean>;
   onChange: (key: PermissionKey, value: boolean) => void;
+  t: TFn;
 }) {
+  const labels = getPermissionLabels(t);
   return (
     <div style={{ marginBottom: "20px" }}>
       <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
@@ -202,7 +229,7 @@ function PermGroupSection({
         {group.keys.map((key) => (
           <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", cursor: "pointer" }}>
             <span style={{ fontSize: "13px", color: "var(--db-text-primary)" }}>
-              {PERMISSION_LABELS[key]}
+              {labels[key]}
             </span>
             <Toggle on={!!permissions[key]} onChange={(v) => onChange(key, v)} />
           </label>
@@ -219,11 +246,15 @@ function RoleEditor({
   businessId,
   onSave,
   onCancel,
+  t,
+  tCommon,
 }: {
   role: CustomRole | null;
   businessId: string;
   onSave: (saved: CustomRole) => void;
   onCancel: () => void;
+  t: TFn;
+  tCommon: TFn;
 }) {
   const [name, setName] = useState(role?.name ?? "");
   const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
@@ -235,9 +266,9 @@ function RoleEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const applyTemplate = (t: TemplateName) => {
-    setTemplate(t);
-    setPermissions(BASE_TEMPLATES[t]);
+  const applyTemplate = (tpl: TemplateName) => {
+    setTemplate(tpl);
+    setPermissions(BASE_TEMPLATES[tpl]);
   };
 
   const togglePermission = (key: PermissionKey, value: boolean) => {
@@ -248,7 +279,7 @@ function RoleEditor({
 
   const handleSave = async () => {
     const trimmed = name.trim();
-    if (!trimmed) { setError("Role name is required."); return; }
+    if (!trimmed) { setError(t("rolesNameRequired")); return; }
     setSaving(true);
     setError(null);
     try {
@@ -290,7 +321,7 @@ function RoleEditor({
       }}
     >
       <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "20px" }}>
-        {role ? "Edit role" : "Create role"}
+        {role ? t("rolesEditTitle") : t("rolesCreateTitle")}
       </h3>
 
       {error && <AlertBanner type="error" message={error} />}
@@ -298,13 +329,13 @@ function RoleEditor({
       {/* Name */}
       <div style={{ marginBottom: "20px" }}>
         <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
-          Role name
+          {t("rolesNameLabel")}
         </label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Senior Cashier"
+          placeholder={t("rolesNamePlaceholder")}
           maxLength={60}
           style={{ width: "100%", maxWidth: "360px", boxSizing: "border-box", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
         />
@@ -313,16 +344,16 @@ function RoleEditor({
       {/* Template chips */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
-          Start from template
+          {t("rolesTemplateLabel")}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-          {TEMPLATE_NAMES.map((t) => {
-            const active = template === t;
+          {TEMPLATE_NAMES.map((tpl) => {
+            const active = template === tpl;
             return (
               <button
-                key={t}
+                key={tpl}
                 type="button"
-                onClick={() => applyTemplate(t)}
+                onClick={() => applyTemplate(tpl)}
                 style={{
                   padding: "6px 14px", borderRadius: "999px", border: "1px solid",
                   borderColor: active ? "var(--db-accent)" : "var(--db-border)",
@@ -332,13 +363,13 @@ function RoleEditor({
                   transition: "all 0.1s",
                 }}
               >
-                {t}
+                {fixedRoleLabel(tpl, t)}
               </button>
             );
           })}
         </div>
         <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "6px" }}>
-          Templates pre-fill the toggles below. You can then fine-tune any permission.
+          {t("rolesTemplateHelper")}
         </p>
       </div>
 
@@ -346,26 +377,27 @@ function RoleEditor({
       <div style={{ borderTop: "1px solid var(--db-border)", paddingTop: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Permissions
+            {t("rolesPermissionsLabel")}
           </span>
           <span style={{ fontSize: "12px", color: activeCount > 0 ? "var(--db-accent)" : "var(--db-text-tertiary)" }}>
-            {activeCount} / {ALL_PERMISSIONS.length} active
+            {t("rolesActiveCount", { active: activeCount, total: ALL_PERMISSIONS.length })}
           </span>
         </div>
 
-        {PERM_GROUPS.map((group) => (
+        {getPermGroups(t).map((group) => (
           <PermGroupSection
             key={group.label}
             group={group}
             permissions={permissions}
             onChange={togglePermission}
+            t={t}
           />
         ))}
 
         {/* Administration — locked section */}
         <div style={{ marginBottom: "20px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
-            Administration
+            {t("rolesAdministrationLabel")}
           </div>
           <div
             style={{
@@ -378,11 +410,11 @@ function RoleEditor({
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <IconLock size={14} color="var(--db-text-tertiary)" />
               <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-                Billing / payouts
+                {t("rolesBillingPayouts")}
               </span>
             </div>
             <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600 }}>
-              Owner only
+              {t("rolesOwnerOnlyBadge")}
             </span>
           </div>
         </div>
@@ -395,7 +427,7 @@ function RoleEditor({
           onClick={onCancel}
           style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
         >
-          Cancel
+          {tCommon("cancel")}
         </button>
         <button
           type="button"
@@ -403,7 +435,7 @@ function RoleEditor({
           disabled={saving}
           style={{ padding: "9px 18px", borderRadius: "8px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}
         >
-          {saving ? "Saving…" : role ? "Update role" : "Create role"}
+          {saving ? t("tablesSavingState") : role ? t("rolesUpdateButton") : t("rolesCreateTitle")}
         </button>
       </div>
     </div>
@@ -416,10 +448,12 @@ function RoleListItem({
   role,
   onEdit,
   onDelete,
+  t,
 }: {
   role: CustomRole;
   onEdit: () => void;
   onDelete: () => void;
+  t: TFn;
 }) {
   const activeCount = ALL_PERMISSIONS.filter((k) => role.permissions[k]).length;
 
@@ -436,9 +470,9 @@ function RoleListItem({
           {role.name}
         </div>
         <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-          {activeCount} permission{activeCount !== 1 ? "s" : ""} active
+          {t("rolesPermissionCountPlural", { count: activeCount })}
           {role.base_template && (
-            <span style={{ marginLeft: "6px", opacity: 0.7 }}>· based on {role.base_template}</span>
+            <span style={{ marginLeft: "6px", opacity: 0.7 }}>{t("rolesBasedOnTemplate", { template: fixedRoleLabel(role.base_template, t) })}</span>
           )}
         </div>
       </div>
@@ -451,7 +485,7 @@ function RoleListItem({
           fontSize: "11px", fontWeight: 700, flexShrink: 0,
         }}
       >
-        Custom
+        {t("customRoleBadge")}
       </div>
 
       {/* Actions */}
@@ -459,7 +493,7 @@ function RoleListItem({
         <button
           type="button"
           onClick={onEdit}
-          title="Edit role"
+          title={t("rolesEditTitle")}
           style={{ background: "none", border: "none", color: "var(--db-accent)", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center" }}
         >
           <IconEdit size={15} />
@@ -467,7 +501,7 @@ function RoleListItem({
         <button
           type="button"
           onClick={onDelete}
-          title="Delete role"
+          title={t("rolesDeleteTitle")}
           style={{ background: "none", border: "none", color: "var(--db-danger)", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center" }}
         >
           <IconTrash size={15} />
@@ -480,6 +514,8 @@ function RoleListItem({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RolesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
   const [roles, setRoles] = useState<CustomRole[]>([]);
@@ -519,11 +555,11 @@ export default function RolesPage() {
       if (err) throw err;
       setRoles((data ?? []) as CustomRole[]);
     } catch (e: unknown) {
-      setError(`Failed to load roles: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("rolesLoadError", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setLoadingRoles(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (businessId) void loadRoles(businessId);
@@ -533,7 +569,7 @@ export default function RolesPage() {
 
   const handleDelete = useCallback(
     async (role: CustomRole) => {
-      if (!confirm(`Delete the "${role.name}" role? Employees with this role will revert to their plain-text role label.`)) return;
+      if (!confirm(t("rolesDeleteConfirm", { name: role.name }))) return;
       setError(null);
       setSuccessMsg(null);
       try {
@@ -543,13 +579,13 @@ export default function RolesPage() {
           .eq("id", role.id);
         if (delErr) throw delErr;
         setRoles((prev) => prev.filter((r) => r.id !== role.id));
-        setSuccessMsg(`Role "${role.name}" deleted.`);
+        setSuccessMsg(t("rolesDeletedSuccess", { name: role.name }));
         if (editingRole?.id === role.id) { setShowEditor(false); setEditingRole(null); }
       } catch (e: unknown) {
-        setError(`Delete failed: ${e instanceof Error ? e.message : String(e)}`);
+        setError(t("rolesDeleteError", { msg: e instanceof Error ? e.message : String(e) }));
       }
     },
-    [editingRole]
+    [editingRole, t]
   );
 
   // ── Editor handlers ─────────────────────────────────────────────────────────
@@ -568,7 +604,7 @@ export default function RolesPage() {
       }
       return [...prev, saved];
     });
-    setSuccessMsg(editingRole ? `Role "${saved.name}" updated.` : `Role "${saved.name}" created.`);
+    setSuccessMsg(editingRole ? t("rolesUpdatedSuccess", { name: saved.name }) : t("rolesCreatedSuccess", { name: saved.name }));
     closeEditor();
   };
 
@@ -580,10 +616,10 @@ export default function RolesPage() {
       <div style={{ marginBottom: "24px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "4px" }}>
-            Custom Roles
+            {t("rolesPageTitle")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            Define roles with granular permissions, then assign them to employees.
+            {t("rolesPageSubtitle")}
           </p>
         </div>
         {businessId && !showEditor && (
@@ -593,7 +629,7 @@ export default function RolesPage() {
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "9px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
           >
             <IconPlus size={15} />
-            New role
+            {t("rolesNewRoleButton")}
           </button>
         )}
       </div>
@@ -604,12 +640,12 @@ export default function RolesPage() {
 
       {/* Demo mode */}
       {!isSupabaseConfigured && (
-        <AlertBanner type="warning" message="Demo mode: Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable live data." />
+        <AlertBanner type="warning" message={t("demoModeSupabaseMessage")} />
       )}
 
       {/* No business */}
       {!loadingBiz && isSupabaseConfigured && !businessId && (
-        <NoBusinessCTA message="Register your business to manage custom roles." />
+        <NoBusinessCTA message={t("rolesNoBusinessMessage")} />
       )}
 
       {(businessId || !isSupabaseConfigured) && (
@@ -626,11 +662,12 @@ export default function RolesPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
               <IconShieldLock size={18} color="var(--db-accent)" />
               <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                Roles
+                {t("railRoles")}
               </h2>
             </div>
 
-            {/* Owner row — always shown, locked */}
+            {/* Owner row — always shown, locked. Not a custom_roles row (that array
+                only ever holds owner-created entries) — this is fixed system chrome. */}
             <div
               style={{
                 display: "flex", alignItems: "center", gap: "14px", padding: "14px 18px",
@@ -640,26 +677,26 @@ export default function RolesPage() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)", marginBottom: "2px" }}>
-                  Owner
+                  {t("roleOwner")}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-                  Full access — all permissions including billing and payouts
+                  {t("rolesOwnerDesc")}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--db-text-tertiary)", fontSize: "12px" }}>
                 <IconLock size={13} />
-                Fixed
+                {t("rolesFixedBadge")}
               </div>
             </div>
 
             {loadingRoles ? (
               <div style={{ padding: "20px", textAlign: "center", color: "var(--db-text-tertiary)", fontSize: "14px" }}>
-                Loading roles…
+                {t("rolesLoadingList")}
               </div>
             ) : roles.length === 0 && !showEditor ? (
               <div style={{ padding: "32px 20px", textAlign: "center" }}>
                 <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
-                  No custom roles yet. Create one to assign granular permissions to your staff.
+                  {t("rolesEmptyBody")}
                 </p>
                 <button
                   type="button"
@@ -667,7 +704,7 @@ export default function RolesPage() {
                   style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "9px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
                 >
                   <IconPlus size={14} />
-                  Create first role
+                  {t("rolesCreateFirstButton")}
                 </button>
               </div>
             ) : (
@@ -678,6 +715,7 @@ export default function RolesPage() {
                     role={role}
                     onEdit={() => openEdit(role)}
                     onDelete={() => void handleDelete(role)}
+                    t={t}
                   />
                 ))}
                 {!showEditor && (
@@ -687,7 +725,7 @@ export default function RolesPage() {
                     style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "10px", border: "1px dashed var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", cursor: "pointer", marginTop: "4px" }}
                   >
                     <IconPlus size={14} />
-                    Add another role
+                    {t("rolesAddAnotherButton")}
                   </button>
                 )}
               </div>
@@ -702,16 +740,20 @@ export default function RolesPage() {
               businessId={businessId}
               onSave={handleSaved}
               onCancel={closeEditor}
+              t={t}
+              tCommon={tCommon}
             />
           )}
 
           {/* Link to employees */}
           <p style={{ marginTop: "20px", fontSize: "13px", color: "var(--db-text-tertiary)" }}>
-            Assign custom roles when adding or editing employees in the{" "}
-            <Link href="/dashboard/employees" style={{ color: "var(--db-accent)", textDecoration: "none" }}>
-              Employees page
-            </Link>
-            .
+            {t.rich("rolesLinkText", {
+              link: (chunks) => (
+                <Link href="/dashboard/employees" style={{ color: "var(--db-accent)", textDecoration: "none" }}>
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
         </>
       )}
