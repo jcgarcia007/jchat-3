@@ -37,6 +37,8 @@ import reviewsEn from './locales/en/reviews.json';
 import reviewsEs from './locales/es/reviews.json';
 import loyaltyEn from './locales/en/loyalty.json';
 import loyaltyEs from './locales/es/loyalty.json';
+import eventsEn from './locales/en/events.json';
+import eventsEs from './locales/es/events.json';
 
 export type SupportedLanguage = 'en' | 'es';
 
@@ -44,8 +46,8 @@ const SUPPORTED: readonly SupportedLanguage[] = ['en', 'es'];
 const FALLBACK: SupportedLanguage = 'en';
 
 export const resources = {
-  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn },
-  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs },
+  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn },
+  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs },
 } as const;
 
 /** Device language clamped to a supported one (expo-localization, SDK 56 API). */
@@ -60,7 +62,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: FALLBACK,
-  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty'],
+  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events'],
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,

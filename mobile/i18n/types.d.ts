@@ -16,6 +16,7 @@ import type feed from './locales/en/feed.json';
 import type onboarding from './locales/en/onboarding.json';
 import type reviews from './locales/en/reviews.json';
 import type loyalty from './locales/en/loyalty.json';
+import type events from './locales/en/events.json';
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {
@@ -32,6 +33,7 @@ declare module 'react-i18next' {
       onboarding: typeof onboarding;
       reviews: typeof reviews;
       loyalty: typeof loyalty;
+      events: typeof events;
     };
   }
 }

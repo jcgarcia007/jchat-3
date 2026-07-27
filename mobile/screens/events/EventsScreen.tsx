@@ -10,7 +10,6 @@
  * - Demo fallback: renders placeholder cards when Supabase is not configured.
  *
  * TODO(Stage 4): tap "View on map" when native map (Stage 4) is complete.
- * TODO(i18n): wrap user-facing strings with t() once locales cover this screen.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -24,6 +23,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   IconCalendarEvent,
@@ -115,6 +115,7 @@ export default function EventsScreen({
   businessId,
   onSelectEvent,
 }: EventsScreenProps) {
+  const { t } = useTranslation('events');
   const c = useThemeColors();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
@@ -234,7 +235,7 @@ export default function EventsScreen({
           ]}
         >
           <Text style={[styles.demoText, { color: palette.warning }]}>
-            Demo mode — connect Supabase to see live events
+            {t('demoModeMessage')}
           </Text>
         </View>
       )}
@@ -270,6 +271,7 @@ interface EventCardProps {
 }
 
 function EventCard({ event, colors: c, onPress }: EventCardProps) {
+  const { t } = useTranslation('events');
   const isLive = event.status === 'live';
 
   return (
@@ -314,7 +316,7 @@ function EventCard({ event, colors: c, onPress }: EventCardProps) {
               ]}
             >
               <Text style={[styles.liveBadgeText, { color: palette.success }]}>
-                LIVE
+                {t('eventStatusLive').toUpperCase()}
               </Text>
             </View>
           )}
@@ -365,14 +367,15 @@ function EventCard({ event, colors: c, onPress }: EventCardProps) {
 // ── EmptyState ────────────────────────────────────────────────────────────────
 
 function EmptyState({ colors: c }: { colors: ReturnType<typeof useThemeColors> }) {
+  const { t } = useTranslation('events');
   return (
     <View style={styles.emptyInner}>
       <IconCalendarEvent size={40} color={c.textTertiary} />
       <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
-        No upcoming events
+        {t('noEventsTitle')}
       </Text>
       <Text style={[styles.emptySubtitle, { color: c.textTertiary }]}>
-        Check back soon or visit the venue to learn more.
+        {t('noEventsSubtitle')}
       </Text>
     </View>
   );

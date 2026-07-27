@@ -1,0 +1,14 @@
+{
+  "eventStatusUpcoming": "Upcoming",
+  "eventStatusLive": "Live",
+  "eventStatusClosed": "Closed",
+  "demoModeMessage": "Demo mode — connect Supabase to see live events",
+  "noEventsTitle": "No upcoming events",
+  "noEventsSubtitle": "Check back soon or visit the venue to learn more.",
+  "startsLabel": "Starts",
+  "endsLabel": "Ends",
+  "locationLabel": "Location",
+  "aboutSectionTitle": "About this event",
+  "joinChatButton": "Join Event Chat",
+  "closedNoticeMessage": "This event has ended. The chat room is no longer available."
+}

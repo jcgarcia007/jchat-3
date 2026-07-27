@@ -13,7 +13,6 @@
  *
  * TODO(Stage 4): "View on map" navigates to Map tab and highlights the event
  *                pin — wire up once map.native.tsx (Stage 4) is implemented.
- * TODO(i18n): wrap user-facing strings with t() once locales cover this screen.
  */
 
 import React from 'react';
@@ -26,6 +25,7 @@ import {
   Image,
   SafeAreaView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   IconCalendarEvent,
   IconClock,
@@ -81,8 +81,15 @@ export default function EventDetailScreen({
   onBack,
   onJoinChat,
 }: EventDetailScreenProps) {
+  const { t } = useTranslation('events');
   const c = useThemeColors();
   const badge = statusColor(event.status, c);
+  // Display-only label map — event.status itself (comparisons/query) stays untouched.
+  const statusLabels: Record<Event['status'], string> = {
+    upcoming: t('eventStatusUpcoming'),
+    live: t('eventStatusLive'),
+    closed: t('eventStatusClosed'),
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -129,7 +136,7 @@ export default function EventDetailScreen({
             ]}
           >
             <Text style={[styles.badgeText, { color: badge.text }]}>
-              {event.status.toUpperCase()}
+              {statusLabels[event.status].toUpperCase()}
             </Text>
           </View>
 
@@ -143,7 +150,7 @@ export default function EventDetailScreen({
             <IconClock size={14} color={palette.brand} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.metaLabel, { color: c.textTertiary }]}>
-                Starts
+                {t('startsLabel')}
               </Text>
               <Text style={[styles.metaValue, { color: c.textSecondary }]}>
                 {formatFullDatetime(event.starts_at)}
@@ -156,7 +163,7 @@ export default function EventDetailScreen({
                       { color: c.textTertiary, marginTop: 6 },
                     ]}
                   >
-                    Ends
+                    {t('endsLabel')}
                   </Text>
                   <Text style={[styles.metaValue, { color: c.textSecondary }]}>
                     {formatFullDatetime(event.ends_at)}
@@ -172,7 +179,7 @@ export default function EventDetailScreen({
               <IconMapPin size={14} color={palette.brand} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.metaLabel, { color: c.textTertiary }]}>
-                  Location
+                  {t('locationLabel')}
                 </Text>
                 <Text style={[styles.metaValue, { color: c.textSecondary }]}>
                   {event.lat.toFixed(5)}, {event.lng.toFixed(5)}
@@ -186,7 +193,7 @@ export default function EventDetailScreen({
           {event.description ? (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: c.textTertiary }]}>
-                About this event
+                {t('aboutSectionTitle')}
               </Text>
               <Text
                 style={[styles.descriptionText, { color: c.textSecondary }]}
@@ -207,7 +214,7 @@ export default function EventDetailScreen({
               activeOpacity={0.8}
             >
               <IconDoor size={18} color="#ffffff" />
-              <Text style={styles.joinButtonText}>Join Event Chat</Text>
+              <Text style={styles.joinButtonText}>{t('joinChatButton')}</Text>
             </TouchableOpacity>
           )}
 
@@ -222,7 +229,7 @@ export default function EventDetailScreen({
               ]}
             >
               <Text style={[styles.closedText, { color: palette.danger }]}>
-                This event has ended. The chat room is no longer available.
+                {t('closedNoticeMessage')}
               </Text>
             </View>
           )}
