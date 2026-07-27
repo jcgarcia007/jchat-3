@@ -2696,6 +2696,7 @@ function CategorySection({
 
 export default function MenuPage() {
   const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   // Category card selector: null = "Todas" (show every category).
@@ -2802,7 +2803,7 @@ export default function MenuPage() {
       })));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`Failed to load menu: ${msg}`);
+      setError(t("menuLoadError", { msg }));
     } finally {
       setLoading(false);
     }
@@ -2841,7 +2842,7 @@ export default function MenuPage() {
         ]);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Reorder failed: ${msg}`);
+        setError(t("menuReorderError", { msg }));
         void loadData(); // revert
       }
     },
@@ -2852,7 +2853,7 @@ export default function MenuPage() {
   const handleSaveCategory = useCallback(
     async (form: CategoryForm) => {
       if (!form.name.trim()) {
-        setError("Category name is required.");
+        setError(t("menuCategoryNameRequiredError"));
         return;
       }
       setSavingCat(true);
@@ -2868,7 +2869,7 @@ export default function MenuPage() {
           .from("menu-photos")
           .upload(path, file, { contentType: file.type, upsert: false });
         if (upErr) {
-          setError(`Upload failed: ${upErr.message}`);
+          setError(t("menuCategoryUploadError", { msg: upErr.message }));
           setSavingCat(false);
           return;
         }
@@ -2905,7 +2906,7 @@ export default function MenuPage() {
         setEditingCatId(null);
         setCatFormInitial(EMPTY_CATEGORY_FORM);
         setSavingCat(false);
-        setSuccess(`Category "${form.name.trim()}" saved.`);
+        setSuccess(t("menuCategorySavedSuccess", { name: form.name.trim() }));
         return;
       }
 
@@ -2927,14 +2928,14 @@ export default function MenuPage() {
           } as never);
           if (err) throw err;
         }
-        setSuccess(`Category "${form.name.trim()}" saved.`);
+        setSuccess(t("menuCategorySavedSuccess", { name: form.name.trim() }));
         setShowCatForm(false);
         setEditingCatId(null);
         setCatFormInitial(EMPTY_CATEGORY_FORM);
         await loadData();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Save category failed: ${msg}`);
+        setError(t("menuCategorySaveError", { msg }));
       } finally {
         setSavingCat(false);
       }
@@ -2967,7 +2968,7 @@ export default function MenuPage() {
         );
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Toggle failed: ${msg}`);
+        setError(t("menuToggleError", { msg }));
       } finally {
         setTogglingCatId(null);
       }
@@ -2989,7 +2990,7 @@ export default function MenuPage() {
         if (err) throw err;
       } catch {
         setMenuEnabled(!next); // revert
-        setError("Failed to update menu visibility.");
+        setError(t("menuVisibilityUpdateError"));
       } finally {
         setTogglingMenu(false);
       }
@@ -3006,7 +3007,7 @@ export default function MenuPage() {
       if (mode === "external") {
         const trimmed = urlInput.trim();
         if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-          setError("La URL debe empezar con http:// o https://");
+          setError(t("menuUrlProtocolError"));
           return;
         }
         setSavingMode(true);
@@ -3018,9 +3019,9 @@ export default function MenuPage() {
           if (err) throw err;
           setMenuMode("external");
           setExternalMenuUrl(trimmed);
-          setSuccess("Modo de menú guardado.");
+          setSuccess(t("menuModeSavedSuccess"));
         } catch {
-          setError("Error al guardar el modo de menú.");
+          setError(t("menuModeSaveError"));
         } finally {
           setSavingMode(false);
         }
@@ -3036,9 +3037,9 @@ export default function MenuPage() {
           setMenuMode(mode);
           setExternalMenuUrl("");
           setUrlInput("");
-          setSuccess("Modo de menú actualizado.");
+          setSuccess(t("menuModeUpdatedSuccess"));
         } catch {
-          setError("Error al guardar el modo de menú.");
+          setError(t("menuModeSaveError"));
         } finally {
           setSavingMode(false);
         }
@@ -3058,9 +3059,9 @@ export default function MenuPage() {
           .eq("id", businessId);
         if (err) throw err;
         setCardEffect(eff);
-        setSuccess("Efecto guardado.");
+        setSuccess(t("menuEffectSavedSuccess"));
       } catch {
-        setError("Error al guardar el efecto.");
+        setError(t("menuEffectSaveError"));
       } finally {
         setSavingEffect(false);
       }
@@ -3079,9 +3080,9 @@ export default function MenuPage() {
           .eq("id", businessId);
         if (err) throw err;
         setMenuTemplate(tpl);
-        setSuccess("Plantilla guardada.");
+        setSuccess(t("menuTemplateSavedSuccess"));
       } catch {
-        setError("Error al guardar la plantilla.");
+        setError(t("menuTemplateSaveError"));
       } finally {
         setSavingTemplate(null);
       }
@@ -3101,9 +3102,9 @@ export default function MenuPage() {
           .eq("id", businessId);
         if (err) throw err;
         setMenuPalette(slug);
-        setSuccess(slug ? "Paleta guardada." : "Paleta original restaurada.");
+        setSuccess(slug ? t("menuPaletteSavedSuccess") : t("menuPaletteResetSuccess"));
       } catch {
-        setError("Error al guardar la paleta.");
+        setError(t("menuPaletteSaveError"));
       } finally {
         setSavingPalette(null);
       }
@@ -3116,7 +3117,7 @@ export default function MenuPage() {
     async (cat: MenuCategory) => {
       if (
         !window.confirm(
-          `Delete category "${cat.name}"? This will also remove all its products.`
+          t("menuDeleteCategoryConfirm", { name: cat.name })
         )
       )
         return;
@@ -3134,10 +3135,10 @@ export default function MenuPage() {
           .eq("id", cat.id);
         if (err) throw err;
         await loadData();
-        setSuccess(`Category "${cat.name}" deleted.`);
+        setSuccess(t("menuCategoryDeletedSuccess", { name: cat.name }));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Delete failed: ${msg}`);
+        setError(t("menuDeleteError", { msg }));
       }
     },
     [loadData]
@@ -3177,7 +3178,7 @@ export default function MenuPage() {
     async (form: ItemForm, stagedPhotos: StagedPhotoFile[], photosToDelete: SavedPhoto[], modGroups: DashModifierGroup[] = []) => {
       if (!activeItemEdit) return;
       if (!form.name.trim() || !form.priceDollars.trim()) {
-        setError("Name and price are required.");
+        setError(t("menuItemNamePriceRequiredError"));
         return;
       }
       setSavingItem(true);
@@ -3221,7 +3222,7 @@ export default function MenuPage() {
         }
         setActiveItemEdit(null);
         setSavingItem(false);
-        setSuccess(`"${form.name.trim()}" saved.`);
+        setSuccess(t("menuItemSavedSuccess", { name: form.name.trim() }));
         return;
       }
 
@@ -3370,12 +3371,12 @@ export default function MenuPage() {
             .eq("menu_item_id", resolvedItemId);
         }
 
-        setSuccess(`"${form.name.trim()}" saved.`);
+        setSuccess(t("menuItemSavedSuccess", { name: form.name.trim() }));
         setActiveItemEdit(null);
         await loadData();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Save item failed: ${msg}`);
+        setError(t("menuItemSaveError", { msg }));
       } finally {
         setSavingItem(false);
       }
@@ -3408,7 +3409,7 @@ export default function MenuPage() {
         );
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Toggle failed: ${msg}`);
+        setError(t("menuToggleError", { msg }));
       } finally {
         setTogglingItemId(null);
       }
@@ -3419,7 +3420,7 @@ export default function MenuPage() {
   // ── Delete item ──────────────────────────────────────────────────────────────
   const handleDeleteItem = useCallback(
     async (item: MenuItem) => {
-      if (!window.confirm(`Delete "${item.name}"?`)) return;
+      if (!window.confirm(t("menuDeleteItemConfirm", { name: item.name }))) return;
       setDeletingItemId(item.id);
 
       if (!isSupabaseConfigured) {
@@ -3435,10 +3436,10 @@ export default function MenuPage() {
           .eq("id", item.id);
         if (err) throw err;
         setItems((prev) => prev.filter((it) => it.id !== item.id));
-        setSuccess(`"${item.name}" deleted.`);
+        setSuccess(t("menuItemDeletedSuccess", { name: item.name }));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Delete failed: ${msg}`);
+        setError(t("menuDeleteError", { msg }));
       } finally {
         setDeletingItemId(null);
       }
@@ -3478,9 +3479,9 @@ export default function MenuPage() {
     return (
       <div style={{ maxWidth: 880 }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
-          Menu Editor
+          {t("menuEditorTitle")}
         </h1>
-        <NoBusinessCTA message="Register your business to build your menu." />
+        <NoBusinessCTA message={t("menuNoBusinessMessage")} />
       </div>
     );
   }
@@ -3508,11 +3509,10 @@ export default function MenuPage() {
               margin: 0,
             }}
           >
-            Menu Editor
+            {t("menuEditorTitle")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", marginTop: 4 }}>
-            Manage categories and products. Reorder with the arrows; click
-            the eye icon to publish or hide items.
+            {t("menuEditorSubtitle")}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
@@ -3521,7 +3521,7 @@ export default function MenuPage() {
             <Toggle
               checked={menuEnabled}
               onChange={(v) => void handleToggleMenuEnabled(v)}
-              label="Show menu in chat"
+              label={t("menuShowInChatToggle")}
             />
             <span
               style={{
@@ -3530,7 +3530,7 @@ export default function MenuPage() {
                 opacity: togglingMenu ? 0.5 : 1,
               }}
             >
-              When on, customers see your menu icon in the venue chat.
+              {t("menuShowInChatHint")}
             </span>
           </div>
         </div>
@@ -3549,9 +3549,10 @@ export default function MenuPage() {
             lineHeight: 1.5,
           }}
         >
-          <strong>Demo mode:</strong> Supabase is not configured. Changes apply
-          locally only. Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable persistence.
+          {t.rich("menuDemoModeMessage", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+            code: (chunks) => <code>{chunks}</code>,
+          })}
         </div>
       )}
 
@@ -3578,10 +3579,10 @@ export default function MenuPage() {
         }}
       >
         <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-          Modo del menú
+          {t("menuModeSectionTitle")}
         </h2>
         <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "0 0 16px", lineHeight: 1.5 }}>
-          Elige cómo quieres mostrar tu menú a los clientes en el hub web.
+          {t("menuModeSectionDesc")}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3608,10 +3609,10 @@ export default function MenuPage() {
               />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--db-text-primary)" }}>
-                  Tengo mi propio menú (link)
+                  {t("menuModeExternalOptionTitle")}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--db-text-secondary)", marginTop: 2 }}>
-                  Pega el link a tu menú existente (PDF, Linktree, Google Docs, etc.)
+                  {t("menuModeExternalOptionDesc")}
                 </div>
               </div>
             </div>
@@ -3622,7 +3623,7 @@ export default function MenuPage() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
                     type="url"
-                    placeholder="https://tu-menu.com"
+                    placeholder={t("menuModeUrlPlaceholder")}
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     style={{
@@ -3653,7 +3654,7 @@ export default function MenuPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {savingMode ? "Guardando…" : "Guardar"}
+                    {savingMode ? t("menuModeSavingState") : tCommon("save")}
                   </button>
                 </div>
                 {externalMenuUrl && (
@@ -3670,7 +3671,7 @@ export default function MenuPage() {
                       gap: 4,
                     }}
                   >
-                    Abrir menú ↗
+                    {t("menuModeOpenLinkButton")}
                   </a>
                 )}
               </div>
@@ -3701,10 +3702,10 @@ export default function MenuPage() {
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: menuMode === "web" ? "var(--db-accent)" : "var(--db-text-primary)" }}>
-                  Crear mi Menú Web (plantilla)
+                  {t("menuModeWebOptionTitle")}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--db-text-secondary)", marginTop: 2 }}>
-                  Crea tu propio menú interactivo con el editor de JChat (categorías, productos, precios).
+                  {t("menuModeWebOptionDesc")}
                 </div>
               </div>
             </div>
@@ -3727,22 +3728,22 @@ export default function MenuPage() {
                 padding: 0,
               }}
             >
-              Quitar menú (no mostrar nada)
+              {t("menuModeRemoveButton")}
             </button>
           )}
         </div>
 
         {/* Estado actual */}
         <div style={{ marginTop: 14, fontSize: 12, color: "var(--db-text-tertiary)" }}>
-          Estado actual:{" "}
+          {t("menuModeCurrentStatusLabel")}{" "}
           <strong>
             {menuMode === "external" && externalMenuUrl
-              ? "Link externo configurado ✓"
+              ? t("menuModeExternalConfiguredState")
               : menuMode === "external"
-              ? "Link externo (sin URL guardada)"
+              ? t("menuModeExternalNoUrlState")
               : menuMode === "web"
-              ? "Menú Web propio activo ✓"
-              : "Sin menú configurado"}
+              ? t("menuModeWebActiveState")
+              : t("menuModeNoneState")}
           </strong>
           {menuMode === "web" && bizSlug && (
             <span style={{ marginLeft: 10 }}>
@@ -3752,7 +3753,7 @@ export default function MenuPage() {
                 rel="noopener noreferrer"
                 style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 600 }}
               >
-                Ver mi Menú Web ↗
+                {t("menuModeViewWebLinkButton")}
               </a>
             </span>
           )}
