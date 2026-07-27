@@ -10,7 +10,6 @@
  *   businessId — the business whose loyalty program to show.
  *                If omitted, renders an overview of all business balances.
  *
- * TODO(i18n): Replace English strings with translation keys.
  * TODO(Task 3.5): hook up reward selection to checkout discount flow.
  */
 
@@ -24,6 +23,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconAward, IconCoin, IconStar, IconX } from '@tabler/icons-react-native';
 
 import { useAuth } from '../../context/AuthContext';
@@ -72,6 +72,7 @@ function BalanceHero({
   tier: LoyaltyTier | null;
   nextTier: LoyaltyTier | null;
 }) {
+  const { t } = useTranslation('loyalty');
   const c = useThemeColors();
   const progress =
     nextTier && tier
@@ -94,7 +95,7 @@ function BalanceHero({
           <Text style={[styles.heroPoints, { color: c.textPrimary }]}>
             {formatPoints(balance.points)}
           </Text>
-          <Text style={[styles.heroLabel, { color: c.textSecondary }]}>points</Text>
+          <Text style={[styles.heroLabel, { color: c.textSecondary }]}>{t('points')}</Text>
         </View>
       </View>
 
@@ -120,7 +121,11 @@ function BalanceHero({
             />
           </View>
           <Text style={[styles.progressLabel, { color: c.textTertiary }]}>
-            {formatPoints(nextTier.min_points - balance.points)} pts to {nextTier.name}
+            {t('pointsToNextTier', {
+              count: nextTier.min_points - balance.points,
+              formatted: formatPoints(nextTier.min_points - balance.points),
+              tierName: nextTier.name,
+            })}
           </Text>
         </View>
       )}
@@ -168,6 +173,7 @@ function RewardCard({
   onRedeem: (r: LoyaltyReward) => void;
   redeeming: boolean;
 }) {
+  const { t } = useTranslation('loyalty');
   const c = useThemeColors();
   const canAfford = userPoints >= reward.cost_points;
 
@@ -189,7 +195,10 @@ function RewardCard({
           </Text>
         )}
         <Text style={[styles.rewardCost, { color: canAfford ? palette.brand : c.textTertiary }]}>
-          {formatPoints(reward.cost_points)} pts
+          {t('pointsSuffix', {
+            count: reward.cost_points,
+            formatted: formatPoints(reward.cost_points),
+          })}
         </Text>
       </View>
       <Pressable
@@ -202,7 +211,7 @@ function RewardCard({
           },
         ]}
         accessibilityRole="button"
-        accessibilityLabel={`Redeem ${reward.name}`}
+        accessibilityLabel={t('redeemAccessibilityLabel', { rewardName: reward.name })}
       >
         <Text
           style={[
@@ -210,7 +219,7 @@ function RewardCard({
             { color: canAfford && !redeeming ? palette.textPrimary : c.textTertiary },
           ]}
         >
-          {redeeming ? '…' : 'Redeem'}
+          {redeeming ? '…' : t('redeemButton')}
         </Text>
       </Pressable>
     </View>
@@ -219,6 +228,7 @@ function RewardCard({
 
 /** Card for a business balance in the "all balances" wallet view. */
 function WalletCard({ item }: { item: LoyaltyBalanceWithBusiness }) {
+  const { t } = useTranslation('loyalty');
   const c = useThemeColors();
   return (
     <View style={[styles.walletCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -227,10 +237,10 @@ function WalletCard({ item }: { item: LoyaltyBalanceWithBusiness }) {
       </View>
       <View style={styles.walletInfo}>
         <Text style={[styles.walletBizName, { color: c.textPrimary }]} numberOfLines={1}>
-          {item.business?.name ?? 'Business'}
+          {item.business?.name ?? t('businessFallback')}
         </Text>
         <Text style={[styles.walletPoints, { color: palette.brand }]}>
-          {formatPoints(item.points)} pts
+          {t('pointsSuffix', { count: item.points, formatted: formatPoints(item.points) })}
         </Text>
       </View>
     </View>
@@ -261,6 +271,7 @@ interface Props {
 }
 
 export default function LoyaltyScreen({ businessId }: Props) {
+  const { t } = useTranslation('loyalty');
   const c = useThemeColors();
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -305,12 +316,12 @@ export default function LoyaltyScreen({ businessId }: Props) {
         setAllBalances(rows);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to load loyalty data.';
+      const msg = e instanceof Error ? e.message : t('loadError');
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [userId, businessId]);
+  }, [userId, businessId, t]);
 
   useEffect(() => {
     void load();
@@ -326,16 +337,22 @@ export default function LoyaltyScreen({ businessId }: Props) {
       try {
         const updated = await redeemReward(userId, businessId, reward);
         setBalance(updated);
-        setSuccessMsg(`Redeemed "${reward.name}"! ${formatPoints(updated.points)} pts remaining.`);
+        setSuccessMsg(
+          t('redeemSuccessMessage', {
+            rewardName: reward.name,
+            count: updated.points,
+            formatted: formatPoints(updated.points),
+          }),
+        );
         // TODO(Task 3.5): pass redeemed reward info to checkout discount handler
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Redemption failed.';
+        const msg = e instanceof Error ? e.message : t('redeemError');
         setError(msg);
       } finally {
         setRedeemingId(null);
       }
     },
-    [userId, businessId]
+    [userId, businessId, t]
   );
 
   // ── Derived values (single-business view) ───────────────────────────────────
@@ -343,7 +360,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
   const currentTier = businessId ? getTierForPoints(currentPoints, tiers) : null;
   const nextTier = businessId
     ? (tiers
-        .filter((t) => t.min_points > currentPoints)
+        .filter((tier) => tier.min_points > currentPoints)
         .sort((a, b) => a.min_points - b.min_points)[0] ?? null)
     : null;
 
@@ -370,13 +387,13 @@ export default function LoyaltyScreen({ businessId }: Props) {
     return (
       <View style={[styles.root, { backgroundColor: c.bgBase }]}>
         <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>
-          My Loyalty Wallets
+          {t('walletsSectionTitle')}
         </Text>
         {allBalances.length === 0 ? (
           <EmptyState
             icon={<IconCoin size={48} color={c.textTertiary} />}
-            title="No loyalty balances"
-            subtitle="Visit a participating business and make a purchase to earn your first points."
+            title={t('noBalancesTitle')}
+            subtitle={t('noBalancesSubtitle')}
           />
         ) : (
           <FlatList<LoyaltyBalanceWithBusiness>
@@ -407,7 +424,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
           <Pressable
             onPress={() => setSuccessMsg(null)}
             accessibilityRole="button"
-            accessibilityLabel="Dismiss"
+            accessibilityLabel={t('dismissAccessibilityLabel')}
           >
             <IconX size={16} color={c.textTertiary} />
           </Pressable>
@@ -430,7 +447,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
         <View style={[styles.heroCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
           <Text style={[styles.heroPoints, { color: c.textPrimary }]}>0</Text>
           <Text style={[styles.heroLabel, { color: c.textSecondary }]}>
-            No points yet — make a purchase to start earning!
+            {t('noPointsYetMessage')}
           </Text>
           {/* TODO(Task 3.x): points are awarded on order completion */}
         </View>
@@ -438,14 +455,11 @@ export default function LoyaltyScreen({ businessId }: Props) {
 
       {/* Points history */}
       <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>
-        Points History
+        {t('historySectionTitle')}
       </Text>
       {history.length === 0 ? (
         <Text style={[styles.emptyHint, { color: c.textTertiary }]}>
-          No history yet.{'\n'}
-          {/* TODO(schema): full history available once loyalty_ledger table is added */}
-          Full transaction history will appear here once a ledger table is added
-          (stub — Task 2.20).
+          {t('historyEmptyMessage')}
         </Text>
       ) : (
         <View style={[styles.historyContainer, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -457,13 +471,13 @@ export default function LoyaltyScreen({ businessId }: Props) {
 
       {/* Rewards catalog */}
       <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>
-        Rewards to Redeem
+        {t('rewardsSectionTitle')}
       </Text>
       {rewards.length === 0 ? (
         <EmptyState
           icon={<IconAward size={40} color={c.textTertiary} />}
-          title="No rewards available"
-          subtitle="This business hasn't added any rewards yet."
+          title={t('noRewardsTitle')}
+          subtitle={t('noRewardsSubtitle')}
         />
       ) : (
         <View style={styles.rewardsList}>
