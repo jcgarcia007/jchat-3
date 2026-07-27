@@ -31,6 +31,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -54,8 +55,9 @@ type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown
 
 async function readFunctionError(
   error: unknown,
+  genericFallback: string,
 ): Promise<{ status: number | null; message: string }> {
-  const fallback = error instanceof Error ? error.message : "Refund failed";
+  const fallback = error instanceof Error ? error.message : genericFallback;
   const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
   if (!ctx || typeof ctx !== "object") return { status: null, message: fallback };
   const status = typeof ctx.status === "number" ? ctx.status : null;
@@ -218,20 +220,11 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function statusLabel(s: DisputeStatus): string {
-  const map: Record<DisputeStatus, string> = {
-    open: "Open",
-    approved: "Approved",
-    rejected: "Rejected",
-    escalated: "Escalated",
-    refunded: "Refunded",
-  };
-  return map[s];
-}
-
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function DisputesPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -348,20 +341,20 @@ export default function DisputesPage() {
     if (refundFull) {
       // Full refund = the REAL order total, NOT what the customer claims.
       if (activeDispute.order_total_cents == null || activeDispute.order_total_cents <= 0) {
-        setActionError("This order has no known total to refund.");
+        setActionError(t("disputesNoOrderTotalError"));
         return;
       }
       cents = activeDispute.order_total_cents;
     } else {
       const parsed = parseInt(partialCents.replace(/[^0-9]/g, ""), 10);
       if (isNaN(parsed) || parsed <= 0) {
-        setActionError("Enter a valid refund amount in cents (e.g. 1250 = $12.50).");
+        setActionError(t("disputesInvalidAmountError"));
         return;
       }
       // UX-only guard (the server is authoritative — this just avoids an obvious
       // round-trip that would 400): don't exceed the real order total.
       if (activeDispute.order_total_cents != null && parsed > activeDispute.order_total_cents) {
-        setActionError(`Refund cannot exceed the order total (${formatCents(activeDispute.order_total_cents)}).`);
+        setActionError(t("disputesExceedsTotalError", { amount: formatCents(activeDispute.order_total_cents) }));
         return;
       }
       cents = parsed;
@@ -380,7 +373,7 @@ export default function DisputesPage() {
 
       if (error) {
         // Show the SERVER's real message (409/402/…), not the generic "non-2xx".
-        const { message } = await readFunctionError(error);
+        const { message } = await readFunctionError(error, t("disputesRefundFailedFallback"));
         setActionError(message);
         setSaving(false);
         return;
@@ -399,7 +392,7 @@ export default function DisputesPage() {
     setActionError(null);
 
     if (!rejectReason.trim()) {
-      setActionError("A rejection reason is required.");
+      setActionError(t("disputesReasonRequiredError"));
       return;
     }
 
@@ -479,7 +472,7 @@ export default function DisputesPage() {
               margin: 0,
             }}
           >
-            Disputes &amp; Refunds
+            {t("disputesPageTitle")}
           </h1>
         </div>
         <p
@@ -490,8 +483,7 @@ export default function DisputesPage() {
             maxWidth: "600px",
           }}
         >
-          Customer disputes for your orders. Respond within 48 hours — disputes
-          with no response are automatically escalated to Super Admin.
+          {t("disputesSubtitle")}
           {/* TODO(cron): pg_cron job sets status='escalated' at created_at + 48h */}
           {/* TODO(server): customer receives push notification on every status change */}
         </p>
@@ -501,13 +493,13 @@ export default function DisputesPage() {
       {!isSupabaseConfigured && (
         <AlertBanner
           type="warning"
-          message="Demo mode — Supabase not configured. Actions are shown but not persisted."
+          message={t("disputesDemoModeMessage")}
         />
       )}
 
       {/* Fetch error */}
       {fetchError && (
-        <AlertBanner type="error" message={`Failed to load disputes: ${fetchError}`} />
+        <AlertBanner type="error" message={t("disputesLoadError", { msg: fetchError })} />
       )}
 
       {/* Business selector — only when the owner has more than one. */}
@@ -517,7 +509,7 @@ export default function DisputesPage() {
             htmlFor="dispute-business"
             style={{ fontSize: "12px", color: "var(--db-text-secondary)" }}
           >
-            Business
+            {t("createBusinessCardTitle")}
           </label>
           <select
             id="dispute-business"
@@ -552,17 +544,17 @@ export default function DisputesPage() {
           }}
         >
           <SummaryChip
-            label="Open"
+            label={t("disputesStatusOpen")}
             count={openCount}
             color="var(--db-warning)"
           />
           <SummaryChip
-            label="Escalated"
+            label={t("disputesStatusEscalated")}
             count={escalatedCount}
             color="var(--db-danger)"
           />
           <SummaryChip
-            label="Total"
+            label={t("disputesTotalLabel")}
             count={disputes.length}
             color="var(--db-text-secondary)"
           />
@@ -611,7 +603,7 @@ export default function DisputesPage() {
               color: "var(--db-text-primary)",
             }}
           >
-            No disputes
+            {t("disputesEmptyTitle")}
           </div>
           <div
             style={{
@@ -620,8 +612,7 @@ export default function DisputesPage() {
               maxWidth: "360px",
             }}
           >
-            Your customers haven&apos;t opened any disputes. Keep up the great
-            service!
+            {t("disputesEmptyMessage")}
           </div>
         </div>
       )}
@@ -655,7 +646,7 @@ export default function DisputesPage() {
       {activeDispute && actionMode && (
         <Modal
           title={
-            actionMode === "approve" ? "Approve Refund" : "Reject Dispute"
+            actionMode === "approve" ? t("disputesApproveRefundTitle") : t("disputesRejectDisputeTitle")
           }
           onClose={closeAction}
         >
@@ -696,18 +687,18 @@ export default function DisputesPage() {
                 color: "var(--db-text-tertiary)",
               }}
             >
-              Order: <code>{activeDispute.order_id}</code>
+              {t("disputesOrderLabel")} <code>{activeDispute.order_id}</code>
               {activeDispute.order_total_cents !== null && (
                 <span>
                   {" "}
-                  · Order total:{" "}
+                  · {t("disputesOrderTotalLabel")}{" "}
                   <strong style={{ color: "var(--db-text-primary)" }}>
                     {formatCents(activeDispute.order_total_cents)}
                   </strong>
                 </span>
               )}
               {activeDispute.amount_cents !== null && (
-                <span> · Customer claims: {formatCents(activeDispute.amount_cents)}</span>
+                <span> · {t("disputesCustomerClaimsLabel")} {formatCents(activeDispute.amount_cents)}</span>
               )}
             </div>
           </div>
@@ -716,30 +707,34 @@ export default function DisputesPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* Refund type */}
               <div>
-                <FieldLabel>Refund amount</FieldLabel>
+                <FieldLabel>{t("disputesRefundAmountLabel")}</FieldLabel>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <RadioOption
                     checked={refundFull}
                     onChange={() => setRefundFull(true)}
-                    label={`Full refund${activeDispute.order_total_cents !== null ? ` — ${formatCents(activeDispute.order_total_cents)}` : ""}`}
+                    label={
+                      activeDispute.order_total_cents !== null
+                        ? t("disputesFullRefundWithAmountOption", { amount: formatCents(activeDispute.order_total_cents) })
+                        : t("disputesFullRefundOption")
+                    }
                   />
                   <RadioOption
                     checked={!refundFull}
                     onChange={() => setRefundFull(false)}
-                    label="Partial refund"
+                    label={t("disputesPartialRefundOption")}
                   />
                 </div>
               </div>
 
               {!refundFull && (
                 <div>
-                  <FieldLabel>Amount in cents (e.g. 1250 = $12.50)</FieldLabel>
+                  <FieldLabel>{t("disputesAmountCentsLabel")}</FieldLabel>
                   <input
                     type="number"
                     min={1}
                     value={partialCents}
                     onChange={(e) => setPartialCents(e.target.value)}
-                    placeholder="Enter cents"
+                    placeholder={t("disputesEnterCentsPlaceholder")}
                     style={inputStyle}
                     autoFocus
                   />
@@ -747,15 +742,14 @@ export default function DisputesPage() {
               )}
 
               <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
-                Approving charges the refund back through Stripe immediately
-                (from the business balance). This cannot be undone.
+                {t("disputesApprovingDisclaimer")}
               </p>
 
               {actionError && <AlertBanner type="error" message={actionError} />}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button onClick={closeAction} style={cancelBtn}>
-                  Cancel
+                  {tCommon("cancel")}
                 </button>
                 <button
                   onClick={() => void handleApprove()}
@@ -771,7 +765,7 @@ export default function DisputesPage() {
                   ) : (
                     <IconCheck size={14} stroke={2} />
                   )}
-                  Approve Refund
+                  {t("disputesApproveRefundTitle")}
                 </button>
               </div>
             </div>
@@ -780,11 +774,11 @@ export default function DisputesPage() {
           {actionMode === "reject" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
-                <FieldLabel>Rejection reason *</FieldLabel>
+                <FieldLabel>{t("disputesRejectionReasonLabel")}</FieldLabel>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Explain why you are rejecting this dispute…"
+                  placeholder={t("disputesRejectPlaceholder")}
                   rows={4}
                   style={{ ...inputStyle, resize: "vertical" }}
                   autoFocus
@@ -795,7 +789,7 @@ export default function DisputesPage() {
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button onClick={closeAction} style={cancelBtn}>
-                  Cancel
+                  {tCommon("cancel")}
                 </button>
                 <button
                   onClick={() => void handleReject()}
@@ -811,7 +805,7 @@ export default function DisputesPage() {
                   ) : (
                     <IconX size={14} stroke={2} />
                   )}
-                  Reject Dispute
+                  {t("disputesRejectDisputeTitle")}
                 </button>
               </div>
             </div>
@@ -841,6 +835,7 @@ function DisputeRow({
   onApprove: () => void;
   onReject: () => void;
 }) {
+  const t = useTranslations("dashboardCommon");
   const secs = secondsUntilEscalation(d.created_at);
   const overdue = secs < 0;
   const isActionable = d.status === "open" || d.status === "escalated";
@@ -895,7 +890,7 @@ function DisputeRow({
               marginTop: "2px",
             }}
           >
-            Order:{" "}
+            {t("disputesOrderLabel")}{" "}
             <span style={{ fontFamily: "var(--font-geist-mono, monospace)" }}>
               {d.order_id.slice(0, 12)}…
             </span>
@@ -934,8 +929,8 @@ function DisputeRow({
               <IconClock size={14} stroke={1.6} />
             )}
             {overdue
-              ? `Overdue ${formatCountdown(secs)} ago`
-              : `Escalates in ${formatCountdown(secs)}`}
+              ? t("disputesOverdueLabel", { duration: formatCountdown(secs) })
+              : t("disputesEscalatesInLabel", { duration: formatCountdown(secs) })}
           </div>
         )}
 
@@ -953,24 +948,24 @@ function DisputeRow({
               <button
                 onClick={onApprove}
                 style={smallPrimaryBtn}
-                title="Approve refund"
+                title={t("disputesApproveTitleAttr")}
               >
                 <IconCheck size={13} stroke={2} />
-                Approve
+                {t("disputesApproveShortButton")}
               </button>
               <button
                 onClick={onReject}
                 style={smallDangerBtn}
-                title="Reject dispute"
+                title={t("disputesRejectTitleAttr")}
               >
                 <IconX size={13} stroke={2} />
-                Reject
+                {t("disputesRejectShortButton")}
               </button>
             </>
           )}
           <button
             onClick={onToggleExpand}
-            aria-label={isExpanded ? "Collapse details" : "Expand details"}
+            aria-label={isExpanded ? t("disputesCollapseDetailsAria") : t("disputesExpandDetailsAria")}
             style={expandBtn}
           >
             {isExpanded ? (
@@ -995,23 +990,23 @@ function DisputeRow({
           }}
         >
           {d.description && (
-            <DetailField label="Customer description" value={d.description} />
+            <DetailField label={t("disputesCustomerDescriptionLabel")} value={d.description} />
           )}
           {d.resolution && (
-            <DetailField label="Resolution note" value={d.resolution} />
+            <DetailField label={t("disputesResolutionNoteLabel")} value={d.resolution} />
           )}
           <DetailField
-            label="Opened at"
+            label={t("disputesOpenedAtLabel")}
             value={new Date(d.created_at).toLocaleString()}
           />
           {d.escalated_at && (
             <DetailField
-              label="Escalated at"
+              label={t("disputesEscalatedAtLabel")}
               value={new Date(d.escalated_at).toLocaleString()}
             />
           )}
           {d.refund_id && (
-            <DetailField label="Stripe refund ID" value={d.refund_id} mono />
+            <DetailField label={t("disputesStripeRefundIdLabel")} value={d.refund_id} mono />
           )}
         </div>
       )}
@@ -1028,6 +1023,14 @@ function StatusBadge({
   status: DisputeStatus;
   color: string;
 }) {
+  const t = useTranslations("dashboardCommon");
+  const labels: Record<DisputeStatus, string> = {
+    open: t("disputesStatusOpen"),
+    approved: t("disputesStatusApproved"),
+    rejected: t("disputesStatusRejected"),
+    escalated: t("disputesStatusEscalated"),
+    refunded: t("disputesStatusRefunded"),
+  };
   return (
     <span
       style={{
@@ -1044,7 +1047,7 @@ function StatusBadge({
         flexShrink: 0,
       }}
     >
-      {statusLabel(status)}
+      {labels[status]}
     </span>
   );
 }
@@ -1219,6 +1222,7 @@ function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("dashboardCommon");
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1279,7 +1283,7 @@ function Modal({
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("tablesQrModalCloseAria")}
             style={{
               background: "none",
               border: "none",
