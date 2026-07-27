@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconCalendarEvent,
   IconPlus,
@@ -19,6 +20,7 @@ import {
   setActiveBusiness,
   type EventListItem,
 } from "@/lib/business";
+import type { TFn } from "@/lib/tabSemantics";
 
 const CARD: React.CSSProperties = {
   background: "var(--db-bg-surface)",
@@ -91,7 +93,13 @@ const STATUS_COLOR: Record<EventStatus, string> = {
   ended: "var(--db-text-tertiary)",
 };
 
-function StatusBadge({ status }: { status: EventStatus }) {
+const STATUS_LABEL_KEY: Record<EventStatus, string> = {
+  upcoming: "eventStatusUpcoming",
+  live: "eventStatusLive",
+  ended: "eventStatusEnded",
+};
+
+function StatusBadge({ status, t }: { status: EventStatus; t: TFn }) {
   return (
     <span
       style={{
@@ -104,28 +112,34 @@ function StatusBadge({ status }: { status: EventStatus }) {
         textTransform: "capitalize",
       }}
     >
-      {status}
+      {t(STATUS_LABEL_KEY[status])}
     </span>
   );
 }
 
-function formatWindow(startsAt: string | null, endsAt: string | null): string {
+// Note: no hardcoded locale here — toLocaleString() uses the browser's own
+// locale, same as reservations/page.tsx. Flagging for the future dates chunk
+// only as a place that WILL need real formatting once that's tackled; it's
+// not the es-ES-hardcode gap from the receipt/SalesCalendar.
+function formatWindow(startsAt: string | null, endsAt: string | null, t: TFn): string {
   const s = startsAt ? new Date(startsAt).toLocaleString() : null;
   const e = endsAt ? new Date(endsAt).toLocaleString() : null;
   if (s && e) return `${s} – ${e}`;
-  if (s) return `From ${s}`;
-  if (e) return `Until ${e}`;
-  return "No dates set";
+  if (s) return t("eventsWindowFrom", { date: s });
+  if (e) return t("eventsWindowUntil", { date: e });
+  return t("eventsNoDatesSet");
 }
 
 function EventRow({
   event,
   switching,
   onManage,
+  t,
 }: {
   event: EventListItem;
   switching: boolean;
   onManage: () => void;
+  t: TFn;
 }) {
   const status = eventStatus(event.event_starts_at, event.event_ends_at);
   return (
@@ -138,10 +152,10 @@ function EventRow({
           <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
             {event.name}
           </h3>
-          <StatusBadge status={status} />
+          <StatusBadge status={status} t={t} />
         </div>
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-          {formatWindow(event.event_starts_at, event.event_ends_at)}
+          {formatWindow(event.event_starts_at, event.event_ends_at, t)}
         </p>
       </div>
       <button
@@ -150,7 +164,7 @@ function EventRow({
         disabled={switching}
         style={{ ...SECONDARY_BTN, cursor: switching ? "wait" : "pointer", opacity: switching ? 0.6 : 1 }}
       >
-        {switching ? "Opening…" : "Manage"}
+        {switching ? t("eventsOpeningState") : t("eventsManageButton")}
         {!switching && <IconArrowRight size={15} />}
       </button>
     </section>
@@ -158,6 +172,8 @@ function EventRow({
 }
 
 export default function EventsPage() {
+  const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,20 +211,20 @@ export default function EventsPage() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 6px" }}>
-            Events
+            {t("eventsPageTitle")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: 0 }}>
-            Your temporary events. Each event is a full business with menu, chat, and POS.
+            {t("eventsSubtitle")}
           </p>
         </div>
         <button type="button" onClick={handleNew} style={CTA}>
           <IconPlus size={16} />
-          New Event
+          {t("eventsNewButton")}
         </button>
       </div>
 
       {loading ? (
-        <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>Loading…</div>
+        <div style={{ padding: "8px 0", color: "var(--db-text-secondary)", fontSize: "14px" }}>{tCommon("loading")}</div>
       ) : events.length === 0 ? (
         <section
           style={{
@@ -225,15 +241,15 @@ export default function EventsPage() {
           </span>
           <div>
             <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
-              No events yet
+              {t("eventsEmptyTitle")}
             </h3>
             <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-              Create a temporary event — it works just like a business.
+              {t("eventsEmptyBody")}
             </p>
           </div>
           <button type="button" onClick={handleNew} style={CTA}>
             <IconPlus size={16} />
-            New Event
+            {t("eventsNewButton")}
           </button>
         </section>
       ) : (
@@ -241,6 +257,7 @@ export default function EventsPage() {
           <EventRow
             key={ev.id}
             event={ev}
+            t={t}
             switching={switchingId === ev.id}
             onManage={() => void handleManage(ev.id)}
           />

@@ -21,6 +21,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconCalendarEvent,
@@ -38,6 +39,7 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import type { TFn } from "@/lib/tabSemantics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -158,48 +160,52 @@ function isoDateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
 
-function guestLabel(r: Reservation): string {
+function guestLabel(r: Reservation, t: TFn): string {
   if (r.profiles?.display_name) return r.profiles.display_name;
   if (r.profiles?.username) return `@${r.profiles.username}`;
-  return `User …${r.user_id.slice(-6)}`;
+  return t("reservationsGuestFallback", { id: r.user_id.slice(-6) });
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-const STATUS_META: Record<
+function getStatusMeta(t: TFn): Record<
   ReservationStatus,
   { label: string; bg: string; color: string }
-> = {
-  pending: {
-    label: "Pending",
-    bg: "rgba(245,158,11,0.15)",
-    color: "var(--db-warning)",
-  },
-  confirmed: {
-    label: "Confirmed",
-    bg: "rgba(34,197,94,0.15)",
-    color: "var(--db-success)",
-  },
-  rejected: {
-    label: "Rejected",
-    bg: "rgba(239,68,68,0.15)",
-    color: "var(--db-danger)",
-  },
-  no_show: {
-    label: "No-show",
-    bg: "rgba(239,68,68,0.08)",
-    color: "var(--db-danger)",
-  },
-};
+> {
+  return {
+    pending: {
+      label: t("orderStatusPending"),
+      bg: "rgba(245,158,11,0.15)",
+      color: "var(--db-warning)",
+    },
+    confirmed: {
+      label: t("reservationsStatusConfirmed"),
+      bg: "rgba(34,197,94,0.15)",
+      color: "var(--db-success)",
+    },
+    rejected: {
+      label: t("reservationsStatusRejected"),
+      bg: "rgba(239,68,68,0.15)",
+      color: "var(--db-danger)",
+    },
+    no_show: {
+      label: t("reservationsStatusNoShow"),
+      bg: "rgba(239,68,68,0.08)",
+      color: "var(--db-danger)",
+    },
+  };
+}
 
 function StatusBadge({
   status,
   isWaitlist,
+  t,
 }: {
   status: ReservationStatus;
   isWaitlist: boolean;
+  t: TFn;
 }) {
-  const m = STATUS_META[status];
+  const m = getStatusMeta(t)[status];
   return (
     <span style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
       <span
@@ -229,7 +235,7 @@ function StatusBadge({
             whiteSpace: "nowrap",
           }}
         >
-          Waitlist
+          {t("reservationsWaitlistBadge")}
         </span>
       )}
     </span>
@@ -279,12 +285,14 @@ interface ReservationRowProps {
   reservation: Reservation;
   actionLoading: string | null;
   onAction: (id: string, action: "confirmed" | "rejected" | "no_show") => void;
+  t: TFn;
 }
 
 function ReservationRow({
   reservation: r,
   actionLoading,
   onAction,
+  t,
 }: ReservationRowProps) {
   const busy = actionLoading === r.id;
 
@@ -365,9 +373,9 @@ function ReservationRow({
               color: "var(--db-text-primary)",
             }}
           >
-            {guestLabel(r)}
+            {guestLabel(r, t)}
           </span>
-          <StatusBadge status={r.status} isWaitlist={r.is_waitlist} />
+          <StatusBadge status={r.status} isWaitlist={r.is_waitlist} t={t} />
         </div>
 
         <div
@@ -388,7 +396,7 @@ function ReservationRow({
             }}
           >
             <IconUsers size={12} />
-            {r.party_size} {r.party_size === 1 ? "guest" : "guests"}
+            {t("reservationsGuestCountPlural", { count: r.party_size })}
           </span>
           <span
             style={{
@@ -442,7 +450,7 @@ function ReservationRow({
             <button
               onClick={() => onAction(r.id, "confirmed")}
               disabled={busy}
-              title="Confirm reservation"
+              title={t("reservationsConfirmAria")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -461,12 +469,12 @@ function ReservationRow({
               }}
             >
               <IconCheck size={13} />
-              {busy ? "…" : "Confirm"}
+              {busy ? "…" : t("reservationsConfirmButton")}
             </button>
             <button
               onClick={() => onAction(r.id, "rejected")}
               disabled={busy}
-              title="Reject reservation"
+              title={t("reservationsRejectAria")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -483,7 +491,7 @@ function ReservationRow({
               }}
             >
               <IconX size={13} />
-              {busy ? "…" : "Reject"}
+              {busy ? "…" : t("reservationsRejectButton")}
             </button>
           </>
         )}
@@ -491,7 +499,7 @@ function ReservationRow({
           <button
             onClick={() => onAction(r.id, "no_show")}
             disabled={busy}
-            title="Mark as no-show"
+            title={t("reservationsNoShowAria")}
             style={{
               padding: "6px 12px",
               borderRadius: "8px",
@@ -504,7 +512,7 @@ function ReservationRow({
               whiteSpace: "nowrap",
             }}
           >
-            {busy ? "…" : "No-show"}
+            {busy ? "…" : t("reservationsStatusNoShow")}
           </button>
         )}
       </div>
@@ -518,9 +526,10 @@ interface CalendarViewProps {
   reservations: Reservation[];
   actionLoading: string | null;
   onAction: (id: string, action: "confirmed" | "rejected" | "no_show") => void;
+  t: TFn;
 }
 
-function CalendarView({ reservations, actionLoading, onAction }: CalendarViewProps) {
+function CalendarView({ reservations, actionLoading, onAction, t }: CalendarViewProps) {
   // Group reservations by date (YYYY-MM-DD)
   const grouped: Record<string, Reservation[]> = {};
   for (const r of reservations) {
@@ -546,7 +555,7 @@ function CalendarView({ reservations, actionLoading, onAction }: CalendarViewPro
       >
         <IconCalendarEvent size={40} />
         <p style={{ fontSize: "15px", color: "var(--db-text-secondary)" }}>
-          No reservations yet
+          {t("reservationsEmptyCalendar")}
         </p>
       </div>
     );
@@ -600,7 +609,7 @@ function CalendarView({ reservations, actionLoading, onAction }: CalendarViewPro
                   color: "var(--db-text-tertiary)",
                 }}
               >
-                {dayRes.length} reservation{dayRes.length !== 1 ? "s" : ""}
+                {t("reservationsCountPlural", { count: dayRes.length })}
               </span>
             </div>
 
@@ -627,6 +636,7 @@ function CalendarView({ reservations, actionLoading, onAction }: CalendarViewPro
                     reservation={r}
                     actionLoading={actionLoading}
                     onAction={onAction}
+                    t={t}
                   />
                 ))}
             </div>
@@ -646,6 +656,7 @@ interface CapacityPanelProps {
   onChangeDailySlots: (v: string) => void;
   onSave: () => void;
   saving: boolean;
+  t: TFn;
 }
 
 function CapacityPanel({
@@ -655,6 +666,7 @@ function CapacityPanel({
   onChangeDailySlots,
   onSave,
   saving,
+  t,
 }: CapacityPanelProps) {
   return (
     <div
@@ -682,7 +694,7 @@ function CapacityPanel({
             color: "var(--db-text-primary)",
           }}
         >
-          Capacity Settings
+          {t("reservationsCapacityTitle")}
         </h2>
         <span
           style={{
@@ -692,7 +704,7 @@ function CapacityPanel({
           }}
         >
           {/* TODO(schema): persist to business_capacity table when added */}
-          (session-only until schema column added)
+          {t("reservationsCapacityNote")}
         </span>
       </div>
 
@@ -716,7 +728,7 @@ function CapacityPanel({
               letterSpacing: "0.04em",
             }}
           >
-            Max party size
+            {t("reservationsMaxPartyLabel")}
           </label>
           <input
             type="number"
@@ -748,7 +760,7 @@ function CapacityPanel({
               letterSpacing: "0.04em",
             }}
           >
-            Daily slots
+            {t("reservationsDailySlotsLabel")}
           </label>
           <input
             type="number"
@@ -783,7 +795,7 @@ function CapacityPanel({
             whiteSpace: "nowrap",
           }}
         >
-          {saving ? "Saved ✓" : "Save Capacity"}
+          {saving ? t("reservationsCapacitySavedButton") : t("reservationsSaveCapacityButton")}
         </button>
       </div>
     </div>
@@ -796,6 +808,7 @@ type ViewMode = "calendar" | "list";
 type FilterStatus = "all" | ReservationStatus;
 
 export default function ReservationsPage() {
+  const t = useTranslations("dashboardCommon");
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
@@ -863,12 +876,12 @@ export default function ReservationsPage() {
         setReservations((data as Reservation[]) ?? []);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Failed to load reservations: ${msg}`);
+        setError(t("reservationsLoadError", { msg }));
       } finally {
         setLoading(false);
       }
     },
-    []
+    [t]
   );
 
   // ── Bootstrap ──────────────────────────────────────────────────────────────
@@ -919,17 +932,21 @@ export default function ReservationsPage() {
       setError(null);
       setSuccess(null);
 
+      const actionSuccessLabel = (a: string): string => {
+        const keys: Record<string, string> = {
+          confirmed: "reservationsConfirmedSuccess",
+          rejected: "reservationsRejectedSuccess",
+          no_show: "reservationsNoShowSuccess",
+        };
+        return keys[a] ? t(keys[a]) : t("reservationsActionDoneFallback");
+      };
+
       if (!isSupabaseConfigured) {
         // Demo mode — mutate local state
         setReservations((prev) =>
           prev.map((r) => (r.id === id ? { ...r, status: action } : r))
         );
-        const labels: Record<string, string> = {
-          confirmed: "Reservation confirmed.",
-          rejected: "Reservation rejected.",
-          no_show: "Marked as no-show.",
-        };
-        setSuccess(labels[action] ?? "Done.");
+        setSuccess(actionSuccessLabel(action));
         setActionLoading(null);
         return;
       }
@@ -946,12 +963,7 @@ export default function ReservationsPage() {
         // TODO(server): if action === 'confirmed' and is_waitlist, send waitlist
         //               promotion notification to the user.
 
-        const labels: Record<string, string> = {
-          confirmed: "Reservation confirmed.",
-          rejected: "Reservation rejected.",
-          no_show: "Marked as no-show.",
-        };
-        setSuccess(labels[action] ?? "Done.");
+        setSuccess(actionSuccessLabel(action));
 
         // Optimistic update while Realtime catches up
         setReservations((prev) =>
@@ -959,12 +971,12 @@ export default function ReservationsPage() {
         );
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`Action failed: ${msg}`);
+        setError(t("reservationsActionError", { msg }));
       } finally {
         setActionLoading(null);
       }
     },
-    []
+    [t]
   );
 
   // ── Capacity save (stub) ───────────────────────────────────────────────────
@@ -1012,10 +1024,10 @@ export default function ReservationsPage() {
               marginBottom: "4px",
             }}
           >
-            Reservations
+            {t("railReservas")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
-            Manage table bookings, confirm or reject requests, and track your waitlist.
+            {t("reservationsSubtitle")}
             {/* TODO(server): push notification sent on status change — see Edge Functions */}
             {/* TODO(server): scheduled reminders 24h + 2h before reserved_at */}
           </p>
@@ -1047,7 +1059,7 @@ export default function ReservationsPage() {
             }}
           >
             <IconSettings size={15} />
-            Capacity
+            {t("reservationsCapacityButton")}
           </button>
 
           {/* Refresh */}
@@ -1055,7 +1067,7 @@ export default function ReservationsPage() {
             <button
               onClick={() => void loadReservations(businessId)}
               disabled={loading}
-              title="Refresh reservations"
+              title={t("reservationsRefreshAria")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1084,8 +1096,8 @@ export default function ReservationsPage() {
           >
             {(
               [
-                { mode: "calendar", icon: <IconCalendarEvent size={15} />, label: "Calendar" },
-                { mode: "list", icon: <IconList size={15} />, label: "List" },
+                { mode: "calendar", icon: <IconCalendarEvent size={15} />, label: t("reservationsViewCalendar") },
+                { mode: "list", icon: <IconList size={15} />, label: t("reservationsViewList") },
               ] as const
             ).map(({ mode, icon, label }) => (
               <button
@@ -1129,14 +1141,14 @@ export default function ReservationsPage() {
         }}
       >
         {[
-          { label: "Pending", value: pendingCount, color: "var(--db-warning)" },
+          { label: t("orderStatusPending"), value: pendingCount, color: "var(--db-warning)" },
           {
-            label: "Confirmed",
+            label: t("reservationsStatusConfirmed"),
             value: confirmedCount,
             color: "var(--db-success)",
           },
-          { label: "Waitlist", value: waitlistCount, color: "var(--db-brand-purple, #7C3AED)" },
-          { label: "Total", value: reservations.length, color: "var(--db-accent)" },
+          { label: t("reservationsWaitlistBadge"), value: waitlistCount, color: "var(--db-brand-purple, #7C3AED)" },
+          { label: t("reservationsStatTotal"), value: reservations.length, color: "var(--db-accent)" },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -1183,13 +1195,13 @@ export default function ReservationsPage() {
       {!isSupabaseConfigured && (
         <AlertBanner
           type="warning"
-          message="Demo mode — Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY for live data."
+          message={t("reservationsDemoModeMessage")}
         />
       )}
 
       {/* Business not found */}
       {!loadingBiz && isSupabaseConfigured && !businessId && (
-        <NoBusinessCTA message="Register your business to manage reservations." />
+        <NoBusinessCTA message={t("reservationsNoBusinessMessage")} />
       )}
 
       {/* Capacity settings panel */}
@@ -1201,6 +1213,7 @@ export default function ReservationsPage() {
           onChangeDailySlots={setDailySlots}
           onSave={handleSaveCapacity}
           saving={savingCapacity}
+          t={t}
         />
       )}
 
@@ -1215,11 +1228,11 @@ export default function ReservationsPage() {
       >
         {(
           [
-            { key: "all", label: "All" },
-            { key: "pending", label: "Pending" },
-            { key: "confirmed", label: "Confirmed" },
-            { key: "rejected", label: "Rejected" },
-            { key: "no_show", label: "No-show" },
+            { key: "all", label: t("reservationsFilterAll") },
+            { key: "pending", label: t("orderStatusPending") },
+            { key: "confirmed", label: t("reservationsStatusConfirmed") },
+            { key: "rejected", label: t("reservationsStatusRejected") },
+            { key: "no_show", label: t("reservationsStatusNoShow") },
           ] as { key: FilterStatus; label: string }[]
         ).map(({ key, label }) => (
           <button
@@ -1258,13 +1271,14 @@ export default function ReservationsPage() {
             fontSize: "14px",
           }}
         >
-          Loading reservations…
+          {t("reservationsLoadingList")}
         </div>
       ) : viewMode === "calendar" ? (
         <CalendarView
           reservations={filtered}
           actionLoading={actionLoading}
           onAction={handleAction}
+          t={t}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1282,7 +1296,7 @@ export default function ReservationsPage() {
             >
               <IconCalendarEvent size={40} />
               <p style={{ fontSize: "15px", color: "var(--db-text-secondary)" }}>
-                No reservations match this filter
+                {t("reservationsEmptyFiltered")}
               </p>
             </div>
           ) : (
@@ -1291,6 +1305,7 @@ export default function ReservationsPage() {
                 key={r.id}
                 reservation={r}
                 actionLoading={actionLoading}
+                t={t}
                 onAction={handleAction}
               />
             ))
