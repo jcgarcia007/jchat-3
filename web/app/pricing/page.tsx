@@ -186,8 +186,8 @@ export default function PricingPage() {
         body: {
           action: "create_checkout",
           plan: planId,
-          success_url: `${origin}/dashboard/billing`,
-          cancel_url: `${origin}/pricing`,
+          success_url: `${origin}/dashboard/billing?checkout=success`,
+          cancel_url: `${origin}/dashboard/billing?checkout=cancel`,
           // Solo se manda si el código es válido Y es de ESTE plan. La Edge Function
           // lo vuelve a validar server-side: esto es comodidad, no confianza.
           ...(promoInfo && promoInfo.plan === planId ? { promo_code: promoCode.trim() } : {}),
