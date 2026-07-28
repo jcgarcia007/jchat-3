@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
@@ -105,17 +106,24 @@ function categoryMatches(cat: string, filter: MapFilters['category']): boolean {
 
 interface StyleOption {
   variant: MapStyleVariant;
-  label: string; // TODO(i18n)
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 }
 const STYLE_OPTIONS: StyleOption[] = [
-  { variant: 'normal', label: 'Normal', Icon: IconMap },
-  { variant: 'satellite', label: 'Satellite', Icon: IconSatellite },
-  { variant: 'terrain', label: 'Terrain', Icon: IconMountain },
+  { variant: 'normal', Icon: IconMap },
+  { variant: 'satellite', Icon: IconSatellite },
+  { variant: 'terrain', Icon: IconMountain },
 ];
 
 export default function MapScreen() {
+  const { t } = useTranslation('map');
   const c = useThemeColors();
+  // Display-only labels for the style switcher — MapStyleVariant itself
+  // (the persisted state) never changes.
+  const styleLabels: Record<MapStyleVariant, string> = {
+    normal: t('mapScreen.styleNormal'),
+    satellite: t('mapScreen.styleSatellite'),
+    terrain: t('mapScreen.styleTerrain'),
+  };
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
@@ -261,7 +269,7 @@ export default function MapScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
         <ActivityIndicator size="large" color={palette.brand} />
-        <Text style={[styles.loadingText, { color: c.textSecondary }]}>Finding your location…{/* TODO(i18n) */}</Text>
+        <Text style={[styles.loadingText, { color: c.textSecondary }]}>{t('mapScreen.findingLocation')}</Text>
       </View>
     );
   }
@@ -282,7 +290,7 @@ export default function MapScreen() {
       <View style={[styles.overlayContainer, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         {locationDenied && (
           <TouchableOpacity style={[styles.deniedBanner, { backgroundColor: palette.warning }]} onPress={requestLocation} activeOpacity={0.8}>
-            <Text style={styles.deniedBannerText}>Location unavailable — showing default area. Tap to retry.{/* TODO(i18n) */}</Text>
+            <Text style={styles.deniedBannerText}>{t('mapScreen.locationUnavailable')}</Text>
           </TouchableOpacity>
         )}
 
@@ -305,7 +313,7 @@ export default function MapScreen() {
             onPress={() => void recenterToUser()}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="Center on my location"
+            accessibilityLabel={t('mapScreen.centerOnLocationA11y')}
           >
             <IconCurrentLocation size={20} color={palette.brand} strokeWidth={1.75} />
           </TouchableOpacity>
@@ -313,7 +321,7 @@ export default function MapScreen() {
 
         {/* Style switcher — absolute bottom-right */}
         <View style={[styles.styleSwitcher, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          {STYLE_OPTIONS.map(({ variant, label, Icon }, idx) => {
+          {STYLE_OPTIONS.map(({ variant, Icon }, idx) => {
             const isActive = mapVariant === variant;
             return (
               <TouchableOpacity
@@ -323,7 +331,7 @@ export default function MapScreen() {
                 activeOpacity={0.7}
               >
                 <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
-                <Text style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{label}</Text>
+                <Text style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
               </TouchableOpacity>
             );
           })}

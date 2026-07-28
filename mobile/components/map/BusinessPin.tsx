@@ -24,13 +24,12 @@
  *   heatHot   ≥ 50        (palette.heatHot   #FF3B30)
  *
  * Pending businesses: grey teardrop + "Pending" badge, no heat color.
- *
- * // TODO(i18n): replace English strings with translation keys
  */
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
+import { useTranslation } from 'react-i18next';
 import { palette } from '../../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -128,6 +127,7 @@ const PENDING_COLOR = palette.textTertiary; // #636366 — neutral, distinct fro
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BusinessPin({ business, onPress }: BusinessPinProps) {
+  const { t } = useTranslation('map');
   const { boxSize, emojiSize, badgeFontSize, badgePadH, badgePadV } =
     useMemo(() => getSizeTier(business.activeCount), [business.activeCount]);
 
@@ -202,7 +202,7 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
         {isPending && (
           <View style={styles.pendingBadge}>
             <Text style={styles.pendingBadgeText}>
-              Pending{/* TODO(i18n) */}
+              {t('businessPin.pendingBadge')}
             </Text>
           </View>
         )}
@@ -323,7 +323,6 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 4,
     overflow: 'hidden',
-    // TODO(i18n)
   },
 });
 

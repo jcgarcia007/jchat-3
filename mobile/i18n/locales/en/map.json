@@ -1,0 +1,13 @@
+{
+  "mapScreen": {
+    "styleNormal": "Normal",
+    "styleSatellite": "Satellite",
+    "styleTerrain": "Terrain",
+    "findingLocation": "Finding your location…",
+    "locationUnavailable": "Location unavailable — showing default area. Tap to retry.",
+    "centerOnLocationA11y": "Center on my location"
+  },
+  "businessPin": {
+    "pendingBadge": "Pending"
+  }
+}
