@@ -19,8 +19,6 @@
  * No external slider library is needed or installed — the design doc does not
  * specify a continuous slider, and the segmented approach maps directly to the
  * four practical search radii described in JCHAT_3.0_MASTER_SPEC.docx §5.1.
- *
- * // TODO(i18n): replace all English UI strings with translation keys
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -35,6 +33,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   IconAdjustmentsHorizontal,
   IconBuilding,
@@ -111,18 +110,16 @@ export interface FilterPanelProps {
 
 interface ChipDef {
   key: MapCategory;
-  label: string; // TODO(i18n)
   icon: React.ReactNode;
 }
 
 const DISTANCE_OPTIONS: DistanceKm[] = [1, 2, 5, 10];
 
-const ADVANCED_CATEGORIES: Array<{ key: MapCategory; label: string }> = [
-  { key: 'bars',   label: 'Bars' },      // TODO(i18n)
-  { key: 'cafes',  label: 'Cafes' },     // TODO(i18n)
-  { key: 'food',   label: 'Food' },      // TODO(i18n)
-  { key: 'events', label: 'Events' },    // TODO(i18n)
-];
+// Same 4 keys as the "bars"/"cafes"/"food"/"events" chips above — both this
+// array and `chips` read their display label from the shared `categoryLabels`
+// map (built with t() inside the component), so there is a single source of
+// translated text for each MapCategory value, not two.
+const ADVANCED_CATEGORY_KEYS: MapCategory[] = ['bars', 'cafes', 'food', 'events'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -150,7 +147,19 @@ function StarIcon({ filled, size, c }: { filled: boolean; size: number; c: Retur
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps) {
+  const { t } = useTranslation('map');
   const c = useThemeColors();
+  // Display-only labels for MapCategory — the persisted/compared value (the
+  // `key`) never changes. Single source shared by `chips` and the advanced
+  // category grid below (see ADVANCED_CATEGORY_KEYS comment).
+  const categoryLabels: Record<MapCategory, string> = {
+    all: t('filterPanel.categoryAll'),
+    bars: t('filterPanel.categoryBars'),
+    cafes: t('filterPanel.categoryCafes'),
+    food: t('filterPanel.categoryFood'),
+    events: t('filterPanel.categoryEvents'),
+    open_now: t('filterPanel.categoryOpenNow'),
+  };
   const [sheetVisible, setSheetVisible] = useState(false);
 
   // Local draft state for the advanced sheet — applied on "Apply"
@@ -219,12 +228,12 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
   // ── Chip definitions (icons use the theme colors via closure) ─────────────
 
   const chips: ChipDef[] = [
-    { key: 'all',      label: 'All',      icon: <IconBuildingStore size={13} color={filters.category === 'all' ? '#ffffff' : c.textSecondary} /> },
-    { key: 'bars',     label: 'Bars',     icon: <IconBuilding       size={13} color={filters.category === 'bars'   ? '#ffffff' : c.textSecondary} /> },
-    { key: 'cafes',    label: 'Cafes',    icon: <IconBuilding       size={13} color={filters.category === 'cafes'  ? '#ffffff' : c.textSecondary} /> },
-    { key: 'food',     label: 'Food',     icon: <IconBuilding       size={13} color={filters.category === 'food'   ? '#ffffff' : c.textSecondary} /> },
-    { key: 'events',   label: 'Events',   icon: <IconCalendarEvent  size={13} color={filters.category === 'events' ? '#ffffff' : c.textSecondary} /> },
-    { key: 'open_now', label: 'Open now', icon: <IconClock          size={13} color={filters.openNow              ? '#ffffff' : c.textSecondary} /> },
+    { key: 'all',      icon: <IconBuildingStore size={13} color={filters.category === 'all' ? '#ffffff' : c.textSecondary} /> },
+    { key: 'bars',     icon: <IconBuilding       size={13} color={filters.category === 'bars'   ? '#ffffff' : c.textSecondary} /> },
+    { key: 'cafes',    icon: <IconBuilding       size={13} color={filters.category === 'cafes'  ? '#ffffff' : c.textSecondary} /> },
+    { key: 'food',     icon: <IconBuilding       size={13} color={filters.category === 'food'   ? '#ffffff' : c.textSecondary} /> },
+    { key: 'events',   icon: <IconCalendarEvent  size={13} color={filters.category === 'events' ? '#ffffff' : c.textSecondary} /> },
+    { key: 'open_now', icon: <IconClock          size={13} color={filters.openNow              ? '#ffffff' : c.textSecondary} /> },
   ];
 
   const active = hasActiveFilters(filters);
@@ -247,7 +256,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
         <IconSearch size={16} color={c.textTertiary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: c.textPrimary }]}
-          placeholder="Search places…" // TODO(i18n)
+          placeholder={t('filterPanel.searchPlaceholder')}
           placeholderTextColor={c.textTertiary}
           value={filters.searchQuery}
           onChangeText={handleSearchChange}
@@ -268,7 +277,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
             },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Advanced filters" // TODO(i18n)
+          accessibilityLabel={t('filterPanel.advancedFiltersA11y')}
         >
           <IconAdjustmentsHorizontal size={15} color={active ? '#ffffff' : c.textSecondary} />
         </Pressable>
@@ -302,11 +311,11 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               onPress={() => handleChipPress(chip.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={chip.label}
+              accessibilityLabel={categoryLabels[chip.key]}
             >
               {chip.icon}
               <Text style={[styles.chipLabel, { color: isActive ? '#ffffff' : c.textSecondary }]}>
-                {chip.label}
+                {categoryLabels[chip.key]}
               </Text>
             </TouchableOpacity>
           );
@@ -318,7 +327,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
         <View style={styles.metaRow}>
           {resultCount != null && (
             <Text style={[styles.resultCount, { color: c.textSecondary }]}>
-              {resultCount} places near you{/* TODO(i18n) */}
+              {t('filterPanel.resultsCount', { count: resultCount })}
             </Text>
           )}
           {active && (
@@ -326,11 +335,11 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               onPress={handleReset}
               style={[styles.resetBtn, { borderColor: c.borderSubtle }]}
               accessibilityRole="button"
-              accessibilityLabel="Reset filters" // TODO(i18n)
+              accessibilityLabel={t('filterPanel.resetFiltersA11y')}
             >
               <IconX size={11} color={c.textSecondary} />
               <Text style={[styles.resetLabel, { color: c.textSecondary }]}>
-                Reset{/* TODO(i18n) */}
+                {t('filterPanel.reset')}
               </Text>
             </TouchableOpacity>
           )}
@@ -370,13 +379,13 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
           {/* Header */}
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>
-              Filters{/* TODO(i18n) */}
+              {t('filterPanel.sheetTitle')}
             </Text>
             <Pressable
               onPress={closeSheet}
               style={({ pressed }) => [styles.sheetClose, { opacity: pressed ? 0.6 : 1 }]}
               accessibilityRole="button"
-              accessibilityLabel="Close" // TODO(i18n)
+              accessibilityLabel={t('filterPanel.close')}
             >
               <IconX size={18} color={c.textSecondary} />
             </Pressable>
@@ -391,7 +400,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
             {/* ── Distance ──────────────────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                Distance{/* TODO(i18n) */}
+                {t('filterPanel.distanceSectionLabel')}
               </Text>
               <View style={styles.segmentedRow}>
                 {DISTANCE_OPTIONS.map((km) => {
@@ -409,10 +418,10 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                       onPress={() => setDraft((d) => ({ ...d, distanceKm: km }))}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: sel }}
-                      accessibilityLabel={`${km} km`}
+                      accessibilityLabel={t('filterPanel.distanceKm', { count: km })}
                     >
                       <Text style={[styles.segmentedLabel, { color: sel ? '#ffffff' : c.textPrimary }]}>
-                        {km} km
+                        {t('filterPanel.distanceKm', { count: km })}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -423,7 +432,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
             {/* ── Minimum rating ────────────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                Minimum rating{/* TODO(i18n) */}
+                {t('filterPanel.minRatingSectionLabel')}
               </Text>
               <View style={styles.ratingStepperRow}>
                 {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -433,7 +442,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                     style={({ pressed }) => [styles.starBtn, { opacity: pressed ? 0.7 : 1 }]}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: draft.minRating === n }}
-                    accessibilityLabel={n === 0 ? 'Any rating' : `${n} stars minimum`} // TODO(i18n)
+                    accessibilityLabel={n === 0 ? t('filterPanel.anyRating') : t('filterPanel.starsMinimum', { count: n })}
                   >
                     {n === 0 ? (
                       <Text style={[
@@ -443,7 +452,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                           fontWeight: draft.minRating === 0 ? '700' : '400',
                         },
                       ]}>
-                        Any{/* TODO(i18n) */}
+                        {t('filterPanel.any')}
                       </Text>
                     ) : (
                       <StarIcon filled={n <= draft.minRating} size={26} c={c} />
@@ -456,10 +465,10 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
             {/* ── Category multi-select ─────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                Category{/* TODO(i18n) */}
+                {t('filterPanel.categorySectionLabel')}
               </Text>
               <View style={styles.categoryGrid}>
-                {ADVANCED_CATEGORIES.map(({ key, label }) => {
+                {ADVANCED_CATEGORY_KEYS.map((key) => {
                   const sel = draft.category === key;
                   return (
                     <TouchableOpacity
@@ -476,10 +485,10 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                       }
                       accessibilityRole="checkbox"
                       accessibilityState={{ checked: sel }}
-                      accessibilityLabel={label}
+                      accessibilityLabel={categoryLabels[key]}
                     >
                       <Text style={[styles.categoryChipLabel, { color: sel ? palette.brand : c.textPrimary }]}>
-                        {label}
+                        {categoryLabels[key]}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -490,7 +499,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
             {/* ── Minimum active users ──────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                Minimum active users{/* TODO(i18n) */}
+                {t('filterPanel.minActiveUsersSectionLabel')}
               </Text>
               <View style={styles.stepperRow}>
                 <Pressable
@@ -507,7 +516,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                   }
                   disabled={draft.minActiveUsers === 0}
                   accessibilityRole="button"
-                  accessibilityLabel="Decrease minimum active users" // TODO(i18n)
+                  accessibilityLabel={t('filterPanel.decreaseActiveUsersA11y')}
                 >
                   <Text style={[styles.stepperSymbol, { color: c.textPrimary }]}>−</Text>
                 </Pressable>
@@ -515,8 +524,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                 <View style={styles.stepperValueWrap}>
                   <IconUsers size={14} color={c.textSecondary} style={styles.stepperIcon} />
                   <Text style={[styles.stepperValue, { color: c.textPrimary }]}>
-                    {draft.minActiveUsers === 0 ? 'Any' : String(draft.minActiveUsers)}
-                    {/* TODO(i18n) */}
+                    {draft.minActiveUsers === 0 ? t('filterPanel.any') : String(draft.minActiveUsers)}
                   </Text>
                 </View>
 
@@ -533,7 +541,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                     setDraft((d) => ({ ...d, minActiveUsers: d.minActiveUsers + 1 }))
                   }
                   accessibilityRole="button"
-                  accessibilityLabel="Increase minimum active users" // TODO(i18n)
+                  accessibilityLabel={t('filterPanel.increaseActiveUsersA11y')}
                 >
                   <Text style={[styles.stepperSymbol, { color: c.textPrimary }]}>+</Text>
                 </Pressable>
@@ -545,7 +553,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               <View style={styles.openNowLeft}>
                 <IconClock size={16} color={palette.success} />
                 <Text style={[styles.openNowLabel, { color: c.textPrimary }]}>
-                  Open now only{/* TODO(i18n) */}
+                  {t('filterPanel.openNowOnly')}
                 </Text>
               </View>
               <Pressable
@@ -559,7 +567,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                 ]}
                 accessibilityRole="switch"
                 accessibilityState={{ checked: draft.openNow }}
-                accessibilityLabel="Open now only" // TODO(i18n)
+                accessibilityLabel={t('filterPanel.openNowOnly')}
               >
                 <Animated.View
                   style={[
@@ -581,10 +589,10 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               style={[styles.footerResetBtn, { borderColor: c.borderSubtle }]}
               onPress={() => setDraft({ ...defaultFilters })}
               accessibilityRole="button"
-              accessibilityLabel="Reset all filters" // TODO(i18n)
+              accessibilityLabel={t('filterPanel.resetAllFiltersA11y')}
             >
               <Text style={[styles.footerResetLabel, { color: c.textSecondary }]}>
-                Reset all{/* TODO(i18n) */}
+                {t('filterPanel.resetAll')}
               </Text>
             </TouchableOpacity>
 
@@ -592,10 +600,10 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               style={[styles.footerApplyBtn, { backgroundColor: palette.brand }]}
               onPress={handleApply}
               accessibilityRole="button"
-              accessibilityLabel="Apply filters" // TODO(i18n)
+              accessibilityLabel={t('filterPanel.applyFiltersA11y')}
             >
               <Text style={styles.footerApplyLabel}>
-                Apply{/* TODO(i18n) */}
+                {t('filterPanel.apply')}
               </Text>
             </TouchableOpacity>
           </View>

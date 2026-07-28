@@ -12,8 +12,6 @@
  *   - Dark + light mode via useThemeColors().
  *   - Icons: @tabler/icons-react-native only.
  *   - Cover gradient: expo-linear-gradient.
- *
- * // TODO(i18n): replace English strings with translation keys
  */
 
 import React, { useMemo } from 'react';
@@ -27,6 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   IconMapPin,
@@ -48,7 +47,6 @@ const CARD_COLORS = {
 
 // ── Hours type ────────────────────────────────────────────────────────────────
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 
 export interface DayHours {
@@ -121,12 +119,28 @@ export function isOpenNow(hours: HoursMap | null | undefined): boolean {
   return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
 }
 
-/** Format "09:00" → "9:00 AM" */
+/**
+ * TODO(dates-chunk): "AM"/"PM" are hardcoded English suffixes — annotate for the
+ * future dates/format chunk. Not resolved here per Mob-7b scope.
+ * Format "09:00" → "9:00 AM"
+ */
 function fmt12h(time24: string): string {
   const [h, m] = time24.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/**
+ * Derives localized short weekday names (Sun/Mon/… or Dom/Lun/… in es) via
+ * Intl.DateTimeFormat, keyed to DAY_ORDER's index (0=Sun…6=Sat, matching
+ * Date.getDay()). 2023-01-01 is a known Sunday, used only as a reference date
+ * to format weekday names — it does not affect the hours-lookup logic, which
+ * still indexes purely by DayKey ('sun'|'mon'|…).
+ */
+function getDayLabels(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
+  return DAY_ORDER.map((_, idx) => formatter.format(new Date(Date.UTC(2023, 0, 1 + idx))));
 }
 
 /** Render up to 5 star icons for a rating value. */
@@ -153,9 +167,14 @@ export default function BusinessPreviewCard({
   onNavigate,
   onShare,
 }: BusinessPreviewCardProps) {
+  const { t, i18n } = useTranslation('map');
   const c = useThemeColors();
 
   const open = useMemo(() => isOpenNow(business.hours), [business.hours]);
+
+  // Localized short weekday names (Sun/Mon/… → Dom/Lun/… in es), derived via
+  // Intl — DAY_ORDER's day-KEY indexing (used for the hours lookup) is untouched.
+  const dayLabels = useMemo(() => getDayLabels(i18n.language), [i18n.language]);
 
   // Today's day index (0 = Sun … 6 = Sat)
   const todayIndex = new Date().getDay();
@@ -163,12 +182,12 @@ export default function BusinessPreviewCard({
   // Ordered hours entries for the hours grid (7 days)
   const hoursEntries = useMemo((): Array<{ label: string; dayKey: DayKey; hours: DayHours | undefined; isToday: boolean }> => {
     return DAY_ORDER.map((dayKey, idx) => ({
-      label: DAY_LABELS[idx],
+      label: dayLabels[idx],
       dayKey,
       hours: business.hours?.[dayKey],
       isToday: idx === todayIndex,
     }));
-  }, [business.hours, todayIndex]);
+  }, [business.hours, todayIndex, dayLabels]);
 
   // Gallery — cap thumbnails at 5 visible + "+N" counter
   const gallery = business.gallery_urls ?? [];
@@ -190,7 +209,7 @@ export default function BusinessPreviewCard({
             source={{ uri: business.cover_url }}
             style={styles.coverImage}
             resizeMode="cover"
-            accessibilityLabel={`${business.name} cover photo`}
+            accessibilityLabel={t('businessPreviewCard.coverPhotoA11y', { name: business.name })}
           />
         ) : (
           <View style={[styles.coverImage, styles.coverFallback, { backgroundColor: c.bgElevated }]} />
@@ -207,7 +226,7 @@ export default function BusinessPreviewCard({
         <View style={[styles.openBadge, { backgroundColor: c.bgSurface }]}>
           <View style={[styles.openDot, { backgroundColor: open ? CARD_COLORS.openGreen : c.textTertiary }]} />
           <Text style={[styles.openBadgeText, { color: open ? CARD_COLORS.openGreen : c.textSecondary }]}>
-            {open ? 'Open' : 'Closed'}{/* TODO(i18n) */}
+            {open ? t('businessPreviewCard.openBadge') : t('businessPreviewCard.closedBadge')}
           </Text>
         </View>
 
@@ -218,7 +237,7 @@ export default function BusinessPreviewCard({
             { backgroundColor: c.bgSurface, borderColor: c.bgBase },
           ]}
         >
-          <Text style={styles.emojiText} accessibilityLabel={`${business.name} icon`}>
+          <Text style={styles.emojiText} accessibilityLabel={t('businessPreviewCard.iconA11y', { name: business.name })}>
             {business.icon_emoji}
           </Text>
         </View>
@@ -304,7 +323,7 @@ export default function BusinessPreviewCard({
                         { color: isToday ? '#ffffff' : c.textSecondary },
                       ]}
                     >
-                      {DAY_LABELS[idx].charAt(0)}
+                      {dayLabels[idx].charAt(0)}
                     </Text>
                   </View>
                 );
@@ -336,7 +355,7 @@ export default function BusinessPreviewCard({
                     ]}
                   >
                     {!dayH || dayH.closed
-                      ? 'Closed'
+                      ? t('businessPreviewCard.closedBadge')
                       : `${fmt12h(dayH.open)} – ${fmt12h(dayH.close)}`}
                   </Text>
                 </View>
@@ -358,7 +377,7 @@ export default function BusinessPreviewCard({
                 source={{ uri }}
                 style={[styles.galleryThumb, { backgroundColor: c.bgElevated }]}
                 resizeMode="cover"
-                accessibilityLabel={`Photo ${idx + 1}`}
+                accessibilityLabel={t('businessPreviewCard.photoA11y', { count: idx + 1 })}
               />
             ))}
             {extraCount > 0 && (
@@ -378,7 +397,7 @@ export default function BusinessPreviewCard({
               {/* Green live dot */}
               <View style={[styles.liveDot, { backgroundColor: CARD_COLORS.openGreen }]} />
               <Text style={[styles.liveCount, { color: c.textSecondary }]}>
-                {business.active_count ?? 0} active{/* TODO(i18n) */}
+                {t('businessPreviewCard.activeCount', { count: business.active_count ?? 0 })}
               </Text>
             </View>
 
@@ -424,10 +443,10 @@ export default function BusinessPreviewCard({
             style={[styles.btnPrimary, { backgroundColor: c.brand }]}
             onPress={() => onEnterChat(business.id)}
             accessibilityRole="button"
-            accessibilityLabel="Enter chat"
+            accessibilityLabel={t('businessPreviewCard.enterChatA11y')}
           >
             <Text style={[styles.btnPrimaryLabel, { color: '#ffffff' }]}>
-              Enter Chat{/* TODO(i18n) */}
+              {t('businessPreviewCard.enterChatButton')}
             </Text>
           </TouchableOpacity>
 
@@ -436,10 +455,10 @@ export default function BusinessPreviewCard({
             style={[styles.btnSecondary, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
             onPress={() => onViewMenu(business.id)}
             accessibilityRole="button"
-            accessibilityLabel="View menu"
+            accessibilityLabel={t('businessPreviewCard.viewMenuA11y')}
           >
             <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]}>
-              View Menu{/* TODO(i18n) */}
+              {t('businessPreviewCard.viewMenuButton')}
             </Text>
           </TouchableOpacity>
 
@@ -451,7 +470,7 @@ export default function BusinessPreviewCard({
             ]}
             onPress={() => onNavigate(business.lat, business.lng)}
             accessibilityRole="button"
-            accessibilityLabel="Navigate to business"
+            accessibilityLabel={t('businessPreviewCard.navigateA11y')}
           >
             <IconNavigation size={18} color={c.brand} />
           </Pressable>
@@ -464,7 +483,7 @@ export default function BusinessPreviewCard({
             ]}
             onPress={() => onShare(business.id)}
             accessibilityRole="button"
-            accessibilityLabel="Share this business"
+            accessibilityLabel={t('businessPreviewCard.shareA11y')}
           >
             <IconShare size={18} color={c.textSecondary} />
           </Pressable>
