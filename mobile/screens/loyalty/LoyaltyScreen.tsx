@@ -52,8 +52,8 @@ function formatPoints(n: number): string {
   return n.toLocaleString();
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -136,6 +136,7 @@ function BalanceHero({
 /** Single history row. */
 function HistoryRow({ entry }: { entry: LoyaltyHistoryEntry }) {
   const c = useThemeColors();
+  const { i18n } = useTranslation('loyalty');
   const isPositive = entry.delta >= 0;
 
   return (
@@ -145,7 +146,7 @@ function HistoryRow({ entry }: { entry: LoyaltyHistoryEntry }) {
           {entry.description}
         </Text>
         <Text style={[styles.historyDate, { color: c.textTertiary }]}>
-          {formatDate(entry.occurred_at)}
+          {formatDate(entry.occurred_at, i18n.language)}
         </Text>
       </View>
       <Text

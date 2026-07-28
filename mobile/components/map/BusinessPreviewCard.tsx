@@ -120,15 +120,19 @@ export function isOpenNow(hours: HoursMap | null | undefined): boolean {
 }
 
 /**
- * TODO(dates-chunk): "AM"/"PM" are hardcoded English suffixes — annotate for the
- * future dates/format chunk. Not resolved here per Mob-7b scope.
- * Format "09:00" → "9:00 AM"
+ * Format "09:00" → "9:00 AM" (en) / "9:00" (es, 24h — whatever the locale's
+ * own convention is) via Intl.DateTimeFormat, keyed to i18n.language like
+ * getDayLabels below. hour12 is intentionally NOT forced — the locale decides
+ * 12h vs 24h and the AM/PM-equivalent suffix, same as a real clock would show.
+ * 2023-01-01 is a fixed reference date (same one getDayLabels uses) purely to
+ * build a Date to format — it has no bearing on the open/close hours-lookup
+ * logic above, which only ever reads the raw "HH:MM" strings and
+ * getHours()/getMinutes(). This is DISPLAY only.
  */
-function fmt12h(time24: string): string {
+function formatHourLabel(time24: string, locale: string): string {
   const [h, m] = time24.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  const d = new Date(Date.UTC(2023, 0, 1, h, m));
+  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(d);
 }
 
 /**
@@ -356,7 +360,7 @@ export default function BusinessPreviewCard({
                   >
                     {!dayH || dayH.closed
                       ? t('businessPreviewCard.closedBadge')
-                      : `${fmt12h(dayH.open)} – ${fmt12h(dayH.close)}`}
+                      : `${formatHourLabel(dayH.open, i18n.language)} – ${formatHourLabel(dayH.close, i18n.language)}`}
                   </Text>
                 </View>
               ))}

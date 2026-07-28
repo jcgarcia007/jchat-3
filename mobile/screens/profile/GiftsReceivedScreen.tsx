@@ -31,9 +31,9 @@ import { formatCents } from '../../utils/currency';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDate(isoString: string): string {
+function formatDate(isoString: string, locale: string): string {
   const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -55,7 +55,7 @@ interface GiftCardProps {
 
 function GiftCard({ gift }: GiftCardProps) {
   const c = useThemeColors();
-  const { t } = useTranslation('profile');
+  const { t, i18n } = useTranslation('profile');
 
   const senderName =
     gift.sender?.display_name ?? gift.sender?.username ?? t('gifts.someone');
@@ -80,7 +80,7 @@ function GiftCard({ gift }: GiftCardProps) {
           )}
         </View>
         <Text style={[styles.date, { color: c.textTertiary }]}>
-          {formatDate(gift.created_at)}
+          {formatDate(gift.created_at, i18n.language)}
         </Text>
       </View>
 
