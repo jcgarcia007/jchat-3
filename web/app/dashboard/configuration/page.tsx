@@ -4,13 +4,12 @@
  * Sections:
  *  1. Business Info  — name, description, category, address, phone, website
  *  2. Operating Hours — 7-day grid with open/close times + per-day closed toggle
- *  3. Coverage Radius — read-only display (Super Admin to change)
- *  4. Cover Photo + Icon Emoji — URL / emoji inputs (storage TODO)
- *  5. Photo Gallery Manager — add / reorder / remove image URLs (storage TODO)
- *  6. Menu Enabled — toggle for businesses.menu_enabled
- *  7. Dashboard Theme — 10-theme picker; applies instantly via useDashboardTheme
- *  8. Tip Configuration — enabled toggle + editable suggested percentages
- *  9. Payout Frequency — Daily / Weekly / Monthly (Stripe schedule TODO)
+ *  3. Cover Photo + Icon Emoji — URL / emoji inputs (storage TODO)
+ *  4. Photo Gallery Manager — add / reorder / remove image URLs (storage TODO)
+ *  5. Menu Enabled — toggle for businesses.menu_enabled
+ *  6. Dashboard Theme — 10-theme picker; applies instantly via useDashboardTheme
+ *  7. Tip Configuration — enabled toggle + editable suggested percentages
+ *  8. Payout Frequency — Daily / Weekly / Monthly (Stripe schedule TODO)
  *
  * Design: var(--db-*) tokens only. Icons: @tabler/icons-react.
  * Guard: isSupabaseConfigured before any live DB call.
@@ -35,7 +34,6 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
-  IconLock,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -55,7 +53,6 @@ interface BusinessRow {
   phone: string | null;
   website: string | null;
   hours: HoursJson | null;
-  radius_m: number | null;
   cover_url: string | null;
   icon_emoji: string | null;
   gallery_urls: string[] | null;
@@ -347,7 +344,6 @@ function PrimaryBtn({
 
 export default function ConfigurationPage() {
   const t = useTranslations("dashboardCommon");
-  const tCommon = useTranslations("common");
 
   const dayLabels: Record<Day, string> = {
     Monday: t("configurationDayMonday"),
@@ -384,36 +380,33 @@ export default function ConfigurationPage() {
   const [hours, setHours] = useState<HoursJson>(defaultHours());
   const [savingHours, setSavingHours] = useState(false);
 
-  // ── Section 3: Radius (read-only) ────────────────────────────────────────────
-  const [radiusM, setRadiusM] = useState<number | null>(null);
-
-  // ── Section 4: Cover + emoji ──────────────────────────────────────────────────
+  // ── Section 3: Cover + emoji ──────────────────────────────────────────────────
   const [coverUrl, setCoverUrl] = useState("");
   const [iconEmoji, setIconEmoji] = useState("");
   const [savingCover, setSavingCover] = useState(false);
 
-  // ── Section 5: Photo gallery ──────────────────────────────────────────────────
+  // ── Section 4: Photo gallery ──────────────────────────────────────────────────
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [newGalleryUrl, setNewGalleryUrl] = useState("");
   const [savingGallery, setSavingGallery] = useState(false);
 
-  // ── Section 6: Menu enabled ───────────────────────────────────────────────────
+  // ── Section 5: Menu enabled ───────────────────────────────────────────────────
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [savingMenu, setSavingMenu] = useState(false);
 
-  // ── Section 7: Dashboard theme ────────────────────────────────────────────────
+  // ── Section 6: Dashboard theme ────────────────────────────────────────────────
   // Shared with the layout via context so the picker updates the layout's
   // data-db-theme wrapper (not a local, isolated copy).
   const { themeId, setThemeId } = useDashboardThemeContext();
   const [savingTheme, setSavingTheme] = useState(false);
 
-  // ── Section 8: Tips ───────────────────────────────────────────────────────────
+  // ── Section 7: Tips ───────────────────────────────────────────────────────────
   const [tipsEnabled, setTipsEnabled] = useState(false);
   const [tipPercentages, setTipPercentages] = useState<number[]>([15, 18, 20]);
   const [tipInput, setTipInput] = useState("");
   const [savingTips, setSavingTips] = useState(false);
 
-  // ── Section 9: Payout frequency ──────────────────────────────────────────────
+  // ── Section 8: Payout frequency ──────────────────────────────────────────────
   const [payoutFrequency, setPayoutFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [savingPayout, setSavingPayout] = useState(false);
 
@@ -432,7 +425,7 @@ export default function ConfigurationPage() {
       const { data: biz, error: bizErr } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, radius_m, cover_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
         )
         .eq("owner_id", user.id)
         .single();
@@ -448,7 +441,6 @@ export default function ConfigurationPage() {
       setPhone(b.phone ?? "");
       setWebsite(b.website ?? "");
       setHours(b.hours && Object.keys(b.hours).length > 0 ? b.hours : defaultHours());
-      setRadiusM(b.radius_m ?? null);
       setCoverUrl(b.cover_url ?? "");
       setIconEmoji(b.icon_emoji ?? "");
       setGalleryUrls(b.gallery_urls ?? []);
@@ -815,39 +807,7 @@ export default function ConfigurationPage() {
         </PrimaryBtn>
       </Section>
 
-      {/* ── 3. Coverage Radius (read-only) ──────────────────────────────────── */}
-      <Section
-        icon={<IconMapPin size={18} color="var(--db-accent)" />}
-        title={t("configurationRadiusSectionTitle")}
-        subtitle={t("configurationRadiusSectionSubtitle")}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "14px 16px",
-            borderRadius: "10px",
-            background: "var(--db-bg-elevated)",
-            border: "1px solid var(--db-border)",
-            marginBottom: "10px",
-          }}
-        >
-          <IconLock size={16} color="var(--db-text-tertiary)" />
-          <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-            {radiusM != null ? `${radiusM.toLocaleString()} m` : loadingBiz ? tCommon("loading") : t("configurationRadiusNotSet")}
-          </span>
-          <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
-            {t("configurationRadiusReadOnlySuffix")}
-          </span>
-        </div>
-        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
-          {/* TODO(Super Admin): radius change request — only Super Admin can modify coverage radius */}
-          {t("configurationRadiusSupportNote")}
-        </p>
-      </Section>
-
-      {/* ── 4. Cover Photo + Icon Emoji ─────────────────────────────────────── */}
+      {/* ── 3. Cover Photo + Icon Emoji ─────────────────────────────────────── */}
       <Section
         icon={<IconPhoto size={18} color="var(--db-accent)" />}
         title={t("configurationCoverSectionTitle")}
@@ -924,7 +884,7 @@ export default function ConfigurationPage() {
         </PrimaryBtn>
       </Section>
 
-      {/* ── 5. Photo Gallery ────────────────────────────────────────────────── */}
+      {/* ── 4. Photo Gallery ────────────────────────────────────────────────── */}
       <Section
         icon={<IconPhoto size={18} color="var(--db-accent)" />}
         title={t("configurationGallerySectionTitle")}
@@ -1080,7 +1040,7 @@ export default function ConfigurationPage() {
         </PrimaryBtn>
       </Section>
 
-      {/* ── 6. Menu Enabled ─────────────────────────────────────────────────── */}
+      {/* ── 5. Menu Enabled ─────────────────────────────────────────────────── */}
       <Section
         icon={<IconMenu2 size={18} color="var(--db-accent)" />}
         title={t("navMenu")}
@@ -1103,7 +1063,7 @@ export default function ConfigurationPage() {
         </p>
       </Section>
 
-      {/* ── 7. Dashboard Theme ──────────────────────────────────────────────── */}
+      {/* ── 6. Dashboard Theme ──────────────────────────────────────────────── */}
       <Section
         icon={<IconPalette size={18} color="var(--db-accent)" />}
         title={t("configurationThemeSectionTitle")}
@@ -1149,7 +1109,7 @@ export default function ConfigurationPage() {
         )}
       </Section>
 
-      {/* ── 8. Tip Configuration ────────────────────────────────────────────── */}
+      {/* ── 7. Tip Configuration ────────────────────────────────────────────── */}
       <Section
         icon={<IconCurrencyDollar size={18} color="var(--db-accent)" />}
         title={t("configurationTipsSectionTitle")}
@@ -1250,7 +1210,7 @@ export default function ConfigurationPage() {
         </PrimaryBtn>
       </Section>
 
-      {/* ── 9. Payout Frequency ─────────────────────────────────────────────── */}
+      {/* ── 8. Payout Frequency ─────────────────────────────────────────────── */}
       <Section
         icon={<IconCalendarTime size={18} color="var(--db-accent)" />}
         title={t("configurationPayoutSectionTitle")}
