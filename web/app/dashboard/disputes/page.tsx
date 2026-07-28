@@ -31,7 +31,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -833,6 +833,7 @@ function DisputeRow({
   onReject: () => void;
 }) {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const secs = secondsUntilEscalation(d.created_at);
   const overdue = secs < 0;
   const isActionable = d.status === "open" || d.status === "escalated";
@@ -994,12 +995,12 @@ function DisputeRow({
           )}
           <DetailField
             label={t("disputesOpenedAtLabel")}
-            value={new Date(d.created_at).toLocaleString()}
+            value={new Date(d.created_at).toLocaleString(locale)}
           />
           {d.escalated_at && (
             <DetailField
               label={t("disputesEscalatedAtLabel")}
-              value={new Date(d.escalated_at).toLocaleString()}
+              value={new Date(d.escalated_at).toLocaleString(locale)}
             />
           )}
           {d.refund_id && (

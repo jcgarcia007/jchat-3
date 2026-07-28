@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   IconBuildingStore,
   IconArrowRight,
@@ -142,6 +142,7 @@ function eventStatus(startsAt: string | null, endsAt: string | null): string {
 export default function OverviewPage() {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -362,8 +363,8 @@ export default function OverviewPage() {
                     </div>
                     <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
                       <IconMapPin size={13} />
-                      {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString() : t("noStartDate")}
-                      {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString()}` : ""}
+                      {e.event_starts_at ? new Date(e.event_starts_at).toLocaleString(locale) : t("noStartDate")}
+                      {e.event_ends_at ? ` – ${new Date(e.event_ends_at).toLocaleString(locale)}` : ""}
                     </p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>

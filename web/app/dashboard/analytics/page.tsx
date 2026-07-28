@@ -20,7 +20,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Bar,
   BarChart,
@@ -564,7 +564,7 @@ interface PdfLabels {
   dayLabels: Record<string, string>;
 }
 
-async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyalty: LoyaltyROI, labels: PdfLabels) {
+async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyalty: LoyaltyROI, labels: PdfLabels, locale: string) {
   // Dynamic import — jspdf is large; only load on demand
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -577,7 +577,7 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
 
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
-  doc.text(labels.generatedLabel(new Date().toLocaleDateString()), 15, 28);
+  doc.text(labels.generatedLabel(new Date().toLocaleDateString(locale)), 15, 28);
 
   // Revenue table
   doc.setFontSize(13);
@@ -695,6 +695,7 @@ function RealKpiBand({ kpis }: { kpis: RealKpis }) {
 
 export default function AnalyticsPage() {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const [business, setBusiness] = useState<ActiveBusiness | null>(null);
   const [needsRegister, setNeedsRegister] = useState(false);
   const [realKpis, setRealKpis] = useState<RealKpis | null>(null);
@@ -915,11 +916,11 @@ export default function AnalyticsPage() {
           Mon: t("analyticsDayMon"), Tue: t("analyticsDayTue"), Wed: t("analyticsDayWed"),
           Thu: t("analyticsDayThu"), Fri: t("analyticsDayFri"), Sat: t("analyticsDaySat"), Sun: t("analyticsDaySun"),
         },
-      });
+      }, locale);
     } finally {
       setExporting(false);
     }
-  }, [revenue, products, loyalty, t]);
+  }, [revenue, products, loyalty, t, locale]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
