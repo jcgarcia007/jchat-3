@@ -1729,6 +1729,54 @@
       "resolvedToast": "Alert {id}… marked as resolved.",
       "dismissedToast": "Report {id}… dismissed.",
       "unknownErrorFallback": "Unknown error"
+    },
+    "revenue": {
+      "demoBanner": "Demo mode — showing sample revenue data.",
+      "kpiActiveSubscriptionsLabel": "Active Subscriptions",
+      "kpiFailedPaymentsLabel": "Failed Payments",
+      "mrrTrendTitle": "MRR Trend",
+      "breakdownSectionTitle": "Subscription Breakdown by Tier",
+      "noActiveSubscriptions": "No active subscriptions found.",
+      "tableHeaderPlan": "Plan",
+      "tableHeaderSubscribers": "Subscribers",
+      "failedPaymentsSectionTitle": "Failed / Past-Due Payments",
+      "noFailedPayments": "No failed payments.",
+      "businessIdPrefix": "biz:",
+      "dueLabel": "Due",
+      "monthShort": {
+        "jan": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr", "may": "May", "jun": "Jun",
+        "jul": "Jul", "aug": "Aug", "sep": "Sep", "oct": "Oct", "nov": "Nov", "dec": "Dec"
+      }
+    },
+    "promoCodes": {
+      "title": "Promo codes",
+      "subtitle": "Each code is single-use and grants a Business or Pro trial for the specified days. Only platform admins can create them.",
+      "demoBanner": "Demo mode — no backend configured.",
+      "generateSectionTitle": "Generate new code",
+      "planFieldLabel": "Plan",
+      "trialDaysFieldLabel": "Trial days",
+      "expiresFieldLabel": "Expires (optional)",
+      "generateButton": "Generate code",
+      "codeGeneratedLabel": "Code generated · {plan} · {trialDays, plural, one {# day} other {# days}}",
+      "trialDaysSuffix": "{count, plural, one {# day} other {# days}}",
+      "copiedLabel": "Copied",
+      "copyLabel": "Copy",
+      "existingCodesLabel": "Existing codes",
+      "emptyStateMessage": "No codes yet. Generate your first one above.",
+      "validationDaysError": "Days must be a number greater than 0.",
+      "deleteConfirm": "Delete code {code}? This action cannot be undone.",
+      "expiresLabel": "expires {date}",
+      "redeemedLabel": "Redeemed {date}",
+      "unusedLabel": "Unused",
+      "deactivateTooltip": "Cancel (deactivate)",
+      "reactivateTooltip": "Reactivate",
+      "deleteTooltip": "Delete",
+      "statusUsed": "Used",
+      "statusAvailable": "Available",
+      "statusExpired": "Expired",
+      "statusInactive": "Inactive",
+      "daysLeftExpired": "expired",
+      "daysLeftRemaining": "{days, plural, one {# day left} other {# days left}}"
     }
   }
 }

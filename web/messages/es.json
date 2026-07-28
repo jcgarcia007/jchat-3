@@ -1729,6 +1729,54 @@
       "resolvedToast": "Alerta {id}… marcada como resuelta.",
       "dismissedToast": "Reporte {id}… descartado.",
       "unknownErrorFallback": "Error desconocido"
+    },
+    "revenue": {
+      "demoBanner": "Modo demo — mostrando datos de ingresos de ejemplo.",
+      "kpiActiveSubscriptionsLabel": "Suscripciones activas",
+      "kpiFailedPaymentsLabel": "Pagos fallidos",
+      "mrrTrendTitle": "Tendencia de MRR",
+      "breakdownSectionTitle": "Desglose de suscripciones por nivel",
+      "noActiveSubscriptions": "No se encontraron suscripciones activas.",
+      "tableHeaderPlan": "Plan",
+      "tableHeaderSubscribers": "Suscriptores",
+      "failedPaymentsSectionTitle": "Pagos fallidos / vencidos",
+      "noFailedPayments": "No hay pagos fallidos.",
+      "businessIdPrefix": "neg:",
+      "dueLabel": "Vence",
+      "monthShort": {
+        "jan": "ene", "feb": "feb", "mar": "mar", "apr": "abr", "may": "may", "jun": "jun",
+        "jul": "jul", "aug": "ago", "sep": "sep", "oct": "oct", "nov": "nov", "dec": "dic"
+      }
+    },
+    "promoCodes": {
+      "title": "Códigos promocionales",
+      "subtitle": "Cada código es de un solo uso y otorga una prueba de Business o Pro por los días indicados. Solo los administradores de la plataforma pueden crearlos.",
+      "demoBanner": "Modo demo — sin backend configurado.",
+      "generateSectionTitle": "Generar nuevo código",
+      "planFieldLabel": "Plan",
+      "trialDaysFieldLabel": "Días de prueba",
+      "expiresFieldLabel": "Vence (opcional)",
+      "generateButton": "Generar código",
+      "codeGeneratedLabel": "Código generado · {plan} · {trialDays, plural, one {# día} other {# días}}",
+      "trialDaysSuffix": "{count, plural, one {# día} other {# días}}",
+      "copiedLabel": "Copiado",
+      "copyLabel": "Copiar",
+      "existingCodesLabel": "Códigos existentes",
+      "emptyStateMessage": "Aún no hay códigos. Genera el primero arriba.",
+      "validationDaysError": "Los días deben ser un número mayor que 0.",
+      "deleteConfirm": "¿Eliminar el código {code}? Esta acción no se puede deshacer.",
+      "expiresLabel": "vence {date}",
+      "redeemedLabel": "Canjeado {date}",
+      "unusedLabel": "Sin usar",
+      "deactivateTooltip": "Cancelar (desactivar)",
+      "reactivateTooltip": "Reactivar",
+      "deleteTooltip": "Eliminar",
+      "statusUsed": "Usado",
+      "statusAvailable": "Disponible",
+      "statusExpired": "Vencido",
+      "statusInactive": "Inactivo",
+      "daysLeftExpired": "vencida",
+      "daysLeftRemaining": "{days, plural, one {quedan # día} other {quedan # días}}"
     }
   }
 }

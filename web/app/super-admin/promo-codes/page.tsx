@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconTicket, IconLoader2, IconAlertCircle, IconCheck, IconCopy, IconX, IconSparkles, IconUser,
   IconBan, IconTrash, IconRefresh,
@@ -41,6 +42,7 @@ function daysLeft(trialEnd: string | null): number | null {
 }
 
 export default function SuperAdminPromoCodesPage() {
+  const t = useTranslations("superAdmin");
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [redeemers, setRedeemers] = useState<Record<string, Redeemer>>({});
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function SuperAdminPromoCodesPage() {
   const generate = useCallback(async () => {
     setActionError(null);
     const days = parseInt(trialDays, 10);
-    if (!Number.isInteger(days) || days <= 0) { setActionError("Los días deben ser un número mayor que 0."); return; }
+    if (!Number.isInteger(days) || days <= 0) { setActionError(t("promoCodes.validationDaysError")); return; }
     setGenerating(true);
     const { data, error } = await supabase.rpc("create_promo_code", {
       p_plan: plan,
@@ -106,7 +108,7 @@ export default function SuperAdminPromoCodesPage() {
     setJustGenerated(data as PromoCode);
     setCopied(false);
     await fetchCodes();
-  }, [plan, trialDays, expiresAt, fetchCodes]);
+  }, [plan, trialDays, expiresAt, fetchCodes, t]);
 
   const copyCode = useCallback((code: string) => {
     void navigator.clipboard?.writeText(code);
@@ -126,48 +128,47 @@ export default function SuperAdminPromoCodesPage() {
   }, [fetchCodes]);
 
   const deleteCode = useCallback(async (c: PromoCode) => {
-    if (!window.confirm(`¿Eliminar el código ${c.code}? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(t("promoCodes.deleteConfirm", { code: c.code }))) return;
     setActionError(null);
     setBusyId(c.id);
     const { error } = await supabase.from("promo_codes").delete().eq("id", c.id);
     setBusyId(null);
     if (error) { setActionError(error.message); return; }
     await fetchCodes();
-  }, [fetchCodes]);
+  }, [fetchCodes, t]);
 
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
         <IconTicket size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Promo codes</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("promoCodes.title")}</h1>
       </div>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 18px" }}>
-        Cada código es de un solo uso y otorga una prueba de Business o Pro por los días indicados.
-        Solo los administradores de la plataforma pueden crearlos.
+        {t("promoCodes.subtitle")}
       </p>
 
-      {!isSupabaseConfigured && <Banner type="warning" message="Demo mode — no backend configured." />}
-      {fetchError && <Banner type="error" message={`Failed to load: ${fetchError}`} />}
+      {!isSupabaseConfigured && <Banner type="warning" message={t("promoCodes.demoBanner")} />}
+      {fetchError && <Banner type="error" message={t("verification.fetchErrorPrefix", { error: fetchError })} />}
       {actionError && <Banner type="error" message={actionError} onDismiss={() => setActionError(null)} />}
 
       <div style={{ border: "1px solid var(--border-subtle)", borderRadius: 12, background: "var(--bg-surface)", padding: 18, marginBottom: 22 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 14 }}>Generar nuevo código</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 14 }}>{t("promoCodes.generateSectionTitle")}</div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <Field label="Plan">
+          <Field label={t("promoCodes.planFieldLabel")}>
             <select value={plan} onChange={(e) => setPlan(e.target.value as "pro" | "business")} style={inputStyle}>
               <option value="pro">Pro</option>
               <option value="business">Business</option>
             </select>
           </Field>
-          <Field label="Días de prueba">
+          <Field label={t("promoCodes.trialDaysFieldLabel")}>
             <input type="number" min={1} value={trialDays} onChange={(e) => setTrialDays(e.target.value)} style={{ ...inputStyle, width: 120 }} />
           </Field>
-          <Field label="Vence (opcional)">
+          <Field label={t("promoCodes.expiresFieldLabel")}>
             <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} style={{ ...inputStyle, width: 170 }} />
           </Field>
           <button onClick={() => void generate()} disabled={generating} style={genBtn(generating)}>
             {generating ? <IconLoader2 size={15} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconSparkles size={15} stroke={2} />}
-            Generar código
+            {t("promoCodes.generateButton")}
           </button>
         </div>
 
@@ -175,7 +176,7 @@ export default function SuperAdminPromoCodesPage() {
           <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: "rgba(29,158,117,0.08)", border: "1px solid var(--color-success)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
               <div style={{ fontSize: 11, color: "var(--color-success)", marginBottom: 4, textTransform: "capitalize" }}>
-                Código generado · {justGenerated.plan} · {justGenerated.trial_days} días
+                {t("promoCodes.codeGeneratedLabel", { plan: justGenerated.plan, trialDays: justGenerated.trial_days })}
               </div>
               <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 18, fontWeight: 700, letterSpacing: 1, color: "var(--text-primary)" }}>
                 {justGenerated.code}
@@ -183,14 +184,14 @@ export default function SuperAdminPromoCodesPage() {
             </div>
             <button onClick={() => copyCode(justGenerated.code)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--color-success)", background: "transparent", color: "var(--color-success)", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
               {copied ? <IconCheck size={15} stroke={2} /> : <IconCopy size={15} stroke={2} />}
-              {copied ? "Copiado" : "Copiar"}
+              {copied ? t("promoCodes.copiedLabel") : t("promoCodes.copyLabel")}
             </button>
           </div>
         )}
       </div>
 
       <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
-        Códigos existentes{codes.length > 0 ? ` (${codes.length})` : ""}
+        {t("promoCodes.existingCodesLabel")}{codes.length > 0 ? ` (${codes.length})` : ""}
       </div>
 
       {loading && (
@@ -201,7 +202,7 @@ export default function SuperAdminPromoCodesPage() {
 
       {!loading && codes.length === 0 && !fetchError && (
         <div style={{ padding: "48px 24px", border: "1px dashed var(--border-subtle)", borderRadius: 12, textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
-          Aún no hay códigos. Genera el primero arriba.
+          {t("promoCodes.emptyStateMessage")}
         </div>
       )}
 
@@ -222,6 +223,7 @@ function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
   code: PromoCode; redeemer?: Redeemer; isLast: boolean; busy: boolean;
   onToggle: (c: PromoCode) => void; onDelete: (c: PromoCode) => void;
 }) {
+  const t = useTranslations("superAdmin.promoCodes");
   const status = statusOf(code);
   const name = redeemer?.username ?? redeemer?.display_name ?? (code.redeemed_by ? `${code.redeemed_by.slice(0, 8)}…` : null);
   return (
@@ -229,7 +231,7 @@ function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
       <div style={{ flex: "1 1 180px", minWidth: 0 }}>
         <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{code.code}</div>
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2, textTransform: "capitalize" }}>
-          {code.plan} · {code.trial_days} días{code.expires_at ? ` · vence ${new Date(code.expires_at).toLocaleDateString()}` : ""}
+          {code.plan} · {t("trialDaysSuffix", { count: code.trial_days })}{code.expires_at ? ` · ${t("expiresLabel", { date: new Date(code.expires_at).toLocaleDateString() })}` : ""}
         </div>
       </div>
       <div style={{ flex: "1 1 160px", fontSize: 12, color: "var(--text-tertiary)" }}>
@@ -239,10 +241,10 @@ function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
               <IconUser size={13} stroke={1.8} style={{ verticalAlign: -2, marginRight: 4 }} />
               {name}
             </div>
-            {code.redeemed_at && <div style={{ marginTop: 2 }}>Canjeado {new Date(code.redeemed_at).toLocaleDateString()}</div>}
+            {code.redeemed_at && <div style={{ marginTop: 2 }}>{t("redeemedLabel", { date: new Date(code.redeemed_at).toLocaleDateString() })}</div>}
           </>
         ) : (
-          "Sin usar"
+          t("unusedLabel")
         )}
       </div>
       <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -251,13 +253,13 @@ function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
         {!code.redeemed_by && (
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <IconBtn
-              title={code.active ? "Cancelar (desactivar)" : "Reactivar"}
+              title={code.active ? t("deactivateTooltip") : t("reactivateTooltip")}
               onClick={() => onToggle(code)}
               disabled={busy}
               icon={code.active ? IconBan : IconRefresh}
               color={code.active ? "var(--color-warning)" : "var(--color-success)"}
             />
-            <IconBtn title="Eliminar" onClick={() => onDelete(code)} disabled={busy} icon={IconTrash} color="var(--color-danger)" />
+            <IconBtn title={t("deleteTooltip")} onClick={() => onDelete(code)} disabled={busy} icon={IconTrash} color="var(--color-danger)" />
           </div>
         )}
       </div>
@@ -265,11 +267,14 @@ function CodeRow({ code, redeemer, isLast, busy, onToggle, onDelete }: {
   );
 }
 
-const STATUS_META: Record<Status, { label: string; color: string }> = {
-  used:      { label: "Usado",      color: "var(--color-success)" },
-  available: { label: "Disponible", color: "var(--color-brand)" },
-  expired:   { label: "Vencido",    color: "var(--color-warning)" },
-  inactive:  { label: "Inactivo",   color: "var(--text-secondary)" },
+// Colors only — labels are resolved inside StatusPill via t(), display-only;
+// the `status` key itself (Status type) stays raw everywhere in statusOf()
+// and its callers.
+const STATUS_COLORS: Record<Status, string> = {
+  used: "var(--color-success)",
+  available: "var(--color-brand)",
+  expired: "var(--color-warning)",
+  inactive: "var(--text-secondary)",
 };
 
 function IconBtn({ title, onClick, disabled, icon: Icon, color }: {
@@ -294,22 +299,30 @@ function IconBtn({ title, onClick, disabled, icon: Icon, color }: {
 }
 
 function DaysLeft({ days }: { days: number | null }) {
+  const t = useTranslations("superAdmin.promoCodes");
   if (days === null) return null;
   const expired = days <= 0;
   const low = days > 0 && days <= 7;
   const color = expired ? "var(--text-tertiary)" : low ? "var(--color-warning)" : "var(--color-success)";
   return (
     <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
-      {expired ? "vencida" : `quedan ${days} día${days === 1 ? "" : "s"}`}
+      {expired ? t("daysLeftExpired") : t("daysLeftRemaining", { days })}
     </span>
   );
 }
 
 function StatusPill({ status }: { status: Status }) {
-  const { label, color } = STATUS_META[status];
+  const t = useTranslations("superAdmin.promoCodes");
+  const color = STATUS_COLORS[status];
+  const labels: Record<Status, string> = {
+    used: t("statusUsed"),
+    available: t("statusAvailable"),
+    expired: t("statusExpired"),
+    inactive: t("statusInactive"),
+  };
   return (
     <span style={{ display: "inline-block", padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
-      {label}
+      {labels[status]}
     </span>
   );
 }

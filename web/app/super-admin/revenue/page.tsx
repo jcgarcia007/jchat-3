@@ -56,14 +56,18 @@ interface FailedPayment {
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
-const DEMO_MRR_HISTORY: MRRPoint[] = [
-  { month: "Jan", mrr: 1_200 },
-  { month: "Feb", mrr: 1_350 },
-  { month: "Mar", mrr: 1_520 },
-  { month: "Apr", mrr: 1_700 },
-  { month: "May", mrr: 1_890 },
-  { month: "Jun", mrr: 2_100 },
-  { month: "Jul", mrr: 2_394 },
+// monthKey instead of a rendered label — these are chart X-axis labels (UI
+// chrome, not entity data), so unlike other DEMO_* fixtures in this app they
+// ARE localized; the actual label is resolved inside the component via
+// monthShortLabels (built from superAdmin.revenue.monthShort.*).
+const DEMO_MRR_HISTORY_KEYS: Array<{ monthKey: string; mrr: number }> = [
+  { monthKey: "jan", mrr: 1_200 },
+  { monthKey: "feb", mrr: 1_350 },
+  { monthKey: "mar", mrr: 1_520 },
+  { monthKey: "apr", mrr: 1_700 },
+  { monthKey: "may", mrr: 1_890 },
+  { monthKey: "jun", mrr: 2_100 },
+  { monthKey: "jul", mrr: 2_394 },
 ];
 
 const DEMO_BREAKDOWN: PlanBreakdown[] = [
@@ -107,15 +111,33 @@ function formatDollars(n: number): string {
 
 export default function SuperAdminRevenuePage() {
   const t = useTranslations("superAdmin.relativeTime");
+  const trev = useTranslations("superAdmin");
   const [mrrHistory, setMrrHistory] = useState<MRRPoint[]>([]);
   const [breakdown, setBreakdown] = useState<PlanBreakdown[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Chart X-axis labels — jan..jul covers both the demo fixture and the
+  // temporary fakeHistory computed below (real mrr_snapshots data pending).
+  const monthShortLabels: Record<string, string> = {
+    jan: trev("revenue.monthShort.jan"),
+    feb: trev("revenue.monthShort.feb"),
+    mar: trev("revenue.monthShort.mar"),
+    apr: trev("revenue.monthShort.apr"),
+    may: trev("revenue.monthShort.may"),
+    jun: trev("revenue.monthShort.jun"),
+    jul: trev("revenue.monthShort.jul"),
+  };
+
+  const demoMrrHistory: MRRPoint[] = DEMO_MRR_HISTORY_KEYS.map((d) => ({
+    month: monthShortLabels[d.monthKey],
+    mrr: d.mrr,
+  }));
+
   const loadData = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setMrrHistory(DEMO_MRR_HISTORY);
+      setMrrHistory(demoMrrHistory);
       setBreakdown(DEMO_BREAKDOWN);
       setFailedPayments(DEMO_FAILED);
       setLoading(false);
@@ -156,9 +178,9 @@ export default function SuperAdminRevenuePage() {
       // MRR history: we only have current-month data from subscriptions;
       // show flat line + current month for now. A real impl needs a mrr_snapshots table.
       const totalMrr = derivedBreakdown.reduce((sum, b) => sum + b.mrr, 0);
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-      const fakeHistory: MRRPoint[] = months.map((m, i) => ({
-        month: m,
+      const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul"];
+      const fakeHistory: MRRPoint[] = monthKeys.map((key, i) => ({
+        month: monthShortLabels[key],
         mrr: Math.round(totalMrr * (0.6 + i * 0.057)),
         // TODO: replace with real mrr_snapshots table data
       }));
@@ -167,11 +189,11 @@ export default function SuperAdminRevenuePage() {
       setBreakdown(derivedBreakdown);
       setFailedPayments((failedSubs ?? []) as FailedPayment[]);
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : "Unknown error");
+      setFetchError(err instanceof Error ? err.message : trev("alerts.unknownErrorFallback"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [trev]);
 
   useEffect(() => {
     void loadData();
@@ -188,14 +210,14 @@ export default function SuperAdminRevenuePage() {
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
         <IconChartBar size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-          Revenue
+          {trev("shell.navRevenue")}
         </h1>
       </div>
 
       {/* TODO(roles): gate to Super Admin / Finance Admin */}
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — showing sample revenue data." />
+        <Banner type="warning" message={trev("revenue.demoBanner")} />
       )}
       {fetchError && <Banner type="error" message={fetchError} />}
 
@@ -216,11 +238,11 @@ export default function SuperAdminRevenuePage() {
               marginBottom: "24px",
             }}
           >
-            <KpiCard label="MRR" value={formatDollars(totalMrr)} icon={IconCurrencyDollar} color="var(--color-brand)" />
-            <KpiCard label="ARR" value={formatDollars(totalArr)} icon={IconCurrencyDollar} color="var(--color-success)" />
-            <KpiCard label="Active Subscriptions" value={String(totalSubs)} icon={IconChartBar} color="var(--color-brand-purple)" />
+            <KpiCard label={trev("overview.kpiMrrLabel")} value={formatDollars(totalMrr)} icon={IconCurrencyDollar} color="var(--color-brand)" />
+            <KpiCard label={trev("overview.kpiArrLabel")} value={formatDollars(totalArr)} icon={IconCurrencyDollar} color="var(--color-success)" />
+            <KpiCard label={trev("revenue.kpiActiveSubscriptionsLabel")} value={String(totalSubs)} icon={IconChartBar} color="var(--color-brand-purple)" />
             <KpiCard
-              label="Failed Payments"
+              label={trev("revenue.kpiFailedPaymentsLabel")}
               value={String(failedPayments.length)}
               icon={IconAlertTriangle}
               color={failedPayments.length > 0 ? "var(--color-danger)" : "var(--color-success)"}
@@ -245,7 +267,7 @@ export default function SuperAdminRevenuePage() {
                 marginBottom: "16px",
               }}
             >
-              MRR Trend
+              {trev("revenue.mrrTrendTitle")}
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={mrrHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -277,7 +299,7 @@ export default function SuperAdminRevenuePage() {
                     fontSize: "13px",
                     color: "var(--text-primary)",
                   }}
-                  formatter={(value) => [`$${Number(value ?? 0).toFixed(0)}`, "MRR"]}
+                  formatter={(value) => [`$${Number(value ?? 0).toFixed(0)}`, trev("overview.kpiMrrLabel")]}
                 />
                 <Area
                   type="monotone"
@@ -301,15 +323,15 @@ export default function SuperAdminRevenuePage() {
             }}
           >
             <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "14px" }}>
-              Subscription Breakdown by Tier
+              {trev("revenue.breakdownSectionTitle")}
             </div>
             {breakdown.length === 0 ? (
-              <div style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>No active subscriptions found.</div>
+              <div style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{trev("revenue.noActiveSubscriptions")}</div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                 <thead>
                   <tr>
-                    {["Plan", "Subscribers", "MRR"].map((h) => (
+                    {[trev("revenue.tableHeaderPlan"), trev("revenue.tableHeaderSubscribers"), trev("overview.kpiMrrLabel")].map((h) => (
                       <th
                         key={h}
                         style={{
@@ -355,7 +377,7 @@ export default function SuperAdminRevenuePage() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
               <IconAlertTriangle size={16} stroke={1.6} style={{ color: "var(--color-danger)" }} />
               <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-                Failed / Past-Due Payments
+                {trev("revenue.failedPaymentsSectionTitle")}
               </span>
               {failedPayments.length > 0 && (
                 <span
@@ -379,7 +401,7 @@ export default function SuperAdminRevenuePage() {
             </div>
 
             {failedPayments.length === 0 ? (
-              <div style={{ fontSize: "13px", color: "var(--color-success)" }}>No failed payments.</div>
+              <div style={{ fontSize: "13px", color: "var(--color-success)" }}>{trev("revenue.noFailedPayments")}</div>
             ) : (
               <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "8px", overflow: "hidden" }}>
                 {failedPayments.map((fp, idx) => (
@@ -409,19 +431,19 @@ export default function SuperAdminRevenuePage() {
                         flexShrink: 0,
                       }}
                     >
-                      Past Due
+                      {trev("alerts.pastDueBadge")}
                     </span>
                     <span style={{ flex: "1 1 120px", fontSize: "13px", color: "var(--text-secondary)" }}>
-                      Plan: <strong style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{fp.plan}</strong>
+                      {trev("alerts.planLabel")} <strong style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{fp.plan}</strong>
                     </span>
                     {fp.business_id && (
                       <span style={{ fontSize: "12px", color: "var(--text-tertiary)", fontFamily: "var(--font-geist-mono, monospace)" }}>
-                        biz: {fp.business_id.slice(0, 10)}…
+                        {trev("revenue.businessIdPrefix")} {fp.business_id.slice(0, 10)}…
                       </span>
                     )}
                     {fp.current_period_end && (
                       <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
-                        Due {formatRelativeTime(fp.current_period_end, t, { granularity: "day", style: "compact" })}
+                        {trev("revenue.dueLabel")} {formatRelativeTime(fp.current_period_end, t, { granularity: "day", style: "compact" })}
                       </span>
                     )}
                   </div>
