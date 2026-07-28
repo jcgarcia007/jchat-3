@@ -24,7 +24,7 @@ import { palette } from '../../theme/tokens';
 
 import MapScreen from '../../screens/map/MapScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
-// Task 1.12: DMsScreen placeholder replaced by the real DMStack navigator
+// DMs routes through a stack (inbox + chat), not a single screen like the other tabs
 import DMStack, { type DMStackParamList } from '../DMStack';
 import FriendsScreen from '../../screens/friends/FriendsScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';

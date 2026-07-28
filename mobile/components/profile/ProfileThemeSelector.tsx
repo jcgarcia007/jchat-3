@@ -28,6 +28,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { PROFILE_THEMES, ProfileTheme } from '../../theme/profileThemes';
 
 // ─── Layout constants (numbers only — no colors here) ────────────────────────
@@ -54,6 +55,7 @@ interface ThemeCardProps {
 }
 
 function ThemeCard({ theme, isSelected, onPress }: ThemeCardProps): React.JSX.Element {
+  const { t } = useTranslation('profile');
   const ringColor = isSelected ? theme.avatarBorder : 'transparent';
 
   return (
@@ -68,7 +70,11 @@ function ThemeCard({ theme, isSelected, onPress }: ThemeCardProps): React.JSX.El
       ]}
       accessibilityRole="radio"
       accessibilityState={{ checked: isSelected }}
-      accessibilityLabel={`${theme.name} theme${isSelected ? ', selected' : ''}`}
+      accessibilityLabel={
+        isSelected
+          ? t('themeSelector.themeOptionSelectedA11y', { name: theme.name })
+          : t('themeSelector.themeOptionA11y', { name: theme.name })
+      }
     >
       {/* Cover */}
       <View

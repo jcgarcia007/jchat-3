@@ -83,5 +83,9 @@
     "message": "Mensaje",
     "signOutA11y": "Cerrar sesión",
     "signOut": "Cerrar sesión"
+  },
+  "themeSelector": {
+    "themeOptionA11y": "Tema {{name}}",
+    "themeOptionSelectedA11y": "Tema {{name}}, seleccionado"
   }
 }

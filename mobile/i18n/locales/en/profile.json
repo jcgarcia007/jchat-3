@@ -83,5 +83,9 @@
     "message": "Message",
     "signOutA11y": "Sign out",
     "signOut": "Sign Out"
+  },
+  "themeSelector": {
+    "themeOptionA11y": "{{name}} theme",
+    "themeOptionSelectedA11y": "{{name}} theme, selected"
   }
 }
