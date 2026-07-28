@@ -17,7 +17,7 @@
   "redeemError": "Redemption failed.",
   "noPointsYetMessage": "No points yet — make a purchase to start earning!",
   "historySectionTitle": "Points History",
-  "historyEmptyMessage": "No history yet.\nFull transaction history will appear here once a ledger table is added (stub — Task 2.20).",
+  "historyEmptyMessage": "No history yet.\nFull transaction history will appear here once transaction tracking is added.",
   "rewardsSectionTitle": "Rewards to Redeem",
   "noRewardsTitle": "No rewards available",
   "noRewardsSubtitle": "This business hasn't added any rewards yet."

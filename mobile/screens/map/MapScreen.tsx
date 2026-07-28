@@ -94,7 +94,7 @@ const DEMO_BUSINESSES: MapBusiness[] = [
 /** Map a FilterPanel category to the business.category text. */
 function categoryMatches(cat: string, filter: MapFilters['category']): boolean {
   if (filter === 'all' || filter === 'open_now') return true;
-  const c = cat.toLowerCase();
+  const c = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   switch (filter) {
     case 'bars': return c.includes('bar');
     case 'cafes': return c.includes('cafe') || c.includes('coffee');

@@ -17,7 +17,7 @@
   "redeemError": "Error al canjear.",
   "noPointsYetMessage": "Aún no tienes puntos — ¡haz una compra para empezar a ganar!",
   "historySectionTitle": "Historial de puntos",
-  "historyEmptyMessage": "Aún no hay historial.\nEl historial completo de transacciones aparecerá aquí en cuanto se agregue una tabla de historial (stub — Task 2.20).",
+  "historyEmptyMessage": "Aún no hay historial.\nEl historial completo de transacciones aparecerá aquí cuando se habilite el registro de transacciones.",
   "rewardsSectionTitle": "Recompensas para canjear",
   "noRewardsTitle": "No hay recompensas disponibles",
   "noRewardsSubtitle": "Este negocio aún no ha agregado recompensas."
