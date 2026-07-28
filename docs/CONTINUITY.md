@@ -131,5 +131,27 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **GitHub WRITE de Planning Claude sigue en 403** (confirmado 2026-07-28): `create_or_update_file` y `push_files` dan "Resource not accessible by integration". La lectura (`get_file_contents`, `get_commit` full_patch) SÍ funciona. Todo commit sigue yendo por Claude Code. La auditoría full_patch de cada SHA es la vía de verificación.
 - **Herramienta de memoria de Claude (la de continuidad) NO disponible** en estas sesiones — solo aparece "Era Context" (financiera, irrelevante). Por eso el registro de estado va a docs/ vía Claude Code, no a memoria. docs/ es la fuente de verdad de continuidad.
 - **Épico nuevo documentado:** docs/EPICA_GEOCERCA_ACCESO_CHAT.md — geocerca + control de acceso al chat ("regla de oro": nadie fuera del radio entra al chat). Diseño aprobado por Juan, pendiente de reconocimiento de código (Fase 0). GPS heartbeat 5min solo-chat-abierto + Haversine local (sin costo Google) + QR 12h alternativo. LEER ese doc antes de arrancar el épico.
+- **Épico geocerca — barrera server-side construida (Fase 3.1):** la regla de oro se implementa como
+  una función SQL `check_geofence_and_join_room` SECURITY DEFINER que recibe lat/lng del cliente y
+  calcula el Haversine EN EL SERVIDOR (forma atan2, R=6371000, réplica de mobile/services/geofence.ts).
+  Principio no-negociable: el cliente REPORTA ubicación, el servidor DECIDE. Un cliente nunca envía
+  "estoy dentro". La barrera real es RPC + `can_access_room` (RLS de messages); el heartbeat del
+  cliente es solo UX.
+- **Patrón de consolidación de columnas duplicadas sin romper consumidores:** trigger BEFORE
+  INSERT/UPDATE que sincroniza pares duplicados (lat/lng↔latitude/longitude, radius_m↔geofence_radius_m),
+  eligiendo primario por QUIÉN LO LEE en producción (lat/lng lo lee el mapa móvil) y por QUÉ valida el
+  server-side (geofence_radius_m lo valida el trigger de cap). Elegir mal el primario de radio habría
+  hecho que el backfill chocara con el trigger de cap existente. Backfill que solo copia valores ya
+  existentes, nunca inventa.
+- **Regla de oro absoluta simplifica el diseño:** cuando se decidió que NADIE (salvo dueño) exime de
+  la geo — ni QR ni contraseña — desapareció la necesidad de distinguir el origen de una membresía
+  (`access_kind`). room_members quedó intacto; can_access_room solo pregunta "¿geo-presencia vigente?"
+  + "¿contraseña si la sala la tiene?". Menos código, menos riesgo. Una restricción más estricta puede
+  simplificar la implementación, no complicarla.
+- **La regeneración de database.types.ts saldó deuda de staleness:** el archivo llevaba muchas
+  migraciones sin regenerar; al hacerlo por la Fase 3.1 aparecieron decenas de tablas/RPCs que YA
+  existían en la BD pero faltaban en los types (tables, table_tabs, promo_codes, public_profiles view,
+  etc.). Un diff de types enorme no siempre es alarma — puede ser deuda de staleness saldándose. Se
+  verificó que el bloque graphql_public caído no tenía consumidores antes de sobrescribir.
 
 Last updated: 2026-07-28

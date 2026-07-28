@@ -19,7 +19,7 @@ Mercados: **USA en el lanzamiento; República Dominicana diferida a una fase fin
 | | |
 |---|---|
 | Tablas (public) | 60 |
-| Última migración | 110 (`110_reconcile_business_limit_trigger`) · 114 aplicadas en BD |
+| Última migración | 112 (`112_geofence_barrier`) · 116 aplicadas en BD |
 | Usuarios | 67 (regular + 3 pro + 1 business) |
 | Negocios | 18 — **solo 1 con Stripe conectado** |
 | Pedidos | 17, todos pagados |
@@ -122,6 +122,27 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   Antes de tráfico real: recorrer los flujos (login, mapa, checkout Stripe, hCaptcha) con la consola
   abierta en un preview; si se prefiere diferir, cambiar el `key` a `Content-Security-Policy-Report-Only`.
   Las violaciones CSP son client-side → NO aparecen en los logs de Vercel.
+- 🟡 **Épico Geocerca y Control de Acceso al Chat — EN CURSO** (sesión 2026-07-28, 3 SHAs auditados
+  full_patch). Diseño completo en `docs/EPICA_GEOCERCA_ACCESO_CHAT.md` + `docs/FASE3_BARRERA_SERVERSIDE.md`.
+  Regla de oro ABSOLUTA: nadie fuera del radio entra al chat de un negocio, salvo el dueño. Hecho:
+  (1) **Fase 1.0** (`66b6939`, migr 111): trigger `sync_business_coords_radius` consolida las 4
+  columnas de coords duplicadas (lat/lng primario) + 2 de radio (geofence_radius_m primario), 0
+  divergencias en 18 filas, sin tocar consumidores. (2) **Fase 1** (`ed925ee`): reverse-geocoding en
+  LocationEditor (soltar pin → rellena Address de Business Info); degrada con gracia si la Geocoding
+  API no está habilitada (probablemente aún NO lo está — DEPLOYMENT_CHECKLIST:135 sin marcar). (3)
+  **Fase 3.1** (`143cc93`, migr 112): barrera server-side — tabla `room_geo_presence` (aditiva, RLS
+  select-own, solo RPC escribe) + RPC `check_geofence_and_join_room` (Haversine server-side atan2, el
+  cliente solo REPORTA coords, el servidor DECIDE; default NO-acceso; dueño exento) + `can_access_room`
+  revisado (cierra el agujero: sala sin contraseña YA NO da acceso libre, exige geo-presencia; la
+  contraseña pasa a ser AND adicional). `room_members`/`verify_room_password`/`join_room_via_qr`
+  intactos. **PENDIENTE:** Fase 3.2 (cliente móvil: permiso GPS una vez, llamada a la RPC en
+  handleEnter de ChatRoomScreen, heartbeat 5min solo-chat-abierto, aviso+gracia 2min); Fase 2 (límite
+  global de radio editable en panel super-admin "Business Radius" — el override por negocio ya existe
+  vía `radius_increase_requests`); reconciliar UI duplicada de radio en Configuration
+  (LocationEditor editable vs "Coverage Radius" legacy solo-lectura). Fase 3.3 (web) DESCARTADA (chat
+  de negocio web es solo vía QR). Fase 5 (QR-sin-GPS) se replantea: con la regla absoluta el QR ya no
+  exime de geo. **Operativo Juan:** habilitar Geocoding API en Google Cloud (misma key) para el
+  reverse-geo de Fase 1.
 
 ---
 
