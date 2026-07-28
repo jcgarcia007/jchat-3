@@ -38,6 +38,7 @@ import {
   IconRulerMeasure,
   IconLayoutDashboard,
   IconTicket,
+  IconAdjustmentsHorizontal,
 } from "@tabler/icons-react";
 
 export const metadata: Metadata = {
@@ -130,6 +131,7 @@ export default async function SuperAdminLayout({
         <NavLink href="/super-admin/businesses" icon={IconBuildingStore} label={t("navBusinesses")} />
         <NavLink href="/super-admin/verification" icon={IconUserCheck} label={t("navVerification")} />
         <NavLink href="/super-admin/radius-requests" icon={IconRulerMeasure} label={t("navRadiusRequests")} />
+        <NavLink href="/super-admin/business-radius" icon={IconAdjustmentsHorizontal} label={t("navBusinessRadius")} />
         <NavLink href="/super-admin/revenue" icon={IconChartBar} label={t("navRevenue")} />
         <NavLink href="/super-admin/promo-codes" icon={IconTicket} label={t("navPromoCodes")} />
         <NavLink href="/super-admin/alerts" icon={IconBell} label={t("navAlerts")} />

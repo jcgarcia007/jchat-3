@@ -70,7 +70,6 @@
     "enterTableNumber": "Ingresa el número de mesa",
     "orderingAtTable": "Estás pidiendo en la mesa{tableLabel}",
     "notAtThisTable": "No estoy en esa mesa",
-
     "soldOut": "Agotado",
     "addItemAria": "Agregar {name}",
     "viewCartAriaCount": "Ver carrito, {count} artículos",
@@ -79,7 +78,6 @@
     "allCategoryFilter": "Todo",
     "dishCountPlural": "{count, plural, one {# PLATO} other {# PLATOS}}",
     "addWithPlus": "+ Agregar",
-
     "aiSubtitle": "Hoy · seleccionado para ti",
     "aiAssistantPrompt": "¿Lo de siempre? <b>{name}</b> — ¿o probamos algo distinto hoy?",
     "aiConfirmYes": "Sí — agregar +",
@@ -97,7 +95,6 @@
       "Ligero y fresco, como prefieres",
       "Muy pedido a esta hora"
     ],
-
     "cardStackAllSeen": "¡Los viste todos!",
     "cardStackHasItems": "Tienes {count} en tu carrito.",
     "cardStackEmptyAlt": "No agregaste nada aún.",
@@ -106,7 +103,6 @@
     "deckButtonPass": "PASAR",
     "deckButtonAdd": "AGREGAR",
     "deckButtonSave": "GUARDAR",
-
     "gestureEdgeHint": "categorías",
     "gesturePrevCategoryAria": "Categoría anterior",
     "gestureNextCategoryAria": "Categoría siguiente",
@@ -114,14 +110,11 @@
     "gestureNextDishAria": "Plato siguiente",
     "gestureLegend": "⌃⌄ platos · ‹› categorías",
     "gestureHoldToAdd": "Mantén para agregar",
-
     "carouselTagline": "Elige tu antojo",
     "carouselSwipeHint": "← Desliza para ver los {count} →",
-
     "leftDrawerOpenCategoriesAria": "Abrir categorías",
     "leftDrawerViewCartAria": "Ver carrito",
     "leftDrawerCategoriesHeading": "Categorías",
-
     "masonryQuestion": "¿Qué se te antoja hoy?",
     "masonrySearchPlaceholder": "Buscar platillos…",
     "masonryClearAria": "Limpiar",
@@ -129,38 +122,28 @@
     "masonryNoResults": "Sin resultados.",
     "masonryCheckout": "Checkout →",
     "masonryCartItemCount": "{count, plural, one {# artículo} other {# artículos}}",
-
     "categorySidebarCartLabel": "CARRITO · {count}",
     "iconRailCartLabel": "Carrito · {count}",
-
     "infiniteFeedTagline": "Entrega a tu mesa · lo más pedido",
     "infiniteFeedCartLabel": "Carrito ({count})",
     "infiniteFeedCartFooter": "{amount} · A tu mesa →",
-
     "luxuryChapterLabel": "Capítulo {number}",
     "luxuryConciergeCartAria": "Concierge · carrito, {count} artículos",
-
     "magazineCartLabel": "Cesta ({count})",
     "magazineSectionsCount": "Menú · Nº 1 · {count, plural, one {# sección} other {# secciones}}",
     "magazineFeaturedLabel": "El plato de la casa",
     "magazineAddButton": "Agregar",
-
     "stickyTabsCartLabel": "Ver carrito · {count}",
-
     "storeSectionsCartLabel": "Bolsa · {count}",
     "storeSectionsGreeting": "Bienvenido.",
     "storeSectionsDishCount": "{count, plural, one {# platillo} other {# platillos}}",
-
     "streamingRowsTagline": "Entrega en tu asiento",
     "streamingRowsSeeAll": "VER TODO →",
-
     "timelineTagline": "Velada de degustación · itinerario",
     "timelineCartLabel": "Tu velada · {count, plural, one {# platillo} other {# platillos}}",
-
     "badgeBestSeller": "⭐ Más vendido",
     "badgeNew": "✨ Nuevo",
     "badgeHot": "🌶️ Hot",
-
     "dietaryVegetarian": "🌱 Vegetal",
     "dietaryVegan": "🌿 Vegano",
     "dietaryGlutenFree": "🌾 Sin gluten",
@@ -168,14 +151,11 @@
     "dietarySpicy": "🌶️ Picante",
     "dietaryNutFree": "🥜 Sin nueces",
     "dietaryDairyFree": "🥛 Sin lácteos",
-
     "removeFavoriteAria": "Quitar de favoritos",
     "addFavoriteAria": "Agregar a favoritos",
-
     "previousAria": "Anterior",
     "nextAria": "Siguiente",
     "storiesSwipeToAdd": "↑ Deslizar para agregar",
-
     "emptyMenuTitle": "{bizName} aún no tiene menú",
     "emptyMenuBody": "Estamos preparando algo delicioso. Vuelve pronto."
   },
@@ -200,7 +180,6 @@
     "navAriaLabel": "Navegación del panel",
     "superAdmin": "Súper admin",
     "pendingBadgeAria": "{count} pendientes",
-
     "railResumen": "Resumen",
     "railPedidos": "Pedidos",
     "railMesas": "Mesas",
@@ -225,7 +204,6 @@
     "railEmpleados": "Empleados",
     "railRoles": "Roles",
     "railAdminLabel": "Admin",
-
     "pendingDotAria": "Pendientes",
     "accountAria": "Cuenta: {name}",
     "accountFallback": "Cuenta",
@@ -238,13 +216,11 @@
     "subnavAriaWithModule": "Navegación de {module}",
     "subnavAriaFallback": "Subnavegación del panel",
     "logout": "Cerrar sesión",
-
     "switchingState": "Cambiando…",
     "commandPaletteAria": "Abrir paleta de comandos (⌘K)",
     "searchLabel": "Buscar",
     "currentTimeAria": "Hora actual: {time}",
     "userAvatarAria": "Avatar del usuario",
-
     "qrSubRoomNote": "Al escanear entras a la Sala Principal + [{name}] a la vez",
     "qrGenerating": "Generando…",
     "qrDownloadLabel": "Descargar",
@@ -258,8 +234,15 @@
     "qrLogoAlt": "Logo de {slug}",
     "qrShareTitle": "Únete a {name} en JChat",
     "qrPrintPageTitle": "{name} — Código QR de JChat",
-
-    "weekdays": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    "weekdays": [
+      "Lun",
+      "Mar",
+      "Mié",
+      "Jue",
+      "Vie",
+      "Sáb",
+      "Dom"
+    ],
     "prevMonthAria": "Mes anterior",
     "nextMonthAria": "Mes siguiente",
     "loadErrorShort": "No se pudieron cargar las ventas",
@@ -267,7 +250,6 @@
     "loadErrorLong": "No se pudieron cargar las ventas. Revisa tu conexión e inténtalo de nuevo.",
     "noActiveBusinessMessage": "Selecciona un negocio para ver sus ventas.",
     "emptyMonthMessage": "Aún no hay ventas registradas este mes.",
-
     "allCategoriesLabel": "Todas",
     "categoriesAriaLabel": "Categorías",
     "loadingCategories": "Cargando categorías…",
@@ -278,24 +260,18 @@
     "hiddenBadge": "Oculta",
     "untranslatedBadge": "Sin traducir",
     "outOfStockBadge": "{count, plural, one {# agotado} other {# agotados}}",
-
     "retry": "Reintentar",
-
     "noBusinessTitle": "Aún no tienes negocio",
     "noBusinessDefaultMessage": "Registra tu negocio para empezar a administrar tu menú, salas de chat, pedidos y más.",
     "registerBusinessLink": "Registrar mi negocio",
-
     "themePreviewRevenue": "Ingresos",
     "themePreviewWeeklySales": "Ventas semanales",
     "themePreviewVisitors": "128 visitantes hoy",
-
     "chatThemePreviewAria": "Vista previa del tema: {name}",
     "chatSampleGreeting": "¡Hola! 👋",
     "chatSampleReply": "¡Qué tal! 😊",
     "chatSampleWelcome": "¡Bienvenido!",
-
     "renewsOn": "Renueva el {date}",
-
     "usageSummary": "Negocios: {bizUsed}/{bizLimit} · Eventos: {evUsed}/{evLimit} · plan {plan}",
     "createBusinessOrEvent": "Crear negocio o evento",
     "yourBusinesses": "Tus negocios",
@@ -320,7 +296,6 @@
     "createBusinessCardTitle": "Negocio",
     "createBusinessCardText": "Un local permanente — bar, restaurante, café. Siempre en el mapa.",
     "createEventCardText": "Un evento temporal con fecha de inicio y fin. Mismas funciones, tiempo limitado.",
-
     "orderStatusPending": "Pendiente",
     "orderStatusPreparing": "Preparando",
     "orderStatusReady": "Listo",
@@ -331,7 +306,6 @@
     "orderTypeCounter": "Barra",
     "timeJustNow": "justo ahora",
     "ordersItemFallback": "Ítem",
-
     "ordersFilterAll": "Todos",
     "ordersSubtitle": "Pedidos entrantes, en curso y completados — se actualiza en vivo.",
     "ordersNoBusinessMessage": "Registra tu negocio para empezar a recibir pedidos.",
@@ -354,7 +328,6 @@
     "ordersMinutesAgo": "hace {count} min",
     "ordersHoursAgo": "hace {count} h",
     "ordersGuestFallback": "Invitado",
-
     "kdsPageTitle": "Pantalla de cocina",
     "kdsNoBusinessMessage": "Registra tu negocio para empezar a recibir y preparar pedidos.",
     "kdsSubtitle": "Pedidos activos — se actualiza en vivo, refresca cada 30s.",
@@ -368,7 +341,6 @@
     "kdsUpdateOrderError": "No se pudo actualizar el pedido.",
     "kdsElapsedMinutes": "{count} min",
     "kdsElapsedHoursMinutes": "{hours}h {minutes}m",
-
     "tablesLabelRequired": "La etiqueta es obligatoria.",
     "tablesLabelTooLong": "La etiqueta no puede superar 20 caracteres.",
     "tablesSeatsRange": "Las sillas deben ser un número entre 1 y 50.",
@@ -410,13 +382,11 @@
     "tablesWaiterAlreadyAssigned": "Ese mesero ya estaba asignado.",
     "tablesNoPermissionAssign": "No tienes permiso para asignar meseros a esta mesa.",
     "tablesAssignUpdateError": "No se pudo actualizar la asignación. Inténtalo de nuevo.",
-
     "tablesQrModalTitle": "Mesa {label}",
     "tablesQrModalCloseAria": "Cerrar",
     "tablesQrModalCodeAria": "Código QR",
     "tablesQrModalChatHint": "Al escanear también entra al chat de esta mesa.",
     "tablesQrModalCopy": "Copiar",
-
     "tabKindCustomer": "Cliente",
     "tabKindWaiter": "Mesero",
     "tabStatusCustomerOpen": "Pagado · en mesa",
@@ -424,7 +394,6 @@
     "tabStatusClosed": "Cerrado",
     "tabStatusWaiterOpen": "Por cobrar",
     "tabStatusWaiterPaid": "Cobrado",
-
     "tablesDetailAria": "Detalle de mesa {label}",
     "tablesDetailCloseAria": "Cerrar panel",
     "tablesDetailNoWaiterAssigned": "Sin mesero asignado",
@@ -458,7 +427,6 @@
     "tablesDetailOrderNotFound": "El pedido ya no existe.",
     "tablesDetailOrderNotAttached": "El pedido no estaba atado a ningún tap.",
     "tablesDetailUpdateOrderError": "No se pudo actualizar el pedido. Inténtalo de nuevo.",
-
     "serviceJustNow": "justo ahora",
     "serviceMinutesAgo": "hace {mins} min",
     "serviceHoursMinutesAgo": "hace {h}h {m}m",
@@ -476,26 +444,22 @@
     "serviceNoTable": "Sin mesa especificada",
     "serviceAttendButton": "Atender",
     "serviceResolveButton": "Resuelto",
-
     "terminalMetaTitle": "Terminal del mesero — JChat",
     "terminalMetaDescription": "Terminal del mesero (B6)",
     "terminalNotEmployeeTitle": "Terminal del mesero",
     "terminalNotEmployeeBody": "Tu cuenta no está registrada como empleado de ningún negocio. Pídele a tu encargado que te añada.",
-
     "terminalStateFree": "Libre",
     "terminalStateBusy": "Ocupada",
     "terminalStateToCollect": "Pendiente de cobro",
     "terminalNoBusinessAssigned": "No estás asignado como empleado activo de ningún negocio.",
     "terminalNoTablesAssigned": "No tienes mesas asignadas ni hay mesas libres de asignación.",
     "terminalUnassignedBadge": "Sin asignar",
-
     "terminalModifierOptionsAria": "Opciones de {name}",
     "terminalModifierRequired": "obligatorio",
     "terminalModifierChooseOne": "elige uno",
     "terminalModifierUpTo": "hasta {max}",
     "terminalModifierChooseLabel": "Elige: {label}",
     "terminalModifierAddDefault": "Añadir",
-
     "terminalTableAssignedOther": "Esta mesa está asignada a otro mesero.",
     "terminalNotEmployeeOfBusiness": "No eres empleado de este negocio.",
     "terminalNameTooLong": "El nombre es demasiado largo (máx. 40 caracteres).",
@@ -534,7 +498,6 @@
     "terminalAddOneAria": "Añadir uno",
     "terminalOptionsButton": "Opciones",
     "terminalRemoveButton": "Quitar",
-
     "terminalTakeOrderTableNotAssigned": "Esta mesa no está asignada a ti.",
     "terminalTakeOrderTabClosed": "Esa cuenta ya está cerrada. Abre una nueva.",
     "terminalTakeOrderTabNotFound": "Esa cuenta ya no existe.",
@@ -582,7 +545,6 @@
     "terminalTakeOrderDiscardBody": "Se descartará lo que llevas sin enviar ({count, plural, one {# plato} other {# platos}}). No se ha enviado nada a cocina, así que no se borra ningún pedido — solo se vacía esta pantalla.",
     "terminalTakeOrderConfirmDiscardButton": "Sí, descartar",
     "terminalTakeOrderKeepOrderButton": "Seguir con el pedido",
-
     "roleManager": "Gerente",
     "roleCashier": "Cajero",
     "roleKitchen": "Cocina",
@@ -590,7 +552,6 @@
     "roleAnalyst": "Analista",
     "customRoleBadge": "Personalizado",
     "demoModeSupabaseMessage": "Modo demo: Supabase no está configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar datos en vivo.",
-
     "employeesStatusActive": "Activo",
     "employeesStatusDeclined": "Rechazado",
     "employeesRemoveAria": "Quitar a {username}",
@@ -628,7 +589,6 @@
     "employeesAddError": "Error al añadir: {msg}",
     "employeesAddedSuccess": "Se añadió a @{username} como {role}.",
     "employeesUnknownUser": "Desconocido",
-
     "permLabelOrdersView": "Ver pedidos",
     "permLabelOrdersProcess": "Procesar pedidos",
     "permLabelOrdersMarkDelivered": "Marcar como entregado",
@@ -651,15 +611,12 @@
     "permLabelAnalyticsView": "Ver analíticas",
     "permLabelExportsManage": "Exportar datos",
     "permLabelLoyaltyManage": "Gestionar fidelización",
-
     "permGroupOrdersPos": "Pedidos / POS",
     "permGroupMenuInventory": "Menú / Inventario",
     "permGroupChatModeration": "Chat / Moderación",
     "permGroupServiceAlerts": "Servicio / Avisos",
     "permGroupReportsData": "Informes / Datos",
-
     "roleOwner": "Dueño",
-
     "rolesPageTitle": "Roles personalizados",
     "rolesPageSubtitle": "Define roles con permisos detallados y asígnalos a tus empleados.",
     "rolesNewRoleButton": "Nuevo rol",
@@ -693,7 +650,6 @@
     "rolesUpdatedSuccess": "Rol \"{name}\" actualizado.",
     "rolesCreatedSuccess": "Rol \"{name}\" creado.",
     "rolesLinkText": "Asigna roles personalizados al añadir o editar empleados en la <link>página de Empleados</link>.",
-
     "reservationsStatusConfirmed": "Confirmada",
     "reservationsStatusRejected": "Rechazada",
     "reservationsStatusNoShow": "Ausente",
@@ -730,7 +686,6 @@
     "reservationsActionDoneFallback": "Hecho.",
     "reservationsLoadError": "No se pudieron cargar las reservas: {msg}",
     "reservationsActionError": "La acción falló: {msg}",
-
     "eventsPageTitle": "Eventos",
     "eventsSubtitle": "Tus eventos temporales. Cada evento es un negocio completo con menú, chat y POS.",
     "eventsNewButton": "Nuevo evento",
@@ -741,7 +696,6 @@
     "eventsNoDatesSet": "Sin fechas definidas",
     "eventsOpeningState": "Abriendo…",
     "eventsManageButton": "Gestionar",
-
     "roomTypeMain": "Principal",
     "roomTypePrivate": "Privada",
     "roomTypeSubRoom": "Subsala",
@@ -782,9 +736,7 @@
     "chatRoomsThemeModalTitle": "Tema del chat — {name}",
     "chatRoomsThemePreviewGreeting": "¡Hola! 👋",
     "chatRoomsCurrentBadge": "✓ Actual",
-
     "chatRedirectingMessage": "Redirigiendo a Salas de chat…",
-
     "liveChatUnknownAuthor": "Usuario",
     "liveChatSystemAuthor": "Sistema",
     "liveChatRoomFallback": "Chat de la sala",
@@ -1626,7 +1578,8 @@
         "jewel": "Joya",
         "pastel": "Pastel"
       }
-    }
+    },
+    "locationRadiusConfigNote": "Recomendado: ≥ 10 m (precisión GPS: 5–20 m)"
   },
   "superAdmin": {
     "shell": {
@@ -1644,7 +1597,8 @@
       "navAnnouncements": "Anuncios",
       "navPublicLocations": "Ubicaciones públicas",
       "navDisputes": "Disputas",
-      "navBackToDashboard": "Volver al panel"
+      "navBackToDashboard": "Volver al panel",
+      "navBusinessRadius": "Radio de negocio"
     },
     "gate": {
       "checkingAccess": "Verificando acceso…",
@@ -1809,8 +1763,18 @@
       "businessIdPrefix": "neg:",
       "dueLabel": "Vence",
       "monthShort": {
-        "jan": "ene", "feb": "feb", "mar": "mar", "apr": "abr", "may": "may", "jun": "jun",
-        "jul": "jul", "aug": "ago", "sep": "sep", "oct": "oct", "nov": "nov", "dec": "dic"
+        "jan": "ene",
+        "feb": "feb",
+        "mar": "mar",
+        "apr": "abr",
+        "may": "may",
+        "jun": "jun",
+        "jul": "jul",
+        "aug": "ago",
+        "sep": "sep",
+        "oct": "oct",
+        "nov": "nov",
+        "dec": "dic"
       }
     },
     "promoCodes": {
@@ -1966,6 +1930,25 @@
       "createLocationButton": "Crear ubicación",
       "deleteLocationModalTitle": "¿Eliminar ubicación?",
       "deleteLocationWarning": "Esto eliminará permanentemente la ubicación pública y su pin del mapa. La sala de chat vinculada (si existe) no se eliminará."
+    },
+    "businessRadius": {
+      "title": "Configuración de radio de negocio",
+      "subtitle": "Define el rango global de radio de geocerca. Los negocios deben mantenerse dentro de este rango al ajustar su radio. Los negocios con una solicitud de radio aprobada pueden superar el máximo para su local.",
+      "currentLabel": "Rango actual: {min} m – {max} m",
+      "fieldMin": "Radio mínimo (m)",
+      "fieldMax": "Radio máximo (m)",
+      "hintMin": "Piso absoluto: 1 m. Guía el slider del LocationEditor — no se valida en el servidor.",
+      "hintMax": "Tope global aplicado por el trigger del servidor. Bajarlo no recortará los radios existentes.",
+      "gpsWarning": "La precisión del GPS es típicamente de 5–20 m. Configurar el mínimo por debajo de 10 m o el máximo por debajo de 30 m puede impedir que los clientes entren al chat aunque estén físicamente dentro del local.",
+      "overrideNote": "Los negocios con una Solicitud de radio aprobada pueden superar el máximo global para su local. Este panel solo define el rango global predeterminado.",
+      "save": "Guardar rango",
+      "saved": "Rango guardado.",
+      "loading": "Cargando configuración…",
+      "errorLoad": "No se pudo cargar la configuración.",
+      "errorSave": "No se pudo guardar. Verifica tus permisos de administrador.",
+      "validMin": "El mínimo debe ser al menos 1.",
+      "validMax": "El máximo debe ser mayor que 0.",
+      "validRange": "El mínimo no puede superar el máximo."
     }
   }
 }

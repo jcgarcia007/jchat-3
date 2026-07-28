@@ -49,9 +49,11 @@ const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 // Fallback view when the business has no saved coordinates: center of the USA.
 const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
 
-// Default geofence-radius caps. Above the cap, owners request an increase from a
-// super admin. (Event cap is prepared for the future events flow.)
-const BUSINESS_RADIUS_CAP = 50; // meters (canónico — diseño 2026-06-24)
+// Fallback caps used when platform_config cannot be read. The real values are
+// fetched from platform_config on mount (Chunk A2). EVENT_RADIUS_CAP is
+// prepared for the future events flow and is not stored in platform_config yet.
+const BUSINESS_RADIUS_CAP_FALLBACK_MIN = 1;  // absolute floor
+const BUSINESS_RADIUS_CAP_FALLBACK_MAX = 50; // matches the DB seed
 export const EVENT_RADIUS_CAP = 1609; // 1 mile, for the future events flow
 
 type LatLng = { lat: number; lng: number };
@@ -357,8 +359,14 @@ export function LocationEditor({
   const onAddressResolvedRef = useRef(onAddressResolved);
   onAddressResolvedRef.current = onAddressResolved;
 
-  // Slider cap: the default cap, or a larger already-granted radius from the DB.
-  const [grantedMax, setGrantedMax] = useState<number>(BUSINESS_RADIUS_CAP);
+  // Global config from platform_config (Chunk A2). Fallback values are used
+  // when the fetch fails so the slider always renders usably.
+  const [configMin, setConfigMin] = useState<number>(BUSINESS_RADIUS_CAP_FALLBACK_MIN);
+  const [configMax, setConfigMax] = useState<number>(BUSINESS_RADIUS_CAP_FALLBACK_MAX);
+
+  // Slider cap: the global max, or the larger value already saved for this business
+  // (which means an override was already approved and applied by an admin).
+  const [grantedMax, setGrantedMax] = useState<number>(BUSINESS_RADIUS_CAP_FALLBACK_MAX);
 
   // Radius-increase request modal
   const [showReqModal, setShowReqModal] = useState(false);
@@ -367,6 +375,32 @@ export function LocationEditor({
   const [reqSubmitting, setReqSubmitting] = useState(false);
   const [reqError, setReqError] = useState<string | null>(null);
   const [reqDone, setReqDone] = useState(false);
+
+  // Fetch global config from platform_config (Chunk A2). Authenticated users can
+  // SELECT via RLS. Degrades to fallback constants on any error so the slider
+  // always renders usably.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("platform_config")
+          .select("business_radius_min_m, business_radius_max_m")
+          .eq("id", true)
+          .maybeSingle();
+        if (!active || !data) return;
+        const cfg = data as { business_radius_min_m: number; business_radius_max_m: number };
+        setConfigMin(cfg.business_radius_min_m);
+        setConfigMax(cfg.business_radius_max_m);
+        // Also update grantedMax seed in case the business fetch already ran.
+        setGrantedMax((prev) => Math.max(cfg.business_radius_max_m, prev));
+      } catch {
+        // Fallback constants already set — keep them.
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !businessId) return;
@@ -381,12 +415,13 @@ export function LocationEditor({
         const row = b as Record<string, number | null>;
         const blat = row.latitude ?? row.lat ?? null;
         const blng = row.longitude ?? row.lng ?? null;
-        const r = row.geofence_radius_m ?? row.radius_m ?? BUSINESS_RADIUS_CAP;
+        const r = row.geofence_radius_m ?? row.radius_m ?? BUSINESS_RADIUS_CAP_FALLBACK_MAX;
         setLat(blat);
         setLng(blng);
         setRadius(r);
-        // Don't shrink an already-granted larger radius below what's saved.
-        setGrantedMax(Math.max(BUSINESS_RADIUS_CAP, r));
+        // Effective max = global cap from config, OR the already-saved radius if an
+        // admin approved a larger override and applied it to this business.
+        setGrantedMax((prev) => Math.max(prev, r));
         if (blat != null && blng != null) setRecenterTo({ lat: blat, lng: blng });
       }
     })();
@@ -514,13 +549,19 @@ export function LocationEditor({
         </div>
         <input
           type="range"
-          min={50}
+          min={configMin}
           max={grantedMax}
-          step={10}
-          value={Math.min(radius, grantedMax)}
+          step={Math.max(1, Math.min(10, configMin))}
+          value={Math.min(Math.max(radius, configMin), grantedMax)}
           onChange={(e) => setRadius(parseInt(e.target.value, 10))}
           style={{ width: "100%", accentColor: "var(--db-accent)" }}
         />
+        {/* Recommended minimum guide — not a hard limit (GPS accuracy is ~5-20m). */}
+        {configMin < 10 && (
+          <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: "2px 0 0" }}>
+            {t("locationRadiusConfigNote")}
+          </p>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
           <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
             {atCap
