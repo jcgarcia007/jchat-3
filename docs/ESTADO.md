@@ -19,7 +19,7 @@ Mercados: **USA en el lanzamiento; República Dominicana diferida a una fase fin
 | | |
 |---|---|
 | Tablas (public) | 60 |
-| Última migración | 112 (`112_geofence_barrier`) · 116 aplicadas en BD |
+| Última migración | 114 (`114_platform_config_min_1m`) · 118 aplicadas en BD |
 | Usuarios | 67 (regular + 3 pro + 1 business) |
 | Negocios | 18 — **solo 1 con Stripe conectado** |
 | Pedidos | 17, todos pagados |
@@ -122,27 +122,36 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   Antes de tráfico real: recorrer los flujos (login, mapa, checkout Stripe, hCaptcha) con la consola
   abierta en un preview; si se prefiere diferir, cambiar el `key` a `Content-Security-Policy-Report-Only`.
   Las violaciones CSP son client-side → NO aparecen en los logs de Vercel.
-- 🟡 **Épico Geocerca y Control de Acceso al Chat — EN CURSO** (sesión 2026-07-28, 3 SHAs auditados
-  full_patch). Diseño completo en `docs/EPICA_GEOCERCA_ACCESO_CHAT.md` + `docs/FASE3_BARRERA_SERVERSIDE.md`.
-  Regla de oro ABSOLUTA: nadie fuera del radio entra al chat de un negocio, salvo el dueño. Hecho:
-  (1) **Fase 1.0** (`66b6939`, migr 111): trigger `sync_business_coords_radius` consolida las 4
-  columnas de coords duplicadas (lat/lng primario) + 2 de radio (geofence_radius_m primario), 0
-  divergencias en 18 filas, sin tocar consumidores. (2) **Fase 1** (`ed925ee`): reverse-geocoding en
-  LocationEditor (soltar pin → rellena Address de Business Info); degrada con gracia si la Geocoding
-  API no está habilitada (probablemente aún NO lo está — DEPLOYMENT_CHECKLIST:135 sin marcar). (3)
-  **Fase 3.1** (`143cc93`, migr 112): barrera server-side — tabla `room_geo_presence` (aditiva, RLS
-  select-own, solo RPC escribe) + RPC `check_geofence_and_join_room` (Haversine server-side atan2, el
-  cliente solo REPORTA coords, el servidor DECIDE; default NO-acceso; dueño exento) + `can_access_room`
-  revisado (cierra el agujero: sala sin contraseña YA NO da acceso libre, exige geo-presencia; la
-  contraseña pasa a ser AND adicional). `room_members`/`verify_room_password`/`join_room_via_qr`
-  intactos. **PENDIENTE:** Fase 3.2 (cliente móvil: permiso GPS una vez, llamada a la RPC en
-  handleEnter de ChatRoomScreen, heartbeat 5min solo-chat-abierto, aviso+gracia 2min); Fase 2 (límite
-  global de radio editable en panel super-admin "Business Radius" — el override por negocio ya existe
-  vía `radius_increase_requests`); reconciliar UI duplicada de radio en Configuration
-  (LocationEditor editable vs "Coverage Radius" legacy solo-lectura). Fase 3.3 (web) DESCARTADA (chat
-  de negocio web es solo vía QR). Fase 5 (QR-sin-GPS) se replantea: con la regla absoluta el QR ya no
-  exime de geo. **Operativo Juan:** habilitar Geocoding API en Google Cloud (misma key) para el
-  reverse-geo de Fase 1.
+- 🟢 **Épico Geocerca y Control de Acceso al Chat — NÚCLEO COMPLETO** (sesión 2026-07-28, 6 SHAs
+  auditados full_patch). Diseño: `docs/EPICA_GEOCERCA_ACCESO_CHAT.md` + `docs/FASE3_BARRERA_SERVERSIDE.md`.
+  **Regla de oro ABSOLUTA:** nadie fuera del radio entra al chat de un negocio, salvo el dueño. Ni QR
+  ni contraseña eximen de la geo. Hecho y verificado de punta a punta:
+  · **Fase 1.0** (`66b6939`, migr 111): trigger `sync_business_coords_radius` consolida coords/radio
+    duplicados (lat/lng + geofence_radius_m primarios), 0 divergencias, sin tocar consumidores.
+  · **Fase 1** (`ed925ee`): reverse-geocoding en LocationEditor (soltar pin → rellena Address);
+    degrada con gracia si la Geocoding API no está habilitada.
+  · **Fase 3.1** (`143cc93`, migr 112): barrera server-side — tabla `room_geo_presence` (aditiva) +
+    RPC `check_geofence_and_join_room` (Haversine server-side atan2; el cliente REPORTA coords, el
+    servidor DECIDE; default NO-acceso; dueño exento) + `can_access_room` revisado (sala sin
+    contraseña ya NO da acceso libre; geo-presencia obligatoria; contraseña como AND adicional).
+    `room_members`/verify_room_password/join_room_via_qr intactos.
+  · **Fase 3.2** (`dff62d8`): cliente móvil — hook `useGeofenceGate` (permiso GPS 1 vez → RPC;
+    heartbeat 5 min solo foreground+chat-abierto con doble guarda AppState, nunca lee GPS en
+    background; gracia 2 min con rechecks 20s; degrada restrictivo sin crash; cleanup estricto).
+    Dueño detectado por owner_id, entra sin GPS. Limitación conocida: sub-salas no geo-gateadas por
+    separado en cliente (el server SÍ las gatea vía can_access_room — no es agujero, es deuda UX).
+  · **Fase 2 / Chunk A1** (`3128262`, migr 113): tabla `platform_config` singleton (min/max radio,
+    RLS SELECT-authenticated/UPDATE-admin); el trigger `enforce_business_radius_cap` lee el max de
+    la config (con doble fallback a 50), no-retroactivo (bajar el cap no recorta radios existentes);
+    overrides aprobados siguen ganando.
+  · **Fase 2 / Chunk A2** (`11ce534`, migr 114): min global bajado a 1m (piso absoluto; 10m guía UX);
+    panel super-admin `/super-admin/business-radius` (edita rango global, RLS admin-only); LocationEditor
+    lee min/max de la config con fallback, slider min=config max=(config o override).
+  **PENDIENTE (menor, no bloqueante):** Chunk B (reconciliar UI duplicada de radio en Configuration —
+  LocationEditor editable vs sección legacy "Coverage Radius" solo-lectura ~page.tsx:818-848); pulir
+  la limitación de sub-salas (heartbeat sobre sub-sala). Fase 3.3 (web) DESCARTADA. Fase 5 (QR-sin-GPS)
+  ELIMINADA por la regla absoluta. **Operativo Juan:** habilitar Geocoding API en Google Cloud para el
+  reverse-geo (Fase 1).
 
 ---
 

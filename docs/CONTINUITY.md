@@ -154,4 +154,23 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   etc.). Un diff de types enorme no siempre es alarma — puede ser deuda de staleness saldándose. Se
   verificó que el bloque graphql_public caído no tenía consumidores antes de sobrescribir.
 
+- **Cliente geo: la seguridad ya está en el server, el cliente optimiza batería.** El hook
+  useGeofenceGate corre el heartbeat SOLO con chat abierto + app en foreground (doble guarda: el
+  useEffect no arranca si no está entered, y performBackgroundCheck sale si AppState !== 'active').
+  Nunca lee GPS en background. Todo fallo (permiso/GPS/red) degrada a "no acceso" restrictivo, nunca a
+  un grant silencioso. Cleanup estricto de intervalos + AppState listener al desmontar.
+- **El cap de radio ahora es config, no literal:** platform_config (singleton) guarda min/max; el
+  trigger enforce_business_radius_cap lee el max con doble fallback a 50 (nunca null, que abriría el
+  cap). Bajar el cap NO recorta radios existentes (el trigger solo valida INSERT/UPDATE, no toca filas)
+  — recortar radios en producción rompería la geo-presencia de salas activas. El min es guía UX (piso
+  1m), no barrera server-side: un radio pequeño solo perjudica al propio negocio.
+- **Una restricción absoluta simplificó la seguridad:** al decidir que NADIE (salvo dueño) exime de
+  la geo — ni QR ni contraseña — desapareció la necesidad de distinguir el origen de las membresías
+  (access_kind) — se evitó tocar el PK de room_members y sus 2 RPCs en producción. Reglas más
+  estrictas pueden ser más simples.
+- **Deuda UX honesta bien marcada:** el gate móvil opera sobre la sala raíz; cambiar a una sub-sala con
+  otro room_id no está geo-gateado por separado en cliente. NO es agujero (can_access_room gatea cada
+  sala server-side), es deuda UX documentada en comentario en vez de escondida. Marcar límites
+  conocidos > fingir completitud.
+
 Last updated: 2026-07-28
