@@ -26,6 +26,7 @@ import { CategoryCards, type CategoryCard } from "@/components/dashboard/Categor
 import { ModifierSheet, type ModGroup } from "./ModifierSheet";
 import { loadModifierGroups } from "@/lib/menuGroups";
 import type { TFn } from "@/lib/tabSemantics";
+import { formatCents } from "@/lib/currency";
 
 // ── Menu shapes (mirrors what /m/[slug] loads) ───────────────────────────────
 type Group = ModGroup;
@@ -57,8 +58,7 @@ interface DraftLine {
   unitEstimateCents: number;
 }
 
-const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-const fmt = (c: number) => money.format(c / 100);
+const fmt = formatCents;
 
 /** A dish can be ordered only if it's available and not out of stock. */
 function isSellable(d: Dish): boolean {

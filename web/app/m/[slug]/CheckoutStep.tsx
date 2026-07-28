@@ -23,6 +23,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { buildOrderOptions } from "@/lib/orderOptions";
 import { readFunctionError } from "@/lib/functionError";
+import { formatCents } from "@/lib/currency";
 import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import type { MenuItemOption, ModifierChoice } from "./page";
 
@@ -44,8 +45,7 @@ export interface CheckoutCartItem {
   notes?: string;
 }
 
-const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-const fmt = (cents: number) => money.format(cents / 100);
+const fmt = formatCents;
 
 // No name/email prompt phases — the name comes from the pickup screen (presetName).
 type Phase = "checking" | "creating" | "pay" | "success" | "error";

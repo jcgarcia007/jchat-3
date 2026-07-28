@@ -34,6 +34,7 @@ import {
   IconClock,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { formatCents } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,10 +106,6 @@ const DEMO_ESCALATED: EscalatedDispute[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function timeAgo(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();

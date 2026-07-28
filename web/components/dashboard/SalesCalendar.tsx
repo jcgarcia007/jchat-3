@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "./useActiveBusinessName";
+import { formatCents } from "@/lib/currency";
 
 // A sale is now counted by paid_at (money entered), not by kitchen status — see
 // the header note. The former SALE_STATUSES constant was removed: it had no other
@@ -27,10 +28,6 @@ import { useActiveBusinessName } from "./useActiveBusinessName";
 
 // No currency column exists on orders or businesses yet — format as USD.
 // TODO: switch to a real per-business currency once the column exists.
-const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-function formatCents(cents: number): string {
-  return money.format(cents / 100);
-}
 
 interface DayTotals {
   cents: number;
@@ -222,7 +219,7 @@ export function SalesCalendar() {
 
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--db-text-primary)" }}>
-            {loading || loadError ? "—" : formatCents(monthCents)}
+            {loading || loadError ? "—" : formatCents(monthCents, locale)}
           </div>
           <div style={{ fontSize: "12px", color: loadError ? "var(--db-danger)" : "var(--db-text-secondary)" }}>
             {loadError
@@ -301,7 +298,7 @@ export function SalesCalendar() {
               </span>
               {hasDay ? (
                 <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--db-text-primary)" }}>
-                  {formatCents(entry.cents)}
+                  {formatCents(entry.cents, locale)}
                 </span>
               ) : (
                 <span aria-hidden style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>

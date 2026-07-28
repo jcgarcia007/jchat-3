@@ -45,6 +45,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { listUserBusinesses, resolveActiveBusiness, type BusinessListItem } from "@/lib/business";
+import { formatCents } from "@/lib/currency";
 
 // ─── Edge Function error reader ─────────────────────────────────────────────────
 // supabase.functions.invoke wraps a non-2xx response as FunctionsHttpError, whose
@@ -214,10 +215,6 @@ function formatCountdown(secs: number): string {
   if (h > 0) return `${h}h ${m}m`;
   const s = abs % 60;
   return `${m}m ${s}s`;
-}
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
 }
 
 // ─── Page component ───────────────────────────────────────────────────────────

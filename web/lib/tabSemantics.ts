@@ -17,8 +17,7 @@ export type TabStatus = "open" | "paid" | "closed";
 /** A next-intl `t` bound to the "dashboardCommon" namespace. */
 export type TFn = (key: string, values?: Record<string, string | number>) => string;
 
-export const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-export const fmtCents = (cents: number) => money.format((cents ?? 0) / 100);
+export { formatCents as fmtCents } from "./currency";
 
 export function kindLabel(kind: TabKind, t: TFn): string {
   return kind === "customer" ? t("tabKindCustomer") : t("tabKindWaiter");

@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconX } from "@tabler/icons-react";
 import { buildOrderOptions, type OrderLineOptions } from "@/lib/orderOptions";
+import { formatCents } from "@/lib/currency";
 
 export interface ModChoice {
   label: string;
@@ -38,8 +39,7 @@ export interface ModDish {
   groups: ModGroup[];
 }
 
-const money = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-const fmt = (c: number) => money.format(c / 100);
+const fmt = formatCents;
 
 export function ModifierSheet({
   dish,

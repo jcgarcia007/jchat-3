@@ -21,6 +21,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { formatCents } from "@/lib/currency";
 
 interface OrderItem {
   id: string;
@@ -72,7 +73,7 @@ function getStatusMeta(t: Translator): Record<string, { label: string; bg: strin
 }
 
 function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return formatCents(cents);
 }
 
 function relativeTime(iso: string, t: Translator): string {
