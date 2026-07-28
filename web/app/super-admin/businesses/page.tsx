@@ -95,6 +95,7 @@ const STATUS_COLORS: Record<BusinessStatus, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminBusinessesPage() {
+  const t = useTranslations("superAdmin.businesses");
   const [query, setQuery] = useState("");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,6 +110,18 @@ export default function SuperAdminBusinessesPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Display-only labels for BusinessStatus — the raw enum value (`newStatus`
+  // below) is what gets persisted via admin_set_business_status; this map
+  // never touches that value, only what the admin sees in the toast/badge.
+  const statusLabels: Record<BusinessStatus, string> = {
+    active: t("statusLabelActive"),
+    verified: t("statusLabelVerified"),
+    pending: t("statusLabelPending"),
+    suspended: t("statusLabelSuspended"),
+    closed: t("statusLabelClosed"),
+    rejected: t("statusLabelRejected"),
+  };
 
   // ── Search ────────────────────────────────────────────────────────────────
 
@@ -183,7 +196,7 @@ export default function SuperAdminBusinessesPage() {
       setBusinesses((prev) =>
         prev.map((b) => (b.id === actionBiz.id ? { ...b, status: newStatus } : b))
       );
-      setSuccessMsg(`Business "${actionBiz.name}" ${newStatus}.`);
+      setSuccessMsg(t("statusChangedToast", { name: actionBiz.name, status: statusLabels[newStatus] }));
     }
 
     if (actionType === "silent_access") {
@@ -198,9 +211,7 @@ export default function SuperAdminBusinessesPage() {
           // actor_id: current admin user id — TODO(roles)
         });
       }
-      setSuccessMsg(
-        `Silent access logged for "${actionBiz.name}". (TODO: open business dashboard view)`
-      );
+      setSuccessMsg(t("silentAccessLoggedToast", { name: actionBiz.name }));
     }
 
     setSaving(false);
@@ -229,14 +240,14 @@ export default function SuperAdminBusinessesPage() {
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
         <IconBuildingStore size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-          Businesses
+          {t("title")}
         </h1>
       </div>
 
       {/* TODO(roles): gate to Super Admin */}
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — actions shown but not persisted." />
+        <Banner type="warning" message={t("demoBanner")} />
       )}
       {successMsg && (
         <Banner type="success" message={successMsg} onDismiss={() => setSuccessMsg(null)} />
@@ -260,7 +271,7 @@ export default function SuperAdminBusinessesPage() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search by name, slug, or city…"
+            placeholder={t("searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -293,7 +304,7 @@ export default function SuperAdminBusinessesPage() {
           {loading ? (
             <IconLoader2 size={16} stroke={2} style={{ animation: "spin 1s linear infinite" }} />
           ) : (
-            "Search"
+            t("searchButton")
           )}
         </button>
       </div>
@@ -313,7 +324,7 @@ export default function SuperAdminBusinessesPage() {
                 borderRadius: "10px",
               }}
             >
-              No businesses found for &ldquo;{query}&rdquo;
+              {t("noResultsMessage", { query })}
             </div>
           ) : (
             <div
@@ -372,7 +383,18 @@ function BizRow({
   onSilentAccess: () => void;
 }) {
   const t = useTranslations("superAdmin.relativeTime");
+  const tb = useTranslations("superAdmin.businesses");
   const statusColor = STATUS_COLORS[b.status] ?? "var(--text-tertiary)";
+  // Display-only — b.status itself stays raw everywhere else (STATUS_COLORS
+  // lookup above, the suspend/close visibility checks below).
+  const statusLabels: Record<BusinessStatus, string> = {
+    active: tb("statusLabelActive"),
+    verified: tb("statusLabelVerified"),
+    pending: tb("statusLabelPending"),
+    suspended: tb("statusLabelSuspended"),
+    closed: tb("statusLabelClosed"),
+    rejected: tb("statusLabelRejected"),
+  };
 
   return (
     <div
@@ -421,11 +443,13 @@ function BizRow({
             textTransform: "capitalize",
           }}
         >
-          {b.status}
+          {statusLabels[b.status]}
         </span>
       </div>
 
-      {/* Plan */}
+      {/* Plan — left raw: `plan` is a plain string (not a closed enum like
+          BusinessStatus), same "Option A" data treatment as business.category
+          elsewhere in this app; matches revenue/page.tsx's own choice. */}
       <div style={{ flex: "0 0 80px", fontSize: "12px", color: "var(--text-secondary)" }}>
         {b.plan ?? "—"}
       </div>
@@ -439,7 +463,7 @@ function BizRow({
       <div style={{ flex: "0 0 auto", display: "flex", gap: "6px" }}>
         <button
           onClick={onSilentAccess}
-          title="Silent access (logged)"
+          title={tb("silentAccessTooltip")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -454,12 +478,12 @@ function BizRow({
           }}
         >
           <IconEye size={12} stroke={2} />
-          Access
+          {tb("accessButton")}
         </button>
         {b.status !== "suspended" && b.status !== "closed" && (
           <button
             onClick={onSuspend}
-            title="Suspend business"
+            title={tb("suspendTooltip")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -474,13 +498,13 @@ function BizRow({
             }}
           >
             <IconLock size={12} stroke={2} />
-            Suspend
+            {tb("suspendButton")}
           </button>
         )}
         {b.status !== "closed" && (
           <button
             onClick={onClose}
-            title="Close business"
+            title={tb("closeTooltip")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -495,7 +519,7 @@ function BizRow({
             }}
           >
             <IconX size={12} stroke={2} />
-            Close
+            {tb("closeButton")}
           </button>
         )}
       </div>
@@ -524,6 +548,9 @@ function BizActionModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("superAdmin.businesses");
+  const tCommon = useTranslations("common");
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
@@ -531,9 +558,9 @@ function BizActionModal({
   }, [onClose]);
 
   const titles: Record<NonNullable<ActionType>, string> = {
-    suspend: "Suspend Business",
-    close: "Close Business",
-    silent_access: "Silent Access (Logged)",
+    suspend: t("modalTitleSuspend"),
+    close: t("modalTitleClose"),
+    silent_access: t("modalTitleSilentAccess"),
   };
   const accentColors: Record<NonNullable<ActionType>, string> = {
     suspend: "var(--color-warning)",
@@ -586,7 +613,7 @@ function BizActionModal({
             borderRadius: "8px",
           }}
         >
-          Business: <strong style={{ color: "var(--text-primary)" }}>{biz.name}</strong>
+          {t("modalBusinessLabel")} <strong style={{ color: "var(--text-primary)" }}>{biz.name}</strong>
         </div>
 
         {type === "silent_access" && (
@@ -605,7 +632,7 @@ function BizActionModal({
             }}
           >
             <IconAlertTriangle size={14} stroke={1.6} style={{ color: "var(--color-brand)", flexShrink: 0, marginTop: "1px" }} />
-            This access will be logged to security_logs. The business owner will NOT be notified.
+            {t("silentAccessWarning")}
             {/* TODO(server): log via service-role key, not anon key, to satisfy RLS */}
           </div>
         )}
@@ -622,12 +649,12 @@ function BizActionModal({
               marginBottom: "6px",
             }}
           >
-            {type === "silent_access" ? "Access reason" : "Reason (internal)"}
+            {type === "silent_access" ? t("accessReasonLabel") : t("reasonInternalLabel")}
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Reason…"
+            placeholder={t("reasonPlaceholder")}
             rows={3}
             style={{
               width: "100%",
@@ -659,7 +686,7 @@ function BizActionModal({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -680,7 +707,7 @@ function BizActionModal({
           >
             {saving && <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} />}
             {!saving && <IconCheck size={13} stroke={2} />}
-            {saving ? "Processing…" : "Confirm"}
+            {saving ? t("processingButton") : t("confirmButton")}
           </button>
         </div>
       </div>

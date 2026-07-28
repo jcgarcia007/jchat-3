@@ -14,8 +14,9 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconShield,
   IconUsers,
@@ -71,17 +72,20 @@ const DEMO_METRICS: OverviewMetrics = {
 
 // ─── Nav items for Cmd+K palette ─────────────────────────────────────────────
 
+// labelKey is a dotted path into the "superAdmin" namespace — most of these
+// are the exact same nav labels as the shell (Ch0), reused via shell.navX;
+// "Verification Queue" is worded differently here, so it gets its own key.
 const PALETTE_ITEMS = [
-  { label: "Overview", href: "/super-admin", icon: IconShield },
-  { label: "Users", href: "/super-admin/users", icon: IconUsers },
-  { label: "Businesses", href: "/super-admin/businesses", icon: IconBuildingStore },
-  { label: "Verification Queue", href: "/super-admin/verification", icon: IconUserCheck },
-  { label: "Revenue", href: "/super-admin/revenue", icon: IconChartBar },
-  { label: "Alerts", href: "/super-admin/alerts", icon: IconBell },
-  { label: "Team", href: "/super-admin/team", icon: IconUsersGroup },
-  { label: "Announcements", href: "/super-admin/announcements", icon: IconBroadcast },
-  { label: "Public Locations", href: "/super-admin/locations", icon: IconMapPin },
-  { label: "Disputes", href: "/super-admin/disputes", icon: IconReceiptRefund },
+  { labelKey: "shell.navOverview", href: "/super-admin", icon: IconShield },
+  { labelKey: "shell.navUsers", href: "/super-admin/users", icon: IconUsers },
+  { labelKey: "shell.navBusinesses", href: "/super-admin/businesses", icon: IconBuildingStore },
+  { labelKey: "overview.paletteVerificationQueue", href: "/super-admin/verification", icon: IconUserCheck },
+  { labelKey: "shell.navRevenue", href: "/super-admin/revenue", icon: IconChartBar },
+  { labelKey: "shell.navAlerts", href: "/super-admin/alerts", icon: IconBell },
+  { labelKey: "shell.navTeam", href: "/super-admin/team", icon: IconUsersGroup },
+  { labelKey: "shell.navAnnouncements", href: "/super-admin/announcements", icon: IconBroadcast },
+  { labelKey: "shell.navPublicLocations", href: "/super-admin/locations", icon: IconMapPin },
+  { labelKey: "shell.navDisputes", href: "/super-admin/disputes", icon: IconReceiptRefund },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -94,6 +98,7 @@ function pct(a: number, b: number): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminOverviewPage() {
+  const t = useTranslations("superAdmin");
   const [metrics, setMetrics] = useState<OverviewMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -198,7 +203,12 @@ export default function SuperAdminOverviewPage() {
     }
   }, [paletteOpen]);
 
-  const filteredItems = PALETTE_ITEMS.filter((item) =>
+  const paletteItems = useMemo(
+    () => PALETTE_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) })),
+    [t],
+  );
+
+  const filteredItems = paletteItems.filter((item) =>
     item.label.toLowerCase().includes(paletteQuery.toLowerCase())
   );
 
@@ -233,7 +243,7 @@ export default function SuperAdminOverviewPage() {
               margin: 0,
             }}
           >
-            Overview
+            {t("overview.title")}
           </h1>
         </div>
         <button
@@ -255,7 +265,7 @@ export default function SuperAdminOverviewPage() {
           }}
         >
           <IconSearch size={14} stroke={1.6} />
-          Quick nav
+          {t("overview.quickNavButton")}
           <kbd
             style={{
               display: "inline-flex",
@@ -292,7 +302,7 @@ export default function SuperAdminOverviewPage() {
           }}
         >
           <IconAlertTriangle size={15} stroke={1.6} />
-          Demo mode — Supabase not configured. Showing sample metrics.
+          {t("overview.demoBanner")}
         </div>
       )}
 
@@ -323,37 +333,37 @@ export default function SuperAdminOverviewPage() {
             }}
           >
             <KpiCard
-              label="MRR"
+              label={t("overview.kpiMrrLabel")}
               value={formatCompact(m.mrr)}
-              sub="monthly recurring revenue"
+              sub={t("overview.kpiMrrSub")}
               icon={IconCurrencyDollar}
               color="var(--color-brand)"
             />
             <KpiCard
-              label="ARR"
+              label={t("overview.kpiArrLabel")}
               value={formatCompact(m.arr)}
-              sub="annualized"
+              sub={t("overview.kpiArrSub")}
               icon={IconTrendingUp}
               color="var(--color-success)"
             />
             <KpiCard
-              label="Total Users"
+              label={t("overview.kpiTotalUsersLabel")}
               value={m.totalUsers.toLocaleString()}
-              sub={`DAU/MAU ${pct(m.dau, m.mau)}`}
+              sub={t("overview.kpiDauMauSub", { pct: pct(m.dau, m.mau) })}
               icon={IconUsers}
               color="var(--color-brand-purple)"
             />
             <KpiCard
-              label="Active Businesses"
+              label={t("overview.kpiActiveBusinessesLabel")}
               value={m.activeBusinesses.toLocaleString()}
-              sub="status = active"
+              sub={t("overview.kpiActiveBusinessesSub")}
               icon={IconBuildingStore}
               color="var(--color-gold)"
             />
             <KpiCard
-              label="Churn Rate"
+              label={t("overview.kpiChurnRateLabel")}
               value={`${m.churnRate.toFixed(1)}%`}
-              sub="30-day rolling"
+              sub={t("overview.kpiChurnRateSub")}
               icon={IconTrendingDown}
               color={m.churnRate > 5 ? "var(--color-danger)" : "var(--color-success)"}
             />
@@ -390,7 +400,7 @@ export default function SuperAdminOverviewPage() {
                     color: "var(--color-danger)",
                   }}
                 >
-                  Items Requiring Attention
+                  {t("overview.alertsSectionTitle")}
                 </span>
               </div>
               <div
@@ -403,21 +413,21 @@ export default function SuperAdminOverviewPage() {
                 {m.openAlerts > 0 && (
                   <AlertBadge
                     count={m.openAlerts}
-                    label="security alerts"
+                    label={t("overview.securityAlertsLabel")}
                     href="/super-admin/alerts"
                   />
                 )}
                 {m.pendingVerifications > 0 && (
                   <AlertBadge
                     count={m.pendingVerifications}
-                    label="pending verifications"
+                    label={t("overview.pendingVerificationsLabel")}
                     href="/super-admin/verification"
                   />
                 )}
                 {m.openDisputes > 0 && (
                   <AlertBadge
                     count={m.openDisputes}
-                    label="escalated disputes"
+                    label={t("overview.escalatedDisputesLabel")}
                     href="/super-admin/disputes"
                   />
                 )}
@@ -433,7 +443,7 @@ export default function SuperAdminOverviewPage() {
               gap: "10px",
             }}
           >
-            {PALETTE_ITEMS.filter((i) => i.href !== "/super-admin").map((item) => {
+            {paletteItems.filter((i) => i.href !== "/super-admin").map((item) => {
               const ItemIcon = item.icon;
               return (
                 <Link
@@ -488,7 +498,7 @@ export default function SuperAdminOverviewPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Command palette"
+            aria-label={t("overview.paletteAriaLabel")}
             style={{
               position: "fixed",
               top: "20%",
@@ -521,7 +531,7 @@ export default function SuperAdminOverviewPage() {
               <input
                 ref={paletteInputRef}
                 type="text"
-                placeholder="Go to…"
+                placeholder={t("overview.paletteGoToPlaceholder")}
                 value={paletteQuery}
                 onChange={(e) => setPaletteQuery(e.target.value)}
                 style={{
@@ -535,7 +545,7 @@ export default function SuperAdminOverviewPage() {
               />
               <button
                 onClick={() => setPaletteOpen(false)}
-                aria-label="Close palette"
+                aria-label={t("overview.paletteCloseAriaLabel")}
                 style={{
                   background: "none",
                   border: "none",
@@ -560,7 +570,7 @@ export default function SuperAdminOverviewPage() {
                     color: "var(--text-tertiary)",
                   }}
                 >
-                  No results for &ldquo;{paletteQuery}&rdquo;
+                  {t("overview.paletteNoResults", { query: paletteQuery })}
                 </div>
               )}
               {filteredItems.map((item) => {
