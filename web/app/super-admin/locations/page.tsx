@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   IconMapPin,
   IconPlus,
@@ -55,12 +56,11 @@ type LocationFormData = Omit<PublicLocation, "id" | "created_by" | "created_at">
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const LOCATION_TYPES: { value: LocationType; label: string }[] = [
-  { value: "park", label: "Park" },
-  { value: "event", label: "Event" },
-  { value: "square", label: "Square / Plaza" },
-  { value: "other", label: "Other" },
-];
+// Values only — labels are resolved via t() inside each component that
+// renders them (locationTypeLabels), reconciling what used to be two
+// inconsistent hardcoded label sets ("Square / Plaza" here vs "Square" in
+// LocationRow's old typeLabelMap) into one.
+const LOCATION_TYPE_VALUES: LocationType[] = ["park", "event", "square", "other"];
 
 const EMPTY_FORM: LocationFormData = {
   name: "",
@@ -78,6 +78,16 @@ const EMPTY_FORM: LocationFormData = {
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function PublicLocationsPage() {
+  const t = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
+  // Display-only — `type` stays raw in the form state/payload/comparisons
+  // below (setField("type", ...), payload.type, the <select> value).
+  const locationTypeLabels: Record<LocationType, string> = {
+    park: t("locations.typeLabelPark"),
+    event: t("locations.typeLabelEvent"),
+    square: t("locations.typeLabelSquarePlaza"),
+    other: t("locations.typeLabelOther"),
+  };
   const [locations, setLocations] = useState<PublicLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +176,7 @@ export default function PublicLocationsPage() {
 
     // Basic validation
     if (!form.name.trim()) {
-      setFormError("Name is required.");
+      setFormError(t("locations.nameRequiredError"));
       return;
     }
 
@@ -279,7 +289,7 @@ export default function PublicLocationsPage() {
                 margin: 0,
               }}
             >
-              Public Locations
+              {t("shell.navPublicLocations")}
             </h1>
           </div>
           <p
@@ -290,16 +300,14 @@ export default function PublicLocationsPage() {
               maxWidth: "540px",
             }}
           >
-            Parks, public squares, and temporary events that appear on the map
-            without a business account. Users can join their chat room without
-            ordering.
+            {t("locations.subtitle")}
             {/* TODO(Stage 4): pin style and map wiring implemented in Stage 4 */}
           </p>
         </div>
 
         <button onClick={openCreate} style={styles.btnPrimary}>
           <IconPlus size={16} stroke={2} />
-          Add location
+          {t("locations.addLocationButton")}
         </button>
       </div>
 
@@ -307,8 +315,8 @@ export default function PublicLocationsPage() {
       {!isSupabaseConfigured && (
         <EmptyState
           icon={<IconAlertCircle size={32} stroke={1.4} />}
-          title="Supabase not configured"
-          message="Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to manage public locations."
+          title={t("locations.supabaseNotConfiguredTitle")}
+          message={t("locations.supabaseNotConfiguredMessage")}
           color="var(--color-warning)"
         />
       )}
@@ -322,7 +330,7 @@ export default function PublicLocationsPage() {
             onClick={() => void fetchLocations()}
             style={styles.btnGhost}
           >
-            Retry
+            {t("locations.retryButton")}
           </button>
         </div>
       )}
@@ -345,8 +353,8 @@ export default function PublicLocationsPage() {
       {isSupabaseConfigured && !loading && !error && locations.length === 0 && (
         <EmptyState
           icon={<IconMapPin size={32} stroke={1.4} />}
-          title="No public locations yet"
-          message='Add parks, squares, or event spaces that should appear on the map. Click "Add location" to get started.'
+          title={t("locations.emptyLocationsTitle")}
+          message={t("locations.emptyLocationsMessage", { button: t("locations.addLocationButton") })}
           color="var(--color-brand)"
         />
       )}
@@ -362,18 +370,18 @@ export default function PublicLocationsPage() {
         >
           {/* Table header */}
           <div style={styles.tableHeader}>
-            <span style={{ flex: "2 1 160px" }}>Name</span>
-            <span style={{ flex: "1 1 80px" }}>Type</span>
-            <span style={{ flex: "1 1 100px" }}>Coordinates</span>
+            <span style={{ flex: "2 1 160px" }}>{t("locations.tableHeaderName")}</span>
+            <span style={{ flex: "1 1 80px" }}>{t("locations.tableHeaderType")}</span>
+            <span style={{ flex: "1 1 100px" }}>{t("locations.tableHeaderCoordinates")}</span>
             <span style={{ flex: "0 0 80px", textAlign: "center" }}>
-              Radius
+              {t("locations.tableHeaderRadius")}
             </span>
-            <span style={{ flex: "1 1 120px" }}>Active dates</span>
+            <span style={{ flex: "1 1 120px" }}>{t("locations.tableHeaderActiveDates")}</span>
             <span style={{ flex: "0 0 72px", textAlign: "center" }}>
-              Status
+              {t("locations.tableHeaderStatus")}
             </span>
             <span style={{ flex: "0 0 80px", textAlign: "right" }}>
-              Actions
+              {t("locations.tableHeaderActions")}
             </span>
           </div>
 
@@ -394,7 +402,7 @@ export default function PublicLocationsPage() {
       {/* ── Create / Edit form modal ────────────────────────────────────── */}
       {showForm && (
         <Modal
-          title={editingId ? "Edit public location" : "New public location"}
+          title={editingId ? t("locations.editLocationModalTitle") : t("locations.newLocationModalTitle")}
           onClose={closeForm}
         >
           <form
@@ -405,12 +413,12 @@ export default function PublicLocationsPage() {
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
             {/* Name */}
-            <FormField label="Name *">
+            <FormField label={t("locations.nameFieldLabel")}>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
-                placeholder="e.g. Riverside Park"
+                placeholder={t("locations.namePlaceholder")}
                 style={styles.input}
                 required
                 autoFocus
@@ -418,7 +426,7 @@ export default function PublicLocationsPage() {
             </FormField>
 
             {/* Type */}
-            <FormField label="Type *">
+            <FormField label={t("locations.typeFieldLabel")}>
               <select
                 value={form.type}
                 onChange={(e) =>
@@ -426,9 +434,9 @@ export default function PublicLocationsPage() {
                 }
                 style={styles.input}
               >
-                {LOCATION_TYPES.map(({ value, label }) => (
+                {LOCATION_TYPE_VALUES.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {locationTypeLabels[value]}
                   </option>
                 ))}
               </select>
@@ -436,7 +444,7 @@ export default function PublicLocationsPage() {
 
             {/* Coordinates */}
             <div style={{ display: "flex", gap: "12px" }}>
-              <FormField label="Latitude" style={{ flex: 1 }}>
+              <FormField label={t("locations.latitudeFieldLabel")} style={{ flex: 1 }}>
                 <input
                   type="number"
                   step="any"
@@ -447,11 +455,11 @@ export default function PublicLocationsPage() {
                       e.target.value === "" ? null : Number(e.target.value)
                     )
                   }
-                  placeholder="e.g. 40.7128"
+                  placeholder={t("locations.latPlaceholder")}
                   style={styles.input}
                 />
               </FormField>
-              <FormField label="Longitude" style={{ flex: 1 }}>
+              <FormField label={t("locations.longitudeFieldLabel")} style={{ flex: 1 }}>
                 <input
                   type="number"
                   step="any"
@@ -462,7 +470,7 @@ export default function PublicLocationsPage() {
                       e.target.value === "" ? null : Number(e.target.value)
                     )
                   }
-                  placeholder="e.g. -74.0060"
+                  placeholder={t("locations.lngPlaceholder")}
                   style={styles.input}
                 />
               </FormField>
@@ -470,7 +478,7 @@ export default function PublicLocationsPage() {
             {/* TODO(Stage 4): map picker — replace lat/lng text inputs with a click-on-map selector */}
 
             {/* Radius */}
-            <FormField label="Radius (meters)">
+            <FormField label={t("locations.radiusFieldLabel")}>
               <input
                 type="number"
                 min={1}
@@ -481,13 +489,13 @@ export default function PublicLocationsPage() {
             </FormField>
 
             {/* Description */}
-            <FormField label="Description">
+            <FormField label={t("locations.descriptionFieldLabel")}>
               <textarea
                 value={form.description ?? ""}
                 onChange={(e) =>
                   setField("description", e.target.value || null)
                 }
-                placeholder="Brief description shown to users…"
+                placeholder={t("locations.descriptionPlaceholder")}
                 rows={3}
                 style={{ ...styles.input, resize: "vertical" }}
               />
@@ -495,7 +503,7 @@ export default function PublicLocationsPage() {
 
             {/* Active dates */}
             <div style={{ display: "flex", gap: "12px" }}>
-              <FormField label="Active from" style={{ flex: 1 }}>
+              <FormField label={t("locations.activeFromFieldLabel")} style={{ flex: 1 }}>
                 <input
                   type="date"
                   value={form.active_from ?? ""}
@@ -505,7 +513,7 @@ export default function PublicLocationsPage() {
                   style={styles.input}
                 />
               </FormField>
-              <FormField label="Active to" style={{ flex: 1 }}>
+              <FormField label={t("locations.activeToFieldLabel")} style={{ flex: 1 }}>
                 <input
                   type="date"
                   value={form.active_to ?? ""}
@@ -522,7 +530,7 @@ export default function PublicLocationsPage() {
               <button
                 type="button"
                 onClick={() => setField("is_active", !form.is_active)}
-                aria-label="Toggle active"
+                aria-label={t("locations.toggleActiveAriaLabel")}
                 style={{
                   background: "none",
                   border: "none",
@@ -541,7 +549,7 @@ export default function PublicLocationsPage() {
                 )}
               </button>
               <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                {form.is_active ? "Active (visible on map)" : "Inactive (hidden)"}
+                {form.is_active ? t("locations.activeVisibleLabel") : t("locations.inactiveHiddenLabel")}
               </span>
             </div>
 
@@ -563,7 +571,7 @@ export default function PublicLocationsPage() {
               }}
             >
               <button type="button" onClick={closeForm} style={styles.btnGhost}>
-                Cancel
+                {tCommon("cancel")}
               </button>
               <button
                 type="submit"
@@ -583,7 +591,7 @@ export default function PublicLocationsPage() {
                 ) : (
                   <IconCheck size={14} stroke={2} />
                 )}
-                {editingId ? "Save changes" : "Create location"}
+                {editingId ? t("locations.saveChangesButton") : t("locations.createLocationButton")}
               </button>
             </div>
           </form>
@@ -592,7 +600,7 @@ export default function PublicLocationsPage() {
 
       {/* ── Delete confirmation modal ───────────────────────────────────── */}
       {deletingId && (
-        <Modal title="Delete location?" onClose={() => setDeletingId(null)}>
+        <Modal title={t("locations.deleteLocationModalTitle")} onClose={() => setDeletingId(null)}>
           <p
             style={{
               fontSize: "14px",
@@ -600,8 +608,7 @@ export default function PublicLocationsPage() {
               margin: "0 0 20px",
             }}
           >
-            This will permanently remove the public location and its map pin.
-            The linked chat room (if any) will not be deleted.
+            {t("locations.deleteLocationWarning")}
           </p>
           <div
             style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}
@@ -610,14 +617,14 @@ export default function PublicLocationsPage() {
               onClick={() => setDeletingId(null)}
               style={styles.btnGhost}
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
             <button
               onClick={() => void handleDelete(deletingId)}
               style={styles.btnDanger}
             >
               <IconTrash size={14} stroke={2} />
-              Delete
+              {t("locations.deleteLabel")}
             </button>
           </div>
         </Modal>
@@ -646,17 +653,36 @@ function LocationRow({
   onToggle: () => void;
   onDelete: () => void;
 }) {
-  const typeLabelMap: Record<LocationType, string> = {
-    park: "Park",
-    event: "Event",
-    square: "Square",
-    other: "Other",
+  const t = useTranslations("superAdmin");
+  const locale = useLocale();
+  // Display-only — loc.type stays raw everywhere else (TypeBadge's colorMap
+  // key, the form's <select> value, the update/insert payload).
+  const locationTypeLabels: Record<LocationType, string> = {
+    park: t("locations.typeLabelPark"),
+    event: t("locations.typeLabelEvent"),
+    square: t("locations.typeLabelSquarePlaza"),
+    other: t("locations.typeLabelOther"),
   };
+
+  // active_from/active_to are plain "yyyy-mm-dd" strings (no time) — format
+  // with timeZone:'UTC' so the displayed day never shifts depending on the
+  // viewer's local timezone offset (same reasoning as mobile's getDayLabels).
+  // The stored VALUE is untouched — only this presentation string changes.
+  const formatActiveDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
 
   const dateRange =
     loc.active_from || loc.active_to
-      ? [loc.active_from ?? "—", loc.active_to ?? "—"].join(" → ")
-      : "Always";
+      ? t("locations.activeRangeLabel", {
+          from: loc.active_from ? formatActiveDate(loc.active_from) : "—",
+          to: loc.active_to ? formatActiveDate(loc.active_to) : "—",
+        })
+      : t("locations.alwaysLabel");
 
   return (
     <div
@@ -703,7 +729,7 @@ function LocationRow({
 
       {/* Type badge */}
       <div style={{ flex: "1 1 80px" }}>
-        <TypeBadge type={loc.type} label={typeLabelMap[loc.type]} />
+        <TypeBadge type={loc.type} label={locationTypeLabels[loc.type]} />
       </div>
 
       {/* Coordinates */}
@@ -717,7 +743,7 @@ function LocationRow({
       >
         {loc.lat != null && loc.lng != null
           ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`
-          : "No coords"}
+          : t("locations.noCoordsLabel")}
       </div>
 
       {/* Radius */}
@@ -753,8 +779,8 @@ function LocationRow({
       >
         <button
           onClick={onToggle}
-          title={loc.is_active ? "Deactivate" : "Activate"}
-          aria-label={loc.is_active ? "Deactivate location" : "Activate location"}
+          title={loc.is_active ? t("locations.deactivateTooltip") : t("locations.activateTooltip")}
+          aria-label={loc.is_active ? t("locations.deactivateLocationAriaLabel") : t("locations.activateLocationAriaLabel")}
           style={{
             background: "none",
             border: "none",
@@ -786,12 +812,12 @@ function LocationRow({
       >
         <IconButton
           icon={<IconPencil size={15} stroke={1.6} />}
-          label="Edit"
+          label={t("locations.editLabel")}
           onClick={onEdit}
         />
         <IconButton
           icon={<IconTrash size={15} stroke={1.6} />}
-          label="Delete"
+          label={t("locations.deleteLabel")}
           onClick={onDelete}
           danger
         />
@@ -954,6 +980,8 @@ function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const td = useTranslations("superAdmin.disputes");
+
   // Close on Escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -1018,7 +1046,7 @@ function Modal({
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={td("closeAriaLabel")}
             style={{
               background: "none",
               border: "none",
