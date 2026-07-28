@@ -66,6 +66,7 @@ import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
+import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -91,10 +92,6 @@ interface PromoResult {
 // Tax rate is resolved per business via getTaxRateForBusiness (localized).
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function buildOptionsLabel(line: CartLine, notePrefix: string): string {
   const parts: string[] = [];

@@ -66,6 +66,7 @@ import { FeaturedOfferBanner } from '../../components/menu/FeaturedOfferBanner';
 import type { OfferStub } from '../../components/menu/FeaturedOfferBanner';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { formatCents } from '../../utils/currency';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -235,10 +236,6 @@ const DEMO_OFFER: OfferStub = {
 const DEMO_BUSINESS_NAME = 'The Rooftop Bar';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function buildSections(categories: MenuCategory[], query: string): MenuSection[] {
   const q = query.trim().toLowerCase();

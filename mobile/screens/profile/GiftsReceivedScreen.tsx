@@ -25,6 +25,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getReceivedGifts } from '../../services/gifts';
 import type { GiftWithSender } from '../../services/gifts';
+import { formatCents } from '../../utils/currency';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,7 +42,7 @@ function formatDate(isoString: string): string {
 
 function formatAmount(amountCents: number): string | null {
   if (amountCents <= 0) return null;
-  return `$${(amountCents / 100).toFixed(2)}`;
+  return formatCents(amountCents);
 }
 
 // ---------------------------------------------------------------------------

@@ -56,6 +56,7 @@ import { useCart } from '../../context/CartContext';
 import type { CartModifierSelection } from '../../context/CartContext';
 import { getItemModifierGroups } from '../../services/menu';
 import type { MenuItem, MenuOptionChoice, ModifierGroup } from '../../services/menu';
+import { formatCents } from '../../utils/currency';
 
 // ── Badge accent colours (local const — same pattern as ProductRow) ───────────
 
@@ -83,12 +84,6 @@ const BADGE_LABEL_KEYS: Record<NonNullable<MenuItem['badge']>, BadgeLabelKey> = 
 
 type ProductDetailRouteParams = { item: MenuItem };
 type ProductDetailRoute = RouteProp<Record<string, ProductDetailRouteParams>, string>;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

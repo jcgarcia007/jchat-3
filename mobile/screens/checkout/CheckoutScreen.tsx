@@ -73,6 +73,7 @@ import { useAuth } from '../../context/AuthContext';
 import { initAndPresentPaymentSheet } from '../../services/stripe';
 import type { OrderPayload } from '../../services/stripe';
 import { createOrderRecord } from '../../services/orders';
+import { formatCents } from '../../utils/currency';
 import { isSupabaseConfigured } from '../../services/supabase';
 import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -139,10 +140,6 @@ function filteredPaymentOptions(): PaymentMethodOption[] {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function generateDemoOrderNumber(): string {
   const n = Math.floor(Math.random() * 99999) + 1;
