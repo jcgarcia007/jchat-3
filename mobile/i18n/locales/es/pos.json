@@ -26,7 +26,7 @@
     "cartA11y_one": "Carrito, {{count}} artículo",
     "cartA11y_other": "Carrito, {{count}} artículos",
     "searchPlaceholder": "Buscar en el menú…",
-    "noMatch": "Ningún artículo coincide con «{{query}}»",
+    "noMatch": "Ningún artículo coincide con \"{{query}}\"",
     "noItems": "No hay artículos disponibles en este momento."
   },
   "productDetail": {
@@ -68,7 +68,7 @@
     "demoDiscount": "10% de descuento (demo)",
     "removeItemTitle": "¿Quitar artículo?",
     "removeItemMessage": "Esto quitará el artículo de tu carrito.",
-    "removeItemNamed": "¿Quitar «{{name}}» de tu carrito?",
+    "removeItemNamed": "¿Quitar \"{{name}}\" de tu carrito?",
     "remove": "Quitar",
     "each": "{{price}} c/u",
     "removeA11y": "Quitar {{name}}",
