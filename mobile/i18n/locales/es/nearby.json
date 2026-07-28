@@ -1,0 +1,14 @@
+{
+  "openBadge": "Abierto",
+  "closedBadge": "Cerrado",
+  "roomCount_one": "{{count}} sala",
+  "roomCount_other": "{{count}} salas",
+  "activeUsersCount_one": "{{count}} activo",
+  "activeUsersCount_other": "{{count}} activos",
+  "headerTitle": "Cerca de ti",
+  "searchPlaceholder": "Buscar locales…",
+  "noVenuesTitle": "No hay locales cerca",
+  "noResultsTitle": "No se encontraron resultados",
+  "noVenuesSubtitle": "Vuelve pronto — más locales se están uniendo a JChat.",
+  "noResultsSubtitle": "Intenta otra búsqueda o borra el filtro."
+}

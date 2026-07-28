@@ -1,0 +1,14 @@
+{
+  "openBadge": "Open",
+  "closedBadge": "Closed",
+  "roomCount_one": "{{count}} room",
+  "roomCount_other": "{{count}} rooms",
+  "activeUsersCount_one": "{{count}} active",
+  "activeUsersCount_other": "{{count}} active",
+  "headerTitle": "Nearby",
+  "searchPlaceholder": "Search venues…",
+  "noVenuesTitle": "No venues nearby",
+  "noResultsTitle": "No results found",
+  "noVenuesSubtitle": "Check back soon — more venues are joining JChat.",
+  "noResultsSubtitle": "Try a different search or clear the filter."
+}

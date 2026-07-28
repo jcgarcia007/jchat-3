@@ -17,7 +17,6 @@
  *   - Active user count: 0 with // TODO(presence): live active counts
  *
  * Colors: useThemeColors() only. Icons: @tabler/icons-react-native only.
- * // TODO(i18n): all strings are English; wire to i18n once the layer is set up.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,6 +32,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   IconBuildingStore,
   IconMapPin,
@@ -279,6 +279,7 @@ interface OpenBadgeProps {
 }
 
 function OpenBadge({ open }: OpenBadgeProps) {
+  const { t } = useTranslation('nearby');
   const c = useThemeColors();
   return (
     <View
@@ -297,7 +298,7 @@ function OpenBadge({ open }: OpenBadgeProps) {
           { color: open ? palette.success : palette.danger },
         ]}
       >
-        {open ? 'Open' : 'Closed'}
+        {open ? t('openBadge') : t('closedBadge')}
       </Text>
     </View>
   );
@@ -309,6 +310,7 @@ interface BusinessCardProps {
 }
 
 function BusinessCard({ item, onPress }: BusinessCardProps) {
+  const { t } = useTranslation('nearby');
   const c = useThemeColors();
   const open = isOpenNow(item.hours);
 
@@ -355,7 +357,7 @@ function BusinessCard({ item, onPress }: BusinessCardProps) {
           <View style={styles.statChip}>
             <IconMessage size={12} color={c.textTertiary} strokeWidth={2} />
             <Text style={[styles.statText, { color: c.textTertiary }]}>
-              {item.room_count} {item.room_count === 1 ? 'room' : 'rooms'}
+              {t('roomCount', { count: item.room_count })}
             </Text>
           </View>
 
@@ -364,7 +366,7 @@ function BusinessCard({ item, onPress }: BusinessCardProps) {
             <IconUsers size={12} color={c.textTertiary} strokeWidth={2} />
             {/* TODO(presence): replace 0 with live active counts */}
             <Text style={[styles.statText, { color: c.textTertiary }]}>
-              {item.active_users} active
+              {t('activeUsersCount', { count: item.active_users })}
             </Text>
           </View>
         </View>
@@ -411,6 +413,7 @@ function CategoryChip({ label, active, onPress }: CategoryChipProps) {
 // ---------------------------------------------------------------------------
 
 export default function NearbyScreen() {
+  const { t } = useTranslation('nearby');
   const c = useThemeColors();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
@@ -509,7 +512,7 @@ export default function NearbyScreen() {
         <View style={styles.headerRow}>
           <IconBuildingStore size={22} color={palette.brand} strokeWidth={2} />
           <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-            Nearby
+            {t('headerTitle')}
           </Text>
         </View>
 
@@ -523,7 +526,7 @@ export default function NearbyScreen() {
           <IconSearch size={16} color={c.textTertiary} strokeWidth={2} />
           <TextInput
             style={[styles.searchInput, { color: c.textPrimary }]}
-            placeholder="Search venues…"
+            placeholder={t('searchPlaceholder')}
             placeholderTextColor={c.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -579,13 +582,13 @@ export default function NearbyScreen() {
             <IconBuildingStore size={40} color={c.textTertiary} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
               {businesses.length === 0
-                ? 'No venues nearby'
-                : 'No results found'}
+                ? t('noVenuesTitle')
+                : t('noResultsTitle')}
             </Text>
             <Text style={[styles.emptySubtitle, { color: c.textTertiary }]}>
               {businesses.length === 0
-                ? 'Check back soon — more venues are joining JChat.'
-                : 'Try a different search or clear the filter.'}
+                ? t('noVenuesSubtitle')
+                : t('noResultsSubtitle')}
             </Text>
           </View>
         }

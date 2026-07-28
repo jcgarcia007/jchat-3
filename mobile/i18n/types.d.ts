@@ -18,6 +18,7 @@ import type reviews from './locales/en/reviews.json';
 import type loyalty from './locales/en/loyalty.json';
 import type events from './locales/en/events.json';
 import type reservations from './locales/en/reservations.json';
+import type nearby from './locales/en/nearby.json';
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {
@@ -36,6 +37,7 @@ declare module 'react-i18next' {
       loyalty: typeof loyalty;
       events: typeof events;
       reservations: typeof reservations;
+      nearby: typeof nearby;
     };
   }
 }
