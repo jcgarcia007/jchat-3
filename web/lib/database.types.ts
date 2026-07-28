@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_roles: {
@@ -2655,6 +2630,49 @@ export type Database = {
           },
         ]
       }
+      room_geo_presence: {
+        Row: {
+          expires_at: string
+          last_seen_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          last_seen_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          last_seen_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_geo_presence_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_geo_presence_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_geo_presence_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_members: {
         Row: {
           created_at: string
@@ -3551,6 +3569,15 @@ export type Database = {
         Args: { dimension: string; owner: string; viewer: string }
         Returns: boolean
       }
+      check_geofence_and_join_room: {
+        Args: { _lat: number; _lng: number; _room_id: string }
+        Returns: {
+          access_granted: boolean
+          distance_m: number
+          is_owner: boolean
+          reason: string
+        }[]
+      }
       cleanup_anonymous_users: { Args: never; Returns: number }
       create_promo_code: {
         Args: { p_expires_at?: string; p_plan: string; p_trial_days: number }
@@ -3810,9 +3837,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
