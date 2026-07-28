@@ -37,6 +37,7 @@ import {
   IconTrendingDown,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { formatCompact } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,13 +85,6 @@ const PALETTE_ITEMS = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDollars(cents: number): string {
-  const dollars = cents / 100;
-  if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(2)}M`;
-  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}K`;
-  return `$${dollars.toFixed(2)}`;
-}
 
 function pct(a: number, b: number): string {
   if (b === 0) return "—";
@@ -330,14 +324,14 @@ export default function SuperAdminOverviewPage() {
           >
             <KpiCard
               label="MRR"
-              value={formatDollars(m.mrr)}
+              value={formatCompact(m.mrr)}
               sub="monthly recurring revenue"
               icon={IconCurrencyDollar}
               color="var(--color-brand)"
             />
             <KpiCard
               label="ARR"
-              value={formatDollars(m.arr)}
+              value={formatCompact(m.arr)}
               sub="annualized"
               icon={IconTrendingUp}
               color="var(--color-success)"

@@ -1585,6 +1585,13 @@
       "checkingAccess": "Checking access…",
       "accessRestrictedTitle": "Access restricted",
       "accessRestrictedMessage": "This area is limited to Super Admin and designated admin roles."
+    },
+    "relativeTime": {
+      "today": "Today",
+      "daysAgoCompact": "{count}d ago",
+      "daysAgoVerbose": "{count, plural, one {# day ago} other {# days ago}}",
+      "hoursAgoCompact": "{count}h ago",
+      "minutesAgoCompact": "{count}m ago"
     }
   }
 }

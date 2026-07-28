@@ -41,3 +41,23 @@ export function formatDollars(
     dollars ?? 0,
   );
 }
+
+/**
+ * Abbreviated USD display for large KPI numbers (MRR/ARR-style cards):
+ * "$1.2M" / "$3.4K" / "$820.00". Input is CENTS (confirmed against its only
+ * caller, super-admin/page.tsx's RealKpis.mrr/arr, both typed `// cents`).
+ *
+ * This is a MOVE of super-admin/page.tsx's local `formatDollars(cents)` —
+ * same thresholds (>=1_000_000 → M, >=1_000 → K), same decimals (2 for M,
+ * 1 for K, 2 below 1_000), same hardcoded "$"/"M"/"K" — not a redesign, and
+ * NOT locale-aware (unlike formatCents/formatDollars above): the abbreviated
+ * suffixes are literal English letters, not an Intl.NumberFormat feature, so
+ * there is no locale parameter here. i18n-izing the "M"/"K" suffixes
+ * themselves is a separate future decision, out of scope for this move.
+ */
+export function formatCompact(cents: number): string {
+  const dollars = (cents ?? 0) / 100;
+  if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(2)}M`;
+  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}K`;
+  return `$${dollars.toFixed(2)}`;
+}

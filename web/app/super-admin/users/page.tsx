@@ -16,6 +16,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconUsers,
   IconSearch,
@@ -80,14 +82,6 @@ const DEMO_USERS: UserRow[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const d = Math.floor(diff / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1 day ago";
-  return `${d} days ago`;
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -371,6 +365,7 @@ function UserRow({
   onBan: () => void;
   onTrial: () => void;
 }) {
+  const t = useTranslations("superAdmin.relativeTime");
   return (
     <div
       style={{
@@ -463,7 +458,7 @@ function UserRow({
 
       {/* Joined */}
       <div style={{ flex: "0 0 80px", fontSize: "12px", color: "var(--text-tertiary)" }}>
-        {timeAgo(u.created_at)}
+        {formatRelativeTime(u.created_at, t, { granularity: "day", style: "verbose" })}
       </div>
 
       {/* Actions */}

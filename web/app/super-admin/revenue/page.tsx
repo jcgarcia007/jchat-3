@@ -13,6 +13,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   AreaChart,
   Area,
@@ -101,16 +103,10 @@ function formatDollars(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-function timeAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1d ago";
-  return `${d}d ago`;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminRevenuePage() {
+  const t = useTranslations("superAdmin.relativeTime");
   const [mrrHistory, setMrrHistory] = useState<MRRPoint[]>([]);
   const [breakdown, setBreakdown] = useState<PlanBreakdown[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
@@ -425,7 +421,7 @@ export default function SuperAdminRevenuePage() {
                     )}
                     {fp.current_period_end && (
                       <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
-                        Due {timeAgo(fp.current_period_end)}
+                        Due {formatRelativeTime(fp.current_period_end, t, { granularity: "day", style: "compact" })}
                       </span>
                     )}
                   </div>

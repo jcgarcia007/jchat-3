@@ -14,6 +14,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconUsersGroup,
   IconLoader2,
@@ -84,13 +86,6 @@ const DEMO_TEAM: AdminMember[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1d ago";
-  return `${d}d ago`;
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -351,6 +346,7 @@ function TeamRow({
   isLast: boolean;
   onRemove: () => void;
 }) {
+  const t = useTranslations("superAdmin.relativeTime");
   return (
     <div
       style={{
@@ -407,7 +403,7 @@ function TeamRow({
       </div>
 
       <div style={{ flex: "0 0 70px", fontSize: "12px", color: "var(--text-tertiary)" }}>
-        {timeAgo(m.granted_at)}
+        {formatRelativeTime(m.granted_at, t, { granularity: "day", style: "compact" })}
       </div>
 
       {m.role !== "super_admin" && (

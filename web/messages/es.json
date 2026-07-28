@@ -1585,6 +1585,13 @@
       "checkingAccess": "Verificando acceso…",
       "accessRestrictedTitle": "Acceso restringido",
       "accessRestrictedMessage": "Esta área está limitada a Super Admin y roles de administrador designados."
+    },
+    "relativeTime": {
+      "today": "Hoy",
+      "daysAgoCompact": "hace {count}d",
+      "daysAgoVerbose": "{count, plural, one {hace # día} other {hace # días}}",
+      "hoursAgoCompact": "hace {count}h",
+      "minutesAgoCompact": "hace {count}m"
     }
   }
 }

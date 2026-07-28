@@ -22,6 +22,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconShieldExclamation,
   IconAlertCircle,
@@ -106,18 +108,6 @@ const DEMO_ESCALATED: EscalatedDispute[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const h = Math.floor(diff / (1000 * 60 * 60));
-  if (h < 1) {
-    const m = Math.floor(diff / (1000 * 60));
-    return `${m}m ago`;
-  }
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
@@ -419,6 +409,7 @@ function EscalatedRow({
   onToggleExpand: () => void;
   onForceRefund: () => void;
 }) {
+  const t = useTranslations("superAdmin.relativeTime");
   return (
     <div
       style={{
@@ -512,7 +503,7 @@ function EscalatedRow({
             }}
           >
             <IconClock size={13} stroke={1.6} />
-            Escalated {timeAgo(d.escalated_at)}
+            Escalated {formatRelativeTime(d.escalated_at, t, { granularity: "time" })}
           </div>
         )}
 

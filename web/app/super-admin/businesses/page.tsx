@@ -14,6 +14,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconBuildingStore,
   IconSearch,
@@ -89,13 +91,6 @@ const STATUS_COLORS: Record<BusinessStatus, string> = {
   closed: "var(--text-tertiary)",
   rejected: "var(--color-danger)",
 };
-
-function timeAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1d ago";
-  return `${d}d ago`;
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -376,6 +371,7 @@ function BizRow({
   onClose: () => void;
   onSilentAccess: () => void;
 }) {
+  const t = useTranslations("superAdmin.relativeTime");
   const statusColor = STATUS_COLORS[b.status] ?? "var(--text-tertiary)";
 
   return (
@@ -436,7 +432,7 @@ function BizRow({
 
       {/* Created */}
       <div style={{ flex: "0 0 70px", fontSize: "12px", color: "var(--text-tertiary)" }}>
-        {timeAgo(b.created_at)}
+        {formatRelativeTime(b.created_at, t, { granularity: "day", style: "compact" })}
       </div>
 
       {/* Actions */}

@@ -15,6 +15,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconBroadcast,
   IconLoader2,
@@ -76,13 +78,6 @@ const AUDIENCE_LABELS: Record<AnnouncementSegment["audience"], string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d === 0) return "today";
-  if (d === 1) return "1d ago";
-  return `${d}d ago`;
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -293,6 +288,7 @@ export default function SuperAdminAnnouncementsPage() {
 // ─── AnnouncementRow ──────────────────────────────────────────────────────────
 
 function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }) {
+  const t = useTranslations("superAdmin.relativeTime");
   const isSent = ann.sent_at !== null;
   return (
     <div
@@ -334,7 +330,9 @@ function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }
               {ann.segment?.city ? ` · ${ann.segment.city}` : ""}
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
-              {isSent && ann.sent_at ? `Sent ${timeAgo(ann.sent_at)}` : `Created ${timeAgo(ann.created_at)}`}
+              {isSent && ann.sent_at
+                ? `Sent ${formatRelativeTime(ann.sent_at, t, { granularity: "day", style: "compact" })}`
+                : `Created ${formatRelativeTime(ann.created_at, t, { granularity: "day", style: "compact" })}`}
             </div>
           </div>
         </div>

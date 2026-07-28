@@ -8,6 +8,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconRulerMeasure,
   IconLoader2,
@@ -46,15 +48,8 @@ const DEMO: RequestRow[] = [
   },
 ];
 
-function timeAgo(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const h = Math.floor(mins / 60);
-  if (h < 24) return `${h}h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 export default function RadiusRequestsPage() {
+  const t = useTranslations("superAdmin.relativeTime");
   const [items, setItems] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +171,7 @@ export default function RadiusRequestsPage() {
                   <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{r.business_name ?? "Business"}</span>
                   {r.event_id && <span style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>(event)</span>}
                 </div>
-                <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>{timeAgo(r.created_at)}</span>
+                <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>{formatRelativeTime(r.created_at, t, { granularity: "time", daysFallback: "date" })}</span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "14px", color: "var(--text-primary)" }}>

@@ -14,6 +14,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import {
   IconBell,
   IconShieldExclamation,
@@ -120,17 +122,10 @@ const DEMO_REPORTS: ReportItem[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return `${Math.floor(diff / 60000)}m ago`;
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminAlertsPage() {
+  const t = useTranslations("superAdmin.relativeTime");
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
@@ -307,7 +302,7 @@ export default function SuperAdminAlertsPage() {
                       </div>
                     )}
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
-                      {timeAgo(log.created_at)}
+                      {formatRelativeTime(log.created_at, t, { granularity: "time" })}
                       {log.target_type && ` · ${log.target_type}: ${log.target_id?.slice(0, 10) ?? "—"}`}
                     </div>
                   </div>
@@ -381,7 +376,7 @@ export default function SuperAdminAlertsPage() {
                   )}
                   {fp.current_period_end && (
                     <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
-                      Due {timeAgo(fp.current_period_end)}
+                      Due {formatRelativeTime(fp.current_period_end, t, { granularity: "time" })}
                     </span>
                   )}
                 </div>
@@ -416,7 +411,7 @@ export default function SuperAdminAlertsPage() {
                       {r.reason ?? "No reason provided"}
                     </div>
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
-                      {timeAgo(r.created_at)}
+                      {formatRelativeTime(r.created_at, t, { granularity: "time" })}
                       {r.content_type && ` · ${r.content_type}: ${r.content_id?.slice(0, 10) ?? "—"}`}
                     </div>
                   </div>
