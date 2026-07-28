@@ -86,6 +86,7 @@ const DEMO_USERS: UserRow[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminUsersPage() {
+  const tu = useTranslations("superAdmin");
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -171,7 +172,7 @@ export default function SuperAdminUsersPage() {
     if (actionType === "ban") {
       // Ban not yet wired — is_banned column does not exist in public.users, requires migration.
       // Button is disabled in the UI; this branch is a safety net.
-      setSaveError("Ban is not yet implemented. is_banned does not exist in public.users — requires migration.");
+      setSaveError(tu("users.banNotImplementedError"));
       setSaving(false);
       return;
     }
@@ -179,7 +180,7 @@ export default function SuperAdminUsersPage() {
     if (actionType === "trial") {
       // Trial grants not yet wired — subscriptions are keyed by business_id, not user_id.
       // Button is disabled in the UI; this branch is a safety net.
-      setSaveError("Trial grants are not yet implemented. Subscriptions are per business_id — needs an Edge Function.");
+      setSaveError(tu("users.trialNotImplementedError"));
       setSaving(false);
       return;
     }
@@ -214,7 +215,7 @@ export default function SuperAdminUsersPage() {
         <h1
           style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}
         >
-          Users
+          {tu("shell.navUsers")}
         </h1>
       </div>
 
@@ -222,7 +223,7 @@ export default function SuperAdminUsersPage() {
 
       {/* Demo banner */}
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — actions shown but not persisted." />
+        <Banner type="warning" message={tu("businesses.demoBanner")} />
       )}
 
       {/* Success */}
@@ -254,7 +255,7 @@ export default function SuperAdminUsersPage() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search by @username or name…"
+            placeholder={tu("users.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -287,7 +288,7 @@ export default function SuperAdminUsersPage() {
           {loading ? (
             <IconLoader2 size={16} stroke={2} style={{ animation: "spin 1s linear infinite" }} />
           ) : (
-            "Search"
+            tu("businesses.searchButton")
           )}
         </button>
       </div>
@@ -309,7 +310,7 @@ export default function SuperAdminUsersPage() {
                 borderRadius: "10px",
               }}
             >
-              No users found for &ldquo;{query}&rdquo;
+              {tu("users.noResultsMessage", { query })}
             </div>
           ) : (
             <div
@@ -366,6 +367,7 @@ function UserRow({
   onTrial: () => void;
 }) {
   const t = useTranslations("superAdmin.relativeTime");
+  const tu = useTranslations("superAdmin");
   return (
     <div
       style={{
@@ -421,7 +423,7 @@ function UserRow({
                 textTransform: "uppercase",
               }}
             >
-              Banned
+              {tu("users.bannedBadge")}
             </span>
           )}
         </div>
@@ -467,7 +469,7 @@ function UserRow({
           <>
             <button
               disabled
-              title="Coming soon — trial grants not yet wired (subscriptions are per business)"
+              title={tu("users.trialTooltip")}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -484,11 +486,11 @@ function UserRow({
               }}
             >
               <IconPlayerPlay size={12} stroke={2} />
-              Trial
+              {tu("users.trialButtonLabel")}
             </button>
             <button
               disabled
-              title="Coming soon — is_banned column no existe en users, requiere migración"
+              title={tu("users.banTooltip")}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -505,12 +507,12 @@ function UserRow({
               }}
             >
               <IconBan size={12} stroke={2} />
-              Ban
+              {tu("users.banButtonLabel")}
             </button>
           </>
         )}
         {u.is_banned && (
-          <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>Banned</span>
+          <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>{tu("users.bannedBadge")}</span>
         )}
       </div>
     </div>
@@ -542,6 +544,10 @@ function ActionModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const tu = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
+  const tb = useTranslations("superAdmin.businesses");
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
@@ -582,7 +588,7 @@ function ActionModal({
             <IconPlayerPlay size={18} stroke={1.6} style={{ color: accentColor }} />
           )}
           <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
-            {isBan ? "Ban User" : "Grant Trial"}
+            {isBan ? tu("users.banUserModalTitle") : tu("users.grantTrialModalTitle")}
           </h2>
           <button
             onClick={onClose}
@@ -602,7 +608,7 @@ function ActionModal({
             borderRadius: "8px",
           }}
         >
-          User: <strong style={{ color: "var(--text-primary)" }}>
+          {tu("users.userLabel")} <strong style={{ color: "var(--text-primary)" }}>
             {user.display_name ?? user.username ?? user.id.slice(0, 12)}
           </strong>
         </div>
@@ -620,7 +626,7 @@ function ActionModal({
                 marginBottom: "6px",
               }}
             >
-              Trial duration (days)
+              {tu("users.trialDurationLabel")}
             </label>
             <input
               type="number"
@@ -641,8 +647,7 @@ function ActionModal({
               }}
             />
             <p style={{ fontSize: "11px", color: "var(--text-tertiary)", marginTop: "4px" }}>
-              TODO(server): actual Stripe trial via Edge Function. Currently writes
-              subscriptions.status = &apos;trialing&apos;.
+              {tu("users.trialStripeNote")}
             </p>
           </div>
         )}
@@ -659,12 +664,12 @@ function ActionModal({
               marginBottom: "6px",
             }}
           >
-            Internal note (optional)
+            {tu("users.internalNoteLabel")}
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={isBan ? "Reason for ban…" : "Reason for granting trial…"}
+            placeholder={isBan ? tu("users.banReasonPlaceholder") : tu("users.trialReasonPlaceholder")}
             rows={3}
             style={{
               width: "100%",
@@ -696,7 +701,7 @@ function ActionModal({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -719,7 +724,11 @@ function ActionModal({
               <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} />
             )}
             {!saving && (isBan ? <IconBan size={13} stroke={2} /> : <IconCheck size={13} stroke={2} />)}
-            {saving ? "Processing…" : isBan ? "Confirm Ban" : `Grant ${trialDays}-day Trial`}
+            {saving
+              ? tb("processingButton")
+              : isBan
+                ? tu("users.confirmBanButton")
+                : tu("users.grantTrialDaysButton", { days: trialDays })}
           </button>
         </div>
       </div>

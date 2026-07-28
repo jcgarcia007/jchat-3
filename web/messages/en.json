@@ -1829,6 +1829,27 @@
       "sendingButton": "Sending…",
       "sendNowButton": "Send Now",
       "saveDraftButton": "Save Draft"
+    },
+    "users": {
+      "searchPlaceholder": "Search by @username or name…",
+      "noResultsMessage": "No users found for “{query}”",
+      "bannedBadge": "Banned",
+      "trialButtonLabel": "Trial",
+      "trialTooltip": "Coming soon — trial grants not yet wired (subscriptions are per business)",
+      "banButtonLabel": "Ban",
+      "banTooltip": "Coming soon — is_banned column doesn't exist in users yet, requires migration.",
+      "banNotImplementedError": "Ban is not yet implemented. is_banned does not exist in public.users — requires migration.",
+      "trialNotImplementedError": "Trial grants are not yet implemented. Subscriptions are per business_id — needs an Edge Function.",
+      "banUserModalTitle": "Ban User",
+      "grantTrialModalTitle": "Grant Trial",
+      "userLabel": "User:",
+      "trialDurationLabel": "Trial duration (days)",
+      "trialStripeNote": "TODO(server): actual Stripe trial via Edge Function. Currently writes subscriptions.status = 'trialing'.",
+      "internalNoteLabel": "Internal note (optional)",
+      "banReasonPlaceholder": "Reason for ban…",
+      "trialReasonPlaceholder": "Reason for granting trial…",
+      "confirmBanButton": "Confirm Ban",
+      "grantTrialDaysButton": "Grant {days}-day Trial"
     }
   }
 }

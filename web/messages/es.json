@@ -1829,6 +1829,27 @@
       "sendingButton": "Enviando…",
       "sendNowButton": "Enviar ahora",
       "saveDraftButton": "Guardar borrador"
+    },
+    "users": {
+      "searchPlaceholder": "Buscar por @username o nombre…",
+      "noResultsMessage": "No se encontraron usuarios para “{query}”",
+      "bannedBadge": "Bloqueado",
+      "trialButtonLabel": "Prueba",
+      "trialTooltip": "Próximamente — el otorgamiento de pruebas aún no está conectado (las suscripciones son por negocio)",
+      "banButtonLabel": "Bloquear",
+      "banTooltip": "Próximamente — la columna is_banned no existe en users todavía, requiere migración.",
+      "banNotImplementedError": "El bloqueo aún no está implementado. is_banned no existe en public.users — requiere migración.",
+      "trialNotImplementedError": "El otorgamiento de pruebas aún no está implementado. Las suscripciones son por business_id — se necesita una Edge Function.",
+      "banUserModalTitle": "Bloquear usuario",
+      "grantTrialModalTitle": "Otorgar prueba",
+      "userLabel": "Usuario:",
+      "trialDurationLabel": "Duración de la prueba (días)",
+      "trialStripeNote": "TODO(server): prueba real de Stripe vía Edge Function. Actualmente escribe subscriptions.status = 'trialing'.",
+      "internalNoteLabel": "Nota interna (opcional)",
+      "banReasonPlaceholder": "Motivo del bloqueo…",
+      "trialReasonPlaceholder": "Motivo para otorgar la prueba…",
+      "confirmBanButton": "Confirmar bloqueo",
+      "grantTrialDaysButton": "Otorgar prueba de {days, plural, one {# día} other {# días}}"
     }
   }
 }
