@@ -1562,5 +1562,29 @@
     "menuFooterTotalProductsLabel": "Total de productos",
     "menuFooterPublishedProductsLabel": "Productos publicados",
     "menuFooterHiddenProductsLabel": "Productos ocultos"
+  },
+  "superAdmin": {
+    "shell": {
+      "brandLabel": "Super Admin",
+      "navAriaLabel": "Navegación de super admin",
+      "navOverview": "Resumen",
+      "navUsers": "Usuarios",
+      "navBusinesses": "Negocios",
+      "navVerification": "Verificación",
+      "navRadiusRequests": "Solicitudes de radio",
+      "navRevenue": "Ingresos",
+      "navPromoCodes": "Códigos promocionales",
+      "navAlerts": "Alertas",
+      "navTeam": "Equipo",
+      "navAnnouncements": "Anuncios",
+      "navPublicLocations": "Ubicaciones públicas",
+      "navDisputes": "Disputas",
+      "navBackToDashboard": "Volver al panel"
+    },
+    "gate": {
+      "checkingAccess": "Verificando acceso…",
+      "accessRestrictedTitle": "Acceso restringido",
+      "accessRestrictedMessage": "Esta área está limitada a Super Admin y roles de administrador designados."
+    }
   }
 }

@@ -17,6 +17,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import SuperAdminGate from "@/components/SuperAdminGate";
 import {
   createSupabaseServerClient,
@@ -49,6 +50,8 @@ export default async function SuperAdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = await getTranslations("superAdmin.shell");
+
   // Server-side gate (hallazgo #14): la RLS deja de ser la ÚNICA barrera.
   // Mismo patrón que dashboard/layout.tsx. Se salta solo sin Supabase
   // (demo local), igual que allí.
@@ -80,7 +83,7 @@ export default async function SuperAdminLayout({
     >
       {/* Sidebar rail */}
       <nav
-        aria-label="Super admin navigation"
+        aria-label={t("navAriaLabel")}
         style={{
           width: "210px",
           minWidth: "210px",
@@ -117,21 +120,21 @@ export default async function SuperAdminLayout({
               textTransform: "uppercase",
             }}
           >
-            Super Admin
+            {t("brandLabel")}
           </span>
         </div>
 
         {/* Primary nav */}
-        <NavLink href="/super-admin" icon={IconLayoutDashboard} label="Overview" />
-        <NavLink href="/super-admin/users" icon={IconUsers} label="Users" />
-        <NavLink href="/super-admin/businesses" icon={IconBuildingStore} label="Businesses" />
-        <NavLink href="/super-admin/verification" icon={IconUserCheck} label="Verification" />
-        <NavLink href="/super-admin/radius-requests" icon={IconRulerMeasure} label="Radius Requests" />
-        <NavLink href="/super-admin/revenue" icon={IconChartBar} label="Revenue" />
-        <NavLink href="/super-admin/promo-codes" icon={IconTicket} label="Promo Codes" />
-        <NavLink href="/super-admin/alerts" icon={IconBell} label="Alerts" />
-        <NavLink href="/super-admin/team" icon={IconUsersGroup} label="Team" />
-        <NavLink href="/super-admin/announcements" icon={IconBroadcast} label="Announcements" />
+        <NavLink href="/super-admin" icon={IconLayoutDashboard} label={t("navOverview")} />
+        <NavLink href="/super-admin/users" icon={IconUsers} label={t("navUsers")} />
+        <NavLink href="/super-admin/businesses" icon={IconBuildingStore} label={t("navBusinesses")} />
+        <NavLink href="/super-admin/verification" icon={IconUserCheck} label={t("navVerification")} />
+        <NavLink href="/super-admin/radius-requests" icon={IconRulerMeasure} label={t("navRadiusRequests")} />
+        <NavLink href="/super-admin/revenue" icon={IconChartBar} label={t("navRevenue")} />
+        <NavLink href="/super-admin/promo-codes" icon={IconTicket} label={t("navPromoCodes")} />
+        <NavLink href="/super-admin/alerts" icon={IconBell} label={t("navAlerts")} />
+        <NavLink href="/super-admin/team" icon={IconUsersGroup} label={t("navTeam")} />
+        <NavLink href="/super-admin/announcements" icon={IconBroadcast} label={t("navAnnouncements")} />
 
         {/* Section divider */}
         <div
@@ -142,12 +145,12 @@ export default async function SuperAdminLayout({
           }}
         />
 
-        <NavLink href="/super-admin/locations" icon={IconMapPin} label="Public Locations" />
-        <NavLink href="/super-admin/disputes" icon={IconReceiptRefund} label="Disputes" />
+        <NavLink href="/super-admin/locations" icon={IconMapPin} label={t("navPublicLocations")} />
+        <NavLink href="/super-admin/disputes" icon={IconReceiptRefund} label={t("navDisputes")} />
 
         {/* Back to dashboard */}
         <div style={{ marginTop: "auto", padding: "16px 0 0", borderTop: "1px solid var(--border-subtle)" }}>
-          <NavLink href="/dashboard" icon={IconArrowLeft} label="Back to Dashboard" />
+          <NavLink href="/dashboard" icon={IconArrowLeft} label={t("navBackToDashboard")} />
         </div>
       </nav>
 

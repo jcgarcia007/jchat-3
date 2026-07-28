@@ -7,11 +7,13 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { isSuperAdmin } from "@/lib/roles";
 
 type GateState = "checking" | "allowed" | "denied";
 
 export default function SuperAdminGate({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("superAdmin.gate");
   const [state, setState] = useState<GateState>("checking");
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export default function SuperAdminGate({ children }: { children: React.ReactNode
 
   if (state === "checking") {
     return (
-      <div style={{ padding: 48, color: "var(--text-secondary)" }}>Checking access…</div>
+      <div style={{ padding: 48, color: "var(--text-secondary)" }}>{t("checkingAccess")}</div>
     );
   }
 
@@ -34,10 +36,10 @@ export default function SuperAdminGate({ children }: { children: React.ReactNode
     return (
       <div style={{ padding: 48 }}>
         <h1 style={{ color: "var(--text-primary)", fontSize: 20, fontWeight: 700 }}>
-          Access restricted
+          {t("accessRestrictedTitle")}
         </h1>
         <p style={{ color: "var(--text-secondary)", marginTop: 8 }}>
-          This area is limited to Super Admin and designated admin roles.
+          {t("accessRestrictedMessage")}
         </p>
       </div>
     );
