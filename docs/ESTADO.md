@@ -1,6 +1,6 @@
 # JChat 3.0 — Estado
 
-Last updated: 2026-07-26
+Last updated: 2026-07-28
 Fuente de verdad de "cómo está la app HOY". La bitácora histórica (sesión por sesión) vive en
 `docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-77).
 
@@ -108,8 +108,7 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   qué shell está en producción (env de Vercel) y, si es el 4A, cerrar un hueco de propagación (el
   contenido de página no se re-resuelve al cambiar sin recargar); + un test en vivo con cuenta de 2+
   negocios.
-- 🟠 **i18n EN/ES completo**: el bloque más grande. La base está puesta (welcome bilingüe); falta el
-  barrido de dashboard, móvil, super-admin y correos.
+- 🟢 **i18n EN/ES — mayormente COMPLETADO** (sesión 2026-07-28, ~18 commits auditados full_patch): barrido completo de **móvil** (22 archivos, 1021 claves, 14 namespaces i18next), **dashboard web** (4A), **super-admin** (12 páginas + shell, namespace `superAdmin`, 316 claves next-intl), **menú público** (colorPalettes: 40 nombres + 8 familias). Frente de **fechas/moneda** locale-aware centralizado (web `lib/currency.ts` + `lib/relativeTime.ts`; móvil `utils/currency.ts`) — evitó bug 100x cents/dólares en analytics, CSV preservado por correctness. Pasada **es-DO** a español neutro-latino (el proyecto ya lo era en ~99%; solo se limaron outliers es-ES: TPV→POS, pulsado→presionado, Introduce→Ingresa, guillemets). Limpieza total de **dev-text** visible al usuario (Task X.X/TODO/is_banned/Edge Function fuera de la UI, 3 pasadas). Total claves: web 1877/1877 en/es, móvil 1023/1023. **FALTA:** correos/emails transaccionales (aún sin i18n) y una eventual pasada RD-específica (no urgente).
 - 🟠 **Tres features Stage-3 a medio construir (UI por delante del backend) — construir o gatear antes de
   lanzar** (ver D-76): (1) **lealtad** (ganar puntos nunca cableado; canje sin RPC), (2) **force-refund de
   super-admin** (Task 3.6; hoy neutralizado, no llama a Stripe), (3) **gestión de equipo de admins** (Task
@@ -142,7 +141,11 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 Afiliados (greenfield) · `UserProfileScreen` (hoy placeholder) · plantillas de menú en móvil (D-27) ·
 GC de fotos huérfanas en `post-media` · 4 bloques de pruebas manuales en device (social, modificadores,
 DM gate, TTL) · registro auditable del consentimiento en BD · consolidar la regla de prueba vencida
-(duplicada gate/welcome) · limpiar env vars duplicadas + rama `feat/guest-checkout-ui`.
+(duplicada gate/welcome) · limpiar env vars duplicadas + rama `feat/guest-checkout-ui` ·
+bug de acentos en categoryMatches (Café) ARREGLADO (normalize NFD) ·
+decisiones producto móvil: temas de perfil = marca (no traducir), DMsScreen huérfano BORRADO ·
+2 dev-text menores restantes (inventoryEmailAlertsNote... resueltos; quedan 0 en UI visible) ·
+brecha de presence: activeCount siempre 0 para negocios reales (falta sistema presencia en vivo — funcional, no i18n).
 
 ---
 
