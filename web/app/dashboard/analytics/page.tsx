@@ -51,6 +51,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isBusinessPro } from "@/lib/roles";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { formatCents, formatDollars } from "@/lib/currency";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -111,8 +112,19 @@ function makeDemoLoyalty(): LoyaltyROI {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Locale pinned to "en-US" (not the runtime/next-intl default) to preserve
+// today's exact output for every viewer regardless of browser locale — this
+// KPI band always showed 0 decimals in en-US formatting before this refactor.
 function fmt$(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return formatCents(cents, "en-US", { maximumFractionDigits: 0 });
+}
+
+// "Dollars" helper for the fields in this file that are ALREADY whole-dollar
+// amounts, not cents (see DailyRevenue/ProductStat — both store `.../100`
+// results, never raw cents). formatCents would divide these by 100 again and
+// show a value 100x too small — do not use it here.
+function fmtDollars0(dollars: number): string {
+  return formatDollars(dollars, undefined, { maximumFractionDigits: 0 });
 }
 
 function fmtK(n: number): string {
@@ -283,9 +295,11 @@ function TabBar({
   );
 }
 
-/** Tooltip formatter for recharts — formats cents as dollars */
+/** Tooltip formatter for recharts — formats cents as dollars. `chartData` below
+ *  stores revenue/tips as dollars×100 ("cents", for axis-formatting consistency
+ *  with this cents-based formatter), so this genuinely is a cents input. */
 function dollarFormatter(value: number): string {
-  return `$${(value / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+  return fmt$(value);
 }
 
 // ── Revenue Tab ───────────────────────────────────────────────────────────────
@@ -315,10 +329,10 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* KPI row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" }}>
-        <KpiCard label={t("analyticsWeeklyRevenueLabel")} value={`$${totalRev.toLocaleString()}`} icon={IconChartBar} sub={t("analyticsLast7DaysSub")} />
-        <KpiCard label={t("analyticsTipsSeriesLabel")} value={`$${totalTips.toLocaleString()}`} icon={IconCoin} sub={t("analyticsTipsPercentSub", { pct: ((totalTips / totalRev) * 100).toFixed(1) })} />
-        <KpiCard label={t("analyticsOrdersLabel")} value={String(totalOrders)} icon={IconTrendingUp} sub={t("analyticsAvgPerOrderSub", { amount: `$${avgOrder}` })} />
-        <KpiCard label={t("analyticsPeakDayLabel")} value={peakDay?.date ?? "—"} icon={IconFlame} sub={`$${peakDay?.revenue.toLocaleString() ?? 0}`} />
+        <KpiCard label={t("analyticsWeeklyRevenueLabel")} value={fmtDollars0(totalRev)} icon={IconChartBar} sub={t("analyticsLast7DaysSub")} />
+        <KpiCard label={t("analyticsTipsSeriesLabel")} value={fmtDollars0(totalTips)} icon={IconCoin} sub={t("analyticsTipsPercentSub", { pct: ((totalTips / totalRev) * 100).toFixed(1) })} />
+        <KpiCard label={t("analyticsOrdersLabel")} value={String(totalOrders)} icon={IconTrendingUp} sub={t("analyticsAvgPerOrderSub", { amount: formatDollars(avgOrder, undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) })} />
+        <KpiCard label={t("analyticsPeakDayLabel")} value={peakDay?.date ?? "—"} icon={IconFlame} sub={fmtDollars0(peakDay?.revenue ?? 0)} />
       </div>
 
       {/* Daily bar chart */}
@@ -328,7 +342,7 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" vertical={false} />
             <XAxis dataKey="date" tickFormatter={(v: string) => dayLabels[v] ?? v} tick={{ fill: "var(--db-text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={(v: number) => `$${(v / 100).toFixed(0)}`} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
+            <YAxis tickFormatter={fmt$} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
             <Tooltip
               labelFormatter={(v) => dayLabels[v as string] ?? (v as React.ReactNode)}
               formatter={(value: unknown, name: unknown) => [dollarFormatter(value as number), (name as string) === "revenue" ? t("analyticsRevenueSeriesLabel") : t("analyticsTipsSeriesLabel")]}
@@ -380,10 +394,10 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--db-border)" horizontal={false} />
-              <XAxis type="number" tickFormatter={(v: number) => `$${v}`} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis type="number" tickFormatter={fmtDollars0} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(value: unknown) => [`$${(value as number).toLocaleString()}`, t("analyticsRevenueSeriesLabel")]}
+                formatter={(value: unknown) => [fmtDollars0(value as number), t("analyticsRevenueSeriesLabel")]}
                 contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
               />
               <Bar dataKey="revenue" fill={warning} radius={[0, 4, 4, 0]} />
@@ -413,7 +427,7 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
                 <td style={{ padding: "10px 12px", color: "var(--db-text-secondary)" }}>{i + 1}</td>
                 <td style={{ padding: "10px 12px", fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: "10px 12px", textAlign: "right" }}>{p.units.toLocaleString()}</td>
-                <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--db-accent)", fontWeight: 600 }}>${p.revenue.toLocaleString()}</td>
+                <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--db-accent)", fontWeight: 600 }}>{fmtDollars0(p.revenue)}</td>
               </tr>
             ))}
           </tbody>
@@ -582,8 +596,8 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
   doc.setTextColor(30, 30, 30);
   revenue.forEach((d) => {
     doc.text(labels.dayLabels[d.date] ?? d.date, 15, y);
-    doc.text(`$${d.revenue.toLocaleString()}`, 60, y);
-    doc.text(`$${d.tips.toLocaleString()}`, 100, y);
+    doc.text(fmtDollars0(d.revenue), 60, y);
+    doc.text(fmtDollars0(d.tips), 100, y);
     doc.text(String(d.orders), 140, y);
     y += 6;
   });
@@ -603,7 +617,7 @@ async function exportPDF(revenue: DailyRevenue[], products: ProductStat[], loyal
   products.forEach((p) => {
     doc.text(p.name, 15, y);
     doc.text(String(p.units), 100, y);
-    doc.text(`$${p.revenue.toLocaleString()}`, 140, y);
+    doc.text(fmtDollars0(p.revenue), 140, y);
     y += 6;
   });
 
