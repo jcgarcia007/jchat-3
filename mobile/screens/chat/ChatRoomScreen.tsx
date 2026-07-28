@@ -53,6 +53,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useGeofenceGate, formatDistanceM, formatGraceCountdown } from './useGeofenceGate';
 import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
@@ -202,6 +203,9 @@ export default function ChatRoomScreen() {
   // Room data
   const [room, setRoom] = useState<RoomData | null>(null);
   const [business, setBusiness] = useState<BusinessSummary | null>(null);
+  // Kept separate from BusinessSummary (shared with ChatTopBar) — only the
+  // geofence gate needs it, to detect the owner (épica geocerca Fase 3.2).
+  const [businessOwnerId, setBusinessOwnerId] = useState<string | null>(null);
   const [subRooms, setSubRooms] = useState<SubRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>(rootRoomId);
 
@@ -269,6 +273,26 @@ export default function ChatRoomScreen() {
     entryVisible,
   });
 
+  // ── Geofence gate (regla de oro — épica geocerca Fase 3.2) ─────────────────
+  // UX only: the real barrier is server-side (check_geofence_and_join_room +
+  // can_access_room, Fase 3.1). Gated on the entry room (rootRoomId) — a
+  // known limitation is that switching to a sub-room with a different
+  // room_id is not separately geo-gated by this hook (flagged, not fixed
+  // here per spec scope; see the session report).
+  const isOwner = !!user?.id && !!businessOwnerId && user.id === businessOwnerId;
+
+  const handleExpelled = useCallback(() => {
+    Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
+    navigation.goBack();
+  }, [t, business, navigation]);
+
+  const geoGate = useGeofenceGate({
+    roomId: rootRoomId,
+    isOwner,
+    entered: !entryVisible,
+    onExpelled: handleExpelled,
+  });
+
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
   const usersInRoom = (isSupabaseConfigured ? liveUsers : DEMO_USERS).filter(
@@ -329,12 +353,13 @@ export default function ChatRoomScreen() {
         // Load business
         const { data: bizData } = await supabase
           .from('businesses')
-          .select('id, name, icon_emoji, menu_enabled')
+          .select('id, name, icon_emoji, menu_enabled, owner_id')
           .eq('id', typedRoom.business_id)
           .single();
 
         if (bizData) {
           setBusiness(bizData as BusinessSummary);
+          setBusinessOwnerId((bizData as { owner_id: string | null }).owner_id ?? null);
         }
 
         // Load all the business's rooms (main + sub-rooms). RLS allows any
@@ -521,16 +546,26 @@ export default function ChatRoomScreen() {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  /** Called when the user confirms entry (after incognito selection). */
-  const handleEnter = useCallback(() => {
+  /**
+   * Called when the user confirms entry (after incognito selection). For
+   * non-owners this now also runs the geofence gate (permission → GPS →
+   * RPC) before revealing the chat — the owner skips it entirely (Paso 1).
+   */
+  const handleEnter = useCallback(async () => {
+    // Business (incl. owner_id) hasn't loaded yet — bail rather than risk a
+    // false-negative owner check racing the fetch. Button is disabled below
+    // while initialLoading anyway; this is the belt-and-suspenders guard.
+    if (initialLoading) return;
     if (!isIncognitoValid(incognitoState)) {
       setIncognitoError(t('chatRoom.nicknameRequired'));
       return;
     }
     setIncognitoError(undefined);
+    const granted = await geoGate.checkAndEnter();
+    if (!granted) return; // stays on the entry gate; geoGate.gateStatus drives the message shown
     setEnteredIncognito(incognitoState);
     setEntryVisible(false);
-  }, [incognitoState, t]);
+  }, [incognitoState, t, geoGate, initialLoading]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -900,21 +935,63 @@ export default function ChatRoomScreen() {
                 error={incognitoError}
               />
 
-              {/* Enter button */}
-              <Pressable
-                onPress={handleEnter}
-                accessibilityRole="button"
-                accessibilityLabel={t('chatRoom.enterRoomA11y')}
-                style={({ pressed }) => [
-                  gateStyles.enterBtn,
-                  { backgroundColor: themeColors.brand },
-                  pressed && gateStyles.enterBtnPressed,
-                ]}
-              >
-                <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
-                  {t('chatRoom.enterRoom')}
-                </Text>
-              </Pressable>
+              {/* Enter button — or the geofence gate status/retry (épica geocerca Fase 3.2).
+                  Disabled while initialLoading: owner detection needs business.owner_id
+                  loaded first, so a fast tap can't race past it (see handleEnter's guard). */}
+              {geoGate.gateStatus === 'idle' && (
+                <Pressable
+                  onPress={handleEnter}
+                  disabled={initialLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('chatRoom.enterRoomA11y')}
+                  style={({ pressed }) => [
+                    gateStyles.enterBtn,
+                    { backgroundColor: themeColors.brand, opacity: initialLoading ? 0.6 : 1 },
+                    pressed && gateStyles.enterBtnPressed,
+                  ]}
+                >
+                  <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
+                    {t('chatRoom.enterRoom')}
+                  </Text>
+                </Pressable>
+              )}
+
+              {geoGate.gateStatus === 'checking' && (
+                <View style={gateStyles.geoStatus}>
+                  <ActivityIndicator size="small" color={themeColors.brand} />
+                  <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
+                    {t('chatRoom.geoVerifying')}
+                  </Text>
+                </View>
+              )}
+
+              {geoGate.gateStatus !== 'idle' && geoGate.gateStatus !== 'checking' && (
+                <View style={gateStyles.geoStatus}>
+                  <Text style={[gateStyles.geoStatusText, { color: themeColors.danger }]}>
+                    {geoGate.gateStatus === 'permission_denied'
+                      ? t('chatRoom.geoPermissionNeeded', { business: business?.name ?? '' })
+                      : geoGate.gateStatus === 'outside_radius'
+                        ? t('chatRoom.geoOutsideRadius', {
+                            business: business?.name ?? '',
+                            distance: formatDistanceM(geoGate.outsideDistanceM ?? 0),
+                          })
+                        : t('chatRoom.geoUnavailable')}
+                  </Text>
+                  <Pressable
+                    onPress={handleEnter}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      gateStyles.enterBtn,
+                      { backgroundColor: themeColors.brand },
+                      pressed && gateStyles.enterBtnPressed,
+                    ]}
+                  >
+                    <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
+                      {t('chatRoom.geoRetry')}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
 
               {/* Cancel */}
               <Pressable
@@ -985,6 +1062,16 @@ export default function ChatRoomScreen() {
         theme={chatTheme}
         canUnpin={viewerRole !== 'user'}
       />
+
+      {/* Geofence grace warning — left the radius, ~2 min to return (épica geocerca Fase 3.2). */}
+      {geoGate.graceWarningVisible && (
+        <View style={[chatStyles.geoGraceBanner, { backgroundColor: themeColors.warning }]}>
+          <Text style={[chatStyles.geoGraceBannerText, { color: themeColors.bgSurface }]}>
+            {t('chatRoom.geoGraceWarning', { business: business?.name ?? '' })}
+            {geoGate.graceSecondsLeft != null ? ` (${formatGraceCountdown(geoGate.graceSecondsLeft)})` : ''}
+          </Text>
+        </View>
+      )}
       {/* TODO(Task 2.5/2.6): wire PinMessageSheet (message long-press) + CreateOfferSheet
           (AttachmentPanel Offer) + OfferCard render in MessageBubble offer case. */}
 
@@ -1251,6 +1338,16 @@ const gateStyles = StyleSheet.create({
   cancelText: {
     fontSize: 15,
   },
+  geoStatus: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  geoStatusText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   bgPlaceholder: {
     flex: 1,
     alignItems: 'center',
@@ -1269,6 +1366,16 @@ const loadStyles = StyleSheet.create({
 const chatStyles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  geoGraceBanner: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  geoGraceBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   flex: {
     flex: 1,

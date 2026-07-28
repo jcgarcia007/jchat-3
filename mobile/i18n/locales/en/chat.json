@@ -273,6 +273,13 @@
     "profileTitle": "Profile",
     "viewProfileOf": "View profile of {{userId}}",
     "dmTitle": "Direct message",
-    "dmOpenError": "Could not open the direct message."
+    "dmOpenError": "Could not open the direct message.",
+    "geoVerifying": "Checking your location…",
+    "geoPermissionNeeded": "JChat needs your location to verify you're at {{business}}.",
+    "geoOutsideRadius": "You're {{distance}} from {{business}}. Get closer to join the chat.",
+    "geoGraceWarning": "You left {{business}}'s area. Come back within 2 minutes or the chat will close.",
+    "geoRemoved": "You left {{business}}'s area, the chat closed.",
+    "geoUnavailable": "Couldn't verify your location for this chat.",
+    "geoRetry": "Retry"
   }
 }
