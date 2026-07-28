@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -434,7 +434,8 @@ function Receipt({
   tableLabel: string;
 }) {
   const t = useTranslations("checkout");
-  const when = new Date().toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
+  const locale = useLocale();
+  const when = new Date().toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fafafa", display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ textAlign: "center" }}>

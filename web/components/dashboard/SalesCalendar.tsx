@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "./useActiveBusinessName";
@@ -45,6 +45,7 @@ interface OrderRow {
 export function SalesCalendar() {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const WEEKDAYS = t.raw("weekdays") as string[];
   const { id: activeId } = useActiveBusinessName();
 
@@ -126,7 +127,7 @@ export function SalesCalendar() {
     };
   }, [activeId, viewYear, viewMonth, reloadKey]);
 
-  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("es-ES", {
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
   });

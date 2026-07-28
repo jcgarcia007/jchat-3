@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { IconSelector, IconLogout, IconCheck, IconPlus } from "@tabler/icons-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -326,9 +326,10 @@ function BusinessSwitcher() {
 
 function PlanCard({ info }: { info: PlanInfo | null }) {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const label = planLabel(info?.plan);
   if (!label) return null; // No card for admin/regular — never fabricate a plan.
-  const line = renewLine(info?.renewsAt, t);
+  const line = renewLine(info?.renewsAt, t, locale);
 
   return (
     <div

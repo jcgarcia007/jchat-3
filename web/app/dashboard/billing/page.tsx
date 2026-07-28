@@ -21,7 +21,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   IconAlertCircle,
   IconBolt,
@@ -82,9 +82,9 @@ const ICONS: Record<OfferedPlanId, React.ReactNode> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -240,6 +240,7 @@ const DEMO_SUB: Subscription = {
 
 export default function BillingPage() {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<PlanId | null>(null);
@@ -397,7 +398,7 @@ export default function BillingPage() {
 
       // Downgrade WITH a live subscription → scheduled at period end; access kept until then.
       if (data?.scheduled_cancel) {
-        const eff = typeof data.effective === "string" ? formatDate(data.effective) : null;
+        const eff = typeof data.effective === "string" ? formatDate(data.effective, locale) : null;
         showToast(
           "success",
           eff
@@ -562,7 +563,7 @@ export default function BillingPage() {
                         color: "var(--db-text-primary)",
                       }}
                     >
-                      {formatDate(sub.trial_end)}
+                      {formatDate(sub.trial_end, locale)}
                       {daysLeft(sub.trial_end) !== null && (
                         <span style={{ color: "var(--db-warning)", marginLeft: "6px", fontWeight: 400 }}>
                           {t("billingDaysLeftParenthetical", { count: daysLeft(sub.trial_end) ?? 0 })}
@@ -579,7 +580,7 @@ export default function BillingPage() {
                       {t("billingRenewsLabel")}
                     </div>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
-                      {formatDate(sub.current_period_end)}
+                      {formatDate(sub.current_period_end, locale)}
                     </div>
                   </div>
                 )}
