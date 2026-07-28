@@ -120,4 +120,16 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **Antes de dar por pendiente algo, léelo en el código:** el flujo de tarjeta + cobro automático ya
   estaba construido. Es la cuarta vez en dos sesiones.
 
-Last updated: 2026-07-23
+## Aprendizajes 2026-07-28 (i18n completo + épico geocerca)
+- **El i18n del proyecto ya nacía neutro-latino, no es-ES** (verificado en el barrido es-DO): "mesero"/"calificar"/"Ingresa"/"tú" consistentes; solo ~8 outliers es-ES reales (TPV, pulsado, Introduce, guillemets). NO reescribir tono a ciegas — el riesgo de una pasada de idioma es el FALSO POSITIVO (corregir lo que ya estaba bien).
+- **Patrón cents-vs-dólares (bug 100x latente):** en el mismo archivo puede haber montos en centavos (KPIs reales) Y en dólares (ya divididos). Cablear todo a `formatCents` (que divide /100) mostraría los de dólares 100x más chicos. SIEMPRE verificar la unidad de CADA variable antes de cablear un formateador de moneda. Solución: `formatCents` + `formatDollars` separadas (web `lib/currency.ts`).
+- **El CSV no se formatea con Intl:** meter separador de miles ("$1,234") en un export CSV con `join(",")` rompe el parseo de columnas. En exports, `$1234` es correcto; `$1,234` es un bug. Distinguir "se ve peor pero es correcto" de "se ve mejor y es correcto".
+- **enum-vs-dato es la línea que no se cruza en super-admin:** el value crudo del enum va a lógica/comparación/PERSISTENCIA (RPC, UPDATE); solo el label mostrado se traduce vía mapa. Persistir "Aprobado" en vez de "approved" rompe queries. Fallback defensivo `?? valorCrudo` cuando el tipo TS no garantiza enum cerrado.
+- **No traducir contenido de otro autor/destinatario:** logs de auditoría (los ve quien audita, no quien dispara), notas de log, y push notifications al DUEÑO (otro destinatario, otro locale) → NO se traducen según el idioma del admin que ejecuta la acción. Mismo criterio que el dato del dueño.
+- **Fechas sin hora → `timeZone:'UTC'` obligatorio:** un `yyyy-mm-dd` formateado con `toLocaleDateString` sin anclar a UTC corre el día mostrado según la zona del navegador (un "1 ene" se ve "31 dic" en UTC-5). Patrón ya usado en `getDayLabels` móvil, replicado en locations super-admin.
+- **plural: ICU en web (next-intl `{count, plural, one{} other{}}`), _one/_other en móvil (i18next).** NUNCA concatenar +"s". Y ojo a la asimetría EN/ES: "3-day trial" (EN, adjetivo invariable, sin plural) vs "prueba de 3 días" (ES, flexiona). El plural puede ir en un idioma y no en el otro.
+- **GitHub WRITE de Planning Claude sigue en 403** (confirmado 2026-07-28): `create_or_update_file` y `push_files` dan "Resource not accessible by integration". La lectura (`get_file_contents`, `get_commit` full_patch) SÍ funciona. Todo commit sigue yendo por Claude Code. La auditoría full_patch de cada SHA es la vía de verificación.
+- **Herramienta de memoria de Claude (la de continuidad) NO disponible** en estas sesiones — solo aparece "Era Context" (financiera, irrelevante). Por eso el registro de estado va a docs/ vía Claude Code, no a memoria. docs/ es la fuente de verdad de continuidad.
+- **Épico nuevo documentado:** docs/EPICA_GEOCERCA_ACCESO_CHAT.md — geocerca + control de acceso al chat ("regla de oro": nadie fuera del radio entra al chat). Diseño aprobado por Juan, pendiente de reconocimiento de código (Fase 0). GPS heartbeat 5min solo-chat-abierto + Haversine local (sin costo Google) + QR 12h alternativo. LEER ese doc antes de arrancar el épico.
+
+Last updated: 2026-07-28
