@@ -707,7 +707,7 @@ export default function ConfigurationPage() {
         title={t("configurationLocationSectionTitle")}
         subtitle={t("configurationLocationSectionSubtitle")}
       >
-        <LocationEditor businessId={businessId} />
+        <LocationEditor businessId={businessId} onAddressResolved={setAddress} />
       </Section>
 
       {/* ── 2. Operating Hours ───────────────────────────────────────────────── */}

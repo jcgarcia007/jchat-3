@@ -17,6 +17,15 @@
  * Maps: @vis.gl/react-google-maps (uncontrolled defaultCenter so panning is free);
  * overlays are native google.maps managed via useMap() with guarded cleanup.
  * Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY; degrades to manual lat/lng inputs without it.
+ *
+ * Reverse geocoding: dropping the pin (dragend) or clicking the map in Pin mode
+ * resolves the address via google.maps.Geocoder and reports it up through
+ * onAddressResolved — the pin is the source of truth, so moving it again
+ * overwrites whatever the owner typed. The address itself lives in the
+ * Business Info field above (businesses.address), not here: this component
+ * only fills it, it never owns or saves it. If the Geocoder fails (API not
+ * enabled, no result, network), the pin/coords still save fine — geocoding
+ * is best-effort UX, never a save blocker.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -116,6 +125,7 @@ function GeofenceLayer({
   pin,
   radius,
   onPinMove,
+  onPinSettled,
   onShapeChange,
   registerClear,
 }: {
@@ -123,6 +133,8 @@ function GeofenceLayer({
   pin: LatLng;
   radius: number;
   onPinMove: (p: LatLng) => void;
+  /** Fires only for dragend + Pin-mode map click — NOT on continuous drag. Used to trigger reverse geocoding. */
+  onPinSettled: (p: LatLng) => void;
   onShapeChange: (geojson: unknown | null) => void;
   registerClear: (fn: () => void) => void;
 }) {
@@ -139,6 +151,8 @@ function GeofenceLayer({
   radiusRef.current = radius;
   const onPinMoveRef = useRef(onPinMove);
   onPinMoveRef.current = onPinMove;
+  const onPinSettledRef = useRef(onPinSettled);
+  onPinSettledRef.current = onPinSettled;
   const onShapeRef = useRef(onShapeChange);
   onShapeRef.current = onShapeChange;
 
@@ -179,7 +193,10 @@ function GeofenceLayer({
     markerRef.current = marker;
     const dragL = marker.addListener("dragend", () => {
       const p = marker.getPosition();
-      if (p) onPinMoveRef.current({ lat: p.lat(), lng: p.lng() });
+      if (!p) return;
+      const pos: LatLng = { lat: p.lat(), lng: p.lng() };
+      onPinMoveRef.current(pos);
+      onPinSettledRef.current(pos);
     });
 
     const clickL = map.addListener("click", (e: google.maps.MapMouseEvent) => {
@@ -190,6 +207,7 @@ function GeofenceLayer({
 
       if (toolValue === "pin") {
         onPinMoveRef.current(pos);
+        onPinSettledRef.current(pos);
       } else if (toolValue === "circle") {
         if (!circleRef.current) {
           const circle = new google.maps.Circle({
@@ -315,7 +333,14 @@ function GeofenceLayer({
 
 // ── Main editor ─────────────────────────────────────────────────────────────────
 
-export function LocationEditor({ businessId }: { businessId: string | null }) {
+export function LocationEditor({
+  businessId,
+  onAddressResolved,
+}: {
+  businessId: string | null;
+  /** Called with the reverse-geocoded address after the pin settles (dragend / Pin-mode click). */
+  onAddressResolved?: (address: string) => void;
+}) {
   const t = useTranslations("dashboardCommon");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -326,7 +351,11 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [recenterTo, setRecenterTo] = useState<LatLng | null>(null);
+  const [geocodeStatus, setGeocodeStatus] = useState<"idle" | "loading" | "error">("idle");
   const clearRef = useRef<() => void>(() => {});
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const onAddressResolvedRef = useRef(onAddressResolved);
+  onAddressResolvedRef.current = onAddressResolved;
 
   // Slider cap: the default cap, or a larger already-granted radius from the DB.
   const [grantedMax, setGrantedMax] = useState<number>(BUSINESS_RADIUS_CAP);
@@ -370,6 +399,22 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
 
   const registerClear = useCallback((fn: () => void) => {
     clearRef.current = fn;
+  }, []);
+
+  // Reverse geocoding: pin settles (dragend / Pin-mode click) → resolve its address.
+  // Best-effort only — never blocks the pin/coords from saving if it fails.
+  const handlePinSettled = useCallback((p: LatLng) => {
+    if (typeof google === "undefined" || !google.maps.Geocoder) return;
+    if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
+    setGeocodeStatus("loading");
+    geocoderRef.current.geocode({ location: p }, (results, status) => {
+      if (status === "OK" && results && results[0]) {
+        onAddressResolvedRef.current?.(results[0].formatted_address);
+        setGeocodeStatus("idle");
+      } else {
+        setGeocodeStatus("error");
+      }
+    });
   }, []);
 
   const handleClear = useCallback(() => {
@@ -503,6 +548,8 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
         <IconMapPin size={12} style={{ verticalAlign: "middle" }} />{" "}
         {lat != null && lng != null ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : t("locationNoLocationSet")}
         {shape ? ` · ${t("locationGeofenceDrawn", { type: (shape as { type: string }).type })}` : ""}
+        {geocodeStatus === "loading" ? ` · ${t("locationGeocodingInProgress")}` : ""}
+        {geocodeStatus === "error" ? ` · ${t("locationGeocodingFailedNotice")}` : ""}
       </p>
 
       <SaveBtn onClick={() => void saveBusiness()} loading={saving} label={t("locationSaveButtonLabel")} />
@@ -577,6 +624,7 @@ export function LocationEditor({ businessId }: { businessId: string | null }) {
                 pin={pin}
                 radius={radius}
                 onPinMove={(p) => { setLat(p.lat); setLng(p.lng); }}
+                onPinSettled={handlePinSettled}
                 onShapeChange={setShape}
                 registerClear={registerClear}
               />

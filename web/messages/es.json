@@ -1263,6 +1263,8 @@
     "locationRequestLargerButton": "Solicitar un radio mayor",
     "locationNoLocationSet": "Sin ubicación definida",
     "locationGeofenceDrawn": "Geocerca {type} dibujada",
+    "locationGeocodingInProgress": "Buscando dirección…",
+    "locationGeocodingFailedNotice": "No se pudo obtener la dirección automáticamente; escríbela a mano.",
     "locationSaveButtonLabel": "Guardar ubicación",
     "locationToolPin": "Pin",
     "locationToolCircle": "Círculo",

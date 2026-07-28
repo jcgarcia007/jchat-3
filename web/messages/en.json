@@ -1263,6 +1263,8 @@
     "locationRequestLargerButton": "Request larger radius",
     "locationNoLocationSet": "No location set",
     "locationGeofenceDrawn": "{type} geofence drawn",
+    "locationGeocodingInProgress": "Looking up address…",
+    "locationGeocodingFailedNotice": "Couldn't fetch the address automatically; enter it manually.",
     "locationSaveButtonLabel": "Save Location",
     "locationToolPin": "Pin",
     "locationToolCircle": "Circle",
