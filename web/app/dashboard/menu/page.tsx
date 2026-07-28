@@ -2504,6 +2504,15 @@ function displayCategoryName(name: string, t: (key: string) => string): string {
   return name === "Uncategorized" ? t("menuUncategorizedLabel") : name;
 }
 
+// Display-only — `slug` (the persisted businesses.menu_palette_id value and
+// the key compared everywhere in this file) is never translated. Falls back
+// to the raw slug for a stale/unknown value (e.g. a deleted palette), same
+// as the `?? menuPalette` this replaces — mirrors the safe-fallback pattern
+// used for enum labels elsewhere (team/verification in super-admin).
+function paletteDisplayName(slug: string, t: (key: string) => string): string {
+  return COLOR_PALETTES_BY_SLUG[slug] ? t(`menuPalettes.names.${slug}`) : slug;
+}
+
 function CategorySection({
   category,
   allCategories,
@@ -4108,20 +4117,19 @@ export default function MenuPage() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-                Paleta de colores
+                {t("menuPalettes.sectionTitle")}
               </h2>
               {showPalettes ? (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Reemplaza los colores de la plantilla por una de 40 paletas. La
-                  tipografía no cambia. Elige &ldquo;Original de la plantilla&rdquo; para volver.
+                  {t("menuPalettes.sectionDescription")}
                 </p>
               ) : (
                 <p style={{ fontSize: 13, color: "var(--db-text-secondary)", margin: "4px 0 0", lineHeight: 1.5 }}>
-                  Paleta activa ·{" "}
+                  {t("menuPalettes.activePaletteLabel")}{" "}
                   <strong style={{ color: "var(--db-text-primary)", fontWeight: 600 }}>
                     {menuPalette
-                      ? (COLOR_PALETTES_BY_SLUG[menuPalette]?.name ?? menuPalette)
-                      : "Original de la plantilla"}
+                      ? paletteDisplayName(menuPalette, t)
+                      : t("menuPalettes.originalTemplateOption")}
                   </strong>
                 </p>
               )}
@@ -4166,11 +4174,14 @@ export default function MenuPage() {
               <span style={{ fontSize: 18, flexShrink: 0 }}>↺</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--db-text-primary)" }}>
-                  Original de la plantilla
+                  {t("menuPalettes.originalTemplateOption")}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 1 }}>
-                  Usa los colores originales de{" "}
-                  {MENU_TEMPLATE_OPTIONS.find((o) => o.id === menuTemplate)?.name ?? "la plantilla"}.
+                  {t("menuPalettes.originalTemplateDescription", {
+                    template:
+                      MENU_TEMPLATE_OPTIONS.find((o) => o.id === menuTemplate)?.name ??
+                      t("menuPalettes.genericTemplateFallback"),
+                  })}
                 </div>
               </div>
               {menuPalette === null && (
@@ -4194,7 +4205,7 @@ export default function MenuPage() {
                       marginBottom: 10,
                     }}
                   >
-                    {fam.label}
+                    {t(`menuPalettes.families.${fam.key}`)}
                   </div>
                   <div
                     style={{
@@ -4213,7 +4224,7 @@ export default function MenuPage() {
                           onClick={() => void handleSavePalette(p.slug)}
                           disabled={savingPalette !== null}
                           aria-pressed={active}
-                          title={p.name}
+                          title={t(`menuPalettes.names.${p.slug}`)}
                           style={{
                             display: "flex",
                             flexDirection: "column",
@@ -4294,7 +4305,7 @@ export default function MenuPage() {
                                   fontWeight: 600,
                                 }}
                               >
-                                Guardando…
+                                {t("menuPalettes.savingOverlay")}
                               </div>
                             )}
                           </div>
@@ -4311,7 +4322,7 @@ export default function MenuPage() {
                                 minWidth: 0,
                               }}
                             >
-                              {p.name}
+                              {t(`menuPalettes.names.${p.slug}`)}
                             </span>
                             {active && (
                               <IconCheck size={12} style={{ color: "var(--db-accent)", flexShrink: 0, marginLeft: "auto" }} />
@@ -4333,9 +4344,9 @@ export default function MenuPage() {
                   rel="noopener noreferrer"
                   style={{ color: "var(--db-accent)", textDecoration: "none", fontWeight: 500 }}
                 >
-                  Ver menú público →
+                  {t("menuPalettes.viewPublicMenuLink")}
                 </a>
-                {" "}para ver la paleta aplicada.
+                {" "}{t("menuPalettes.viewPublicMenuSuffix")}
               </div>
             )}
           </div>
