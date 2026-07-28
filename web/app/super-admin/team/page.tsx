@@ -38,16 +38,14 @@ type AdminRole =
   | "security_admin"
   | "communications_admin";
 
-const ROLE_LABELS: Record<AdminRole, string> = {
-  super_admin: "Super Admin",
-  ops_admin: "Operations Admin",
-  compliance_admin: "Compliance Admin",
-  finance_admin: "Finance Admin",
-  security_admin: "Security Admin",
-  communications_admin: "Communications Admin",
-};
-
-const ALL_ROLES = Object.keys(ROLE_LABELS) as AdminRole[];
+const ALL_ROLES: AdminRole[] = [
+  "super_admin",
+  "ops_admin",
+  "compliance_admin",
+  "finance_admin",
+  "security_admin",
+  "communications_admin",
+];
 
 interface AdminMember {
   id: string;
@@ -90,6 +88,7 @@ const DEMO_TEAM: AdminMember[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminTeamPage() {
+  const tt = useTranslations("superAdmin");
   const [team, setTeam] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -180,7 +179,7 @@ export default function SuperAdminTeamPage() {
         .single();
 
       if (lookupErr || !found) {
-        setAddError("User not found. Try entering their @username.");
+        setAddError(tt("team.userNotFoundError"));
         setAddSaving(false);
         return;
       }
@@ -212,7 +211,7 @@ export default function SuperAdminTeamPage() {
       setTeam((prev) => [...prev, newMember]);
     }
 
-    setSuccessMsg(`Admin role granted to ${addEmail}.`);
+    setSuccessMsg(tt("team.adminGrantedToast", { email: addEmail }));
     setShowAddModal(false);
     setAddEmail("");
     setAddSaving(false);
@@ -231,7 +230,7 @@ export default function SuperAdminTeamPage() {
     }
 
     setTeam((prev) => prev.filter((m) => m.id !== removeTarget.id));
-    setSuccessMsg(`Admin access revoked for ${removeTarget.display_name ?? removeTarget.email ?? removeTarget.username ?? removeTarget.user_id.slice(0, 12)}.`);
+    setSuccessMsg(tt("team.adminRevokedToast", { name: removeTarget.display_name ?? removeTarget.email ?? removeTarget.username ?? removeTarget.user_id.slice(0, 12) }));
     setRemoveTarget(null);
     setRemoveSaving(false);
   }
@@ -244,7 +243,7 @@ export default function SuperAdminTeamPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <IconUsersGroup size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-            Admin Team
+            {tt("team.title")}
           </h1>
         </div>
         <button
@@ -264,14 +263,14 @@ export default function SuperAdminTeamPage() {
           }}
         >
           <IconPlus size={14} stroke={2} />
-          Add Admin
+          {tt("team.addAdminButton")}
         </button>
       </div>
 
       {/* TODO(roles): gate to Super Admin only */}
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — actions shown but not persisted." />
+        <Banner type="warning" message={tt("businesses.demoBanner")} />
       )}
       {successMsg && (
         <Banner type="success" message={successMsg} onDismiss={() => setSuccessMsg(null)} />
@@ -288,7 +287,7 @@ export default function SuperAdminTeamPage() {
         <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "12px", overflow: "hidden" }}>
           {team.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px", color: "var(--text-secondary)", fontSize: "14px" }}>
-              No admin team members yet.
+              {tt("team.noTeamMembersYet")}
             </div>
           ) : (
             team.map((member, idx) => (
@@ -320,9 +319,9 @@ export default function SuperAdminTeamPage() {
       {/* Remove confirm */}
       {removeTarget && (
         <ConfirmModal
-          title="Revoke Admin Access"
-          description={`Remove admin role from "${removeTarget.display_name ?? removeTarget.email ?? removeTarget.username ?? removeTarget.user_id.slice(0, 12)}"?`}
-          confirmLabel="Revoke Access"
+          title={tt("team.revokeAdminAccessTitle")}
+          description={tt("team.revokeAccessDescription", { name: removeTarget.display_name ?? removeTarget.email ?? removeTarget.username ?? removeTarget.user_id.slice(0, 12) })}
+          confirmLabel={tt("team.revokeAccessConfirmLabel")}
           confirmColor="var(--color-danger)"
           saving={removeSaving}
           onConfirm={() => void handleRemove()}
@@ -347,6 +346,21 @@ function TeamRow({
   onRemove: () => void;
 }) {
   const t = useTranslations("superAdmin.relativeTime");
+  const tt = useTranslations("superAdmin");
+  // Display-only — m.role stays raw in the comparison below (and in
+  // handleAdd's insert/update payloads). Fallback to the raw role string
+  // is deliberate: if the DB ever has a role not in this map (a new role
+  // added server-side before this map is updated), show it as-is rather
+  // than hiding it — same "last resort raw" precedent as verification's
+  // StatusPill (Ch2) and disputes' target_type (Ch3).
+  const roleLabels: Record<AdminRole, string> = {
+    super_admin: tt("team.roleSuperAdmin"),
+    ops_admin: tt("team.roleOpsAdmin"),
+    compliance_admin: tt("team.roleComplianceAdmin"),
+    finance_admin: tt("team.roleFinanceAdmin"),
+    security_admin: tt("team.roleSecurityAdmin"),
+    communications_admin: tt("team.roleCommunicationsAdmin"),
+  };
   return (
     <div
       style={{
@@ -398,7 +412,7 @@ function TeamRow({
             whiteSpace: "nowrap",
           }}
         >
-          {ROLE_LABELS[m.role] ?? m.role}
+          {roleLabels[m.role] ?? m.role}
         </span>
       </div>
 
@@ -409,7 +423,7 @@ function TeamRow({
       {m.role !== "super_admin" && (
         <button
           onClick={onRemove}
-          title="Revoke admin access"
+          title={tt("team.revokeAccessTooltip")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -424,7 +438,7 @@ function TeamRow({
           }}
         >
           <IconTrash size={12} stroke={2} />
-          Revoke
+          {tt("verification.revokeButton")}
         </button>
       )}
     </div>
@@ -452,6 +466,18 @@ function AddAdminModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const tt = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
+  // Same display-only map as TeamRow — role stays raw in setRole()/the RPC payload.
+  const roleLabels: Record<AdminRole, string> = {
+    super_admin: tt("team.roleSuperAdmin"),
+    ops_admin: tt("team.roleOpsAdmin"),
+    compliance_admin: tt("team.roleComplianceAdmin"),
+    finance_admin: tt("team.roleFinanceAdmin"),
+    security_admin: tt("team.roleSecurityAdmin"),
+    communications_admin: tt("team.roleCommunicationsAdmin"),
+  };
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
@@ -481,7 +507,7 @@ function AddAdminModal({
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
           <IconPlus size={18} stroke={1.6} style={{ color: "var(--color-brand)" }} />
           <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
-            Add Admin
+            {tt("team.addAdminButton")}
           </h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}>
             <IconX size={16} stroke={1.6} />
@@ -490,11 +516,11 @@ function AddAdminModal({
 
         <div style={{ marginBottom: "14px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
-            @username
+            {tt("team.usernameLabel")}
           </label>
           <input
             type="text"
-            placeholder="@username"
+            placeholder={tt("team.usernameLabel")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoFocus
@@ -514,7 +540,7 @@ function AddAdminModal({
 
         <div style={{ marginBottom: "20px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
-            Role
+            {tt("team.roleFieldLabel")}
           </label>
           <select
             value={role}
@@ -532,7 +558,7 @@ function AddAdminModal({
             }}
           >
             {ALL_ROLES.filter((r) => r !== "super_admin").map((r) => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              <option key={r} value={r}>{roleLabels[r]}</option>
             ))}
           </select>
           {/* TODO(server): send invitation email to new admin on confirm */}
@@ -542,7 +568,7 @@ function AddAdminModal({
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: "13px", cursor: "pointer" }}>
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -562,7 +588,7 @@ function AddAdminModal({
             }}
           >
             {saving ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconCheck size={13} stroke={2} />}
-            {saving ? "Adding…" : "Add Admin"}
+            {saving ? tt("team.addingButton") : tt("team.addAdminButton")}
           </button>
         </div>
       </div>
@@ -589,6 +615,9 @@ function ConfirmModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const tCommon = useTranslations("common");
+  const tb = useTranslations("superAdmin.businesses");
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
@@ -619,7 +648,7 @@ function ConfirmModal({
         <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 20px" }}>{description}</p>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: "13px", cursor: "pointer" }}>
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -639,7 +668,7 @@ function ConfirmModal({
             }}
           >
             {saving ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : null}
-            {saving ? "Processing…" : confirmLabel}
+            {saving ? tb("processingButton") : confirmLabel}
           </button>
         </div>
       </div>

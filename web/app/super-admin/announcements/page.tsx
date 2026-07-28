@@ -67,21 +67,24 @@ const DEMO_ANNOUNCEMENTS: Announcement[] = [
   },
 ];
 
-const AUDIENCE_LABELS: Record<AnnouncementSegment["audience"], string> = {
-  all: "Everyone",
-  business_owners: "Business Owners",
-  users: "Regular Users",
-  plan_pro: "Pro Plan Subscribers",
-  plan_starter: "Starter Plan Subscribers",
-  plan_enterprise: "Enterprise Subscribers",
-  inactive_30d: "Inactive 30+ Days",
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminAnnouncementsPage() {
+  const tan = useTranslations("superAdmin");
+  // Closed set (AnnouncementSegment["audience"] union) — display-only; the
+  // raw value is what gets persisted in `segment.audience` (handleSend below)
+  // and compared everywhere else.
+  const audienceLabels: Record<AnnouncementSegment["audience"], string> = {
+    all: tan("announcements.audienceEveryone"),
+    business_owners: tan("announcements.audienceBusinessOwners"),
+    users: tan("announcements.audienceRegularUsers"),
+    plan_pro: tan("announcements.audienceProSubscribers"),
+    plan_starter: tan("announcements.audienceStarterSubscribers"),
+    plan_enterprise: tan("announcements.audienceEnterpriseSubscribers"),
+    inactive_30d: tan("announcements.audienceInactive30d"),
+  };
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export default function SuperAdminAnnouncementsPage() {
 
   async function handleSend() {
     if (!composeTitle.trim() || !composeBody.trim()) {
-      setComposeError("Title and body are required.");
+      setComposeError(tan("announcements.titleAndBodyRequiredError"));
       return;
     }
     setComposeSaving(true);
@@ -172,8 +175,8 @@ export default function SuperAdminAnnouncementsPage() {
 
     setSuccessMsg(
       sendNow
-        ? `Announcement "${composeTitle.trim()}" sent to ${AUDIENCE_LABELS[composeAudience]}.`
-        : `Draft "${composeTitle.trim()}" saved.`
+        ? tan("announcements.sentToToast", { title: composeTitle.trim(), audience: audienceLabels[composeAudience] })
+        : tan("announcements.draftSavedToast", { title: composeTitle.trim() })
     );
     setComposeSaving(false);
     setShowCompose(false);
@@ -193,7 +196,7 @@ export default function SuperAdminAnnouncementsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <IconBroadcast size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-            Announcements
+            {tan("shell.navAnnouncements")}
           </h1>
         </div>
         <button
@@ -213,14 +216,14 @@ export default function SuperAdminAnnouncementsPage() {
           }}
         >
           <IconPlus size={14} stroke={2} />
-          New Announcement
+          {tan("announcements.newAnnouncementButton")}
         </button>
       </div>
 
       {/* TODO(roles): gate to Super Admin / Communications Admin */}
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — announcements shown but not delivered." />
+        <Banner type="warning" message={tan("announcements.demoBanner")} />
       )}
       {successMsg && (
         <Banner type="success" message={successMsg} onDismiss={() => setSuccessMsg(null)} />
@@ -244,7 +247,7 @@ export default function SuperAdminAnnouncementsPage() {
             fontSize: "14px",
           }}
         >
-          No announcements yet. Create one to broadcast to your users.
+          {tan("announcements.noAnnouncementsYet")}
         </div>
       )}
 
@@ -289,6 +292,16 @@ export default function SuperAdminAnnouncementsPage() {
 
 function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }) {
   const t = useTranslations("superAdmin.relativeTime");
+  const tan = useTranslations("superAdmin");
+  const audienceLabels: Record<AnnouncementSegment["audience"], string> = {
+    all: tan("announcements.audienceEveryone"),
+    business_owners: tan("announcements.audienceBusinessOwners"),
+    users: tan("announcements.audienceRegularUsers"),
+    plan_pro: tan("announcements.audienceProSubscribers"),
+    plan_starter: tan("announcements.audienceStarterSubscribers"),
+    plan_enterprise: tan("announcements.audienceEnterpriseSubscribers"),
+    inactive_30d: tan("announcements.audienceInactive30d"),
+  };
   const isSent = ann.sent_at !== null;
   return (
     <div
@@ -314,7 +327,7 @@ function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }
                 flexShrink: 0,
               }}
             >
-              {isSent ? "Sent" : "Draft"}
+              {isSent ? tan("announcements.sentBadge") : tan("announcements.draftBadge")}
             </span>
             <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
               {ann.title}
@@ -326,13 +339,13 @@ function AnnouncementRow({ ann, isLast }: { ann: Announcement; isLast: boolean }
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--text-tertiary)" }}>
               <IconFilter size={12} stroke={1.6} />
-              {AUDIENCE_LABELS[ann.segment?.audience ?? "all"]}
+              {audienceLabels[ann.segment?.audience ?? "all"]}
               {ann.segment?.city ? ` · ${ann.segment.city}` : ""}
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
               {isSent && ann.sent_at
-                ? `Sent ${formatRelativeTime(ann.sent_at, t, { granularity: "day", style: "compact" })}`
-                : `Created ${formatRelativeTime(ann.created_at, t, { granularity: "day", style: "compact" })}`}
+                ? `${tan("announcements.sentBadge")} ${formatRelativeTime(ann.sent_at, t, { granularity: "day", style: "compact" })}`
+                : `${tan("announcements.createdPrefix")} ${formatRelativeTime(ann.created_at, t, { granularity: "day", style: "compact" })}`}
             </div>
           </div>
         </div>
@@ -374,13 +387,25 @@ function ComposeModal({
   onSend: () => void;
   onClose: () => void;
 }) {
+  const tan = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
+  const audienceLabels: Record<AnnouncementSegment["audience"], string> = {
+    all: tan("announcements.audienceEveryone"),
+    business_owners: tan("announcements.audienceBusinessOwners"),
+    users: tan("announcements.audienceRegularUsers"),
+    plan_pro: tan("announcements.audienceProSubscribers"),
+    plan_starter: tan("announcements.audienceStarterSubscribers"),
+    plan_enterprise: tan("announcements.audienceEnterpriseSubscribers"),
+    inactive_30d: tan("announcements.audienceInactive30d"),
+  };
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, [onClose]);
 
-  const audienceOptions = Object.entries(AUDIENCE_LABELS) as [AnnouncementSegment["audience"], string][];
+  const audienceOptions = Object.entries(audienceLabels) as [AnnouncementSegment["audience"], string][];
 
   return (
     <>
@@ -407,7 +432,7 @@ function ComposeModal({
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
           <IconBroadcast size={18} stroke={1.6} style={{ color: "var(--color-brand)" }} />
           <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
-            New Announcement
+            {tan("announcements.newAnnouncementButton")}
           </h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}>
             <IconX size={16} stroke={1.6} />
@@ -426,13 +451,13 @@ function ComposeModal({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
             <IconFilter size={14} stroke={1.6} style={{ color: "var(--color-brand)" }} />
-            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Segment Builder</span>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>{tan("announcements.segmentBuilderTitle")}</span>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div>
               <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "5px" }}>
-                Audience
+                {tan("announcements.audienceFieldLabel")}
               </label>
               <select
                 value={audience}
@@ -455,11 +480,11 @@ function ComposeModal({
             </div>
             <div>
               <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "5px" }}>
-                City filter (optional)
+                {tan("announcements.cityFilterFieldLabel")}
               </label>
               <input
                 type="text"
-                placeholder="Miami, Austin…"
+                placeholder={tan("announcements.cityPlaceholder")}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 style={{
@@ -477,7 +502,7 @@ function ComposeModal({
             </div>
           </div>
           <p style={{ fontSize: "11px", color: "var(--text-tertiary)", margin: "8px 0 0" }}>
-            Segment stored as JSON on announcements.segment.
+            {tan("announcements.segmentStoredNote")}
             {/* TODO(server): actual push/email routing by segment via Edge Function */}
           </p>
         </div>
@@ -485,11 +510,11 @@ function ComposeModal({
         {/* Title */}
         <div style={{ marginBottom: "12px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "5px" }}>
-            Title
+            {tan("announcements.titleFieldLabel")}
           </label>
           <input
             type="text"
-            placeholder="Announcement title…"
+            placeholder={tan("announcements.titlePlaceholder")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
@@ -510,12 +535,12 @@ function ComposeModal({
         {/* Body */}
         <div style={{ marginBottom: "16px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "5px" }}>
-            Message
+            {tan("announcements.messageFieldLabel")}
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your announcement…"
+            placeholder={tan("announcements.messagePlaceholder")}
             rows={4}
             style={{
               width: "100%",
@@ -541,7 +566,7 @@ function ComposeModal({
               onChange={(e) => setSendNow(e.target.checked)}
               style={{ cursor: "pointer" }}
             />
-            Send immediately (uncheck to save as draft)
+            {tan("announcements.sendImmediatelyLabel")}
           </label>
         </div>
 
@@ -549,7 +574,7 @@ function ComposeModal({
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: "13px", cursor: "pointer" }}>
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onSend}
@@ -575,7 +600,7 @@ function ComposeModal({
             ) : (
               <IconCheck size={13} stroke={2} />
             )}
-            {saving ? "Sending…" : sendNow ? "Send Now" : "Save Draft"}
+            {saving ? tan("announcements.sendingButton") : sendNow ? tan("announcements.sendNowButton") : tan("announcements.saveDraftButton")}
           </button>
         </div>
       </div>
