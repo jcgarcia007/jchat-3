@@ -122,7 +122,7 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   Antes de tráfico real: recorrer los flujos (login, mapa, checkout Stripe, hCaptcha) con la consola
   abierta en un preview; si se prefiere diferir, cambiar el `key` a `Content-Security-Policy-Report-Only`.
   Las violaciones CSP son client-side → NO aparecen en los logs de Vercel.
-- 🟢 **Épico Geocerca y Control de Acceso al Chat — NÚCLEO COMPLETO** (sesión 2026-07-28, 6 SHAs
+- 🟢 **Épico Geocerca y Control de Acceso al Chat — COMPLETO** (sesión 2026-07-28, 7 SHAs
   auditados full_patch). Diseño: `docs/EPICA_GEOCERCA_ACCESO_CHAT.md` + `docs/FASE3_BARRERA_SERVERSIDE.md`.
   **Regla de oro ABSOLUTA:** nadie fuera del radio entra al chat de un negocio, salvo el dueño. Ni QR
   ni contraseña eximen de la geo. Hecho y verificado de punta a punta:
@@ -147,11 +147,16 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   · **Fase 2 / Chunk A2** (`11ce534`, migr 114): min global bajado a 1m (piso absoluto; 10m guía UX);
     panel super-admin `/super-admin/business-radius` (edita rango global, RLS admin-only); LocationEditor
     lee min/max de la config con fallback, slider min=config max=(config o override).
-  **PENDIENTE (menor, no bloqueante):** Chunk B (reconciliar UI duplicada de radio en Configuration —
-  LocationEditor editable vs sección legacy "Coverage Radius" solo-lectura ~page.tsx:818-848); pulir
-  la limitación de sub-salas (heartbeat sobre sub-sala). Fase 3.3 (web) DESCARTADA. Fase 5 (QR-sin-GPS)
-  ELIMINADA por la regla absoluta. **Operativo Juan:** habilitar Geocoding API en Google Cloud para el
-  reverse-geo (Fase 1).
+  · **Chunk B** (`986d5d6`): eliminada la sección legacy "Coverage Radius" solo-lectura de
+    Configuration (era redundante y contradictoria con el LocationEditor, que ya deja al dueño
+    ajustar su radio). Limpiados los huérfanos por grep (radiusM, radius_m del select+interface,
+    IconLock, tCommon, 5 claves i18n). LocationEditor y la columna radius_m en BD intactos.
+  **PENDIENTE (deuda menor, no bloqueante):** pulir la limitación de sub-salas (el heartbeat del
+  cliente opera sobre la sala raíz; cambiar a una sub-sala con otro room_id no está geo-gateado por
+  separado en cliente — el server SÍ la gatea vía can_access_room, no es agujero, es deuda UX).
+  Fase 3.3 (web) DESCARTADA (chat de negocio web es solo vía QR). Fase 5 (QR-sin-GPS) ELIMINADA por
+  la regla absoluta. **Operativo Juan:** habilitar Geocoding API en Google Cloud para el reverse-geo
+  (Fase 1).
 
 ---
 

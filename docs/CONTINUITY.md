@@ -172,5 +172,12 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   otro room_id no está geo-gateado por separado en cliente. NO es agujero (can_access_room gatea cada
   sala server-side), es deuda UX documentada en comentario en vez de escondida. Marcar límites
   conocidos > fingir completitud.
+- **Épico geocerca COMPLETO (7 SHAs, sesión 2026-07-28):** 66b6939 (consolidación coords/radio) ·
+  ed925ee (reverse-geo) · 143cc93 (barrera server-side) · dff62d8 (cliente móvil) · 3128262 (config
+  BD) · 11ce534 (panel + slider) · 986d5d6 (limpieza UI). La regla de oro funciona de punta a punta.
+  Patrón de la sesión: cada SHA auditado full_patch antes de avanzar; specs con PROHIBIDO; decisiones
+  de producto confirmadas con el dueño antes de construir (rango de radio: plataforma fija min/max,
+  dueño ajusta dentro, override sube el max con aprobación). Deuda restante: sub-salas (BACKLOG.md) +
+  operativo Geocoding API. NO reabrir lo cerrado.
 
 Last updated: 2026-07-28

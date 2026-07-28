@@ -201,6 +201,14 @@
 
 ## 4 — DEUDA & SEGURIDAD
 
+- **[Épico geocerca — deuda UX menor] Geo-gate de sub-salas en cliente.** El hook useGeofenceGate
+  (mobile) opera sobre la sala raíz (rootRoomId). Al cambiar a una sub-sala con distinto room_id, el
+  heartbeat sigue renovando la geo-presencia de la sala raíz, no la de la sub-sala. NO es agujero de
+  seguridad: can_access_room gatea cada sala por su room_id server-side, así que leer/escribir en una
+  sub-sala sin geo-presencia en ESA sala lo bloquea el servidor. Es solo deuda UX (la experiencia de
+  gate no se re-dispara al cambiar de sub-sala). Documentado en comentario en ChatRoomScreen.tsx.
+  Origen: sesión 2026-07-28, Fase 3.2 (dff62d8).
+
 - **P0 — Recálculo server-side de TODO el dinero nuevo** (modificadores, split, propina).
   Nunca confiar en montos del cliente. Es el principio de **P0-2 / P0-3** del security audit.
   **Bloqueante para producción.** (Ver `docs/SECURITY_AUDIT.md`.)
