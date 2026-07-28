@@ -1647,6 +1647,45 @@
       "statusLabelSuspended": "Suspendido",
       "statusLabelClosed": "Cerrado",
       "statusLabelRejected": "Rechazado"
+    },
+    "verification": {
+      "title": "Verificación de negocios",
+      "subtitle": "Aprobar un negocio establece <code>status = {status}</code>, lo cual habilita sus pagos. Solo los administradores de la plataforma pueden hacer esto.",
+      "demoBanner": "Modo demo — sin backend configurado; nada que mostrar.",
+      "legacyBanner": "{count, plural, one {# negocio marcado} other {# negocios marcados}} como \"verificado\" sin aprobador registrado (LEGADO — establecido por el bug antiguo de /api/verify). Vuelve a revisarlo y aprobarlo para dejar constancia.",
+      "fetchErrorPrefix": "Error al cargar: {error}",
+      "noBusinessesToReview": "No hay negocios para revisar.",
+      "legacyBadge": "Legado",
+      "legacyTooltip": "status={status} pero sin aprobador registrado — establecido por el bug antiguo de /api/verify",
+      "approvedByLabel": "Aprobado por {id}…",
+      "noApproverOnRecord": "Sin aprobador registrado",
+      "notVerified": "No verificado",
+      "stripeConnectedLabel": "Stripe conectado",
+      "stepIdentityLabel": "Identidad",
+      "stepSelfieLabel": "Selfie",
+      "stepSmsLabel": "SMS",
+      "approveButton": "Aprobar",
+      "revokeButton": "Revocar",
+      "reapproveButton": "Volver a aprobar",
+      "reapproveTooltip": "Vuelve a aprobar para registrar un aprobador real en esta fila legada",
+      "revokeModalTitle": "¿Revocar verificación?",
+      "revokeWarning": "<strongName>{name}</strongName> volverá a <code>{status}</code>. Esto <strongEmphasis>corta sus pagos</strongEmphasis> hasta que se apruebe de nuevo.",
+      "confirmRevokeButton": "Confirmar revocación",
+      "revokingButton": "Revocando…",
+      "statusLabelPendingVerification": "Verificación pendiente",
+      "identityStatusApproved": "Aprobado"
+    },
+    "radiusRequests": {
+      "subtitle": "Solicitudes pendientes de aumento de radio de geocerca de los dueños de negocios.",
+      "noPendingRequests": "No hay solicitudes de radio pendientes.",
+      "businessFallback": "Negocio",
+      "eventTag": "(evento)",
+      "denyButton": "Denegar",
+      "decisionApproved": "aprobada",
+      "decisionDenied": "denegada",
+      "decisionToast": "Solicitud {decision}.",
+      "fetchErrorFallback": "Error al cargar las solicitudes.",
+      "updateErrorFallback": "Error al actualizar la solicitud."
     }
   }
 }

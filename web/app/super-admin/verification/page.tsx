@@ -19,6 +19,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconUserCheck,
   IconLoader2,
@@ -51,6 +52,7 @@ const isLegacy = (r: Row) => r.status === "verified" && !r.verified_by;
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminVerificationPage() {
+  const t = useTranslations("superAdmin");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -145,24 +147,26 @@ export default function SuperAdminVerificationPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
         <IconUserCheck size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-          Business verification
+          {t("verification.title")}
         </h1>
       </div>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 18px" }}>
-        Approving a business sets <code>status = verified</code>, which enables its
-        payments. Only platform admins can do this.
+        {t.rich("verification.subtitle", {
+          status: t("businesses.statusLabelVerified"),
+          code: (chunks) => <code>{chunks}</code>,
+        })}
       </p>
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — no backend configured; nothing to show." />
+        <Banner type="warning" message={t("verification.demoBanner")} />
       )}
       {legacyCount > 0 && (
         <Banner
           type="warning"
-          message={`${legacyCount} business${legacyCount === 1 ? "" : "es"} marked "verified" with no approver on record (LEGACY — set by the old /api/verify bug). Re-review and re-approve to stamp provenance.`}
+          message={t("verification.legacyBanner", { count: legacyCount })}
         />
       )}
-      {fetchError && <Banner type="error" message={`Failed to load: ${fetchError}`} />}
+      {fetchError && <Banner type="error" message={t("verification.fetchErrorPrefix", { error: fetchError })} />}
       {actionError && (
         <Banner type="error" message={actionError} onDismiss={() => setActionError(null)} />
       )}
@@ -184,7 +188,7 @@ export default function SuperAdminVerificationPage() {
             fontSize: 14,
           }}
         >
-          No businesses to review.
+          {t("verification.noBusinessesToReview")}
         </div>
       )}
 
@@ -236,8 +240,30 @@ function BusinessRow({
   onApprove: () => void;
   onRevoke: () => void;
 }) {
+  const t = useTranslations("superAdmin");
   const verified = row.status === "verified";
   const legacy = isLegacy(row);
+
+  // Display-only — row.status/identity_status stay raw everywhere they're
+  // compared (verified/legacy above, ok= below) or persisted (runAction's
+  // p_status). Fallback to the raw value if it's ever something unmapped —
+  // this page fetches `status` straight from businesses.status without
+  // restricting to a known set, so an unexpected value should still render
+  // instead of throwing.
+  const statusLabels: Record<string, string> = {
+    active: t("businesses.statusLabelActive"),
+    verified: t("businesses.statusLabelVerified"),
+    pending: t("businesses.statusLabelPending"),
+    suspended: t("businesses.statusLabelSuspended"),
+    closed: t("businesses.statusLabelClosed"),
+    rejected: t("businesses.statusLabelRejected"),
+    pending_verification: t("verification.statusLabelPendingVerification"),
+  };
+  const identityStatusLabels: Record<string, string> = {
+    approved: t("verification.identityStatusApproved"),
+    pending: t("businesses.statusLabelPending"),
+    rejected: t("businesses.statusLabelRejected"),
+  };
 
   return (
     <div
@@ -265,10 +291,10 @@ function BusinessRow({
       {/* Status + legacy + provenance */}
       <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <StatusPill status={row.status} />
+          <StatusPill status={row.status} label={statusLabels[row.status] ?? row.status} />
           {legacy && (
             <span
-              title="status=verified but no approver on record — set by the old /api/verify bug"
+              title={t("verification.legacyTooltip", { status: statusLabels.verified })}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -284,25 +310,29 @@ function BusinessRow({
               }}
             >
               <IconAlertTriangle size={11} stroke={2} />
-              Legacy
+              {t("verification.legacyBadge")}
             </span>
           )}
         </div>
         <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
           {verified && row.verified_by
-            ? `Approved by ${row.verified_by.slice(0, 8)}…${row.verified_at ? ` · ${new Date(row.verified_at).toLocaleDateString()}` : ""}`
+            ? `${t("verification.approvedByLabel", { id: row.verified_by.slice(0, 8) })}${row.verified_at ? ` · ${new Date(row.verified_at).toLocaleDateString()}` : ""}`
             : verified
-              ? "No approver on record"
-              : "Not verified"}
-          {row.has_stripe ? " · Stripe connected" : ""}
+              ? t("verification.noApproverOnRecord")
+              : t("verification.notVerified")}
+          {row.has_stripe ? ` · ${t("verification.stripeConnectedLabel")}` : ""}
         </div>
       </div>
 
       {/* Owner steps */}
       <div style={{ flex: "1 1 160px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <StepChip label="Identity" ok={row.identity_status === "approved"} note={row.identity_status ?? "—"} />
-        <StepChip label="Selfie" ok={row.selfie_submitted} />
-        <StepChip label="SMS" ok={!!row.sms_verified} />
+        <StepChip
+          label={t("verification.stepIdentityLabel")}
+          ok={row.identity_status === "approved"}
+          note={row.identity_status ? (identityStatusLabels[row.identity_status] ?? row.identity_status) : "—"}
+        />
+        <StepChip label={t("verification.stepSelfieLabel")} ok={row.selfie_submitted} />
+        <StepChip label={t("verification.stepSmsLabel")} ok={!!row.sms_verified} />
       </div>
 
       {/* Actions */}
@@ -310,18 +340,18 @@ function BusinessRow({
         {!verified ? (
           <button onClick={onApprove} disabled={busy} style={actionBtn("var(--color-success)", busy)}>
             {busy ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconCheck size={13} stroke={2} />}
-            Approve
+            {t("verification.approveButton")}
           </button>
         ) : (
           <button onClick={onRevoke} disabled={busy} style={actionBtn("var(--color-danger)", busy)}>
             {busy ? <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} /> : <IconBan size={13} stroke={2} />}
-            Revoke
+            {t("verification.revokeButton")}
           </button>
         )}
         {legacy && (
-          <button onClick={onApprove} disabled={busy} title="Re-approve to stamp a real approver on this legacy row" style={actionBtn("var(--color-brand)", busy)}>
+          <button onClick={onApprove} disabled={busy} title={t("verification.reapproveTooltip")} style={actionBtn("var(--color-brand)", busy)}>
             <IconCheck size={13} stroke={2} />
-            Re-approve
+            {t("verification.reapproveButton")}
           </button>
         )}
       </div>
@@ -342,6 +372,9 @@ function ConfirmRevoke({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const t = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
+
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
     document.addEventListener("keydown", fn);
@@ -370,24 +403,28 @@ function ConfirmRevoke({
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <IconBan size={18} stroke={1.6} style={{ color: "var(--color-danger)" }} />
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: 0, flex: 1 }}>
-            Revoke verification?
+            {t("verification.revokeModalTitle")}
           </h2>
           <button onClick={onCancel} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}>
             <IconX size={16} stroke={1.6} />
           </button>
         </div>
         <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 18px" }}>
-          <strong style={{ color: "var(--text-primary)" }}>{row.name ?? row.id.slice(0, 12)}</strong> will
-          return to <code>pending_verification</code>. This <strong>cuts off its payments</strong> until
-          it is approved again.
+          {t.rich("verification.revokeWarning", {
+            name: row.name ?? row.id.slice(0, 12),
+            status: t("verification.statusLabelPendingVerification"),
+            strongName: (chunks) => <strong style={{ color: "var(--text-primary)" }}>{chunks}</strong>,
+            strongEmphasis: (chunks) => <strong>{chunks}</strong>,
+            code: (chunks) => <code>{chunks}</code>,
+          })}
         </p>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}>
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button onClick={onConfirm} disabled={busy} style={actionBtn("var(--color-danger)", busy)}>
             {busy && <IconLoader2 size={13} stroke={2} style={{ animation: "spin 1s linear infinite" }} />}
-            {busy ? "Revoking…" : "Confirm revoke"}
+            {busy ? t("verification.revokingButton") : t("verification.confirmRevokeButton")}
           </button>
         </div>
       </div>
@@ -413,7 +450,7 @@ function actionBtn(bg: string, busy: boolean): React.CSSProperties {
   };
 }
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({ status, label }: { status: string; label: string }) {
   const verified = status === "verified";
   const color = verified ? "var(--color-success)" : "var(--text-secondary)";
   return (
@@ -431,7 +468,7 @@ function StatusPill({ status }: { status: string }) {
         whiteSpace: "nowrap",
       }}
     >
-      {status}
+      {label}
     </span>
   );
 }

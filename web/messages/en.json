@@ -1647,6 +1647,45 @@
       "statusLabelSuspended": "Suspended",
       "statusLabelClosed": "Closed",
       "statusLabelRejected": "Rejected"
+    },
+    "verification": {
+      "title": "Business verification",
+      "subtitle": "Approving a business sets <code>status = {status}</code>, which enables its payments. Only platform admins can do this.",
+      "demoBanner": "Demo mode — no backend configured; nothing to show.",
+      "legacyBanner": "{count, plural, one {# business marked} other {# businesses marked}} \"verified\" with no approver on record (LEGACY — set by the old /api/verify bug). Re-review and re-approve to stamp provenance.",
+      "fetchErrorPrefix": "Failed to load: {error}",
+      "noBusinessesToReview": "No businesses to review.",
+      "legacyBadge": "Legacy",
+      "legacyTooltip": "status={status} but no approver on record — set by the old /api/verify bug",
+      "approvedByLabel": "Approved by {id}…",
+      "noApproverOnRecord": "No approver on record",
+      "notVerified": "Not verified",
+      "stripeConnectedLabel": "Stripe connected",
+      "stepIdentityLabel": "Identity",
+      "stepSelfieLabel": "Selfie",
+      "stepSmsLabel": "SMS",
+      "approveButton": "Approve",
+      "revokeButton": "Revoke",
+      "reapproveButton": "Re-approve",
+      "reapproveTooltip": "Re-approve to stamp a real approver on this legacy row",
+      "revokeModalTitle": "Revoke verification?",
+      "revokeWarning": "<strongName>{name}</strongName> will return to <code>{status}</code>. This <strongEmphasis>cuts off its payments</strongEmphasis> until it is approved again.",
+      "confirmRevokeButton": "Confirm revoke",
+      "revokingButton": "Revoking…",
+      "statusLabelPendingVerification": "Pending Verification",
+      "identityStatusApproved": "Approved"
+    },
+    "radiusRequests": {
+      "subtitle": "Pending geofence radius increase requests from business owners.",
+      "noPendingRequests": "No pending radius requests.",
+      "businessFallback": "Business",
+      "eventTag": "(event)",
+      "denyButton": "Deny",
+      "decisionApproved": "approved",
+      "decisionDenied": "denied",
+      "decisionToast": "Request {decision}.",
+      "fetchErrorFallback": "Failed to load requests.",
+      "updateErrorFallback": "Failed to update request."
     }
   }
 }

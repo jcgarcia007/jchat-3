@@ -50,6 +50,8 @@ const DEMO: RequestRow[] = [
 
 export default function RadiusRequestsPage() {
   const t = useTranslations("superAdmin.relativeTime");
+  const tr = useTranslations("superAdmin");
+  const tCommon = useTranslations("common");
   const [items, setItems] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,11 +80,11 @@ export default function RadiusRequestsPage() {
       });
       setItems(rows as RequestRow[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load requests.");
+      setError(e instanceof Error ? e.message : tr("radiusRequests.fetchErrorFallback"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tr]);
 
   useEffect(() => {
     void load();
@@ -125,24 +127,30 @@ export default function RadiusRequestsPage() {
           }
         }
         setItems((prev) => prev.filter((r) => r.id !== row.id));
-        setSuccess(`Request ${decision}.`);
+        // Display only — the raw `decision` value was already persisted above
+        // (status: decision); this just picks its translated label for the toast.
+        const decisionLabels: Record<typeof decision, string> = {
+          approved: tr("radiusRequests.decisionApproved"),
+          denied: tr("radiusRequests.decisionDenied"),
+        };
+        setSuccess(tr("radiusRequests.decisionToast", { decision: decisionLabels[decision] }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to update request.");
+        setError(e instanceof Error ? e.message : tr("radiusRequests.updateErrorFallback"));
       } finally {
         setBusyId(null);
       }
     },
-    [],
+    [tr],
   );
 
   return (
     <div style={{ maxWidth: 880 }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
         <IconRulerMeasure size={22} color="var(--color-brand)" />
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Radius Requests</h1>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{tr("shell.navRadiusRequests")}</h1>
       </div>
       <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "20px" }}>
-        Pending geofence radius increase requests from business owners.
+        {tr("radiusRequests.subtitle")}
       </p>
 
       {error && (
@@ -154,12 +162,12 @@ export default function RadiusRequestsPage() {
 
       {loading ? (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "40px", color: "var(--text-secondary)", fontSize: "14px" }}>
-          <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Loading…
+          <IconLoader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> {tCommon("loading")}
         </div>
       ) : items.length === 0 ? (
         <div style={{ padding: "48px 24px", textAlign: "center", background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "12px" }}>
           <IconRulerMeasure size={28} color="var(--text-tertiary)" />
-          <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "10px 0 0" }}>No pending radius requests.</p>
+          <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "10px 0 0" }}>{tr("radiusRequests.noPendingRequests")}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -168,8 +176,8 @@ export default function RadiusRequestsPage() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <IconBuildingStore size={18} color="var(--color-brand)" />
-                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{r.business_name ?? "Business"}</span>
-                  {r.event_id && <span style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>(event)</span>}
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{r.business_name ?? tr("radiusRequests.businessFallback")}</span>
+                  {r.event_id && <span style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>{tr("radiusRequests.eventTag")}</span>}
                 </div>
                 <span style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>{formatRelativeTime(r.created_at, t, { granularity: "time", daysFallback: "date" })}</span>
               </div>
@@ -195,7 +203,7 @@ export default function RadiusRequestsPage() {
                   disabled={busyId === r.id}
                   style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", border: "none", background: "var(--color-success)", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: busyId === r.id ? "wait" : "pointer", opacity: busyId === r.id ? 0.7 : 1 }}
                 >
-                  <IconCheck size={15} /> Approve
+                  <IconCheck size={15} /> {tr("verification.approveButton")}
                 </button>
                 <button
                   type="button"
@@ -203,7 +211,7 @@ export default function RadiusRequestsPage() {
                   disabled={busyId === r.id}
                   style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--color-danger)", fontSize: "13px", fontWeight: 600, cursor: busyId === r.id ? "wait" : "pointer", opacity: busyId === r.id ? 0.7 : 1 }}
                 >
-                  <IconBan size={15} /> Deny
+                  <IconBan size={15} /> {tr("radiusRequests.denyButton")}
                 </button>
               </div>
             </div>
