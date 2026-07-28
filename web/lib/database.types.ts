@@ -2084,6 +2084,24 @@ export type Database = {
           },
         ]
       }
+      platform_config: {
+        Row: {
+          business_radius_max_m: number
+          business_radius_min_m: number
+          id: boolean
+        }
+        Insert: {
+          business_radius_max_m?: number
+          business_radius_min_m?: number
+          id?: boolean
+        }
+        Update: {
+          business_radius_max_m?: number
+          business_radius_min_m?: number
+          id?: boolean
+        }
+        Relationships: []
+      }
       post_likes: {
         Row: {
           created_at: string

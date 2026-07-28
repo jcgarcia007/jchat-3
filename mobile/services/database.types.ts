@@ -1,4 +1,3 @@
-// Auto-generated from Supabase (jchat-production). Do not edit by hand.
 export type Json =
   | string
   | number
@@ -2084,6 +2083,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_config: {
+        Row: {
+          business_radius_max_m: number
+          business_radius_min_m: number
+          id: boolean
+        }
+        Insert: {
+          business_radius_max_m?: number
+          business_radius_min_m?: number
+          id?: boolean
+        }
+        Update: {
+          business_radius_max_m?: number
+          business_radius_min_m?: number
+          id?: boolean
+        }
+        Relationships: []
       }
       post_likes: {
         Row: {
