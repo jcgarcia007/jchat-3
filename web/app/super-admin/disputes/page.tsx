@@ -113,6 +113,7 @@ const DEMO_ESCALATED: EscalatedDispute[] = [
 
 export default function SuperAdminDisputesPage() {
   // TODO(roles): gate this page to Super Admin role only.
+  const td = useTranslations("superAdmin.disputes");
 
   const [disputes, setDisputes] = useState<EscalatedDispute[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +211,7 @@ export default function SuperAdminDisputesPage() {
               margin: 0,
             }}
           >
-            Escalated Disputes
+            {td("title")}
           </h1>
         </div>
         <p
@@ -221,9 +222,7 @@ export default function SuperAdminDisputesPage() {
             maxWidth: "600px",
           }}
         >
-          Disputes the business owner did not respond to within 48 hours.
-          Force Refund is coming soon (Task 3.6) — for now these are visible
-          for review only.
+          {td("subtitle")}
           {/* TODO(roles): this page must be gated to Super Admin role only */}
           {/* TODO(Task 3.6): Stripe force-refund routed through stripe-refund Edge Function */}
         </p>
@@ -233,7 +232,7 @@ export default function SuperAdminDisputesPage() {
       {!isSupabaseConfigured && (
         <Banner
           type="warning"
-          message="Demo mode — Supabase not configured. Actions shown but not persisted."
+          message={td("demoBanner")}
         />
       )}
 
@@ -250,7 +249,7 @@ export default function SuperAdminDisputesPage() {
       {fetchError && (
         <Banner
           type="error"
-          message={`Failed to load escalated disputes: ${fetchError}`}
+          message={td("fetchErrorPrefix", { error: fetchError })}
         />
       )}
 
@@ -300,7 +299,7 @@ export default function SuperAdminDisputesPage() {
               color: "var(--text-primary)",
             }}
           >
-            No escalated disputes
+            {td("emptyTitle")}
           </div>
           <div
             style={{
@@ -309,8 +308,7 @@ export default function SuperAdminDisputesPage() {
               maxWidth: "360px",
             }}
           >
-            All disputes have been handled by business owners in time. Nothing
-            needs your attention right now.
+            {td("emptyMessage")}
           </div>
         </div>
       )}
@@ -347,8 +345,7 @@ export default function SuperAdminDisputesPage() {
             <span
               style={{ fontSize: "13px", color: "var(--text-secondary)" }}
             >
-              escalated {disputes.length === 1 ? "dispute" : "disputes"} awaiting
-              Super Admin action
+              {td("countLabel", { count: disputes.length })}
             </span>
           </div>
 
@@ -410,6 +407,7 @@ function EscalatedRow({
   onForceRefund: () => void;
 }) {
   const t = useTranslations("superAdmin.relativeTime");
+  const td = useTranslations("superAdmin.disputes");
   return (
     <div
       style={{
@@ -444,7 +442,7 @@ function EscalatedRow({
             flexShrink: 0,
           }}
         >
-          Escalated
+          {td("statusBadge")}
         </span>
 
         {/* Reason + order */}
@@ -468,7 +466,7 @@ function EscalatedRow({
               marginTop: "2px",
             }}
           >
-            Order:{" "}
+            {td("orderLabel")}{" "}
             <span
               style={{ fontFamily: "var(--font-geist-mono, monospace)" }}
             >
@@ -503,7 +501,7 @@ function EscalatedRow({
             }}
           >
             <IconClock size={13} stroke={1.6} />
-            Escalated {formatRelativeTime(d.escalated_at, t, { granularity: "time" })}
+            {td("statusBadge")} {formatRelativeTime(d.escalated_at, t, { granularity: "time" })}
           </div>
         )}
 
@@ -519,7 +517,7 @@ function EscalatedRow({
           <button
             onClick={onForceRefund}
             disabled
-            title="No disponible aún — reembolso por Stripe pendiente (Task 3.6)"
+            title={td("forceRefundTooltip")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -536,12 +534,12 @@ function EscalatedRow({
             }}
           >
             <IconReceiptRefund size={13} stroke={2} />
-            Force Refund (soon)
+            {td("forceRefundButton")}
           </button>
 
           <button
             onClick={onToggleExpand}
-            aria-label={isExpanded ? "Collapse details" : "Expand details"}
+            aria-label={isExpanded ? td("collapseDetailsAriaLabel") : td("expandDetailsAriaLabel")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -578,22 +576,22 @@ function EscalatedRow({
         >
           {d.description && (
             <SADetailField
-              label="Customer description"
+              label={td("customerDescriptionLabel")}
               value={d.description}
             />
           )}
           <SADetailField
-            label="Opened at"
+            label={td("openedAtLabel")}
             value={new Date(d.created_at).toLocaleString()}
           />
           {d.escalated_at && (
             <SADetailField
-              label="Escalated at"
+              label={td("escalatedAtLabel")}
               value={new Date(d.escalated_at).toLocaleString()}
             />
           )}
           <SADetailField
-            label="Customer ID"
+            label={td("customerIdLabel")}
             value={d.opened_by}
             mono
           />
@@ -618,6 +616,10 @@ function ForceRefundModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const td = useTranslations("superAdmin.disputes");
+  const tCommon = useTranslations("common");
+  const tb = useTranslations("superAdmin.businesses");
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -643,7 +645,7 @@ function ForceRefundModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Force Refund Confirmation"
+        aria-label={td("forceRefundModalAriaLabel")}
         style={{
           position: "fixed",
           top: "50%",
@@ -682,11 +684,11 @@ function ForceRefundModal({
               margin: 0,
             }}
           >
-            Force Refund — Super Admin
+            {td("forceRefundModalTitle")}
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={td("closeAriaLabel")}
             style={{
               marginLeft: "auto",
               background: "none",
@@ -724,7 +726,7 @@ function ForceRefundModal({
             }}
           >
             <IconAlertCircle size={15} stroke={1.8} />
-            This overrides the business owner&apos;s decision.
+            {td("overridesWarning")}
           </div>
           <p
             style={{
@@ -733,9 +735,7 @@ function ForceRefundModal({
               margin: 0,
             }}
           >
-            A full refund will be issued to the customer regardless of the
-            owner&apos;s response. Both the customer and the owner will be
-            notified.
+            {td("fullRefundNotice")}
             {/* TODO(server): push notification to customer + owner on force refund */}
           </p>
         </div>
@@ -772,7 +772,7 @@ function ForceRefundModal({
             </div>
           )}
           <div style={{ fontSize: "12px", color: "var(--text-tertiary)" }}>
-            Order:{" "}
+            {td("orderLabel")}{" "}
             <code
               style={{ fontFamily: "var(--font-geist-mono, monospace)" }}
             >
@@ -781,7 +781,7 @@ function ForceRefundModal({
             {dispute.amount_cents !== null && (
               <span>
                 {" "}
-                · Amount:{" "}
+                · {td("amountLabel")}{" "}
                 <strong style={{ color: "var(--text-primary)" }}>
                   {formatCents(dispute.amount_cents)}
                 </strong>
@@ -799,8 +799,7 @@ function ForceRefundModal({
           }}
         >
           {/* TODO(Task 3.6): actual Stripe refund via 'stripe-refund' Edge Function */}
-          Stripe refund will be processed server-side via the{" "}
-          <code>stripe-refund</code> Edge Function (Task 3.6).
+          {td.rich("stripeRefundNotice", { code: (chunks) => <code>{chunks}</code> })}
         </p>
 
         {/* Error */}
@@ -844,7 +843,7 @@ function ForceRefundModal({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -872,7 +871,7 @@ function ForceRefundModal({
             ) : (
               <IconReceiptRefund size={14} stroke={2} />
             )}
-            {saving ? "Processing…" : "Confirm Force Refund"}
+            {saving ? tb("processingButton") : td("confirmForceRefundButton")}
           </button>
         </div>
       </div>
@@ -929,6 +928,7 @@ function Banner({
   message: string;
   onDismiss?: () => void;
 }) {
+  const td = useTranslations("superAdmin.disputes");
   const colorMap = {
     error: "var(--color-danger)",
     success: "var(--color-success)",
@@ -962,7 +962,7 @@ function Banner({
       {onDismiss && (
         <button
           onClick={onDismiss}
-          aria-label="Dismiss"
+          aria-label={td("dismissAriaLabel")}
           style={{
             background: "none",
             border: "none",

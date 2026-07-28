@@ -126,6 +126,8 @@ const DEMO_REPORTS: ReportItem[] = [
 
 export default function SuperAdminAlertsPage() {
   const t = useTranslations("superAdmin.relativeTime");
+  const ta = useTranslations("superAdmin.alerts");
+  const tShell = useTranslations("superAdmin.shell");
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
@@ -171,11 +173,11 @@ export default function SuperAdminAlertsPage() {
       setFailedPayments((subs ?? []) as FailedPayment[]);
       setReports((rpts ?? []) as ReportItem[]);
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : "Unknown error");
+      setFetchError(err instanceof Error ? err.message : ta("unknownErrorFallback"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ta]);
 
   useEffect(() => {
     void loadData();
@@ -187,7 +189,7 @@ export default function SuperAdminAlertsPage() {
     // TODO: security_logs has no resolved column — resolution is UI-only until
     // a resolved boolean is added via migration.
     setSecurityLogs((prev) => prev.filter((l) => l.id !== id));
-    setSuccessMsg(`Alert ${id.slice(0, 8)}… marked as resolved.`);
+    setSuccessMsg(ta("resolvedToast", { id: id.slice(0, 8) }));
   }
 
   // ── Dismiss report ────────────────────────────────────────────────────────
@@ -197,7 +199,7 @@ export default function SuperAdminAlertsPage() {
       await supabase.from("reports").update({ status: "dismissed" }).eq("id", id);
     }
     setReports((prev) => prev.filter((r) => r.id !== id));
-    setSuccessMsg(`Report ${id.slice(0, 8)}… dismissed.`);
+    setSuccessMsg(ta("dismissedToast", { id: id.slice(0, 8) }));
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -209,7 +211,7 @@ export default function SuperAdminAlertsPage() {
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
         <IconBell size={22} stroke={1.6} style={{ color: "var(--color-brand)" }} />
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-          Alerts
+          {tShell("navAlerts")}
         </h1>
         {totalAlerts > 0 && (
           <span
@@ -235,7 +237,7 @@ export default function SuperAdminAlertsPage() {
       {/* TODO(roles): gate to Super Admin / Security Admin */}
 
       {!isSupabaseConfigured && (
-        <Banner type="warning" message="Demo mode — showing sample alerts." />
+        <Banner type="warning" message={ta("demoBanner")} />
       )}
       {successMsg && (
         <Banner type="success" message={successMsg} onDismiss={() => setSuccessMsg(null)} />
@@ -265,7 +267,7 @@ export default function SuperAdminAlertsPage() {
             >
               <IconCheck size={32} stroke={1.4} style={{ color: "var(--color-success)" }} />
               <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
-                No open alerts
+                {ta("noOpenAlerts")}
               </div>
             </div>
           )}
@@ -273,7 +275,7 @@ export default function SuperAdminAlertsPage() {
           {/* Security Logs */}
           {securityLogs.length > 0 && (
             <Section
-              title="Security Alerts"
+              title={ta("securityAlertsSectionTitle")}
               count={securityLogs.length}
               icon={IconShieldExclamation}
               iconColor="var(--color-danger)"
@@ -323,7 +325,7 @@ export default function SuperAdminAlertsPage() {
                     }}
                   >
                     <IconCheck size={12} stroke={2} />
-                    Resolve
+                    {ta("resolveButton")}
                   </button>
                 </div>
               ))}
@@ -333,7 +335,7 @@ export default function SuperAdminAlertsPage() {
           {/* Failed payments */}
           {failedPayments.length > 0 && (
             <Section
-              title="Payment Failures"
+              title={ta("paymentFailuresSectionTitle")}
               count={failedPayments.length}
               icon={IconAlertTriangle}
               iconColor="var(--color-warning)"
@@ -364,10 +366,10 @@ export default function SuperAdminAlertsPage() {
                       textTransform: "uppercase",
                     }}
                   >
-                    Past Due
+                    {ta("pastDueBadge")}
                   </span>
                   <span style={{ flex: 1, fontSize: "13px", color: "var(--text-secondary)" }}>
-                    Plan: <strong style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{fp.plan}</strong>
+                    {ta("planLabel")} <strong style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{fp.plan}</strong>
                   </span>
                   {fp.business_id && (
                     <span style={{ fontSize: "12px", color: "var(--text-tertiary)", fontFamily: "var(--font-geist-mono, monospace)" }}>
@@ -387,7 +389,7 @@ export default function SuperAdminAlertsPage() {
           {/* Reports queue */}
           {reports.length > 0 && (
             <Section
-              title="Reports Queue"
+              title={ta("reportsQueueSectionTitle")}
               count={reports.length}
               icon={IconFlag}
               iconColor="var(--color-brand-purple)"
@@ -408,7 +410,7 @@ export default function SuperAdminAlertsPage() {
                 >
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "3px" }}>
-                      {r.reason ?? "No reason provided"}
+                      {r.reason ?? ta("noReasonProvided")}
                     </div>
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
                       {formatRelativeTime(r.created_at, t, { granularity: "time" })}
@@ -432,7 +434,7 @@ export default function SuperAdminAlertsPage() {
                     }}
                   >
                     <IconX size={12} stroke={2} />
-                    Dismiss
+                    {ta("dismissButton")}
                   </button>
                 </div>
               ))}
