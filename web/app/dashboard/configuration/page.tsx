@@ -37,6 +37,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
+import { resolveActiveBusiness } from "@/lib/business";
 import { DASHBOARD_THEMES } from "@/hooks/useDashboardTheme";
 import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
@@ -417,20 +418,28 @@ export default function ConfigurationPage() {
       return;
     }
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) { setLoadingBiz(false); return; }
+      // Step 1: resolve the active business (reads active_business_id, handles multi-business owners).
+      // Uses resolveActiveBusiness() — the same resolver the rest of the dashboard uses — so the
+      // business selector in the top bar is respected. .single() on owner_id was the bug: it fails
+      // with PGRST116 ("multiple rows") for owners with >1 businesses (e.g. the super_admin).
+      const res = await resolveActiveBusiness();
+      if (!res.ok) {
+        // no_business / unauthenticated / error → businessId stays null → noBiz banner.
+        setLoadingBiz(false);
+        return;
+      }
 
-      const { data: biz, error: bizErr } = await supabase
+      // Step 2: fetch all Configuration-specific fields for that resolved business id.
+      // resolveActiveBusiness only returns a subset of columns; Configuration needs the rest.
+      const { data: biz } = await supabase
         .from("businesses")
         .select(
           "id, name, description, category, address, phone, website, hours, cover_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
         )
-        .eq("owner_id", user.id)
-        .single();
+        .eq("id", res.business.id)
+        .maybeSingle();
 
-      if (bizErr || !biz) { setLoadingBiz(false); return; }
+      if (!biz) { setLoadingBiz(false); return; }
 
       const b = biz as BusinessRow;
       setBusinessId(b.id);
@@ -450,7 +459,7 @@ export default function ConfigurationPage() {
       setPayoutFrequency(b.payout_frequency ?? "weekly");
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
     } catch {
-      // ignore: business not found
+      // ignore unexpected errors — businessId stays null → noBiz banner
     } finally {
       setLoadingBiz(false);
     }
@@ -461,7 +470,11 @@ export default function ConfigurationPage() {
   // ── Generic patch helper ──────────────────────────────────────────────────────
   const patch = useCallback(
     async (payload: Partial<BusinessRow>): Promise<boolean> => {
-      if (!isSupabaseConfigured || !businessId) return false;
+      // Demo mode: no Supabase — pretend-save (acceptable; user is just exploring the UI).
+      if (!isSupabaseConfigured) return false;
+      // Real mode with no resolved business: throw so withSave shows an error instead of
+      // silently displaying "guardado" when nothing was actually persisted.
+      if (!businessId) throw new Error("No se pudo guardar: no hay un negocio activo resuelto.");
       const { error: patchErr } = await supabase
         .from("businesses")
         .update(payload as unknown as Database["public"]["Tables"]["businesses"]["Update"])
