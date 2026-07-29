@@ -28,6 +28,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -609,6 +610,11 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
     >
       {/* JSON-LD Structured Data */}
       <JsonLd biz={biz} />
+
+      {/* Language switcher — top right */}
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px" }}>
+        <LanguageSwitcher />
+      </div>
 
       {/* Cover Photo */}
       <CoverPhoto url={biz.cover_url} name={biz.name} />

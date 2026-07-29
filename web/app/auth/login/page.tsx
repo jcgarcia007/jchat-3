@@ -23,6 +23,7 @@ import {
   IconMessageCircle2,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 function LoginForm() {
   const router = useRouter();
@@ -378,6 +379,10 @@ function LoginForm() {
           Sign up
         </a>
       </p>
+
+      <div style={{ marginTop: 14, textAlign: "center" }}>
+        <LanguageSwitcher />
+      </div>
     </div>
   );
 }

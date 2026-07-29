@@ -8,6 +8,7 @@ import {
   IconCheck,
   IconBuildingStore,
 } from "@tabler/icons-react";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   listUserBusinesses,
   resolveActiveBusiness,
@@ -266,6 +267,11 @@ export function TopBar() {
             ⌘K
           </kbd>
         </button>
+
+        {/* Language switcher */}
+        <span style={{ color: "var(--db-text-secondary)" }}>
+          <LanguageSwitcher />
+        </span>
 
         {/* Live clock */}
         <span

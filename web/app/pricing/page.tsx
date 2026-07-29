@@ -35,6 +35,7 @@ import {
   type OfferedPlanId,
   type CheckoutPlanId,
 } from "@/lib/plans";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // ── Presentation: color + icon per plan id (GLOBAL tokens; data lives in lib/plans.ts) ──
 
@@ -224,6 +225,11 @@ export default function PricingPage() {
       }}
     >
       <div style={{ maxWidth: "1040px", margin: "0 auto" }}>
+        {/* Language switcher — top right */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+          <LanguageSwitcher />
+        </div>
+
         {/* Header */}
         <header style={{ textAlign: "center", marginBottom: "40px" }}>
           <h1 style={{ fontSize: "32px", fontWeight: 800, margin: "0 0 10px" }}>

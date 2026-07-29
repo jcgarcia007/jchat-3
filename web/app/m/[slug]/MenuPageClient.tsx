@@ -9,6 +9,7 @@ import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
 import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
 import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
@@ -71,6 +72,11 @@ function BusinessHeader({ biz }: { biz: PublicBusiness }) {
   const t = useTranslations("menu");
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
+      {/* Language switcher — top right of cover */}
+      <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
+        <LanguageSwitcher />
+      </div>
+
       {/* Cover */}
       <div
         style={{

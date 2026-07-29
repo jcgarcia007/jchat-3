@@ -29,6 +29,7 @@ import {
   IconBrandApple,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // ── Shared styles (mirror login/page.tsx) ─────────────────────────────────────
 
@@ -850,6 +851,10 @@ export default function RegisterPage() {
           onBack={backToStep1}
         />
       )}
+
+      <div style={{ marginTop: 14, textAlign: "center" }}>
+        <LanguageSwitcher />
+      </div>
 
       {/* hCaptcha invisible (D-38): sin UI salvo cuando el reto se dispara. Una sola
           instancia para ambos steps; el submit real (signUp) ocurre en el step 2. */}

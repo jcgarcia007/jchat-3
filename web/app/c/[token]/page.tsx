@@ -20,6 +20,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { RoomHub } from "./RoomHub";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export const metadata: Metadata = {
   title: "Entrar al chat — JChat",
@@ -280,6 +281,10 @@ export default async function QREntryPage({
             </p>
           </div>
         )}
+
+        <div style={{ textAlign: "center" }}>
+          <LanguageSwitcher />
+        </div>
       </div>
     </div>
   );
