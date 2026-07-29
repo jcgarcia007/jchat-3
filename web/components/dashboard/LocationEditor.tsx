@@ -30,7 +30,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Map as GMap, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { Map as GMap, useMap } from "@vis.gl/react-google-maps";
 import {
   IconMapPin,
   IconCheck,
@@ -76,46 +76,6 @@ function Recenter({ target }: { target: LatLng | null }) {
     map.setZoom(15);
   }, [map, target]);
   return null;
-}
-
-// ── Places Autocomplete search box ──────────────────────────────────────────────
-function PlacesSearch({ onPlace }: { onPlace: (p: LatLng) => void }) {
-  const t = useTranslations("dashboardCommon");
-  const places = useMapsLibrary("places");
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const onPlaceRef = useRef(onPlace);
-  onPlaceRef.current = onPlace;
-
-  useEffect(() => {
-    if (!places || !inputRef.current || typeof google === "undefined") return;
-    const ac = new places.Autocomplete(inputRef.current, { fields: ["geometry"] });
-    const listener = ac.addListener("place_changed", () => {
-      const loc = ac.getPlace().geometry?.location;
-      if (loc) onPlaceRef.current({ lat: loc.lat(), lng: loc.lng() });
-    });
-    return () => {
-      if (listener) google.maps.event.removeListener(listener);
-      google.maps.event.clearInstanceListeners(ac);
-    };
-  }, [places]);
-
-  return (
-    <input
-      ref={inputRef}
-      placeholder={t("locationSearchPlaceholder")}
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid var(--db-border)",
-        background: "var(--db-bg-elevated)",
-        color: "var(--db-text-primary)",
-        fontSize: "14px",
-        outline: "none",
-        boxSizing: "border-box",
-      }}
-    />
-  );
 }
 
 // ── Unified geofence layer: pin + radius circle + drawn circle/polygon ──────────
@@ -238,10 +198,13 @@ function GeofenceLayer({
 export function LocationEditor({
   businessId,
   onAddressResolved,
+  externalCoords,
 }: {
   businessId: string | null;
   /** Called with the reverse-geocoded address after the pin settles (dragend / Pin-mode click). */
   onAddressResolved?: (address: string) => void;
+  /** When a new object is passed, moves the pin without triggering reverse-geocode. */
+  externalCoords?: { lat: number; lng: number } | null;
 }) {
   const t = useTranslations("dashboardCommon");
   const [lat, setLat] = useState<number | null>(null);
@@ -329,6 +292,15 @@ export function LocationEditor({
       active = false;
     };
   }, [businessId]);
+
+  // Apply coords supplied by the Address autocomplete. Programmatic setPosition does
+  // NOT fire "dragend", so this never triggers reverse-geocode or re-writes Address.
+  useEffect(() => {
+    if (!externalCoords) return;
+    setLat(externalCoords.lat);
+    setLng(externalCoords.lng);
+    setRecenterTo(externalCoords);
+  }, [externalCoords]);
 
   const pin: LatLng = lat != null && lng != null ? { lat, lng } : DEFAULT_CENTER;
 
@@ -510,10 +482,6 @@ export function LocationEditor({
 
       {hasKey ? (
         <>
-          <div style={{ marginBottom: "12px" }}>
-            <PlacesSearch onPlace={(p) => { setLat(p.lat); setLng(p.lng); setRecenterTo(p); }} />
-          </div>
-
           {/* Drawing toolbar */}
           <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
             {TOOLS.map(({ id, label, icon: Icon }) => (

@@ -17,7 +17,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   IconBuilding,
@@ -41,7 +41,7 @@ import { resolveActiveBusiness } from "@/lib/business";
 import { DASHBOARD_THEMES } from "@/hooks/useDashboardTheme";
 import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
-import { APIProvider } from "@vis.gl/react-google-maps";
+import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { LocationEditor, MAPS_KEY } from "@/components/dashboard/LocationEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -214,6 +214,65 @@ function TextInput({
   );
 }
 
+function AddressAutocompleteInput({
+  value,
+  onChange,
+  onPlace,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onPlace: (result: { address: string; coords: { lat: number; lng: number } }) => void;
+  placeholder?: string;
+}) {
+  const places = useMapsLibrary("places");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const onPlaceRef = useRef(onPlace);
+  onPlaceRef.current = onPlace;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (!places || !inputRef.current || typeof google === "undefined") return;
+    const ac = new places.Autocomplete(inputRef.current, {
+      fields: ["geometry", "formatted_address"],
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      const loc = place.geometry?.location;
+      if (!loc) return;
+      const address = place.formatted_address ?? inputRef.current?.value ?? "";
+      onChangeRef.current(address);
+      onPlaceRef.current({ address, coords: { lat: loc.lat(), lng: loc.lng() } });
+    });
+    return () => {
+      if (listener) google.maps.event.removeListener(listener);
+      google.maps.event.clearInstanceListeners(ac);
+    };
+  }, [places]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid var(--db-border)",
+        background: "var(--db-bg-elevated)",
+        color: "var(--db-text-primary)",
+        fontSize: "14px",
+        outline: "none",
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
 function Toggle({
   checked,
   onChange,
@@ -374,6 +433,7 @@ export default function ConfigurationPage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [address, setAddress] = useState("");
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [savingInfo, setSavingInfo] = useState(false);
@@ -688,7 +748,14 @@ export default function ConfigurationPage() {
           </div>
           <div>
             <FieldLabel>{t("configurationAddressLabel")}</FieldLabel>
-            <TextInput value={address} onChange={setAddress} placeholder={t("configurationAddressPlaceholder")} />
+            {hasMapsKey
+              ? <AddressAutocompleteInput
+                  value={address}
+                  onChange={setAddress}
+                  onPlace={({ address: a, coords }) => { setAddress(a); setAddressCoords(coords); }}
+                  placeholder={t("configurationAddressPlaceholder")}
+                />
+              : <TextInput value={address} onChange={setAddress} placeholder={t("configurationAddressPlaceholder")} />}
           </div>
           <div>
             <FieldLabel>{t("configurationPhoneLabel")}</FieldLabel>
@@ -714,7 +781,11 @@ export default function ConfigurationPage() {
         title={t("configurationLocationSectionTitle")}
         subtitle={t("configurationLocationSectionSubtitle")}
       >
-        <LocationEditor businessId={businessId} onAddressResolved={setAddress} />
+        <LocationEditor
+          businessId={businessId}
+          onAddressResolved={setAddress}
+          externalCoords={addressCoords}
+        />
       </Section>
 
       {/* ── 2. Operating Hours ───────────────────────────────────────────────── */}
