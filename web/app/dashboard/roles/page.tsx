@@ -177,7 +177,7 @@ function AlertBanner({
   };
   const s = map[type] ?? map.info;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", borderRadius: "8px", background: s.bg, color: s.color, fontSize: "14px", marginBottom: "16px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", borderRadius: "var(--db-radius)", background: s.bg, color: s.color, fontSize: "14px", marginBottom: "16px" }}>
       <IconAlertCircle size={16} />
       {message}
     </div>
@@ -202,7 +202,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
         position: "absolute", top: 2, left: on ? 18 : 2,
         width: 16, height: 16, borderRadius: "50%",
         background: "white", transition: "left 0.15s",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+        boxShadow: "var(--db-shadow)",
       }} />
     </button>
   );
@@ -315,7 +315,7 @@ function RoleEditor({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "24px",
         marginTop: "16px",
       }}
@@ -337,7 +337,7 @@ function RoleEditor({
           onChange={(e) => setName(e.target.value)}
           placeholder={t("rolesNamePlaceholder")}
           maxLength={60}
-          style={{ width: "100%", maxWidth: "360px", boxSizing: "border-box", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
+          style={{ width: "100%", maxWidth: "360px", boxSizing: "border-box", padding: "9px 12px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
         />
       </div>
 
@@ -402,7 +402,7 @@ function RoleEditor({
           <div
             style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              gap: "12px", padding: "10px 12px", borderRadius: "8px",
+              gap: "12px", padding: "10px 12px", borderRadius: "var(--db-radius)",
               background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)",
               opacity: 0.65,
             }}
@@ -425,7 +425,7 @@ function RoleEditor({
         <button
           type="button"
           onClick={onCancel}
-          style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+          style={{ padding: "9px 18px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
         >
           {tCommon("cancel")}
         </button>
@@ -433,7 +433,7 @@ function RoleEditor({
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          style={{ padding: "9px 18px", borderRadius: "8px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}
+          style={{ padding: "9px 18px", borderRadius: "var(--db-radius)", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}
         >
           {saving ? t("tablesSavingState") : role ? t("rolesUpdateButton") : t("rolesCreateTitle")}
         </button>
@@ -462,7 +462,7 @@ function RoleListItem({
       style={{
         display: "flex", alignItems: "center", gap: "14px", padding: "14px 18px",
         background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -494,7 +494,7 @@ function RoleListItem({
           type="button"
           onClick={onEdit}
           title={t("rolesEditTitle")}
-          style={{ background: "none", border: "none", color: "var(--db-accent)", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center" }}
+          style={{ background: "none", border: "none", color: "var(--db-accent)", cursor: "pointer", padding: "6px", borderRadius: "var(--db-radius)", display: "flex", alignItems: "center" }}
         >
           <IconEdit size={15} />
         </button>
@@ -502,7 +502,7 @@ function RoleListItem({
           type="button"
           onClick={onDelete}
           title={t("rolesDeleteTitle")}
-          style={{ background: "none", border: "none", color: "var(--db-danger)", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center" }}
+          style={{ background: "none", border: "none", color: "var(--db-danger)", cursor: "pointer", padding: "6px", borderRadius: "var(--db-radius)", display: "flex", alignItems: "center" }}
         >
           <IconTrash size={15} />
         </button>
@@ -626,7 +626,7 @@ export default function RolesPage() {
           <button
             type="button"
             onClick={openCreate}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "9px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "var(--db-radius)", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
           >
             <IconPlus size={15} />
             {t("rolesNewRoleButton")}
@@ -655,7 +655,7 @@ export default function RolesPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "12px",
+              borderRadius: "var(--db-radius-card)",
               padding: "24px",
             }}
           >
@@ -672,7 +672,7 @@ export default function RolesPage() {
               style={{
                 display: "flex", alignItems: "center", gap: "14px", padding: "14px 18px",
                 background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)",
-                borderRadius: "10px", marginBottom: "10px",
+                borderRadius: "var(--db-radius-card)", marginBottom: "10px",
               }}
             >
               <div style={{ flex: 1 }}>
@@ -701,7 +701,7 @@ export default function RolesPage() {
                 <button
                   type="button"
                   onClick={openCreate}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "9px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "var(--db-radius)", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
                 >
                   <IconPlus size={14} />
                   {t("rolesCreateFirstButton")}
@@ -722,7 +722,7 @@ export default function RolesPage() {
                   <button
                     type="button"
                     onClick={openCreate}
-                    style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "10px", border: "1px dashed var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", cursor: "pointer", marginTop: "4px" }}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "var(--db-radius)", border: "1px dashed var(--db-border)", background: "transparent", color: "var(--db-text-secondary)", fontSize: "13px", cursor: "pointer", marginTop: "4px" }}
                   >
                     <IconPlus size={14} />
                     {t("rolesAddAnotherButton")}

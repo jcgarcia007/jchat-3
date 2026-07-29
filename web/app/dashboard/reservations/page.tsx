@@ -266,7 +266,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: s.bg,
         color: s.color,
         fontSize: "14px",
@@ -301,7 +301,7 @@ function ReservationRow({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         padding: "16px 20px",
         display: "flex",
         alignItems: "flex-start",
@@ -324,7 +324,7 @@ function ReservationRow({
           style={{
             width: 40,
             height: 40,
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "var(--db-accent-bg)",
             display: "flex",
             alignItems: "center",
@@ -456,7 +456,7 @@ function ReservationRow({
                 alignItems: "center",
                 gap: "4px",
                 padding: "6px 14px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "none",
                 background: busy
                   ? "var(--db-text-tertiary)"
@@ -480,7 +480,7 @@ function ReservationRow({
                 alignItems: "center",
                 gap: "4px",
                 padding: "6px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-danger)",
                 background: "rgba(239,68,68,0.08)",
                 color: "var(--db-danger)",
@@ -502,7 +502,7 @@ function ReservationRow({
             title={t("reservationsNoShowAria")}
             style={{
               padding: "6px 12px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "transparent",
               color: "var(--db-text-secondary)",
@@ -673,7 +673,7 @@ function CapacityPanel({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "20px 24px",
         marginBottom: "24px",
       }}
@@ -738,7 +738,7 @@ function CapacityPanel({
             style={{
               width: "120px",
               padding: "8px 12px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "var(--db-bg-elevated)",
               color: "var(--db-text-primary)",
@@ -770,7 +770,7 @@ function CapacityPanel({
             style={{
               width: "120px",
               padding: "8px 12px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "var(--db-bg-elevated)",
               color: "var(--db-text-primary)",
@@ -785,7 +785,7 @@ function CapacityPanel({
           disabled={saving}
           style={{
             padding: "8px 18px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             border: "none",
             background: saving ? "var(--db-text-tertiary)" : "var(--db-accent)",
             color: "var(--db-accent-text)",
@@ -1045,7 +1045,7 @@ export default function ReservationsPage() {
               alignItems: "center",
               gap: "5px",
               padding: "7px 14px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: showCapacity
                 ? "1px solid var(--db-accent)"
                 : "1px solid var(--db-border)",
@@ -1073,7 +1073,7 @@ export default function ReservationsPage() {
                 alignItems: "center",
                 gap: "5px",
                 padding: "7px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "transparent",
                 color: "var(--db-text-secondary)",
@@ -1089,7 +1089,7 @@ export default function ReservationsPage() {
           <div
             style={{
               display: "flex",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               overflow: "hidden",
             }}
@@ -1155,7 +1155,7 @@ export default function ReservationsPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius-card)",
               padding: "14px 20px",
               minWidth: "100px",
               textAlign: "center",

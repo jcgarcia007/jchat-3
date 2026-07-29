@@ -109,7 +109,7 @@ function SectionCard({ children }: { children: React.ReactNode }) {
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "24px",
         marginBottom: "24px",
       }}
@@ -163,7 +163,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "10px 14px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: s.bg,
         color: s.color,
         fontSize: "13px",
@@ -223,7 +223,7 @@ function StockRow({
         alignItems: "center",
         gap: "12px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: rowBg,
         borderBottom: "1px solid var(--db-border)",
       }}
@@ -378,7 +378,7 @@ function StockRow({
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "6px 10px",
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "var(--db-bg-elevated)",
   color: "var(--db-text-primary)",
@@ -403,7 +403,7 @@ function btnStyle(bg: string, color: string): React.CSSProperties {
     alignItems: "center",
     justifyContent: "center",
     padding: "6px 10px",
-    borderRadius: "6px",
+    borderRadius: "var(--db-radius)",
     border: "none",
     background: bg,
     color: color,
@@ -985,7 +985,7 @@ export default function InventoryPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius-card)",
               padding: "16px 20px",
             }}
           >
@@ -1079,7 +1079,7 @@ export default function InventoryPage() {
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
           {t.rich("inventoryCsvUploadDescription", {
             code: (chunks) => (
-              <code style={{ background: "var(--db-bg-elevated)", padding: "1px 5px", borderRadius: "4px" }}>{chunks}</code>
+              <code style={{ background: "var(--db-bg-elevated)", padding: "1px 5px", borderRadius: "var(--db-radius)" }}>{chunks}</code>
             ),
           })}
         </p>

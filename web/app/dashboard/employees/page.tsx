@@ -176,7 +176,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: style.bg,
         color: style.color,
         fontSize: "14px",
@@ -282,7 +282,7 @@ function EmployeeRow({
         padding: "14px 18px",
         background: "var(--db-bg-elevated)",
         border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         opacity: isRemoving ? 0.5 : 1,
         transition: "opacity 0.2s",
       }}
@@ -429,7 +429,7 @@ function EmployeeRow({
           padding: "6px",
           display: "flex",
           alignItems: "center",
-          borderRadius: "6px",
+          borderRadius: "var(--db-radius)",
           flexShrink: 0,
         }}
       >
@@ -716,7 +716,7 @@ export default function EmployeesPage() {
           style={{
             background: "var(--db-bg-surface)",
             border: "1px solid var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
             padding: "24px",
           }}
         >
@@ -742,7 +742,7 @@ export default function EmployeesPage() {
                 onClick={() => setShowAdd((v) => !v)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: "6px",
-                  padding: "8px 14px", borderRadius: "9px", border: "none",
+                  padding: "8px 14px", borderRadius: "var(--db-radius)", border: "none",
                   background: showAdd ? "var(--db-bg-elevated)" : "var(--db-accent)",
                   color: showAdd ? "var(--db-text-secondary)" : "var(--db-accent-text)",
                   fontSize: "13px", fontWeight: 600, cursor: "pointer",
@@ -759,7 +759,7 @@ export default function EmployeesPage() {
               style={{
                 display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap",
                 background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)",
-                borderRadius: "10px", padding: "14px", margin: "10px 0 16px",
+                borderRadius: "var(--db-radius-card)", padding: "14px", margin: "10px 0 16px",
               }}
             >
               <div style={{ flex: 1, minWidth: "180px" }}>
@@ -771,7 +771,7 @@ export default function EmployeesPage() {
                   value={addUsername}
                   onChange={(e) => setAddUsername(e.target.value)}
                   placeholder={t("employeesUsernamePlaceholder")}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
                 />
               </div>
               <div>
@@ -791,7 +791,7 @@ export default function EmployeesPage() {
                       setAddRole(val);
                     }
                   }}
-                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", cursor: "pointer" }}
+                  style={{ padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none", cursor: "pointer" }}
                 >
                   <optgroup label={t("employeesStandardGroup")}>
                     {(["Manager", "Cashier", "Waiter", "Kitchen", "Chat Moderator", "Analyst"] as EmployeeRole[]).map((r) => (
@@ -811,7 +811,7 @@ export default function EmployeesPage() {
                 type="button"
                 onClick={() => void handleAdd()}
                 disabled={adding}
-                style={{ padding: "9px 16px", borderRadius: "8px", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "14px", fontWeight: 600, cursor: adding ? "wait" : "pointer", opacity: adding ? 0.7 : 1 }}
+                style={{ padding: "9px 16px", borderRadius: "var(--db-radius)", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "14px", fontWeight: 600, cursor: adding ? "wait" : "pointer", opacity: adding ? 0.7 : 1 }}
               >
                 {adding ? t("employeesAddingState") : t("employeesAddSubmitButton")}
               </button>
@@ -968,7 +968,7 @@ function RolesLegend({ t }: { t: TFn }) {
             key={role}
             style={{
               background: "var(--db-bg-elevated)",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               padding: "10px 14px",
             }}
           >
