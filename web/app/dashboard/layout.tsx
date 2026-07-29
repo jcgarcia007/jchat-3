@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   // Initial dashboard theme (businesses.dashboard_theme_id). Defaults to 1
-  // (midnight-blue); demo mode keeps the default. The client-side
+  // (minimal); demo mode keeps the default. The client-side
   // DashboardThemeProvider owns the live theme + data-db-theme attribute.
   let initialThemeId = 1;
 

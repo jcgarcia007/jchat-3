@@ -1,249 +1,383 @@
 /* ============================================================
-   JChat 3.0 — Dashboard Themes (Task 0.3)
+   JChat 3.0 — Dashboard Themes (Task 5a)
    Source of truth: JCHAT_3.0_DESIGN_SYSTEM.docx · Section 5
-   Ten themes, each in its own CSS scope.
+   Ten personality themes with structural + color tokens.
 
-   Derivation rules (applied uniformly across all 10 themes):
-   ─────────────────────────────────────────────────────────
-   • --db-bg-base        From design system table (exact)
-   • --db-bg-surface     From design system table (exact)
+   Structural token defaults (in :root) are inherited by all themes.
+   Each personality block overrides those it needs.
+
+   Derivation rules (applied uniformly):
+   ──────────────────────────────────────
+   • --db-bg-base        Source value (exact; glass uses a gradient)
+   • --db-bg-surface     Source value (exact; glass uses rgba)
    • --db-bg-elevated    Dark themes:  surface + ~8% lighter step
-                         Light themes: #eef1f6 (subtle off-white lift)
+                         Light themes: subtle off-white lift
    • --db-bg-overlay     Dark themes:  surface + ~14% lighter step
-                         Light themes: #e5e9f0
-   • --db-border         = --db-bg-elevated (same as T1 pattern)
-   • --db-accent         From design system table (exact)
-   • --db-accent-text    #ffffff for all (all accents are saturated/dark enough)
-   • --db-accent-bg      rgba(R,G,B,0.12) where RGB = accent hex
-   • --db-text-primary   From design system table (exact)
-   • --db-text-secondary Dark themes: text-primary at ~55% muted toward bg
-                         Light themes: mid-gray (#64748b range)
-   • --db-text-tertiary  Dark themes: text-primary at ~35% muted toward bg
-                         Light themes: light-gray (#94a3b8 range)
-   • --db-success        #22c55e (uniform across all themes)
-   • --db-warning        #f59e0b (uniform across all themes)
-   • --db-danger         #ef4444 (uniform across all themes)
+                         Light themes: slightly deeper lift
+   • --db-border         = --db-bg-elevated (default)
+                         neo-brutalist exception: #111111
+   • --db-accent         Source value (exact)
+   • --db-accent-text    Per-theme (dark on light accent, #fff on dark)
+   • --db-accent-bg      rgba(R,G,B,0.12) of accent hex
+   • --db-text-primary   Source value (exact)
+   • --db-text-secondary Dark themes: ~55% muted toward bg-base
+                         Light themes: mid-gray (#64748b family)
+   • --db-text-tertiary  Dark themes: ~35% muted toward bg-base
+                         Light themes: light-gray (#94a3b8 family)
+   • --db-success        #22c55e (uniform)
+   • --db-warning        #f59e0b (uniform)
+   • --db-danger         #ef4444 (uniform)
 
    Usage:
-   <div class="theme-midnight-blue"> OR <div data-db-theme="midnight-blue">
+   <div class="theme-minimal"> OR <div data-db-theme="minimal">
    ============================================================ */
 
 /* ─────────────────────────────────────────────────────────────
-   T1 · Midnight Blue (reference theme — all others follow this structure)
-   bg-base: #0a0c14 · bg-surface: #0d0f1a · accent: #378ADD · text-primary: #e8eaff
+   Structural defaults (fallbacks for 5b component tokenization)
    ───────────────────────────────────────────────────────────── */
-.theme-midnight-blue,
-[data-db-theme="midnight-blue"] {
-  --db-bg-base:        #0a0c14;
-  --db-bg-surface:     #0d0f1a;
-  --db-bg-elevated:    #151824;
-  --db-bg-overlay:     #1a1d35;
-  --db-border:         #151824;
-  --db-accent:         #378ADD;
-  --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(55, 138, 221, 0.12);
-  --db-text-primary:   #e8eaff;
-  --db-text-secondary: #9095b0;
-  --db-text-tertiary:  #636390;
-  --db-success:        #22c55e;
-  --db-warning:        #f59e0b;
-  --db-danger:         #ef4444;
+:root {
+  --db-radius:        8px;
+  --db-radius-card:   12px;
+  --db-border-width:  1px;
+  --db-shadow:        none;
+  --db-shadow-btn:    none;
+  --db-card-bg:       var(--db-bg-surface);
+  --db-blur:          none;
+  --db-font:          system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:           16px;
+  --db-gap:           12px;
+  --db-weight-strong: 500;
+  --db-tracking:      0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T2 · Clean White (light theme)
-   bg-base: #f8f9fc · bg-surface: #ffffff · accent: #4F46E5 · text-primary: #1e293b
+   T1 · Minimal (dark — reference theme)
+   bg-base: #17181A  bg-surface: #1E1F22  accent: #6E79F2  text: #E8E9ED
    ───────────────────────────────────────────────────────────── */
-.theme-clean-white,
-[data-db-theme="clean-white"] {
-  --db-bg-base:        #f8f9fc;
-  --db-bg-surface:     #ffffff;
+.theme-minimal,
+[data-db-theme="minimal"] {
+  --db-bg-base:        #17181A;
+  --db-bg-surface:     #1E1F22;
+  --db-bg-elevated:    #323336;
+  --db-bg-overlay:     #414246;
+  --db-border:         #323336;
+  --db-accent:         #6E79F2;
+  --db-accent-text:    #ffffff;
+  --db-accent-bg:      rgba(110, 121, 242, 0.12);
+  --db-text-primary:   #E8E9ED;
+  --db-text-secondary: #84858F;
+  --db-text-tertiary:  #5A5B62;
+  --db-success:        #22c55e;
+  --db-warning:        #f59e0b;
+  --db-danger:         #ef4444;
+
+  --db-radius:         6px;
+  --db-radius-card:    8px;
+  --db-border-width:   1px;
+  --db-shadow:         none;
+  --db-shadow-btn:     none;
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            16px;
+  --db-gap:            12px;
+  --db-weight-strong:  500;
+  --db-tracking:       -0.01em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   T2 · Clean (light)
+   bg-base: #F5F7FB  bg-surface: #FFFFFF  accent: #635BFF  text: #1A2233
+   ───────────────────────────────────────────────────────────── */
+.theme-clean,
+[data-db-theme="clean"] {
+  --db-bg-base:        #F5F7FB;
+  --db-bg-surface:     #FFFFFF;
   --db-bg-elevated:    #eef1f6;
   --db-bg-overlay:     #e5e9f0;
   --db-border:         #eef1f6;
-  --db-accent:         #4F46E5;
+  --db-accent:         #635BFF;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(79, 70, 229, 0.12);
-  --db-text-primary:   #1e293b;
-  --db-text-secondary: #64748b;
-  --db-text-tertiary:  #94a3b8;
+  --db-accent-bg:      rgba(99, 91, 255, 0.12);
+  --db-text-primary:   #1A2233;
+  --db-text-secondary: #5A6480;
+  --db-text-tertiary:  #8C9AB0;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         8px;
+  --db-radius-card:    12px;
+  --db-border-width:   1px;
+  --db-shadow:         0 1px 3px rgba(20, 30, 60, 0.07);
+  --db-shadow-btn:     none;
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            18px;
+  --db-gap:            14px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T3 · Forest Green (dark theme)
-   bg-base: #0a120a · bg-surface: #0d150d · accent: #22C55E · text-primary: #dcfce7
+   T3 · Glass (dark gradient + translucency)
+   bg-base: gradient  bg-surface: rgba(255,255,255,.10)  accent: #4FD1C5
    ───────────────────────────────────────────────────────────── */
-.theme-forest-green,
-[data-db-theme="forest-green"] {
-  --db-bg-base:        #0a120a;
-  --db-bg-surface:     #0d150d;
-  --db-bg-elevated:    #152015;
-  --db-bg-overlay:     #1a2d1a;
-  --db-border:         #152015;
-  --db-accent:         #22C55E;
-  --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(34, 197, 94, 0.12);
-  --db-text-primary:   #dcfce7;
-  --db-text-secondary: #86c996;
-  --db-text-tertiary:  #4d8a5c;
+.theme-glass,
+[data-db-theme="glass"] {
+  --db-bg-base:        linear-gradient(135deg, #2A2358, #18294C);
+  --db-bg-surface:     rgba(255, 255, 255, 0.10);
+  --db-bg-elevated:    rgba(255, 255, 255, 0.16);
+  --db-bg-overlay:     rgba(255, 255, 255, 0.22);
+  --db-border:         rgba(255, 255, 255, 0.20);
+  --db-accent:         #4FD1C5;
+  --db-accent-text:    #0B2A28;
+  --db-accent-bg:      rgba(79, 209, 197, 0.12);
+  --db-text-primary:   #F0F2FF;
+  --db-text-secondary: rgba(240, 242, 255, 0.68);
+  --db-text-tertiary:  rgba(240, 242, 255, 0.42);
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         16px;
+  --db-radius-card:    16px;
+  --db-border-width:   1px;
+  --db-shadow:         0 8px 24px rgba(0, 0, 0, 0.25);
+  --db-shadow-btn:     none;
+  --db-card-bg:        rgba(255, 255, 255, 0.10);
+  --db-blur:           blur(8px);
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            16px;
+  --db-gap:            14px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T4 · Royal Purple (dark theme)
-   bg-base: #0e0814 · bg-surface: #110a1a · accent: #7C3AED · text-primary: #ede9fe
+   T4 · Soft (warm light)
+   bg-base: #FBF7F4  bg-surface: #FFFFFF  accent: #E8896B  text: #4A3F38
    ───────────────────────────────────────────────────────────── */
-.theme-royal-purple,
-[data-db-theme="royal-purple"] {
-  --db-bg-base:        #0e0814;
-  --db-bg-surface:     #110a1a;
-  --db-bg-elevated:    #1a1028;
-  --db-bg-overlay:     #201535;
-  --db-border:         #1a1028;
-  --db-accent:         #7C3AED;
+.theme-soft,
+[data-db-theme="soft"] {
+  --db-bg-base:        #FBF7F4;
+  --db-bg-surface:     #FFFFFF;
+  --db-bg-elevated:    #F2EBE4;
+  --db-bg-overlay:     #EBE0D6;
+  --db-border:         #F2EBE4;
+  --db-accent:         #E8896B;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(124, 58, 237, 0.12);
-  --db-text-primary:   #ede9fe;
-  --db-text-secondary: #a89cc0;
-  --db-text-tertiary:  #6a5e8a;
+  --db-accent-bg:      rgba(232, 137, 107, 0.12);
+  --db-text-primary:   #4A3F38;
+  --db-text-secondary: #8C7D75;
+  --db-text-tertiary:  #B5A89F;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         16px;
+  --db-radius-card:    20px;
+  --db-border-width:   1px;
+  --db-shadow:         0 8px 24px rgba(200, 150, 120, 0.15);
+  --db-shadow-btn:     none;
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            20px;
+  --db-gap:            16px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T5 · Slate Gray (dark theme)
-   bg-base: #0f1117 · bg-surface: #131720 · accent: #64748B · text-primary: #f1f5f9
+   T5 · Neo-Brutalist (light — bold borders, hard shadows)
+   bg-base: #FDF3D8  bg-surface: #FFFFFF  accent: #FF5C38  text: #111111
    ───────────────────────────────────────────────────────────── */
-.theme-slate-gray,
-[data-db-theme="slate-gray"] {
-  --db-bg-base:        #0f1117;
-  --db-bg-surface:     #131720;
-  --db-bg-elevated:    #1b2030;
-  --db-bg-overlay:     #22283c;
-  --db-border:         #1b2030;
-  --db-accent:         #64748B;
+.theme-neo-brutalist,
+[data-db-theme="neo-brutalist"] {
+  --db-bg-base:        #FDF3D8;
+  --db-bg-surface:     #FFFFFF;
+  --db-bg-elevated:    #F0E8CC;
+  --db-bg-overlay:     #E8DCC0;
+  --db-border:         #111111;
+  --db-accent:         #FF5C38;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(100, 116, 139, 0.12);
-  --db-text-primary:   #f1f5f9;
-  --db-text-secondary: #94a3b8;
-  --db-text-tertiary:  #64748b;
+  --db-accent-bg:      rgba(255, 92, 56, 0.12);
+  --db-text-primary:   #111111;
+  --db-text-secondary: #555555;
+  --db-text-tertiary:  #888888;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         2px;
+  --db-radius-card:    2px;
+  --db-border-width:   2.5px;
+  --db-shadow:         4px 4px 0 #111111;
+  --db-shadow-btn:     3px 3px 0 #111111;
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            16px;
+  --db-gap:            12px;
+  --db-weight-strong:  700;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T6 · Sunset Orange (dark theme)
-   bg-base: #0f0800 · bg-surface: #130a00 · accent: #F97316 · text-primary: #fff7ed
+   T6 · Dark Pro (dark — monospace, dense, terminal feel)
+   bg-base: #0A0A0B  bg-surface: #151517  accent: #00E599  text: #F5F5F7
    ───────────────────────────────────────────────────────────── */
-.theme-sunset-orange,
-[data-db-theme="sunset-orange"] {
-  --db-bg-base:        #0f0800;
-  --db-bg-surface:     #130a00;
-  --db-bg-elevated:    #1e1200;
-  --db-bg-overlay:     #271800;
-  --db-border:         #1e1200;
-  --db-accent:         #F97316;
-  --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(249, 115, 22, 0.12);
-  --db-text-primary:   #fff7ed;
-  --db-text-secondary: #c4a882;
-  --db-text-tertiary:  #8a6a44;
+.theme-dark-pro,
+[data-db-theme="dark-pro"] {
+  --db-bg-base:        #0A0A0B;
+  --db-bg-surface:     #151517;
+  --db-bg-elevated:    #29292B;
+  --db-bg-overlay:     #38383A;
+  --db-border:         #29292B;
+  --db-accent:         #00E599;
+  --db-accent-text:    #04160F;
+  --db-accent-bg:      rgba(0, 229, 153, 0.12);
+  --db-text-primary:   #F5F5F7;
+  --db-text-secondary: #8A8A8C;
+  --db-text-tertiary:  #5A5A5C;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         10px;
+  --db-radius-card:    10px;
+  --db-border-width:   1px;
+  --db-shadow:         none;
+  --db-shadow-btn:     none;
+  --db-font:           ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --db-pad:            14px;
+  --db-gap:            10px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T7 · Rose Crimson (dark theme)
-   bg-base: #0f0005 · bg-surface: #130008 · accent: #E11D48 · text-primary: #fff1f2
+   T7 · Fintech (light — trustworthy, subdued green accent)
+   bg-base: #FCFCFA  bg-surface: #FFFFFF  accent: #1F6B4A  text: #1C1E1A
    ───────────────────────────────────────────────────────────── */
-.theme-rose-crimson,
-[data-db-theme="rose-crimson"] {
-  --db-bg-base:        #0f0005;
-  --db-bg-surface:     #130008;
-  --db-bg-elevated:    #1e0010;
-  --db-bg-overlay:     #280018;
-  --db-border:         #1e0010;
-  --db-accent:         #E11D48;
+.theme-fintech,
+[data-db-theme="fintech"] {
+  --db-bg-base:        #FCFCFA;
+  --db-bg-surface:     #FFFFFF;
+  --db-bg-elevated:    #EEEEED;
+  --db-bg-overlay:     #E5E5E3;
+  --db-border:         #EEEEED;
+  --db-accent:         #1F6B4A;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(225, 29, 72, 0.12);
-  --db-text-primary:   #fff1f2;
-  --db-text-secondary: #c88090;
-  --db-text-tertiary:  #8a4455;
+  --db-accent-bg:      rgba(31, 107, 74, 0.12);
+  --db-text-primary:   #1C1E1A;
+  --db-text-secondary: #5C6455;
+  --db-text-tertiary:  #8A9080;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         8px;
+  --db-radius-card:    8px;
+  --db-border-width:   1px;
+  --db-shadow:         0 1px 2px rgba(0, 0, 0, 0.05);
+  --db-shadow-btn:     none;
+  --db-font:           system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --db-pad:            18px;
+  --db-gap:            14px;
+  --db-weight-strong:  500;
+  --db-tracking:       0.01em;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T8 · Ocean Teal (dark theme)
-   bg-base: #040f12 · bg-surface: #051218 · accent: #0D9488 · text-primary: #f0fdfa
+   T8 · Editorial (light — serif, editorial warmth)
+   bg-base: #FAF8F3  bg-surface: #FFFFFF  accent: #8B2635  text: #1A1815
    ───────────────────────────────────────────────────────────── */
-.theme-ocean-teal,
-[data-db-theme="ocean-teal"] {
-  --db-bg-base:        #040f12;
-  --db-bg-surface:     #051218;
-  --db-bg-elevated:    #0c1e24;
-  --db-bg-overlay:     #102830;
-  --db-border:         #0c1e24;
-  --db-accent:         #0D9488;
+.theme-editorial,
+[data-db-theme="editorial"] {
+  --db-bg-base:        #FAF8F3;
+  --db-bg-surface:     #FFFFFF;
+  --db-bg-elevated:    #F0EDE4;
+  --db-bg-overlay:     #E8E4DB;
+  --db-border:         #E8E4DC;
+  --db-accent:         #8B2635;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(13, 148, 136, 0.12);
-  --db-text-primary:   #f0fdfa;
-  --db-text-secondary: #80c8be;
-  --db-text-tertiary:  #408880;
+  --db-accent-bg:      rgba(139, 38, 53, 0.12);
+  --db-text-primary:   #1A1815;
+  --db-text-secondary: #6B6560;
+  --db-text-tertiary:  #9E9890;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         4px;
+  --db-radius-card:    4px;
+  --db-border-width:   1px;
+  --db-shadow:         0 1px 2px rgba(0, 0, 0, 0.04);
+  --db-shadow-btn:     none;
+  --db-font:           Georgia, "Times New Roman", "Palatino Linotype", serif;
+  --db-pad:            20px;
+  --db-gap:            14px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T9 · Gold Black (dark theme)
-   bg-base: #080600 · bg-surface: #0a0800 · accent: #D97706 · text-primary: #fefce8
+   T9 · Compact (dark — monospace, information-dense)
+   bg-base: #14161A  bg-surface: #1B1E24  accent: #3B9EFF  text: #DCE0E6
    ───────────────────────────────────────────────────────────── */
-.theme-gold-black,
-[data-db-theme="gold-black"] {
-  --db-bg-base:        #080600;
-  --db-bg-surface:     #0a0800;
-  --db-bg-elevated:    #161200;
-  --db-bg-overlay:     #201a00;
-  --db-border:         #161200;
-  --db-accent:         #D97706;
-  --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(217, 119, 6, 0.12);
-  --db-text-primary:   #fefce8;
-  --db-text-secondary: #c8b870;
-  --db-text-tertiary:  #887a30;
+.theme-compact,
+[data-db-theme="compact"] {
+  --db-bg-base:        #14161A;
+  --db-bg-surface:     #1B1E24;
+  --db-bg-elevated:    #2F3238;
+  --db-bg-overlay:     #3E4148;
+  --db-border:         #2F3238;
+  --db-accent:         #3B9EFF;
+  --db-accent-text:    #04121F;
+  --db-accent-bg:      rgba(59, 158, 255, 0.12);
+  --db-text-primary:   #DCE0E6;
+  --db-text-secondary: #858A92;
+  --db-text-tertiary:  #565A62;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         4px;
+  --db-radius-card:    4px;
+  --db-border-width:   1px;
+  --db-shadow:         none;
+  --db-shadow-btn:     none;
+  --db-font:           ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --db-pad:            10px;
+  --db-gap:            6px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   T10 · Arctic White (light theme)
-   bg-base: #f8fafc · bg-surface: #ffffff · accent: #0EA5E9 · text-primary: #0f172a
+   T10 · Playful (light — vibrant purple, rounded)
+   bg-base: #FFF5FB  bg-surface: #FFFFFF  accent: #C44BD6  text: #3A2438
    ───────────────────────────────────────────────────────────── */
-.theme-arctic-white,
-[data-db-theme="arctic-white"] {
-  --db-bg-base:        #f8fafc;
-  --db-bg-surface:     #ffffff;
-  --db-bg-elevated:    #eef1f6;
-  --db-bg-overlay:     #e5e9f0;
-  --db-border:         #eef1f6;
-  --db-accent:         #0EA5E9;
+.theme-playful,
+[data-db-theme="playful"] {
+  --db-bg-base:        #FFF5FB;
+  --db-bg-surface:     #FFFFFF;
+  --db-bg-elevated:    #F5E6F5;
+  --db-bg-overlay:     #EBCFE8;
+  --db-border:         #F0E0EE;
+  --db-accent:         #C44BD6;
   --db-accent-text:    #ffffff;
-  --db-accent-bg:      rgba(14, 165, 233, 0.12);
-  --db-text-primary:   #0f172a;
-  --db-text-secondary: #475569;
-  --db-text-tertiary:  #94a3b8;
+  --db-accent-bg:      rgba(196, 75, 214, 0.12);
+  --db-text-primary:   #3A2438;
+  --db-text-secondary: #7A5880;
+  --db-text-tertiary:  #B09AB8;
   --db-success:        #22c55e;
   --db-warning:        #f59e0b;
   --db-danger:         #ef4444;
+
+  --db-radius:         14px;
+  --db-radius-card:    18px;
+  --db-border-width:   1px;
+  --db-shadow:         0 6px 20px rgba(196, 75, 214, 0.18);
+  --db-shadow-btn:     none;
+  --db-font:           "Trebuchet MS", system-ui, sans-serif;
+  --db-pad:            16px;
+  --db-gap:            14px;
+  --db-weight-strong:  500;
+  --db-tracking:       0;
 }

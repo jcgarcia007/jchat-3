@@ -51,7 +51,7 @@ export default async function TerminalLayout({
 
   return (
     <div
-      data-db-theme="midnight-blue"
+      data-db-theme="minimal"
       style={{
         minHeight: "100vh",
         background: "var(--db-bg-base)",

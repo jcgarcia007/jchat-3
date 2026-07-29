@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 // ─── Theme registry ──────────────────────────────────────────────────────────
 // id matches the position in the Design System table (1–10).
 // key is used both as the data-db-theme attribute value and as the CSS class
-// suffix (e.g. key "midnight-blue" → class "theme-midnight-blue").
+// suffix (e.g. key "minimal" → class "theme-minimal").
 // name is the human-readable display label.
 
 export interface DashboardThemeEntry {
@@ -15,16 +15,16 @@ export interface DashboardThemeEntry {
 }
 
 export const DASHBOARD_THEMES: DashboardThemeEntry[] = [
-  { id: 1,  key: "midnight-blue",  name: "Midnight Blue"  },
-  { id: 2,  key: "clean-white",    name: "Clean White"    },
-  { id: 3,  key: "forest-green",   name: "Forest Green"   },
-  { id: 4,  key: "royal-purple",   name: "Royal Purple"   },
-  { id: 5,  key: "slate-gray",     name: "Slate Gray"     },
-  { id: 6,  key: "sunset-orange",  name: "Sunset Orange"  },
-  { id: 7,  key: "rose-crimson",   name: "Rose Crimson"   },
-  { id: 8,  key: "ocean-teal",     name: "Ocean Teal"     },
-  { id: 9,  key: "gold-black",     name: "Gold Black"     },
-  { id: 10, key: "arctic-white",   name: "Arctic White"   },
+  { id: 1,  key: "minimal",       name: "Minimal"       },
+  { id: 2,  key: "clean",         name: "Clean"         },
+  { id: 3,  key: "glass",         name: "Glass"         },
+  { id: 4,  key: "soft",          name: "Soft"          },
+  { id: 5,  key: "neo-brutalist", name: "Neo-Brutalist" },
+  { id: 6,  key: "dark-pro",      name: "Dark Pro"      },
+  { id: 7,  key: "fintech",       name: "Fintech"       },
+  { id: 8,  key: "editorial",     name: "Editorial"     },
+  { id: 9,  key: "compact",       name: "Compact"       },
+  { id: 10, key: "playful",       name: "Playful"       },
 ];
 
 export function keyById(id: number): string {
