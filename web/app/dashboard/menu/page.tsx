@@ -395,7 +395,7 @@ function FieldInput({
       style={{
         width: "100%",
         padding: "9px 12px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "1px solid var(--db-border)",
         background: disabled ? "var(--db-bg-base)" : "var(--db-bg-elevated)",
         color: "var(--db-text-primary)",
@@ -450,7 +450,7 @@ function Toggle({
             borderRadius: "50%",
             background: "#fff",
             transition: "left 0.2s",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+            boxShadow: "var(--db-shadow)",
           }}
         />
       </div>
@@ -480,7 +480,7 @@ function Alert({
         alignItems: "flex-start",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: isError ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)",
         color: isError ? "var(--db-danger)" : "var(--db-success)",
         fontSize: "13px",
@@ -868,7 +868,7 @@ function ModifierGroupsEditor({
           style={{
             background: "var(--db-bg-elevated)",
             border: "1px solid var(--db-border)",
-            borderRadius: 8,
+            borderRadius: "var(--db-radius)",
             padding: 12,
             display: "flex",
             flexDirection: "column",
@@ -891,7 +891,7 @@ function ModifierGroupsEditor({
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "8px 12px",
-                  borderRadius: 6,
+                  borderRadius: "var(--db-radius)",
                   border: "1px solid var(--db-border)",
                   background: linked ? "var(--db-bg-surface)" : "var(--db-bg-surface)",
                   color: linked ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
@@ -950,7 +950,7 @@ function GroupCard({
     <div
       style={{
         border: "1px solid var(--db-border)",
-        borderRadius: 10,
+        borderRadius: "var(--db-radius-card)",
         overflow: "hidden",
         background: "var(--db-bg-surface)",
       }}
@@ -994,7 +994,7 @@ function GroupCard({
           style={{
             flex: 1,
             padding: "6px 10px",
-            borderRadius: 6,
+            borderRadius: "var(--db-radius)",
             border: "1px solid var(--db-border)",
             background: "var(--db-bg-card)",
             color: "var(--db-text-primary)",
@@ -1016,7 +1016,7 @@ function GroupCard({
           }}
           style={{
             padding: "6px 8px",
-            borderRadius: 6,
+            borderRadius: "var(--db-radius)",
             border: "1px solid var(--db-border)",
             background: "var(--db-bg-card)",
             color: "var(--db-text-secondary)",
@@ -1061,7 +1061,7 @@ function GroupCard({
                   max={group.max_select}
                   value={group.min_select}
                   onChange={(e) => onUpdate({ min_select: parseInt(e.target.value) || 0 })}
-                  style={{ width: 52, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
+                  style={{ width: 52, padding: "4px 8px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
                 />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1071,7 +1071,7 @@ function GroupCard({
                   min={1}
                   value={group.max_select}
                   onChange={(e) => onUpdate({ max_select: parseInt(e.target.value) || 1 })}
-                  style={{ width: 52, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
+                  style={{ width: 52, padding: "4px 8px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-card)", color: "var(--db-text-primary)", fontSize: 13, outline: "none" }}
                 />
               </div>
               <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>
@@ -1127,7 +1127,7 @@ function GroupCard({
 
 const optionInputStyle: React.CSSProperties = {
   padding: "7px 10px",
-  borderRadius: "7px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "var(--db-bg-elevated)",
   color: "var(--db-text-primary)",
@@ -1141,7 +1141,7 @@ const smallAddBtnStyle: React.CSSProperties = {
   alignItems: "center",
   gap: "4px",
   padding: "5px 10px",
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-secondary)",
@@ -1158,7 +1158,7 @@ const removeOptionBtnStyle: React.CSSProperties = {
   justifyContent: "center",
   width: 28,
   height: 28,
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-tertiary)",
@@ -1172,7 +1172,7 @@ const iconBtnStyle: React.CSSProperties = {
   justifyContent: "center",
   width: 30,
   height: 30,
-  borderRadius: "7px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-secondary)",
@@ -1185,7 +1185,7 @@ const reorderBtnStyle: React.CSSProperties = {
   justifyContent: "center",
   width: 22,
   height: 18,
-  borderRadius: "4px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-tertiary)",
@@ -1362,7 +1362,7 @@ function ItemEditorModal({
         style={{
           background: "var(--db-bg-surface)",
           border: "1px solid var(--db-border)",
-          borderRadius: "14px",
+          borderRadius: "var(--db-radius-card)",
           padding: "28px",
           width: "100%",
           maxWidth: 620,
@@ -1426,7 +1426,7 @@ function ItemEditorModal({
               style={{
                 width: "100%",
                 padding: "9px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "var(--db-bg-elevated)",
                 color: "var(--db-text-primary)",
@@ -1467,7 +1467,7 @@ function ItemEditorModal({
                   style={{
                     width: "100%",
                     padding: "9px 12px 9px 26px",
-                    borderRadius: "8px",
+                    borderRadius: "var(--db-radius)",
                     border: "1px solid var(--db-border)",
                     background: "var(--db-bg-elevated)",
                     color: "var(--db-text-primary)",
@@ -1533,7 +1533,7 @@ function ItemEditorModal({
                             width: "100%",
                             height: "100%",
                             objectFit: "cover",
-                            borderRadius: 8,
+                            borderRadius: "var(--db-radius)",
                             border: "1px solid var(--db-border)",
                           }}
                           onError={(e) => {
@@ -1551,7 +1551,7 @@ function ItemEditorModal({
                               background: "var(--db-accent)",
                               color: "#fff",
                               padding: "1px 5px",
-                              borderRadius: 4,
+                              borderRadius: "var(--db-radius)",
                               pointerEvents: "none",
                             }}
                           >
@@ -1597,7 +1597,7 @@ function ItemEditorModal({
                             width: "100%",
                             height: "100%",
                             objectFit: "cover",
-                            borderRadius: 8,
+                            borderRadius: "var(--db-radius)",
                             border: "2px dashed var(--db-accent)",
                             opacity: 0.9,
                           }}
@@ -1613,7 +1613,7 @@ function ItemEditorModal({
                               background: "var(--db-accent)",
                               color: "#fff",
                               padding: "1px 5px",
-                              borderRadius: 4,
+                              borderRadius: "var(--db-radius)",
                               pointerEvents: "none",
                             }}
                           >
@@ -1630,7 +1630,7 @@ function ItemEditorModal({
                             background: "rgba(0,0,0,0.6)",
                             color: "#fff",
                             padding: "1px 5px",
-                            borderRadius: 4,
+                            borderRadius: "var(--db-radius)",
                             pointerEvents: "none",
                           }}
                         >
@@ -1671,7 +1671,7 @@ function ItemEditorModal({
                     alignItems: "center",
                     gap: 6,
                     padding: "6px 14px",
-                    borderRadius: 8,
+                    borderRadius: "var(--db-radius)",
                     border: "1px dashed var(--db-border)",
                     background: "var(--db-bg-elevated)",
                     color: "var(--db-text-secondary)",
@@ -1707,7 +1707,7 @@ function ItemEditorModal({
                         marginTop: 6,
                         width: 64,
                         height: 64,
-                        borderRadius: 8,
+                        borderRadius: "var(--db-radius)",
                         overflow: "hidden",
                         border: "1px solid var(--db-border)",
                         background: "var(--db-bg-elevated)",
@@ -1777,7 +1777,7 @@ function ItemEditorModal({
                     onClick={() => set("badge", b.value)}
                     style={{
                       padding: "5px 14px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--db-radius)",
                       border: sel
                         ? "2px solid var(--db-accent)"
                         : "1px solid var(--db-border)",
@@ -1849,7 +1849,7 @@ function ItemEditorModal({
             onClick={onCancel}
             style={{
               padding: "9px 18px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "transparent",
               color: "var(--db-text-secondary)",
@@ -1867,7 +1867,7 @@ function ItemEditorModal({
               alignItems: "center",
               gap: "6px",
               padding: "9px 20px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "none",
               background:
                 saving || !form.name.trim() || !form.priceDollars.trim()
@@ -1995,7 +1995,7 @@ function CategoryFormPanel({
   const tabStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
     padding: "6px 0",
-    borderRadius: "6px",
+    borderRadius: "var(--db-radius)",
     border: "none",
     background: active ? "var(--db-accent)" : "transparent",
     color: active ? "var(--db-accent-text)" : "var(--db-text-secondary)",
@@ -2011,7 +2011,7 @@ function CategoryFormPanel({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-accent)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
@@ -2036,7 +2036,7 @@ function CategoryFormPanel({
           style={{
             display: "flex",
             background: "var(--db-bg-elevated)",
-            borderRadius: "7px",
+            borderRadius: "var(--db-radius)",
             padding: "2px",
             marginBottom: "10px",
             border: "1px solid var(--db-border)",
@@ -2094,7 +2094,7 @@ function CategoryFormPanel({
                     justifyContent: "center",
                     gap: 3,
                     padding: "6px 4px",
-                    borderRadius: "8px",
+                    borderRadius: "var(--db-radius)",
                     border: selected
                       ? "2px solid var(--db-accent)"
                       : "2px solid transparent",
@@ -2202,7 +2202,7 @@ function CategoryFormPanel({
           onClick={onCancel}
           style={{
             padding: "7px 14px",
-            borderRadius: "7px",
+            borderRadius: "var(--db-radius)",
             border: "1px solid var(--db-border)",
             background: "transparent",
             color: "var(--db-text-secondary)",
@@ -2220,7 +2220,7 @@ function CategoryFormPanel({
             alignItems: "center",
             gap: "5px",
             padding: "7px 14px",
-            borderRadius: "7px",
+            borderRadius: "var(--db-radius)",
             border: "none",
             background: saving || !form.name.trim() ? "var(--db-text-tertiary)" : "var(--db-accent)",
             color: "var(--db-accent-text)",
@@ -2275,7 +2275,7 @@ function ItemCard({
       style={{
         background: "var(--db-bg-elevated)",
         border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         padding: "14px",
         display: "flex",
         gap: "12px",
@@ -2288,7 +2288,7 @@ function ItemCard({
         style={{
           width: 56,
           height: 56,
-          borderRadius: 8,
+          borderRadius: "var(--db-radius)",
           overflow: "hidden",
           background: "var(--db-bg-overlay)",
           flexShrink: 0,
@@ -2564,7 +2564,7 @@ function CategorySection({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         overflow: "hidden",
       }}
     >
@@ -2725,7 +2725,7 @@ function CategorySection({
               alignItems: "center",
               gap: "6px",
               padding: "9px 14px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px dashed var(--db-border)",
               background: "transparent",
               color: "var(--db-text-tertiary)",
@@ -3679,7 +3679,7 @@ export default function MenuPage() {
         <div
           style={{
             padding: "12px 16px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "rgba(245,158,11,0.12)",
             color: "var(--db-warning)",
             fontSize: "13px",
@@ -3711,7 +3711,7 @@ export default function MenuPage() {
         style={{
           background: "var(--db-bg-card)",
           border: "1px solid var(--db-border)",
-          borderRadius: 12,
+          borderRadius: "var(--db-radius-card)",
           padding: "20px 24px",
           marginBottom: 24,
         }}
@@ -3729,7 +3729,7 @@ export default function MenuPage() {
             style={{
               display: "block",
               padding: "14px 16px",
-              borderRadius: 10,
+              borderRadius: "var(--db-radius-card)",
               border: `2px solid ${menuMode === "external" ? "var(--db-accent)" : "var(--db-border)"}`,
               background: menuMode === "external" ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
               cursor: "pointer",
@@ -3767,7 +3767,7 @@ export default function MenuPage() {
                     style={{
                       flex: 1,
                       padding: "8px 12px",
-                      borderRadius: 8,
+                      borderRadius: "var(--db-radius)",
                       border: "1px solid var(--db-border)",
                       background: "var(--db-bg-card)",
                       color: "var(--db-text-primary)",
@@ -3781,7 +3781,7 @@ export default function MenuPage() {
                     disabled={savingMode || !urlInput.trim()}
                     style={{
                       padding: "8px 16px",
-                      borderRadius: 8,
+                      borderRadius: "var(--db-radius)",
                       border: "none",
                       background: "var(--db-accent)",
                       color: "var(--db-accent-text)",
@@ -3821,7 +3821,7 @@ export default function MenuPage() {
             style={{
               display: "block",
               padding: "14px 16px",
-              borderRadius: 10,
+              borderRadius: "var(--db-radius-card)",
               border: `2px solid ${menuMode === "web" ? "var(--db-accent)" : "var(--db-border)"}`,
               background: menuMode === "web" ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
               cursor: savingMode ? "wait" : "pointer",
@@ -3904,7 +3904,7 @@ export default function MenuPage() {
           style={{
             background: "var(--db-bg-card)",
             border: "1px solid var(--db-border)",
-            borderRadius: 12,
+            borderRadius: "var(--db-radius-card)",
             padding: "20px 24px",
             marginBottom: 24,
           }}
@@ -3983,7 +3983,7 @@ export default function MenuPage() {
                     gap: 8,
                     padding: 8,
                     textAlign: "left",
-                    borderRadius: 12,
+                    borderRadius: "var(--db-radius-card)",
                     border: active
                       ? "2px solid var(--db-accent)"
                       : `1px solid ${hovered ? "var(--db-accent)" : "var(--db-border)"}`,
@@ -4000,7 +4000,7 @@ export default function MenuPage() {
                       position: "relative",
                       width: "100%",
                       aspectRatio: "3 / 4",
-                      borderRadius: 10,
+                      borderRadius: "var(--db-radius-card)",
                       overflow: "hidden",
                       background: "var(--db-bg-elevated)",
                     }}
@@ -4094,7 +4094,7 @@ export default function MenuPage() {
           style={{
             background: "var(--db-bg-card)",
             border: "1px solid var(--db-border)",
-            borderRadius: 12,
+            borderRadius: "var(--db-radius-card)",
             padding: "20px 24px",
             marginBottom: 24,
           }}
@@ -4161,7 +4161,7 @@ export default function MenuPage() {
                 width: "100%",
                 padding: "12px 14px",
                 marginBottom: 20,
-                borderRadius: 10,
+                borderRadius: "var(--db-radius-card)",
                 textAlign: "left",
                 border: menuPalette === null
                   ? "2px solid var(--db-accent)"
@@ -4231,7 +4231,7 @@ export default function MenuPage() {
                             gap: 6,
                             padding: 6,
                             textAlign: "left",
-                            borderRadius: 12,
+                            borderRadius: "var(--db-radius-card)",
                             border: active
                               ? "2px solid var(--db-accent)"
                               : "1px solid var(--db-border)",
@@ -4247,7 +4247,7 @@ export default function MenuPage() {
                             style={{
                               position: "relative",
                               background: p.bg,
-                              borderRadius: 8,
+                              borderRadius: "var(--db-radius)",
                               padding: 8,
                               height: 70,
                               display: "flex",
@@ -4263,7 +4263,7 @@ export default function MenuPage() {
                                 alignItems: "center",
                                 gap: 6,
                                 background: p.surface,
-                                borderRadius: 6,
+                                borderRadius: "var(--db-radius)",
                                 padding: "5px 7px",
                               }}
                             >
@@ -4360,7 +4360,7 @@ export default function MenuPage() {
           style={{
             background: "var(--db-bg-card)",
             border: "1px solid var(--db-border)",
-            borderRadius: 12,
+            borderRadius: "var(--db-radius-card)",
             padding: "20px 24px",
             marginBottom: 24,
           }}
@@ -4430,7 +4430,7 @@ export default function MenuPage() {
                     alignItems: "center",
                     gap: 10,
                     padding: "10px 12px",
-                    borderRadius: 10,
+                    borderRadius: "var(--db-radius-card)",
                     border: `2px solid ${active ? "var(--db-accent)" : "var(--db-border)"}`,
                     background: active ? "rgba(var(--db-accent-rgb, 92 124 250) / 0.06)" : "var(--db-bg-elevated)",
                     cursor: savingEffect ? "wait" : "pointer",
@@ -4514,7 +4514,7 @@ export default function MenuPage() {
               alignItems: "center",
               gap: "6px",
               padding: "9px 18px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "none",
               background: "var(--db-accent)",
               color: "var(--db-accent-text)",
@@ -4621,7 +4621,7 @@ export default function MenuPage() {
             padding: "12px 16px",
             background: "var(--db-bg-surface)",
             border: "1px solid var(--db-border)",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             display: "flex",
             gap: "24px",
             flexWrap: "wrap",
