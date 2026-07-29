@@ -95,7 +95,7 @@ function TextInput({
       style={{
         width: "100%",
         padding: "10px 12px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "1px solid var(--db-border)",
         background: "var(--db-bg-elevated)",
         color: "var(--db-text-primary)",
@@ -134,7 +134,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: s.bg,
         color: s.color,
         fontSize: "14px",
@@ -634,7 +634,7 @@ export default function LoyaltyPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius-card)",
               padding: "20px",
               marginBottom: "20px",
             }}
@@ -784,7 +784,7 @@ function Section({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "24px",
         marginBottom: "20px",
       }}
@@ -831,7 +831,7 @@ function TierBadge({ tier }: { tier: LoyaltyTier }) {
       style={{
         background: "var(--db-bg-elevated)",
         border: "1px solid var(--db-border)",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         padding: "10px 16px",
         minWidth: "130px",
       }}
@@ -872,7 +872,7 @@ function RewardRow({
       style={{
         background: "var(--db-bg-elevated)",
         border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         padding: "14px 18px",
         display: "flex",
         alignItems: "center",
@@ -884,7 +884,7 @@ function RewardRow({
         style={{
           width: 36,
           height: 36,
-          borderRadius: "8px",
+          borderRadius: "var(--db-radius)",
           background: "var(--db-accent-bg)",
           display: "flex",
           alignItems: "center",
@@ -968,7 +968,7 @@ function primaryBtnStyle(disabled: boolean): React.CSSProperties {
     alignItems: "center",
     gap: "6px",
     padding: "9px 18px",
-    borderRadius: "8px",
+    borderRadius: "var(--db-radius)",
     border: "none",
     background: disabled ? "var(--db-text-tertiary)" : "var(--db-accent)",
     color: "var(--db-accent-text)",
@@ -985,7 +985,7 @@ function secondaryBtnStyle(): React.CSSProperties {
     alignItems: "center",
     gap: "6px",
     padding: "8px 14px",
-    borderRadius: "8px",
+    borderRadius: "var(--db-radius)",
     border: "1px solid var(--db-border)",
     background: "transparent",
     color: "var(--db-text-secondary)",
@@ -998,7 +998,7 @@ function secondaryBtnStyle(): React.CSSProperties {
 function cancelBtnStyle(): React.CSSProperties {
   return {
     padding: "8px 16px",
-    borderRadius: "8px",
+    borderRadius: "var(--db-radius)",
     border: "1px solid var(--db-border)",
     background: "transparent",
     color: "var(--db-text-secondary)",

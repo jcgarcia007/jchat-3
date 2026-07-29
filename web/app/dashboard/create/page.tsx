@@ -22,7 +22,7 @@ import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 const CARD: React.CSSProperties = {
   background: "var(--db-bg-surface)",
   border: "1px solid var(--db-border)",
-  borderRadius: "14px",
+  borderRadius: "var(--db-radius-card)",
   padding: "26px 20px",
   textAlign: "center",
   maxWidth: "280px",
@@ -36,7 +36,7 @@ const ICON_BOX: React.CSSProperties = {
   justifyContent: "center",
   width: "52px",
   height: "52px",
-  borderRadius: "14px",
+  borderRadius: "var(--db-radius-card)",
   background: "var(--db-accent-bg)",
   color: "var(--db-accent)",
   marginBottom: "14px",

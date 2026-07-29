@@ -188,7 +188,7 @@ function AverageHeader({ avg, count }: AverageRating) {
         gap: "16px",
         padding: "20px 24px",
         background: "var(--db-bg-elevated)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         border: "1px solid var(--db-border)",
         marginBottom: "24px",
       }}
@@ -257,7 +257,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
       style={{
         background: "var(--db-bg-surface)",
         border: `1px solid ${isReported ? "var(--db-warning)" : "var(--db-border)"}`,
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "16px 20px",
         display: "flex",
         flexDirection: "column",
@@ -321,7 +321,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                   fontWeight: 600,
                   color: "var(--db-warning)",
                   background: "rgba(245,158,11,0.12)",
-                  borderRadius: "6px",
+                  borderRadius: "var(--db-radius)",
                   padding: "2px 7px",
                 }}
               >
@@ -338,7 +338,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                   fontWeight: 600,
                   color: "var(--db-text-tertiary)",
                   background: "var(--db-bg-elevated)",
-                  borderRadius: "6px",
+                  borderRadius: "var(--db-radius)",
                   padding: "2px 7px",
                 }}
               >
@@ -468,7 +468,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
               resize: "vertical",
               background: "var(--db-bg-base)",
               border: "1px solid var(--db-border)",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               padding: "10px 12px",
               fontSize: "13px",
               color: "var(--db-text-primary)",
@@ -495,7 +495,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
               disabled={saving || !draft.trim()}
               style={{
                 padding: "7px 18px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "none",
                 background: "var(--db-accent)",
                 color: "var(--db-accent-text)",
@@ -517,7 +517,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                 onClick={() => setShowResponseBox(false)}
                 style={{
                   padding: "7px 14px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   border: "1px solid var(--db-border)",
                   background: "none",
                   color: "var(--db-text-secondary)",
@@ -672,7 +672,7 @@ export default function ReviewsPage() {
             alignItems: "center",
             gap: "6px",
             padding: "8px 14px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             border: "1px solid var(--db-border)",
             background: "var(--db-bg-elevated)",
             color: "var(--db-text-secondary)",
@@ -710,7 +710,7 @@ export default function ReviewsPage() {
             padding: "16px 20px",
             background: "rgba(239,68,68,0.08)",
             border: "1px solid var(--db-danger)",
-            borderRadius: "10px",
+            borderRadius: "var(--db-radius-card)",
             color: "var(--db-danger)",
             fontSize: "14px",
           }}

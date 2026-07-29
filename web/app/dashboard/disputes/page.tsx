@@ -514,7 +514,7 @@ export default function DisputesPage() {
             onChange={(e) => setSelectedBusinessId(e.target.value || null)}
             style={{
               padding: "6px 10px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "var(--db-bg-elevated)",
               color: "var(--db-text-primary)",
@@ -588,7 +588,7 @@ export default function DisputesPage() {
             gap: "12px",
             padding: "64px 24px",
             border: "1px dashed var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
             textAlign: "center",
           }}
         >
@@ -619,7 +619,7 @@ export default function DisputesPage() {
         <div
           style={{
             border: "1px solid var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
             overflow: "hidden",
           }}
         >
@@ -652,7 +652,7 @@ export default function DisputesPage() {
             style={{
               background: "var(--db-bg-elevated)",
               border: "1px solid var(--db-border)",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               padding: "14px 16px",
               marginBottom: "20px",
             }}
@@ -1148,7 +1148,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: c.bg,
         color: c.color,
         fontSize: "13px",
@@ -1256,7 +1256,7 @@ function Modal({
           overflowY: "auto",
           background: "var(--db-bg-surface)",
           border: "1px solid var(--db-border)",
-          borderRadius: "14px",
+          borderRadius: "var(--db-radius-card)",
           padding: "24px",
           boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
         }}
@@ -1289,7 +1289,7 @@ function Modal({
               padding: "4px",
               color: "var(--db-text-tertiary)",
               display: "flex",
-              borderRadius: "6px",
+              borderRadius: "var(--db-radius)",
             }}
           >
             <IconX size={18} stroke={1.6} />
@@ -1306,7 +1306,7 @@ function Modal({
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "9px 12px",
-  borderRadius: "8px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "var(--db-bg-elevated)",
   color: "var(--db-text-primary)",
@@ -1317,7 +1317,7 @@ const inputStyle: React.CSSProperties = {
 
 const cancelBtn: React.CSSProperties = {
   padding: "8px 16px",
-  borderRadius: "8px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-secondary)",
@@ -1331,7 +1331,7 @@ function approveBtn(disabled: boolean): React.CSSProperties {
     alignItems: "center",
     gap: "6px",
     padding: "8px 16px",
-    borderRadius: "8px",
+    borderRadius: "var(--db-radius)",
     border: "none",
     background: disabled ? "var(--db-text-tertiary)" : "var(--db-success)",
     color: "var(--db-success-text, #ffffff)",
@@ -1347,7 +1347,7 @@ function rejectBtn(disabled: boolean): React.CSSProperties {
     alignItems: "center",
     gap: "6px",
     padding: "8px 16px",
-    borderRadius: "8px",
+    borderRadius: "var(--db-radius)",
     border: "none",
     background: disabled ? "var(--db-text-tertiary)" : "var(--db-danger)",
     color: "#ffffff",
@@ -1362,7 +1362,7 @@ const smallPrimaryBtn: React.CSSProperties = {
   alignItems: "center",
   gap: "4px",
   padding: "5px 10px",
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "none",
   background: "var(--db-success)",
   color: "#ffffff",
@@ -1377,7 +1377,7 @@ const smallDangerBtn: React.CSSProperties = {
   alignItems: "center",
   gap: "4px",
   padding: "5px 10px",
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "none",
   background: "var(--db-danger)",
   color: "#ffffff",
@@ -1393,7 +1393,7 @@ const expandBtn: React.CSSProperties = {
   justifyContent: "center",
   width: "28px",
   height: "28px",
-  borderRadius: "6px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "transparent",
   color: "var(--db-text-secondary)",
