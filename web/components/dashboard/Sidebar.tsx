@@ -159,7 +159,7 @@ export function Sidebar() {
               justifyContent: "center",
               width: "40px",
               height: "40px",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius)",
               textDecoration: "none",
               background: isActive ? "var(--db-bg-elevated)" : "transparent",
               borderLeft: isActive
@@ -221,7 +221,7 @@ export function Sidebar() {
               justifyContent: "center",
               width: "40px",
               height: "40px",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius)",
               textDecoration: "none",
               background: pathname.startsWith("/super-admin")
                 ? "var(--db-bg-elevated)"
