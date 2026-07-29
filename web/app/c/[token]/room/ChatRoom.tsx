@@ -191,8 +191,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Sender name/avatar cache, resolved from public_profiles (see ensureProfiles).
   const [profiles, setProfiles] = useState<Record<string, SenderProfile>>({});
-  // Business slug for the "Menú" button in the attach panel (businesses is public-read).
+  // Business slug + menu config → header icon + attach-panel "Menú" button.
   const [businessSlug, setBusinessSlug] = useState<string | null>(null);
+  const [menuEnabled, setMenuEnabled] = useState(false);
+  const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
+  const [externalMenuUrl, setExternalMenuUrl] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "no_access" | "error">("loading");
   const [roleMap, setRoleMap] = useState<Map<string, ChatRole>>(new Map());
   const [inputText, setInputText] = useState("");
@@ -266,6 +269,16 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     ? (presenceByRoom[activeRoomId] ?? [])
     : [{ userId, displayName: "Tú (demo)", avatarUrl: null, isIncognito: false }];
 
+  // Header menu icon: same routing logic as RoomHub for consistency.
+  const menuIsExternal = menuEnabled && menuMode === "external" && !!externalMenuUrl;
+  const menuIsWeb = menuEnabled && menuMode === "web" && !!businessSlug;
+  const showMenuIcon = menuIsExternal || menuIsWeb;
+
+  function handleHeaderMenu() {
+    if (menuIsExternal) window.open(externalMenuUrl!, "_blank", "noopener,noreferrer");
+    else if (menuIsWeb) router.push(`/m/${businessSlug}`);
+  }
+
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior, block: "end" });
@@ -284,17 +297,31 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     profilesRef.current = profiles;
   }, [profiles]);
 
-  // Business slug → the public menu at /m/[slug] (attach-panel "Menú" button).
+  // Business slug + menu config → header icon + attach-panel "Menú" button.
   useEffect(() => {
     if (!isSupabaseConfigured || !businessId) return;
     let cancelled = false;
     void (async () => {
       const { data } = await supabase
         .from("businesses")
-        .select("slug")
+        .select("slug, menu_enabled, menu_mode, external_menu_url")
         .eq("id", businessId)
         .maybeSingle();
-      if (!cancelled) setBusinessSlug((data as { slug?: string } | null)?.slug ?? null);
+      if (cancelled) return;
+      const row = data as {
+        slug?: string | null;
+        menu_enabled?: boolean | null;
+        menu_mode?: string | null;
+        external_menu_url?: string | null;
+      } | null;
+      setBusinessSlug(row?.slug ?? null);
+      setMenuEnabled(row?.menu_enabled ?? false);
+      setMenuMode(
+        row?.menu_mode === "external" ? "external"
+        : row?.menu_mode === "web" ? "web"
+        : "none"
+      );
+      setExternalMenuUrl(row?.external_menu_url ?? null);
     })();
     return () => {
       cancelled = true;
@@ -1053,6 +1080,31 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             {businessName}
           </div>
         </div>
+
+        {showMenuIcon && (
+          <button
+            type="button"
+            onClick={handleHeaderMenu}
+            aria-label="Menú"
+            style={{
+              marginLeft: "auto",
+              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              border: "none",
+              background: theme.inputBg,
+              color: theme.accent,
+              cursor: "pointer",
+              opacity: 0.9,
+            }}
+          >
+            <IconToolsKitchen2 size={20} />
+          </button>
+        )}
       </div>
 
       {/* Sub-chats bar — horizontal chips, one per room. Hidden if the business
