@@ -210,7 +210,7 @@ export default function KdsPage() {
       </p>
 
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", background: "rgba(239,68,68,0.12)", color: "var(--db-danger)", fontSize: "13px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "var(--db-radius)", background: "rgba(239,68,68,0.12)", color: "var(--db-danger)", fontSize: "13px", marginBottom: "16px" }}>
           <IconAlertCircle size={15} />
           {error}
         </div>
@@ -259,7 +259,7 @@ export default function KdsPage() {
 
 function KanbanColumn({ title, count, accent, children }: { title: string; count: number; accent: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", padding: "16px" }}>
+    <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", padding: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: accent }} />
         <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>{title}</h2>
@@ -272,7 +272,7 @@ function KanbanColumn({ title, count, accent, children }: { title: string; count
 
 function EmptyColumn({ text }: { text: string }) {
   return (
-    <div style={{ padding: "28px 12px", textAlign: "center", fontSize: "13px", color: "var(--db-text-tertiary)", border: "1px dashed var(--db-border)", borderRadius: "10px" }}>
+    <div style={{ padding: "28px 12px", textAlign: "center", fontSize: "13px", color: "var(--db-text-tertiary)", border: "1px dashed var(--db-border)", borderRadius: "var(--db-radius-card)" }}>
       {text}
     </div>
   );
@@ -290,7 +290,7 @@ function OrderCard({
   const t = useTranslations("dashboardCommon");
   const ActionIcon = action.icon;
   return (
-    <div style={{ background: "var(--db-bg-base)", border: "1px solid var(--db-border)", borderRadius: "10px", padding: "14px" }}>
+    <div style={{ background: "var(--db-bg-base)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", padding: "14px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
         <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>
           #{order.id.slice(0, 6)}
@@ -327,7 +327,7 @@ function OrderCard({
         disabled={updating}
         style={{
           width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
-          padding: "9px 12px", borderRadius: "8px", border: "none",
+          padding: "9px 12px", borderRadius: "var(--db-radius)", border: "none",
           background: "var(--db-accent)", color: "var(--db-accent-text)",
           fontSize: "13px", fontWeight: 600, cursor: updating ? "wait" : "pointer", opacity: updating ? 0.7 : 1,
         }}

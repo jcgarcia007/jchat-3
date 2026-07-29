@@ -281,7 +281,7 @@ export default function OrdersPage() {
       </div>
 
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", background: "rgba(239,68,68,0.12)", color: "var(--db-danger)", fontSize: "13px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "var(--db-radius)", background: "rgba(239,68,68,0.12)", color: "var(--db-danger)", fontSize: "13px", marginBottom: "16px" }}>
           <IconAlertCircle size={15} />
           {error}
         </div>
@@ -290,14 +290,14 @@ export default function OrdersPage() {
       {loading ? (
         <div style={{ padding: "40px", color: "var(--db-text-secondary)", fontSize: "14px" }}>{tCommon("loading")}</div>
       ) : visible.length === 0 ? (
-        <div style={{ padding: "48px 24px", textAlign: "center", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px" }}>
+        <div style={{ padding: "48px 24px", textAlign: "center", background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)" }}>
           <IconReceipt size={28} color="var(--db-text-tertiary)" />
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "10px 0 0" }}>
             {t(emptyMessageKey)}
           </p>
         </div>
       ) : (
-        <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", overflow: "hidden" }}>
+        <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", overflow: "hidden" }}>
           {/* header */}
           <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 80px", gap: "12px", padding: "12px 20px", fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--db-border)" }}>
             <span>{t("ordersColumnOrder")}</span>
@@ -330,7 +330,7 @@ export default function OrdersPage() {
                     <button
                       type="button"
                       onClick={() => setExpanded(open ? null : o.id)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
                     >
                       {t("ordersViewButton")} {open ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
                     </button>

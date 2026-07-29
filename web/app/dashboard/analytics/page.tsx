@@ -167,7 +167,7 @@ function Card({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        borderRadius: "var(--db-radius-card)",
         padding: "20px",
         ...style,
       }}
@@ -346,7 +346,7 @@ function RevenueTab({ data }: { data: DailyRevenue[] }) {
             <Tooltip
               labelFormatter={(v) => dayLabels[v as string] ?? (v as React.ReactNode)}
               formatter={(value: unknown, name: unknown) => [dollarFormatter(value as number), (name as string) === "revenue" ? t("analyticsRevenueSeriesLabel") : t("analyticsTipsSeriesLabel")]}
-              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius)", color: "var(--db-text-primary)" }}
             />
             <Legend wrapperStyle={{ fontSize: "12px", color: "var(--db-text-secondary)" }} />
             <Bar dataKey="revenue" name={t("analyticsRevenueSeriesLabel")} fill={accent} radius={[4, 4, 0, 0]} />
@@ -377,7 +377,7 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
               <YAxis type="category" dataKey="name" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(value: unknown) => [value as number, t("analyticsUnitsLabel")]}
-                contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+                contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius)", color: "var(--db-text-primary)" }}
               />
               <Bar dataKey="units" fill={accent} radius={[0, 4, 4, 0]}>
                 {data.map((_, index) => (
@@ -398,7 +398,7 @@ function ProductsTab({ data }: { data: ProductStat[] }) {
               <YAxis type="category" dataKey="name" tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(value: unknown) => [fmtDollars0(value as number), t("analyticsRevenueSeriesLabel")]}
-                contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+                contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius)", color: "var(--db-text-primary)" }}
               />
               <Bar dataKey="revenue" fill={warning} radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -465,7 +465,7 @@ function LoyaltyTab({ data }: { data: LoyaltyROI }) {
             <YAxis tickFormatter={fmtK} tick={{ fill: "var(--db-text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
               formatter={(value: unknown) => [fmtK(value as number), t("analyticsPointsUnitLabel")]}
-              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius)", color: "var(--db-text-primary)" }}
             />
             <Bar dataKey="points" fill={success} radius={[6, 6, 0, 0]} />
           </BarChart>
@@ -504,7 +504,7 @@ function UpgradePrompt() {
       <button
         style={{
           padding: "12px 28px",
-          borderRadius: "10px",
+          borderRadius: "var(--db-radius)",
           border: "none",
           background: "var(--db-accent)",
           color: "var(--db-accent-text, #fff)",
@@ -681,7 +681,7 @@ function RealKpiBand({ kpis }: { kpis: RealKpis }) {
             <Tooltip
               labelFormatter={(v) => dayLabels[v as string] ?? (v as React.ReactNode)}
               formatter={(value: unknown) => [value as number, t("analyticsOrdersLabel")]}
-              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "8px", color: "var(--db-text-primary)" }}
+              contentStyle={{ background: "var(--db-bg-elevated)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius)", color: "var(--db-text-primary)" }}
             />
             <Bar dataKey="orders" fill={accent} radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -992,7 +992,7 @@ export default function AnalyticsPage() {
               alignItems: "center",
               gap: "6px",
               padding: "8px 14px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "var(--db-bg-surface)",
               color: "var(--db-text-primary)",
@@ -1012,7 +1012,7 @@ export default function AnalyticsPage() {
               alignItems: "center",
               gap: "6px",
               padding: "8px 14px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "none",
               background: "var(--db-accent)",
               color: "var(--db-accent-text, #fff)",
