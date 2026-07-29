@@ -279,6 +279,7 @@ export type Database = {
           country: string
           cover_url: string | null
           created_at: string
+          dashboard_palette_id: number | null
           dashboard_theme_id: number
           description: string | null
           event_ends_at: string | null
@@ -334,6 +335,7 @@ export type Database = {
           country?: string
           cover_url?: string | null
           created_at?: string
+          dashboard_palette_id?: number | null
           dashboard_theme_id?: number
           description?: string | null
           event_ends_at?: string | null
@@ -389,6 +391,7 @@ export type Database = {
           country?: string
           cover_url?: string | null
           created_at?: string
+          dashboard_palette_id?: number | null
           dashboard_theme_id?: number
           description?: string | null
           event_ends_at?: string | null

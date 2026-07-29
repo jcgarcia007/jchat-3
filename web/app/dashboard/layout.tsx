@@ -23,6 +23,7 @@ export default async function DashboardLayout({
   // (minimal); demo mode keeps the default. The client-side
   // DashboardThemeProvider owns the live theme + data-db-theme attribute.
   let initialThemeId = 1;
+  let initialPaletteId: number | null = null;
 
   // Auth gate: require an authenticated session to access the dashboard.
   // Skipped only when Supabase is unconfigured (local/demo without a backend),
@@ -73,14 +74,15 @@ export default async function DashboardLayout({
       }
     }
 
-    // Seed the dashboard theme from the owner's business.
+    // Seed the dashboard theme + palette from the owner's business.
     const { data: biz } = await supabase
       .from("businesses")
-      .select("dashboard_theme_id")
+      .select("dashboard_theme_id, dashboard_palette_id")
       .eq("owner_id", user.id)
       .limit(1)
       .maybeSingle();
     initialThemeId = biz?.dashboard_theme_id ?? 1;
+    initialPaletteId = biz?.dashboard_palette_id ?? null;
   }
 
   // Dashboard 4A rollout flag (Fase 0). Default OFF: without this env var set to
@@ -90,7 +92,7 @@ export default async function DashboardLayout({
   const useNewNav = process.env.NEXT_PUBLIC_NEW_DASHBOARD === "true";
 
   return (
-    <DashboardThemeProvider initialThemeId={initialThemeId}>
+    <DashboardThemeProvider initialThemeId={initialThemeId} initialPaletteId={initialPaletteId}>
       {useNewNav ? (
         <NewDashboardShell>{children}</NewDashboardShell>
       ) : (

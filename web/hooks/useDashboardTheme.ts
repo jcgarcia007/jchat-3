@@ -31,6 +31,36 @@ export function keyById(id: number): string {
   return DASHBOARD_THEMES.find((t) => t.id === id)?.key ?? DASHBOARD_THEMES[0].key;
 }
 
+// ─── Palette registry ─────────────────────────────────────────────────────────
+// A palette overrides ONLY the accent tokens (--db-accent, --db-accent-bg,
+// --db-accent-text) without touching backgrounds, structure, or light/dark mode.
+// null palette = native accent from the active theme.
+
+export interface DashboardPaletteEntry {
+  id: number;
+  key: string;
+  name: string;
+  accent: string;
+}
+
+export const DASHBOARD_PALETTES: DashboardPaletteEntry[] = [
+  { id: 1,  key: "indigo",   name: "Índigo",    accent: "#6366F1" },
+  { id: 2,  key: "emerald",  name: "Esmeralda", accent: "#10B981" },
+  { id: 3,  key: "amber",    name: "Ámbar",     accent: "#F59E0B" },
+  { id: 4,  key: "rose",     name: "Rosa",      accent: "#F43F5E" },
+  { id: 5,  key: "teal",     name: "Teal",      accent: "#14B8A6" },
+  { id: 6,  key: "violet",   name: "Violeta",   accent: "#8B5CF6" },
+  { id: 7,  key: "red",      name: "Rojo",      accent: "#EF4444" },
+  { id: 8,  key: "graphite", name: "Grafito",   accent: "#64748B" },
+  { id: 9,  key: "sky",      name: "Cielo",     accent: "#0EA5E9" },
+  { id: 10, key: "lime",     name: "Lima",      accent: "#84CC16" },
+];
+
+export function paletteKeyById(id: number | null): string | null {
+  if (id === null) return null;
+  return DASHBOARD_PALETTES.find((p) => p.id === id)?.key ?? null;
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 // Accepts the initial theme id (e.g. from businesses.dashboard_theme_id), sets
 // `data-db-theme` on the target element, and returns the current key + setter.

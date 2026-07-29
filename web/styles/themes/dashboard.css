@@ -381,3 +381,70 @@
   --db-weight-strong:  500;
   --db-tracking:       0;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Palettes — override ONLY the 3 accent tokens.
+   These blocks MUST come after theme blocks to win the cascade
+   (same attribute-selector specificity; source order decides).
+   null palette = no attribute = native theme accent.
+   ───────────────────────────────────────────────────────────── */
+
+[data-db-palette="indigo"] {
+  --db-accent:      #6366F1;
+  --db-accent-bg:   rgba(99, 102, 241, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="emerald"] {
+  --db-accent:      #10B981;
+  --db-accent-bg:   rgba(16, 185, 129, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="amber"] {
+  --db-accent:      #F59E0B;
+  --db-accent-bg:   rgba(245, 158, 11, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="rose"] {
+  --db-accent:      #F43F5E;
+  --db-accent-bg:   rgba(244, 63, 94, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="teal"] {
+  --db-accent:      #14B8A6;
+  --db-accent-bg:   rgba(20, 184, 166, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="violet"] {
+  --db-accent:      #8B5CF6;
+  --db-accent-bg:   rgba(139, 92, 246, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="red"] {
+  --db-accent:      #EF4444;
+  --db-accent-bg:   rgba(239, 68, 68, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="graphite"] {
+  --db-accent:      #64748B;
+  --db-accent-bg:   rgba(100, 116, 139, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="sky"] {
+  --db-accent:      #0EA5E9;
+  --db-accent-bg:   rgba(14, 165, 233, 0.12);
+  --db-accent-text: #ffffff;
+}
+
+[data-db-palette="lime"] {
+  --db-accent:      #84CC16;
+  --db-accent-bg:   rgba(132, 204, 22, 0.12);
+  --db-accent-text: #ffffff;
+}
