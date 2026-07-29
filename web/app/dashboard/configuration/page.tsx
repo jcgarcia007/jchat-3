@@ -41,7 +41,8 @@ import { resolveActiveBusiness } from "@/lib/business";
 import { DASHBOARD_THEMES } from "@/hooks/useDashboardTheme";
 import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
-import { LocationEditor } from "@/components/dashboard/LocationEditor";
+import { APIProvider } from "@vis.gl/react-google-maps";
+import { LocationEditor, MAPS_KEY } from "@/components/dashboard/LocationEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -605,7 +606,8 @@ export default function ConfigurationPage() {
   const noBiz = !loadingBiz && isSupabaseConfigured && !businessId;
 
   // ── Render ────────────────────────────────────────────────────────────────────
-  return (
+  const hasMapsKey = MAPS_KEY.length > 0;
+  const pageContent = (
     <div style={{ maxWidth: 860 }}>
       {/* Page header */}
       <div style={{ marginBottom: "28px" }}>
@@ -1277,4 +1279,5 @@ export default function ConfigurationPage() {
       </Section>
     </div>
   );
+  return hasMapsKey ? <APIProvider apiKey={MAPS_KEY}>{pageContent}</APIProvider> : pageContent;
 }

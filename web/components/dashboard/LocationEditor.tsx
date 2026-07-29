@@ -30,7 +30,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { APIProvider, Map as GMap, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { Map as GMap, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
   IconMapPin,
   IconCheck,
@@ -42,7 +42,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Json } from "@/lib/database.types";
 
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+export const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 // Fallback view when the business has no saved coordinates: center of the USA.
 const DEFAULT_CENTER = { lat: 39.5, lng: -98.35 };
 
@@ -509,7 +509,7 @@ export function LocationEditor({
       )}
 
       {hasKey ? (
-        <APIProvider apiKey={MAPS_KEY}>
+        <>
           <div style={{ marginBottom: "12px" }}>
             <PlacesSearch onPlace={(p) => { setLat(p.lat); setLng(p.lng); setRecenterTo(p); }} />
           </div>
@@ -574,7 +574,7 @@ export function LocationEditor({
             {t("locationInstructionsPin")}
           </p>
           {controls}
-        </APIProvider>
+        </>
       ) : (
         <>
           <div style={{ padding: "10px 14px", borderRadius: "8px", background: "rgba(245,158,11,0.10)", color: "var(--db-warning)", fontSize: "13px", marginBottom: "12px" }}>
