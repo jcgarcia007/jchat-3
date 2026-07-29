@@ -4,8 +4,10 @@ import { useTranslations } from "next-intl";
 import { IconTrendingUp, IconCurrencyDollar, IconUsers } from "@tabler/icons-react";
 
 interface ThemePreviewProps {
-  /** data-db-theme key, e.g. "midnight-blue" */
+  /** data-db-theme key, e.g. "minimal" */
   themeKey: string;
+  /** Optional palette key to layer on top of the theme */
+  paletteKey?: string | null;
   /** Optional display label shown below the preview card */
   label?: string;
 }
@@ -18,7 +20,7 @@ interface ThemePreviewProps {
  *
  * All colours reference `var(--db-*)` tokens exclusively — no hardcoded hex.
  */
-export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
+export function ThemePreview({ themeKey, paletteKey, label }: ThemePreviewProps) {
   const t = useTranslations("dashboardCommon");
   // Simulated bar-chart heights (purely decorative)
   const bars = [40, 65, 50, 80, 60, 90, 70];
@@ -26,6 +28,7 @@ export function ThemePreview({ themeKey, label }: ThemePreviewProps) {
   return (
     <div
       data-db-theme={themeKey}
+      data-db-palette={paletteKey ?? undefined}
       style={{
         display: "inline-flex",
         flexDirection: "column",

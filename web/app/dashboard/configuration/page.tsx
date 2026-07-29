@@ -40,7 +40,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
-import { DASHBOARD_THEMES } from "@/hooks/useDashboardTheme";
+import { DASHBOARD_THEMES, DASHBOARD_PALETTES } from "@/hooks/useDashboardTheme";
 import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
@@ -66,6 +66,7 @@ interface BusinessRow {
   tip_percentages: number[] | null;
   payout_frequency: "daily" | "weekly" | "monthly" | null;
   dashboard_theme_id?: number;
+  dashboard_palette_id?: number | null;
 }
 
 /** Shape stored in businesses.hours (JSONB) */
@@ -554,11 +555,12 @@ export default function ConfigurationPage() {
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [savingMenu, setSavingMenu] = useState(false);
 
-  // ── Section 6: Dashboard theme ────────────────────────────────────────────────
+  // ── Section 6: Dashboard theme + palette ─────────────────────────────────────
   // Shared with the layout via context so the picker updates the layout's
-  // data-db-theme wrapper (not a local, isolated copy).
-  const { themeId, setThemeId } = useDashboardThemeContext();
+  // data-db-theme / data-db-palette wrappers (not local, isolated copies).
+  const { themeId, setThemeId, paletteId, paletteKey, setPaletteId } = useDashboardThemeContext();
   const [savingTheme, setSavingTheme] = useState(false);
+  const [savingPalette, setSavingPalette] = useState(false);
 
   // ── Section 7: Tips ───────────────────────────────────────────────────────────
   const [tipsEnabled, setTipsEnabled] = useState(false);
@@ -604,7 +606,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -628,12 +630,13 @@ export default function ConfigurationPage() {
       setTipPercentages(b.tip_percentages ?? [15, 18, 20]);
       setPayoutFrequency(b.payout_frequency ?? "weekly");
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
+      setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
       // ignore unexpected errors — businessId stays null → noBiz banner
     } finally {
       setLoadingBiz(false);
     }
-  }, [setThemeId]);
+  }, [setThemeId, setPaletteId]);
 
   useEffect(() => { void loadBusiness(); }, [loadBusiness]);
 
@@ -819,6 +822,24 @@ export default function ConfigurationPage() {
       }
     },
     [patch, setThemeId, t]
+  );
+
+  const handlePalettePick = useCallback(
+    async (id: number | null) => {
+      setPaletteId(id); // instant visual update
+      setSavingPalette(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        await patch({ dashboard_palette_id: id });
+        setSuccess(t("configurationPaletteSavedSuccess"));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setSavingPalette(false);
+      }
+    },
+    [patch, setPaletteId, t]
   );
 
   const handleSaveTips = () =>
@@ -1490,20 +1511,17 @@ export default function ConfigurationPage() {
         </p>
       </Section>
 
-      {/* ── 6. Dashboard Theme ──────────────────────────────────────────────── */}
+      {/* ── 6. Dashboard Theme + Palette ────────────────────────────────────── */}
       <Section
         icon={<IconPalette size={18} color="var(--db-accent)" />}
         title={t("configurationThemeSectionTitle")}
         subtitle={t("configurationThemeSectionSubtitle")}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "14px",
-            marginBottom: "16px",
-          }}
-        >
+        {/* ── 6A. Personality theme ─────────────────────────────────────────── */}
+        <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)", margin: "0 0 12px 0" }}>
+          {t("configurationThemeAxisLabel")}
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", marginBottom: "8px" }}>
           {DASHBOARD_THEMES.map((ot) => {
             const isActive = themeId === ot.id;
             return (
@@ -1512,9 +1530,7 @@ export default function ConfigurationPage() {
                 onClick={() => void handleThemePick(ot.id)}
                 style={{
                   background: "none",
-                  border: isActive
-                    ? "2px solid var(--db-accent)"
-                    : "2px solid transparent",
+                  border: isActive ? "2px solid var(--db-accent)" : "2px solid transparent",
                   borderRadius: "var(--db-radius-card)",
                   padding: "4px",
                   cursor: "pointer",
@@ -1524,14 +1540,74 @@ export default function ConfigurationPage() {
                 aria-label={t("configurationSelectThemeAria", { name: ot.name })}
                 aria-pressed={isActive}
               >
-                <ThemePreview themeKey={ot.key} label={ot.name} />
+                <ThemePreview themeKey={ot.key} label={ot.name} paletteKey={paletteKey} />
               </button>
             );
           })}
         </div>
         {savingTheme && (
-          <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+          <span style={{ fontSize: "13px", color: "var(--db-text-secondary)", display: "block", marginBottom: "8px" }}>
             {t("configurationSavingThemeState")}
+          </span>
+        )}
+
+        {/* ── 6B. Accent palette ────────────────────────────────────────────── */}
+        <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)", margin: "20px 0 12px 0" }}>
+          {t("configurationPaletteAxisLabel")}
+        </p>
+        <div
+          style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "8px" }}
+          role="radiogroup"
+          aria-label={t("configurationSelectPaletteAria")}
+        >
+          {/* "Sin paleta" — native theme accent */}
+          <button
+            onClick={() => void handlePalettePick(null)}
+            title={t("configurationPaletteNone")}
+            aria-pressed={paletteId === null}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              border: paletteId === null ? "3px solid var(--db-accent)" : "2px solid var(--db-border)",
+              cursor: "pointer",
+              background: "conic-gradient(from 0deg, #EF4444, #F59E0B, #10B981, #6366F1, #8B5CF6, #EF4444)",
+              boxShadow: paletteId === null ? "0 0 0 2px var(--db-bg-base), 0 0 0 4px var(--db-accent)" : "none",
+              transition: "border-color 0.15s, box-shadow 0.15s",
+              flexShrink: 0,
+            }}
+          />
+          {DASHBOARD_PALETTES.map((p) => {
+            const isActive = paletteId === p.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => void handlePalettePick(p.id)}
+                title={p.name}
+                aria-pressed={isActive}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "none",
+                  cursor: "pointer",
+                  background: p.accent,
+                  boxShadow: isActive
+                    ? `0 0 0 2px var(--db-bg-base), 0 0 0 4px ${p.accent}`
+                    : "none",
+                  transition: "box-shadow 0.15s",
+                  flexShrink: 0,
+                }}
+              />
+            );
+          })}
+        </div>
+        <p style={{ fontSize: "12px", color: "var(--db-text-secondary)", margin: "0 0 8px 0" }}>
+          {t("configurationPaletteNoneHint")}
+        </p>
+        {savingPalette && (
+          <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+            {t("configurationSavingPaletteState")}
           </span>
         )}
       </Section>
