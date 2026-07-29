@@ -42,6 +42,7 @@ export function DashboardThemeProvider({
           flexDirection: "column",
           flex: 1,
           minHeight: "100vh",
+          fontFamily: "var(--db-font)",
         }}
       >
         {children}

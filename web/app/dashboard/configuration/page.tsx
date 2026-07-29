@@ -146,7 +146,7 @@ function TimeSelect12h({
 
   const sel: React.CSSProperties = {
     padding: "7px 4px",
-    borderRadius: "7px",
+    borderRadius: "var(--db-radius)",
     border: "1px solid var(--db-border)",
     background: "var(--db-bg-elevated)",
     color: disabled ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
@@ -207,11 +207,12 @@ function Section({
   return (
     <div
       style={{
-        background: "var(--db-bg-surface)",
-        border: "1px solid var(--db-border)",
-        borderRadius: "12px",
+        background: "var(--db-card-bg)",
+        border: "var(--db-border-width) solid var(--db-border)",
+        borderRadius: "var(--db-radius-card)",
         padding: "24px",
         marginBottom: "20px",
+        boxShadow: "var(--db-shadow)",
       }}
     >
       <div
@@ -292,7 +293,7 @@ function TextInput({
       style={{
         width: "100%",
         padding: "10px 12px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "1px solid var(--db-border)",
         background: disabled ? "var(--db-bg-elevated)" : "var(--db-bg-elevated)",
         color: disabled ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
@@ -352,7 +353,7 @@ function AddressAutocompleteInput({
       style={{
         width: "100%",
         padding: "10px 12px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "1px solid var(--db-border)",
         background: "var(--db-bg-elevated)",
         color: "var(--db-text-primary)",
@@ -442,7 +443,7 @@ function AlertBanner({
         alignItems: "center",
         gap: "8px",
         padding: "12px 16px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         background: p.bg,
         color: p.color,
         fontSize: "14px",
@@ -477,7 +478,7 @@ function PrimaryBtn({
         alignItems: "center",
         gap: "6px",
         padding: "9px 18px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "none",
         background: dis ? "var(--db-text-tertiary)" : "var(--db-accent)",
         color: "var(--db-accent-text)",
@@ -939,7 +940,7 @@ export default function ConfigurationPage() {
               style={{
                 width: "100%",
                 padding: "10px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "var(--db-bg-elevated)",
                 color: "var(--db-text-primary)",
@@ -1041,7 +1042,7 @@ export default function ConfigurationPage() {
               onClick={apply}
               style={{
                 padding: "5px 14px",
-                borderRadius: "20px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "var(--db-bg-elevated)",
                 color: "var(--db-accent)",
@@ -1164,7 +1165,7 @@ export default function ConfigurationPage() {
                     border: "none",
                     cursor: "pointer",
                     color: "var(--db-text-tertiary)",
-                    borderRadius: "6px",
+                    borderRadius: "var(--db-radius)",
                     padding: 0,
                     flexShrink: 0,
                   }}
@@ -1197,7 +1198,7 @@ export default function ConfigurationPage() {
             style={{
               width: "100%",
               height: "140px",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius)",
               overflow: "hidden",
               marginBottom: "14px",
               background: "var(--db-bg-elevated)",
@@ -1232,7 +1233,7 @@ export default function ConfigurationPage() {
                 alignItems: "center",
                 gap: "6px",
                 padding: "9px 16px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "transparent",
                 color: "var(--db-accent)",
@@ -1287,7 +1288,7 @@ export default function ConfigurationPage() {
                 alignItems: "center",
                 gap: "6px",
                 padding: "7px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "transparent",
                 color: "var(--db-accent)",
@@ -1340,7 +1341,7 @@ export default function ConfigurationPage() {
               alignItems: "center",
               gap: "6px",
               padding: "9px 16px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "transparent",
               color: "var(--db-accent)",
@@ -1370,7 +1371,7 @@ export default function ConfigurationPage() {
                   alignItems: "center",
                   gap: "12px",
                   padding: "10px 14px",
-                  borderRadius: "10px",
+                  borderRadius: "var(--db-radius)",
                   background: "var(--db-bg-elevated)",
                   border: "1px solid var(--db-border)",
                 }}
@@ -1380,7 +1381,7 @@ export default function ConfigurationPage() {
                   style={{
                     width: "48px",
                     height: "36px",
-                    borderRadius: "6px",
+                    borderRadius: "var(--db-radius)",
                     overflow: "hidden",
                     flexShrink: 0,
                     background: "var(--db-border)",
@@ -1514,7 +1515,7 @@ export default function ConfigurationPage() {
                   border: isActive
                     ? "2px solid var(--db-accent)"
                     : "2px solid transparent",
-                  borderRadius: "12px",
+                  borderRadius: "var(--db-radius-card)",
                   padding: "4px",
                   cursor: "pointer",
                   transition: "border-color 0.15s",
@@ -1613,7 +1614,7 @@ export default function ConfigurationPage() {
                   alignItems: "center",
                   gap: "6px",
                   padding: "10px 14px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   border: "1px solid var(--db-border)",
                   background: "transparent",
                   color: "var(--db-accent)",
@@ -1658,7 +1659,7 @@ export default function ConfigurationPage() {
                 onClick={() => setPayoutFrequency(opt.value)}
                 style={{
                   padding: "9px 20px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   border: isActive
                     ? "2px solid var(--db-accent)"
                     : "1px solid var(--db-border)",
