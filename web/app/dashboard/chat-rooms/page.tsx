@@ -317,7 +317,7 @@ export default function ChatRoomsPage() {
               alignItems: "center",
               gap: "6px",
               padding: "9px 16px",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius)",
               background: showForm ? "var(--db-bg-elevated)" : "var(--db-accent)",
               color: showForm ? "var(--db-text-secondary)" : "var(--db-accent-text)",
               border: "none",
@@ -343,7 +343,7 @@ export default function ChatRoomsPage() {
           style={{
             background: "var(--db-bg-surface)",
             border: "1px solid var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
             padding: "20px",
             marginBottom: "20px",
             display: "flex",
@@ -375,7 +375,7 @@ export default function ChatRoomsPage() {
                     fontSize: "18px",
                     width: "32px",
                     height: "32px",
-                    borderRadius: "8px",
+                    borderRadius: "var(--db-radius)",
                     border: "none",
                     cursor: "pointer",
                     background: e === newEmoji ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
@@ -395,7 +395,7 @@ export default function ChatRoomsPage() {
               alignItems: "center",
               gap: "6px",
               padding: "10px 18px",
-              borderRadius: "10px",
+              borderRadius: "var(--db-radius)",
               background: "var(--db-accent)",
               color: "var(--db-accent-text)",
               border: "none",
@@ -418,7 +418,7 @@ export default function ChatRoomsPage() {
             alignItems: "center",
             gap: "8px",
             padding: "10px 14px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "rgba(239,68,68,0.12)",
             color: "var(--db-danger)",
             fontSize: "13px",
@@ -441,13 +441,13 @@ export default function ChatRoomsPage() {
             fontSize: "14px",
             background: "var(--db-bg-surface)",
             border: "1px solid var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
           }}
         >
           {t("chatRoomsEmptyState")}
         </div>
       ) : (
-        <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "12px", overflow: "hidden" }}>
+        <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", overflow: "hidden" }}>
           {/* Header */}
           <div
             style={{
@@ -520,7 +520,7 @@ export default function ChatRoomsPage() {
                       alignItems: "center",
                       gap: "6px",
                       padding: "7px 12px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--db-radius)",
                       background: "var(--db-accent)",
                       color: "var(--db-accent-text)",
                       fontSize: "13px",
@@ -541,7 +541,7 @@ export default function ChatRoomsPage() {
                       alignItems: "center",
                       gap: "6px",
                       padding: "7px 10px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--db-radius)",
                       border: "1px solid var(--db-border)",
                       background: "var(--db-bg-elevated)",
                       color: "var(--db-text-secondary)",
@@ -573,7 +573,7 @@ export default function ChatRoomsPage() {
                       alignItems: "center",
                       gap: "6px",
                       padding: "7px 10px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--db-radius)",
                       border: "1px solid var(--db-border)",
                       background: "var(--db-bg-elevated)",
                       color: "var(--db-accent)",
@@ -595,7 +595,7 @@ export default function ChatRoomsPage() {
                         alignItems: "center",
                         gap: "4px",
                         padding: "7px 10px",
-                        borderRadius: "8px",
+                        borderRadius: "var(--db-radius)",
                         background: "var(--db-bg-elevated)",
                         color: "var(--db-text-secondary)",
                         fontSize: "13px",
@@ -636,7 +636,7 @@ export default function ChatRoomsPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "16px",
+              borderRadius: "var(--db-radius-card)",
               padding: "24px",
               width: "340px",
               maxWidth: "100%",
@@ -663,7 +663,7 @@ export default function ChatRoomsPage() {
                     justifyContent: "center",
                     width: "26px",
                     height: "26px",
-                    borderRadius: "6px",
+                    borderRadius: "var(--db-radius)",
                     border: "1px solid var(--db-border)",
                     background: "var(--db-bg-elevated)",
                     color: "var(--db-text-secondary)",
@@ -697,7 +697,7 @@ export default function ChatRoomsPage() {
                   alignItems: "center",
                   gap: "8px",
                   padding: "8px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   background: "rgba(239,68,68,0.12)",
                   color: "var(--db-danger)",
                   fontSize: "12px",
@@ -712,7 +712,7 @@ export default function ChatRoomsPage() {
             <div
               style={{
                 background: "#ffffff",
-                borderRadius: "12px",
+                borderRadius: "var(--db-radius-card)",
                 padding: "16px",
                 display: "flex",
                 alignItems: "center",
@@ -766,7 +766,7 @@ export default function ChatRoomsPage() {
                   justifyContent: "center",
                   gap: "6px",
                   padding: "9px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   border: "1px solid var(--db-border)",
                   background: "var(--db-bg-elevated)",
                   color: "var(--db-text-primary)",
@@ -798,7 +798,7 @@ export default function ChatRoomsPage() {
                   justifyContent: "center",
                   gap: "6px",
                   padding: "9px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   background: "var(--db-accent)",
                   color: "var(--db-accent-text)",
                   border: "none",
@@ -840,7 +840,7 @@ export default function ChatRoomsPage() {
             style={{
               background: "var(--db-bg-surface)",
               border: "1px solid var(--db-border)",
-              borderRadius: "14px",
+              borderRadius: "var(--db-radius-card)",
               padding: "20px",
               width: "560px",
               maxWidth: "100%",
@@ -874,7 +874,7 @@ export default function ChatRoomsPage() {
                     style={{
                       textAlign: "left",
                       padding: "12px",
-                      borderRadius: "10px",
+                      borderRadius: "var(--db-radius-card)",
                       border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
                       background: theme.bg,
                       cursor: savingTheme ? "wait" : "pointer",
@@ -885,10 +885,10 @@ export default function ChatRoomsPage() {
                   >
                     {/* Mini chat preview using the theme's own colors */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: theme.bubbleInBg, color: theme.bubbleInText, fontSize: "11px" }}>
+                      <span style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "5px 9px", borderRadius: "var(--db-radius)", background: theme.bubbleInBg, color: theme.bubbleInText, fontSize: "11px" }}>
                         {t("chatRoomsThemePreviewGreeting")}
                       </span>
-                      <span style={{ alignSelf: "flex-end", maxWidth: "80%", padding: "5px 9px", borderRadius: "9px", background: theme.bubbleOutBg, color: theme.bubbleOutText, fontSize: "11px" }}>
+                      <span style={{ alignSelf: "flex-end", maxWidth: "80%", padding: "5px 9px", borderRadius: "var(--db-radius)", background: theme.bubbleOutBg, color: theme.bubbleOutText, fontSize: "11px" }}>
                         {t("chatSampleWelcome")}
                       </span>
                     </div>
@@ -930,7 +930,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "8px 12px",
-  borderRadius: "8px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "var(--db-bg-elevated)",
   color: "var(--db-text-primary)",

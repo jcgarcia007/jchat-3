@@ -346,7 +346,7 @@ export default function TablesPage() {
                     alignItems: "center",
                     gap: "6px",
                     padding: "16px 12px",
-                    borderRadius: "14px",
+                    borderRadius: "var(--db-radius-card)",
                     background: "var(--db-bg-surface)",
                     border: "1px solid var(--db-border)",
                     opacity: r.is_active ? 1 : 0.5,
@@ -464,7 +464,7 @@ function Notice({ children }: { children: React.ReactNode }) {
         color: "var(--db-text-secondary)",
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "14px",
+        borderRadius: "var(--db-radius-card)",
       }}
     >
       {children}
@@ -555,7 +555,7 @@ function TableForm({
       }}
       style={{
         padding: "18px",
-        borderRadius: "14px",
+        borderRadius: "var(--db-radius-card)",
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
         marginBottom: "20px",
@@ -900,7 +900,7 @@ const CTA: React.CSSProperties = {
   alignItems: "center",
   gap: "8px",
   padding: "10px 18px",
-  borderRadius: "10px",
+  borderRadius: "var(--db-radius)",
   background: "var(--db-accent)",
   color: "var(--db-accent-text)",
   fontSize: "14px",
@@ -915,7 +915,7 @@ const SECONDARY_BTN: React.CSSProperties = {
   alignItems: "center",
   gap: "6px",
   padding: "10px 16px",
-  borderRadius: "10px",
+  borderRadius: "var(--db-radius)",
   background: "transparent",
   color: "var(--db-text-primary)",
   border: "1px solid var(--db-border)",
@@ -930,7 +930,7 @@ const ICON_BTN: React.CSSProperties = {
   justifyContent: "center",
   width: "34px",
   height: "34px",
-  borderRadius: "8px",
+  borderRadius: "var(--db-radius)",
   background: "transparent",
   color: "var(--db-text-secondary)",
   border: "1px solid var(--db-border)",
@@ -953,7 +953,7 @@ const LABEL: React.CSSProperties = {
 
 const INPUT: React.CSSProperties = {
   padding: "9px 11px",
-  borderRadius: "8px",
+  borderRadius: "var(--db-radius)",
   border: "1px solid var(--db-border)",
   background: "var(--db-bg-base)",
   color: "var(--db-text-primary)",

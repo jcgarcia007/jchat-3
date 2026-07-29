@@ -343,7 +343,7 @@ function FieldInput({
       style={{
         width: "100%",
         padding: "10px 12px",
-        borderRadius: "8px",
+        borderRadius: "var(--db-radius)",
         border: "1px solid var(--db-border)",
         background: disabled ? "var(--db-bg-base)" : "var(--db-bg-elevated)",
         color: "var(--db-text-primary)",
@@ -364,7 +364,7 @@ function StatBadge({ icon, label, value }: { icon: React.ReactNode; label: strin
         alignItems: "center",
         gap: "5px",
         padding: "4px 10px",
-        borderRadius: "6px",
+        borderRadius: "var(--db-radius)",
         background: "var(--db-bg-base)",
         border: "1px solid var(--db-border)",
         fontSize: "12px",
@@ -420,7 +420,7 @@ function OfferRow({
       style={{
         background: "var(--db-bg-surface)",
         border: "1px solid var(--db-border)",
-        borderRadius: "10px",
+        borderRadius: "var(--db-radius-card)",
         overflow: "hidden",
       }}
     >
@@ -438,7 +438,7 @@ function OfferRow({
           style={{
             width: 40,
             height: 40,
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "var(--db-accent-bg)",
             display: "flex",
             alignItems: "center",
@@ -478,7 +478,7 @@ function OfferRow({
               <span
                 style={{
                   padding: "2px 8px",
-                  borderRadius: "6px",
+                  borderRadius: "var(--db-radius)",
                   background: "var(--db-bg-elevated)",
                   fontSize: "12px",
                   fontWeight: 600,
@@ -543,7 +543,7 @@ function OfferRow({
                   fontFamily: "monospace",
                   background: "var(--db-bg-elevated)",
                   padding: "1px 6px",
-                  borderRadius: "4px",
+                  borderRadius: "var(--db-radius)",
                   color: "var(--db-accent)",
                 }}
               >
@@ -566,7 +566,7 @@ function OfferRow({
                 alignItems: "center",
                 gap: "5px",
                 padding: "6px 12px",
-                borderRadius: "7px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "transparent",
                 color:
@@ -596,7 +596,7 @@ function OfferRow({
               display: "flex",
               alignItems: "center",
               padding: "6px",
-              borderRadius: "7px",
+              borderRadius: "var(--db-radius)",
               border: "1px solid var(--db-border)",
               background: "transparent",
               color: "var(--db-text-tertiary)",
@@ -1076,7 +1076,7 @@ export default function OffersPage() {
               alignItems: "center",
               gap: "6px",
               padding: "9px 18px",
-              borderRadius: "8px",
+              borderRadius: "var(--db-radius)",
               border: "none",
               background: "var(--db-accent)",
               color: "var(--db-accent-text)",
@@ -1118,7 +1118,7 @@ export default function OffersPage() {
               style={{
                 background: "var(--db-bg-surface)",
                 border: "1px solid var(--db-border)",
-                borderRadius: "10px",
+                borderRadius: "var(--db-radius-card)",
                 padding: "14px 16px",
                 textAlign: "center",
               }}
@@ -1154,7 +1154,7 @@ export default function OffersPage() {
         <div
           style={{
             padding: "12px 16px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "rgba(245,158,11,0.12)",
             color: "var(--db-warning)",
             fontSize: "13px",
@@ -1177,7 +1177,7 @@ export default function OffersPage() {
             alignItems: "center",
             gap: "8px",
             padding: "12px 16px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "rgba(239,68,68,0.12)",
             color: "var(--db-danger)",
             fontSize: "14px",
@@ -1201,7 +1201,7 @@ export default function OffersPage() {
             alignItems: "center",
             gap: "8px",
             padding: "12px 16px",
-            borderRadius: "8px",
+            borderRadius: "var(--db-radius)",
             background: "rgba(29,158,117,0.12)",
             color: "var(--db-success)",
             fontSize: "14px",
@@ -1225,7 +1225,7 @@ export default function OffersPage() {
           style={{
             background: "var(--db-bg-surface)",
             border: "1px solid var(--db-border)",
-            borderRadius: "12px",
+            borderRadius: "var(--db-radius-card)",
             padding: "24px",
             marginBottom: "28px",
           }}
@@ -1292,7 +1292,7 @@ export default function OffersPage() {
                       alignItems: "center",
                       gap: "6px",
                       padding: "12px 8px",
-                      borderRadius: "10px",
+                      borderRadius: "var(--db-radius-card)",
                       border: selected
                         ? "2px solid var(--db-accent)"
                         : "1px solid var(--db-border)",
@@ -1406,7 +1406,7 @@ export default function OffersPage() {
                 style={{
                   width: "100%",
                   padding: "10px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   border: "1px solid var(--db-border)",
                   background: "var(--db-bg-elevated)",
                   color: "var(--db-text-primary)",
@@ -1436,7 +1436,7 @@ export default function OffersPage() {
                       title={targetingDescriptions[opt.value]}
                       style={{
                         padding: "7px 14px",
-                        borderRadius: "8px",
+                        borderRadius: "var(--db-radius)",
                         border: sel
                           ? "2px solid var(--db-accent)"
                           : "1px solid var(--db-border)",
@@ -1483,7 +1483,7 @@ export default function OffersPage() {
                   style={{
                     width: "100%",
                     padding: "10px 12px",
-                    borderRadius: "8px",
+                    borderRadius: "var(--db-radius)",
                     border: "1px solid var(--db-border)",
                     background: "var(--db-bg-elevated)",
                     color: "var(--db-text-primary)",
@@ -1558,7 +1558,7 @@ export default function OffersPage() {
                 style={{
                   gridColumn: "1 / -1",
                   padding: "10px 14px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--db-radius)",
                   background: "var(--db-accent-bg)",
                   fontSize: "13px",
                   color: "var(--db-accent)",
@@ -1609,7 +1609,7 @@ export default function OffersPage() {
               }}
               style={{
                 padding: "9px 18px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "1px solid var(--db-border)",
                 background: "transparent",
                 color: "var(--db-text-secondary)",
@@ -1627,7 +1627,7 @@ export default function OffersPage() {
                 alignItems: "center",
                 gap: "6px",
                 padding: "9px 20px",
-                borderRadius: "8px",
+                borderRadius: "var(--db-radius)",
                 border: "none",
                 background: creating ? "var(--db-text-tertiary)" : "var(--db-accent)",
                 color: "var(--db-accent-text)",
@@ -1682,7 +1682,7 @@ export default function OffersPage() {
               padding: "60px 20px",
               color: "var(--db-text-tertiary)",
               background: "var(--db-bg-surface)",
-              borderRadius: "12px",
+              borderRadius: "var(--db-radius-card)",
               border: "1px dashed var(--db-border)",
             }}
           >
