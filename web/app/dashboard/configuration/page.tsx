@@ -4,8 +4,8 @@
  * Sections:
  *  1. Business Info  — name, description, category, address, phone, website
  *  2. Operating Hours — 7-day grid with open/close times + per-day closed toggle
- *  3. Cover Photo + Icon Emoji — URL / emoji inputs (storage TODO)
- *  4. Photo Gallery Manager — add / reorder / remove image URLs (storage TODO)
+ *  3. Cover Photo + Icon — file upload to Supabase Storage (bucket: covers)
+ *  4. Photo Gallery Manager — file upload / reorder / remove (bucket: covers)
  *  5. Menu Enabled — toggle for businesses.menu_enabled
  *  6. Dashboard Theme — 10-theme picker; applies instantly via useDashboardTheme
  *  7. Tip Configuration — enabled toggle + editable suggested percentages
@@ -34,6 +34,7 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
+  IconUpload,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -56,6 +57,7 @@ interface BusinessRow {
   website: string | null;
   hours: HoursJson | null;
   cover_url: string | null;
+  icon_url: string | null;
   icon_emoji: string | null;
   gallery_urls: string[] | null;
   menu_enabled: boolean;
@@ -401,6 +403,9 @@ function PrimaryBtn({
   );
 }
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ConfigurationPage() {
@@ -424,6 +429,7 @@ export default function ConfigurationPage() {
 
   // ── Business state ────────────────────────────────────────────────────────────
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -442,15 +448,17 @@ export default function ConfigurationPage() {
   const [hours, setHours] = useState<HoursJson>(defaultHours());
   const [savingHours, setSavingHours] = useState(false);
 
-  // ── Section 3: Cover + emoji ──────────────────────────────────────────────────
+  // ── Section 3: Cover + icon ───────────────────────────────────────────────────
   const [coverUrl, setCoverUrl] = useState("");
-  const [iconEmoji, setIconEmoji] = useState("");
+  const [iconUrl, setIconUrl] = useState("");
   const [savingCover, setSavingCover] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
 
   // ── Section 4: Photo gallery ──────────────────────────────────────────────────
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
-  const [newGalleryUrl, setNewGalleryUrl] = useState("");
   const [savingGallery, setSavingGallery] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   // ── Section 5: Menu enabled ───────────────────────────────────────────────────
   const [menuEnabled, setMenuEnabled] = useState(false);
@@ -472,6 +480,13 @@ export default function ConfigurationPage() {
   const [payoutFrequency, setPayoutFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [savingPayout, setSavingPayout] = useState(false);
 
+  // ── Upload refs ───────────────────────────────────────────────────────────────
+  const coverObjRef = useRef<string | null>(null);
+  const iconObjRef = useRef<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const iconInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
   // ── Resolve business + load ───────────────────────────────────────────────────
   const loadBusiness = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -479,6 +494,10 @@ export default function ConfigurationPage() {
       return;
     }
     try {
+      // Get auth user ID for RLS-compliant Storage upload paths.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setOwnerId(user.id);
+
       // Step 1: resolve the active business (reads active_business_id, handles multi-business owners).
       // Uses resolveActiveBusiness() — the same resolver the rest of the dashboard uses — so the
       // business selector in the top bar is respected. .single() on owner_id was the bug: it fails
@@ -495,7 +514,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -512,7 +531,7 @@ export default function ConfigurationPage() {
       setWebsite(b.website ?? "");
       setHours(b.hours && Object.keys(b.hours).length > 0 ? b.hours : defaultHours());
       setCoverUrl(b.cover_url ?? "");
-      setIconEmoji(b.icon_emoji ?? "");
+      setIconUrl(b.icon_url ?? "");
       setGalleryUrls(b.gallery_urls ?? []);
       setMenuEnabled(b.menu_enabled ?? false);
       setTipsEnabled(b.tips_enabled ?? false);
@@ -527,6 +546,14 @@ export default function ConfigurationPage() {
   }, [setThemeId]);
 
   useEffect(() => { void loadBusiness(); }, [loadBusiness]);
+
+  // Revoke blob preview URLs on unmount to avoid memory leaks.
+  useEffect(() => {
+    return () => {
+      if (coverObjRef.current) URL.revokeObjectURL(coverObjRef.current);
+      if (iconObjRef.current) URL.revokeObjectURL(iconObjRef.current);
+    };
+  }, []);
 
   // ── Generic patch helper ──────────────────────────────────────────────────────
   const patch = useCallback(
@@ -567,6 +594,102 @@ export default function ConfigurationPage() {
     [patch]
   );
 
+  // ── Storage upload helper ─────────────────────────────────────────────────────
+  const uploadBusinessImage = useCallback(
+    async (file: File, kind: "cover" | "icon" | "gallery"): Promise<string> => {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type))
+        throw new Error(t("configurationInvalidFileTypeError"));
+      if (file.size > MAX_IMAGE_BYTES)
+        throw new Error(t("configurationFileTooLargeError"));
+      if (!ownerId || !businessId)
+        throw new Error(t("configurationUploadFailed"));
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const path = `${ownerId}/${businessId}/${kind}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("covers")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw new Error(t("configurationUploadFailed"));
+      const { data: { publicUrl } } = supabase.storage.from("covers").getPublicUrl(path);
+      return publicUrl;
+    },
+    [ownerId, businessId, t]
+  );
+
+  const handleCoverFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      const preview = URL.createObjectURL(file);
+      const old = coverObjRef.current;
+      coverObjRef.current = preview;
+      setCoverUrl(preview);
+      if (old) URL.revokeObjectURL(old);
+      setError(null);
+      setUploadingCover(true);
+      try {
+        const url = await uploadBusinessImage(file, "cover");
+        setCoverUrl(url);
+        if (coverObjRef.current === preview) {
+          URL.revokeObjectURL(preview);
+          coverObjRef.current = null;
+        }
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setUploadingCover(false);
+      }
+    },
+    [uploadBusinessImage]
+  );
+
+  const handleIconFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      const preview = URL.createObjectURL(file);
+      const old = iconObjRef.current;
+      iconObjRef.current = preview;
+      setIconUrl(preview);
+      if (old) URL.revokeObjectURL(old);
+      setError(null);
+      setUploadingIcon(true);
+      try {
+        const url = await uploadBusinessImage(file, "icon");
+        setIconUrl(url);
+        if (iconObjRef.current === preview) {
+          URL.revokeObjectURL(preview);
+          iconObjRef.current = null;
+        }
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setUploadingIcon(false);
+      }
+    },
+    [uploadBusinessImage]
+  );
+
+  const handleGalleryFilesChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []);
+      if (!files.length) return;
+      e.target.value = "";
+      setError(null);
+      setUploadingGallery(true);
+      try {
+        const urls = await Promise.all(files.map((f) => uploadBusinessImage(f, "gallery")));
+        setGalleryUrls((prev) => [...prev, ...urls]);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setUploadingGallery(false);
+      }
+    },
+    [uploadBusinessImage]
+  );
+
   // ── Section handlers ──────────────────────────────────────────────────────────
 
   const handleSaveInfo = () =>
@@ -576,7 +699,7 @@ export default function ConfigurationPage() {
     withSave(setSavingHours, { hours }, t("configurationHoursSavedSuccess"));
 
   const handleSaveCover = () =>
-    withSave(setSavingCover, { cover_url: coverUrl || null, icon_emoji: iconEmoji || null }, t("configurationCoverSavedSuccess"));
+    withSave(setSavingCover, { cover_url: coverUrl || null, icon_url: iconUrl || null }, t("configurationCoverSavedSuccess"));
 
   const handleSaveGallery = () =>
     withSave(setSavingGallery, { gallery_urls: galleryUrls }, t("configurationGallerySavedSuccess"));
@@ -641,13 +764,6 @@ export default function ConfigurationPage() {
     setTipPercentages((prev) => prev.filter((p) => p !== pct));
 
   // ── Gallery helpers ───────────────────────────────────────────────────────────
-  const addGalleryUrl = () => {
-    const url = newGalleryUrl.trim();
-    if (!url) return;
-    setGalleryUrls((prev) => [...prev, url]);
-    setNewGalleryUrl("");
-  };
-
   const removeGalleryUrl = (idx: number) =>
     setGalleryUrls((prev) => prev.filter((_, i) => i !== idx));
 
@@ -893,13 +1009,13 @@ export default function ConfigurationPage() {
         </PrimaryBtn>
       </Section>
 
-      {/* ── 3. Cover Photo + Icon Emoji ─────────────────────────────────────── */}
+      {/* ── 3. Cover Photo + Icon ───────────────────────────────────────────── */}
       <Section
         icon={<IconPhoto size={18} color="var(--db-accent)" />}
         title={t("configurationCoverSectionTitle")}
         subtitle={t("configurationCoverSectionSubtitle")}
       >
-        {/* Cover URL preview */}
+        {/* Cover banner preview */}
         {coverUrl && (
           <div
             style={{
@@ -921,49 +1037,103 @@ export default function ConfigurationPage() {
           </div>
         )}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: "16px",
-            marginBottom: "16px",
-            alignItems: "flex-end",
-          }}
-        >
-          <div>
+        <div style={{ display: "flex", gap: "24px", marginBottom: "16px", alignItems: "flex-start" }}>
+          {/* Cover uploader */}
+          <div style={{ flex: 1 }}>
             <FieldLabel>{t("configurationCoverUrlLabel")}</FieldLabel>
-            {/* TODO(storage): replace with Supabase Storage upload when wired */}
-            <TextInput value={coverUrl} onChange={setCoverUrl} placeholder={t("configurationStorageUrlPlaceholder")} type="url" />
-            <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "4px", marginBottom: 0 }}>
-              {/* TODO(storage): real upload via Supabase Storage */}
-              {t("configurationCoverUploadNote")}
-            </p>
-          </div>
-          <div>
-            <FieldLabel>{t("configurationIconEmojiLabel")}</FieldLabel>
             <input
-              type="text"
-              value={iconEmoji}
-              onChange={(e) => setIconEmoji(e.target.value)}
-              placeholder="🍺"
-              maxLength={2}
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+              onChange={handleCoverFileChange}
+            />
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              disabled={uploadingCover || noSupabase || noBiz}
               style={{
-                width: "64px",
-                padding: "10px 12px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 16px",
                 borderRadius: "8px",
                 border: "1px solid var(--db-border)",
-                background: "var(--db-bg-elevated)",
-                color: "var(--db-text-primary)",
-                fontSize: "24px",
-                textAlign: "center",
-                outline: "none",
+                background: "transparent",
+                color: "var(--db-accent)",
+                fontSize: "14px",
+                cursor: (uploadingCover || noSupabase || noBiz) ? "not-allowed" : "pointer",
+                opacity: (uploadingCover || noSupabase || noBiz) ? 0.6 : 1,
               }}
+            >
+              <IconUpload size={14} />
+              {uploadingCover
+                ? t("configurationUploadingState")
+                : coverUrl
+                  ? t("configurationReplacePhotoButton")
+                  : t("configurationUploadPhotoButton")}
+            </button>
+          </div>
+
+          {/* Circular icon uploader */}
+          <div style={{ flexShrink: 0 }}>
+            <FieldLabel>{t("configurationIconPhotoLabel")}</FieldLabel>
+            <div
+              style={{
+                width: "72px",
+                height: "72px",
+                borderRadius: "50%",
+                overflow: "hidden",
+                marginBottom: "8px",
+                background: "var(--db-bg-elevated)",
+                border: "2px solid var(--db-border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {iconUrl
+                ? /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={iconUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <IconPhoto size={24} color="var(--db-text-tertiary)" />}
+            </div>
+            <input
+              ref={iconInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+              onChange={handleIconFileChange}
             />
+            <button
+              onClick={() => iconInputRef.current?.click()}
+              disabled={uploadingIcon || noSupabase || noBiz}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "7px 12px",
+                borderRadius: "8px",
+                border: "1px solid var(--db-border)",
+                background: "transparent",
+                color: "var(--db-accent)",
+                fontSize: "13px",
+                cursor: (uploadingIcon || noSupabase || noBiz) ? "not-allowed" : "pointer",
+                opacity: (uploadingIcon || noSupabase || noBiz) ? 0.6 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconUpload size={13} />
+              {uploadingIcon
+                ? t("configurationUploadingState")
+                : iconUrl
+                  ? t("configurationReplacePhotoButton")
+                  : t("configurationUploadPhotoButton")}
+            </button>
           </div>
         </div>
+
         <PrimaryBtn
           onClick={handleSaveCover}
-          disabled={noSupabase || noBiz}
+          disabled={noSupabase || noBiz || uploadingCover || uploadingIcon}
           loading={savingCover}
         >
           {t("configurationSaveCoverButton")}
@@ -976,42 +1146,36 @@ export default function ConfigurationPage() {
         title={t("configurationGallerySectionTitle")}
         subtitle={t("configurationGallerySectionSubtitle")}
       >
-        {/* Add URL row */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            alignItems: "flex-end",
-            marginBottom: "16px",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <FieldLabel>{t("configurationImageUrlLabel")}</FieldLabel>
-            {/* TODO(storage): replace URL input with file upload when Supabase Storage is wired */}
-            <TextInput
-              value={newGalleryUrl}
-              onChange={setNewGalleryUrl}
-              placeholder={t("configurationStorageUrlPlaceholder")}
-              type="url"
-            />
-          </div>
+        {/* Add photos row */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            style={{ display: "none" }}
+            onChange={handleGalleryFilesChange}
+          />
           <button
-            onClick={addGalleryUrl}
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={uploadingGallery || noSupabase || noBiz}
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               gap: "6px",
-              padding: "10px 14px",
+              padding: "9px 16px",
               borderRadius: "8px",
               border: "1px solid var(--db-border)",
               background: "transparent",
               color: "var(--db-accent)",
               fontSize: "14px",
-              cursor: "pointer",
+              cursor: (uploadingGallery || noSupabase || noBiz) ? "not-allowed" : "pointer",
+              opacity: (uploadingGallery || noSupabase || noBiz) ? 0.6 : 1,
               whiteSpace: "nowrap",
             }}
           >
-            <IconPlus size={14} /> {t("terminalModifierAddDefault")}
+            <IconUpload size={14} />
+            {uploadingGallery ? t("configurationUploadingState") : t("configurationAddPhotosLabel")}
           </button>
         </div>
 

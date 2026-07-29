@@ -289,6 +289,7 @@ export type Database = {
           geofence_radius_m: number | null
           hours: Json
           icon_emoji: string | null
+          icon_url: string | null
           id: string
           is_active: boolean
           is_temporary: boolean
@@ -343,6 +344,7 @@ export type Database = {
           geofence_radius_m?: number | null
           hours?: Json
           icon_emoji?: string | null
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           is_temporary?: boolean
@@ -397,6 +399,7 @@ export type Database = {
           geofence_radius_m?: number | null
           hours?: Json
           icon_emoji?: string | null
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           is_temporary?: boolean
