@@ -35,9 +35,6 @@ import {
   IconMapPin,
   IconCheck,
   IconAlertCircle,
-  IconPointer,
-  IconCircle,
-  IconPolygon,
   IconTrash,
   IconX,
   IconArrowRight,
@@ -57,7 +54,7 @@ const BUSINESS_RADIUS_CAP_FALLBACK_MAX = 50; // matches the DB seed
 export const EVENT_RADIUS_CAP = 1609; // 1 mile, for the future events flow
 
 type LatLng = { lat: number; lng: number };
-type Tool = "pin" | "circle" | "polygon";
+type Tool = "pin";
 
 /** Brand accent for canvas overlays — reads the --db-accent token at runtime. */
 function accentColor(): string {
@@ -143,9 +140,6 @@ function GeofenceLayer({
   const map = useMap();
   const markerRef = useRef<google.maps.Marker | null>(null);
   const pinCircleRef = useRef<google.maps.Circle | null>(null); // pin-mode visual radius
-  const circleRef = useRef<google.maps.Circle | null>(null); // circle tool
-  const polygonRef = useRef<google.maps.Polygon | null>(null); // polygon tool
-  const pathRef = useRef<LatLng[]>([]);
 
   const toolRef = useRef(tool);
   toolRef.current = tool;
@@ -158,38 +152,13 @@ function GeofenceLayer({
   const onShapeRef = useRef(onShapeChange);
   onShapeRef.current = onShapeChange;
 
-  const emitShape = useCallback(() => {
-    const toolValue = toolRef.current;
-    if (toolValue === "circle" && circleRef.current) {
-      const c = circleRef.current.getCenter();
-      if (c) onShapeRef.current({ type: "Circle", center: [c.lng(), c.lat()], radius: circleRef.current.getRadius() });
-      return;
-    }
-    if (toolValue === "polygon" && polygonRef.current) {
-      const path = polygonRef.current.getPath();
-      const coords: LatLng[] = [];
-      path.forEach((ll) => coords.push({ lat: ll.lat(), lng: ll.lng() }));
-      if (coords.length > 0) {
-        onShapeRef.current({ type: "Polygon", coordinates: [coords] });
-        return;
-      }
-    }
-    onShapeRef.current(null);
-  }, []);
-
   const clearShapes = useCallback(() => {
-    circleRef.current?.setMap(null);
-    circleRef.current = null;
-    polygonRef.current?.setMap(null);
-    polygonRef.current = null;
-    pathRef.current = [];
     onShapeRef.current(null);
   }, []);
 
   // Init marker + map listeners (once the map is ready).
   useEffect(() => {
     if (!map || typeof google === "undefined") return;
-    const accent = accentColor();
 
     const marker = new google.maps.Marker({ map, position: pin, draggable: true });
     markerRef.current = marker;
@@ -205,65 +174,8 @@ function GeofenceLayer({
       const ll = e.latLng;
       if (!ll) return;
       const pos: LatLng = { lat: ll.lat(), lng: ll.lng() };
-      const toolValue = toolRef.current;
-
-      if (toolValue === "pin") {
-        onPinMoveRef.current(pos);
-        onPinSettledRef.current(pos);
-      } else if (toolValue === "circle") {
-        if (!circleRef.current) {
-          const circle = new google.maps.Circle({
-            map,
-            center: ll,
-            radius: radiusRef.current,
-            editable: true,
-            draggable: true,
-            strokeColor: accent,
-            strokeOpacity: 0.9,
-            strokeWeight: 2,
-            fillColor: accent,
-            fillOpacity: 0.2,
-          });
-          circle.addListener("radius_changed", emitShape);
-          circle.addListener("center_changed", () => {
-            const c = circle.getCenter();
-            if (c) onPinMoveRef.current({ lat: c.lat(), lng: c.lng() });
-            emitShape();
-          });
-          circleRef.current = circle;
-          onPinMoveRef.current(pos); // pin follows the circle center
-        } else {
-          circleRef.current.setCenter(ll);
-        }
-        emitShape();
-      } else if (toolValue === "polygon") {
-        pathRef.current = [...pathRef.current, pos];
-        const gpath = pathRef.current.map((p) => ({ lat: p.lat, lng: p.lng }));
-        if (!polygonRef.current) {
-          const poly = new google.maps.Polygon({
-            map,
-            paths: gpath,
-            editable: true,
-            strokeColor: accent,
-            strokeOpacity: 0.9,
-            strokeWeight: 2,
-            fillColor: accent,
-            fillOpacity: 0.2,
-          });
-          const pp = poly.getPath();
-          pp.addListener("set_at", emitShape);
-          pp.addListener("insert_at", emitShape);
-          pp.addListener("remove_at", emitShape);
-          polygonRef.current = poly;
-        } else {
-          polygonRef.current.setPath(gpath);
-        }
-        emitShape();
-      }
-    });
-
-    const dblL = map.addListener("dblclick", () => {
-      if (toolRef.current === "polygon") emitShape();
+      onPinMoveRef.current(pos);
+      onPinSettledRef.current(pos);
     });
 
     registerClear(clearShapes);
@@ -271,19 +183,14 @@ function GeofenceLayer({
     return () => {
       google.maps.event.removeListener(dragL);
       google.maps.event.removeListener(clickL);
-      google.maps.event.removeListener(dblL);
       marker.setMap(null);
       markerRef.current = null;
       pinCircleRef.current?.setMap(null);
       pinCircleRef.current = null;
-      circleRef.current?.setMap(null);
-      circleRef.current = null;
-      polygonRef.current?.setMap(null);
-      polygonRef.current = null;
     };
     // Init once when the map is ready; pin syncs via the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, emitShape, clearShapes, registerClear]);
+  }, [map, clearShapes, registerClear]);
 
   // Keep the marker synced when the pin is set externally (search / load / circle).
   useEffect(() => {
@@ -322,13 +229,6 @@ function GeofenceLayer({
     }
   }, [map, tool, pin, radius]);
 
-  // Slider resizes the drawn circle while in circle mode.
-  useEffect(() => {
-    if (tool === "circle" && circleRef.current) {
-      circleRef.current.setRadius(radius);
-      emitShape();
-    }
-  }, [radius, tool, emitShape]);
 
   return null;
 }
@@ -534,17 +434,15 @@ export function LocationEditor({
   const hasKey = MAPS_KEY.length > 0;
   const atCap = radius >= grantedMax;
 
-  const TOOLS: { id: Tool; label: string; icon: typeof IconPointer }[] = [
+  const TOOLS: { id: Tool; label: string; icon: typeof IconMapPin }[] = [
     { id: "pin", label: t("locationToolPin"), icon: IconMapPin },
-    { id: "circle", label: t("locationToolCircle"), icon: IconCircle },
-    { id: "polygon", label: t("locationToolPolygon"), icon: IconPolygon },
   ];
 
   const controls = (
     <>
       <div style={{ marginTop: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <FieldLabel>{tool === "circle" ? t("locationRadiusCircleLabel") : t("locationRadiusLabel")}</FieldLabel>
+          <FieldLabel>{t("locationRadiusLabel")}</FieldLabel>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-accent)" }}>{radius.toLocaleString()} m</span>
         </div>
         <input
@@ -673,11 +571,7 @@ export function LocationEditor({
             </GMap>
           </div>
           <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: "6px 0 0" }}>
-            {tool === "pin"
-              ? t("locationInstructionsPin")
-              : tool === "circle"
-                ? t("locationInstructionsCircle")
-                : t("locationInstructionsPolygon")}
+            {t("locationInstructionsPin")}
           </p>
           {controls}
         </APIProvider>
