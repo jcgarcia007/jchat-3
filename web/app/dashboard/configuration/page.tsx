@@ -35,6 +35,7 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconUpload,
+  IconCopy,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -96,11 +97,99 @@ function defaultHours(): HoursJson {
   return h;
 }
 
+// ── Hours 12h ↔ 24h helpers ───────────────────────────────────────────────────
+const MINUTE_STEP = 5;
+const ALL_DAY_OPEN = "00:00";
+const ALL_DAY_CLOSE = "23:59";
+
+function to12h(hhmm: string): { h12: number; min: number; ampm: "AM" | "PM" } {
+  const parts = hhmm.split(":");
+  const h24 = parseInt(parts[0] ?? "0", 10) || 0;
+  const min = parseInt(parts[1] ?? "0", 10) || 0;
+  if (h24 === 0) return { h12: 12, min, ampm: "AM" };
+  if (h24 < 12) return { h12: h24, min, ampm: "AM" };
+  if (h24 === 12) return { h12: 12, min, ampm: "PM" };
+  return { h12: h24 - 12, min, ampm: "PM" };
+}
+
+function from12h(h12: number, min: number, ampm: "AM" | "PM"): string {
+  const h24 = ampm === "AM" ? (h12 === 12 ? 0 : h12) : h12 === 12 ? 12 : h12 + 12;
+  return `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+function isAllDay(d: DayHours): boolean {
+  return !d.closed && d.open === ALL_DAY_OPEN && d.close === ALL_DAY_CLOSE;
+}
+
 const PAYOUT_OPTIONS = [
   { value: "daily",   label: "Daily"   },
   { value: "weekly",  label: "Weekly"  },
   { value: "monthly", label: "Monthly" },
 ] as const;
+
+// ── TimeSelect12h ─────────────────────────────────────────────────────────────
+
+function TimeSelect12h({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (hhmm: string) => void;
+  disabled?: boolean;
+}) {
+  const { h12, min, ampm } = to12h(value);
+
+  const minuteOpts: number[] = [];
+  for (let m = 0; m < 60; m += MINUTE_STEP) minuteOpts.push(m);
+  if (!minuteOpts.includes(min)) { minuteOpts.push(min); minuteOpts.sort((a, b) => a - b); }
+
+  const sel: React.CSSProperties = {
+    padding: "7px 4px",
+    borderRadius: "7px",
+    border: "1px solid var(--db-border)",
+    background: "var(--db-bg-elevated)",
+    color: disabled ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
+    fontSize: "13px",
+    outline: "none",
+    cursor: disabled ? "not-allowed" : "pointer",
+  };
+
+  return (
+    <div style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
+      <select
+        disabled={disabled}
+        value={h12}
+        onChange={(e) => onChange(from12h(Number(e.target.value), min, ampm))}
+        style={{ ...sel, width: "44px" }}
+      >
+        {[1,2,3,4,5,6,7,8,9,10,11,12].map((h) => (
+          <option key={h} value={h}>{h}</option>
+        ))}
+      </select>
+      <span style={{ color: "var(--db-text-tertiary)", fontSize: "13px" }}>:</span>
+      <select
+        disabled={disabled}
+        value={min}
+        onChange={(e) => onChange(from12h(h12, Number(e.target.value), ampm))}
+        style={{ ...sel, width: "44px" }}
+      >
+        {minuteOpts.map((m) => (
+          <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+        ))}
+      </select>
+      <select
+        disabled={disabled}
+        value={ampm}
+        onChange={(e) => onChange(from12h(h12, min, e.target.value as "AM" | "PM"))}
+        style={{ ...sel, width: "52px" }}
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
 
 // ── Shared UI helpers ─────────────────────────────────────────────────────────
 
@@ -910,96 +999,183 @@ export default function ConfigurationPage() {
         title={t("configurationHoursSectionTitle")}
         subtitle={t("configurationHoursSectionSubtitle")}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-            marginBottom: "16px",
-          }}
-        >
-          {/* Header row */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "110px 1fr 1fr 80px",
-              gap: "10px",
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationDayColumnLabel")}</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationOpenColumnLabel")}</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationCloseColumnLabel")}</span>
-            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("configurationClosedColumnLabel")}</span>
-          </div>
+        {/* Preset chips */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "16px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--db-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            {t("configurationHoursPresetsLabel")}
+          </span>
+          {([
+            {
+              key: "business",
+              label: t("configurationHoursPresetBusiness"),
+              apply: () => setHours((prev) => {
+                const next = { ...prev };
+                for (const d of DAYS) {
+                  const wknd = d === "Saturday" || d === "Sunday";
+                  next[d] = wknd ? { ...prev[d], closed: true } : { open: "09:00", close: "17:00", closed: false };
+                }
+                return next;
+              }),
+            },
+            {
+              key: "247",
+              label: t("configurationHoursPreset247"),
+              apply: () => setHours((prev) => {
+                const next = { ...prev };
+                for (const d of DAYS) next[d] = { open: ALL_DAY_OPEN, close: ALL_DAY_CLOSE, closed: false };
+                return next;
+              }),
+            },
+            {
+              key: "closeall",
+              label: t("configurationHoursPresetCloseAll"),
+              apply: () => setHours((prev) => {
+                const next = { ...prev };
+                for (const d of DAYS) next[d] = { ...prev[d], closed: true };
+                return next;
+              }),
+            },
+          ] as const).map(({ key, label, apply }) => (
+            <button
+              key={key}
+              onClick={apply}
+              style={{
+                padding: "5px 14px",
+                borderRadius: "20px",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-accent)",
+                fontSize: "13px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
+        {/* Column header */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", paddingBottom: "8px", marginBottom: "4px", borderBottom: "1px solid var(--db-border)" }}>
+          <div style={{ width: "90px" }}>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {t("configurationDayColumnLabel")}
+            </span>
+          </div>
+          <div style={{ width: "52px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {t("configurationHours24hLabel")}
+            </span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {t("configurationOpenColumnLabel")}
+            </span>
+          </div>
+          <div style={{ width: "16px" }} />
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {t("configurationCloseColumnLabel")}
+            </span>
+          </div>
+          <div style={{ width: "52px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {t("configurationClosedColumnLabel")}
+            </span>
+          </div>
+          <div style={{ width: "28px" }} />
+        </div>
+
+        {/* Day rows */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
           {DAYS.map((day) => {
             const d = hours[day] ?? DEFAULT_DAY_HOURS;
+            const allDay = isAllDay(d);
+            const disableTime = d.closed || allDay;
             return (
-              <div
-                key={day}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "110px 1fr 1fr 80px",
-                  gap: "10px",
-                  alignItems: "center",
-                  opacity: d.closed ? 0.45 : 1,
-                  transition: "opacity 0.15s",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "14px",
-                    color: "var(--db-text-primary)",
-                    fontWeight: 500,
-                  }}
-                >
+              <div key={day} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                {/* Day name */}
+                <span style={{ width: "90px", fontSize: "14px", color: "var(--db-text-primary)", fontWeight: 500, flexShrink: 0 }}>
                   {dayLabels[day]}
                 </span>
-                <input
-                  type="time"
-                  value={d.open}
-                  onChange={(e) => setDayField(day, "open", e.target.value)}
-                  disabled={d.closed}
+
+                {/* 24h toggle */}
+                <div style={{ width: "52px", display: "flex", justifyContent: "center", flexShrink: 0, opacity: d.closed ? 0.4 : 1, transition: "opacity 0.15s" }}>
+                  <Toggle
+                    checked={allDay}
+                    disabled={d.closed}
+                    onChange={(v) =>
+                      setHours((prev) => ({
+                        ...prev,
+                        [day]: v
+                          ? { open: ALL_DAY_OPEN, close: ALL_DAY_CLOSE, closed: false }
+                          : { ...DEFAULT_DAY_HOURS },
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* Open time select */}
+                <div style={{ flex: 1, minWidth: "150px", flexShrink: 0, opacity: disableTime ? 0.4 : 1, transition: "opacity 0.15s" }}>
+                  <TimeSelect12h
+                    value={d.open}
+                    onChange={(v) => setDayField(day, "open", v)}
+                    disabled={disableTime}
+                  />
+                </div>
+
+                <span style={{ color: "var(--db-text-tertiary)", fontSize: "14px", flexShrink: 0 }}>–</span>
+
+                {/* Close time select */}
+                <div style={{ flex: 1, minWidth: "150px", flexShrink: 0, opacity: disableTime ? 0.4 : 1, transition: "opacity 0.15s" }}>
+                  <TimeSelect12h
+                    value={d.close}
+                    onChange={(v) => setDayField(day, "close", v)}
+                    disabled={disableTime}
+                  />
+                </div>
+
+                {/* Closed toggle */}
+                <div style={{ width: "52px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
+                  <Toggle
+                    checked={d.closed}
+                    onChange={(v) => setDayField(day, "closed", v)}
+                  />
+                </div>
+
+                {/* Copy to all days */}
+                <button
+                  aria-label={t("configurationHoursCopyToAll")}
+                  title={t("configurationHoursCopyToAll")}
+                  onClick={() =>
+                    setHours((prev) => {
+                      const next = { ...prev };
+                      for (const dd of DAYS) next[dd] = { ...prev[day] };
+                      return next;
+                    })
+                  }
                   style={{
-                    padding: "8px 10px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--db-border)",
-                    background: "var(--db-bg-elevated)",
-                    color: d.closed ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
-                    fontSize: "14px",
-                    outline: "none",
-                    cursor: d.closed ? "not-allowed" : "text",
-                    width: "100%",
-                    boxSizing: "border-box",
+                    width: "28px",
+                    height: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--db-text-tertiary)",
+                    borderRadius: "6px",
+                    padding: 0,
+                    flexShrink: 0,
                   }}
-                />
-                <input
-                  type="time"
-                  value={d.close}
-                  onChange={(e) => setDayField(day, "close", e.target.value)}
-                  disabled={d.closed}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--db-border)",
-                    background: "var(--db-bg-elevated)",
-                    color: d.closed ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
-                    fontSize: "14px",
-                    outline: "none",
-                    cursor: d.closed ? "not-allowed" : "text",
-                    width: "100%",
-                    boxSizing: "border-box",
-                  }}
-                />
-                <Toggle
-                  checked={d.closed}
-                  onChange={(v) => setDayField(day, "closed", v)}
-                />
+                >
+                  <IconCopy size={14} />
+                </button>
               </div>
             );
           })}
         </div>
+
         <PrimaryBtn
           onClick={handleSaveHours}
           disabled={noSupabase || noBiz}
