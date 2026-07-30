@@ -120,7 +120,7 @@ export default function StoreSections({
   }
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "8px 16px 32px" }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", padding: "8px 16px 32px" }}>
       {/* Top bar: business + bag pill */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "6px 2px 4px" }}>
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", color: P.textFaint, textTransform: "uppercase" }}>

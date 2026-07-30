@@ -52,7 +52,7 @@ export default function Carousel({
   };
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", paddingBottom: 24 }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", paddingBottom: 24 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "14px 20px 4px" }}>
         <div style={{ minWidth: 0 }}>

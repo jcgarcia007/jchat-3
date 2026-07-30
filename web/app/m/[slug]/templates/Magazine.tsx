@@ -103,7 +103,7 @@ export default function Magazine({
   const featured = nonEmpty[0].items[0];
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "10px 18px 40px" }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", padding: "10px 18px 40px" }}>
       {/* Masthead */}
       <div style={{ borderBottom: `2px solid ${P.text}`, paddingBottom: 10, marginBottom: 4 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>

@@ -44,7 +44,7 @@ export default function Luxury({
   const heroSoldOut = hero.stock_count !== null && hero.stock_count === 0;
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", paddingBottom: 96, background: P.bg }}>
+    <div style={{ position: "relative", minHeight: "var(--menu-vh, 100vh)", paddingBottom: 96, background: P.bg }}>
       {/* Maison header */}
       <div style={{ textAlign: "center", padding: "16px 24px 0" }}>
         <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: "7px", textTransform: "uppercase", color: GOLD, fontFamily: SERIF }}>
@@ -182,7 +182,7 @@ export default function Luxury({
       <div
         style={{
           position: "sticky",
-          bottom: 26,
+          bottom: "calc(26px + env(safe-area-inset-bottom))",
           zIndex: 30,
           display: "flex",
           justifyContent: "flex-end",

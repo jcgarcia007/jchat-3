@@ -43,7 +43,7 @@ export default function LeftDrawer({
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   return (
-    <div style={{ background: CREAM, minHeight: "100vh" }}>
+    <div style={{ background: CREAM, minHeight: "var(--menu-vh, 100vh)" }}>
       {/* ── Top bar: hamburger + name · cart ─────────────────────────────── */}
       <div
         style={{

@@ -41,7 +41,7 @@ export default function CategorySidebar({
   }
 
   return (
-    <div style={{ position: "relative", background: P.bg, minHeight: "100vh" }}>
+    <div style={{ position: "relative", background: P.bg, minHeight: "var(--menu-vh, 100vh)" }}>
       <div style={{ padding: "14px 16px 8px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
           {business.name}
