@@ -25,7 +25,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
@@ -54,6 +54,10 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
+import type { PublicBusiness, PublicMenuCategory, PublicMenuItem } from "@/app/m/[slug]/page";
+import MenuTemplateRenderer from "@/app/m/[slug]/templates/MenuTemplateRenderer";
+import { MenuPaletteContext } from "@/app/m/[slug]/templates/shared/paletteContext";
+import { resolvePalette } from "@/app/m/[slug]/templates/shared/palettes";
 import { resolveActiveBusiness } from "@/lib/business";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -2746,22 +2750,52 @@ export default function MenuPage() {
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
   const [menuPalette, setMenuPalette] = useState<string | null>(null);
   const [savingPalette, setSavingPalette] = useState<string | null>(null);
-  const [previewKey, setPreviewKey] = useState(0);
-  const refreshPreview = useCallback(() => setPreviewKey((k) => k + 1), []);
   // Collapsible sections — closed by default for a cleaner dashboard.
   const [showTemplates, setShowTemplates] = useState(false);
   const [showPalettes, setShowPalettes] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  // iframe src que refleja la plantilla/paleta ACTUALES del editor (sin esperar al guardado).
-  // Usa ?preview_template y ?preview_palette para forzar la vista sin tocar la BD.
-  const iframePreviewSrc = useMemo(() => {
-    if (!bizSlug || menuMode === "external") return "";
-    const q = new URLSearchParams({ preview_template: menuTemplate, r: String(previewKey) });
-    if (menuPalette) q.set("preview_palette", menuPalette);
-    return `/m/${bizSlug}?${q.toString()}`;
-  }, [bizSlug, menuMode, menuTemplate, menuPalette, previewKey]);
+  const previewSectionRefs = useRef(new Map<string, HTMLElement>());
+  const previewData = useMemo(() => {
+    const previewBusiness: PublicBusiness = {
+      id: businessId,
+      slug: bizSlug ?? "",
+      name: "",
+      category: null,
+      description: null,
+      cover_url: null,
+      icon_emoji: null,
+      menu_card_effect: cardEffect,
+      menu_template_id: menuTemplate,
+      menu_palette_id: menuPalette,
+    };
+    const previewCategories: PublicMenuCategory[] = categories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon,
+      icon_url: cat.icon_url,
+      sort: cat.sort,
+      items: items
+        .filter((it) => it.category_id === cat.id)
+        .map((it): PublicMenuItem => ({
+          id: it.id,
+          category_id: it.category_id,
+          name: it.name,
+          description: it.description,
+          price_cents: it.price_cents,
+          photo_url: it.photo_url,
+          dietary_tags: it.dietary_tags,
+          badge: it.badge,
+          stock_count: it.stock_count,
+          options: { sizes: it.options?.sizes ?? [], extras: it.options?.extras ?? [] },
+          groups: [],
+          photos: [],
+          sort: it.sort,
+        })),
+    }));
+    return { previewBusiness, previewCategories };
+  }, [businessId, bizSlug, cardEffect, menuTemplate, menuPalette, categories, items]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [noBusiness, setNoBusiness] = useState(false);
@@ -3101,7 +3135,6 @@ export default function MenuPage() {
         if (err) throw err;
         setCardEffect(eff);
         setSuccess(t("menuEffectSavedSuccess"));
-        refreshPreview();
       } catch {
         setError(t("menuEffectSaveError"));
       } finally {
@@ -3123,7 +3156,6 @@ export default function MenuPage() {
         if (err) throw err;
         setMenuTemplate(tpl);
         setSuccess(t("menuTemplateSavedSuccess"));
-        refreshPreview();
       } catch {
         setError(t("menuTemplateSaveError"));
       } finally {
@@ -3146,7 +3178,6 @@ export default function MenuPage() {
         if (err) throw err;
         setMenuPalette(slug);
         setSuccess(slug ? t("menuPaletteSavedSuccess") : t("menuPaletteResetSuccess"));
-        refreshPreview();
       } catch {
         setError(t("menuPaletteSaveError"));
       } finally {
@@ -4643,26 +4674,11 @@ export default function MenuPage() {
 
       {bizSlug && menuMode !== "external" && (
         <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 80 }}>
-          {/* Label + refresh button */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          {/* Label */}
+          <div style={{ marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
               Vista en vivo
             </span>
-            <button
-              onClick={refreshPreview}
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "var(--db-text-secondary)",
-                background: "none",
-                border: "1px solid var(--db-border)",
-                borderRadius: 6,
-                padding: "3px 8px",
-                cursor: "pointer",
-              }}
-            >
-              Actualizar vista
-            </button>
           </div>
           {/* iPhone chrome */}
           <div
@@ -4680,19 +4696,30 @@ export default function MenuPage() {
           >
             {/* Dynamic island */}
             <div style={{ width: 88, height: 28, background: "#000", borderRadius: 20 }} />
-            {/* Screen */}
-            <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#000" }}>
-              <iframe
-                src={iframePreviewSrc}
-                title="Vista previa del menú"
-                style={{
-                  width: 390,
-                  height: 844,
-                  border: "none",
-                  transform: "scale(0.62)",
-                  transformOrigin: "top left",
-                }}
-              />
+            {/* Screen — direct render of MenuTemplateRenderer at 0.62 scale */}
+            <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#fff" }}>
+              <div style={{ width: 390, height: Math.round(524 / 0.62), overflowY: "auto", transform: "scale(0.62)", transformOrigin: "top left" }}>
+                <MenuPaletteContext.Provider value={resolvePalette(menuPalette ?? menuTemplate)}>
+                  <MenuTemplateRenderer
+                    templateId={menuTemplate}
+                    business={previewData.previewBusiness}
+                    categories={previewData.previewCategories}
+                    activeCategory={previewData.previewCategories[0]?.id ?? ""}
+                    scrollToCategory={() => {}}
+                    sectionRefs={previewSectionRefs}
+                    onItemAdd={() => {}}
+                    cartCount={0}
+                    cartTotal={0}
+                    onOpenCart={() => {}}
+                    cardEffect={cardEffect}
+                    hoveredCardId={null}
+                    mousePos={{ mx: 0, my: 0 }}
+                    onCardEnter={() => {}}
+                    onCardLeave={() => {}}
+                    onCardMove={() => {}}
+                  />
+                </MenuPaletteContext.Provider>
+              </div>
             </div>
             {/* Home indicator */}
             <div style={{ width: 100, height: 4, background: "#555", borderRadius: 2 }} />
