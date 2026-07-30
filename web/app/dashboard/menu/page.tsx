@@ -25,7 +25,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
@@ -54,6 +54,10 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
+import type { PublicBusiness, PublicMenuCategory, PublicMenuItem } from "@/app/m/[slug]/page";
+import MenuTemplateRenderer from "@/app/m/[slug]/templates/MenuTemplateRenderer";
+import { MenuPaletteContext } from "@/app/m/[slug]/templates/shared/paletteContext";
+import { resolvePalette, type MenuPalette } from "@/app/m/[slug]/templates/shared/palettes";
 import { resolveActiveBusiness } from "@/lib/business";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -1691,40 +1695,6 @@ function ItemEditorModal({
                   {t("menuItemAddPhotosButton")}
                 </label>
 
-                {/* Legacy photo_url — kept for backwards compatibility */}
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px" }}>
-                    {t("menuItemLegacyUrlHint")}
-                  </p>
-                  <FieldInput
-                    value={form.photo_url}
-                    onChange={(v) => set("photo_url", v)}
-                    placeholder={t("menuItemPhotoUrlPlaceholder")}
-                  />
-                  {form.photo_url && savedPhotos.length === 0 && stagedPhotos.length === 0 && (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        width: 64,
-                        height: 64,
-                        borderRadius: "var(--db-radius)",
-                        overflow: "hidden",
-                        border: "1px solid var(--db-border)",
-                        background: "var(--db-bg-elevated)",
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={form.photo_url}
-                        alt={t("menuItemPhotoPreviewAlt")}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>
@@ -2785,7 +2755,57 @@ export default function MenuPage() {
   const [showPalettes, setShowPalettes] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
+  const [bizName, setBizName] = useState<string>("");
+  const [bizCoverUrl, setBizCoverUrl] = useState<string | null>(null);
+  const [bizIconEmoji, setBizIconEmoji] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const previewSectionRefs = useRef(new Map<string, HTMLElement>());
+  const previewData = useMemo(() => {
+    // Palette logic — identical to MenuPageClient L1376-1379:
+    // a custom COLOR_PALETTES slug overrides the template's board palette;
+    // unknown slug or null falls back to the board palette.
+    const boardPalette = resolvePalette(menuTemplate);
+    const previewPalette: MenuPalette = menuPalette
+      ? (COLOR_PALETTES_BY_SLUG[menuPalette] ?? boardPalette)
+      : boardPalette;
+    const previewBusiness: PublicBusiness = {
+      id: businessId,
+      slug: bizSlug ?? "",
+      name: bizName,
+      category: null,
+      description: null,
+      cover_url: bizCoverUrl,
+      icon_emoji: bizIconEmoji,
+      menu_card_effect: cardEffect,
+      menu_template_id: menuTemplate,
+      menu_palette_id: menuPalette,
+    };
+    const previewCategories: PublicMenuCategory[] = categories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon,
+      icon_url: cat.icon_url,
+      sort: cat.sort,
+      items: items
+        .filter((it) => it.category_id === cat.id)
+        .map((it): PublicMenuItem => ({
+          id: it.id,
+          category_id: it.category_id,
+          name: it.name,
+          description: it.description,
+          price_cents: it.price_cents,
+          photo_url: it.photo_url,
+          dietary_tags: it.dietary_tags,
+          badge: it.badge,
+          stock_count: it.stock_count,
+          options: { sizes: it.options?.sizes ?? [], extras: it.options?.extras ?? [] },
+          groups: [],
+          photos: [],
+          sort: it.sort,
+        })),
+    }));
+    return { previewBusiness, previewCategories, previewPalette };
+  }, [businessId, bizSlug, bizName, bizCoverUrl, bizIconEmoji, cardEffect, menuTemplate, menuPalette, categories, items]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [noBusiness, setNoBusiness] = useState(false);
@@ -2840,8 +2860,9 @@ export default function MenuPage() {
       setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "classic");
       setMenuPalette((res.business as unknown as { menu_palette_id?: string | null }).menu_palette_id ?? null);
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
+      setBizName(res.business.name ?? "");
 
-      const [catsResult, itemsResult] = await Promise.all([
+      const [catsResult, itemsResult, bizExtResult] = await Promise.all([
         supabase
           .from("menu_categories")
           .select("*")
@@ -2852,10 +2873,17 @@ export default function MenuPage() {
           .select("*")
           .eq("business_id", bid)
           .order("sort", { ascending: true }),
+        supabase
+          .from("businesses")
+          .select("cover_url, icon_emoji")
+          .eq("id", bid)
+          .maybeSingle(),
       ]);
 
       if (catsResult.error) throw catsResult.error;
       if (itemsResult.error) throw itemsResult.error;
+      setBizCoverUrl((bizExtResult.data as { cover_url?: string | null } | null)?.cover_url ?? null);
+      setBizIconEmoji((bizExtResult.data as { icon_emoji?: string | null } | null)?.icon_emoji ?? null);
 
       setCategories((catsResult.data as MenuCategory[]) ?? []);
       // Normalize options to guard against DB rows where options is {} or has null arrays
@@ -3141,10 +3169,11 @@ export default function MenuPage() {
       try {
         const { error: err } = await supabase
           .from("businesses")
-          .update({ menu_template_id: tpl } as never)
+          .update({ menu_template_id: tpl, menu_palette_id: null } as never)
           .eq("id", businessId);
         if (err) throw err;
         setMenuTemplate(tpl);
+        setMenuPalette(null);
         setSuccess(t("menuTemplateSavedSuccess"));
       } catch {
         setError(t("menuTemplateSaveError"));
@@ -3625,7 +3654,8 @@ export default function MenuPage() {
   }
 
   return (
-    <div style={{ maxWidth: 880 }}>
+    <div style={{ display: "flex", gap: 24, alignItems: "flex-start", maxWidth: 1240, margin: "0 auto" }}>
+      <div style={{ flex: "1 1 0", minWidth: 0, maxWidth: 760 }}>
       {/* Header */}
       <div
         style={{
@@ -4055,6 +4085,11 @@ export default function MenuPage() {
                       {active && (
                         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--db-accent)", flexShrink: 0 }}>
                           {t("menuTemplateActiveBadge")}
+                        </span>
+                      )}
+                      {opt.id === "bottom-nav" && !active && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--db-text-tertiary)", flexShrink: 0, letterSpacing: "0.03em" }}>
+                          Próximamente
                         </span>
                       )}
                     </div>
@@ -4653,6 +4688,62 @@ export default function MenuPage() {
             </span>
           ))}
         </div>
+      )}
+      </div>
+
+      {bizSlug && menuMode !== "external" && (
+        <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 80 }}>
+          {/* Label */}
+          <div style={{ marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
+              Vista en vivo
+            </span>
+          </div>
+          {/* iPhone chrome */}
+          <div
+            style={{
+              background: "#1c1c1e",
+              borderRadius: 50,
+              padding: 14,
+              boxShadow: "0 0 0 1.5px #444, 0 24px 64px rgba(0,0,0,0.55)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              width: 270,
+            }}
+          >
+            {/* Dynamic island */}
+            <div style={{ width: 88, height: 28, background: "#000", borderRadius: 20 }} />
+            {/* Screen — direct render of MenuTemplateRenderer at 0.62 scale */}
+            <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#fff" }}>
+              <div style={{ width: 390, height: Math.round(524 / 0.62), overflowY: "auto", transform: "scale(0.62)", transformOrigin: "top left" }}>
+                <MenuPaletteContext.Provider value={previewData.previewPalette}>
+                  <MenuTemplateRenderer
+                    templateId={menuTemplate}
+                    business={previewData.previewBusiness}
+                    categories={previewData.previewCategories}
+                    activeCategory={previewData.previewCategories[0]?.id ?? ""}
+                    scrollToCategory={() => {}}
+                    sectionRefs={previewSectionRefs}
+                    onItemAdd={() => {}}
+                    cartCount={0}
+                    cartTotal={0}
+                    onOpenCart={() => {}}
+                    cardEffect={cardEffect}
+                    hoveredCardId={null}
+                    mousePos={{ mx: 0, my: 0 }}
+                    onCardEnter={() => {}}
+                    onCardLeave={() => {}}
+                    onCardMove={() => {}}
+                  />
+                </MenuPaletteContext.Provider>
+              </div>
+            </div>
+            {/* Home indicator */}
+            <div style={{ width: 100, height: 4, background: "#555", borderRadius: 2 }} />
+          </div>
+        </aside>
       )}
     </div>
   );
