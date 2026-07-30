@@ -3169,10 +3169,11 @@ export default function MenuPage() {
       try {
         const { error: err } = await supabase
           .from("businesses")
-          .update({ menu_template_id: tpl } as never)
+          .update({ menu_template_id: tpl, menu_palette_id: null } as never)
           .eq("id", businessId);
         if (err) throw err;
         setMenuTemplate(tpl);
+        setMenuPalette(null);
         setSuccess(t("menuTemplateSavedSuccess"));
       } catch {
         setError(t("menuTemplateSaveError"));
