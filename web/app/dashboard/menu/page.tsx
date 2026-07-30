@@ -4029,6 +4029,11 @@ export default function MenuPage() {
                           {t("menuTemplateActiveBadge")}
                         </span>
                       )}
+                      {opt.id === "bottom-nav" && !active && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--db-text-tertiary)", flexShrink: 0, letterSpacing: "0.03em" }}>
+                          Próximamente
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 2, lineHeight: 1.35 }}>
                       {templateDescs[opt.id] ?? opt.desc}
@@ -4629,7 +4634,8 @@ export default function MenuPage() {
       </div>
 
       {bizSlug && menuMode !== "external" && (
-        <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 16 }}>
+        <aside className="hidden xl:block" style={{ flex: "0 0 auto" }}>
+          <div style={{ position: "sticky", top: 80 }}>
           {/* Label + refresh button */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
@@ -4671,7 +4677,7 @@ export default function MenuPage() {
             <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#000" }}>
               <iframe
                 key={previewKey}
-                src={`/m/${bizSlug}`}
+                src={`/m/${bizSlug}?r=${previewKey}`}
                 title="Vista previa del menú"
                 style={{
                   width: 390,
@@ -4684,6 +4690,7 @@ export default function MenuPage() {
             </div>
             {/* Home indicator */}
             <div style={{ width: 100, height: 4, background: "#555", borderRadius: 2 }} />
+          </div>
           </div>
         </aside>
       )}
