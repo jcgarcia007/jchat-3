@@ -1524,6 +1524,28 @@ export default function MenuPageClient({
     return () => observers.forEach((o) => o.disconnect());
   }, [categories]);
 
+  // visualViewport hook: publishes --menu-vh so the shell height tracks the
+  // real visible area on iOS (Chrome/WebKit moves browser bars on scroll,
+  // causing 100dvh to misalign inside a transformed container).
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    const setVh = () => {
+      const h = vv?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty("--menu-vh", `${h}px`);
+    };
+    setVh();
+    vv?.addEventListener("resize", setVh);
+    vv?.addEventListener("scroll", setVh);
+    window.addEventListener("resize", setVh);
+    window.addEventListener("orientationchange", setVh);
+    return () => {
+      vv?.removeEventListener("resize", setVh);
+      vv?.removeEventListener("scroll", setVh);
+      window.removeEventListener("resize", setVh);
+      window.removeEventListener("orientationchange", setVh);
+    };
+  }, []);
+
   const scrollToCategory = useCallback((catId: string) => {
     setActiveCategory(catId);
     document.getElementById(`cat-${catId}`)?.scrollIntoView({
@@ -1612,7 +1634,7 @@ export default function MenuPageClient({
     <div
       style={{
         background: palette.bg,
-        minHeight: "100dvh",
+        minHeight: "var(--menu-vh, 100dvh)",
         display: "flex",
         justifyContent: "center",
       }}
@@ -1622,7 +1644,7 @@ export default function MenuPageClient({
         style={{
           width: "100%",
           maxWidth: 480,
-          height: "100dvh",
+          height: "var(--menu-vh, 100dvh)",
           overflowY: "auto",
           overflowX: "hidden",
           position: "relative",
