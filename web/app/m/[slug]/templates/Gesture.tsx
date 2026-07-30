@@ -64,7 +64,7 @@ export default function Gesture({
   const nextItem = () => setItemIdx((i) => (i + 1) % items.length);
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", display: "flex", flexDirection: "column", background: P.bg }}>
+    <div style={{ position: "relative", minHeight: "var(--menu-vh, 100vh)", overflow: "hidden", display: "flex", flexDirection: "column", background: P.bg }}>
       {/* Minimal header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 20px 0" }}>
         <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", color: P.textFaint }}>{business.name}</span>

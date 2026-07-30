@@ -48,7 +48,7 @@ export default function Timeline({
   }
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "12px 16px 32px" }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", padding: "12px 16px 32px" }}>
       {/* Header */}
       <div style={{ padding: "4px 2px 12px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>

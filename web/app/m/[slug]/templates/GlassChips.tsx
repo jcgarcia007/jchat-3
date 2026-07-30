@@ -63,6 +63,7 @@ function FullBleedCard({
           right: 0,
           bottom: 0,
           padding: "28px 10px 10px",
+          paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
           background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.88))",
           display: "flex",
           alignItems: "flex-end",
@@ -126,7 +127,7 @@ export default function GlassChips({
   }
 
   return (
-    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "100vh" }}>
+    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "var(--menu-vh, 100vh)" }}>
       {/* Header */}
       <div style={{ padding: "16px 16px 4px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.4px" }}>
@@ -196,7 +197,7 @@ export default function GlassChips({
       <div
         style={{
           position: "sticky",
-          bottom: 20,
+          bottom: "calc(20px + env(safe-area-inset-bottom))",
           zIndex: 30,
           display: "flex",
           justifyContent: "flex-end",

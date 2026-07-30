@@ -134,7 +134,7 @@ export default function InfiniteFeed({
   }
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "12px 16px 96px" }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", padding: "12px 16px 96px" }}>
       {/* Header */}
       <div style={{ padding: "6px 2px 16px" }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.5px" }}>
@@ -154,7 +154,7 @@ export default function InfiniteFeed({
       <div
         style={{
           position: "sticky",
-          bottom: 0,
+          bottom: "env(safe-area-inset-bottom)",
           width: "100%",
           zIndex: 30,
           padding: "40px 16px 18px",

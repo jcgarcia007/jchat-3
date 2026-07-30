@@ -44,7 +44,7 @@ export default function CardStack({
   };
 
   return (
-    <div style={{ background: P.bg, minHeight: "100vh", maxWidth: 680, margin: "0 auto", padding: "14px 16px 24px" }}>
+    <div style={{ background: P.bg, minHeight: "var(--menu-vh, 100vh)", maxWidth: 680, margin: "0 auto", padding: "14px 16px 24px" }}>
       {/* Header + progress */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: P.text, margin: 0, letterSpacing: "-0.3px" }}>{business.name}</h1>

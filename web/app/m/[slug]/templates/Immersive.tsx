@@ -64,7 +64,7 @@ export default function Immersive({
   };
 
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: P.bg }}>
+    <div style={{ position: "relative", height: "var(--menu-vh, 100vh)", overflow: "hidden", background: P.bg }}>
       {/* Translucent category chips */}
       <div
         style={{
@@ -173,7 +173,7 @@ export default function Immersive({
                   position: "absolute",
                   left: 14,
                   right: 14,
-                  bottom: 24,
+                  bottom: "calc(24px + env(safe-area-inset-bottom))",
                   padding: "18px 20px",
                   borderRadius: 24,
                   background: "rgba(12,12,12,0.5)",

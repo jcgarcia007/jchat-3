@@ -55,7 +55,7 @@ export default function Stories({
   const prev = () => setCurrent((c) => Math.max(c - 1, 0));
 
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: P.bg }}>
+    <div style={{ position: "relative", height: "var(--menu-vh, 100vh)", overflow: "hidden", background: P.bg }}>
       {/* Photo */}
       {item.photo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -126,7 +126,7 @@ export default function Stories({
       </div>
 
       {/* Bottom info panel */}
-      <div style={{ position: "absolute", left: 18, right: 18, bottom: 28, zIndex: 10 }}>
+      <div style={{ position: "absolute", left: 18, right: 18, bottom: "calc(28px + env(safe-area-inset-bottom))", zIndex: 10 }}>
         <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1.1 }}>{item.name}</div>
         {item.description && (
           <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", marginTop: 8, lineHeight: 1.5 }}>{item.description}</div>

@@ -106,7 +106,7 @@ export default function StreamingRows({
   }
 
   return (
-    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "100vh" }}>
+    <div style={{ position: "relative", paddingBottom: 32, background: P.bg, minHeight: "var(--menu-vh, 100vh)" }}>
       {/* Marquee header */}
       <div style={{ padding: "14px 16px 8px" }}>
         <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "0.5px", color: P.accent, margin: 0, textTransform: "uppercase" }}>
@@ -159,7 +159,7 @@ export default function StreamingRows({
       <div
         style={{
           position: "sticky",
-          bottom: 20,
+          bottom: "calc(20px + env(safe-area-inset-bottom))",
           zIndex: 30,
           display: "flex",
           justifyContent: "flex-end",

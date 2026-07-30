@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
@@ -491,7 +492,12 @@ function ReceiptRow({ label, cents }: { label: string; cents: number }) {
 }
 
 function Sheet({ children }: { children: React.ReactNode }) {
-  return (
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(0,0,0,0.45)" }}>
       <div
         style={{
@@ -501,13 +507,14 @@ function Sheet({ children }: { children: React.ReactNode }) {
           color: "#111827",
           borderRadius: "20px 20px 0 0",
           padding: "22px 20px calc(22px + env(safe-area-inset-bottom))",
-          maxHeight: "92vh",
+          maxHeight: "92dvh",
           overflowY: "auto",
         }}
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
