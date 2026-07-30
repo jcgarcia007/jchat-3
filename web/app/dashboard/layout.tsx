@@ -116,7 +116,7 @@ export default async function DashboardLayout({
           style={{
             display: "flex",
             flexDirection: "row",
-            height: "100vh",
+            minHeight: "100vh",
             background: "var(--db-bg-base)",
             color: "var(--db-text-primary)",
           }}
