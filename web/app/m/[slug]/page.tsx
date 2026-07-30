@@ -381,10 +381,15 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
   const previewPalette = typeof sp?.preview_palette === "string" ? sp.preview_palette : undefined;
   if (previewPalette) data.business.menu_palette_id = previewPalette;
 
+  const isAppMode = sp?.app === "1";
+  const appRoomId = typeof sp?.room === "string" ? sp.room : null;
+
   return (
     <MenuPageClient
       business={data.business}
       categories={data.categories}
+      isAppMode={isAppMode ?? false}
+      appRoomId={appRoomId}
     />
   );
 }

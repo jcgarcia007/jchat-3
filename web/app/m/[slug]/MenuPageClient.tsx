@@ -13,6 +13,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
+import { buildOrderOptions } from "@/lib/orderOptions";
 import type {
   PublicBusiness,
   PublicMenuCategory,
@@ -20,6 +21,13 @@ import type {
   MenuItemOption,
   ModifierChoice,
 } from "./page";
+
+// Allow TypeScript to recognise the object react-native-webview injects.
+declare global {
+  interface Window {
+    ReactNativeWebView?: { postMessage: (msg: string) => void };
+  }
+}
 
 // ── Cart types ────────────────────────────────────────────────────────────────
 
@@ -1364,9 +1372,15 @@ function CartFAB({
 export default function MenuPageClient({
   business,
   categories,
+  isAppMode = false,
+  appRoomId = null,
 }: {
   business: PublicBusiness;
   categories: PublicMenuCategory[];
+  /** True when running inside the native app WebView (?app=1). */
+  isAppMode?: boolean;
+  /** roomId from ?room=<id> — used in the postMessage payload. */
+  appRoomId?: string | null;
 }) {
   const t = useTranslations("menu");
   const cardEffect = business.menu_card_effect ?? "lift";
@@ -1441,6 +1455,8 @@ export default function MenuPageClient({
   const [tableCtx, setTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
 
   useEffect(() => {
+    // In app mode the room context comes from ?room= URL param; skip sessionStorage.
+    if (isAppMode) return;
     try {
       const raw = sessionStorage.getItem(TABLE_CONTEXT_KEY);
       if (!raw) return;
@@ -1609,6 +1625,26 @@ export default function MenuPageClient({
     setCartItems((prev) => prev.filter((ci) => ci.cartId !== cartId));
   }, []);
 
+  const handleCartContinue = useCallback(() => {
+    if (isAppMode) {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        type: "CHECKOUT",
+        businessId: business.id,
+        roomId: appRoomId,
+        items: cartItems.map((ci) => ({
+          menuItemId: ci.itemId,
+          name: ci.name,
+          qty: ci.quantity,
+          priceCents: ci.lineTotalCents,
+          options: buildOrderOptions(ci),
+          specialInstructions: ci.notes ?? null,
+        })),
+      }));
+      return;
+    }
+    setStep("pickup");
+  }, [isAppMode, appRoomId, business.id, cartItems]);
+
   const handleItemAdd = useCallback(
     (item: PublicMenuItem) => {
       if (item.groups.length > 0) {
@@ -1739,7 +1775,7 @@ export default function MenuPageClient({
           onClose={() => setStep("menu")}
           onUpdateQty={updateQty}
           onRemove={removeFromCart}
-          onContinue={() => setStep("pickup")}
+          onContinue={handleCartContinue}
         />
       )}
 
