@@ -74,13 +74,29 @@ export default async function DashboardLayout({
       }
     }
 
-    // Seed the dashboard theme + palette from the owner's business.
-    const { data: biz } = await supabase
-      .from("businesses")
-      .select("dashboard_theme_id, dashboard_palette_id")
-      .eq("owner_id", user.id)
-      .limit(1)
+    // Seed the dashboard theme + palette from the ACTIVE business.
+    // Mirrors resolveActiveBusiness() from @/lib/business (adapted for server client).
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("active_business_id")
+      .eq("id", user.id)
       .maybeSingle();
+    const activeId = userRow?.active_business_id ?? null;
+    const bizQuery = activeId !== null
+      ? supabase
+          .from("businesses")
+          .select("dashboard_theme_id, dashboard_palette_id")
+          .eq("id", activeId)
+          .eq("owner_id", user.id)
+          .maybeSingle()
+      : supabase
+          .from("businesses")
+          .select("dashboard_theme_id, dashboard_palette_id")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+    const { data: biz } = await bizQuery;
     initialThemeId = biz?.dashboard_theme_id ?? 1;
     initialPaletteId = biz?.dashboard_palette_id ?? null;
   }
