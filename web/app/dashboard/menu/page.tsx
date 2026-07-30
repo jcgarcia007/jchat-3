@@ -57,7 +57,7 @@ import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/
 import type { PublicBusiness, PublicMenuCategory, PublicMenuItem } from "@/app/m/[slug]/page";
 import MenuTemplateRenderer from "@/app/m/[slug]/templates/MenuTemplateRenderer";
 import { MenuPaletteContext } from "@/app/m/[slug]/templates/shared/paletteContext";
-import { resolvePalette } from "@/app/m/[slug]/templates/shared/palettes";
+import { resolvePalette, type MenuPalette } from "@/app/m/[slug]/templates/shared/palettes";
 import { resolveActiveBusiness } from "@/lib/business";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -2755,17 +2755,27 @@ export default function MenuPage() {
   const [showPalettes, setShowPalettes] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
+  const [bizName, setBizName] = useState<string>("");
+  const [bizCoverUrl, setBizCoverUrl] = useState<string | null>(null);
+  const [bizIconEmoji, setBizIconEmoji] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const previewSectionRefs = useRef(new Map<string, HTMLElement>());
   const previewData = useMemo(() => {
+    // Palette logic — identical to MenuPageClient L1376-1379:
+    // a custom COLOR_PALETTES slug overrides the template's board palette;
+    // unknown slug or null falls back to the board palette.
+    const boardPalette = resolvePalette(menuTemplate);
+    const previewPalette: MenuPalette = menuPalette
+      ? (COLOR_PALETTES_BY_SLUG[menuPalette] ?? boardPalette)
+      : boardPalette;
     const previewBusiness: PublicBusiness = {
       id: businessId,
       slug: bizSlug ?? "",
-      name: "",
+      name: bizName,
       category: null,
       description: null,
-      cover_url: null,
-      icon_emoji: null,
+      cover_url: bizCoverUrl,
+      icon_emoji: bizIconEmoji,
       menu_card_effect: cardEffect,
       menu_template_id: menuTemplate,
       menu_palette_id: menuPalette,
@@ -2794,8 +2804,8 @@ export default function MenuPage() {
           sort: it.sort,
         })),
     }));
-    return { previewBusiness, previewCategories };
-  }, [businessId, bizSlug, cardEffect, menuTemplate, menuPalette, categories, items]);
+    return { previewBusiness, previewCategories, previewPalette };
+  }, [businessId, bizSlug, bizName, bizCoverUrl, bizIconEmoji, cardEffect, menuTemplate, menuPalette, categories, items]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [noBusiness, setNoBusiness] = useState(false);
@@ -2850,8 +2860,9 @@ export default function MenuPage() {
       setMenuTemplate((res.business as unknown as { menu_template_id?: string }).menu_template_id ?? "classic");
       setMenuPalette((res.business as unknown as { menu_palette_id?: string | null }).menu_palette_id ?? null);
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
+      setBizName(res.business.name ?? "");
 
-      const [catsResult, itemsResult] = await Promise.all([
+      const [catsResult, itemsResult, bizExtResult] = await Promise.all([
         supabase
           .from("menu_categories")
           .select("*")
@@ -2862,10 +2873,17 @@ export default function MenuPage() {
           .select("*")
           .eq("business_id", bid)
           .order("sort", { ascending: true }),
+        supabase
+          .from("businesses")
+          .select("cover_url, icon_emoji")
+          .eq("id", bid)
+          .maybeSingle(),
       ]);
 
       if (catsResult.error) throw catsResult.error;
       if (itemsResult.error) throw itemsResult.error;
+      setBizCoverUrl((bizExtResult.data as { cover_url?: string | null } | null)?.cover_url ?? null);
+      setBizIconEmoji((bizExtResult.data as { icon_emoji?: string | null } | null)?.icon_emoji ?? null);
 
       setCategories((catsResult.data as MenuCategory[]) ?? []);
       // Normalize options to guard against DB rows where options is {} or has null arrays
@@ -4699,7 +4717,7 @@ export default function MenuPage() {
             {/* Screen — direct render of MenuTemplateRenderer at 0.62 scale */}
             <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#fff" }}>
               <div style={{ width: 390, height: Math.round(524 / 0.62), overflowY: "auto", transform: "scale(0.62)", transformOrigin: "top left" }}>
-                <MenuPaletteContext.Provider value={resolvePalette(menuPalette ?? menuTemplate)}>
+                <MenuPaletteContext.Provider value={previewData.previewPalette}>
                   <MenuTemplateRenderer
                     templateId={menuTemplate}
                     business={previewData.previewBusiness}
