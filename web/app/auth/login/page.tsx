@@ -24,6 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
 function LoginForm() {
   const router = useRouter();
@@ -174,13 +175,12 @@ function LoginForm() {
             padding: "10px 12px",
             marginBottom: 16,
             borderRadius: 10,
-            background: "var(--color-brand-light)",
+            background: "rgba(239,68,68,0.12)",
             border: "1px solid var(--color-danger)",
-            color: "var(--color-danger)",
             fontSize: 13,
           }}
         >
-          <IconAlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+          <IconAlertCircle size={18} style={{ flexShrink: 0, marginTop: 1, color: "var(--color-danger)" }} />
           <span>{error}</span>
         </div>
       )}
@@ -389,8 +389,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
+    <AuthSplitLayout>
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
+    </AuthSplitLayout>
   );
 }
