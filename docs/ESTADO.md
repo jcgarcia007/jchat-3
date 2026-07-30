@@ -1,8 +1,8 @@
 # JChat 3.0 — Estado
 
-Last updated: 2026-07-28
+Last updated: 2026-07-30
 Fuente de verdad de "cómo está la app HOY". La bitácora histórica (sesión por sesión) vive en
-`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-77).
+`docs/archive/PROJECT_STATUS_historico.md`. Las decisiones, en `docs/DECISIONS.md` (D-79).
 
 Convención: ✅ verificado contra código/BD · 📼 según bitácora, sin reconfirmar · ⚠️ riesgo · 🔴 bloqueante
 
@@ -46,7 +46,15 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
 - ✅ **Gate de plan** en el dashboard, con caducidad de prueba (verificado en vivo).
 - ✅ **Bienvenida post-registro** (arregla el bucle registro→dashboard).
 - 📼 **Chat**: presencia + realtime en iOS/Android/web, sub-chats, TTL 24h, fotos, temas.
-- 📼 **Menú web público** `/m/[slug]` con modificadores estilo Uber Eats.
+- ✅ **Menú web público** `/m/[slug]` con modificadores estilo Uber Eats. **Altura reactiva en iOS**
+  (2026-07-30, merge `b157025`): hook `visualViewport` en `MenuPageClient` publica `--menu-vh`; 18
+  plantillas usan `var(--menu-vh, 100vh)` + `env(safe-area-inset-bottom)` en 11 CTAs inferiores (D-78).
+  Fix de pago: `CheckoutStep.Sheet` usa `createPortal(…, document.body)` — escapa el transform del
+  shell, el sheet de pago cubre la pantalla donde está el usuario aunque el menú esté scrolleado (D-79).
+  Editor del menú (preview iPhone render-directo, paleta correcta, reset al cambiar plantilla) en
+  producción desde `83bdaa1` (2026-07-30). **Pendiente:** plantilla "bottom-nav" NO implementada —
+  cae al `Classic` vía default del `MenuTemplateRenderer`; marcada "Próximamente" en el selector.
+  Construirla es trabajo nuevo. Fotos de menú de Bar XZX migradas al bucket (one-shot, producción).
 - 📼 **Social** (seguir/privacidad/bloqueo/DM), **mesas/meseros/cocina (KDS)**.
 - ✅ **Seguridad base**: RLS, allow-lists de columnas, JWT en las 8 EF, revocaciones a anon.
 

@@ -180,4 +180,41 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   dueño ajusta dentro, override sube el max con aprobación). Deuda restante: sub-salas (BACKLOG.md) +
   operativo Geocoding API. NO reabrir lo cerrado.
 
-Last updated: 2026-07-28
+## Aprendizajes 2026-07-30 (menú público iOS + fix de pago)
+
+- **100vh es trampa en iOS (D-78):** las barras del navegador cambian la altura visible; `100vh` es la
+  altura GRANDE y deja el contenido inferior fuera de pantalla. Fix: hook `visualViewport` en
+  `MenuPageClient` publica `--menu-vh` en tiempo real (resize + scroll + orientationchange). Todas las
+  plantillas del menú usan `var(--menu-vh, 100vh)` — NUNCA `100vh` crudo. El fallback cubre SSR y el
+  primer render. Los botones de acción fijos en la parte inferior añaden `env(safe-area-inset-bottom)`.
+  Commits: `3a097db` (hook) · `dae7fe1` (18 plantillas). Merge a producción: `b157025`.
+
+- **position:fixed dentro de un transform se ancla al contenedor, no al viewport (D-79):** el `<main>`
+  del menú lleva `transform:translateZ(0)` — cualquier hijo `position:fixed` sin portal aparece
+  desplazado cuando el menú está scrolleado. Fix obligatorio: `createPortal(..., document.body)` +
+  scroll-lock (`document.body.style.overflow = "hidden"`) — igual que el `Backdrop` de `MenuPageClient`.
+  El PRINT_CSS (`.co-print-area { position:fixed !important }`) es una regla `@media print`, no un
+  overlay — no se toca. Regla: todo sheet/modal nuevo en el menú → `createPortal` es obligatorio.
+  Commit: `fda3ff2`. Merge a producción: `b157025`.
+
+- **El scroll fix descartado (commit `e9e3024` revertido):** se probó cambiar `minHeight→height` en
+  el contenedor del dashboard para fijar el iPhone preview con `position:sticky`. El comportamiento
+  real en el browser no fue el esperado; se revirtió y NO llegó a producción. NO usar `height:100vh`
+  en el layout del dashboard para resolver el sticky — la estrategia descartada está en git como
+  `e9e3024` (revert). El sticky del iPhone preview funciona correctamente con el approach de `aside`
+  directamente en el flex container.
+
+- **Fotos de menú de Bar XZX migradas al bucket (one-shot):** script `web/scripts/migrate-menu-photos.mjs`
+  ejecutado manualmente. Las fotos ahora viven en el bucket de Supabase; el script NO se commitea
+  a la rama (es datos, no código del producto).
+
+- **Hitos a producción (2026-07-30):**
+  - `83bdaa1` — editor de menú (preview iPhone, paleta, reset al cambiar plantilla)
+  - `b157025` — menú público: altura reactiva iOS + safe-area + fix de pago (createPortal)
+  Rama `feat/menu-editor-preview` puede continuar recibiendo trabajo nuevo (e.g. plantilla bottom-nav).
+
+- **Plantilla "bottom-nav" pendiente:** no está implementada — `MenuTemplateRenderer` cae al `Classic`
+  vía el default del switch. Marcada "Próximamente" en el selector del editor. Construirla es trabajo
+  nuevo independiente, no deuda del trabajo de hoy.
+
+Last updated: 2026-07-30

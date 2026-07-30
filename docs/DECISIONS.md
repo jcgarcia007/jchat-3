@@ -2,7 +2,7 @@
 
 Why we did what we did. Read before reversing a choice.
 
-Last updated: 2026-07-26
+Last updated: 2026-07-30
 
 ## Maps
 
@@ -695,6 +695,76 @@ bloquee el plan entero, se separa: USA (con pagos) sale primero; RD se aborda AL
 problema de disponibilidad de pagos en un mercado no detiene el lanzamiento del otro.
 Consecuencia: RD sale de la ruta crítica de lanzamiento; ya NO es un 🔴 bloqueante. El trabajo de RD
 (procesador local, o gating social-only) se planifica como el último paso. ESTADO.md actualizado acorde.
+
+## Menú público — iOS / layout
+
+### D-78 — 100vh es trampa en iOS WebKit: usar visualViewport + --menu-vh (nunca 100vh crudo)
+
+Decisión (2026-07-30): todo contenedor fullscreen del menú público usa `var(--menu-vh, 100vh)` (o dvh),
+nunca `100vh` crudo. La variable `--menu-vh` la publica el hook `visualViewport` de `MenuPageClient`.
+
+Why: en iOS (Chrome y Safari), las barras del navegador se deslizan al scrollear y cambian la altura
+visible. `100vh` es la altura GRANDE (barras ocultas) — cuando las barras están visibles, el contenido
+inferior queda fuera de pantalla; el usuario tiene que hacer scroll/refresh para verlo. `100dvh` mejora
+esto pero dentro de un contenedor con `transform:translateZ(0)` sigue desalineándose hasta el siguiente
+evento. El hook `visualViewport` resuelve el problema real:
+
+```tsx
+useEffect(() => {
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  const setVh = () => {
+    const h = vv?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty("--menu-vh", `${h}px`);
+  };
+  setVh();
+  vv?.addEventListener("resize", setVh);
+  vv?.addEventListener("scroll", setVh);
+  window.addEventListener("resize", setVh);
+  window.addEventListener("orientationchange", setVh);
+  return () => { /* cleanup todas */ };
+}, []);
+```
+
+El fallback `100vh` en el var() cubre SSR y el primer render antes de que el hook dispare.
+Consecuencia: TODA plantilla nueva del menú debe usar `var(--menu-vh, 100vh)` en su contenedor raíz.
+Adicionalmente, los botones de acción fijos en la parte inferior deben añadir `env(safe-area-inset-bottom)`
+para no quedar bajo el indicador de home del iPhone. Patrón: `calc(NNpx + env(safe-area-inset-bottom))`.
+Commit: `3a097db` (hook) · `dae7fe1` (18 plantillas) · merge `b157025` a main (2026-07-30).
+
+### D-79 — position:fixed dentro del shell del menú se ancla al transform, no al viewport: usar createPortal
+
+Decisión (2026-07-30): todo overlay/sheet/modal en el menú público usa `createPortal(..., document.body)`
++ scroll-lock (`document.body.style.overflow = "hidden"`), NUNCA `position:fixed` sin portal dentro del
+shell transformado.
+
+Why: el shell del menú (`<main>`) lleva `transform:translateZ(0)` para crear un stacking context limpio
+(z-index, composición GPU). Cualquier descendiente con `position:fixed` se ancla al `<main>` transformado,
+NO al viewport. Cuando el menú está scrolleado, ese hijo "fixed" aparece desplazado (arriba o fuera de
+pantalla). El fix es el mismo patrón que ya usa el componente `Backdrop` de `MenuPageClient`:
+
+```tsx
+function Sheet({ children }) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, ... }}>
+      {children}
+    </div>,
+    document.body
+  );
+}
+```
+
+El portal renderiza el overlay directamente en `document.body`, escapando el stacking context del
+transform y anclándose al viewport real sin importar el scroll del menú.
+Historial: bug encontrado en `CheckoutStep.Sheet` (el único sheet sin portal). Los componentes
+`LeftDrawer` y `CategorySidebar` ya usaban portal. El PRINT_CSS (`position:fixed !important` en
+`.co-print-area`) NO es un overlay — es una regla `@media print` intencional, no se toca.
+Regla para código nuevo: cualquier sheet/modal en el menú → `createPortal` es obligatorio.
+Commit: `fda3ff2` · merge `b157025` a main (2026-07-30).
 
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
