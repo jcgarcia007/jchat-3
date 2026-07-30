@@ -206,6 +206,8 @@ export default function ChatRoomScreen() {
   // Kept separate from BusinessSummary (shared with ChatTopBar) — only the
   // geofence gate needs it, to detect the owner (épica geocerca Fase 3.2).
   const [businessOwnerId, setBusinessOwnerId] = useState<string | null>(null);
+  // Kept separate — only used to construct the WebView preview URL.
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null);
   const [subRooms, setSubRooms] = useState<SubRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>(rootRoomId);
 
@@ -353,13 +355,14 @@ export default function ChatRoomScreen() {
         // Load business
         const { data: bizData } = await supabase
           .from('businesses')
-          .select('id, name, icon_emoji, menu_enabled, owner_id')
+          .select('id, name, icon_emoji, menu_enabled, owner_id, slug')
           .eq('id', typedRoom.business_id)
           .single();
 
         if (bizData) {
           setBusiness(bizData as BusinessSummary);
           setBusinessOwnerId((bizData as { owner_id: string | null }).owner_id ?? null);
+          setBusinessSlug((bizData as { slug: string | null }).slug ?? null);
         }
 
         // Load all the business's rooms (main + sub-rooms). RLS allows any
@@ -577,8 +580,9 @@ export default function ChatRoomScreen() {
       businessId: room.business_id,
       roomId: activeRoomId,
       businessName: business.name,
+      slug: businessSlug ?? undefined,
     });
-  }, [business, room, activeRoomId, navigation]);
+  }, [business, room, activeRoomId, businessSlug, navigation]);
 
   const handleServiceCall = useCallback(() => {
     setServiceSheetVisible(true);

@@ -258,7 +258,7 @@ export default function MenuScreen() {
   const route = useRoute<MenuRoute>();
   const cart = useCart();
 
-  const { businessId, roomId = null, businessName: routeBusinessName } = route.params;
+  const { businessId, roomId = null, businessName: routeBusinessName, slug } = route.params;
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -373,6 +373,11 @@ export default function MenuScreen() {
     navigation.navigate('Cart');
   }, [navigation]);
 
+  const handleWebPreviewPress = useCallback(() => {
+    if (!slug) return;
+    navigation.navigate('MenuWebPreview', { slug, businessName });
+  }, [slug, businessName, navigation]);
+
   const handleOpenDetail = useCallback(
     (item: MenuItem) => {
       navigation.navigate('ProductDetail', { item });
@@ -434,6 +439,19 @@ export default function MenuScreen() {
           </View>
         </Pressable>
       </View>
+
+      {/* ── [BETA] Web preview strip — remove after design approval ── */}
+      {slug ? (
+        <Pressable
+          onPress={handleWebPreviewPress}
+          style={({ pressed }) => ({ backgroundColor: palette.brand, alignItems: 'center' as const, paddingVertical: 5, opacity: pressed ? 0.8 : 1 })}
+          accessibilityRole="button"
+        >
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+            🌐 Ver diseño web (beta)
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* ── Search bar ── */}
       <View style={[styles.searchContainer, { backgroundColor: c.bgSurface }]}>

@@ -35,6 +35,7 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
+import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
 import ProductDetailScreen from '../screens/menu/ProductDetailScreen';
 import CartScreen from '../screens/menu/CartScreen';
 import CheckoutScreen from '../screens/checkout/CheckoutScreen';
@@ -71,7 +72,11 @@ export type MainStackParamList = {
     roomId?: string;
     /** Business name to show in the header while the menu loads. */
     businessName?: string;
+    /** Used by the WebView preview prototype. */
+    slug?: string;
   };
+  /** Temporary WebView prototype — shows /m/[slug] for design validation. */
+  MenuWebPreview: { slug: string; businessName?: string };
   ProductDetail: { item: MenuItem };
   Cart: undefined;
   Checkout: undefined;
@@ -129,6 +134,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />
           <MainStack.Screen name="Menu" component={MenuScreen} />
+          <MainStack.Screen name="MenuWebPreview" component={MenuWebPreviewScreen} />
           <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'modal' }} />
           <MainStack.Screen name="Cart" component={CartScreen} />
           <MainStack.Screen name="Checkout" component={CheckoutScreen} />
