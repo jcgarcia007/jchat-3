@@ -20,6 +20,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
 type Lang = "es" | "en";
 
@@ -104,13 +105,16 @@ export default function WelcomePage() {
 
   if (checking) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-        <IconLoader2 size={28} className="spin" style={{ color: "var(--color-brand)" }} />
-      </div>
+      <AuthSplitLayout>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+          <IconLoader2 size={28} className="spin" style={{ color: "var(--color-brand)" }} />
+        </div>
+      </AuthSplitLayout>
     );
   }
 
   return (
+    <AuthSplitLayout>
     <div
       style={{
         width: "100%",
@@ -214,5 +218,6 @@ export default function WelcomePage() {
         <LanguageSwitcher />
       </div>
     </div>
+    </AuthSplitLayout>
   );
 }
