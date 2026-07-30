@@ -131,7 +131,7 @@ export default async function DashboardLayout({
               display: "flex",
               flexDirection: "column",
               minWidth: 0,
-              overflow: "hidden",
+              overflow: "clip",
             }}
           >
             <TopBar />

@@ -25,7 +25,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
@@ -2754,6 +2754,14 @@ export default function MenuPage() {
   const [showEffects, setShowEffects] = useState(false);
   const [bizSlug, setBizSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // iframe src que refleja la plantilla/paleta ACTUALES del editor (sin esperar al guardado).
+  // Usa ?preview_template y ?preview_palette para forzar la vista sin tocar la BD.
+  const iframePreviewSrc = useMemo(() => {
+    if (!bizSlug || menuMode === "external") return "";
+    const q = new URLSearchParams({ preview_template: menuTemplate, r: String(previewKey) });
+    if (menuPalette) q.set("preview_palette", menuPalette);
+    return `/m/${bizSlug}?${q.toString()}`;
+  }, [bizSlug, menuMode, menuTemplate, menuPalette, previewKey]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [noBusiness, setNoBusiness] = useState(false);
@@ -4634,8 +4642,7 @@ export default function MenuPage() {
       </div>
 
       {bizSlug && menuMode !== "external" && (
-        <aside className="hidden xl:block" style={{ flex: "0 0 auto" }}>
-          <div style={{ position: "sticky", top: 80 }}>
+        <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 80 }}>
           {/* Label + refresh button */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
@@ -4676,8 +4683,7 @@ export default function MenuPage() {
             {/* Screen */}
             <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#000" }}>
               <iframe
-                key={previewKey}
-                src={`/m/${bizSlug}?r=${previewKey}`}
+                src={iframePreviewSrc}
                 title="Vista previa del menú"
                 style={{
                   width: 390,
@@ -4690,7 +4696,6 @@ export default function MenuPage() {
             </div>
             {/* Home indicator */}
             <div style={{ width: 100, height: 4, background: "#555", borderRadius: 2 }} />
-          </div>
           </div>
         </aside>
       )}
