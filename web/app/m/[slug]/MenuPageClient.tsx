@@ -294,7 +294,12 @@ function CustomizerSheet({
               <img
                 src={displayUrl}
                 alt={item.name}
+                loading="lazy"
+                decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
               />
             ) : (
               <div
@@ -354,6 +359,8 @@ function CustomizerSheet({
                   key={i}
                   src={url}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   onClick={() => setPhotoIdx(i)}
                   style={{
                     width: 42,
@@ -367,6 +374,9 @@ function CustomizerSheet({
                       : "2px solid transparent",
                     opacity: i === photoIdx ? 1 : 0.65,
                     transition: "opacity .15s, border-color .15s",
+                  }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
               ))}

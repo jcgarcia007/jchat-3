@@ -1691,40 +1691,6 @@ function ItemEditorModal({
                   {t("menuItemAddPhotosButton")}
                 </label>
 
-                {/* Legacy photo_url — kept for backwards compatibility */}
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--db-text-tertiary)", margin: "0 0 4px" }}>
-                    {t("menuItemLegacyUrlHint")}
-                  </p>
-                  <FieldInput
-                    value={form.photo_url}
-                    onChange={(v) => set("photo_url", v)}
-                    placeholder={t("menuItemPhotoUrlPlaceholder")}
-                  />
-                  {form.photo_url && savedPhotos.length === 0 && stagedPhotos.length === 0 && (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        width: 64,
-                        height: 64,
-                        borderRadius: "var(--db-radius)",
-                        overflow: "hidden",
-                        border: "1px solid var(--db-border)",
-                        background: "var(--db-bg-elevated)",
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={form.photo_url}
-                        alt={t("menuItemPhotoPreviewAlt")}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>
