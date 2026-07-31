@@ -5,56 +5,23 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import {
-  IconLayoutDashboard,
-  IconShoppingCart,
-  IconChefHat,
-  IconToolsKitchen2,
-  IconPackage,
-  IconMessages,
-  IconUsers,
-  IconShieldLock,
-  IconBell,
-  IconCalendar,
-  IconAward,
-  IconCreditCard,
-  IconReceiptRefund,
-  IconChartBar,
-  IconChartLine,
-  IconTag,
-  IconSettings,
-  IconShield,
-} from "@tabler/icons-react";
+import { IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import {
+  NAV_MODULES,
+  CONFIG_MODULE,
+  isNavPageActive,
+  type NavPage,
+  type NavModule,
+} from "./nav-modules";
 
-interface NavItem {
-  labelKey: string;
-  href: string;
-  icon: React.ComponentType<{ size?: number; stroke?: number }>;
-  badgeKey?: "service_pending";
-}
+// Dashboard sidebar (producción, claro). Agrupa las páginas por módulo reutilizando
+// NAV_MODULES + CONFIG_MODULE de nav-modules.ts como fuente de verdad.
+// Diseño sin cambios de color — solo reorganizado con headers de grupo.
 
-const NAV_ITEMS: NavItem[] = [
-  { labelKey: "navOverview",      href: "/dashboard",               icon: IconLayoutDashboard },
-  { labelKey: "navOrders",        href: "/dashboard/orders",        icon: IconShoppingCart },
-  { labelKey: "navKitchen",       href: "/dashboard/kds",           icon: IconChefHat },
-  { labelKey: "navMenu",          href: "/dashboard/menu",          icon: IconToolsKitchen2 },
-  { labelKey: "navInventory",     href: "/dashboard/inventory",     icon: IconPackage },
-  { labelKey: "navChatRooms",     href: "/dashboard/chat-rooms",    icon: IconMessages },
-  { labelKey: "navEmployees",     href: "/dashboard/employees",     icon: IconUsers },
-  { labelKey: "navRoles",         href: "/dashboard/roles",         icon: IconShieldLock },
-  { labelKey: "navReservations",  href: "/dashboard/reservations",  icon: IconCalendar },
-  { labelKey: "navLoyalty",       href: "/dashboard/loyalty",       icon: IconAward },
-  { labelKey: "navService",       href: "/dashboard/service",       icon: IconBell, badgeKey: "service_pending" },
-  { labelKey: "navPayments",      href: "/dashboard/payments",      icon: IconCreditCard },
-  { labelKey: "navDisputes",      href: "/dashboard/disputes",      icon: IconReceiptRefund },
-  { labelKey: "navReports",       href: "/dashboard/reports",       icon: IconChartBar },
-  { labelKey: "navAnalytics",     href: "/dashboard/analytics",     icon: IconChartLine },
-  { labelKey: "navOffers",        href: "/dashboard/offers",        icon: IconTag },
-  { labelKey: "navConfiguration", href: "/dashboard/configuration", icon: IconSettings },
-];
+const TABLES_HREF = "/dashboard/tables";
 
 export function Sidebar() {
   const t = useTranslations("dashboardCommon");
@@ -114,21 +81,126 @@ export function Sidebar() {
     };
   }, []);
 
+  function renderPage(page: NavPage) {
+    const Icon = page.icon;
+    const isActive = isNavPageActive(page.href, pathname);
+    const badge = page.badgeKey === "service_pending" ? servicePending : 0;
+    const label = t(page.labelKey);
+    const isNew = page.href === TABLES_HREF;
+
+    return (
+      <Link
+        key={page.href}
+        href={page.href}
+        title={label}
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "6px 10px",
+          borderRadius: "var(--db-radius)",
+          textDecoration: "none",
+          background: isActive ? "var(--db-bg-elevated)" : "transparent",
+          borderLeft: isActive
+            ? "2px solid var(--color-brand)"
+            : "2px solid transparent",
+          color: isActive ? "var(--db-accent)" : "var(--db-text-secondary)",
+          fontSize: "13px",
+          fontWeight: isActive ? 500 : 400,
+          transition: "background 0.15s, color 0.15s",
+        }}
+      >
+        <span style={{ display: "flex", flexShrink: 0 }}><Icon size={17} stroke={1.6} /></span>
+
+        <span style={{ flex: 1, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {label}
+        </span>
+
+        {isNew && (
+          <span
+            aria-label="nuevo"
+            style={{
+              fontSize: "9px",
+              fontWeight: 700,
+              letterSpacing: "0.03em",
+              textTransform: "uppercase",
+              background: "var(--db-accent-bg)",
+              color: "var(--db-accent)",
+              padding: "1px 5px",
+              borderRadius: "4px",
+              lineHeight: 1.5,
+              flexShrink: 0,
+            }}
+          >
+            nuevo
+          </span>
+        )}
+
+        {badge > 0 && (
+          <span
+            aria-label={t("pendingBadgeAria", { count: badge })}
+            style={{
+              minWidth: "18px",
+              height: "18px",
+              borderRadius: "9px",
+              background: "var(--db-danger)",
+              color: "#ffffff",
+              fontSize: "10px",
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 4px",
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+      </Link>
+    );
+  }
+
+  function renderGroup(mod: NavModule) {
+    return (
+      <div key={mod.id} style={{ marginBottom: "4px" }}>
+        <div
+          style={{
+            fontSize: "10px",
+            fontWeight: 600,
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+            color: "var(--db-text-tertiary)",
+            padding: "10px 12px 3px",
+            lineHeight: 1,
+          }}
+        >
+          {t(mod.labelKey)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+          {mod.pages.map(renderPage)}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <nav
       aria-label={t("navAriaLabel")}
       style={{
-        width: "48px",
-        minWidth: "48px",
+        width: "200px",
+        minWidth: "200px",
         height: "100vh",
         position: "sticky",
         top: 0,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        paddingTop: "12px",
-        paddingBottom: "12px",
-        gap: "2px",
+        padding: "12px 8px",
         background: "var(--db-bg-surface)",
         borderRight: "1px solid var(--db-border)",
         overflowY: "auto",
@@ -136,77 +208,16 @@ export function Sidebar() {
         scrollbarWidth: "none",
       }}
     >
-      {NAV_ITEMS.map(({ labelKey, href, icon: Icon, badgeKey }) => {
-        const isActive =
-          href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname === href || pathname.startsWith(href + "/");
-
-        const badge = badgeKey === "service_pending" ? servicePending : 0;
-        const label = t(labelKey);
-
-        return (
-          <Link
-            key={href}
-            href={href}
-            title={label}
-            aria-label={label}
-            aria-current={isActive ? "page" : undefined}
-            style={{
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "40px",
-              height: "40px",
-              borderRadius: "var(--db-radius)",
-              textDecoration: "none",
-              background: isActive ? "var(--db-bg-elevated)" : "transparent",
-              borderLeft: isActive
-                ? "2px solid var(--color-brand)"
-                : "2px solid transparent",
-              color: isActive ? "var(--db-accent)" : "var(--db-text-secondary)",
-              transition: "background 0.15s, color 0.15s",
-            }}
-          >
-            <Icon size={20} stroke={1.6} />
-
-            {badge > 0 && (
-              <span
-                aria-label={t("pendingBadgeAria", { count: badge })}
-                style={{
-                  position: "absolute",
-                  top: "4px",
-                  right: "4px",
-                  minWidth: "14px",
-                  height: "14px",
-                  borderRadius: "7px",
-                  background: "var(--db-danger)",
-                  color: "var(--db-accent-text)",
-                  fontSize: "9px",
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: "0 3px",
-                  lineHeight: 1,
-                }}
-              >
-                {badge > 99 ? "99+" : badge}
-              </span>
-            )}
-          </Link>
-        );
-      })}
+      {[...NAV_MODULES, CONFIG_MODULE].map(renderGroup)}
 
       {showAdmin && (
         <>
           <div
             style={{
-              width: "24px",
+              width: "calc(100% - 20px)",
               height: "1px",
               background: "var(--db-border)",
-              margin: "8px 0",
+              margin: "8px 10px",
             }}
           />
           <Link
@@ -215,12 +226,10 @@ export function Sidebar() {
             aria-label={t("superAdmin")}
             aria-current={pathname.startsWith("/super-admin") ? "page" : undefined}
             style={{
-              position: "relative",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              width: "40px",
-              height: "40px",
+              gap: "8px",
+              padding: "6px 10px",
               borderRadius: "var(--db-radius)",
               textDecoration: "none",
               background: pathname.startsWith("/super-admin")
@@ -232,10 +241,13 @@ export function Sidebar() {
               color: pathname.startsWith("/super-admin")
                 ? "var(--db-accent)"
                 : "var(--db-text-secondary)",
+              fontSize: "13px",
+              fontWeight: pathname.startsWith("/super-admin") ? 500 : 400,
               transition: "background 0.15s, color 0.15s",
             }}
           >
-            <IconShield size={20} stroke={1.6} />
+            <span style={{ display: "flex", flexShrink: 0 }}><IconShield size={17} stroke={1.6} /></span>
+            <span>{t("superAdmin")}</span>
           </Link>
         </>
       )}
