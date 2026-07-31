@@ -375,8 +375,13 @@ export default function MenuScreen() {
 
   const handleWebPreviewPress = useCallback(() => {
     if (!slug) return;
-    navigation.navigate('MenuWebPreview', { slug, businessName });
-  }, [slug, businessName, navigation]);
+    navigation.navigate('MenuWebPreview', {
+      slug,
+      businessName,
+      businessId,
+      roomId: roomId ?? undefined,
+    });
+  }, [slug, businessName, businessId, roomId, navigation]);
 
   const handleOpenDetail = useCallback(
     (item: MenuItem) => {
