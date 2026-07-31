@@ -375,6 +375,10 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
     navigation.navigate('EditProfile');
   }, [navigation]);
 
+  const handleSettings = useCallback(() => {
+    navigation.navigate('Settings');
+  }, [navigation]);
+
   const handleEditCover = useCallback(() => {
     // TODO(Task 1.8): open cover photo picker
   }, []);
@@ -487,6 +491,7 @@ export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProp
         onEditProfile={handleEditProfile}
         onEditCover={handleEditCover}
         onSignOut={handleSignOut}
+        onSettings={handleSettings}
         theme={theme}
       />
 

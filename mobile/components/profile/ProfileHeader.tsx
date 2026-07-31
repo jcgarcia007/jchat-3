@@ -33,6 +33,7 @@ import {
   IconCircleCheckFilled,
   IconPencil,
   IconMessage,
+  IconSettings,
 } from '@tabler/icons-react-native';
 import type { ProfileTheme } from '../../theme/profileThemes';
 
@@ -78,6 +79,7 @@ export interface ProfileHeaderProps {
   onEditProfile: () => void;
   onEditCover: () => void;
   onSignOut: () => void;
+  onSettings?: () => void;
 
   // ── Theme ─────────────────────────────────────────────────────────────────
   theme: ProfileTheme;
@@ -127,6 +129,7 @@ export default function ProfileHeader({
   onEditProfile,
   onEditCover,
   onSignOut,
+  onSettings,
   theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
@@ -167,6 +170,7 @@ export default function ProfileHeader({
             <IconCamera size={16} color="#ffffff" />
           </TouchableOpacity>
         )}
+
       </View>
 
       {/* ── Avatar + name row (avatar overlaps cover) ──────────────────────── */}
@@ -264,18 +268,30 @@ export default function ProfileHeader({
       {/* ── Action buttons ─────────────────────────────────────────────────── */}
       <View style={styles.actionRow}>
         {isOwnProfile ? (
-          /* Own profile → single "Edit Profile" button */
-          <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: theme.btn1Bg }]}
-            onPress={onEditProfile}
-            accessibilityRole="button"
-            accessibilityLabel={t('header.editProfileA11y')}
-          >
-            <IconPencil size={15} color={theme.btn1Color} />
-            <Text style={[styles.btnLabel, { color: theme.btn1Color }]}>
-              {t('header.editProfile')}
-            </Text>
-          </TouchableOpacity>
+          /* Own profile → "Edit Profile" + settings gear */
+          <>
+            <TouchableOpacity
+              style={[styles.btnPrimary, styles.btnGrow, { backgroundColor: theme.btn1Bg }]}
+              onPress={onEditProfile}
+              accessibilityRole="button"
+              accessibilityLabel={t('header.editProfileA11y')}
+            >
+              <IconPencil size={15} color={theme.btn1Color} />
+              <Text style={[styles.btnLabel, { color: theme.btn1Color }]}>
+                {t('header.editProfile')}
+              </Text>
+            </TouchableOpacity>
+            {onSettings && (
+              <TouchableOpacity
+                style={[styles.btnSecondary, styles.btnIcon, { backgroundColor: theme.btn2Bg, borderColor: theme.avatarBorder }]}
+                onPress={onSettings}
+                accessibilityRole="button"
+                accessibilityLabel={t('header.settingsA11y', { defaultValue: 'Settings' })}
+              >
+                <IconSettings size={18} color={theme.btn2Color} />
+              </TouchableOpacity>
+            )}
+          </>
         ) : (
           /* Other user → Follow (primary) + Message (secondary) */
           <>
@@ -364,6 +380,15 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnGrow: {
+    flex: 1,
+  },
+  btnIcon: {
+    width: 44,
+    paddingHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
