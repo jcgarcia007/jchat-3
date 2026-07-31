@@ -55,6 +55,14 @@ Repo: `jcgarcia007/jchat-3` · Local: `/Users/jcgarcia/Projects/JchatVer3.0`.
   producción desde `83bdaa1` (2026-07-30). **Pendiente:** plantilla "bottom-nav" NO implementada —
   cae al `Classic` vía default del `MenuTemplateRenderer`; marcada "Próximamente" en el selector.
   Construirla es trabajo nuevo. Fotos de menú de Bar XZX migradas al bucket (one-shot, producción).
+- ✅ **Menú en la app vía WebView + pago nativo** (merge `e18d27a`, 2026-07-30): el ícono de menú en el
+  chat del negocio enruta según `users.menu_mode` → `"web"` abre `MenuWebPreviewScreen` (WebView de
+  `/m/[slug]?app=1&room=<roomId>`) con pago nativo vía postMessage bridge; `"external"` →
+  `Linking.openURL`; fallback → `MenuScreen` nativo (preservado, reversible). Bridge: el web detecta
+  `?app=1` y envía el carrito al nativo; el nativo verifica `msg.businessId` (R4), toma `userId` de la
+  sesión nativa, llama `initAndPresentPaymentSheet` con `roomId` → cocina ve la sala. EF `payments`
+  recalcula precios. Verificado end-to-end en iPhone (pago real con cuenta + mesa, flujo web normal
+  intacto). Ref D-80/D-81. **Nota:** cambios RN requieren BUILD nuevo para llegar a dispositivos.
 - 📼 **Social** (seguir/privacidad/bloqueo/DM), **mesas/meseros/cocina (KDS)**.
 - ✅ **Seguridad base**: RLS, allow-lists de columnas, JWT en las 8 EF, revocaciones a anon.
 

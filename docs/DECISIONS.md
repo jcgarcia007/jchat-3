@@ -766,6 +766,53 @@ Historial: bug encontrado en `CheckoutStep.Sheet` (el único sheet sin portal). 
 Regla para código nuevo: cualquier sheet/modal en el menú → `createPortal` es obligatorio.
 Commit: `fda3ff2` · merge `b157025` a main (2026-07-30).
 
+## Menú en app (WebView bridge)
+
+### D-80 — Menú en la app = WebView del menú web, NO reimplementación nativa
+
+Decisión (2026-07-30): la app carga el menú del negocio abriendo `/m/[slug]` en un `WebView`
+(react-native-webview), no portando las 20 plantillas de menú a React Native.
+
+Why: el menú web ya tiene 20 plantillas con efectos vidrio/blur y lógica de carrito. Portarlas a nativo
+significaría semanas de trabajo más doble mantenimiento cada vez que cambia una plantilla. Con WebView,
+hay una única fuente de verdad: el mismo código que el usuario ve en el browser es el que ve en la app.
+Trade-off aceptado: la experiencia no es 100% nativa (sin gestos/animaciones nativas en el menú), a
+cambio de cero duplicación y coherencia visual perfecta entre web y app.
+
+Descartado: portar plantillas a nativo (semanas + doble mantenimiento + efectos vidrio difíciles en RN).
+
+Archivos clave: `mobile/screens/menu/MenuWebPreviewScreen.tsx` (WebView + bridge de pago),
+`mobile/screens/chat/ChatRoomScreen.tsx` (enrutamiento por `menu_mode`).
+Commits: `c92fc07` (prototipo Fase 1) · `ae8affa` (Chunk A) · `55910fd` (Chunk B) · `e18d27a` (Chunk C
+— enrutamiento definitivo). Merge a producción: `e18d27a` (2026-07-30).
+
+### D-81 — Pago del menú-en-WebView: "elegir en web, pagar en nativo" vía postMessage
+
+Decisión (2026-07-30): cuando el menú web corre dentro del WebView (`?app=1`), al continuar al pago
+NO ejecuta el flujo web (`guest-pay`). En su lugar envía el carrito por
+`window.ReactNativeWebView.postMessage(JSON.stringify({ type: "CHECKOUT", businessId, roomId, items }))`.
+El nativo recibe el mensaje, verifica `msg.businessId === route.businessId` (R4 — sin esto un WebView
+malicioso podría apuntar a otro negocio), toma `userId` de `useAuth()` (NUNCA del mensaje), y llama
+`initAndPresentPaymentSheet` con el `roomId`. La EF `payments` recalcula todos los precios server-side.
+
+Why: si el pago ocurriera dentro del WebView (flujo `guest-pay`), la EF recibiría solo cookies web —
+sin `user_id` de la sesión nativa → el pedido no queda en el historial del usuario; sin `room_id` →
+la cocina no ve la mesa. Además, `guest-pay` usa hCaptcha e identidad de invitado, incompatible con la
+sesión nativa. El bridge postMessage resuelve ambos: el web elige los ítems, el nativo ejecuta el pago
+con sus credenciales.
+
+Reglas permanentes del patrón:
+- NUNCA inyectar JWT en el WebView (`userId` siempre desde `useAuth()` nativo).
+- NUNCA confiar en `msg.businessId` sin verificarlo contra los params de la ruta (R4).
+- El servidor recalcula precios; los `priceCents` del mensaje son hints, nunca autoritativos.
+- `?room=<roomId>` se pasa en la URL del WebView; el `roomId` del mensaje va al `OrderPayload` → cocina ve la sala.
+
+Archivos clave: `web/app/m/[slug]/MenuPageClient.tsx` (detección `?app=1`, postMessage al continuar),
+`web/app/m/[slug]/page.tsx` (lee `?app=1` y `?room=` server-side, los pasa como props al client),
+`mobile/screens/menu/MenuWebPreviewScreen.tsx` (onMessage → handleCheckout → initAndPresentPaymentSheet).
+Commits: `ae8affa` (Chunk A — web) · `55910fd` (Chunk B — nativo) · `e18d27a` (Chunk C — enrutamiento
+por menu_mode). Merge a producción: `e18d27a` (2026-07-30).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

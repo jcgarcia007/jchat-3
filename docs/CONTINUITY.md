@@ -217,4 +217,34 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
   vía el default del switch. Marcada "Próximamente" en el selector del editor. Construirla es trabajo
   nuevo independiente, no deuda del trabajo de hoy.
 
+## Aprendizajes 2026-07-30 (Fase 2 puente menú web↔app)
+
+- **Una sola fuente de verdad para el menú: WebView (D-80).** Portar 20 plantillas de menú a nativo
+  son semanas + doble mantenimiento. La app carga `/m/[slug]` en un WebView — el mismo código que en el
+  browser. Trade-off aceptado: no es 100% nativo (sin gestos nativos en el menú), a cambio de cero
+  duplicación y coherencia visual perfecta. Descartado explícitamente: reimplementación nativa.
+
+- **"Elegir en web, pagar en nativo" vía postMessage (D-81).** Pagar dentro del WebView rompería la
+  sesión nativa y perdería el `roomId` → cocina ciega. Solución: `?app=1` hace que el web omita su
+  flujo `guest-pay` y envíe el carrito por `window.ReactNativeWebView.postMessage(...)`. El nativo
+  verifica `msg.businessId === route.businessId` (R4 — sin esto un WebView malicioso podría cobrar al
+  negocio equivocado), toma `userId` de `useAuth()` (NUNCA del web), y llama
+  `initAndPresentPaymentSheet` con `roomId`. La EF recalcula precios server-side. Reglas permanentes:
+  nunca JWT en el WebView; nunca confiar en IDs del mensaje sin verificar contra params de ruta; el
+  servidor es autoritativo en precios.
+
+- **Estrategia por fases (prototipo → bridge → enrutamiento):**
+  - Chunk A (`ae8affa`): web detecta `?app=1`, omite `guest-pay`, postMessage al continuar.
+  - Chunk B (`55910fd`): nativo recibe mensaje, verifica R4, paga con sesión nativa.
+  - Chunk C (`e18d27a`): `ChatRoomScreen` añade `menu_mode`/`external_menu_url` al SELECT y enruta
+    directo a `MenuWebPreviewScreen` para `"web"`, `Linking.openURL` para `"external"`, `MenuScreen`
+    como fallback. Beta strip de `MenuScreen` eliminado. Merge a main: `e18d27a`.
+
+- **MenuScreen queda como fallback (no se borra):** reversibilidad explícita por diseño. Negocios con
+  `menu_mode = null` o no reconocido siguen usando el menú nativo — no hay deuda por conservarlo.
+
+- **git push antes de auditar — siempre:** en sesiones anteriores hubo Chunks A/B/C + docs en local sin
+  push. Al cerrar cualquier tanda: `git log --oneline origin/<rama> -1` debe coincidir con `git rev-parse
+  HEAD`. Si no, push primero. No declarar "listo" sin verificar que el SHA llegó al remoto.
+
 Last updated: 2026-07-30
