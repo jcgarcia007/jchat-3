@@ -176,7 +176,7 @@ export default function MenuWebPreviewScreen() {
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1}>
-          {businessName ?? 'Vista web (beta)'}
+          {businessName ?? 'Menú'}
         </Text>
         {/* Spacer to keep title centered */}
         <View style={styles.btn} />

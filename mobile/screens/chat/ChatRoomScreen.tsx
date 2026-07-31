@@ -34,6 +34,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -206,8 +207,10 @@ export default function ChatRoomScreen() {
   // Kept separate from BusinessSummary (shared with ChatTopBar) — only the
   // geofence gate needs it, to detect the owner (épica geocerca Fase 3.2).
   const [businessOwnerId, setBusinessOwnerId] = useState<string | null>(null);
-  // Kept separate — only used to construct the WebView preview URL.
+  // Kept separate — used to construct the WebView URL and routing.
   const [businessSlug, setBusinessSlug] = useState<string | null>(null);
+  const [menuMode, setMenuMode] = useState<string | null>(null);
+  const [externalMenuUrl, setExternalMenuUrl] = useState<string | null>(null);
   const [subRooms, setSubRooms] = useState<SubRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>(rootRoomId);
 
@@ -355,7 +358,7 @@ export default function ChatRoomScreen() {
         // Load business
         const { data: bizData } = await supabase
           .from('businesses')
-          .select('id, name, icon_emoji, menu_enabled, owner_id, slug')
+          .select('id, name, icon_emoji, menu_enabled, owner_id, slug, menu_mode, external_menu_url')
           .eq('id', typedRoom.business_id)
           .single();
 
@@ -363,6 +366,8 @@ export default function ChatRoomScreen() {
           setBusiness(bizData as BusinessSummary);
           setBusinessOwnerId((bizData as { owner_id: string | null }).owner_id ?? null);
           setBusinessSlug((bizData as { slug: string | null }).slug ?? null);
+          setMenuMode((bizData as { menu_mode: string | null }).menu_mode ?? null);
+          setExternalMenuUrl((bizData as { external_menu_url: string | null }).external_menu_url ?? null);
         }
 
         // Load all the business's rooms (main + sub-rooms). RLS allows any
@@ -576,13 +581,24 @@ export default function ChatRoomScreen() {
 
   const handleMenuPress = useCallback(() => {
     if (!business || !room) return;
-    navigation.navigate('Menu', {
-      businessId: room.business_id,
-      roomId: activeRoomId,
-      businessName: business.name,
-      slug: businessSlug ?? undefined,
-    });
-  }, [business, room, activeRoomId, businessSlug, navigation]);
+    if (menuMode === 'web' && businessSlug) {
+      navigation.navigate('MenuWebPreview', {
+        slug: businessSlug,
+        businessName: business.name,
+        businessId: room.business_id,
+        roomId: activeRoomId,
+      });
+    } else if (menuMode === 'external' && externalMenuUrl) {
+      void Linking.openURL(externalMenuUrl);
+    } else {
+      navigation.navigate('Menu', {
+        businessId: room.business_id,
+        roomId: activeRoomId,
+        businessName: business.name,
+        slug: businessSlug ?? undefined,
+      });
+    }
+  }, [business, room, activeRoomId, businessSlug, menuMode, externalMenuUrl, navigation]);
 
   const handleServiceCall = useCallback(() => {
     setServiceSheetVisible(true);
