@@ -1,0 +1,33 @@
+{
+  "title": "Planes",
+  "subtitle": "Elige el plan que se ajusta a ti",
+  "plans": {
+    "regular": {
+      "name": "Regular",
+      "price": "Gratis",
+      "description": "Acceso completo a la app y a todos los negocios de JChat.",
+      "features": [
+        "Chat con negocios locales",
+        "Mapa y descubrimiento de lugares",
+        "Mensajes directos",
+        "Perfil público",
+        "Historias y publicaciones"
+      ]
+    },
+    "verified": {
+      "name": "Verified",
+      "price": "$1.99 / mes",
+      "description": "Todo lo de Regular más un badge verificado en tu perfil.",
+      "features": [
+        "Todo lo de Regular",
+        "Badge verificado en tu perfil",
+        "Prioridad en búsquedas",
+        "Acceso anticipado a nuevas funciones"
+      ]
+    }
+  },
+  "currentPlan": "Tu plan actual",
+  "getVerified": "Obtener Verified",
+  "comingSoon": "Próximamente",
+  "comingSoonMsg": "El pago de Verified estará disponible muy pronto."
+}

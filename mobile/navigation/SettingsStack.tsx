@@ -12,10 +12,12 @@ import {
 
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import PrivacyScreen from '../screens/settings/PrivacyScreen';
+import PricingScreen from '../screens/settings/PricingScreen';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Privacy: undefined;
+  Pricing: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -27,6 +29,7 @@ export default function SettingsStack() {
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen name="SettingsHome" component={SettingsScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
+      <Stack.Screen name="Pricing" component={PricingScreen} />
     </Stack.Navigator>
   );
 }

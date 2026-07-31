@@ -21,6 +21,8 @@
     "theme": "Tema",
     "themeSub": "Sigue al sistema hasta conectar ThemeContext",
     "privacySettings": "Ajustes de privacidad",
+    "plans": "Planes",
+    "plansSub": "Regular, Verified y más",
     "signOut": "Cerrar sesión",
     "deleteAccount": "Eliminar cuenta",
     "deleteAccountSub": "Elimina tu cuenta y todos tus datos permanentemente",
