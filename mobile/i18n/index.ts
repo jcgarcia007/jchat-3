@@ -45,6 +45,8 @@ import nearbyEn from './locales/en/nearby.json';
 import nearbyEs from './locales/es/nearby.json';
 import mapEn from './locales/en/map.json';
 import mapEs from './locales/es/map.json';
+import pricingEn from './locales/en/pricing.json';
+import pricingEs from './locales/es/pricing.json';
 
 export type SupportedLanguage = 'en' | 'es';
 
@@ -52,8 +54,8 @@ const SUPPORTED: readonly SupportedLanguage[] = ['en', 'es'];
 const FALLBACK: SupportedLanguage = 'en';
 
 export const resources = {
-  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn },
-  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs },
+  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn, pricing: pricingEn },
+  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs, pricing: pricingEs },
 } as const;
 
 /** Device language clamped to a supported one (expo-localization, SDK 56 API). */
@@ -68,7 +70,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: FALLBACK,
-  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map'],
+  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map', 'pricing'],
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,

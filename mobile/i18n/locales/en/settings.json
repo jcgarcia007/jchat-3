@@ -21,6 +21,8 @@
     "theme": "Theme",
     "themeSub": "Follows OS until ThemeContext is wired",
     "privacySettings": "Privacy Settings",
+    "plans": "Plans",
+    "plansSub": "Regular, Verified and more",
     "signOut": "Sign Out",
     "deleteAccount": "Delete Account",
     "deleteAccountSub": "Permanently delete your account and all your data",

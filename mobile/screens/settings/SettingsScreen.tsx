@@ -43,6 +43,7 @@ import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
   IconChevronRight,
+  IconCreditCard,
   IconFingerprint,
   IconLanguage,
   IconLock,
@@ -528,6 +529,17 @@ export default function SettingsScreen() {
               return uname ? `@${uname}` : '@—';
             })()
           }
+        />
+
+        <SectionDivider />
+
+        {/* Plans / Cuentas */}
+        <SettingsRow
+          icon={<IconCreditCard size={20} color={c.brand} strokeWidth={2} />}
+          label={t('main.plans')}
+          sublabel={t('main.plansSub')}
+          onPress={() => navigation.navigate('Pricing')}
+          right={<ChevronRight />}
         />
 
         {/* Spacer */}
