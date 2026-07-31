@@ -140,7 +140,8 @@ export function ModuleRail() {
         alignItems: "center",
         padding: "20px 8px",
         gap: "8px",
-        background: NAV4A.navy,
+        backgroundColor: NAV4A.navy, // fallback: Chrome <111 / Safari <16.2
+        background: "color-mix(in srgb, var(--db-accent, #0D1B3E) 22%, #0D1B3E)",
         overflowY: "auto",
         overflowX: "hidden",
         scrollbarWidth: "none",
