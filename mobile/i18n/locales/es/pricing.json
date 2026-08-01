@@ -29,5 +29,8 @@
   "currentPlan": "Tu plan actual",
   "getVerified": "Obtener Verified",
   "comingSoon": "Próximamente",
-  "comingSoonMsg": "El pago de Verified estará disponible muy pronto."
+  "comingSoonMsg": "El pago de Verified estará disponible muy pronto.",
+  "checkoutErrorTitle": "Algo salió mal",
+  "checkoutErrorMsg": "No pudimos iniciar el pago. Inténtalo de nuevo.",
+  "processing": "Procesando…"
 }

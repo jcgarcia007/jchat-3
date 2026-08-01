@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   SafeAreaView,
@@ -45,6 +46,7 @@ export default function PricingScreen() {
   const { user } = useAuth();
 
   const [currentPlan, setCurrentPlan] = useState<UserPlan | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   // Read the user's current plan from users table (not in AuthContext).
   useEffect(() => {
@@ -62,8 +64,25 @@ export default function PricingScreen() {
     return () => { mounted = false; };
   }, [user?.id]);
 
-  const handleGetVerified = () => {
-    Alert.alert(t('comingSoon'), t('comingSoonMsg'));
+  const handleGetVerified = async () => {
+    if (checkingOut) return;
+    setCheckingOut(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('subscriptions', {
+        body: { action: 'create_checkout', plan: 'verified' },
+      });
+      if (error) {
+        Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+      } else if (data?.url) {
+        await Linking.openURL(data.url as string);
+      } else {
+        Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+      }
+    } catch {
+      Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+    } finally {
+      setCheckingOut(false);
+    }
   };
 
   return (
@@ -130,10 +149,13 @@ export default function PricingScreen() {
           highlighted
           isCurrentPlan={currentPlan === 'verified'}
           ctaLabel={
-            currentPlan === 'verified' ? t('currentPlan') : t('getVerified')
+            currentPlan === 'verified'
+              ? t('currentPlan')
+              : checkingOut
+              ? t('processing')
+              : t('getVerified')
           }
           onCta={currentPlan !== 'verified' ? handleGetVerified : undefined}
-          comingSoonLabel={currentPlan !== 'verified' ? t('comingSoon') : undefined}
           c={c}
         />
       </ScrollView>

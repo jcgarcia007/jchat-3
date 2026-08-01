@@ -29,5 +29,8 @@
   "currentPlan": "Current plan",
   "getVerified": "Get Verified",
   "comingSoon": "Coming soon",
-  "comingSoonMsg": "Verified payments will be available very soon."
+  "comingSoonMsg": "Verified payments will be available very soon.",
+  "checkoutErrorTitle": "Something went wrong",
+  "checkoutErrorMsg": "We couldn't start checkout. Please try again.",
+  "processing": "Processing…"
 }
