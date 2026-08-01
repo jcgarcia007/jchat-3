@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  IconSearch,
   IconChevronDown,
   IconCheck,
   IconBuildingStore,
+  IconPlus,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   listUserBusinesses,
@@ -84,7 +85,7 @@ export function TopBar() {
     }
   }
 
-  const hasSwitcher = businesses.length > 1;
+  const hasSwitcher = businesses.length >= 1;
   const displayName = activeName || t("selectBusinessFallback");
 
   return (
@@ -222,52 +223,41 @@ export function TopBar() {
                   </button>
                 );
               })}
+
+              {/* Fixed "Create new business" item */}
+              <div style={{ height: "1px", background: "var(--db-border)", margin: "4px 6px" }} />
+              <Link
+                href="/dashboard/create"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "var(--db-radius)",
+                  textDecoration: "none",
+                  color: "var(--db-text-secondary)",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--db-bg-overlay)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <IconPlus size={14} stroke={1.8} />
+                <span>{t("topbarCreateBusinessItem")}</span>
+              </Link>
             </div>
           </>
         )}
       </div>
 
-      {/* Right — Cmd+K trigger + live clock + avatar */}
+      {/* Right — language switcher + live clock + avatar */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {/* Cmd+K search trigger */}
-        {/* TODO(Task 2.16): wire real Cmd+K command palette */}
-        <button
-          type="button"
-          aria-label={t("commandPaletteAria")}
-          onClick={() => {
-            // TODO(Task 2.16): open command palette
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            height: "28px",
-            padding: "0 10px",
-            borderRadius: "var(--db-radius)",
-            border: "1px solid var(--db-border)",
-            background: "var(--db-bg-elevated)",
-            color: "var(--db-text-secondary)",
-            fontSize: "12px",
-            cursor: "pointer",
-          }}
-        >
-          <IconSearch size={13} stroke={1.6} />
-          <span>{t("searchLabel")}</span>
-          <kbd
-            style={{
-              fontSize: "10px",
-              padding: "1px 4px",
-              borderRadius: "4px",
-              background: "var(--db-bg-overlay)",
-              color: "var(--db-text-tertiary)",
-              fontFamily: "inherit",
-              marginLeft: "2px",
-            }}
-          >
-            ⌘K
-          </kbd>
-        </button>
-
         {/* Language switcher */}
         <span style={{ color: "var(--db-text-secondary)" }}>
           <LanguageSwitcher />

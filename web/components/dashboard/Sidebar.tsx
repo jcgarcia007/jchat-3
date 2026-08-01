@@ -28,6 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
   const [servicePending, setServicePending] = useState(0);
+  const [activeBiz, setActiveBiz] = useState<{ name: string; logo_url: string | null } | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function Sidebar() {
         const res = await resolveActiveBusiness();
         if (!active || !res.ok) return;
         const businessId = res.business.id;
+        if (active) setActiveBiz({ name: res.business.name, logo_url: res.business.logo_url });
         await countPending(businessId);
         channelRef.current = supabase
           .channel(`sidebar-service-${businessId}`)
@@ -208,6 +210,60 @@ export function Sidebar() {
         scrollbarWidth: "none",
       }}
     >
+      {/* Business logo / name header */}
+      {activeBiz && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "4px 10px 12px",
+            borderBottom: "1px solid var(--db-border)",
+            marginBottom: "8px",
+          }}
+        >
+          {activeBiz.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={activeBiz.logo_url}
+              alt={t("sidebarLogoAlt", { name: activeBiz.name })}
+              style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+            />
+          ) : (
+            <div
+              aria-hidden
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "var(--db-accent-bg)",
+                color: "var(--db-accent)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {activeBiz.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "var(--db-text-primary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {activeBiz.name}
+          </span>
+        </div>
+      )}
+
       {[...NAV_MODULES, CONFIG_MODULE].map(renderGroup)}
 
       {showAdmin && (

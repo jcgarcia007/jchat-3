@@ -19,6 +19,7 @@ export interface ActiveBusiness {
   menu_enabled: boolean;
   menu_mode: "none" | "external" | "web";
   external_menu_url: string | null;
+  logo_url: string | null;
 }
 
 export type BusinessResolution =
@@ -52,7 +53,7 @@ export async function resolveActiveBusiness(): Promise<BusinessResolution> {
   if (activeBusinessId !== null) {
     const { data, error } = await supabase
       .from("businesses")
-      .select("id, name, slug, status, plan, is_verified, menu_enabled, menu_mode, external_menu_url")
+      .select("id, name, slug, status, plan, is_verified, menu_enabled, menu_mode, external_menu_url, logo_url")
       .eq("id", activeBusinessId)
       .eq("owner_id", user.id)
       .maybeSingle();
@@ -73,7 +74,7 @@ export async function resolveActiveBusiness(): Promise<BusinessResolution> {
   // No explicit selection: fall back to the most recently created business.
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, name, slug, status, plan, is_verified, menu_enabled, menu_mode, external_menu_url")
+    .select("id, name, slug, status, plan, is_verified, menu_enabled, menu_mode, external_menu_url, logo_url")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -106,6 +107,7 @@ export interface BusinessListItem {
   name: string;
   slug: string | null;
   is_verified: boolean;
+  logo_url: string | null;
 }
 
 /**
@@ -124,7 +126,7 @@ export async function listUserBusinesses(
 
   let query = supabase
     .from("businesses")
-    .select("id, name, slug, is_verified")
+    .select("id, name, slug, is_verified, logo_url")
     .eq("owner_id", user.id);
   if (!opts?.includeTemporary) {
     query = query.eq("is_temporary", false);

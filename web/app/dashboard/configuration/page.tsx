@@ -60,6 +60,7 @@ interface BusinessRow {
   cover_url: string | null;
   icon_url: string | null;
   icon_emoji: string | null;
+  logo_url: string | null;
   gallery_urls: string[] | null;
   menu_enabled: boolean;
   tips_enabled: boolean;
@@ -546,6 +547,11 @@ export default function ConfigurationPage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
 
+  // ── Section 9: Logo del negocio (sidebar) ────────────────────────────────────
+  const [logoUrl, setLogoUrl] = useState("");
+  const [savingLogo, setSavingLogo] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
   // ── Section 4: Photo gallery ──────────────────────────────────────────────────
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [savingGallery, setSavingGallery] = useState(false);
@@ -575,9 +581,11 @@ export default function ConfigurationPage() {
   // ── Upload refs ───────────────────────────────────────────────────────────────
   const coverObjRef = useRef<string | null>(null);
   const iconObjRef = useRef<string | null>(null);
+  const logoObjRef = useRef<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   // ── Resolve business + load ───────────────────────────────────────────────────
   const loadBusiness = useCallback(async () => {
@@ -606,7 +614,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -624,6 +632,7 @@ export default function ConfigurationPage() {
       setHours(b.hours && Object.keys(b.hours).length > 0 ? b.hours : defaultHours());
       setCoverUrl(b.cover_url ?? "");
       setIconUrl(b.icon_url ?? "");
+      setLogoUrl(b.logo_url ?? "");
       setGalleryUrls(b.gallery_urls ?? []);
       setMenuEnabled(b.menu_enabled ?? false);
       setTipsEnabled(b.tips_enabled ?? false);
@@ -645,6 +654,7 @@ export default function ConfigurationPage() {
     return () => {
       if (coverObjRef.current) URL.revokeObjectURL(coverObjRef.current);
       if (iconObjRef.current) URL.revokeObjectURL(iconObjRef.current);
+      if (logoObjRef.current) URL.revokeObjectURL(logoObjRef.current);
     };
   }, []);
 
@@ -689,7 +699,7 @@ export default function ConfigurationPage() {
 
   // ── Storage upload helper ─────────────────────────────────────────────────────
   const uploadBusinessImage = useCallback(
-    async (file: File, kind: "cover" | "icon" | "gallery"): Promise<string> => {
+    async (file: File, kind: "cover" | "icon" | "gallery" | "logo"): Promise<string> => {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type))
         throw new Error(t("configurationInvalidFileTypeError"));
       if (file.size > MAX_IMAGE_BYTES)
@@ -783,6 +793,34 @@ export default function ConfigurationPage() {
     [uploadBusinessImage]
   );
 
+  const handleLogoFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      const preview = URL.createObjectURL(file);
+      const old = logoObjRef.current;
+      logoObjRef.current = preview;
+      setLogoUrl(preview);
+      if (old) URL.revokeObjectURL(old);
+      setError(null);
+      setUploadingLogo(true);
+      try {
+        const url = await uploadBusinessImage(file, "logo");
+        setLogoUrl(url);
+        if (logoObjRef.current === preview) {
+          URL.revokeObjectURL(preview);
+          logoObjRef.current = null;
+        }
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setUploadingLogo(false);
+      }
+    },
+    [uploadBusinessImage]
+  );
+
   // ── Section handlers ──────────────────────────────────────────────────────────
 
   const handleSaveInfo = () =>
@@ -849,6 +887,9 @@ export default function ConfigurationPage() {
     // TODO(Task 3.6): call Stripe payout schedule API to update the connected account's payout interval
     void withSave(setSavingPayout, { payout_frequency: payoutFrequency }, t("configurationPayoutSavedSuccess"));
   };
+
+  const handleSaveLogo = () =>
+    withSave(setSavingLogo, { logo_url: logoUrl || null }, t("configurationLogoSavedSuccess"));
 
   // ── Hours helpers ─────────────────────────────────────────────────────────────
   const setDayField = (
@@ -1764,6 +1805,75 @@ export default function ConfigurationPage() {
         >
           {t("configurationSavePayoutButton")}
         </PrimaryBtn>
+      </Section>
+
+      {/* ── 9. Logo del negocio (sidebar) ───────────────────────────────────── */}
+      <Section
+        icon={<IconPhoto size={18} color="var(--db-accent)" />}
+        title={t("configurationLogoSectionTitle")}
+        subtitle={t("configurationLogoSectionSubtitle")}
+      >
+        {/* Square 64×64 preview */}
+        <div
+          style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "8px",
+            overflow: "hidden",
+            marginBottom: "14px",
+            background: "var(--db-bg-elevated)",
+            border: "1px solid var(--db-border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {logoUrl
+            ? /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={logoUrl} alt={t("configurationLogoPreviewAlt")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <IconPhoto size={24} color="var(--db-text-tertiary)" />}
+        </div>
+
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style={{ display: "none" }}
+          onChange={handleLogoFileChange}
+        />
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={() => logoInputRef.current?.click()}
+            disabled={uploadingLogo || noSupabase || noBiz}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 16px",
+              borderRadius: "var(--db-radius)",
+              border: "1px solid var(--db-border)",
+              background: "transparent",
+              color: "var(--db-accent)",
+              fontSize: "14px",
+              cursor: (uploadingLogo || noSupabase || noBiz) ? "not-allowed" : "pointer",
+              opacity: (uploadingLogo || noSupabase || noBiz) ? 0.6 : 1,
+            }}
+          >
+            <IconUpload size={14} />
+            {uploadingLogo
+              ? t("configurationUploadingState")
+              : logoUrl
+                ? t("configurationReplacePhotoButton")
+                : t("configurationLogoUploadButton")}
+          </button>
+          <PrimaryBtn
+            onClick={handleSaveLogo}
+            disabled={noSupabase || noBiz || uploadingLogo}
+            loading={savingLogo}
+          >
+            {t("configurationLogoSaveButton")}
+          </PrimaryBtn>
+        </div>
       </Section>
     </div>
   );
