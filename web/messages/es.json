@@ -1623,7 +1623,23 @@
     "floorEmpty": "Aún no hay mesas configuradas",
     "floorEmptyHint": "Configura las mesas en la sección Mesas.",
     "floorNoBusiness": "Selecciona un negocio para ver sus mesas.",
-    "floorCallsWithoutTable": "{count, plural, one {# llamada sin mesa} other {# llamadas sin mesa}}"
+    "floorCallsWithoutTable": "{count, plural, one {# llamada sin mesa} other {# llamadas sin mesa}}",
+    "queueTitle": "Cola en vivo",
+    "queueLoadingFeed": "Cargando feed…",
+    "queueLoadError": "No se pudo cargar la cola en vivo. Comprueba tu conexión e inténtalo de nuevo.",
+    "queueFilterAll": "Todo",
+    "queueFilterOrders": "Pedidos",
+    "queueFilterCalls": "Llamadas",
+    "queueFilterReservations": "Reservas",
+    "queueFilterReviews": "Reseñas",
+    "queuePendingAttention": "{count, plural, one {# pendiente de atención} other {# pendientes de atención}}",
+    "queueAllClear": "Todo al día",
+    "queueEmpty": "Sin actividad hoy",
+    "queueViewAction": "Ver",
+    "queueLowStockAlert": "Inventario bajo: {name} ({count})",
+    "queueReservationFor": "{count} personas · para {when}",
+    "queueReviewSummary": "Reseña de {rating}★",
+    "queueNoBusiness": "Selecciona un negocio para ver la cola en vivo."
   },
   "superAdmin": {
     "shell": {

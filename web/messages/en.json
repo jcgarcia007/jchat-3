@@ -1623,7 +1623,23 @@
     "floorEmpty": "No tables configured yet",
     "floorEmptyHint": "Configure tables in the Tables section.",
     "floorNoBusiness": "Select a business to see its floor.",
-    "floorCallsWithoutTable": "{count, plural, one {# call without a table} other {# calls without a table}}"
+    "floorCallsWithoutTable": "{count, plural, one {# call without a table} other {# calls without a table}}",
+    "queueTitle": "Live queue",
+    "queueLoadingFeed": "Loading feed…",
+    "queueLoadError": "Couldn't load the live queue. Check your connection and try again.",
+    "queueFilterAll": "All",
+    "queueFilterOrders": "Orders",
+    "queueFilterCalls": "Calls",
+    "queueFilterReservations": "Reservations",
+    "queueFilterReviews": "Reviews",
+    "queuePendingAttention": "{count, plural, one {# needs attention} other {# need attention}}",
+    "queueAllClear": "All clear",
+    "queueEmpty": "No activity today",
+    "queueViewAction": "View",
+    "queueLowStockAlert": "Low stock: {name} ({count})",
+    "queueReservationFor": "{count} people · for {when}",
+    "queueReviewSummary": "{rating}★ review",
+    "queueNoBusiness": "Select a business to see the live queue."
   },
   "superAdmin": {
     "shell": {
