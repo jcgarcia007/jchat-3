@@ -1602,7 +1602,14 @@
         "pastel": "Pastel"
       }
     },
-    "locationRadiusConfigNote": "Recomendado: ≥ 10 m (precisión GPS: 5–20 m)"
+    "locationRadiusConfigNote": "Recomendado: ≥ 10 m (precisión GPS: 5–20 m)",
+    "tabQueue": "Cola en vivo",
+    "tabSales": "Ventas",
+    "tabMap": "Mapa",
+    "tabSoonBadge": "Pronto",
+    "kpiSalesToday": "Ventas de hoy",
+    "kpiActiveOrders": "Pedidos activos",
+    "kpiTablesOccupied": "Mesas ocupadas"
   },
   "superAdmin": {
     "shell": {

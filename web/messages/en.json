@@ -1602,7 +1602,14 @@
         "pastel": "Pastel"
       }
     },
-    "locationRadiusConfigNote": "Recommended: ≥ 10 m (GPS accuracy is 5–20 m)"
+    "locationRadiusConfigNote": "Recommended: ≥ 10 m (GPS accuracy is 5–20 m)",
+    "tabQueue": "Live queue",
+    "tabSales": "Sales",
+    "tabMap": "Map",
+    "tabSoonBadge": "Soon",
+    "kpiSalesToday": "Sales today",
+    "kpiActiveOrders": "Active orders",
+    "kpiTablesOccupied": "Tables occupied"
   },
   "superAdmin": {
     "shell": {
