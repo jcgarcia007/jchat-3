@@ -1609,7 +1609,21 @@
     "tabSoonBadge": "Soon",
     "kpiSalesToday": "Sales today",
     "kpiActiveOrders": "Active orders",
-    "kpiTablesOccupied": "Tables occupied"
+    "kpiTablesOccupied": "Tables occupied",
+    "floorTitle": "Floor",
+    "floorStateFree": "Free",
+    "floorStateOccupied": "Occupied",
+    "floorStateBill": "Bill",
+    "floorStateReserved": "Reserved",
+    "floorCountersSummary": "{occupied} occupied · {free} free · {bill} bill",
+    "floorCallBellAria": "Service call at table {label}",
+    "floorElapsedMinutes": "{count, plural, one {# min ago} other {# min ago}}",
+    "floorElapsedHours": "{count, plural, one {# h ago} other {# h ago}}",
+    "floorNoZone": "No zone",
+    "floorEmpty": "No tables configured yet",
+    "floorEmptyHint": "Configure tables in the Tables section.",
+    "floorNoBusiness": "Select a business to see its floor.",
+    "floorCallsWithoutTable": "{count, plural, one {# call without a table} other {# calls without a table}}"
   },
   "superAdmin": {
     "shell": {

@@ -1,0 +1,538 @@
+"use client";
+
+/**
+ * JChat 3.0 — Floor live grid (Overview tab "Mesas", F3).
+ *
+ * READ-ONLY visualisation of table occupancy for the active business.
+ * Configuration lives in /dashboard/tables (admin). This page derives every
+ * state from real data — never from a manual field or fabricated value.
+ *
+ * State priority (highest wins):
+ *   reserved > bill > waiter > occupied > free
+ *   "reserved" has no data source until F8; the code path is wired but no
+ *   table will ever enter that state yet.
+ *
+ * service_call → table mapping (client-side, no schema migration needed):
+ *   1st: sc.room_id matches tables.room_id   (tables with subchat enabled)
+ *   2nd: sc.table_label matches tables.label  (case-insensitive trim fallback)
+ *   3rd: no match → "call without a table" counter
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { IconBell } from "@tabler/icons-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface TableRow {
+  id: string;
+  label: string;
+  floor: string;
+  seats: number;
+  sort: number;
+  room_id: string | null;
+}
+
+interface TabRow {
+  id: string;
+  table_id: string;
+  created_at: string;
+  status: string;
+}
+
+interface CallRow {
+  id: string;
+  status: string;   // pending | acknowledged
+  type: string;     // waiter | bill | other
+  room_id: string;
+  table_label: string | null;
+  created_at: string;
+}
+
+type TableState = "free" | "occupied" | "bill" | "waiter" | "reserved";
+
+interface DerivedTable {
+  id: string;
+  label: string;
+  floor: string;
+  seats: number;
+  state: TableState;
+  hasCall: boolean;     // true if any pending/acknowledged service call
+  minOpenAt: string | null; // earliest open tab created_at for elapsed time
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STATE_PRIORITY: Record<TableState, number> = {
+  reserved: 5,
+  bill: 4,
+  waiter: 3,
+  occupied: 2,
+  free: 1,
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return t("floorElapsedMinutes", { count: mins === 0 ? 1 : mins });
+  const hours = Math.floor(mins / 60);
+  return t("floorElapsedHours", { count: hours });
+}
+
+function deriveState(
+  tableId: string,
+  occupiedByTable: Map<string, string>,
+  callsByTable: Map<string, CallRow[]>,
+): { state: TableState; hasCall: boolean } {
+  const calls = callsByTable.get(tableId) ?? [];
+  const hasBill   = calls.some((c) => c.type === "bill");
+  const hasWaiter = calls.some((c) => c.type === "waiter" || c.type === "other");
+  const isOccupied = occupiedByTable.has(tableId);
+
+  let state: TableState = "free";
+  const candidates: TableState[] = [];
+
+  if (hasBill)     candidates.push("bill");
+  if (hasWaiter)   candidates.push("waiter");
+  if (isOccupied)  candidates.push("occupied");
+
+  for (const s of candidates) {
+    if (STATE_PRIORITY[s] > STATE_PRIORITY[state]) state = s;
+  }
+
+  return { state, hasCall: calls.length > 0 };
+}
+
+function stateColor(state: TableState): {
+  background: string;
+  border: string;
+  color: string;
+} {
+  switch (state) {
+    case "free":
+      return {
+        background: "color-mix(in srgb, var(--db-success) 14%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--db-success) 40%, transparent)",
+        color: "var(--db-success)",
+      };
+    case "occupied":
+      return {
+        background: "var(--db-bg-elevated)",
+        border: "1px solid var(--db-border)",
+        color: "var(--db-text-secondary)",
+      };
+    case "bill":
+      return {
+        background: "color-mix(in srgb, var(--db-warning) 14%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--db-warning) 40%, transparent)",
+        color: "var(--db-warning)",
+      };
+    case "waiter":
+      return {
+        background: "var(--db-bg-elevated)",
+        border: "1px solid var(--db-border)",
+        color: "var(--db-text-secondary)",
+      };
+    case "reserved":
+      return {
+        background: "color-mix(in srgb, var(--db-danger) 14%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--db-danger) 40%, transparent)",
+        color: "var(--db-danger)",
+      };
+  }
+}
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+
+const DEMO_TABLES: TableRow[] = [
+  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null },
+  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null },
+  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null },
+  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null },
+];
+const DEMO_TABS: TabRow[] = [
+  { id: "tab1", table_id: "t1", created_at: new Date(Date.now() - 45 * 60_000).toISOString(), status: "open" },
+  { id: "tab2", table_id: "t3", created_at: new Date(Date.now() - 10 * 60_000).toISOString(), status: "open" },
+];
+const DEMO_CALLS: CallRow[] = [
+  { id: "sc1", status: "pending", type: "bill", room_id: "x", table_label: "3", created_at: new Date(Date.now() - 5 * 60_000).toISOString() },
+];
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function FloorPage() {
+  const t      = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
+
+  const [tables, setTables]     = useState<TableRow[]>([]);
+  const [tabs, setTabs]         = useState<TabRow[]>([]);
+  const [calls, setCalls]       = useState<CallRow[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [noBusiness, setNoBusiness] = useState(false);
+  const [, setTick] = useState(0); // for elapsed-time re-render
+
+  const bizIdRef      = useRef<string | null>(null);
+  const tabsChannel   = useRef<RealtimeChannel | null>(null);
+  const callsChannel  = useRef<RealtimeChannel | null>(null);
+  const refreshTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Data fetchers ───────────────────────────────────────────────────────────
+
+  const fetchData = useCallback(async (bid: string) => {
+    const [tablesRes, tabsRes, callsRes] = await Promise.all([
+      supabase
+        .from("tables")
+        .select("id, label, floor, seats, sort, room_id")
+        .eq("business_id", bid)
+        .eq("is_active", true)
+        .order("floor", { ascending: true })
+        .order("sort", { ascending: true })
+        .order("label", { ascending: true }),
+      supabase
+        .from("table_tabs")
+        .select("id, table_id, created_at, status")
+        .eq("business_id", bid)
+        .eq("status", "open"),
+      supabase
+        .from("service_calls")
+        .select("id, status, type, room_id, table_label, created_at")
+        .eq("business_id", bid)
+        .in("status", ["pending", "acknowledged"]),
+    ]);
+
+    if (tablesRes.error || tabsRes.error || callsRes.error) {
+      throw tablesRes.error ?? tabsRes.error ?? callsRes.error;
+    }
+
+    setTables((tablesRes.data ?? []) as TableRow[]);
+    setTabs((tabsRes.data ?? []) as TabRow[]);
+    setCalls((callsRes.data ?? []) as CallRow[]);
+  }, []);
+
+  // ── Bootstrap ───────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      if (!isSupabaseConfigured) {
+        setTables(DEMO_TABLES);
+        setTabs(DEMO_TABS);
+        setCalls(DEMO_CALLS);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await resolveActiveBusiness();
+        if (!active) return;
+
+        if (!res.ok) {
+          setNoBusiness(true);
+          setLoading(false);
+          return;
+        }
+
+        const bid = res.business.id;
+        bizIdRef.current = bid;
+
+        await fetchData(bid);
+        if (!active) return;
+
+        // ── Realtime: table_tabs ──────────────────────────────────────────
+        tabsChannel.current = supabase
+          .channel(`floor-tabs-${bid}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "table_tabs", filter: `business_id=eq.${bid}` },
+            () => { void fetchData(bid).catch(() => {}); },
+          )
+          .subscribe();
+
+        // ── Realtime: service_calls ───────────────────────────────────────
+        callsChannel.current = supabase
+          .channel(`floor-calls-${bid}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "service_calls", filter: `business_id=eq.${bid}` },
+            () => { void fetchData(bid).catch(() => {}); },
+          )
+          .subscribe();
+
+        // ── 30s fallback refresh ─────────────────────────────────────────
+        refreshTimer.current = setInterval(() => {
+          if (bizIdRef.current) void fetchData(bizIdRef.current).catch(() => {});
+        }, 30_000);
+
+        // ── 60s tick for elapsed-time re-render only (no re-fetch) ───────
+        tickTimer.current = setInterval(() => {
+          setTick((n) => n + 1);
+        }, 60_000);
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (tabsChannel.current)  void supabase.removeChannel(tabsChannel.current);
+      if (callsChannel.current) void supabase.removeChannel(callsChannel.current);
+      if (refreshTimer.current) clearInterval(refreshTimer.current);
+      if (tickTimer.current)    clearInterval(tickTimer.current);
+    };
+  }, [fetchData]);
+
+  // ── Derivation ──────────────────────────────────────────────────────────────
+
+  // occupiedByTable: tableId → earliest open tab created_at (MIN)
+  const occupiedByTable = new Map<string, string>();
+  for (const tab of tabs) {
+    const existing = occupiedByTable.get(tab.table_id);
+    if (!existing || tab.created_at < existing) {
+      occupiedByTable.set(tab.table_id, tab.created_at);
+    }
+  }
+
+  // Indices for service_call → table mapping
+  const roomToTableId  = new Map<string, string>();
+  const labelToTableId = new Map<string, string>();
+  for (const tbl of tables) {
+    if (tbl.room_id) roomToTableId.set(tbl.room_id, tbl.id);
+    labelToTableId.set(tbl.label.trim().toLowerCase(), tbl.id);
+  }
+
+  // callsByTable: tableId → CallRow[]
+  const callsByTable = new Map<string, CallRow[]>();
+  let callsWithoutTable = 0;
+  for (const sc of calls) {
+    let tid: string | undefined;
+    if (sc.room_id && roomToTableId.has(sc.room_id)) {
+      tid = roomToTableId.get(sc.room_id);
+    } else if (sc.table_label) {
+      tid = labelToTableId.get(sc.table_label.trim().toLowerCase());
+    }
+    if (tid) {
+      const arr = callsByTable.get(tid) ?? [];
+      arr.push(sc);
+      callsByTable.set(tid, arr);
+    } else {
+      callsWithoutTable++;
+    }
+  }
+
+  // Derived table states
+  const derived: DerivedTable[] = tables.map((tbl) => {
+    const { state, hasCall } = deriveState(tbl.id, occupiedByTable, callsByTable);
+    return {
+      id:       tbl.id,
+      label:    tbl.label,
+      floor:    tbl.floor,
+      seats:    tbl.seats,
+      state,
+      hasCall,
+      minOpenAt: occupiedByTable.get(tbl.id) ?? null,
+    };
+  });
+
+  // Summary counters
+  const occupiedCount = derived.filter((d) => d.state === "occupied" || d.state === "waiter").length;
+  const freeCount     = derived.filter((d) => d.state === "free").length;
+  const billCount     = derived.filter((d) => d.state === "bill").length;
+
+  // Floors in first-seen order (already sorted by the query)
+  const floors: string[] = [];
+  for (const d of derived) {
+    if (!floors.includes(d.floor)) floors.push(d.floor);
+  }
+
+  // ── Render states ────────────────────────────────────────────────────────────
+
+  if (noBusiness) {
+    return <Notice>{t("floorNoBusiness")}</Notice>;
+  }
+
+  if (loading) {
+    return <Notice>{tCommon("loading")}</Notice>;
+  }
+
+  if (loadError) {
+    return (
+      <Notice style={{ color: "var(--db-danger)" }}>
+        {t("tablesLoadError")}
+      </Notice>
+    );
+  }
+
+  if (tables.length === 0) {
+    return (
+      <div style={{ padding: "40px 24px", textAlign: "center" }}>
+        <p style={{ color: "var(--db-text-secondary)", fontSize: "14px", margin: "0 0 6px" }}>
+          {t("floorEmpty")}
+        </p>
+        <p style={{ color: "var(--db-text-tertiary)", fontSize: "13px", margin: 0 }}>
+          {t("floorEmptyHint")}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+          {t("floorTitle")}
+        </h1>
+        <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+          {t("floorCountersSummary", { occupied: occupiedCount, free: freeCount, bill: billCount })}
+        </span>
+      </div>
+
+      {/* ── Zones ── */}
+      {floors.map((floor) => {
+        const floorTables = derived.filter((d) => d.floor === floor);
+        return (
+          <div key={floor} style={{ marginBottom: "28px" }}>
+            {floors.length > 1 && (
+              <h2 style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--db-text-tertiary)", margin: "0 0 12px" }}>
+                {floor || t("floorNoZone")}
+              </h2>
+            )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {floorTables.map((tbl) => (
+                <TableCard key={tbl.id} table={tbl} t={t} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── Calls without a table ── */}
+      {callsWithoutTable > 0 && (
+        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginTop: "8px" }}>
+          {t("floorCallsWithoutTable", { count: callsWithoutTable })}
+        </p>
+      )}
+
+      {/* ── Animation styles ── */}
+      <style>{`
+        @keyframes floor-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--db-warning) 40%, transparent); }
+          50%       { box-shadow: 0 0 0 5px transparent; }
+        }
+        .floor-card-pulse {
+          animation: floor-pulse 1.8s ease-in-out infinite;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── TableCard ─────────────────────────────────────────────────────────────────
+
+function TableCard({
+  table,
+  t,
+}: {
+  table: DerivedTable;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const colors = stateColor(table.state);
+
+  const stateLabel = (() => {
+    switch (table.state) {
+      case "free":     return t("floorStateFree");
+      case "occupied": return t("floorStateOccupied");
+      case "bill":     return t("floorStateBill");
+      case "waiter":   return t("floorStateOccupied");
+      case "reserved": return t("floorStateReserved");
+    }
+  })();
+
+  return (
+    <div
+      className={table.hasCall ? "floor-card-pulse" : undefined}
+      style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "4px",
+        padding: "14px 10px",
+        borderRadius: "var(--db-radius-card)",
+        background: colors.background,
+        border: colors.border,
+        minHeight: "100px",
+        textAlign: "center",
+      }}
+    >
+      {/* Service call bell — top-right corner */}
+      {table.hasCall && (
+        <span
+          aria-label={t("floorCallBellAria", { label: table.label })}
+          title={t("floorCallBellAria", { label: table.label })}
+          style={{
+            position: "absolute",
+            top: "6px",
+            right: "6px",
+            color: "var(--db-warning)",
+            display: "flex",
+          }}
+        >
+          <IconBell size={16} />
+        </span>
+      )}
+
+      {/* Table label (number) */}
+      <span style={{ fontSize: "22px", fontWeight: 800, color: colors.color, letterSpacing: "-0.02em", lineHeight: 1 }}>
+        {table.label}
+      </span>
+
+      {/* State text label — always present for accessibility */}
+      <span style={{ fontSize: "11px", fontWeight: 600, color: colors.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {stateLabel}
+      </span>
+
+      {/* Elapsed time — only when occupied or has call */}
+      {table.minOpenAt && (table.state === "occupied" || table.state === "waiter" || table.state === "bill") && (
+        <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "2px" }}>
+          {elapsed(table.minOpenAt, t)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Notice helper ─────────────────────────────────────────────────────────────
+
+function Notice({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        padding: "48px 24px",
+        textAlign: "center",
+        color: "var(--db-text-secondary)",
+        fontSize: "14px",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}

@@ -1609,7 +1609,21 @@
     "tabSoonBadge": "Pronto",
     "kpiSalesToday": "Ventas de hoy",
     "kpiActiveOrders": "Pedidos activos",
-    "kpiTablesOccupied": "Mesas ocupadas"
+    "kpiTablesOccupied": "Mesas ocupadas",
+    "floorTitle": "Mesas",
+    "floorStateFree": "Libre",
+    "floorStateOccupied": "Ocupada",
+    "floorStateBill": "Cuenta",
+    "floorStateReserved": "Reservada",
+    "floorCountersSummary": "{occupied} ocupadas · {free} libres · {bill} cuenta",
+    "floorCallBellAria": "Llamada de servicio en mesa {label}",
+    "floorElapsedMinutes": "hace {count} min",
+    "floorElapsedHours": "hace {count} h",
+    "floorNoZone": "Sin zona",
+    "floorEmpty": "Aún no hay mesas configuradas",
+    "floorEmptyHint": "Configura las mesas en la sección Mesas.",
+    "floorNoBusiness": "Selecciona un negocio para ver sus mesas.",
+    "floorCallsWithoutTable": "{count, plural, one {# llamada sin mesa} other {# llamadas sin mesa}}"
   },
   "superAdmin": {
     "shell": {

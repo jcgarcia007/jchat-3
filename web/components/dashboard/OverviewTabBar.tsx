@@ -13,7 +13,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { labelKey: "navOverview",    href: "/dashboard",               enabled: true  },
-  { labelKey: "railMesas",      href: "/dashboard/tables",        enabled: true  },
+  { labelKey: "railMesas",      href: "/dashboard/floor",         enabled: true  },
   { labelKey: "tabQueue",       href: "/dashboard/queue",         enabled: false },
   { labelKey: "tabSales",       href: "/dashboard/sales",         enabled: false },
   { labelKey: "railReservas",   href: "/dashboard/reservations",  enabled: true  },
