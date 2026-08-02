@@ -15,7 +15,7 @@ const TABS: TabDef[] = [
   { labelKey: "navOverview",    href: "/dashboard",               enabled: true  },
   { labelKey: "railMesas",      href: "/dashboard/floor",         enabled: true  },
   { labelKey: "tabQueue",       href: "/dashboard/queue",         enabled: true  },
-  { labelKey: "tabSales",       href: "/dashboard/sales",         enabled: false },
+  { labelKey: "tabSales",       href: "/dashboard/sales",         enabled: true  },
   { labelKey: "railReservas",   href: "/dashboard/reservations",  enabled: true  },
   { labelKey: "railServicio",   href: "/dashboard/service",       enabled: true  },
   { labelKey: "railResenas",    href: "/dashboard/reviews",       enabled: true  },
