@@ -23,6 +23,7 @@ import {
   IconBuilding,
   IconClock,
   IconMapPin,
+  IconMessageCircle,
   IconPhoto,
   IconMenu2,
   IconPalette,
@@ -68,6 +69,7 @@ interface BusinessRow {
   payout_frequency: "daily" | "weekly" | "monthly" | null;
   dashboard_theme_id?: number;
   dashboard_palette_id?: number | null;
+  table_subchats_enabled: boolean;
 }
 
 /** Shape stored in businesses.hours (JSONB) */
@@ -502,6 +504,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export default function ConfigurationPage() {
   const t = useTranslations("dashboardCommon");
+  const tCommon = useTranslations("common");
 
   const dayLabels: Record<Day, string> = {
     Monday: t("configurationDayMonday"),
@@ -578,6 +581,10 @@ export default function ConfigurationPage() {
   const [payoutFrequency, setPayoutFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [savingPayout, setSavingPayout] = useState(false);
 
+  // ── Section 9: Table subchats ─────────────────────────────────────────────────
+  const [tableSubchatsEnabled, setTableSubchatsEnabled] = useState(false);
+  const [savingSubchats, setSavingSubchats] = useState(false);
+
   // ── Upload refs ───────────────────────────────────────────────────────────────
   const coverObjRef = useRef<string | null>(null);
   const iconObjRef = useRef<string | null>(null);
@@ -614,7 +621,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -638,6 +645,7 @@ export default function ConfigurationPage() {
       setTipsEnabled(b.tips_enabled ?? false);
       setTipPercentages(b.tip_percentages ?? [15, 18, 20]);
       setPayoutFrequency(b.payout_frequency ?? "weekly");
+      setTableSubchatsEnabled(b.table_subchats_enabled ?? false);
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
       setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
@@ -843,6 +851,16 @@ export default function ConfigurationPage() {
       v ? t("configurationMenuEnabledSuccess") : t("configurationMenuDisabledSuccess")
     );
   };
+
+  const handleToggleSubchats = async (v: boolean) => {
+    setTableSubchatsEnabled(v);
+    await withSave(
+      setSavingSubchats,
+      { table_subchats_enabled: v },
+      v ? t("configurationSubchatsEnabledSuccess") : t("configurationSubchatsDisabledSuccess")
+    );
+  };
+
 
   const handleThemePick = useCallback(
     async (id: number) => {
@@ -1550,6 +1568,25 @@ export default function ConfigurationPage() {
           {t("configurationMenuDisabledNote")}
           {/* Controls businesses.menu_enabled → read by chat room icon logic */}
         </p>
+      </Section>
+
+      {/* ── 5b. Table Subchats ──────────────────────────────────────────────── */}
+      <Section
+        icon={<IconMessageCircle size={18} color="var(--db-accent)" />}
+        title={t("configurationSubchatsSectionTitle")}
+        subtitle={t("configurationSubchatsSectionSubtitle")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <Toggle
+            checked={tableSubchatsEnabled}
+            onChange={(v) => void handleToggleSubchats(v)}
+            label={t("configurationSubchatsEnabledLabel")}
+            disabled={noSupabase || noBiz || savingSubchats}
+          />
+          {savingSubchats && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
       </Section>
 
       {/* ── 6. Dashboard Theme + Palette ────────────────────────────────────── */}

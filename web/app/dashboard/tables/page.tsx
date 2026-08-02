@@ -78,8 +78,25 @@ export default function TablesPage() {
   const [savingSeats, setSavingSeats] = useState<Set<string>>(new Set());
   const [seatError, setSeatError] = useState<string | null>(null);
 
+  // Business-level subchat toggle — loaded once per activeId, drives auto-create on mesa INSERT.
+  const [bizSubchatsEnabled, setBizSubchatsEnabled] = useState(false);
+  // Non-fatal warning shown when the mesa was created but the subchat RPC failed.
+  const [subchatWarn, setSubchatWarn] = useState<string | null>(null);
+
   // Assigned-waiter count per table (B4), shown on each card. Read-only tally.
   const [waiterCounts, setWaiterCounts] = useState<Record<string, number>>({});
+
+  const loadBizSettings = useCallback(async () => {
+    if (!activeId || !isSupabaseConfigured) return;
+    const { data } = await supabase
+      .from("businesses")
+      .select("table_subchats_enabled")
+      .eq("id", activeId)
+      .maybeSingle();
+    if (data) {
+      setBizSubchatsEnabled((data as { table_subchats_enabled: boolean }).table_subchats_enabled ?? false);
+    }
+  }, [activeId]);
 
   const loadWaiterCounts = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) {
@@ -137,11 +154,13 @@ export default function TablesPage() {
       await load();
       if (!active) return;
       await loadWaiterCounts();
+      if (!active) return;
+      await loadBizSettings();
     })();
     return () => {
       active = false;
     };
-  }, [load, loadWaiterCounts, reloadKey]);
+  }, [load, loadWaiterCounts, loadBizSettings, reloadKey]);
 
   // Floors present, in first-seen order; drives the optional grouping headers.
   const floors = useMemo(() => {
@@ -192,14 +211,19 @@ export default function TablesPage() {
     const seats = Number(form.seats);
 
     let dbError: { code?: string } | null = null;
+    let newTableId: string | null = null;
     if (form.id === null) {
       // Append after the current max sort so new tables land at the end.
       const nextSort = rows.reduce((m, r) => Math.max(m, r.sort), 0) + 1;
-      const { error } = await supabase
+      // qr_token is assigned by trigger trg_assign_table_qr_token (migr. 073); not client-writable (allow-list 069).
+      const insertPayload = { business_id: activeId, label, floor, seats, sort: nextSort, is_active: form.is_active } as never;
+      const { data: inserted, error } = await supabase
         .from("tables")
-        // @ts-expect-error qr_token lo asigna el trigger trg_assign_table_qr_token (migr. 073); el cliente no puede escribirlo (allow-list 069)
-        .insert({ business_id: activeId, label, floor, seats, sort: nextSort, is_active: form.is_active });
+        .insert(insertPayload)
+        .select("id")
+        .single();
       dbError = error;
+      if (!error && inserted) newTableId = (inserted as { id: string }).id;
     } else {
       const { error } = await supabase
         .from("tables")
@@ -218,6 +242,19 @@ export default function TablesPage() {
           : t("tablesSaveError"),
       );
       return;
+    }
+
+    // Auto-create subchat if the business has the feature enabled.
+    // Non-fatal: mesa is created regardless; warn softly if the RPC fails.
+    setSubchatWarn(null);
+    if (newTableId && bizSubchatsEnabled) {
+      const { error: rpcErr } = await supabase.rpc("set_table_subchat", {
+        p_table_id: newTableId,
+        p_enable: true,
+      });
+      if (rpcErr) {
+        setSubchatWarn(t("tablesSubchatAutoCreateWarning"));
+      }
     }
 
     closeForm();
@@ -292,6 +329,12 @@ export default function TablesPage() {
           onWaitersChanged={() => void loadWaiterCounts()}
           onSubchatChanged={() => void load()}
         />
+      )}
+
+      {subchatWarn && (
+        <div style={{ fontSize: "13px", color: "var(--db-warning)", marginBottom: "12px" }}>
+          {subchatWarn}
+        </div>
       )}
 
       {seatError && (
