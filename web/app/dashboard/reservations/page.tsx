@@ -1,21 +1,18 @@
 /**
- * JChat 3.0 — Dashboard Reservations (Task 3.11)
+ * JChat 3.0 — Dashboard Reservations (F9-B)
  *
- * Owner view for managing table/space reservations:
- *  - Toggle between Calendar view and List view.
- *  - Confirm / Reject pending reservations (updates status).
- *  - Mark customers as No-show.
- *  - Capacity settings panel (max party size + daily slots).
- *  - Realtime subscription — list refreshes on any change to `reservations`.
+ * Staff-facing reservation flow:
+ *  - Create reservations via create_reservation RPC (links customer + tables, marks
+ *    tables reserved — atomic). No direct INSERT/UPDATE to reservations/
+ *    reservation_customers/reservation_tables.
+ *  - Phone-based customer auto-populate via search_reservation_customers RPC.
+ *  - Status transitions: pending → cancelled / no_show (staff here);
+ *    pending → arrived (floor page, F9-C — NOT here).
+ *  - Calendar + List views; filter by status; Realtime refresh.
  *
- * TODO(server): send push notification to customer on confirm/reject.
- * TODO(server): scheduled reminders 24h + 2h before reserved_at (Edge Function / cron).
- * TODO(schema): capacity settings — when a `business_capacity` table or column
- *               is added, persist maxPartySize + dailySlots there instead of
- *               local state.
- *
- * Design: var(--db-*) tokens only. "use client" required for hooks + state.
- * Guard: isSupabaseConfigured check before any live DB calls.
+ * event_type values stored in DB are stable English keys:
+ *   birthday | anniversary | business | casual | other
+ * Only the LABEL shown to the user is translated.
  */
 
 "use client";
@@ -27,14 +24,15 @@ import {
   IconCalendarEvent,
   IconList,
   IconCheck,
-  IconX,
   IconAlertCircle,
   IconClock,
   IconUsers,
   IconNotes,
-  IconSettings,
   IconRefresh,
   IconCalendarTime,
+  IconPlus,
+  IconPhone,
+  IconX,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -43,21 +41,60 @@ import type { TFn } from "@/lib/tabSemantics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ReservationStatus = "pending" | "confirmed" | "rejected" | "no_show";
+type ReservationStatus = "pending" | "arrived" | "no_show" | "cancelled";
+type ViewMode = "calendar" | "list";
+type FilterStatus = "all" | ReservationStatus;
+
+interface ReservationCustomer {
+  id: string;
+  phone: string | null;
+  first_name: string | null;
+  last_name: string | null;
+}
+
+interface TableOption {
+  id: string;
+  label: string;
+  is_reserved: boolean;
+}
+
+interface ReservationTableLink {
+  table_id: string;
+}
 
 interface Reservation {
   id: string;
   business_id: string;
-  user_id: string;
+  customer_id: string | null;
+  user_id: string | null;
   reserved_at: string;
   party_size: number;
+  event_type: string | null;
   special_requests: string | null;
   status: ReservationStatus;
   is_waitlist: boolean;
   created_at: string;
-  // joined profile info (may be absent if RLS or join fails)
-  profiles?: { display_name: string | null; username: string | null } | null;
+  customer?: ReservationCustomer | null;
+  reservation_tables?: ReservationTableLink[];
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const EVENT_TYPES = [
+  "birthday",
+  "anniversary",
+  "business",
+  "casual",
+  "other",
+] as const;
+
+const EVENT_TYPE_KEYS: Record<string, string> = {
+  birthday: "resEventBirthday",
+  anniversary: "resEventAnniversary",
+  business: "resEventBusiness",
+  casual: "resEventCasual",
+  other: "resEventOther",
+};
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
@@ -68,66 +105,96 @@ function makeDemoDate(offsetDays: number, hour: number): string {
   return d.toISOString();
 }
 
+const DEMO_TABLES: TableOption[] = [
+  { id: "demo-tbl-1", label: "Table 1", is_reserved: false },
+  { id: "demo-tbl-2", label: "Table 2", is_reserved: true },
+  { id: "demo-tbl-3", label: "Bar Seat A", is_reserved: false },
+  { id: "demo-tbl-4", label: "Patio 1", is_reserved: false },
+];
+
+const DEMO_CUSTOMERS: ReservationCustomer[] = [
+  { id: "demo-c1", phone: "+1 555-0101", first_name: "Alex", last_name: "Rivera" },
+  { id: "demo-c2", phone: "+1 555-0102", first_name: "Jamie", last_name: "Lee" },
+  { id: "demo-c3", phone: "+1 555-0103", first_name: "Morgan", last_name: "Park" },
+  { id: "demo-c4", phone: "+1 555-0104", first_name: "Sam", last_name: "Kim" },
+  { id: "demo-c5", phone: "+1 555-0105", first_name: "Taylor", last_name: "Wong" },
+];
+
 const DEMO_RESERVATIONS: Reservation[] = [
   {
     id: "demo-res-1",
     business_id: "demo-biz",
-    user_id: "demo-user-1",
+    customer_id: "demo-c1",
+    user_id: null,
     reserved_at: makeDemoDate(1, 19),
     party_size: 4,
+    event_type: "birthday",
     special_requests: "Window table please",
     status: "pending",
     is_waitlist: false,
     created_at: new Date().toISOString(),
-    profiles: { display_name: "Alex Rivera", username: "alexr" },
+    customer: DEMO_CUSTOMERS[0],
+    reservation_tables: [{ table_id: "demo-tbl-1" }],
   },
   {
     id: "demo-res-2",
     business_id: "demo-biz",
-    user_id: "demo-user-2",
+    customer_id: "demo-c2",
+    user_id: null,
     reserved_at: makeDemoDate(1, 20),
     party_size: 2,
+    event_type: "anniversary",
     special_requests: null,
-    status: "confirmed",
+    status: "arrived",
     is_waitlist: false,
     created_at: new Date().toISOString(),
-    profiles: { display_name: "Jamie Lee", username: "jamielee" },
+    customer: DEMO_CUSTOMERS[1],
+    reservation_tables: [{ table_id: "demo-tbl-2" }],
   },
   {
     id: "demo-res-3",
     business_id: "demo-biz",
-    user_id: "demo-user-3",
+    customer_id: "demo-c3",
+    user_id: null,
     reserved_at: makeDemoDate(2, 12),
     party_size: 6,
-    special_requests: "Birthday celebration — need cake space",
+    event_type: "casual",
+    special_requests: "Need a high chair",
     status: "pending",
     is_waitlist: false,
     created_at: new Date().toISOString(),
-    profiles: { display_name: "Morgan P.", username: "morganp" },
+    customer: DEMO_CUSTOMERS[2],
+    reservation_tables: [{ table_id: "demo-tbl-3" }, { table_id: "demo-tbl-4" }],
   },
   {
     id: "demo-res-4",
     business_id: "demo-biz",
-    user_id: "demo-user-4",
-    reserved_at: makeDemoDate(2, 18),
-    party_size: 3,
-    special_requests: null,
-    status: "pending",
-    is_waitlist: true,
-    created_at: new Date().toISOString(),
-    profiles: { display_name: "Sam K.", username: "samk" },
-  },
-  {
-    id: "demo-res-5",
-    business_id: "demo-biz",
-    user_id: "demo-user-5",
+    customer_id: "demo-c4",
+    user_id: null,
     reserved_at: makeDemoDate(0, 13),
-    party_size: 2,
+    party_size: 3,
+    event_type: null,
     special_requests: null,
     status: "no_show",
     is_waitlist: false,
     created_at: new Date().toISOString(),
-    profiles: { display_name: "Taylor W.", username: "taylorw" },
+    customer: DEMO_CUSTOMERS[3],
+    reservation_tables: [{ table_id: "demo-tbl-1" }],
+  },
+  {
+    id: "demo-res-5",
+    business_id: "demo-biz",
+    customer_id: "demo-c5",
+    user_id: null,
+    reserved_at: makeDemoDate(3, 18),
+    party_size: 5,
+    event_type: "business",
+    special_requests: "Projector screen requested",
+    status: "pending",
+    is_waitlist: true,
+    created_at: new Date().toISOString(),
+    customer: DEMO_CUSTOMERS[4],
+    reservation_tables: [{ table_id: "demo-tbl-4" }],
   },
 ];
 
@@ -160,13 +227,24 @@ function isoDateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
 
-function guestLabel(r: Reservation, t: TFn): string {
-  if (r.profiles?.display_name) return r.profiles.display_name;
-  if (r.profiles?.username) return `@${r.profiles.username}`;
-  return t("reservationsGuestFallback", { id: r.user_id.slice(-6) });
+function customerLabel(r: Reservation): string {
+  const c = r.customer;
+  if (!c) return "—";
+  const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
+  if (name) return name;
+  if (c.phone) return c.phone;
+  return "—";
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+function tableLabels(r: Reservation, tables: TableOption[]): string {
+  if (!r.reservation_tables || r.reservation_tables.length === 0) return "—";
+  const tableMap = new Map(tables.map((t) => [t.id, t.label]));
+  return r.reservation_tables
+    .map((rt) => tableMap.get(rt.table_id) ?? rt.table_id.slice(-4))
+    .join(", ");
+}
+
+// ── StatusBadge ───────────────────────────────────────────────────────────────
 
 function getStatusMeta(t: TFn): Record<
   ReservationStatus,
@@ -178,20 +256,20 @@ function getStatusMeta(t: TFn): Record<
       bg: "rgba(245,158,11,0.15)",
       color: "var(--db-warning)",
     },
-    confirmed: {
-      label: t("reservationsStatusConfirmed"),
-      bg: "rgba(34,197,94,0.15)",
+    arrived: {
+      label: t("resStatusArrived"),
+      bg: "rgba(29,158,117,0.15)",
       color: "var(--db-success)",
-    },
-    rejected: {
-      label: t("reservationsStatusRejected"),
-      bg: "rgba(239,68,68,0.15)",
-      color: "var(--db-danger)",
     },
     no_show: {
       label: t("reservationsStatusNoShow"),
       bg: "rgba(239,68,68,0.08)",
       color: "var(--db-danger)",
+    },
+    cancelled: {
+      label: t("resStatusCancelled"),
+      bg: "var(--db-bg-elevated)",
+      color: "var(--db-text-tertiary)",
     },
   };
 }
@@ -205,7 +283,7 @@ function StatusBadge({
   isWaitlist: boolean;
   t: TFn;
 }) {
-  const m = getStatusMeta(t)[status];
+  const m = getStatusMeta(t)[status] ?? getStatusMeta(t).pending;
   return (
     <span style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
       <span
@@ -242,7 +320,30 @@ function StatusBadge({
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── EventTypeBadge ────────────────────────────────────────────────────────────
+
+function EventTypeBadge({ eventType, t }: { eventType: string | null; t: TFn }) {
+  if (!eventType) return null;
+  const key = EVENT_TYPE_KEYS[eventType];
+  if (!key) return null;
+  return (
+    <span
+      style={{
+        padding: "2px 8px",
+        borderRadius: "999px",
+        fontSize: "11px",
+        fontWeight: 500,
+        background: "var(--db-accent-bg)",
+        color: "var(--db-accent)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {t(key)}
+    </span>
+  );
+}
+
+// ── AlertBanner ───────────────────────────────────────────────────────────────
 
 function AlertBanner({
   type,
@@ -253,12 +354,11 @@ function AlertBanner({
 }) {
   const styles: Record<string, { bg: string; color: string }> = {
     error: { bg: "rgba(239,68,68,0.12)", color: "var(--db-danger)" },
-    success: { bg: "rgba(34,197,94,0.12)", color: "var(--db-success)" },
+    success: { bg: "rgba(29,158,117,0.12)", color: "var(--db-success)" },
     warning: { bg: "rgba(245,158,11,0.12)", color: "var(--db-warning)" },
   };
   const s = styles[type] ?? styles.error;
-  const Icon =
-    type === "success" ? IconCheck : IconAlertCircle;
+  const Icon = type === "success" ? IconCheck : IconAlertCircle;
   return (
     <div
       style={{
@@ -279,17 +379,561 @@ function AlertBanner({
   );
 }
 
-// ── Reservation row (list view) ───────────────────────────────────────────────
+// ── NewReservationForm ────────────────────────────────────────────────────────
+
+interface NewReservationFormProps {
+  businessId: string;
+  tables: TableOption[];
+  onCreated: () => void;
+  onClose: () => void;
+  t: TFn;
+}
+
+function NewReservationForm({
+  businessId,
+  tables,
+  onCreated,
+  onClose,
+  t,
+}: NewReservationFormProps) {
+  const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [suggestions, setSuggestions] = useState<ReservationCustomer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [customerFound, setCustomerFound] = useState(false);
+
+  const [reservedAt, setReservedAt] = useState("");
+  const [partySize, setPartySize] = useState("2");
+  const [selectedTableIds, setSelectedTableIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [eventType, setEventType] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const canSubmit =
+    firstName.trim().length > 0 &&
+    selectedTableIds.size > 0 &&
+    Number(partySize) >= 1 &&
+    reservedAt.length > 0 &&
+    !submitting;
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    setCustomerFound(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      if (!isSupabaseConfigured) {
+        setSearching(false);
+        return;
+      }
+      try {
+        const { data } = await supabase.rpc(
+          "search_reservation_customers",
+          { p_business_id: businessId, p_query: value.trim() }
+        );
+        const results = (data as ReservationCustomer[] | null) ?? [];
+        if (results.length > 0) {
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+  };
+
+  const selectSuggestion = (c: ReservationCustomer) => {
+    setPhone(c.phone ?? "");
+    setFirstName(c.first_name ?? "");
+    setLastName(c.last_name ?? "");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setCustomerFound(true);
+  };
+
+  const toggleTable = (id: string) => {
+    setSelectedTableIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setFormError(null);
+
+    if (!isSupabaseConfigured) {
+      setTimeout(() => {
+        setSubmitting(false);
+        onCreated();
+      }, 600);
+      return;
+    }
+
+    try {
+      const { error: err } = await supabase.rpc("create_reservation", {
+        p_business_id: businessId,
+        p_reserved_at: new Date(reservedAt).toISOString(),
+        p_party_size: Number(partySize),
+        p_table_ids: Array.from(selectedTableIds),
+        p_event_type: eventType || null,
+        p_phone: phone.trim() || null,
+        p_first_name: firstName.trim() || null,
+        p_last_name: lastName.trim() || null,
+        p_special_requests: specialRequests.trim() || null,
+      });
+      if (err) throw err;
+      onCreated();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setFormError(t("resNewError", { msg }));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "8px 12px",
+    borderRadius: "var(--db-radius)",
+    border: "1px solid var(--db-border)",
+    background: "var(--db-bg-elevated)",
+    color: "var(--db-text-primary)",
+    fontSize: "14px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: "11px",
+    fontWeight: 600,
+    color: "var(--db-text-secondary)",
+    marginBottom: "6px",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  };
+
+  const minDateTime = new Date().toISOString().slice(0, 16);
+
+  return (
+    <div
+      style={{
+        background: "var(--db-bg-surface)",
+        border: "1px solid var(--db-accent)",
+        borderRadius: "var(--db-radius-card)",
+        padding: "24px",
+        marginBottom: "24px",
+      }}
+    >
+      {/* Form header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "16px",
+            fontWeight: 700,
+            color: "var(--db-text-primary)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <IconCalendarTime size={18} color="var(--db-accent)" />
+          {t("resNewTitle")}
+        </h2>
+        <button
+          onClick={onClose}
+          title={t("resNewCancelButton")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: "var(--db-radius)",
+            border: "1px solid var(--db-border)",
+            background: "transparent",
+            color: "var(--db-text-tertiary)",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <IconX size={14} />
+        </button>
+      </div>
+
+      {formError && <AlertBanner type="error" message={formError} />}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "20px",
+        }}
+      >
+        {/* ─── Customer section ─── */}
+        <div>
+          <p
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "var(--db-accent)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "14px",
+            }}
+          >
+            <IconPhone
+              size={12}
+              style={{ display: "inline", marginRight: 5, verticalAlign: "middle" }}
+            />
+            {t("resNewPhone")}
+          </p>
+
+          {/* Phone with suggestions */}
+          <div style={{ position: "relative", marginBottom: "14px" }}>
+            <label style={labelStyle}>{t("resNewPhone")}</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              placeholder="+1 555-0000"
+              style={inputStyle}
+              autoComplete="off"
+            />
+            {searching && (
+              <span
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(4px)",
+                  fontSize: "11px",
+                  color: "var(--db-text-tertiary)",
+                }}
+              >
+                {t("resNewSearching")}
+              </span>
+            )}
+            {showSuggestions && suggestions.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  right: 0,
+                  background: "var(--db-bg-surface)",
+                  border: "1px solid var(--db-border)",
+                  borderRadius: "var(--db-radius)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                  zIndex: 50,
+                  overflow: "hidden",
+                }}
+              >
+                {suggestions.slice(0, 10).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => selectSuggestion(c)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      border: "none",
+                      borderBottom: "1px solid var(--db-border)",
+                      background: "transparent",
+                      color: "var(--db-text-primary)",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>
+                      {[c.first_name, c.last_name].filter(Boolean).join(" ")}
+                    </span>
+                    {c.phone && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          color: "var(--db-text-tertiary)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {c.phone}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {customerFound && (
+            <div
+              style={{
+                fontSize: "12px",
+                color: "var(--db-success)",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+              }}
+            >
+              <IconCheck size={12} />
+              {t("resNewCustomerFound")}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <label style={labelStyle}>{t("resNewFirstName")}</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>{t("resNewLastName")}</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Reservation details ─── */}
+        <div>
+          <p
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "var(--db-accent)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "14px",
+            }}
+          >
+            <IconCalendarEvent
+              size={12}
+              style={{ display: "inline", marginRight: 5, verticalAlign: "middle" }}
+            />
+            {t("resNewDateTime")}
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: "12px",
+              marginBottom: "14px",
+            }}
+          >
+            <div>
+              <label style={labelStyle}>{t("resNewDateTime")}</label>
+              <input
+                type="datetime-local"
+                value={reservedAt}
+                min={minDateTime}
+                onChange={(e) => setReservedAt(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>{t("resNewPartySize")}</label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={partySize}
+                onChange={(e) => setPartySize(e.target.value)}
+                style={{ ...inputStyle, width: "80px" }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "14px" }}>
+            <label style={labelStyle}>{t("resNewEventType")}</label>
+            <select
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              style={{ ...inputStyle }}
+            >
+              <option value="">—</option>
+              {EVENT_TYPES.map((et) => (
+                <option key={et} value={et}>
+                  {t(EVENT_TYPE_KEYS[et])}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={labelStyle}>{t("resNewNotes")}</label>
+            <textarea
+              value={specialRequests}
+              onChange={(e) => setSpecialRequests(e.target.value)}
+              rows={2}
+              style={{
+                ...inputStyle,
+                resize: "vertical",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Table selector */}
+      <div style={{ marginTop: "20px" }}>
+        <label style={labelStyle}>{t("resNewTables")}</label>
+        {tables.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>—</p>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              marginTop: "6px",
+            }}
+          >
+            {tables.map((tbl) => {
+              const selected = selectedTableIds.has(tbl.id);
+              return (
+                <button
+                  key={tbl.id}
+                  onClick={() => toggleTable(tbl.id)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "999px",
+                    border: "1px solid",
+                    borderColor: selected
+                      ? "var(--db-accent)"
+                      : "var(--db-border)",
+                    background: selected ? "var(--db-accent-bg)" : "transparent",
+                    color: selected
+                      ? "var(--db-accent)"
+                      : tbl.is_reserved
+                      ? "var(--db-text-tertiary)"
+                      : "var(--db-text-secondary)",
+                    fontSize: "13px",
+                    fontWeight: selected ? 600 : 400,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    opacity: tbl.is_reserved && !selected ? 0.6 : 1,
+                  }}
+                >
+                  {tbl.label}
+                  {tbl.is_reserved && !selected && (
+                    <span style={{ marginLeft: 5, fontSize: "11px" }}>
+                      ({t("floorStateReserved")})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px",
+          marginTop: "24px",
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            padding: "9px 18px",
+            borderRadius: "var(--db-radius)",
+            border: "1px solid var(--db-border)",
+            background: "transparent",
+            color: "var(--db-text-secondary)",
+            fontSize: "13px",
+            fontWeight: 500,
+            cursor: "pointer",
+          }}
+        >
+          {t("resNewCancelButton")}
+        </button>
+        <button
+          onClick={() => void handleSubmit()}
+          disabled={!canSubmit}
+          style={{
+            padding: "9px 20px",
+            borderRadius: "var(--db-radius)",
+            border: "none",
+            background: canSubmit ? "var(--db-accent)" : "var(--db-text-tertiary)",
+            color: "var(--db-accent-text)",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <IconCheck size={14} />
+          {submitting ? "…" : t("resNewConfirmButton")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ReservationRow ────────────────────────────────────────────────────────────
 
 interface ReservationRowProps {
   reservation: Reservation;
+  tables: TableOption[];
   actionLoading: string | null;
-  onAction: (id: string, action: "confirmed" | "rejected" | "no_show") => void;
+  onAction: (id: string, action: "cancelled" | "no_show") => void;
   t: TFn;
 }
 
 function ReservationRow({
   reservation: r,
+  tables,
   actionLoading,
   onAction,
   t,
@@ -373,9 +1017,10 @@ function ReservationRow({
               color: "var(--db-text-primary)",
             }}
           >
-            {guestLabel(r, t)}
+            {customerLabel(r)}
           </span>
           <StatusBadge status={r.status} isWaitlist={r.is_waitlist} t={t} />
+          <EventTypeBadge eventType={r.event_type} t={t} />
         </div>
 
         <div
@@ -410,6 +1055,17 @@ function ReservationRow({
             <IconClock size={12} />
             {formatDate(r.reserved_at)} · {formatTime(r.reserved_at)}
           </span>
+          {tables.length > 0 && r.reservation_tables && r.reservation_tables.length > 0 && (
+            <span
+              style={{
+                fontSize: "12px",
+                color: "var(--db-text-tertiary)",
+                fontWeight: 500,
+              }}
+            >
+              {tableLabels(r, tables)}
+            </span>
+          )}
         </div>
 
         {r.special_requests && (
@@ -421,7 +1077,11 @@ function ReservationRow({
               marginTop: "6px",
             }}
           >
-            <IconNotes size={12} color="var(--db-text-tertiary)" style={{ marginTop: 2, flexShrink: 0 }} />
+            <IconNotes
+              size={12}
+              color="var(--db-text-tertiary)"
+              style={{ marginTop: 2, flexShrink: 0 }}
+            />
             <span
               style={{
                 fontSize: "12px",
@@ -435,71 +1095,20 @@ function ReservationRow({
         )}
       </div>
 
-      {/* Action buttons */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          flexShrink: 0,
-          flexWrap: "wrap",
-        }}
-      >
-        {r.status === "pending" && (
-          <>
-            <button
-              onClick={() => onAction(r.id, "confirmed")}
-              disabled={busy}
-              title={t("reservationsConfirmAria")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "6px 14px",
-                borderRadius: "var(--db-radius)",
-                border: "none",
-                background: busy
-                  ? "var(--db-text-tertiary)"
-                  : "var(--db-success)",
-                color: "#fff",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: busy ? "not-allowed" : "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <IconCheck size={13} />
-              {busy ? "…" : t("reservationsConfirmButton")}
-            </button>
-            <button
-              onClick={() => onAction(r.id, "rejected")}
-              disabled={busy}
-              title={t("reservationsRejectAria")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "6px 12px",
-                borderRadius: "var(--db-radius)",
-                border: "1px solid var(--db-danger)",
-                background: "rgba(239,68,68,0.08)",
-                color: "var(--db-danger)",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: busy ? "not-allowed" : "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <IconX size={13} />
-              {busy ? "…" : t("reservationsRejectButton")}
-            </button>
-          </>
-        )}
-        {r.status === "confirmed" && (
+      {/* Action buttons — pending only; arrived/cancelled/no_show: no actions */}
+      {r.status === "pending" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexShrink: 0,
+            flexWrap: "wrap",
+          }}
+        >
           <button
             onClick={() => onAction(r.id, "no_show")}
             disabled={busy}
-            title={t("reservationsNoShowAria")}
             style={{
               padding: "6px 12px",
               borderRadius: "var(--db-radius)",
@@ -514,23 +1123,50 @@ function ReservationRow({
           >
             {busy ? "…" : t("reservationsStatusNoShow")}
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => onAction(r.id, "cancelled")}
+            disabled={busy}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "6px 12px",
+              borderRadius: "var(--db-radius)",
+              border: "1px solid var(--db-danger)",
+              background: "rgba(239,68,68,0.08)",
+              color: "var(--db-danger)",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: busy ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <IconX size={13} />
+            {busy ? "…" : t("resNewCancelButton")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Calendar view ─────────────────────────────────────────────────────────────
+// ── CalendarView ──────────────────────────────────────────────────────────────
 
 interface CalendarViewProps {
   reservations: Reservation[];
+  tables: TableOption[];
   actionLoading: string | null;
-  onAction: (id: string, action: "confirmed" | "rejected" | "no_show") => void;
+  onAction: (id: string, action: "cancelled" | "no_show") => void;
   t: TFn;
 }
 
-function CalendarView({ reservations, actionLoading, onAction, t }: CalendarViewProps) {
-  // Group reservations by date (YYYY-MM-DD)
+function CalendarView({
+  reservations,
+  tables,
+  actionLoading,
+  onAction,
+  t,
+}: CalendarViewProps) {
   const grouped: Record<string, Reservation[]> = {};
   for (const r of reservations) {
     const key = isoDateOnly(r.reserved_at);
@@ -574,7 +1210,6 @@ function CalendarView({ reservations, actionLoading, onAction, t }: CalendarView
 
         return (
           <div key={date}>
-            {/* Day header */}
             <div
               style={{
                 display: "flex",
@@ -603,17 +1238,11 @@ function CalendarView({ reservations, actionLoading, onAction, t }: CalendarView
               >
                 {dayLabel}
               </h3>
-              <span
-                style={{
-                  fontSize: "12px",
-                  color: "var(--db-text-tertiary)",
-                }}
-              >
+              <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
                 {t("reservationsCountPlural", { count: dayRes.length })}
               </span>
             </div>
 
-            {/* Day slots */}
             <div
               style={{
                 display: "flex",
@@ -634,6 +1263,7 @@ function CalendarView({ reservations, actionLoading, onAction, t }: CalendarView
                   <ReservationRow
                     key={r.id}
                     reservation={r}
+                    tables={tables}
                     actionLoading={actionLoading}
                     onAction={onAction}
                     t={t}
@@ -647,173 +1277,18 @@ function CalendarView({ reservations, actionLoading, onAction, t }: CalendarView
   );
 }
 
-// ── Capacity settings panel ───────────────────────────────────────────────────
-
-interface CapacityPanelProps {
-  maxPartySize: string;
-  dailySlots: string;
-  onChangeMaxParty: (v: string) => void;
-  onChangeDailySlots: (v: string) => void;
-  onSave: () => void;
-  saving: boolean;
-  t: TFn;
-}
-
-function CapacityPanel({
-  maxPartySize,
-  dailySlots,
-  onChangeMaxParty,
-  onChangeDailySlots,
-  onSave,
-  saving,
-  t,
-}: CapacityPanelProps) {
-  return (
-    <div
-      style={{
-        background: "var(--db-bg-surface)",
-        border: "1px solid var(--db-border)",
-        borderRadius: "var(--db-radius-card)",
-        padding: "20px 24px",
-        marginBottom: "24px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "16px",
-        }}
-      >
-        <IconSettings size={17} color="var(--db-accent)" />
-        <h2
-          style={{
-            fontSize: "15px",
-            fontWeight: 600,
-            color: "var(--db-text-primary)",
-          }}
-        >
-          {t("reservationsCapacityTitle")}
-        </h2>
-        <span
-          style={{
-            fontSize: "11px",
-            color: "var(--db-text-tertiary)",
-            marginLeft: "4px",
-          }}
-        >
-          {/* TODO(schema): persist to business_capacity table when added */}
-          {t("reservationsCapacityNote")}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: "20px",
-          flexWrap: "wrap",
-          alignItems: "flex-end",
-        }}
-      >
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "var(--db-text-secondary)",
-              marginBottom: "6px",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
-            {t("reservationsMaxPartyLabel")}
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={maxPartySize}
-            onChange={(e) => onChangeMaxParty(e.target.value)}
-            style={{
-              width: "120px",
-              padding: "8px 12px",
-              borderRadius: "var(--db-radius)",
-              border: "1px solid var(--db-border)",
-              background: "var(--db-bg-elevated)",
-              color: "var(--db-text-primary)",
-              fontSize: "14px",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "var(--db-text-secondary)",
-              marginBottom: "6px",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
-            {t("reservationsDailySlotsLabel")}
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={dailySlots}
-            onChange={(e) => onChangeDailySlots(e.target.value)}
-            style={{
-              width: "120px",
-              padding: "8px 12px",
-              borderRadius: "var(--db-radius)",
-              border: "1px solid var(--db-border)",
-              background: "var(--db-bg-elevated)",
-              color: "var(--db-text-primary)",
-              fontSize: "14px",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-        <button
-          onClick={onSave}
-          disabled={saving}
-          style={{
-            padding: "8px 18px",
-            borderRadius: "var(--db-radius)",
-            border: "none",
-            background: saving ? "var(--db-text-tertiary)" : "var(--db-accent)",
-            color: "var(--db-accent-text)",
-            fontSize: "13px",
-            fontWeight: 600,
-            cursor: saving ? "not-allowed" : "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {saving ? t("reservationsCapacitySavedButton") : t("reservationsSaveCapacityButton")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
-
-type ViewMode = "calendar" | "list";
-type FilterStatus = "all" | ReservationStatus;
 
 export default function ReservationsPage() {
   const t = useTranslations("dashboardCommon");
+
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [tables, setTables] = useState<TableOption[]>([]);
 
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
@@ -822,28 +1297,17 @@ export default function ReservationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Capacity settings (local — TODO(schema): persist to DB)
-  const [maxPartySize, setMaxPartySize] = useState("10");
-  const [dailySlots, setDailySlots] = useState("20");
-  const [savingCapacity, setSavingCapacity] = useState(false);
-  const [showCapacity, setShowCapacity] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // ── Resolve business id ─────────────────────────────────────────────────────
+  // ── Resolve business id ───────────────────────────────────────────────────
   const resolveBusinessId = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setLoadingBiz(false);
       return;
     }
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoadingBiz(false);
-        return;
-      }
       const res = await resolveActiveBusiness();
       if (!res.ok) {
         setLoadingBiz(false);
@@ -857,23 +1321,37 @@ export default function ReservationsPage() {
     }
   }, []);
 
-  // ── Load reservations ───────────────────────────────────────────────────────
+  // ── Load tables (for form selector + row display) ─────────────────────────
+  const loadTables = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("tables")
+        .select("id, label, is_reserved")
+        .eq("business_id", bizId)
+        .eq("is_active", true)
+        .order("label");
+      setTables((data as TableOption[] | null) ?? []);
+    } catch {
+      // non-critical — form still works, labels just won't resolve
+    }
+  }, []);
+
+  // ── Load reservations ────────────────────────────────────────────────────
   const loadReservations = useCallback(
     async (bizId: string, silent = false) => {
       if (!silent) setLoading(true);
       setError(null);
       try {
-        // Left-join profiles for guest display name
         const { data, error: err } = await supabase
           .from("reservations")
           .select(
-            "*, profiles:user_id(display_name, username)"
+            "*, customer:reservation_customers(id, phone, first_name, last_name), reservation_tables(table_id)"
           )
           .eq("business_id", bizId)
           .order("reserved_at", { ascending: true })
           .limit(200);
         if (err) throw err;
-        setReservations((data as Reservation[]) ?? []);
+        setReservations((data as unknown as Reservation[]) ?? []);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(t("reservationsLoadError", { msg }));
@@ -884,24 +1362,24 @@ export default function ReservationsPage() {
     [t]
   );
 
-  // ── Bootstrap ──────────────────────────────────────────────────────────────
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     void resolveBusinessId();
   }, [resolveBusinessId]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      // Demo mode — use static demo data
       setReservations(DEMO_RESERVATIONS);
+      setTables(DEMO_TABLES);
       return;
     }
     if (!businessId) return;
 
     void loadReservations(businessId);
+    void loadTables(businessId);
 
-    // Realtime subscription — refresh on any change to this business's reservations
     channelRef.current = supabase
-      .channel(`reservations-dashboard-${businessId}`)
+      .channel(`reservations-f9-${businessId}`)
       .on(
         "postgres_changes",
         {
@@ -917,55 +1395,37 @@ export default function ReservationsPage() {
       .subscribe();
 
     return () => {
-      // Unsubscribe on unmount — required per architecture rules
       if (channelRef.current) {
         void supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [businessId, loadReservations]);
+  }, [businessId, loadReservations, loadTables]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────
   const handleAction = useCallback(
-    async (id: string, action: "confirmed" | "rejected" | "no_show") => {
+    async (id: string, action: "cancelled" | "no_show") => {
       setActionLoading(id);
       setError(null);
       setSuccess(null);
 
-      const actionSuccessLabel = (a: string): string => {
-        const keys: Record<string, string> = {
-          confirmed: "reservationsConfirmedSuccess",
-          rejected: "reservationsRejectedSuccess",
-          no_show: "reservationsNoShowSuccess",
-        };
-        return keys[a] ? t(keys[a]) : t("reservationsActionDoneFallback");
-      };
-
       if (!isSupabaseConfigured) {
-        // Demo mode — mutate local state
         setReservations((prev) =>
           prev.map((r) => (r.id === id ? { ...r, status: action } : r))
         );
-        setSuccess(actionSuccessLabel(action));
+        setSuccess(t("reservationsActionDoneFallback"));
         setActionLoading(null);
         return;
       }
 
       try {
-        const { error: err } = await supabase
-          .from("reservations")
-          .update({ status: action })
-          .eq("id", id);
+        const { error: err } = await supabase.rpc("set_reservation_status", {
+          p_reservation_id: id,
+          p_status: action,
+        });
         if (err) throw err;
 
-        // TODO(server): trigger push notification to customer on confirm/reject
-        //               via Edge Function or server-side job.
-        // TODO(server): if action === 'confirmed' and is_waitlist, send waitlist
-        //               promotion notification to the user.
-
-        setSuccess(actionSuccessLabel(action));
-
-        // Optimistic update while Realtime catches up
+        setSuccess(t("reservationsActionDoneFallback"));
         setReservations((prev) =>
           prev.map((r) => (r.id === id ? { ...r, status: action } : r))
         );
@@ -979,29 +1439,28 @@ export default function ReservationsPage() {
     [t]
   );
 
-  // ── Capacity save (stub) ───────────────────────────────────────────────────
-  const handleSaveCapacity = useCallback(() => {
-    setSavingCapacity(true);
-    // TODO(schema): persist maxPartySize + dailySlots to a capacity settings
-    //               table or column (e.g. businesses.max_party_size, businesses.daily_slots)
-    //               once the schema supports it.
-    setTimeout(() => setSavingCapacity(false), 800);
-  }, []);
+  // ── Created callback ──────────────────────────────────────────────────────
+  const handleCreated = useCallback(() => {
+    setShowForm(false);
+    setSuccess(t("resNewSuccess"));
+    if (businessId) {
+      void loadReservations(businessId, true);
+      void loadTables(businessId);
+    }
+  }, [businessId, loadReservations, loadTables, t]);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
+  // ── Filter ────────────────────────────────────────────────────────────────
   const filtered =
     filterStatus === "all"
       ? reservations
       : reservations.filter((r) => r.status === filterStatus);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // ── Stats ─────────────────────────────────────────────────────────────────
   const pendingCount = reservations.filter((r) => r.status === "pending").length;
-  const confirmedCount = reservations.filter(
-    (r) => r.status === "confirmed"
-  ).length;
-  const waitlistCount = reservations.filter((r) => r.is_waitlist).length;
+  const arrivedCount = reservations.filter((r) => r.status === "arrived").length;
+  const noShowCount = reservations.filter((r) => r.status === "no_show").length;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ maxWidth: 900 }}>
       {/* Page header */}
@@ -1028,8 +1487,6 @@ export default function ReservationsPage() {
           </h1>
           <p style={{ fontSize: "14px", color: "var(--db-text-secondary)" }}>
             {t("reservationsSubtitle")}
-            {/* TODO(server): push notification sent on status change — see Edge Functions */}
-            {/* TODO(server): scheduled reminders 24h + 2h before reserved_at */}
           </p>
         </div>
 
@@ -1037,35 +1494,39 @@ export default function ReservationsPage() {
         <div
           style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}
         >
-          {/* Capacity toggle */}
+          {/* Nueva Reserva */}
           <button
-            onClick={() => setShowCapacity((v) => !v)}
+            onClick={() => {
+              setShowForm((v) => !v);
+              setError(null);
+              setSuccess(null);
+            }}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "5px",
               padding: "7px 14px",
               borderRadius: "var(--db-radius)",
-              border: showCapacity
-                ? "1px solid var(--db-accent)"
-                : "1px solid var(--db-border)",
-              background: showCapacity ? "var(--db-accent-bg)" : "transparent",
-              color: showCapacity
-                ? "var(--db-accent)"
-                : "var(--db-text-secondary)",
+              border: "none",
+              background: showForm ? "var(--db-accent-dark, var(--db-accent))" : "var(--db-accent)",
+              color: "var(--db-accent-text)",
               fontSize: "13px",
+              fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            <IconSettings size={15} />
-            {t("reservationsCapacityButton")}
+            <IconPlus size={15} />
+            {t("resNewTitle")}
           </button>
 
           {/* Refresh */}
           {isSupabaseConfigured && businessId && (
             <button
-              onClick={() => void loadReservations(businessId)}
+              onClick={() => {
+                void loadReservations(businessId);
+                void loadTables(businessId);
+              }}
               disabled={loading}
               title={t("reservationsRefreshAria")}
               style={{
@@ -1096,8 +1557,16 @@ export default function ReservationsPage() {
           >
             {(
               [
-                { mode: "calendar", icon: <IconCalendarEvent size={15} />, label: t("reservationsViewCalendar") },
-                { mode: "list", icon: <IconList size={15} />, label: t("reservationsViewList") },
+                {
+                  mode: "calendar",
+                  icon: <IconCalendarEvent size={15} />,
+                  label: t("reservationsViewCalendar"),
+                },
+                {
+                  mode: "list",
+                  icon: <IconList size={15} />,
+                  label: t("reservationsViewList"),
+                },
               ] as const
             ).map(({ mode, icon, label }) => (
               <button
@@ -1111,9 +1580,7 @@ export default function ReservationsPage() {
                   padding: "7px 13px",
                   border: "none",
                   background:
-                    viewMode === mode
-                      ? "var(--db-accent)"
-                      : "transparent",
+                    viewMode === mode ? "var(--db-accent)" : "transparent",
                   color:
                     viewMode === mode
                       ? "var(--db-accent-text)"
@@ -1141,14 +1608,26 @@ export default function ReservationsPage() {
         }}
       >
         {[
-          { label: t("orderStatusPending"), value: pendingCount, color: "var(--db-warning)" },
           {
-            label: t("reservationsStatusConfirmed"),
-            value: confirmedCount,
+            label: t("orderStatusPending"),
+            value: pendingCount,
+            color: "var(--db-warning)",
+          },
+          {
+            label: t("resStatusArrived"),
+            value: arrivedCount,
             color: "var(--db-success)",
           },
-          { label: t("reservationsWaitlistBadge"), value: waitlistCount, color: "var(--db-brand-purple, #7C3AED)" },
-          { label: t("reservationsStatTotal"), value: reservations.length, color: "var(--db-accent)" },
+          {
+            label: t("reservationsStatusNoShow"),
+            value: noShowCount,
+            color: "var(--db-danger)",
+          },
+          {
+            label: t("reservationsStatTotal"),
+            value: reservations.length,
+            color: "var(--db-accent)",
+          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -1204,15 +1683,22 @@ export default function ReservationsPage() {
         <NoBusinessCTA message={t("reservationsNoBusinessMessage")} />
       )}
 
-      {/* Capacity settings panel */}
-      {showCapacity && (
-        <CapacityPanel
-          maxPartySize={maxPartySize}
-          dailySlots={dailySlots}
-          onChangeMaxParty={setMaxPartySize}
-          onChangeDailySlots={setDailySlots}
-          onSave={handleSaveCapacity}
-          saving={savingCapacity}
+      {/* New reservation form */}
+      {showForm && businessId && (
+        <NewReservationForm
+          businessId={businessId}
+          tables={tables}
+          onCreated={handleCreated}
+          onClose={() => setShowForm(false)}
+          t={t}
+        />
+      )}
+      {showForm && !isSupabaseConfigured && (
+        <NewReservationForm
+          businessId="demo-biz"
+          tables={DEMO_TABLES}
+          onCreated={handleCreated}
+          onClose={() => setShowForm(false)}
           t={t}
         />
       )}
@@ -1230,9 +1716,9 @@ export default function ReservationsPage() {
           [
             { key: "all", label: t("reservationsFilterAll") },
             { key: "pending", label: t("orderStatusPending") },
-            { key: "confirmed", label: t("reservationsStatusConfirmed") },
-            { key: "rejected", label: t("reservationsStatusRejected") },
+            { key: "arrived", label: t("resStatusArrived") },
             { key: "no_show", label: t("reservationsStatusNoShow") },
+            { key: "cancelled", label: t("resStatusCancelled") },
           ] as { key: FilterStatus; label: string }[]
         ).map(({ key, label }) => (
           <button
@@ -1276,6 +1762,7 @@ export default function ReservationsPage() {
       ) : viewMode === "calendar" ? (
         <CalendarView
           reservations={filtered}
+          tables={tables}
           actionLoading={actionLoading}
           onAction={handleAction}
           t={t}
@@ -1295,7 +1782,9 @@ export default function ReservationsPage() {
               }}
             >
               <IconCalendarEvent size={40} />
-              <p style={{ fontSize: "15px", color: "var(--db-text-secondary)" }}>
+              <p
+                style={{ fontSize: "15px", color: "var(--db-text-secondary)" }}
+              >
                 {t("reservationsEmptyFiltered")}
               </p>
             </div>
@@ -1304,9 +1793,10 @@ export default function ReservationsPage() {
               <ReservationRow
                 key={r.id}
                 reservation={r}
+                tables={tables}
                 actionLoading={actionLoading}
-                t={t}
                 onAction={handleAction}
+                t={t}
               />
             ))
           )}

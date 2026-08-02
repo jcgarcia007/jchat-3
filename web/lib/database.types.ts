@@ -2495,39 +2495,87 @@ export type Database = {
           },
         ]
       }
+      reservation_customers: {
+        Row: {
+          business_id: string
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      reservation_tables: {
+        Row: {
+          reservation_id: string
+          table_id: string
+        }
+        Insert: {
+          reservation_id: string
+          table_id: string
+        }
+        Update: {
+          reservation_id?: string
+          table_id?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           business_id: string
           created_at: string
+          customer_id: string | null
+          event_type: string | null
           id: string
           is_waitlist: boolean
           party_size: number
           reserved_at: string
           special_requests: string | null
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           business_id: string
           created_at?: string
+          customer_id?: string | null
+          event_type?: string | null
           id?: string
           is_waitlist?: boolean
           party_size?: number
           reserved_at: string
           special_requests?: string | null
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           business_id?: string
           created_at?: string
+          customer_id?: string | null
+          event_type?: string | null
           id?: string
           is_waitlist?: boolean
           party_size?: number
           reserved_at?: string
           special_requests?: string | null
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -3721,6 +3769,33 @@ export type Database = {
       set_table_subchat: {
         Args: { p_enable: boolean; p_table_id: string }
         Returns: string
+      }
+      create_reservation: {
+        Args: {
+          p_business_id: string
+          p_reserved_at: string
+          p_party_size: number
+          p_table_ids: string[]
+          p_event_type?: string | null
+          p_phone?: string | null
+          p_first_name?: string | null
+          p_last_name?: string | null
+          p_special_requests?: string | null
+        }
+        Returns: string
+      }
+      search_reservation_customers: {
+        Args: { p_business_id: string; p_query: string }
+        Returns: {
+          id: string
+          phone: string | null
+          first_name: string | null
+          last_name: string | null
+        }[]
+      }
+      set_reservation_status: {
+        Args: { p_reservation_id: string; p_status: string }
+        Returns: undefined
       }
       set_table_reserved: {
         Args: {
