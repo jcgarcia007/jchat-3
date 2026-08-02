@@ -607,6 +607,7 @@
     "permLabelReservationsManage": "Gestionar reservas",
     "permLabelReportsView": "Ver informes",
     "permLabelAnalyticsView": "Ver analíticas",
+    "permLabelSalesView": "Ver ventas del equipo",
     "permLabelExportsManage": "Exportar datos",
     "permLabelLoyaltyManage": "Gestionar fidelización",
     "permGroupOrdersPos": "Pedidos / POS",

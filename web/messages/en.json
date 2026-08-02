@@ -607,6 +607,7 @@
     "permLabelReservationsManage": "Manage reservations",
     "permLabelReportsView": "View reports",
     "permLabelAnalyticsView": "View analytics",
+    "permLabelSalesView": "View team sales",
     "permLabelExportsManage": "Export data",
     "permLabelLoyaltyManage": "Manage loyalty",
     "permGroupOrdersPos": "Orders / POS",

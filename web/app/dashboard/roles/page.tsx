@@ -49,6 +49,7 @@ type PermissionKey =
   | "reservations_manage"
   | "reports_view"
   | "analytics_view"
+  | "sales_view"
   | "exports_manage"
   | "loyalty_manage";
 
@@ -58,7 +59,7 @@ const ALL_PERMISSIONS: PermissionKey[] = [
   "menu_edit", "inventory_manage", "offers_manage", "availability_toggle",
   "chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage",
   "service_receive", "alerts_view", "reservations_manage",
-  "reports_view", "analytics_view", "exports_manage", "loyalty_manage",
+  "reports_view", "analytics_view", "sales_view", "exports_manage", "loyalty_manage",
 ];
 
 /** Permission KEYS (used in logic/DB) never change — only their visible label does. */
@@ -84,6 +85,7 @@ function getPermissionLabels(t: TFn): Record<PermissionKey, string> {
     reservations_manage:   t("permLabelReservationsManage"),
     reports_view:          t("permLabelReportsView"),
     analytics_view:        t("permLabelAnalyticsView"),
+    sales_view:            t("permLabelSalesView"),
     exports_manage:        t("permLabelExportsManage"),
     loyalty_manage:        t("permLabelLoyaltyManage"),
   };
@@ -100,7 +102,7 @@ function getPermGroups(t: TFn): PermGroup[] {
     { label: t("permGroupMenuInventory"),  keys: ["menu_edit", "inventory_manage", "offers_manage", "availability_toggle"] },
     { label: t("permGroupChatModeration"), keys: ["chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage"] },
     { label: t("permGroupServiceAlerts"),  keys: ["service_receive", "alerts_view", "reservations_manage"] },
-    { label: t("permGroupReportsData"),    keys: ["reports_view", "analytics_view", "exports_manage", "loyalty_manage"] },
+    { label: t("permGroupReportsData"),    keys: ["reports_view", "analytics_view", "sales_view", "exports_manage", "loyalty_manage"] },
   ];
 }
 
