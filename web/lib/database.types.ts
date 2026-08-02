@@ -3362,6 +3362,9 @@ export type Database = {
           label: string
           qr_token: string
           room_id: string | null
+          is_reserved: boolean
+          reserved_note: string | null
+          reserved_until: string | null
           seats: number
           sort: number
           updated_at: string
@@ -3372,8 +3375,11 @@ export type Database = {
           floor?: string
           id?: string
           is_active?: boolean
+          is_reserved?: boolean
           label: string
           qr_token: string
+          reserved_note?: string | null
+          reserved_until?: string | null
           room_id?: string | null
           seats?: number
           sort?: number
@@ -3385,8 +3391,11 @@ export type Database = {
           floor?: string
           id?: string
           is_active?: boolean
+          is_reserved?: boolean
           label?: string
           qr_token?: string
+          reserved_note?: string | null
+          reserved_until?: string | null
           room_id?: string | null
           seats?: number
           sort?: number
@@ -3712,6 +3721,15 @@ export type Database = {
       set_table_subchat: {
         Args: { p_enable: boolean; p_table_id: string }
         Returns: string
+      }
+      set_table_reserved: {
+        Args: {
+          p_note?: string | null
+          p_reserved: boolean
+          p_table_id: string
+          p_until?: string | null
+        }
+        Returns: undefined
       }
       settle_tab_payment: { Args: { p_tab_payment_id: string }; Returns: Json }
       start_dm: {

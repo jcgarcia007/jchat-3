@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconBell } from "@tabler/icons-react";
+import { IconBell, IconCalendar } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 
@@ -34,6 +34,7 @@ interface TableRow {
   seats: number;
   sort: number;
   room_id: string | null;
+  is_reserved: boolean;
 }
 
 interface TabRow {
@@ -62,6 +63,7 @@ interface DerivedTable {
   state: TableState;
   hasCall: boolean;     // true if any pending/acknowledged service call
   minOpenAt: string | null; // earliest open tab created_at for elapsed time
+  isReserved: boolean;  // mirrors tables.is_reserved; drives the floor quick-toggle (F8)
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -150,10 +152,10 @@ function stateColor(state: TableState): {
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
 const DEMO_TABLES: TableRow[] = [
-  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null },
-  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null },
-  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null },
-  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null },
+  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null, is_reserved: false },
+  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null, is_reserved: true },
+  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null, is_reserved: false },
+  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null, is_reserved: false },
 ];
 const DEMO_TABS: TabRow[] = [
   { id: "tab1", table_id: "t1", created_at: new Date(Date.now() - 45 * 60_000).toISOString(), status: "open" },
@@ -189,7 +191,7 @@ export default function FloorPage() {
     const [tablesRes, tabsRes, callsRes] = await Promise.all([
       supabase
         .from("tables")
-        .select("id, label, floor, seats, sort, room_id")
+        .select("id, label, floor, seats, sort, room_id, is_reserved")
         .eq("business_id", bid)
         .eq("is_active", true)
         .order("floor", { ascending: true })
@@ -329,19 +331,29 @@ export default function FloorPage() {
     }
   }
 
-  // Derived table states
+  // Derived table states. reserved (F8) takes priority over all computed states.
   const derived: DerivedTable[] = tables.map((tbl) => {
-    const { state, hasCall } = deriveState(tbl.id, occupiedByTable, callsByTable);
+    const { state: computedState, hasCall } = deriveState(tbl.id, occupiedByTable, callsByTable);
+    const state: TableState = tbl.is_reserved ? "reserved" : computedState;
     return {
-      id:       tbl.id,
-      label:    tbl.label,
-      floor:    tbl.floor,
-      seats:    tbl.seats,
+      id:         tbl.id,
+      label:      tbl.label,
+      floor:      tbl.floor,
+      seats:      tbl.seats,
       state,
       hasCall,
-      minOpenAt: occupiedByTable.get(tbl.id) ?? null,
+      minOpenAt:  occupiedByTable.get(tbl.id) ?? null,
+      isReserved: tbl.is_reserved,
     };
   });
+
+  // Quick reservation toggle for floor cards (F8): calls RPC then re-fetches.
+  const handleToggleReserved = useCallback(async (tableId: string, currentlyReserved: boolean) => {
+    const bid = bizIdRef.current;
+    if (!bid || !isSupabaseConfigured) return;
+    await supabase.rpc("set_table_reserved", { p_table_id: tableId, p_reserved: !currentlyReserved });
+    void fetchData(bid).catch(() => {});
+  }, [fetchData]);
 
   // Summary counters
   const occupiedCount = derived.filter((d) => d.state === "occupied" || d.state === "waiter").length;
@@ -415,7 +427,12 @@ export default function FloorPage() {
               }}
             >
               {floorTables.map((tbl) => (
-                <TableCard key={tbl.id} table={tbl} t={t} />
+                <TableCard
+                  key={tbl.id}
+                  table={tbl}
+                  t={t}
+                  onToggleReserved={() => void handleToggleReserved(tbl.id, tbl.isReserved)}
+                />
               ))}
             </div>
           </div>
@@ -448,9 +465,11 @@ export default function FloorPage() {
 function TableCard({
   table,
   t,
+  onToggleReserved,
 }: {
   table: DerivedTable;
   t: ReturnType<typeof useTranslations>;
+  onToggleReserved?: () => void;
 }) {
   const colors = stateColor(table.state);
 
@@ -482,6 +501,30 @@ function TableCard({
         textAlign: "center",
       }}
     >
+      {/* Reservation quick-toggle — top-left corner (F8) */}
+      {onToggleReserved && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleReserved(); }}
+          aria-label={t("floorToggleReservedAria", { label: table.label })}
+          title={t("floorToggleReservedAria", { label: table.label })}
+          style={{
+            position: "absolute",
+            top: "6px",
+            left: "6px",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            color: table.isReserved ? "var(--db-danger)" : "var(--db-text-tertiary)",
+            display: "flex",
+            opacity: table.isReserved ? 1 : 0.45,
+          }}
+        >
+          <IconCalendar size={14} />
+        </button>
+      )}
+
       {/* Service call bell — top-right corner */}
       {table.hasCall && (
         <span

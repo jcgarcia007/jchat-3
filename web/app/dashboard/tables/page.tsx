@@ -28,6 +28,7 @@ import {
   IconUsers,
   IconQrcode,
   IconMessageCircle,
+  IconCalendar,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "@/components/dashboard/useActiveBusinessName";
@@ -43,6 +44,9 @@ interface TableRow {
   is_active: boolean;
   qr_token: string;
   room_id: string | null;
+  is_reserved: boolean;
+  reserved_note: string | null;
+  reserved_until: string | null;
 }
 
 const DEFAULT_FLOOR = "Principal";
@@ -54,9 +58,12 @@ interface FormState {
   seats: string; // kept as string for the input; validated to 1-50
   is_active: boolean;
   roomId: string | null; // subchat room linked to this table (edit only)
+  isReserved: boolean;
+  reservedNote: string | null;
+  reservedUntil: string | null; // ISO string from DB, or null
 }
 
-const EMPTY_FORM: FormState = { id: null, label: "", floor: DEFAULT_FLOOR, seats: "4", is_active: true, roomId: null };
+const EMPTY_FORM: FormState = { id: null, label: "", floor: DEFAULT_FLOOR, seats: "4", is_active: true, roomId: null, isReserved: false, reservedNote: null, reservedUntil: null };
 
 export default function TablesPage() {
   const t = useTranslations("dashboardCommon");
@@ -131,7 +138,7 @@ export default function TablesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tables")
-      .select("id, label, floor, seats, sort, is_active, qr_token, room_id")
+      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until")
       .eq("business_id", activeId)
       .order("floor", { ascending: true })
       .order("sort", { ascending: true })
@@ -175,7 +182,7 @@ export default function TablesPage() {
   }
   function openEdit(r: TableRow) {
     setFormError(null);
-    setForm({ id: r.id, label: r.label, floor: r.floor, seats: String(r.seats), is_active: r.is_active, roomId: r.room_id });
+    setForm({ id: r.id, label: r.label, floor: r.floor, seats: String(r.seats), is_active: r.is_active, roomId: r.room_id, isReserved: r.is_reserved, reservedNote: r.reserved_note, reservedUntil: r.reserved_until });
   }
   function closeForm() {
     setForm(null);
@@ -328,6 +335,7 @@ export default function TablesPage() {
           onCancel={closeForm}
           onWaitersChanged={() => void loadWaiterCounts()}
           onSubchatChanged={() => void load()}
+          onReservationChanged={() => void load()}
         />
       )}
 
@@ -415,6 +423,17 @@ export default function TablesPage() {
                       </div>
                     );
                   })()}
+                  {r.is_reserved && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--db-danger)" }}>
+                      <IconCalendar size={13} />
+                      {t("floorStateReserved")}
+                      {r.reserved_until && (
+                        <span style={{ fontWeight: 400, fontSize: "11px" }}>
+                          {t("tablesReservedUntilDisplay", { time: formatReservedUntil(r.reserved_until) })}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {r.room_id && (
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--db-text-tertiary)" }}>
                       <IconMessageCircle size={13} /> {t("tablesChatIndicator")}
@@ -577,6 +596,7 @@ function TableForm({
   onCancel,
   onWaitersChanged,
   onSubchatChanged,
+  onReservationChanged,
 }: {
   form: FormState;
   saving: boolean;
@@ -587,6 +607,7 @@ function TableForm({
   onCancel: () => void;
   onWaitersChanged: () => void;
   onSubchatChanged: () => void;
+  onReservationChanged: () => void;
 }) {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
@@ -673,6 +694,18 @@ function TableForm({
         />
       )}
 
+      {/* Reservation toggle (F8) — only when editing. */}
+      {form.id !== null && (
+        <ReservationToggle
+          tableId={form.id}
+          isReserved={form.isReserved}
+          reservedNote={form.reservedNote}
+          reservedUntil={form.reservedUntil}
+          onChange={(isReserved, note, until) => onChange({ ...form, isReserved, reservedNote: note, reservedUntil: until })}
+          onChanged={onReservationChanged}
+        />
+      )}
+
       <div style={{ display: "flex", gap: "8px" }}>
         <button type="submit" disabled={saving} style={{ ...CTA, opacity: saving ? 0.6 : 1, cursor: saving ? "wait" : "pointer" }}>
           <IconDeviceFloppy size={17} /> {saving ? t("tablesSavingState") : tCommon("save")}
@@ -682,6 +715,138 @@ function TableForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isoToDatetimeLocal(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
+function formatReservedUntil(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "";
+  }
+}
+
+// ── Reservation toggle (F8) ───────────────────────────────────────────────────
+// Marks/unmarks a table as reserved via set_table_reserved RPC (SECURITY
+// DEFINER, writes the log atomically). Never writes is_reserved directly.
+
+function ReservationToggle({
+  tableId,
+  isReserved,
+  reservedNote,
+  reservedUntil,
+  onChange,
+  onChanged,
+}: {
+  tableId: string;
+  isReserved: boolean;
+  reservedNote: string | null;
+  reservedUntil: string | null;
+  onChange: (isReserved: boolean, note: string | null, until: string | null) => void;
+  onChanged: () => void;
+}) {
+  const t = useTranslations("dashboardCommon");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState(reservedNote ?? "");
+  const [until, setUntil] = useState(reservedUntil ? isoToDatetimeLocal(reservedUntil) : "");
+
+  async function activate() {
+    setBusy(true);
+    setError(null);
+    const p_until = until ? new Date(until).toISOString() : null;
+    const { error: rpcErr } = await supabase.rpc("set_table_reserved", {
+      p_table_id: tableId,
+      p_reserved: true,
+      p_note: note || null,
+      p_until,
+    });
+    setBusy(false);
+    if (rpcErr) {
+      setError(rpcErr.message.includes("NOT_ALLOWED") ? t("tablesReservationNoPermission") : t("tablesReservationError"));
+      return;
+    }
+    onChange(true, note || null, p_until);
+    onChanged();
+  }
+
+  async function deactivate() {
+    setBusy(true);
+    setError(null);
+    const { error: rpcErr } = await supabase.rpc("set_table_reserved", {
+      p_table_id: tableId,
+      p_reserved: false,
+    });
+    setBusy(false);
+    if (rpcErr) {
+      setError(rpcErr.message.includes("NOT_ALLOWED") ? t("tablesReservationNoPermission") : t("tablesReservationError"));
+      return;
+    }
+    setNote("");
+    setUntil("");
+    onChange(false, null, null);
+    onChanged();
+  }
+
+  return (
+    <div style={{ borderTop: "1px solid var(--db-border)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--db-text-secondary)", opacity: busy ? 0.6 : 1 }}>
+        <input
+          type="checkbox"
+          checked={isReserved}
+          disabled={busy}
+          onChange={(e) => void (e.target.checked ? activate() : deactivate())}
+        />
+        <IconCalendar size={16} /> {t("tablesReservedCheckbox")}
+      </label>
+      {isReserved && (
+        <>
+          <label style={FIELD}>
+            <span style={LABEL}>{t("tablesReservedNoteField")}</span>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={60}
+              placeholder="..."
+              style={INPUT}
+              disabled={busy}
+            />
+          </label>
+          <label style={FIELD}>
+            <span style={LABEL}>{t("tablesReservedUntilField")}</span>
+            <input
+              type="datetime-local"
+              value={until}
+              onChange={(e) => setUntil(e.target.value)}
+              style={INPUT}
+              disabled={busy}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void activate()}
+            disabled={busy}
+            style={{ ...SECONDARY_BTN, alignSelf: "flex-start", opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}
+          >
+            <IconDeviceFloppy size={16} /> {t("tablesReservationSaveButton")}
+          </button>
+        </>
+      )}
+      {error && <div style={{ fontSize: "13px", color: "var(--db-danger)" }}>{error}</div>}
+    </div>
   );
 }
 
