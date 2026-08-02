@@ -1670,7 +1670,21 @@
     "salesDetailCancellations": "{count, plural, one {# cancellation} other {# cancellations}}",
     "salesDetailOrdersList": "Orders",
     "employeeName": "Employee",
-    "queueTableLabel": "Table {label}"
+    "queueTableLabel": "Table {label}",
+    "tabSummary": "Summary",
+    "summaryTitle": "Comparative summary",
+    "summaryLoadingData": "Loading summary…",
+    "summaryLoadError": "Couldn't load summary. Check your connection and try again.",
+    "summaryEmpty": "No sales in either period",
+    "summaryCompareWeekVsPrev": "This week vs last week",
+    "summaryCompareMonthVsPrev": "This month vs last month",
+    "summaryCompareCustom": "Custom",
+    "summaryPeriodA": "Period A",
+    "summaryPeriodB": "Period B",
+    "summarySectionBusiness": "Business totals",
+    "summarySectionSellers": "By seller",
+    "summaryDiffNew": "new",
+    "summaryOrderCount": "{count, plural, one {# order} other {# orders}}"
   },
   "superAdmin": {
     "shell": {

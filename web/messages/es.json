@@ -1670,7 +1670,21 @@
     "salesDetailCancellations": "{count, plural, one {# cancelación} other {# cancelaciones}}",
     "salesDetailOrdersList": "Pedidos",
     "employeeName": "Empleado",
-    "queueTableLabel": "Mesa {label}"
+    "queueTableLabel": "Mesa {label}",
+    "tabSummary": "Resumen",
+    "summaryTitle": "Resumen comparativo",
+    "summaryLoadingData": "Cargando resumen…",
+    "summaryLoadError": "No se pudo cargar el resumen. Comprueba tu conexión e inténtalo de nuevo.",
+    "summaryEmpty": "Sin ventas en ningún período",
+    "summaryCompareWeekVsPrev": "Esta semana vs semana pasada",
+    "summaryCompareMonthVsPrev": "Este mes vs mes pasado",
+    "summaryCompareCustom": "Personalizado",
+    "summaryPeriodA": "Período A",
+    "summaryPeriodB": "Período B",
+    "summarySectionBusiness": "Totales del negocio",
+    "summarySectionSellers": "Por vendedor",
+    "summaryDiffNew": "nuevo",
+    "summaryOrderCount": "{count, plural, one {# pedido} other {# pedidos}}"
   },
   "superAdmin": {
     "shell": {
