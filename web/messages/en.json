@@ -707,6 +707,8 @@
     "resNewCustomerFound": "Customer found — details auto-populated",
     "resNewError": "Could not create reservation: {msg}",
     "resNewSuccess": "Reservation created",
+    "resPartySizeDecrease": "Decrease party size",
+    "resPartySizeIncrease": "Increase party size",
     "resEventBirthday": "Birthday",
     "resEventAnniversary": "Anniversary",
     "resEventBusiness": "Business",

@@ -707,6 +707,8 @@
     "resNewCustomerFound": "Cliente encontrado — datos autocompletados",
     "resNewError": "No se pudo crear la reserva: {msg}",
     "resNewSuccess": "Reserva creada",
+    "resPartySizeDecrease": "Reducir personas",
+    "resPartySizeIncrease": "Aumentar personas",
     "resEventBirthday": "Cumpleaños",
     "resEventAnniversary": "Aniversario",
     "resEventBusiness": "Negocio",

@@ -519,12 +519,13 @@ function NewReservationForm({
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    padding: "8px 12px",
+    padding: "14px 12px",
     borderRadius: "var(--db-radius)",
     border: "1px solid var(--db-border)",
     background: "var(--db-bg-elevated)",
     color: "var(--db-text-primary)",
-    fontSize: "14px",
+    fontSize: "16px",
+    minHeight: "48px",
     outline: "none",
     boxSizing: "border-box",
   };
@@ -667,15 +668,17 @@ function NewReservationForm({
                     key={c.id}
                     onClick={() => selectSuggestion(c)}
                     style={{
-                      display: "block",
+                      display: "flex",
+                      alignItems: "center",
                       width: "100%",
-                      padding: "10px 14px",
+                      minHeight: "48px",
+                      padding: "12px 16px",
                       textAlign: "left",
                       border: "none",
                       borderBottom: "1px solid var(--db-border)",
                       background: "transparent",
                       color: "var(--db-text-primary)",
-                      fontSize: "13px",
+                      fontSize: "15px",
                       cursor: "pointer",
                     }}
                   >
@@ -776,14 +779,87 @@ function NewReservationForm({
             </div>
             <div>
               <label style={labelStyle}>{t("resNewPartySize")}</label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={partySize}
-                onChange={(e) => setPartySize(e.target.value)}
-                style={{ ...inputStyle, width: "80px" }}
-              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "2px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPartySize(String(Math.max(1, Number(partySize) - 1)))
+                  }
+                  disabled={Number(partySize) <= 1}
+                  aria-label={t("resPartySizeDecrease")}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    flexShrink: 0,
+                    borderRadius: "var(--db-radius)",
+                    border: "1px solid var(--db-border)",
+                    background: "var(--db-bg-elevated)",
+                    color:
+                      Number(partySize) <= 1
+                        ? "var(--db-text-tertiary)"
+                        : "var(--db-text-primary)",
+                    fontSize: "22px",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    cursor:
+                      Number(partySize) <= 1 ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  −
+                </button>
+                <span
+                  style={{
+                    fontSize: "22px",
+                    fontWeight: 700,
+                    color: "var(--db-text-primary)",
+                    minWidth: "2ch",
+                    textAlign: "center",
+                    userSelect: "none",
+                  }}
+                >
+                  {partySize}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPartySize(String(Math.min(50, Number(partySize) + 1)))
+                  }
+                  disabled={Number(partySize) >= 50}
+                  aria-label={t("resPartySizeIncrease")}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    flexShrink: 0,
+                    borderRadius: "var(--db-radius)",
+                    border: "1px solid var(--db-border)",
+                    background: "var(--db-bg-elevated)",
+                    color:
+                      Number(partySize) >= 50
+                        ? "var(--db-text-tertiary)"
+                        : "var(--db-text-primary)",
+                    fontSize: "22px",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    cursor:
+                      Number(partySize) >= 50 ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -840,7 +916,8 @@ function NewReservationForm({
                   key={tbl.id}
                   onClick={() => toggleTable(tbl.id)}
                   style={{
-                    padding: "6px 14px",
+                    padding: "10px 16px",
+                    minHeight: "44px",
                     borderRadius: "999px",
                     border: "1px solid",
                     borderColor: selected
@@ -852,10 +929,12 @@ function NewReservationForm({
                       : tbl.is_reserved
                       ? "var(--db-text-tertiary)"
                       : "var(--db-text-secondary)",
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontWeight: selected ? 600 : 400,
                     cursor: "pointer",
                     whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
                     opacity: tbl.is_reserved && !selected ? 0.6 : 1,
                   }}
                 >
@@ -884,12 +963,13 @@ function NewReservationForm({
         <button
           onClick={onClose}
           style={{
-            padding: "9px 18px",
+            padding: "14px 22px",
+            minHeight: "48px",
             borderRadius: "var(--db-radius)",
             border: "1px solid var(--db-border)",
             background: "transparent",
             color: "var(--db-text-secondary)",
-            fontSize: "13px",
+            fontSize: "15px",
             fontWeight: 500,
             cursor: "pointer",
           }}
@@ -900,12 +980,13 @@ function NewReservationForm({
           onClick={() => void handleSubmit()}
           disabled={!canSubmit}
           style={{
-            padding: "9px 20px",
+            padding: "14px 24px",
+            minHeight: "48px",
             borderRadius: "var(--db-radius)",
             border: "none",
             background: canSubmit ? "var(--db-accent)" : "var(--db-text-tertiary)",
             color: "var(--db-accent-text)",
-            fontSize: "13px",
+            fontSize: "15px",
             fontWeight: 600,
             cursor: canSubmit ? "pointer" : "not-allowed",
             display: "flex",
@@ -913,7 +994,7 @@ function NewReservationForm({
             gap: "6px",
           }}
         >
-          <IconCheck size={14} />
+          <IconCheck size={16} />
           {submitting ? "…" : t("resNewConfirmButton")}
         </button>
       </div>
