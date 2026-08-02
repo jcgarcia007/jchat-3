@@ -1640,7 +1640,6 @@
     "queueLowStockAlert": "Low stock: {name} ({count})",
     "queueReservationFor": "{count} people · for {when}",
     "queueReviewSummary": "{rating}★ review",
-    "queueNoBusiness": "Select a business to see the live queue.",
     "salesTitle": "Sales by seller",
     "salesLoadingData": "Loading sales data…",
     "salesLoadError": "Couldn't load sales data. Check your connection and try again.",
@@ -1670,7 +1669,8 @@
     "salesDetailTopProducts": "Top products",
     "salesDetailCancellations": "{count, plural, one {# cancellation} other {# cancellations}}",
     "salesDetailOrdersList": "Orders",
-    "employeeName": "Employee"
+    "employeeName": "Employee",
+    "queueTableLabel": "Table {label}"
   },
   "superAdmin": {
     "shell": {

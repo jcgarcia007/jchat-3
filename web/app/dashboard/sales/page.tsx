@@ -418,7 +418,7 @@ function OrderDetailRow({ order, locale, t }: {
         </span>
         {(order.tip_cents ?? 0) > 0 && (
           <span style={{ fontSize: "11px", color: "var(--db-success)" }}>
-            +{formatCents(order.tip_cents ?? 0, locale)} tip
+            +{formatCents(order.tip_cents ?? 0, locale)} {t("salesDetailTip")}
           </span>
         )}
         {open ? <IconChevronUp size={13} color="var(--db-text-tertiary)" /> : <IconChevronDown size={13} color="var(--db-text-tertiary)" />}

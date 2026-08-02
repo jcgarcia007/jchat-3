@@ -150,7 +150,7 @@ function FeedRow({ event, tick, locale, t }: {
       return (
         <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <span>
-            {p.table_label ? `Mesa ${p.table_label}` : "—"}
+            {p.table_label ? t("queueTableLabel", { label: p.table_label }) : "—"}
             {" · "}
             {formatCents(p.total_cents, locale)}
           </span>
@@ -176,7 +176,7 @@ function FeedRow({ event, tick, locale, t }: {
       const p = event.payload as CallPayload;
       return (
         <span>
-          {p.table_label ? `Mesa ${p.table_label}` : "—"}
+          {p.table_label ? t("queueTableLabel", { label: p.table_label }) : "—"}
           {" · "}
           {callTypeLabel(p.type, t)}
         </span>

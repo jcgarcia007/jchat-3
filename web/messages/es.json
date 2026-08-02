@@ -1640,7 +1640,6 @@
     "queueLowStockAlert": "Inventario bajo: {name} ({count})",
     "queueReservationFor": "{count} personas · para {when}",
     "queueReviewSummary": "Reseña de {rating}★",
-    "queueNoBusiness": "Selecciona un negocio para ver la cola en vivo.",
     "salesTitle": "Ventas por vendedor",
     "salesLoadingData": "Cargando datos de ventas…",
     "salesLoadError": "No se pudieron cargar los datos de ventas. Comprueba tu conexión e inténtalo de nuevo.",
@@ -1670,7 +1669,8 @@
     "salesDetailTopProducts": "Top productos",
     "salesDetailCancellations": "{count, plural, one {# cancelación} other {# cancelaciones}}",
     "salesDetailOrdersList": "Pedidos",
-    "employeeName": "Empleado"
+    "employeeName": "Empleado",
+    "queueTableLabel": "Mesa {label}"
   },
   "superAdmin": {
     "shell": {
