@@ -7,7 +7,6 @@ import { resolveActiveBusiness } from "@/lib/business";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
 import { formatCents } from "@/lib/currency";
 import { SalesCalendar } from "@/components/dashboard/SalesCalendar";
-import { OverviewTabBar } from "@/components/dashboard/OverviewTabBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,8 +196,6 @@ export default function OverviewPage() {
 
   return (
     <div>
-      <OverviewTabBar />
-
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
         {t("navOverview")}
       </h1>

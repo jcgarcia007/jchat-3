@@ -9,7 +9,6 @@ import { IconUser } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { formatCents } from "@/lib/currency";
-import { OverviewTabBar } from "@/components/dashboard/OverviewTabBar";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -630,13 +629,11 @@ export default function SummaryPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (noBusiness) {
-    return <div><OverviewTabBar /><NoBusinessCTA /></div>;
+    return <div><NoBusinessCTA /></div>;
   }
 
   return (
     <div>
-      <OverviewTabBar />
-
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 20px" }}>
         {t("summaryTitle")}
       </h1>

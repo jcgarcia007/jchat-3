@@ -18,7 +18,6 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { formatCents } from "@/lib/currency";
-import { OverviewTabBar } from "@/components/dashboard/OverviewTabBar";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -770,13 +769,11 @@ export default function SalesPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (noBusiness) {
-    return <div><OverviewTabBar /><NoBusinessCTA /></div>;
+    return <div><NoBusinessCTA /></div>;
   }
 
   return (
     <div>
-      <OverviewTabBar />
-
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
           {t("salesTitle")}

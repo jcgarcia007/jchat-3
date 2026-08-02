@@ -15,7 +15,6 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { formatCents } from "@/lib/currency";
-import { OverviewTabBar } from "@/components/dashboard/OverviewTabBar";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -524,7 +523,6 @@ export default function QueuePage() {
   if (noBusiness) {
     return (
       <div>
-        <OverviewTabBar />
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "8px" }}>
           {t("queueTitle")}
         </h1>
@@ -535,8 +533,6 @@ export default function QueuePage() {
 
   return (
     <div>
-      <OverviewTabBar />
-
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
         {t("queueTitle")}
       </h1>

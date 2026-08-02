@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
+import { OverviewTabBarGate } from "@/components/dashboard/OverviewTabBarGate";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
@@ -131,6 +132,7 @@ export default async function DashboardLayout({
               padding: "24px",
             }}
           >
+            <OverviewTabBarGate />
             {children}
           </main>
         </div>
