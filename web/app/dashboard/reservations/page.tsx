@@ -33,6 +33,7 @@ import {
   IconPlus,
   IconPhone,
   IconX,
+  IconPencil,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -41,6 +42,7 @@ import type { TFn } from "@/lib/tabSemantics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type FormMode = "create" | "edit" | "checkin";
 type ReservationStatus = "pending" | "arrived" | "no_show" | "cancelled";
 type ViewMode = "calendar" | "list";
 type FilterStatus = "all" | ReservationStatus;
@@ -238,10 +240,16 @@ function customerLabel(r: Reservation): string {
 
 function tableLabels(r: Reservation, tables: TableOption[]): string {
   if (!r.reservation_tables || r.reservation_tables.length === 0) return "—";
-  const tableMap = new Map(tables.map((t) => [t.id, t.label]));
+  const tableMap = new Map(tables.map((tbl) => [tbl.id, tbl.label]));
   return r.reservation_tables
     .map((rt) => tableMap.get(rt.table_id) ?? rt.table_id.slice(-4))
     .join(", ");
+}
+
+function toDateTimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().slice(0, 16);
 }
 
 // ── StatusBadge ───────────────────────────────────────────────────────────────
@@ -379,38 +387,58 @@ function AlertBanner({
   );
 }
 
-// ── NewReservationForm ────────────────────────────────────────────────────────
+// ── ReservationForm ────────────────────────────────────────────────────────────
 
-interface NewReservationFormProps {
+interface ReservationFormProps {
   businessId: string;
   tables: TableOption[];
-  onCreated: () => void;
+  mode: FormMode;
+  reservation?: Reservation | null;
+  onSaved: () => void;
   onClose: () => void;
+  onStatusAction?: (id: string, action: "cancelled" | "no_show") => void;
+  actionLoading?: string | null;
   t: TFn;
 }
 
-function NewReservationForm({
+function ReservationForm({
   businessId,
   tables,
-  onCreated,
+  mode,
+  reservation,
+  onSaved,
   onClose,
+  onStatusAction,
+  actionLoading,
   t,
-}: NewReservationFormProps) {
-  const [phone, setPhone] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+}: ReservationFormProps) {
+  const prefill = mode !== "create" && reservation != null;
+
+  const [phone, setPhone] = useState(prefill ? (reservation.customer?.phone ?? "") : "");
+  const [firstName, setFirstName] = useState(prefill ? (reservation.customer?.first_name ?? "") : "");
+  const [lastName, setLastName] = useState(prefill ? (reservation.customer?.last_name ?? "") : "");
   const [suggestions, setSuggestions] = useState<ReservationCustomer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [customerFound, setCustomerFound] = useState(false);
+  const [customerFound, setCustomerFound] = useState(prefill && !!reservation.customer);
 
-  const [reservedAt, setReservedAt] = useState("");
-  const [partySize, setPartySize] = useState("2");
-  const [selectedTableIds, setSelectedTableIds] = useState<Set<string>>(
-    new Set()
+  const [reservedAt, setReservedAt] = useState(
+    prefill ? toDateTimeLocal(reservation.reserved_at) : ""
   );
-  const [eventType, setEventType] = useState("");
-  const [specialRequests, setSpecialRequests] = useState("");
+  const [partySize, setPartySize] = useState(
+    prefill ? String(reservation.party_size) : "2"
+  );
+  const [selectedTableIds, setSelectedTableIds] = useState<Set<string>>(
+    prefill && reservation.reservation_tables
+      ? new Set(reservation.reservation_tables.map((rt) => rt.table_id))
+      : new Set()
+  );
+  const [eventType, setEventType] = useState(
+    prefill ? (reservation.event_type ?? "") : ""
+  );
+  const [specialRequests, setSpecialRequests] = useState(
+    prefill ? (reservation.special_requests ?? "") : ""
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -421,6 +449,7 @@ function NewReservationForm({
     firstName.trim().length > 0 &&
     Number(partySize) >= 1 &&
     reservedAt.length > 0 &&
+    (mode !== "checkin" || selectedTableIds.size >= 1) &&
     !submitting;
 
   const handlePhoneChange = (value: string) => {
@@ -489,28 +518,58 @@ function NewReservationForm({
     if (!isSupabaseConfigured) {
       setTimeout(() => {
         setSubmitting(false);
-        onCreated();
+        onSaved();
       }, 600);
       return;
     }
 
     try {
-      const { error: err } = await supabase.rpc("create_reservation", {
-        p_business_id: businessId,
-        p_reserved_at: new Date(reservedAt).toISOString(),
-        p_party_size: Number(partySize),
-        p_table_ids: Array.from(selectedTableIds),
-        p_event_type: eventType || null,
-        p_phone: phone.trim() || null,
-        p_first_name: firstName.trim() || null,
-        p_last_name: lastName.trim() || null,
-        p_special_requests: specialRequests.trim() || null,
-      });
-      if (err) throw err;
-      onCreated();
+      if (mode === "create") {
+        const { error: err } = await supabase.rpc("create_reservation", {
+          p_business_id: businessId,
+          p_reserved_at: new Date(reservedAt).toISOString(),
+          p_party_size: Number(partySize),
+          p_table_ids: Array.from(selectedTableIds),
+          p_event_type: eventType || null,
+          p_phone: phone.trim() || null,
+          p_first_name: firstName.trim() || null,
+          p_last_name: lastName.trim() || null,
+          p_special_requests: specialRequests.trim() || null,
+        });
+        if (err) throw err;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: err } = await (supabase as any).rpc("update_reservation", {
+          p_reservation_id: reservation!.id,
+          p_reserved_at: new Date(reservedAt).toISOString(),
+          p_party_size: Number(partySize),
+          p_table_ids: Array.from(selectedTableIds),
+          p_event_type: eventType || null,
+          p_phone: phone.trim() || null,
+          p_first_name: firstName.trim() || null,
+          p_last_name: lastName.trim() || null,
+          p_special_requests: specialRequests.trim() || null,
+        });
+        if (err) throw err;
+
+        if (mode === "checkin") {
+          const { error: err2 } = await supabase.rpc("set_reservation_status", {
+            p_reservation_id: reservation!.id,
+            p_status: "arrived",
+          });
+          if (err2) throw err2;
+          for (const tableId of selectedTableIds) {
+            await supabase.rpc("set_table_reserved", {
+              p_table_id: tableId,
+              p_reserved: true,
+            });
+          }
+        }
+      }
+      onSaved();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setFormError(t("resNewError", { msg }));
+      setFormError(t(mode === "create" ? "resNewError" : "resEditError", { msg }));
     } finally {
       setSubmitting(false);
     }
@@ -539,7 +598,19 @@ function NewReservationForm({
     letterSpacing: "0.04em",
   };
 
-  const minDateTime = new Date().toISOString().slice(0, 16);
+  const minDateTime = mode === "create" ? new Date().toISOString().slice(0, 16) : undefined;
+
+  const formTitle =
+    mode === "edit" ? t("resEditTitle") :
+    mode === "checkin" ? t("resCheckInTitle") :
+    t("resNewTitle");
+
+  const confirmLabel =
+    mode === "edit" ? t("resSaveChangesButton") :
+    mode === "checkin" ? t("resConfirmArrivalButton") :
+    t("resNewConfirmButton");
+
+  const busyAction = actionLoading === reservation?.id;
 
   return (
     <div
@@ -571,7 +642,7 @@ function NewReservationForm({
           }}
         >
           <IconCalendarTime size={18} color="var(--db-accent)" />
-          {t("resNewTitle")}
+          {formTitle}
         </h2>
         <button
           onClick={onClose}
@@ -898,9 +969,16 @@ function NewReservationForm({
       <div style={{ marginTop: "20px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "6px" }}>
           <label style={{ ...labelStyle, marginBottom: 0 }}>{t("resNewTables")}</label>
-          <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontStyle: "italic" }}>
-            {t("resTableOptionalHint")}
-          </span>
+          {mode !== "checkin" && (
+            <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontStyle: "italic" }}>
+              {t("resTableOptionalHint")}
+            </span>
+          )}
+          {mode === "checkin" && selectedTableIds.size === 0 && (
+            <span style={{ fontSize: "11px", color: "var(--db-warning)", fontStyle: "italic" }}>
+              {t("resCheckInNeedsTable")}
+            </span>
+          )}
         </div>
         {tables.length === 0 ? (
           <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>—</p>
@@ -955,53 +1033,138 @@ function NewReservationForm({
         )}
       </div>
 
-      {/* Action buttons */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "10px",
-          marginTop: "24px",
-        }}
-      >
-        <button
-          onClick={onClose}
+      {/* Footer */}
+      {mode === "edit" ? (
+        /* Edit mode: destructive left, save right */
+        <div
           style={{
-            padding: "14px 22px",
-            minHeight: "48px",
-            borderRadius: "var(--db-radius)",
-            border: "1px solid var(--db-border)",
-            background: "transparent",
-            color: "var(--db-text-secondary)",
-            fontSize: "15px",
-            fontWeight: 500,
-            cursor: "pointer",
-          }}
-        >
-          {t("resNewCancelButton")}
-        </button>
-        <button
-          onClick={() => void handleSubmit()}
-          disabled={!canSubmit}
-          style={{
-            padding: "14px 24px",
-            minHeight: "48px",
-            borderRadius: "var(--db-radius)",
-            border: "none",
-            background: canSubmit ? "var(--db-accent)" : "var(--db-text-tertiary)",
-            color: "var(--db-accent-text)",
-            fontSize: "15px",
-            fontWeight: 600,
-            cursor: canSubmit ? "pointer" : "not-allowed",
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            gap: "6px",
+            gap: "10px",
+            marginTop: "24px",
+            flexWrap: "wrap",
           }}
         >
-          <IconCheck size={16} />
-          {submitting ? "…" : t("resNewConfirmButton")}
-        </button>
-      </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={() => {
+                onStatusAction?.(reservation!.id, "no_show");
+                onClose();
+              }}
+              disabled={busyAction}
+              style={{
+                padding: "14px 18px",
+                minHeight: "48px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-border)",
+                background: "transparent",
+                color: "var(--db-text-secondary)",
+                fontSize: "14px",
+                fontWeight: 500,
+                cursor: busyAction ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("reservationsStatusNoShow")}
+            </button>
+            <button
+              onClick={() => {
+                onStatusAction?.(reservation!.id, "cancelled");
+                onClose();
+              }}
+              disabled={busyAction}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "14px 18px",
+                minHeight: "48px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-danger)",
+                background: "rgba(239,68,68,0.08)",
+                color: "var(--db-danger)",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: busyAction ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconX size={14} />
+              {t("resCancelReservationButton")}
+            </button>
+          </div>
+          <button
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit}
+            style={{
+              padding: "14px 24px",
+              minHeight: "48px",
+              borderRadius: "var(--db-radius)",
+              border: "none",
+              background: canSubmit ? "var(--db-accent)" : "var(--db-text-tertiary)",
+              color: "var(--db-accent-text)",
+              fontSize: "15px",
+              fontWeight: 600,
+              cursor: canSubmit ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <IconCheck size={16} />
+            {submitting ? "…" : confirmLabel}
+          </button>
+        </div>
+      ) : (
+        /* Create / check-in mode: cancel + confirm right */
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "10px",
+            marginTop: "24px",
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              padding: "14px 22px",
+              minHeight: "48px",
+              borderRadius: "var(--db-radius)",
+              border: "1px solid var(--db-border)",
+              background: "transparent",
+              color: "var(--db-text-secondary)",
+              fontSize: "15px",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {t("resNewCancelButton")}
+          </button>
+          <button
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit}
+            style={{
+              padding: "14px 24px",
+              minHeight: "48px",
+              borderRadius: "var(--db-radius)",
+              border: "none",
+              background: canSubmit ? "var(--db-accent)" : "var(--db-text-tertiary)",
+              color: "var(--db-accent-text)",
+              fontSize: "15px",
+              fontWeight: 600,
+              cursor: canSubmit ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <IconCheck size={16} />
+            {submitting ? "…" : confirmLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1012,7 +1175,8 @@ interface ReservationRowProps {
   reservation: Reservation;
   tables: TableOption[];
   actionLoading: string | null;
-  onAction: (id: string, action: "cancelled" | "no_show") => void;
+  onEdit: (r: Reservation) => void;
+  onCheckIn: (r: Reservation) => void;
   t: TFn;
 }
 
@@ -1020,7 +1184,8 @@ function ReservationRow({
   reservation: r,
   tables,
   actionLoading,
-  onAction,
+  onEdit,
+  onCheckIn,
   t,
 }: ReservationRowProps) {
   const busy = actionLoading === r.id;
@@ -1180,7 +1345,7 @@ function ReservationRow({
         )}
       </div>
 
-      {/* Action buttons — pending only; arrived/cancelled/no_show: no actions */}
+      {/* Action buttons — pending only */}
       {r.status === "pending" && (
         <div
           style={{
@@ -1192,42 +1357,48 @@ function ReservationRow({
           }}
         >
           <button
-            onClick={() => onAction(r.id, "no_show")}
-            disabled={busy}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "var(--db-radius)",
-              border: "1px solid var(--db-border)",
-              background: "transparent",
-              color: "var(--db-text-secondary)",
-              fontSize: "12px",
-              fontWeight: 500,
-              cursor: busy ? "not-allowed" : "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {busy ? "…" : t("reservationsStatusNoShow")}
-          </button>
-          <button
-            onClick={() => onAction(r.id, "cancelled")}
+            onClick={() => onEdit(r)}
             disabled={busy}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "4px",
               padding: "6px 12px",
+              minHeight: "44px",
               borderRadius: "var(--db-radius)",
-              border: "1px solid var(--db-danger)",
-              background: "rgba(239,68,68,0.08)",
-              color: "var(--db-danger)",
-              fontSize: "12px",
+              border: "1px solid var(--db-border)",
+              background: "transparent",
+              color: "var(--db-text-secondary)",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: busy ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <IconPencil size={13} />
+            {t("resEditButton")}
+          </button>
+          <button
+            onClick={() => onCheckIn(r)}
+            disabled={busy}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "6px 14px",
+              minHeight: "44px",
+              borderRadius: "var(--db-radius)",
+              border: "none",
+              background: "var(--db-accent)",
+              color: "var(--db-accent-text)",
+              fontSize: "13px",
               fontWeight: 600,
               cursor: busy ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            <IconX size={13} />
-            {busy ? "…" : t("resNewCancelButton")}
+            <IconCheck size={13} />
+            {t("resCheckInButton")}
           </button>
         </div>
       )}
@@ -1241,7 +1412,8 @@ interface CalendarViewProps {
   reservations: Reservation[];
   tables: TableOption[];
   actionLoading: string | null;
-  onAction: (id: string, action: "cancelled" | "no_show") => void;
+  onEdit: (r: Reservation) => void;
+  onCheckIn: (r: Reservation) => void;
   t: TFn;
 }
 
@@ -1249,7 +1421,8 @@ function CalendarView({
   reservations,
   tables,
   actionLoading,
-  onAction,
+  onEdit,
+  onCheckIn,
   t,
 }: CalendarViewProps) {
   const grouped: Record<string, Reservation[]> = {};
@@ -1350,7 +1523,8 @@ function CalendarView({
                     reservation={r}
                     tables={tables}
                     actionLoading={actionLoading}
-                    onAction={onAction}
+                    onEdit={onEdit}
+                    onCheckIn={onCheckIn}
                     t={t}
                   />
                 ))}
@@ -1383,6 +1557,8 @@ export default function ReservationsPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<FormMode>("create");
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -1524,15 +1700,36 @@ export default function ReservationsPage() {
     [t]
   );
 
-  // ── Created callback ──────────────────────────────────────────────────────
-  const handleCreated = useCallback(() => {
+  // ── Save / open callbacks ─────────────────────────────────────────────────
+  const handleSaved = useCallback(() => {
     setShowForm(false);
-    setSuccess(t("resNewSuccess"));
+    setEditingReservation(null);
+    const msg =
+      formMode === "checkin" ? t("resCheckInSuccess") :
+      formMode === "edit" ? t("resEditSuccess") :
+      t("resNewSuccess");
+    setSuccess(msg);
     if (businessId) {
       void loadReservations(businessId, true);
       void loadTables(businessId);
     }
-  }, [businessId, loadReservations, loadTables, t]);
+  }, [formMode, businessId, loadReservations, loadTables, t]);
+
+  const openEdit = useCallback((r: Reservation) => {
+    setEditingReservation(r);
+    setFormMode("edit");
+    setShowForm(true);
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  const openCheckIn = useCallback((r: Reservation) => {
+    setEditingReservation(r);
+    setFormMode("checkin");
+    setShowForm(true);
+    setError(null);
+    setSuccess(null);
+  }, []);
 
   // ── Filter ────────────────────────────────────────────────────────────────
   const filtered =
@@ -1582,6 +1779,8 @@ export default function ReservationsPage() {
           {/* Nueva Reserva */}
           <button
             onClick={() => {
+              setFormMode("create");
+              setEditingReservation(null);
               setShowForm((v) => !v);
               setError(null);
               setSuccess(null);
@@ -1768,22 +1967,21 @@ export default function ReservationsPage() {
         <NoBusinessCTA message={t("reservationsNoBusinessMessage")} />
       )}
 
-      {/* New reservation form */}
-      {showForm && businessId && (
-        <NewReservationForm
-          businessId={businessId}
+      {/* Reservation form (create / edit / check-in) */}
+      {showForm && (businessId || !isSupabaseConfigured) && (
+        <ReservationForm
+          key={editingReservation?.id ?? "new"}
+          businessId={businessId ?? "demo-biz"}
           tables={tables}
-          onCreated={handleCreated}
-          onClose={() => setShowForm(false)}
-          t={t}
-        />
-      )}
-      {showForm && !isSupabaseConfigured && (
-        <NewReservationForm
-          businessId="demo-biz"
-          tables={DEMO_TABLES}
-          onCreated={handleCreated}
-          onClose={() => setShowForm(false)}
+          mode={formMode}
+          reservation={editingReservation}
+          onSaved={handleSaved}
+          onClose={() => {
+            setShowForm(false);
+            setEditingReservation(null);
+          }}
+          onStatusAction={handleAction}
+          actionLoading={actionLoading}
           t={t}
         />
       )}
@@ -1849,7 +2047,8 @@ export default function ReservationsPage() {
           reservations={filtered}
           tables={tables}
           actionLoading={actionLoading}
-          onAction={handleAction}
+          onEdit={openEdit}
+          onCheckIn={openCheckIn}
           t={t}
         />
       ) : (
@@ -1880,7 +2079,8 @@ export default function ReservationsPage() {
                 reservation={r}
                 tables={tables}
                 actionLoading={actionLoading}
-                onAction={handleAction}
+                onEdit={openEdit}
+                onCheckIn={openCheckIn}
                 t={t}
               />
             ))
