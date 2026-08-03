@@ -558,12 +558,6 @@ function ReservationForm({
             p_status: "arrived",
           });
           if (err2) throw err2;
-          for (const tableId of selectedTableIds) {
-            await supabase.rpc("set_table_reserved", {
-              p_table_id: tableId,
-              p_reserved: true,
-            });
-          }
         }
       }
       onSaved();
