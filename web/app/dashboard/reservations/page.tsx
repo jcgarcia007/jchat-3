@@ -419,7 +419,6 @@ function NewReservationForm({
 
   const canSubmit =
     firstName.trim().length > 0 &&
-    selectedTableIds.size > 0 &&
     Number(partySize) >= 1 &&
     reservedAt.length > 0 &&
     !submitting;
@@ -897,7 +896,12 @@ function NewReservationForm({
 
       {/* Table selector */}
       <div style={{ marginTop: "20px" }}>
-        <label style={labelStyle}>{t("resNewTables")}</label>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "6px" }}>
+          <label style={{ ...labelStyle, marginBottom: 0 }}>{t("resNewTables")}</label>
+          <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", fontStyle: "italic" }}>
+            {t("resTableOptionalHint")}
+          </span>
+        </div>
         {tables.length === 0 ? (
           <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>—</p>
         ) : (

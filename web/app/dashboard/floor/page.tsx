@@ -66,6 +66,16 @@ interface DerivedTable {
   isReserved: boolean;  // mirrors tables.is_reserved; drives the floor quick-toggle (F8)
 }
 
+interface ReservationForFloor {
+  id: string;
+  reserved_at: string;
+  party_size: number;
+  event_type: string | null;
+  status: "pending" | "arrived" | "no_show" | "cancelled";
+  customer: { first_name: string | null; last_name: string | null } | null;
+  reservation_tables: { table_id: string }[];
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATE_PRIORITY: Record<TableState, number> = {
@@ -149,6 +159,15 @@ function stateColor(state: TableState): {
   }
 }
 
+function dayStart(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+function resFormatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
 const DEMO_TABLES: TableRow[] = [
@@ -165,6 +184,33 @@ const DEMO_CALLS: CallRow[] = [
   { id: "sc1", status: "pending", type: "bill", room_id: "x", table_label: "3", created_at: new Date(Date.now() - 5 * 60_000).toISOString() },
 ];
 
+function makeTodayAt(hour: number, minute = 0): string {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d.toISOString();
+}
+
+const DEMO_RESERVATIONS_TODAY: ReservationForFloor[] = [
+  {
+    id: "dr1",
+    reserved_at: makeTodayAt(13, 30),
+    party_size: 4,
+    event_type: "birthday",
+    status: "arrived",
+    customer: { first_name: "Alex", last_name: "Rivera" },
+    reservation_tables: [{ table_id: "t1" }],
+  },
+  {
+    id: "dr2",
+    reserved_at: makeTodayAt(20, 0),
+    party_size: 2,
+    event_type: null,
+    status: "pending",
+    customer: { first_name: "Jamie", last_name: "Lee" },
+    reservation_tables: [],
+  },
+];
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FloorPage() {
@@ -174,16 +220,18 @@ export default function FloorPage() {
   const [tables, setTables]     = useState<TableRow[]>([]);
   const [tabs, setTabs]         = useState<TabRow[]>([]);
   const [calls, setCalls]       = useState<CallRow[]>([]);
+  const [todayReservations, setTodayReservations] = useState<ReservationForFloor[]>([]);
   const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [noBusiness, setNoBusiness] = useState(false);
   const [, setTick] = useState(0); // for elapsed-time re-render
 
-  const bizIdRef      = useRef<string | null>(null);
-  const tabsChannel   = useRef<RealtimeChannel | null>(null);
-  const callsChannel  = useRef<RealtimeChannel | null>(null);
-  const refreshTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const tickTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bizIdRef           = useRef<string | null>(null);
+  const tabsChannel        = useRef<RealtimeChannel | null>(null);
+  const callsChannel       = useRef<RealtimeChannel | null>(null);
+  const reservationsChannel = useRef<RealtimeChannel | null>(null);
+  const refreshTimer       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickTimer          = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Data fetchers ───────────────────────────────────────────────────────────
 
@@ -218,6 +266,19 @@ export default function FloorPage() {
     setCalls((callsRes.data ?? []) as CallRow[]);
   }, []);
 
+  const fetchTodayReservations = useCallback(async (bid: string) => {
+    const start = dayStart();
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const { data } = await supabase
+      .from("reservations")
+      .select("id, reserved_at, party_size, event_type, status, customer:reservation_customers(first_name, last_name), reservation_tables(table_id)")
+      .eq("business_id", bid)
+      .gte("reserved_at", start.toISOString())
+      .lt("reserved_at", end.toISOString())
+      .order("reserved_at", { ascending: true });
+    setTodayReservations((data as ReservationForFloor[] | null) ?? []);
+  }, []);
+
   // ── Bootstrap ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -228,6 +289,7 @@ export default function FloorPage() {
         setTables(DEMO_TABLES);
         setTabs(DEMO_TABS);
         setCalls(DEMO_CALLS);
+        setTodayReservations(DEMO_RESERVATIONS_TODAY);
         setLoading(false);
         return;
       }
@@ -245,8 +307,18 @@ export default function FloorPage() {
         const bid = res.business.id;
         bizIdRef.current = bid;
 
-        await fetchData(bid);
+        await Promise.all([fetchData(bid), fetchTodayReservations(bid)]);
         if (!active) return;
+
+        // ── Realtime: reservations ────────────────────────────────────────
+        reservationsChannel.current = supabase
+          .channel(`floor-reservations-${bid}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "reservations", filter: `business_id=eq.${bid}` },
+            () => { void fetchTodayReservations(bid).catch(() => {}); },
+          )
+          .subscribe();
 
         // ── Realtime: table_tabs ──────────────────────────────────────────
         tabsChannel.current = supabase
@@ -286,12 +358,13 @@ export default function FloorPage() {
 
     return () => {
       active = false;
+      if (reservationsChannel.current) void supabase.removeChannel(reservationsChannel.current);
       if (tabsChannel.current)  void supabase.removeChannel(tabsChannel.current);
       if (callsChannel.current) void supabase.removeChannel(callsChannel.current);
       if (refreshTimer.current) clearInterval(refreshTimer.current);
       if (tickTimer.current)    clearInterval(tickTimer.current);
     };
-  }, [fetchData]);
+  }, [fetchData, fetchTodayReservations]);
 
   // ── Derivation ──────────────────────────────────────────────────────────────
 
@@ -446,6 +519,33 @@ export default function FloorPage() {
         </p>
       )}
 
+      {/* ── Today's Reservations ── */}
+      <div style={{ marginTop: "36px" }}>
+        <h2
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: "var(--db-text-tertiary)",
+            margin: "0 0 12px",
+          }}
+        >
+          {t("floorTodayReservations")}
+        </h2>
+        {todayReservations.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)" }}>
+            {t("floorNoReservationsToday")}
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {todayReservations.map((res) => (
+              <TodayResRow key={res.id} res={res} tables={tables} t={t} />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ── Animation styles ── */}
       <style>{`
         @keyframes floor-pulse {
@@ -558,6 +658,87 @@ function TableCard({
           {elapsed(table.minOpenAt, t)}
         </span>
       )}
+    </div>
+  );
+}
+
+// ── TodayResRow ───────────────────────────────────────────────────────────────
+
+function TodayResRow({
+  res,
+  tables,
+  t,
+}: {
+  res: ReservationForFloor;
+  tables: TableRow[];
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const tableMap = new Map(tables.map((tbl) => [tbl.id, tbl.label]));
+  const tableLabels =
+    res.reservation_tables.length > 0
+      ? res.reservation_tables.map((rt) => tableMap.get(rt.table_id) ?? rt.table_id.slice(-4)).join(", ")
+      : t("floorNoTableAssigned");
+
+  const customerName =
+    [res.customer?.first_name, res.customer?.last_name].filter(Boolean).join(" ") || "—";
+
+  const statusMeta: Record<string, { bg: string; color: string; label: string }> = {
+    pending:   { bg: "rgba(245,158,11,0.15)",  color: "var(--db-warning)",        label: t("orderStatusPending") },
+    arrived:   { bg: "rgba(29,158,117,0.15)",  color: "var(--db-success)",        label: t("resStatusArrived") },
+    no_show:   { bg: "rgba(239,68,68,0.08)",   color: "var(--db-danger)",         label: t("reservationsStatusNoShow") },
+    cancelled: { bg: "var(--db-bg-elevated)",  color: "var(--db-text-tertiary)",  label: t("resStatusCancelled") },
+  };
+  const sm = statusMeta[res.status] ?? statusMeta.pending;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        flexWrap: "wrap",
+        background: "var(--db-bg-surface)",
+        border: "1px solid var(--db-border)",
+        borderRadius: "var(--db-radius)",
+        padding: "10px 14px",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "13px",
+          fontWeight: 700,
+          color: "var(--db-text-secondary)",
+          minWidth: "44px",
+          flexShrink: 0,
+        }}
+      >
+        {resFormatTime(res.reserved_at)}
+      </span>
+      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)", flex: 1, minWidth: "100px" }}>
+        {customerName}
+      </span>
+      <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)", whiteSpace: "nowrap" }}>
+        {res.party_size} pax
+      </span>
+      <span style={{ fontSize: "12px", color: "var(--db-text-secondary)", whiteSpace: "nowrap" }}>
+        {tableLabels}
+      </span>
+      <span
+        style={{
+          padding: "2px 8px",
+          borderRadius: "999px",
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          background: sm.bg,
+          color: sm.color,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        {sm.label}
+      </span>
     </div>
   );
 }
