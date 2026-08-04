@@ -792,8 +792,22 @@ async function handleWebhook(req: Request): Promise<Response> {
     // ── A2: Reembolso → revierte la comisión de esa factura ──────────────────
     case "charge.refunded": {
       const charge = event.data.object as Stripe.Charge;
-      const invoiceId =
+      // El payload usa la versión de API de la cuenta (2025+), que ya no trae
+      // charge.invoice. Si falta, recuperamos el charge con nuestro cliente
+      // (anclado a apiVersion 2024-06-20), cuyo formato sí lo incluye —
+      // mismo patrón que el case de disputa.
+      let invoiceId =
         typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id ?? null;
+      if (!invoiceId) {
+        try {
+          const full = await stripe.charges.retrieve(charge.id);
+          invoiceId =
+            typeof full.invoice === "string" ? full.invoice : full.invoice?.id ?? null;
+        } catch (err) {
+          console.error(`[affiliate] no se pudo recuperar charge ${charge.id} del refund:`, err);
+          break;
+        }
+      }
       if (!invoiceId) break;
       const { error } = await db
         .from("affiliate_commissions")
