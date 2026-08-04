@@ -428,10 +428,19 @@ async function accrueAffiliateCommission(
 ): Promise<void> {
   // 1) Solo facturas pagadas y > 0 (ignora trials / $0).
   if (!invoice.amount_paid || invoice.amount_paid <= 0) return;
-  const stripeSubId =
-    typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : invoice.subscription?.id ?? null;
+  // El id de la suscripción vive en invoice.subscription (API vieja) o en
+  // invoice.parent.subscription_details.subscription (API nueva, 2025+).
+  const invAny = invoice as unknown as {
+    subscription?: string | { id: string } | null;
+    parent?: {
+      subscription_details?: {
+        subscription?: string | { id: string } | null;
+      } | null;
+    } | null;
+  };
+  const rawSub =
+    invAny.subscription ?? invAny.parent?.subscription_details?.subscription ?? null;
+  const stripeSubId = typeof rawSub === "string" ? rawSub : rawSub?.id ?? null;
   if (!stripeSubId) return;
 
   // 2) Afiliado del usuario que paga (atribución owner-level).
