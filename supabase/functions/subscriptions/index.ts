@@ -499,6 +499,10 @@ async function accrueAffiliateCommission(
       baseCents += line.amount ?? 0;
     }
   }
+  // Fallback: el payload del webhook a veces no trae las líneas embebidas de
+  // forma casable. Como el plan YA se confirmó comisionable en el paso 5, si no
+  // se pudo casar por línea usamos el total pagado de la factura como base.
+  if (baseCents <= 0) baseCents = invoice.amount_paid ?? 0;
   if (baseCents <= 0) return;
 
   // 7) Congela el % y calcula la comisión.
