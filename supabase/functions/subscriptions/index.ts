@@ -18,6 +18,8 @@
  *
  *   POST /subscriptions  (raw Stripe webhook body, stripe-signature header)
  *     → handles Stripe subscription lifecycle events; writes users.*.
+ *     → A2: accrues affiliate commission on paid membership invoices (owner-level),
+ *       and reverses it on refund/dispute. Never blocks subscription processing.
  *
  * Deploy:
  *   supabase functions deploy subscriptions
@@ -32,6 +34,10 @@
  *   SUPABASE_URL              — project URL (auto-injected)
  *   SUPABASE_SERVICE_ROLE_KEY — service role key (set manually in secrets)
  *   SUPABASE_ANON_KEY         — for the JWT verification path
+ *
+ * Stripe webhook endpoint events (subscriptions): checkout.session.completed,
+ * customer.subscription.updated/deleted/trial_will_end, invoice.payment_failed,
+ * invoice.payment_succeeded, charge.refunded, charge.dispute.created.
  *
  * Rule 4 compliance: ALL Stripe API calls happen here (server-side only).
  */
@@ -408,6 +414,118 @@ async function handleCreatePortalSession(
   }
 }
 
+// ── Affiliate commission accrual (A2) ─────────────────────────────────────────
+// Llamada desde invoice.payment_succeeded DESPUÉS del bookkeeping del plan.
+// Owner-level: la comisión es del afiliado del usuario que paga
+// (users.referred_by_affiliate_id). Base = SOLO líneas de membresía. El % se
+// congela por fila. NUNCA lanza: un fallo aquí no debe romper la suscripción.
+async function accrueAffiliateCommission(
+  db: ReturnType<typeof getAdminClient>,
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  userId: string,
+  eventId: string,
+): Promise<void> {
+  // 1) Solo facturas pagadas y > 0 (ignora trials / $0).
+  if (!invoice.amount_paid || invoice.amount_paid <= 0) return;
+  const stripeSubId =
+    typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : invoice.subscription?.id ?? null;
+  if (!stripeSubId) return;
+
+  // 2) Afiliado del usuario que paga (atribución owner-level).
+  const { data: userRow } = await db
+    .from("users")
+    .select("referred_by_affiliate_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const affiliateId =
+    (userRow as { referred_by_affiliate_id: string | null } | null)
+      ?.referred_by_affiliate_id ?? null;
+  if (!affiliateId) return;
+
+  // 3) Interruptor global del programa + planes comisionables.
+  //    (Los flags de PAYOUT no se miran aquí: la pausa de pago no frena la acumulación.)
+  const { data: cfg } = await db
+    .from("platform_config")
+    .select("affiliate_program_enabled, affiliate_commissionable_plans")
+    .eq("id", true)
+    .maybeSingle();
+  const config = cfg as {
+    affiliate_program_enabled: boolean;
+    affiliate_commissionable_plans: string[];
+  } | null;
+  if (!config?.affiliate_program_enabled) return;
+  const commissionablePlans = config.affiliate_commissionable_plans ?? [];
+
+  // 4) El afiliado debe estar activo.
+  const { data: affRow } = await db
+    .from("affiliates")
+    .select("commission_pct, status")
+    .eq("id", affiliateId)
+    .maybeSingle();
+  const affiliate = affRow as { commission_pct: number; status: string } | null;
+  if (!affiliate || affiliate.status !== "active") return;
+
+  // 5) El plan de este pago debe ser comisionable.
+  let planKey: string | null = null;
+  try {
+    const sub = await stripe.subscriptions.retrieve(stripeSubId);
+    planKey = (sub.metadata?.plan as string) ?? null;
+  } catch (err) {
+    console.warn("[affiliate] no se pudo recuperar la suscripción para el plan:", err);
+    return;
+  }
+  if (!planKey || !commissionablePlans.includes(planKey)) return;
+
+  // 6) Base = SOLO membresía. Mapea cada plan comisionable a su price ID de Stripe.
+  const commissionablePriceIds = new Set(
+    commissionablePlans
+      .map((p) => PLANS[p as PlanId]?.stripe_price_id ?? null)
+      .filter((id): id is string => !!id),
+  );
+  let baseCents = 0;
+  for (const line of invoice.lines?.data ?? []) {
+    const priceId = line.price?.id ?? null;
+    if (priceId && commissionablePriceIds.has(priceId)) {
+      baseCents += line.amount ?? 0;
+    }
+  }
+  if (baseCents <= 0) return;
+
+  // 7) Congela el % y calcula la comisión.
+  const pct = Number(affiliate.commission_pct) || 0;
+  const commissionCents = Math.round((baseCents * pct) / 100);
+  if (commissionCents <= 0) return;
+
+  // 8) Inserta en el ledger (idempotente por índice único de stripe_invoice_id).
+  const { error: insErr } = await db.from("affiliate_commissions").insert({
+    affiliate_id: affiliateId,
+    user_id: userId,
+    business_id: null,
+    stripe_invoice_id: invoice.id,
+    stripe_subscription_id: stripeSubId,
+    base_amount_cents: baseCents,
+    currency: invoice.currency ?? "usd",
+    commission_pct: pct,
+    commission_amount_cents: commissionCents,
+    status: "pending",
+    source_event_id: eventId,
+  });
+  if (insErr) {
+    if ((insErr as { code?: string }).code === "23505") {
+      console.log(`[affiliate] comisión ya acumulada para invoice ${invoice.id}`);
+      return;
+    }
+    console.error(`[affiliate] insert de comisión falló para invoice ${invoice.id}:`, insErr);
+    return;
+  }
+  console.log(
+    `[affiliate] acumulados ${commissionCents}c para afiliado ${affiliateId} (user ${userId}, invoice ${invoice.id})`,
+  );
+}
+
 // ── Action: webhook (writes users.*) ────────────────────────────────────────────
 
 async function handleWebhook(req: Request): Promise<Response> {
@@ -631,6 +749,13 @@ async function handleWebhook(req: Request): Promise<Response> {
         await db.from("users").update(upd).eq("id", userId);
       }
       console.log(`[subscriptions] payment succeeded: user=${userId}`);
+
+      // A2: acumulación de comisión de afiliado (owner-level). No rompe el flujo.
+      try {
+        await accrueAffiliateCommission(db, stripe, invoice, userId, event.id);
+      } catch (err) {
+        console.error("[affiliate] error de acumulación (ignorado):", err);
+      }
       break;
     }
 
@@ -641,6 +766,48 @@ async function handleWebhook(req: Request): Promise<Response> {
       const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
       console.log(`[subscriptions] trial ending soon: user=${userId ?? "(unresolved)"}`);
       // TODO(notifications): tell the user their trial ends soon. Not implemented.
+      break;
+    }
+
+    // ── A2: Reembolso → revierte la comisión de esa factura ──────────────────
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      const invoiceId =
+        typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id ?? null;
+      if (!invoiceId) break;
+      const { error } = await db
+        .from("affiliate_commissions")
+        .update({ status: "reversed", reversed_reason: "refund" })
+        .eq("stripe_invoice_id", invoiceId)
+        .in("status", ["pending", "approved", "paid"]);
+      if (error) console.error(`[affiliate] reversa por refund falló (invoice ${invoiceId}):`, error);
+      else console.log(`[affiliate] comisión revertida (refund) invoice ${invoiceId}`);
+      break;
+    }
+
+    // ── A2: Disputa/contracargo → revierte la comisión ───────────────────────
+    case "charge.dispute.created": {
+      const dispute = event.data.object as Stripe.Dispute;
+      const chargeId =
+        typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id ?? null;
+      if (!chargeId) break;
+      let invoiceId: string | null = null;
+      try {
+        const charge = await stripe.charges.retrieve(chargeId);
+        invoiceId =
+          typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id ?? null;
+      } catch (err) {
+        console.error(`[affiliate] no se pudo recuperar charge ${chargeId} de la disputa:`, err);
+        break;
+      }
+      if (!invoiceId) break;
+      const { error } = await db
+        .from("affiliate_commissions")
+        .update({ status: "reversed", reversed_reason: "dispute" })
+        .eq("stripe_invoice_id", invoiceId)
+        .in("status", ["pending", "approved", "paid"]);
+      if (error) console.error(`[affiliate] reversa por disputa falló (invoice ${invoiceId}):`, error);
+      else console.log(`[affiliate] comisión revertida (dispute) invoice ${invoiceId}`);
       break;
     }
 
