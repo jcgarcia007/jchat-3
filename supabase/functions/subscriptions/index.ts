@@ -487,7 +487,14 @@ async function accrueAffiliateCommission(
   );
   let baseCents = 0;
   for (const line of invoice.lines?.data ?? []) {
-    const priceId = line.price?.id ?? null;
+    // El id del precio vive en line.price.id (API vieja) o en
+    // line.pricing.price_details.price (API nueva, 2025+). Leemos ambos
+    // porque el payload del webhook usa la versión de API de la cuenta.
+    const priceId =
+      (line as { price?: { id?: string } }).price?.id ??
+      (line as { pricing?: { price_details?: { price?: string } } }).pricing
+        ?.price_details?.price ??
+      null;
     if (priceId && commissionablePriceIds.has(priceId)) {
       baseCents += line.amount ?? 0;
     }
