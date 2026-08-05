@@ -31,6 +31,7 @@ import type { TFn } from "@/lib/tabSemantics";
 type PermissionKey =
   | "orders_view"
   | "orders_process"
+  | "pos_access"
   | "orders_mark_delivered"
   | "orders_assigned_only"
   | "kds_view"
@@ -54,7 +55,7 @@ type PermissionKey =
   | "loyalty_manage";
 
 const ALL_PERMISSIONS: PermissionKey[] = [
-  "orders_view", "orders_process", "orders_mark_delivered", "orders_assigned_only",
+  "orders_view", "orders_process", "pos_access", "orders_mark_delivered", "orders_assigned_only",
   "kds_view", "kds_mark_ready",
   "menu_edit", "inventory_manage", "offers_manage", "availability_toggle",
   "chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage",
@@ -67,6 +68,7 @@ function getPermissionLabels(t: TFn): Record<PermissionKey, string> {
   return {
     orders_view:           t("permLabelOrdersView"),
     orders_process:        t("permLabelOrdersProcess"),
+    pos_access:            t("permLabelPosAccess"),
     orders_mark_delivered: t("permLabelOrdersMarkDelivered"),
     orders_assigned_only:  t("permLabelOrdersAssignedOnly"),
     kds_view:              t("permLabelKdsView"),
@@ -98,7 +100,7 @@ interface PermGroup {
 
 function getPermGroups(t: TFn): PermGroup[] {
   return [
-    { label: t("permGroupOrdersPos"),      keys: ["orders_view", "orders_process", "orders_mark_delivered", "orders_assigned_only", "kds_view", "kds_mark_ready"] },
+    { label: t("permGroupOrdersPos"),      keys: ["orders_view", "orders_process", "pos_access", "orders_mark_delivered", "orders_assigned_only", "kds_view", "kds_mark_ready"] },
     { label: t("permGroupMenuInventory"),  keys: ["menu_edit", "inventory_manage", "offers_manage", "availability_toggle"] },
     { label: t("permGroupChatModeration"), keys: ["chat_moderate", "chat_ban", "chat_pin", "rooms_passwords", "rooms_manage"] },
     { label: t("permGroupServiceAlerts"),  keys: ["service_receive", "alerts_view", "reservations_manage"] },

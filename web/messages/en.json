@@ -596,6 +596,7 @@
     "employeesUnknownUser": "Unknown",
     "permLabelOrdersView": "View orders",
     "permLabelOrdersProcess": "Process orders",
+    "permLabelPosAccess": "Waiter POS access",
     "permLabelOrdersMarkDelivered": "Mark as delivered",
     "permLabelOrdersAssignedOnly": "See only assigned orders",
     "permLabelKdsView": "View KDS",

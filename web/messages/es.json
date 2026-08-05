@@ -596,6 +596,7 @@
     "employeesUnknownUser": "Desconocido",
     "permLabelOrdersView": "Ver pedidos",
     "permLabelOrdersProcess": "Procesar pedidos",
+    "permLabelPosAccess": "Acceso al POS de mesero",
     "permLabelOrdersMarkDelivered": "Marcar como entregado",
     "permLabelOrdersAssignedOnly": "Ver solo pedidos asignados",
     "permLabelKdsView": "Ver el KDS",
