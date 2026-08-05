@@ -1,0 +1,436 @@
+/**
+ * JChat 3.0 — Terminal Edge Function
+ * Stripe Terminal in-person payments for the employee POS (direct charges model).
+ *
+ * Three actions dispatched via { action: string } in the JSON body. All three
+ * require a valid employee JWT and POS access at the target business.
+ *
+ *   connection_token      { business_id }  → { secret }
+ *   create_payment_intent { order_id }     → { client_secret, payment_intent_id }
+ *   mark_paid             { order_id }     → { ok: boolean, status?: string }
+ *
+ * ── Security invariants ──────────────────────────────────────────────────────
+ *   • Every action calls pos_can_access(p_business_id) via the CALLER's own JWT
+ *     (auth.uid() is resolved server-side from the token — never from the body).
+ *   • Amounts are read from orders.total_cents (service role); the client body
+ *     never supplies or influences the charge amount.
+ *   • Direct charges model: every Stripe API call carries { stripeAccount }.
+ *     NO on_behalf_of, NO transfer_data, NO application_fee.
+ *   • mark_paid retrieves the PaymentIntent directly from Stripe to confirm
+ *     pi.status === 'succeeded' — it never trusts the client's claim.
+ *
+ * ── Required env vars ────────────────────────────────────────────────────────
+ *   STRIPE_SECRET_KEY         — platform secret key (sk_live_… or sk_test_…)
+ *   SUPABASE_URL              — auto-injected
+ *   SUPABASE_SERVICE_ROLE_KEY — set in Edge Function secrets
+ *   SUPABASE_ANON_KEY         — for JWT verification (same as other functions)
+ *
+ * Deploy (after audit):
+ *   supabase functions deploy terminal
+ */
+
+// ── Imports ───────────────────────────────────────────────────────────────────
+
+import Stripe from "npm:stripe@16.2.0";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.44.4";
+
+// ── Supabase clients ──────────────────────────────────────────────────────────
+
+/** Admin (service role) client — bypasses RLS for server-side reads/writes. */
+function getAdminClient(): SupabaseClient {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** User-scoped client — preserves auth.uid() for RPC pos_can_access. */
+function getUserClient(authHeader: string): SupabaseClient {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY");
+  return createClient(url, key, {
+    global: { headers: { Authorization: authHeader } },
+  });
+}
+
+// ── Stripe client (platform key) ─────────────────────────────────────────────
+
+function getStripe(): Stripe {
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
+  return new Stripe(key, { apiVersion: "2024-06-20" });
+}
+
+// ── CORS + response helpers ───────────────────────────────────────────────────
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
+
+function errorResponse(message: string, status = 400): Response {
+  return jsonResponse({ error: message }, status);
+}
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+interface CallerInfo {
+  authUserId: string;
+  userClient: SupabaseClient;
+}
+
+/**
+ * Verify the caller's JWT. Returns CallerInfo or a 401 Response.
+ * Same pattern as subscriptions/index.ts (verify_jwt = false, manual check).
+ */
+async function verifyCaller(
+  req: Request,
+): Promise<CallerInfo | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return errorResponse("Missing or invalid Authorization header", 401);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !anonKey) {
+    console.error("[terminal] SUPABASE_URL or SUPABASE_ANON_KEY not set");
+    return errorResponse("Internal server error", 500);
+  }
+
+  const userClient = getUserClient(authHeader);
+  const {
+    data: { user },
+    error: authError,
+  } = await userClient.auth.getUser();
+
+  if (authError || !user) return errorResponse("Unauthorized", 401);
+  return { authUserId: user.id, userClient };
+}
+
+/**
+ * Verify POS access using the CALLER's auth context (auth.uid() set by JWT).
+ * Calls the pos_can_access(p_business_id) RPC which reads from the employee
+ * record server-side — the caller never supplies their own user id.
+ * Returns null on success, or a 403/500 Response on failure.
+ */
+async function checkPosAccess(
+  userClient: SupabaseClient,
+  businessId: string,
+): Promise<Response | null> {
+  const { data, error } = await userClient.rpc("pos_can_access", {
+    p_business_id: businessId,
+  });
+  if (error) {
+    console.error("[terminal] pos_can_access error:", error.message);
+    return errorResponse("POS access check failed", 500);
+  }
+  if (data !== true) {
+    return errorResponse("Forbidden: no POS access for this business", 403);
+  }
+  return null;
+}
+
+// ── Shared: resolve stripe_account_id for a business ─────────────────────────
+
+async function getStripeAccount(
+  db: SupabaseClient,
+  businessId: string,
+): Promise<{ stripeAccount: string } | Response> {
+  const { data, error } = await db
+    .from("businesses")
+    .select("stripe_account_id")
+    .eq("id", businessId)
+    .maybeSingle();
+  if (error) {
+    console.error("[terminal] businesses lookup error:", error.message);
+    return errorResponse("Internal server error", 500);
+  }
+  const stripeAccount =
+    (data as { stripe_account_id: string | null } | null)?.stripe_account_id ?? null;
+  if (!stripeAccount) {
+    return errorResponse("Business has no connected Stripe account", 422);
+  }
+  return { stripeAccount };
+}
+
+// ── Action: connection_token ──────────────────────────────────────────────────
+
+async function handleConnectionToken(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+
+  // 1. Verify POS access (auth.uid() from JWT, not from body).
+  const accessErr = await checkPosAccess(userClient, businessId);
+  if (accessErr) return accessErr;
+
+  const db = getAdminClient();
+
+  // 2. Get the business's connected account id (service role).
+  const accountResult = await getStripeAccount(db, businessId);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 3. Create a ConnectionToken on the connected account (direct charges).
+  //    The secret is returned to the SDK on the device — it authenticates the reader.
+  const stripe = getStripe();
+  let token: Stripe.Terminal.ConnectionToken;
+  try {
+    token = await stripe.terminal.connectionTokens.create({}, { stripeAccount });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] connectionTokens.create error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  console.log(`[terminal] connection_token issued for business=${businessId}`);
+  return jsonResponse({ secret: token.secret });
+}
+
+// ── Action: create_payment_intent ─────────────────────────────────────────────
+
+async function handleCreatePaymentIntent(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const orderId = typeof body.order_id === "string" ? body.order_id : null;
+  if (!orderId) return errorResponse("order_id is required");
+
+  const db = getAdminClient();
+
+  // 1. Load the order server-side. The amount comes from HERE — never from the client.
+  const { data: orderData, error: orderErr } = await db
+    .from("orders")
+    .select("id, business_id, total_cents, paid_at, stripe_pi_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderErr) {
+    console.error("[terminal] orders lookup error:", orderErr.message);
+    return errorResponse("Internal server error", 500);
+  }
+
+  const order = orderData as {
+    id: string;
+    business_id: string;
+    total_cents: number;
+    paid_at: string | null;
+    stripe_pi_id: string | null;
+  } | null;
+
+  if (!order) return errorResponse("Order not found", 404);
+
+  // 2. Verify POS access for the business that owns this order.
+  const accessErr = await checkPosAccess(userClient, order.business_id);
+  if (accessErr) return accessErr;
+
+  // 3. Guard: already paid.
+  if (order.paid_at !== null) {
+    return errorResponse("Order is already paid", 409);
+  }
+
+  // 4. Guard: amount must be positive. Server-side only — client figure ignored.
+  if (order.total_cents <= 0) {
+    return errorResponse("Order total must be greater than zero", 422);
+  }
+
+  // 5. Resolve the connected account.
+  const accountResult = await getStripeAccount(db, order.business_id);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 6. Create the PaymentIntent on the connected account (direct charges model).
+  //    No on_behalf_of, no transfer_data, no application_fee.
+  const stripe = getStripe();
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.create(
+      {
+        amount: order.total_cents,       // server-owned amount — never from client body
+        currency: "usd",
+        payment_method_types: ["card_present"],
+        capture_method: "automatic",
+        metadata: { order_id: orderId },
+      },
+      { stripeAccount },                 // direct charges: charge lands on connected account
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] paymentIntents.create error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  // 7. Persist the PaymentIntent id so mark_paid can retrieve it later.
+  const { error: updateErr } = await db
+    .from("orders")
+    .update({ stripe_pi_id: pi.id })
+    .eq("id", orderId);
+  if (updateErr) {
+    // Non-fatal: the PI was created. Surface the id in the response so nothing is lost.
+    console.error("[terminal] failed to save stripe_pi_id:", updateErr.message);
+  }
+
+  if (!pi.client_secret) {
+    return errorResponse("PaymentIntent has no client_secret", 500);
+  }
+
+  console.log(
+    `[terminal] create_payment_intent: order=${orderId} pi=${pi.id} amount=${order.total_cents}`,
+  );
+  return jsonResponse({
+    client_secret: pi.client_secret,
+    payment_intent_id: pi.id,
+  });
+}
+
+// ── Action: mark_paid ─────────────────────────────────────────────────────────
+
+async function handleMarkPaid(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const orderId = typeof body.order_id === "string" ? body.order_id : null;
+  if (!orderId) return errorResponse("order_id is required");
+
+  const db = getAdminClient();
+
+  // 1. Load the order (service role).
+  const { data: orderData, error: orderErr } = await db
+    .from("orders")
+    .select("id, business_id, stripe_pi_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderErr) {
+    console.error("[terminal] orders lookup error:", orderErr.message);
+    return errorResponse("Internal server error", 500);
+  }
+
+  const order = orderData as {
+    id: string;
+    business_id: string;
+    stripe_pi_id: string | null;
+  } | null;
+
+  if (!order) return errorResponse("Order not found", 404);
+
+  // 2. Verify POS access.
+  const accessErr = await checkPosAccess(userClient, order.business_id);
+  if (accessErr) return accessErr;
+
+  // 3. Must have a PaymentIntent id on record.
+  if (!order.stripe_pi_id) {
+    return errorResponse("No payment intent recorded for this order", 422);
+  }
+
+  // 4. Resolve the connected account.
+  const accountResult = await getStripeAccount(db, order.business_id);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 5. Retrieve the PaymentIntent DIRECTLY from Stripe — never trust the client's
+  //    claim that the payment succeeded. Only pi.status === 'succeeded' is definitive.
+  const stripe = getStripe();
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.retrieve(
+      order.stripe_pi_id,
+      undefined,
+      { stripeAccount },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] paymentIntents.retrieve error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  console.log(
+    `[terminal] mark_paid: order=${orderId} pi=${pi.id} status=${pi.status}`,
+  );
+
+  // 6. Mark the order paid only when Stripe confirms success.
+  //    .is("paid_at", null) makes the DB update idempotent.
+  if (pi.status === "succeeded") {
+    const { error: updateErr } = await db
+      .from("orders")
+      .update({ paid_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .is("paid_at", null);
+    if (updateErr) {
+      console.error("[terminal] failed to mark order paid:", updateErr.message);
+      return errorResponse("Failed to mark order as paid", 500);
+    }
+    return jsonResponse({ ok: true });
+  }
+
+  return jsonResponse({ ok: false, status: pi.status });
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  // CORS preflight — required before any cross-origin POST
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return errorResponse("Content-Type must be application/json");
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid JSON body");
+  }
+
+  const action = typeof body.action === "string" ? body.action : null;
+
+  // All three actions require a valid employee JWT. Verify once up front.
+  const authResult = await verifyCaller(req);
+  if (authResult instanceof Response) return authResult;
+  const { authUserId, userClient } = authResult;
+
+  console.log(`[terminal] action="${action}" user=${authUserId}`);
+
+  try {
+    switch (action) {
+      case "connection_token":
+        return await handleConnectionToken(body, userClient);
+
+      case "create_payment_intent":
+        return await handleCreatePaymentIntent(body, userClient);
+
+      case "mark_paid":
+        return await handleMarkPaid(body, userClient);
+
+      default:
+        return errorResponse(`Unknown action: ${action ?? "(none)"}`);
+    }
+  } catch (err) {
+    console.error(`[terminal] unhandled error in action "${action}":`, err);
+    return errorResponse("Internal server error", 500);
+  }
+});

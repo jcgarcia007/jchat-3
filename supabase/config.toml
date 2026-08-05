@@ -11,6 +11,13 @@ verify_jwt = true
 [functions.stripe-connect]
 verify_jwt = true
 
+# POS Terminal: called from the mobile app with a Supabase JWT. verify_jwt = false
+# because we verify the JWT manually inside the handler (same pattern as
+# subscriptions) — this gives us fine-grained control and makes the function
+# safe to extend with webhook endpoints later.
+[functions.terminal]
+verify_jwt = false
+
 # Stripe-invoked webhooks: called by Stripe with NO Supabase JWT (they verify
 # the Stripe signature instead) → JWT verification must be off.
 [functions.stripe-webhook]
