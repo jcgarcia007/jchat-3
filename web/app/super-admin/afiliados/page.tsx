@@ -367,6 +367,11 @@ export default function AfiliadosPage() {
       return;
     }
     setSaving(true);
+
+    // `created_by` is NOT NULL in the affiliates table — pass the current admin's id.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); setActionError("Session expired — please refresh."); return; }
+
     const payload = {
       affiliate_number: form.affiliate_number.trim() || undefined,
       name: form.name.trim(),
@@ -374,7 +379,7 @@ export default function AfiliadosPage() {
       phone: form.phone.trim() || null,
       commission_pct: pct,
       notes: form.notes.trim() || null,
-      ...(editingId ? { status: form.status } : {}),
+      ...(editingId ? { status: form.status } : { created_by: user.id }),
     };
 
     if (editingId) {
