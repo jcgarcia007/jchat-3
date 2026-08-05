@@ -26,6 +26,8 @@ export interface MenuItem {
   description: string | null;
   price_cents: number;
   photo_url: string | null;
+  /** Primary photo URL (supersedes photo_url). Use `image_url ?? photo_url` for display. */
+  image_url: string | null;
   dietary_tags: string[];
   id_required: boolean;
   badge: 'best_seller' | 'new' | 'hot' | null;

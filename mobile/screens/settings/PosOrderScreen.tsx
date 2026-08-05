@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -142,8 +143,12 @@ function TabPill({
   );
 }
 
-/** One row in the menu item list. */
-function MenuItemRow({
+/**
+ * One card in the 2-column menu grid.
+ * Shows photo (or initial-letter placeholder) on top; name + price overlaid at
+ * the bottom with a dark scrim. Same tap behavior as the old list row.
+ */
+function MenuItemCard({
   item,
   onPress,
 }: {
@@ -151,38 +156,52 @@ function MenuItemRow({
   onPress: (item: MenuItem) => void;
 }) {
   const c = useThemeColors();
+  // Prefer image_url (newer column), fall back to photo_url.
+  const photoUri: string | null = item.image_url ?? item.photo_url ?? null;
+
   return (
     <Pressable
       onPress={() => onPress(item)}
-      style={({ pressed }) => [
-        styles.menuRow,
-        { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-        pressed && { opacity: 0.72 },
-      ]}
+      style={({ pressed }) => [styles.menuCard, pressed && { opacity: 0.80 }]}
       accessibilityRole="button"
-      accessibilityLabel={item.name}
+      accessibilityLabel={`${item.name}, ${formatPrice(item.price_cents)}${item.has_modifiers ? ', options available' : ''}`}
     >
-      <View style={styles.menuRowLeft}>
-        <Text style={[styles.menuRowName, { color: c.textPrimary }]}>
-          {item.name}
-        </Text>
-        {item.description ? (
-          <Text
-            numberOfLines={1}
-            style={[styles.menuRowDesc, { color: c.textTertiary }]}
+      {/* Photo area — square aspect ratio, rounded corners */}
+      <View style={[styles.cardImgWrapper, { backgroundColor: c.bgSurface }]}>
+        {photoUri ? (
+          <Image
+            source={{ uri: photoUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : (
+          /* Placeholder: brand-tinted background with initial letter */
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.cardPlaceholder,
+              { backgroundColor: c.brandLight },
+            ]}
           >
-            {item.description}
-          </Text>
-        ) : null}
-        {item.has_modifiers && (
-          <Text style={[styles.menuRowModBadge, { color: c.brand }]}>
-            ✦ options
-          </Text>
+            <Text style={[styles.cardInitial, { color: c.brand }]}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
         )}
+
+        {/* Dark scrim at bottom — name + price overlay */}
+        <View style={styles.cardOverlay} pointerEvents="none">
+          <Text numberOfLines={2} style={styles.cardName}>
+            {item.name}
+          </Text>
+          <View style={styles.cardPriceRow}>
+            <Text style={styles.cardPrice}>{formatPrice(item.price_cents)}</Text>
+            {item.has_modifiers && (
+              <Text style={[styles.cardModDot, { color: c.brandLight }]}>✦</Text>
+            )}
+          </View>
+        </View>
       </View>
-      <Text style={[styles.menuRowPrice, { color: c.textSecondary }]}>
-        {formatPrice(item.price_cents)}
-      </Text>
     </Pressable>
   );
 }
@@ -793,9 +812,11 @@ export default function PosOrderScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={(item) => item.id}
+          numColumns={2}
           renderItem={({ item }) => (
-            <MenuItemRow item={item} onPress={handleItemPress} />
+            <MenuItemCard item={item} onPress={handleItemPress} />
           )}
+          columnWrapperStyle={styles.menuGridRow}
           style={styles.menuList}
           contentContainerStyle={[
             styles.menuListContent,
@@ -939,25 +960,68 @@ const styles = StyleSheet.create({
   },
   tabPillText: { fontSize: 13, fontWeight: '500' },
 
-  // ── Menu list ────────────────────────────────────────────────────────────────
+  // ── Menu grid (2-column photo grid, Square-style) ────────────────────────────
   menuList: { flex: 1 },
-  menuListContent: { paddingTop: 8 },
+  menuListContent: { paddingTop: 12, paddingHorizontal: H_PAD, gap: 12 },
+  menuGridRow: { gap: 12 },
 
-  menuRow: {
+  // Each card: flex:1 so both columns are equal width in the row.
+  menuCard: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+
+  // Square photo area — aspect ratio 1:1, clips photo + overlay.
+  cardImgWrapper: {
+    aspectRatio: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+
+  // Placeholder shown when there is no photo.
+  cardPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInitial: {
+    fontSize: 36,
+    fontWeight: '700',
+  },
+
+  // Dark scrim at bottom of photo — white text stays legible over any image.
+  // rgba(0,0,0,0.52) follows the same pattern as modOverlay above.
+  cardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 10,
+    paddingTop: 18,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+  },
+  cardName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginBottom: 3,
+  },
+  cardPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: H_PAD,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 12,
+    gap: 6,
   },
-  menuRowLeft: { flex: 1, gap: 2 },
-  menuRowName: { fontSize: 15, fontWeight: '500' },
-  menuRowDesc: { fontSize: 12, lineHeight: 16 },
-  menuRowModBadge: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-  menuRowPrice: { fontSize: 14, fontWeight: '600' },
+  cardPrice: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cardModDot: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
 
   // ── Loading / empty ──────────────────────────────────────────────────────────
   loadingCenter: {
