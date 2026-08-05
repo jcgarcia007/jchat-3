@@ -42,6 +42,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
+  IconBriefcase,
   IconChevronRight,
   IconCreditCard,
   IconFingerprint,
@@ -70,6 +71,7 @@ import {
   authenticateBiometric,
 } from '../../services/biometric';
 import { changeAppLanguage, type SupportedLanguage } from '../../i18n';
+import { posMyBusinesses } from '../../services/pos';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -279,6 +281,8 @@ export default function SettingsScreen() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   // Biometric app-lock (M2) — device-local opt-in, independent of user settings.
   const [biometricOn, setBiometricOn] = useState(false);
+  // POS Work Mode — show item only when user has at least one pos_access business.
+  const [hasPosAccess, setHasPosAccess] = useState(false);
 
   // ── Load settings from Supabase on mount ──────────────────────────────────
   useEffect(() => {
@@ -308,6 +312,14 @@ export default function SettingsScreen() {
       mounted = false;
     };
   }, []);
+
+  // ── Check POS access on mount ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    posMyBusinesses()
+      .then((rows) => setHasPosAccess(rows.length > 0))
+      .catch(() => null);
+  }, [user?.id]);
 
   // ── Toggle biometric app-lock ──────────────────────────────────────────────
   const handleToggleBiometric = useCallback(
@@ -541,6 +553,20 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Pricing')}
           right={<ChevronRight />}
         />
+
+        {/* Work Mode — only shown when user has at least one POS-access business */}
+        {hasPosAccess && (
+          <>
+            <SectionDivider />
+            <SettingsRow
+              icon={<IconBriefcase size={20} color={c.brand} strokeWidth={2} />}
+              label={t('workMode.row')}
+              sublabel={t('workMode.rowSub')}
+              onPress={() => navigation.navigate('WorkMode')}
+              right={<ChevronRight />}
+            />
+          </>
+        )}
 
         {/* Spacer */}
         <View style={styles.sectionGap} />

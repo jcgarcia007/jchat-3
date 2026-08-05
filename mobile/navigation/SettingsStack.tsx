@@ -13,11 +13,15 @@ import {
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import PrivacyScreen from '../screens/settings/PrivacyScreen';
 import PricingScreen from '../screens/settings/PricingScreen';
+import WorkModeScreen from '../screens/settings/WorkModeScreen';
+import PosHomeScreen from '../screens/settings/PosHomeScreen';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Privacy: undefined;
   Pricing: undefined;
+  WorkMode: undefined;
+  PosHome: { businessId: string; businessName: string; employeeId: string };
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -30,6 +34,8 @@ export default function SettingsStack() {
       <Stack.Screen name="SettingsHome" component={SettingsScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Pricing" component={PricingScreen} />
+      <Stack.Screen name="WorkMode" component={WorkModeScreen} />
+      <Stack.Screen name="PosHome" component={PosHomeScreen} />
     </Stack.Navigator>
   );
 }
