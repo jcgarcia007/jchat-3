@@ -31,6 +31,7 @@ import {
 import { getConnectionTokenSecret } from '../services/terminal';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
+import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -44,6 +45,12 @@ export type PosStackParamList = {
   PosOrder: {
     businessId: string;
     businessName: string;
+    tableId: string;
+    tableLabel: string;
+  };
+  /** In-person payment for an open tab on a table (C2b). */
+  PosCheckout: {
+    businessId: string;
     tableId: string;
     tableLabel: string;
   };
@@ -109,6 +116,8 @@ export default function PosNavigator(): React.ReactElement {
           initialParams={{ businessId, businessName, employeeId }}
         />
         <PosStack.Screen name="PosOrder" component={PosOrderScreen} />
+        {/* PosCheckout must be inside this navigator (needs useStripeTerminal) */}
+        <PosStack.Screen name="PosCheckout" component={PosCheckoutScreen} />
       </PosStack.Navigator>
     </StripeTerminalProvider>
   );

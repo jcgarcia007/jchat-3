@@ -226,6 +226,104 @@ export async function posTables(businessId: string): Promise<PosTableRow[]> {
   return data ?? [];
 }
 
+// ─── posOpenOrders ────────────────────────────────────────────────────────────
+
+/** A single unpaid order on a table, as returned by posOpenOrders(). */
+export interface PosOpenOrder {
+  id: string;
+  /** Denormalized from the table row at order creation time. May be '' if not stored. */
+  table_label: string;
+  total_cents: number;
+  created_at: string;
+  status: string;
+}
+
+/**
+ * Return all unpaid orders for a specific table, oldest first.
+ * Used by PosCheckoutScreen to load the order(s) to charge.
+ */
+export async function posOpenOrders(
+  businessId: string,
+  tableId: string,
+): Promise<PosOpenOrder[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await (supabase as unknown as {
+    from(t: string): {
+      select(cols: string): {
+        eq(col: string, val: unknown): {
+          eq(col: string, val: unknown): {
+            is(col: string, val: null): {
+              order(col: string, opts: { ascending: boolean }): Promise<{
+                data: PosOpenOrder[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+    };
+  })
+    .from('orders')
+    .select('id, table_label, total_cents, created_at, status')
+    .eq('business_id', businessId)
+    .eq('table_id', tableId)
+    .is('paid_at', null)
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Per-table open-order aggregate for badge display in PosHomeScreen. */
+export interface PosTableOpenSummary {
+  tableId: string;
+  totalCents: number;
+  count: number;
+}
+
+/**
+ * Return a map of tableId → open-order summary for a business.
+ * Executes a single query (no N+1) — used by PosHomeScreen for badge data.
+ * Errors are silenced: on failure the map is empty and badges won't appear.
+ */
+export async function posOpenOrdersSummary(
+  businessId: string,
+): Promise<Record<string, PosTableOpenSummary>> {
+  if (!isSupabaseConfigured) return {};
+
+  const { data, error } = await (supabase as unknown as {
+    from(t: string): {
+      select(cols: string): {
+        eq(col: string, val: unknown): {
+          is(col: string, val: null): Promise<{
+            data: Array<{ table_id: string; total_cents: number }> | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+  })
+    .from('orders')
+    .select('table_id, total_cents')
+    .eq('business_id', businessId)
+    .is('paid_at', null);
+
+  if (error) return {}; // non-fatal — badges just won't render
+
+  const summary: Record<string, PosTableOpenSummary> = {};
+  for (const row of data ?? []) {
+    const existing = summary[row.table_id];
+    if (existing) {
+      existing.totalCents += row.total_cents;
+      existing.count += 1;
+    } else {
+      summary[row.table_id] = { tableId: row.table_id, totalCents: row.total_cents, count: 1 };
+    }
+  }
+  return summary;
+}
+
 // ─── posCreateOrder ───────────────────────────────────────────────────────────
 
 /**

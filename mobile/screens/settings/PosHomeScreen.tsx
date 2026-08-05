@@ -1,12 +1,19 @@
 /**
- * JChat 3.0 — POS Home Screen (table grid)
+ * JChat 3.0 — POS Home Screen (table grid, C2b)
  *
  * Reached after a successful PIN verification from WorkModeScreen.
  * Loads the active tables for the business and shows them in a 2-column grid.
- * Tapping a table navigates to PosOrderScreen.
+ *
+ * Per-table state (loaded in parallel after tables):
+ *   • Open-order badge: shows "$X.XX cuenta abierta" when the table has unpaid orders.
+ *   • "Cobrar" action: navigates to PosCheckoutScreen with the table's open orders.
+ *   • "Nueva orden" action: navigates to PosOrderScreen (existing behavior).
+ *
+ * Data refreshes on every focus (useFocusEffect) so returning from PosCheckout
+ * shows the updated badge state without a manual reload.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,18 +25,36 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconChevronLeft, IconLayoutGrid } from '@tabler/icons-react-native';
+import {
+  IconChevronLeft,
+  IconCreditCard,
+  IconLayoutGrid,
+  IconPlus,
+} from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posTables, type PosTableRow } from '../../services/pos';
+import {
+  posTables,
+  posOpenOrdersSummary,
+  type PosTableRow,
+  type PosTableOpenSummary,
+} from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 type PosHomeNav = NativeStackNavigationProp<PosStackParamList, 'PosHome'>;
 type PosHomeRoute = RouteProp<PosStackParamList, 'PosHome'>;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PosHomeScreen() {
   const c = useThemeColors();
@@ -41,27 +66,37 @@ export default function PosHomeScreen() {
 
   const [tables, setTables] = useState<PosTableRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openOrders, setOpenOrders] = useState<Record<string, PosTableOpenSummary>>({});
 
-  // ── Load tables on mount ───────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    posTables(businessId)
-      .then((rows) => {
-        if (mounted) setTables(rows);
-      })
-      .catch(() => {
-        // Stay empty on error; user can retry by navigating away and back.
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [businessId]);
+  // ── Reload on every focus (returns from PosCheckout → badges update) ────────
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      setLoading(true);
 
-  // ── Navigate to order screen ───────────────────────────────────────────────
-  const handleTablePress = useCallback(
+      Promise.all([
+        posTables(businessId),
+        posOpenOrdersSummary(businessId),
+      ])
+        .then(([rows, summary]) => {
+          if (!mounted) return;
+          setTables(rows);
+          setOpenOrders(summary);
+        })
+        .catch(() => {
+          // Stay with previous data on error
+        })
+        .finally(() => {
+          if (mounted) setLoading(false);
+        });
+
+      return () => { mounted = false; };
+    }, [businessId]),
+  );
+
+  // ── Navigation helpers ─────────────────────────────────────────────────────
+
+  const handleNewOrder = useCallback(
     (table: PosTableRow) => {
       navigation.navigate('PosOrder', {
         businessId,
@@ -73,39 +108,100 @@ export default function PosHomeScreen() {
     [navigation, businessId, businessName],
   );
 
+  const handleCobrar = useCallback(
+    (table: PosTableRow) => {
+      navigation.navigate('PosCheckout', {
+        businessId,
+        tableId: table.id,
+        tableLabel: table.label,
+      });
+    },
+    [navigation, businessId],
+  );
+
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const renderTableSubtitle = (table: PosTableRow): string => {
+  const tableSubtitle = (table: PosTableRow): string => {
     const hasFl = !!table.floor;
     const hasSe = typeof table.seats === 'number';
-    if (hasFl && hasSe) {
-      return t('pos.tableFloorSeats', { floor: table.floor, count: table.seats });
-    }
+    if (hasFl && hasSe) return t('pos.tableFloorSeats', { floor: table.floor, count: table.seats });
     if (hasFl) return t('pos.tableFloor', { floor: table.floor });
     if (hasSe) return t('pos.tableSeats', { count: table.seats });
     return '';
   };
 
   const renderTable = ({ item }: { item: PosTableRow }) => {
-    const subtitle = renderTableSubtitle(item);
+    const sub = tableSubtitle(item);
+    const summary = openOrders[item.id];
+    const hasOpenOrders = !!summary;
+
     return (
-      <Pressable
-        onPress={() => handleTablePress(item)}
-        style={({ pressed }) => [
+      <View
+        style={[
           styles.tableCard,
           { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-          pressed && { opacity: 0.72 },
         ]}
-        accessibilityRole="button"
-        accessibilityLabel={item.label}
       >
-        <Text style={[styles.tableLabel, { color: c.textPrimary }]}>
-          {item.label}
-        </Text>
-        {subtitle ? (
-          <Text style={[styles.tableSub, { color: c.textTertiary }]}>{subtitle}</Text>
-        ) : null}
-      </Pressable>
+        {/* Table info */}
+        <View style={styles.cardTop}>
+          <Text style={[styles.tableLabel, { color: c.textPrimary }]}>
+            {item.label}
+          </Text>
+          {sub ? (
+            <Text style={[styles.tableSub, { color: c.textTertiary }]}>{sub}</Text>
+          ) : null}
+
+          {/* Open-tab badge */}
+          {hasOpenOrders ? (
+            <View style={[styles.badge, { backgroundColor: c.brandLight }]}>
+              <Text style={[styles.badgeText, { color: c.brand }]}>
+                {t('pos.openTab')} · {formatCents(summary.totalCents)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Action buttons */}
+        <View style={[styles.cardActions, hasOpenOrders && styles.cardActionsDual]}>
+          {hasOpenOrders ? (
+            <Pressable
+              onPress={() => handleCobrar(item)}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.actionBtnPrimary,
+                { backgroundColor: c.brand },
+                pressed && { opacity: 0.78 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('pos.cobrar')} ${item.label}`}
+            >
+              <IconCreditCard size={15} color="#fff" strokeWidth={2.2} />
+              <Text style={styles.actionBtnPrimaryText}>{t('pos.cobrar')}</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            onPress={() => handleNewOrder(item)}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.actionBtnSecondary,
+              {
+                backgroundColor: c.bgBase,
+                borderColor: c.borderSubtle,
+                flex: hasOpenOrders ? undefined : 1,
+              },
+              pressed && { opacity: 0.72 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('pos.newOrder')} ${item.label}`}
+          >
+            <IconPlus size={15} color={c.textSecondary} strokeWidth={2.2} />
+            <Text style={[styles.actionBtnSecondaryText, { color: c.textSecondary }]}>
+              {t('pos.newOrder')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     );
   };
 
@@ -164,7 +260,7 @@ export default function PosHomeScreen() {
       ) : (
         <FlatList
           data={tables}
-          keyExtractor={(t) => t.id}
+          keyExtractor={(item) => item.id}
           numColumns={2}
           contentContainerStyle={[
             styles.grid,
@@ -194,17 +290,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-
-  backButton: {
-    marginRight: 8,
-    padding: 4,
-  },
-
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '600',
-  },
+  backButton: { marginRight: 8, padding: 4 },
+  headerTitle: { flex: 1, fontSize: 20, fontWeight: '600' },
 
   // ── Loading / empty ─────────────────────────────────────────────────────────
   center: {
@@ -214,53 +301,56 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 32,
   },
-
-  loadingText: {
-    fontSize: 14,
-    marginTop: 8,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  emptySub: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  loadingText: { fontSize: 14, marginTop: 8 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
+  emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // ── Grid ───────────────────────────────────────────────────────────────────
-  grid: {
-    paddingTop: 16,
-    paddingHorizontal: H_PAD,
-    gap: 12,
-  },
+  grid: { paddingTop: 16, paddingHorizontal: H_PAD, gap: 12 },
+  gridRow: { gap: 12 },
 
-  gridRow: {
-    gap: 12,
-  },
-
+  // ── Table card ─────────────────────────────────────────────────────────────
   tableCard: {
     flex: 1,
-    minHeight: 88,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    alignItems: 'flex-start',
+    padding: 14,
+    gap: 12,
+  },
+
+  cardTop: { gap: 4 },
+
+  tableLabel: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
+  tableSub: { fontSize: 12 },
+
+  // ── Open-tab badge ──────────────────────────────────────────────────────────
+  badge: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  badgeText: { fontSize: 11, fontWeight: '600' },
+
+  // ── Action buttons ──────────────────────────────────────────────────────────
+  cardActions: { flexDirection: 'row', gap: 8 },
+  cardActionsDual: {},
+
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
   },
 
-  tableLabel: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
+  actionBtnPrimary: {},
+  actionBtnPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  tableSub: {
-    fontSize: 12,
-    marginTop: 4,
-  },
+  actionBtnSecondary: { borderWidth: StyleSheet.hairlineWidth },
+  actionBtnSecondaryText: { fontSize: 13, fontWeight: '500' },
 });
