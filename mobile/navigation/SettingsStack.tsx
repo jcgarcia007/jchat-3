@@ -15,6 +15,7 @@ import PrivacyScreen from '../screens/settings/PrivacyScreen';
 import PricingScreen from '../screens/settings/PricingScreen';
 import WorkModeScreen from '../screens/settings/WorkModeScreen';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
+import PosOrderScreen from '../screens/settings/PosOrderScreen';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
@@ -22,6 +23,7 @@ export type SettingsStackParamList = {
   Pricing: undefined;
   WorkMode: undefined;
   PosHome: { businessId: string; businessName: string; employeeId: string };
+  PosOrder: { businessId: string; businessName: string; tableId: string; tableLabel: string };
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -36,6 +38,7 @@ export default function SettingsStack() {
       <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen name="WorkMode" component={WorkModeScreen} />
       <Stack.Screen name="PosHome" component={PosHomeScreen} />
+      <Stack.Screen name="PosOrder" component={PosOrderScreen} />
     </Stack.Navigator>
   );
 }

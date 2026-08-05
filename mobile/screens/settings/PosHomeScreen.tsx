@@ -1,21 +1,31 @@
 /**
- * JChat 3.0 — POS Home Screen (placeholder — Task 3.x)
+ * JChat 3.0 — POS Home Screen (table grid)
  *
  * Reached after a successful PIN verification from WorkModeScreen.
- * Full waiter POS implementation is a separate task; this screen holds
- * the navigation slot so WorkModeScreen can navigate here immediately.
+ * Loads the active tables for the business and shows them in a 2-column grid.
+ * Tapping a table navigates to PosOrderScreen.
  */
 
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconChevronLeft, IconReceipt2 } from '@tabler/icons-react-native';
+import { IconChevronLeft, IconLayoutGrid } from '@tabler/icons-react-native';
 
+import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { posTables, type PosTableRow } from '../../services/pos';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 
 type PosHomeNav = NativeStackNavigationProp<SettingsStackParamList, 'PosHome'>;
@@ -27,10 +37,86 @@ export default function PosHomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<PosHomeNav>();
   const route = useRoute<PosHomeRoute>();
-  const { businessName } = route.params;
+  const { businessId, businessName } = route.params;
 
+  const [tables, setTables] = useState<PosTableRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Load tables on mount ───────────────────────────────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    posTables(businessId)
+      .then((rows) => {
+        if (mounted) setTables(rows);
+      })
+      .catch(() => {
+        // Stay empty on error; user can retry by navigating away and back.
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [businessId]);
+
+  // ── Navigate to order screen ───────────────────────────────────────────────
+  const handleTablePress = useCallback(
+    (table: PosTableRow) => {
+      navigation.navigate('PosOrder', {
+        businessId,
+        businessName,
+        tableId: table.id,
+        tableLabel: table.label,
+      });
+    },
+    [navigation, businessId, businessName],
+  );
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
+
+  const renderTableSubtitle = (table: PosTableRow): string => {
+    const hasFl = !!table.floor;
+    const hasSe = typeof table.seats === 'number';
+    if (hasFl && hasSe) {
+      return t('pos.tableFloorSeats', { floor: table.floor, count: table.seats });
+    }
+    if (hasFl) return t('pos.tableFloor', { floor: table.floor });
+    if (hasSe) return t('pos.tableSeats', { count: table.seats });
+    return '';
+  };
+
+  const renderTable = ({ item }: { item: PosTableRow }) => {
+    const subtitle = renderTableSubtitle(item);
+    return (
+      <Pressable
+        onPress={() => handleTablePress(item)}
+        style={({ pressed }) => [
+          styles.tableCard,
+          { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+          pressed && { opacity: 0.72 },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={item.label}
+      >
+        <Text style={[styles.tableLabel, { color: c.textPrimary }]}>
+          {item.label}
+        </Text>
+        {subtitle ? (
+          <Text style={[styles.tableSub, { color: c.textTertiary }]}>{subtitle}</Text>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
+      <StatusBar
+        barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'}
+      />
+
+      {/* Header */}
       <View
         style={[
           styles.header,
@@ -57,24 +143,50 @@ export default function PosHomeScreen() {
         </Text>
       </View>
 
-      <View style={styles.center}>
-        <IconReceipt2 size={56} color={c.textTertiary} strokeWidth={1.5} />
-        <Text style={[styles.comingSoonTitle, { color: c.textPrimary }]}>
-          {t('workMode.posComingSoon')}
-        </Text>
-        <Text style={[styles.comingSoonSub, { color: c.textTertiary }]}>
-          {t('workMode.posComingSoonSub')}
-        </Text>
-      </View>
+      {/* Body */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={c.brand} />
+          <Text style={[styles.loadingText, { color: c.textTertiary }]}>
+            {t('pos.tablesLoading')}
+          </Text>
+        </View>
+      ) : tables.length === 0 ? (
+        <View style={styles.center}>
+          <IconLayoutGrid size={48} color={c.textTertiary} strokeWidth={1.5} />
+          <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
+            {t('pos.tablesEmpty')}
+          </Text>
+          <Text style={[styles.emptySub, { color: c.textTertiary }]}>
+            {t('pos.tablesEmptySub')}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={tables}
+          keyExtractor={(t) => t.id}
+          numColumns={2}
+          contentContainerStyle={[
+            styles.grid,
+            { paddingBottom: insets.bottom + 24 },
+          ]}
+          columnWrapperStyle={styles.gridRow}
+          renderItem={renderTable}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const H_PAD = 16;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
+  // ── Header ─────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -94,6 +206,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // ── Loading / empty ─────────────────────────────────────────────────────────
   center: {
     flex: 1,
     alignItems: 'center',
@@ -102,15 +215,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
 
-  comingSoonTitle: {
-    fontSize: 20,
+  loadingText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+
+  emptyTitle: {
+    fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
   },
 
-  comingSoonSub: {
+  emptySub: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // ── Grid ───────────────────────────────────────────────────────────────────
+  grid: {
+    paddingTop: 16,
+    paddingHorizontal: H_PAD,
+    gap: 12,
+  },
+
+  gridRow: {
+    gap: 12,
+  },
+
+  tableCard: {
+    flex: 1,
+    minHeight: 88,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+
+  tableLabel: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+
+  tableSub: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });

@@ -43,6 +43,31 @@ export type PosVerifyPinResult =
   | { ok: true; verified: boolean }
   | { ok: false; reason: PosVerifyPinError };
 
+export interface PosTableRow {
+  id: string;
+  label: string;
+  floor: string | null;
+  seats: number | null;
+}
+
+export interface PosOrderItem {
+  menu_item_id: string;
+  qty: number;
+  special_instructions?: string;
+}
+
+export type PosCreateOrderError =
+  | 'table_not_in_business'
+  | 'item_not_available'
+  | 'no_valid_items'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosCreateOrderResult =
+  | { ok: true; orderId: string }
+  | { ok: false; reason: PosCreateOrderError };
+
 // ─── Internal RPC helper ──────────────────────────────────────────────────────
 
 // These RPCs are not yet in generated types; cast until types are regenerated.
@@ -59,6 +84,15 @@ type PosRpc = {
     fn: 'pos_verify_pin',
     params: { p_business_id: string; p_pin: string },
   ): Promise<{ data: boolean | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_create_order',
+    params: {
+      p_business_id: string;
+      p_table_id: string;
+      p_items: PosOrderItem[];
+      p_notes: null;
+    },
+  ): Promise<{ data: string | null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -146,4 +180,80 @@ export async function posVerifyPin(
   }
 
   return { ok: true, verified: data === true };
+}
+
+// ─── posTables ────────────────────────────────────────────────────────────────
+
+/**
+ * Return active tables for a business, ordered by their sort column.
+ * The 'tables' table may not be in generated types — cast is removed once
+ * types are regenerated.
+ */
+export async function posTables(businessId: string): Promise<PosTableRow[]> {
+  if (!isSupabaseConfigured) return [];
+
+  // 'tables' not yet in generated types — remove cast once types are regenerated.
+  const result = await (supabase as unknown as { from(t: string): unknown })
+    .from('tables') as {
+      select(cols: string): {
+        eq(col: string, val: unknown): {
+          eq(col: string, val: unknown): {
+            order(col: string): Promise<{
+              data: PosTableRow[] | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+
+  const { data, error } = await result
+    .select('id, label, floor, seats')
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+    .order('sort');
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// ─── posCreateOrder ───────────────────────────────────────────────────────────
+
+/**
+ * Submit a new order to the kitchen via the pos_create_order RPC.
+ * Prices and totals are computed server-side — only item ids + quantities are sent.
+ *
+ * Possible failure reasons:
+ *   'table_not_in_business' — tableId does not belong to businessId
+ *   'item_not_available'    — one or more items are unavailable
+ *   'no_valid_items'        — none of the items passed server-side validation
+ *   'no_access'             — user does not have pos_access at this business
+ *   'db_error'              — unexpected database error
+ *   'not_configured'        — Supabase is not configured
+ */
+export async function posCreateOrder(
+  businessId: string,
+  tableId: string,
+  items: PosOrderItem[],
+): Promise<PosCreateOrderResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await posRpc.rpc('pos_create_order', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+    p_items: items,
+    p_notes: null,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('table not in this business')) return { ok: false, reason: 'table_not_in_business' };
+    if (msg.includes('not available')) return { ok: false, reason: 'item_not_available' };
+    if (msg.includes('no valid items')) return { ok: false, reason: 'no_valid_items' };
+    if (msg.includes('no pos access')) return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  if (!data) return { ok: false, reason: 'db_error' };
+  return { ok: true, orderId: data };
 }
