@@ -140,7 +140,13 @@
     "staffDetailA11y": "Ver detalles del mesero para {{name}}",
     "staffDetailNoDetails": "Aún no se han agregado detalles.",
     "staffDetailProUpsell": "Los detalles del artículo están disponibles en el plan Pro.",
-    "staffDetailProUpsellTitle": "Función Pro"
+    "staffDetailProUpsellTitle": "Función Pro",
+    "stateLibre": "Libre",
+    "stateOcupada": "Ocupada",
+    "assignmentMine": "Mía",
+    "assignmentOther": "Otro mesero",
+    "assignmentUnassigned": "Sin asignar",
+    "partyPeople": "{{count}} pers"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

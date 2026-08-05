@@ -1,16 +1,18 @@
 /**
- * JChat 3.0 — POS Home Screen (table grid, C2b)
+ * JChat 3.0 — POS Home Screen (C4 — Table Grid with States)
  *
- * Reached after a successful PIN verification from WorkModeScreen.
- * Loads the active tables for the business and shows them in a 2-column grid.
+ * Shows active tables as a 2-column visual grid. Each card reflects live state:
+ *   • state:      'libre' (green) | 'ocupada' (orange)
+ *   • assignment: 'mine' (accent) | 'other' (dim) | 'unassigned' (neutral)
+ *   • party_size: adjustable with inline +/− stepper (calls posSetPartySize best-effort)
+ *   • open total: sum of unpaid orders shown when > 0
  *
- * Per-table state (loaded in parallel after tables):
- *   • Open-order badge: shows "$X.XX cuenta abierta" when the table has unpaid orders.
- *   • "Cobrar" action: navigates to PosCheckoutScreen with the table's open orders.
- *   • "Nueva orden" action: navigates to PosOrderScreen (existing behavior).
+ * Data from posTablesOverview() RPC — single call, replaces posTables + posOpenOrdersSummary.
+ * Refreshes on every focus (useFocusEffect → returning from PosOrder/PosCheckout).
  *
- * Data refreshes on every focus (useFocusEffect) so returning from PosCheckout
- * shows the updated badge state without a manual reload.
+ * Navigation (unchanged):
+ *   • Tap card          → PosOrderScreen  (nueva orden)
+ *   • "Cobrar" button   → PosCheckoutScreen (only for occupied tables)
  */
 
 import React, { useCallback, useState } from 'react';
@@ -32,18 +34,21 @@ import {
   IconChevronLeft,
   IconCreditCard,
   IconLayoutGrid,
+  IconMinus,
   IconPlus,
+  IconUserFilled,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import {
-  posTables,
-  posOpenOrdersSummary,
-  type PosTableRow,
-  type PosTableOpenSummary,
+  posTablesOverview,
+  posSetPartySize,
+  type PosTablesOverviewRow,
 } from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+
+// ─── Navigation types ─────────────────────────────────────────────────────────
 
 type PosHomeNav = NativeStackNavigationProp<PosStackParamList, 'PosHome'>;
 type PosHomeRoute = RouteProp<PosStackParamList, 'PosHome'>;
@@ -64,24 +69,18 @@ export default function PosHomeScreen() {
   const route = useRoute<PosHomeRoute>();
   const { businessId, businessName, plan } = route.params;
 
-  const [tables, setTables] = useState<PosTableRow[]>([]);
+  const [tables, setTables] = useState<PosTablesOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openOrders, setOpenOrders] = useState<Record<string, PosTableOpenSummary>>({});
 
-  // ── Reload on every focus (returns from PosCheckout → badges update) ────────
+  // ── Reload on every focus ────────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
       setLoading(true);
 
-      Promise.all([
-        posTables(businessId),
-        posOpenOrdersSummary(businessId),
-      ])
-        .then(([rows, summary]) => {
-          if (!mounted) return;
-          setTables(rows);
-          setOpenOrders(summary);
+      posTablesOverview(businessId)
+        .then((rows) => {
+          if (mounted) setTables(rows);
         })
         .catch(() => {
           // Stay with previous data on error
@@ -90,130 +89,234 @@ export default function PosHomeScreen() {
           if (mounted) setLoading(false);
         });
 
-      return () => { mounted = false; };
+      return () => {
+        mounted = false;
+      };
     }, [businessId]),
   );
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
+  // ── Legend counts ────────────────────────────────────────────────────────────
+  const freeCount = tables.filter((row) => row.state === 'libre').length;
+  const occupiedCount = tables.length - freeCount;
 
+  // ── Party size stepper ───────────────────────────────────────────────────────
+  /**
+   * Optimistically update party_size for a table and call the RPC best-effort.
+   * Reverts local state on RPC failure so the next focus refresh will correct it.
+   */
+  const adjustParty = useCallback(
+    (tableId: string, delta: number) => {
+      // Read current value from state before updating
+      setTables((prev) => {
+        const target = prev.find((row) => row.table_id === tableId);
+        if (!target) return prev;
+        const max = target.seats ?? 100;
+        const current = target.party_size ?? 0;
+        const next = Math.min(Math.max(0, current + delta), max);
+        if (next === current) return prev; // nothing to do
+
+        // Fire RPC (best-effort; revert on failure)
+        posSetPartySize(businessId, tableId, next).catch(() => {
+          setTables((p) =>
+            p.map((row) =>
+              row.table_id === tableId ? { ...row, party_size: current } : row,
+            ),
+          );
+        });
+
+        return prev.map((row) =>
+          row.table_id === tableId ? { ...row, party_size: next } : row,
+        );
+      });
+    },
+    [businessId],
+  );
+
+  // ── Navigation helpers ───────────────────────────────────────────────────────
   const handleNewOrder = useCallback(
-    (table: PosTableRow) => {
+    (table: PosTablesOverviewRow) => {
       navigation.navigate('PosOrder', {
         businessId,
         businessName,
-        tableId: table.id,
+        tableId: table.table_id,
         tableLabel: table.label,
         plan,
       });
     },
-    [navigation, businessId, businessName],
+    [navigation, businessId, businessName, plan],
   );
 
   const handleCobrar = useCallback(
-    (table: PosTableRow) => {
+    (table: PosTablesOverviewRow) => {
       navigation.navigate('PosCheckout', {
         businessId,
-        tableId: table.id,
+        tableId: table.table_id,
         tableLabel: table.label,
       });
     },
     [navigation, businessId],
   );
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── Table card ───────────────────────────────────────────────────────────────
+  const renderTable = ({ item }: { item: PosTablesOverviewRow }) => {
+    const isOccupied = item.state === 'ocupada';
+    const stateColor = isOccupied ? c.warning : c.success;
+    const hasOpenTotal = isOccupied && item.open_total_cents > 0;
+    const partySize = item.party_size ?? 0;
 
-  const tableSubtitle = (table: PosTableRow): string => {
-    const hasFl = !!table.floor;
-    const hasSe = typeof table.seats === 'number';
-    if (hasFl && hasSe) return t('pos.tableFloorSeats', { floor: table.floor, count: table.seats });
-    if (hasFl) return t('pos.tableFloor', { floor: table.floor });
-    if (hasSe) return t('pos.tableSeats', { count: table.seats });
-    return '';
-  };
+    // Subtitle: floor and/or seats
+    const subParts: string[] = [];
+    if (item.floor) subParts.push(t('pos.tableFloor', { floor: item.floor }));
+    if (typeof item.seats === 'number') subParts.push(t('pos.tableSeats', { count: item.seats }));
+    const subtitle = subParts.join(' · ');
 
-  const renderTable = ({ item }: { item: PosTableRow }) => {
-    const sub = tableSubtitle(item);
-    const summary = openOrders[item.id];
-    const hasOpenOrders = !!summary;
+    // Assignment badge config
+    let assignLabel: string | null = null;
+    let assignColor = c.textTertiary;
+    if (item.assignment === 'mine') {
+      assignLabel = t('pos.assignmentMine');
+      assignColor = c.brand;
+    } else if (item.assignment === 'other') {
+      assignLabel = t('pos.assignmentOther');
+      assignColor = c.textTertiary;
+    } else if (isOccupied) {
+      // unassigned + occupied: flag it so staff can claim the table
+      assignLabel = t('pos.assignmentUnassigned');
+      assignColor = c.warning;
+    }
 
     return (
-      <View
-        style={[
+      <Pressable
+        onPress={() => handleNewOrder(item)}
+        style={({ pressed }) => [
           styles.tableCard,
-          { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+          {
+            backgroundColor: c.bgSurface,
+            // Subtle overall border tinted by state for occupied; neutral for libre
+            borderColor: isOccupied ? stateColor + '55' : c.borderSubtle,
+            // Bold left accent stripe — visual state indicator
+            borderLeftColor: stateColor,
+          },
+          pressed && { opacity: 0.82 },
         ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.label}, ${isOccupied ? t('pos.stateOcupada') : t('pos.stateLibre')}`}
       >
-        {/* Table info */}
-        <View style={styles.cardTop}>
-          <Text style={[styles.tableLabel, { color: c.textPrimary }]}>
-            {item.label}
-          </Text>
-          {sub ? (
-            <Text style={[styles.tableSub, { color: c.textTertiary }]}>{sub}</Text>
-          ) : null}
+        {/* ── Row 1: state chip + assignment badge ──────────────────────────── */}
+        <View style={styles.cardTopRow}>
+          {/* State chip */}
+          <View style={[styles.stateChip, { backgroundColor: stateColor + '22' }]}>
+            <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+            <Text style={[styles.stateText, { color: stateColor }]}>
+              {isOccupied ? t('pos.stateOcupada') : t('pos.stateLibre')}
+            </Text>
+          </View>
 
-          {/* Open-tab badge */}
-          {hasOpenOrders ? (
-            <View style={[styles.badge, { backgroundColor: c.brandLight }]}>
-              <Text style={[styles.badgeText, { color: c.brand }]}>
-                {t('pos.openTab')} · {formatCents(summary.totalCents)}
+          {/* Assignment badge (only when relevant) */}
+          {assignLabel ? (
+            <View style={[styles.assignBadge, { backgroundColor: assignColor + '22' }]}>
+              <Text style={[styles.assignText, { color: assignColor }]}>
+                {assignLabel}
               </Text>
             </View>
           ) : null}
         </View>
 
-        {/* Action buttons */}
-        <View style={[styles.cardActions, hasOpenOrders && styles.cardActionsDual]}>
-          {hasOpenOrders ? (
-            <Pressable
-              onPress={() => handleCobrar(item)}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionBtnPrimary,
-                { backgroundColor: c.brand },
-                pressed && { opacity: 0.78 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${t('pos.cobrar')} ${item.label}`}
-            >
-              <IconCreditCard size={15} color="#fff" strokeWidth={2.2} />
-              <Text style={styles.actionBtnPrimaryText}>{t('pos.cobrar')}</Text>
-            </Pressable>
-          ) : null}
+        {/* ── Table label ───────────────────────────────────────────────────── */}
+        <Text style={[styles.tableLabel, { color: c.textPrimary }]} numberOfLines={1}>
+          {item.label}
+        </Text>
 
+        {/* ── Subtitle: floor + seats ───────────────────────────────────────── */}
+        {subtitle.length > 0 ? (
+          <Text style={[styles.tableSub, { color: c.textTertiary }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+
+        {/* ── Party size stepper + open total ──────────────────────────────── */}
+        <View style={styles.cardBottomRow}>
+          {/* Party size stepper */}
+          <View style={styles.partyStepper}>
+            <Pressable
+              onPress={() => adjustParty(item.table_id, -1)}
+              style={[
+                styles.stepBtn,
+                { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`-1 ${t('pos.partyPeople', { count: 1 })}`}
+            >
+              <IconMinus size={11} color={c.textSecondary} strokeWidth={2.5} />
+            </Pressable>
+
+            <View style={styles.partyCount}>
+              <IconUserFilled size={10} color={c.textTertiary} />
+              <Text
+                style={[
+                  styles.partyText,
+                  { color: partySize > 0 ? c.textPrimary : c.textTertiary },
+                ]}
+              >
+                {partySize > 0 ? t('pos.partyPeople', { count: partySize }) : '0'}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => adjustParty(item.table_id, 1)}
+              style={[
+                styles.stepBtn,
+                { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`+1 ${t('pos.partyPeople', { count: 1 })}`}
+            >
+              <IconPlus size={11} color={c.textSecondary} strokeWidth={2.5} />
+            </Pressable>
+          </View>
+
+          {/* Open total (only for occupied tables with balance) */}
+          {hasOpenTotal ? (
+            <Text style={[styles.openTotal, { color: c.warning }]} numberOfLines={1}>
+              {formatCents(item.open_total_cents)}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* ── Cobrar button (occupied tables only) ─────────────────────────── */}
+        {isOccupied ? (
           <Pressable
-            onPress={() => handleNewOrder(item)}
+            onPress={() => handleCobrar(item)}
             style={({ pressed }) => [
-              styles.actionBtn,
-              styles.actionBtnSecondary,
-              {
-                backgroundColor: c.bgBase,
-                borderColor: c.borderSubtle,
-                flex: hasOpenOrders ? undefined : 1,
-              },
-              pressed && { opacity: 0.72 },
+              styles.cobrarBtn,
+              { backgroundColor: c.brand },
+              pressed && { opacity: 0.78 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={`${t('pos.newOrder')} ${item.label}`}
+            accessibilityLabel={`${t('pos.cobrar')} ${item.label}`}
           >
-            <IconPlus size={15} color={c.textSecondary} strokeWidth={2.2} />
-            <Text style={[styles.actionBtnSecondaryText, { color: c.textSecondary }]}>
-              {t('pos.newOrder')}
+            <IconCreditCard size={14} color="#fff" strokeWidth={2.2} />
+            <Text style={styles.cobrarBtnText}>
+              {hasOpenTotal
+                ? `${t('pos.cobrar')} ${formatCents(item.open_total_cents)}`
+                : t('pos.cobrar')}
             </Text>
           </Pressable>
-        </View>
-      </View>
+        ) : null}
+      </Pressable>
     );
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
       <StatusBar
         barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'}
       />
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View
         style={[
           styles.header,
@@ -240,7 +343,7 @@ export default function PosHomeScreen() {
         </Text>
       </View>
 
-      {/* Body */}
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={c.brand} />
@@ -259,18 +362,56 @@ export default function PosHomeScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={tables}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={[
-            styles.grid,
-            { paddingBottom: insets.bottom + 24 },
-          ]}
-          columnWrapperStyle={styles.gridRow}
-          renderItem={renderTable}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          {/* ── Legend bar ──────────────────────────────────────────────────── */}
+          <View
+            style={[
+              styles.legendBar,
+              {
+                backgroundColor: c.bgSurface,
+                borderBottomColor: c.borderSubtle,
+              },
+            ]}
+          >
+            {/* Libre chip */}
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: c.success }]} />
+              <Text style={[styles.legendText, { color: c.textSecondary }]}>
+                {t('pos.stateLibre')}
+              </Text>
+              <Text style={[styles.legendCount, { color: c.textPrimary }]}>
+                {freeCount}
+              </Text>
+            </View>
+
+            <View style={[styles.legendSep, { backgroundColor: c.borderSubtle }]} />
+
+            {/* Ocupada chip */}
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: c.warning }]} />
+              <Text style={[styles.legendText, { color: c.textSecondary }]}>
+                {t('pos.stateOcupada')}
+              </Text>
+              <Text style={[styles.legendCount, { color: c.textPrimary }]}>
+                {occupiedCount}
+              </Text>
+            </View>
+          </View>
+
+          {/* ── Table grid ──────────────────────────────────────────────────── */}
+          <FlatList
+            data={tables}
+            keyExtractor={(item) => item.table_id}
+            numColumns={2}
+            contentContainerStyle={[
+              styles.grid,
+              { paddingBottom: insets.bottom + 24 },
+            ]}
+            columnWrapperStyle={styles.gridRow}
+            renderItem={renderTable}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
     </View>
   );
@@ -283,7 +424,7 @@ const H_PAD = 16;
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -306,52 +447,101 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
   emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
-  // ── Grid ───────────────────────────────────────────────────────────────────
+  // ── Legend bar ───────────────────────────────────────────────────────────────
+  legendBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical: 10,
+    gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  legendText: { fontSize: 13 },
+  legendCount: { fontSize: 13, fontWeight: '700' },
+  legendSep: { width: StyleSheet.hairlineWidth, height: 14 },
+
+  // ── Grid ────────────────────────────────────────────────────────────────────
   grid: { paddingTop: 16, paddingHorizontal: H_PAD, gap: 12 },
   gridRow: { gap: 12 },
 
-  // ── Table card ─────────────────────────────────────────────────────────────
+  // ── Table card ──────────────────────────────────────────────────────────────
   tableCard: {
     flex: 1,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 12,
+    borderLeftWidth: 3,
+    padding: 12,
+    gap: 8,
   },
 
-  cardTop: { gap: 4 },
-
-  tableLabel: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
-  tableSub: { fontSize: 12 },
-
-  // ── Open-tab badge ──────────────────────────────────────────────────────────
-  badge: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
+  // ── State chip ───────────────────────────────────────────────────────────────
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  stateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 20,
+    borderRadius: 10,
   },
-  badgeText: { fontSize: 11, fontWeight: '600' },
+  stateDot: { width: 7, height: 7, borderRadius: 4 },
+  stateText: { fontSize: 11, fontWeight: '600' },
 
-  // ── Action buttons ──────────────────────────────────────────────────────────
-  cardActions: { flexDirection: 'row', gap: 8 },
-  cardActionsDual: {},
+  // ── Assignment badge ─────────────────────────────────────────────────────────
+  assignBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  assignText: { fontSize: 11, fontWeight: '600' },
 
-  actionBtn: {
-    flex: 1,
+  // ── Table label + subtitle ───────────────────────────────────────────────────
+  tableLabel: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
+  tableSub: { fontSize: 12, marginTop: -4 },
+
+  // ── Party size stepper + open total ─────────────────────────────────────────
+  cardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  partyStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partyCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    minWidth: 46,
+  },
+  partyText: { fontSize: 12, fontWeight: '600' },
+  openTotal: { fontSize: 13, fontWeight: '700' },
+
+  // ── Cobrar button ────────────────────────────────────────────────────────────
+  cobrarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 10,
   },
-
-  actionBtnPrimary: {},
-  actionBtnPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-
-  actionBtnSecondary: { borderWidth: StyleSheet.hairlineWidth },
-  actionBtnSecondaryText: { fontSize: 13, fontWeight: '500' },
+  cobrarBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });

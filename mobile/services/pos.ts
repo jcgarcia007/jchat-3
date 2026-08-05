@@ -52,6 +52,29 @@ export interface PosTableRow {
   seats: number | null;
 }
 
+/** Rich table row returned by the pos_tables_overview RPC. */
+export interface PosTablesOverviewRow {
+  table_id: string;
+  label: string;
+  floor: string | null;
+  seats: number | null;
+  /** Current number of guests at the table (null = not set). */
+  party_size: number | null;
+  /** Table occupancy state. */
+  state: 'libre' | 'ocupada';
+  /**
+   * Waiter assignment relative to the authenticated employee:
+   *   'mine'       — this employee is assigned
+   *   'other'      — another employee is assigned
+   *   'unassigned' — no employee assigned yet
+   */
+  assignment: 'mine' | 'other' | 'unassigned';
+  /** Sum of all unpaid order totals for this table (cents). 0 when no open orders. */
+  open_total_cents: number;
+  /** ISO timestamp of the first unpaid order, or null. */
+  open_since: string | null;
+}
+
 export interface PosOrderItem {
   menu_item_id: string;
   qty: number;
@@ -104,6 +127,14 @@ type PosRpc = {
       p_notes: null;
     },
   ): Promise<{ data: string | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_tables_overview',
+    params: { p_business_id: string },
+  ): Promise<{ data: PosTablesOverviewRow[] | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_set_party_size',
+    params: { p_business_id: string; p_table_id: string; p_party_size: number },
+  ): Promise<{ data: null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -369,4 +400,46 @@ export async function posCreateOrder(
 
   if (!data) return { ok: false, reason: 'db_error' };
   return { ok: true, orderId: data };
+}
+
+// ─── posTablesOverview ────────────────────────────────────────────────────────
+
+/**
+ * Return a rich overview of all active tables for a business in one RPC call.
+ * Each row includes state (libre/ocupada), assignment (mine/other/unassigned),
+ * party_size, and aggregated open-order total — replacing the previous
+ * posTables + posOpenOrdersSummary two-call pattern.
+ */
+export async function posTablesOverview(businessId: string): Promise<PosTablesOverviewRow[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await posRpc.rpc('pos_tables_overview', {
+    p_business_id: businessId,
+  });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// ─── posSetPartySize ──────────────────────────────────────────────────────────
+
+/**
+ * Set the party size (number of guests) for a table.
+ * Called optimistically from the POS home screen party-size stepper.
+ * Throws on RPC error so the caller can revert local state.
+ */
+export async function posSetPartySize(
+  businessId: string,
+  tableId: string,
+  partySize: number,
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+
+  const { error } = await posRpc.rpc('pos_set_party_size', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+    p_party_size: partySize,
+  });
+
+  if (error) throw new Error(error.message);
 }

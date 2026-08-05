@@ -140,7 +140,13 @@
     "staffDetailA11y": "View staff details for {{name}}",
     "staffDetailNoDetails": "No staff details added yet.",
     "staffDetailProUpsellTitle": "Pro Feature",
-    "staffDetailProUpsell": "Item details are available on the Pro plan."
+    "staffDetailProUpsell": "Item details are available on the Pro plan.",
+    "stateLibre": "Available",
+    "stateOcupada": "Occupied",
+    "assignmentMine": "Mine",
+    "assignmentOther": "Other",
+    "assignmentUnassigned": "Unassigned",
+    "partyPeople": "{{count}} guests"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",
