@@ -65,6 +65,7 @@ export default function WorkModeScreen() {
   const [mode, setMode] = useState<FlowMode>('list');
   const [selected, setSelected] = useState<PosMyBusinessesRow | null>(null);
   const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
 
@@ -102,6 +103,7 @@ export default function WorkModeScreen() {
   const openSetPin = useCallback((b: PosMyBusinessesRow) => {
     setSelected(b);
     setPin('');
+    setPinConfirm('');
     setPinError(null);
     setMode('setPin');
   }, []);
@@ -109,6 +111,7 @@ export default function WorkModeScreen() {
   const openVerifyPin = useCallback((b: PosMyBusinessesRow) => {
     setSelected(b);
     setPin('');
+    setPinConfirm('');
     setPinError(null);
     setMode('verifyPin');
   }, []);
@@ -116,6 +119,7 @@ export default function WorkModeScreen() {
   const cancelPin = useCallback(() => {
     setMode('list');
     setPin('');
+    setPinConfirm('');
     setPinError(null);
     setSelected(null);
   }, []);
@@ -134,6 +138,10 @@ export default function WorkModeScreen() {
 
   const handleSetPin = useCallback(async () => {
     if (!selected) return;
+    if (pin !== pinConfirm) {
+      setPinError(t('workMode.errorPinMismatch'));
+      return;
+    }
     setSubmitting(true);
     setPinError(null);
 
@@ -164,7 +172,7 @@ export default function WorkModeScreen() {
           setPinError(t('workMode.errorDb'));
       }
     }
-  }, [selected, pin, navigateToPosHome, t]);
+  }, [selected, pin, pinConfirm, navigateToPosHome, t]);
 
   const handleVerifyPin = useCallback(async () => {
     if (!selected) return;
@@ -239,70 +247,112 @@ export default function WorkModeScreen() {
     </View>
   );
 
-  const renderPinForm = () => (
-    <View style={styles.pinContainer}>
-      {selected ? (
-        <Text style={[styles.pinBusiness, { color: c.textSecondary }]}>
-          {selected.business_name}
+  const renderPinForm = () => {
+    // Disabled logic differs by mode:
+    //   setPin    — both fields must be ≥4 digits and match
+    //   verifyPin — only the first field needs ≥4 digits (no confirmation)
+    const isReady =
+      mode === 'setPin'
+        ? pin.length >= 4 && pin === pinConfirm && pinConfirm.length >= 4
+        : pin.length >= 4;
+    const confirmDisabled = submitting || !isReady;
+
+    return (
+      <View style={styles.pinContainer}>
+        {selected ? (
+          <Text style={[styles.pinBusiness, { color: c.textSecondary }]}>
+            {selected.business_name}
+          </Text>
+        ) : null}
+        <Text style={[styles.pinSubtitle, { color: c.textTertiary }]}>
+          {t('workMode.pinSubtitle')}
         </Text>
-      ) : null}
-      <Text style={[styles.pinSubtitle, { color: c.textTertiary }]}>
-        {t('workMode.pinSubtitle')}
-      </Text>
-      <TextInput
-        ref={pinRef}
-        value={pin}
-        onChangeText={(v) => {
-          setPinError(null);
-          setPin(v.replace(/[^0-9]/g, '').slice(0, 6));
-        }}
-        keyboardType="number-pad"
-        maxLength={6}
-        secureTextEntry
-        placeholder={t('workMode.pinPlaceholder')}
-        placeholderTextColor={c.textTertiary}
-        style={[
-          styles.pinInput,
-          {
-            color: c.textPrimary,
-            backgroundColor: c.bgSurface,
-            borderColor: pinError ? c.danger : c.borderSubtle,
-          },
-        ]}
-        returnKeyType="done"
-        onSubmitEditing={mode === 'setPin' ? handleSetPin : handleVerifyPin}
-      />
-      {pinError ? (
-        <Text style={[styles.pinError, { color: c.danger }]}>{pinError}</Text>
-      ) : null}
-      <Pressable
-        onPress={mode === 'setPin' ? handleSetPin : handleVerifyPin}
-        disabled={submitting || pin.length < 4}
-        style={({ pressed }) => [
-          styles.pinConfirmButton,
-          { backgroundColor: c.brand },
-          (submitting || pin.length < 4) && { opacity: 0.5 },
-          pressed && { opacity: 0.75 },
-        ]}
-        accessibilityRole="button"
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.pinConfirmLabel}>{t('workMode.pinConfirm')}</Text>
+
+        {/* Primary PIN field */}
+        <TextInput
+          ref={pinRef}
+          value={pin}
+          onChangeText={(v) => {
+            setPinError(null);
+            setPin(v.replace(/[^0-9]/g, '').slice(0, 6));
+          }}
+          keyboardType="number-pad"
+          maxLength={6}
+          secureTextEntry
+          placeholder={t('workMode.pinPlaceholder')}
+          placeholderTextColor={c.textTertiary}
+          style={[
+            styles.pinInput,
+            {
+              color: c.textPrimary,
+              backgroundColor: c.bgSurface,
+              borderColor: pinError ? c.danger : c.borderSubtle,
+            },
+          ]}
+          returnKeyType="done"
+          onSubmitEditing={mode === 'setPin' ? handleSetPin : handleVerifyPin}
+        />
+
+        {/* Confirmation field — setPin only */}
+        {mode === 'setPin' && (
+          <TextInput
+            value={pinConfirm}
+            onChangeText={(v) => {
+              setPinError(null);
+              setPinConfirm(v.replace(/[^0-9]/g, '').slice(0, 6));
+            }}
+            keyboardType="number-pad"
+            maxLength={6}
+            secureTextEntry
+            placeholder={t('workMode.pinConfirmPlaceholder')}
+            placeholderTextColor={c.textTertiary}
+            style={[
+              styles.pinInput,
+              {
+                color: c.textPrimary,
+                backgroundColor: c.bgSurface,
+                borderColor: pinError ? c.danger : c.borderSubtle,
+              },
+            ]}
+            returnKeyType="done"
+            onSubmitEditing={handleSetPin}
+          />
         )}
-      </Pressable>
-      <Pressable
-        onPress={cancelPin}
-        style={styles.pinCancelButton}
-        accessibilityRole="button"
-      >
-        <Text style={[styles.pinCancelLabel, { color: c.textSecondary }]}>
-          {t('workMode.pinCancel')}
-        </Text>
-      </Pressable>
-    </View>
-  );
+
+        {pinError ? (
+          <Text style={[styles.pinError, { color: c.danger }]}>{pinError}</Text>
+        ) : null}
+
+        <Pressable
+          onPress={mode === 'setPin' ? handleSetPin : handleVerifyPin}
+          disabled={confirmDisabled}
+          style={({ pressed }) => [
+            styles.pinConfirmButton,
+            { backgroundColor: c.brand },
+            confirmDisabled && { opacity: 0.5 },
+            pressed && { opacity: 0.75 },
+          ]}
+          accessibilityRole="button"
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.pinConfirmLabel}>{t('workMode.pinConfirm')}</Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          onPress={cancelPin}
+          style={styles.pinCancelButton}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.pinCancelLabel, { color: c.textSecondary }]}>
+            {t('workMode.pinCancel')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   const renderList = () => {
     if (loading) {
