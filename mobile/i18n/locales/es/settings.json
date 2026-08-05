@@ -136,7 +136,11 @@
     "errorPayment": "Pago fallido. Inténtalo de nuevo.",
     "errorMarkPaid": "Pago confirmado pero no se pudo actualizar la orden. Contacta soporte.",
     "errorNotSucceeded": "Pago no completado ({{status}}). Inténtalo de nuevo.",
-    "errorAlreadyPaid": "Esta orden ya fue pagada."
+    "errorAlreadyPaid": "Esta orden ya fue pagada.",
+    "staffDetailA11y": "Ver detalles del mesero para {{name}}",
+    "staffDetailNoDetails": "Aún no se han agregado detalles.",
+    "staffDetailProUpsell": "Los detalles del artículo están disponibles en el plan Pro.",
+    "staffDetailProUpsellTitle": "Función Pro"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

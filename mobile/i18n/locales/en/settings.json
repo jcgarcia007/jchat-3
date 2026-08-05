@@ -136,7 +136,11 @@
     "errorPayment": "Payment failed. Please try again.",
     "errorMarkPaid": "Payment confirmed but couldn't update the order. Contact support.",
     "errorNotSucceeded": "Payment not completed ({{status}}). Please try again.",
-    "errorAlreadyPaid": "This order has already been paid."
+    "errorAlreadyPaid": "This order has already been paid.",
+    "staffDetailA11y": "View staff details for {{name}}",
+    "staffDetailNoDetails": "No staff details added yet.",
+    "staffDetailProUpsellTitle": "Pro Feature",
+    "staffDetailProUpsell": "Item details are available on the Pro plan."
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

@@ -20,6 +20,8 @@ export interface PosMyBusinessesRow {
   employee_id: string;
   role: string;
   has_pin: boolean;
+  /** Subscription plan of the business ('pro', 'basic', etc.). Used to gate Pro features in the POS. */
+  plan: string | null;
 }
 
 export type PosSetPinError =

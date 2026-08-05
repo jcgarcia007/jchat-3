@@ -131,6 +131,7 @@ export default function WorkModeScreen() {
         businessId: b.business_id,
         businessName: b.business_name,
         employeeId: b.employee_id,
+        plan: b.plan ?? null,
       });
     },
     [navigation],

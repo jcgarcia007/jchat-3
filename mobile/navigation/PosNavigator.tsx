@@ -41,12 +41,13 @@ import type { SettingsStackParamList } from './SettingsStack';
  * for their navigation / route types.
  */
 export type PosStackParamList = {
-  PosHome: { businessId: string; businessName: string; employeeId: string };
+  PosHome: { businessId: string; businessName: string; employeeId: string; plan: string | null };
   PosOrder: {
     businessId: string;
     businessName: string;
     tableId: string;
     tableLabel: string;
+    plan: string | null;
   };
   /** In-person payment for an open tab on a table (C2b). */
   PosCheckout: {
@@ -97,7 +98,7 @@ type PosRootRoute = RouteProp<SettingsStackParamList, 'PosRoot'>;
  */
 export default function PosNavigator(): React.ReactElement {
   const { params } = useRoute<PosRootRoute>();
-  const { businessId, businessName, employeeId } = params;
+  const { businessId, businessName, employeeId, plan } = params;
 
   // Memoized so the provider doesn't re-mount on parent re-renders.
   const tokenProvider = useCallback(
@@ -113,7 +114,7 @@ export default function PosNavigator(): React.ReactElement {
         <PosStack.Screen
           name="PosHome"
           component={PosHomeScreen}
-          initialParams={{ businessId, businessName, employeeId }}
+          initialParams={{ businessId, businessName, employeeId, plan }}
         />
         <PosStack.Screen name="PosOrder" component={PosOrderScreen} />
         {/* PosCheckout must be inside this navigator (needs useStripeTerminal) */}

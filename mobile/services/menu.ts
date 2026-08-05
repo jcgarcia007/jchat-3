@@ -28,6 +28,10 @@ export interface MenuItem {
   photo_url: string | null;
   /** Primary photo URL (supersedes photo_url). Use `image_url ?? photo_url` for display. */
   image_url: string | null;
+  /** Internal staff notes (primary language). Shown only in the POS to help staff answer customer questions. */
+  staff_details: string | null;
+  /** Internal staff notes (secondary language / alternate locale). Use language-adaptive display. */
+  staff_details_alt: string | null;
   dietary_tags: string[];
   id_required: boolean;
   badge: 'best_seller' | 'new' | 'hot' | null;

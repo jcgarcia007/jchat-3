@@ -35,6 +35,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconCheck,
   IconChevronLeft,
+  IconInfoCircle,
   IconMinus,
   IconPlus,
   IconShoppingCart,
@@ -147,15 +148,21 @@ function TabPill({
  * One card in the 2-column menu grid.
  * Shows photo (or initial-letter placeholder) on top; name + price overlaid at
  * the bottom with a dark scrim. Same tap behavior as the old list row.
+ * An ⓘ button in the top-right corner opens staff details (Pro only).
  */
 function MenuItemCard({
   item,
   onPress,
+  onInfoPress,
+  isPro,
 }: {
   item: MenuItem;
   onPress: (item: MenuItem) => void;
+  onInfoPress: (item: MenuItem) => void;
+  isPro: boolean;
 }) {
   const c = useThemeColors();
+  const { t } = useTranslation('settings');
   // Prefer image_url (newer column), fall back to photo_url.
   const photoUri: string | null = item.image_url ?? item.photo_url ?? null;
 
@@ -201,6 +208,18 @@ function MenuItemCard({
             )}
           </View>
         </View>
+
+        {/* ⓘ info button — top-right corner, separate tap zone.
+            Always visible (dimmed when not Pro) to motivate upgrade. */}
+        <Pressable
+          onPress={() => onInfoPress(item)}
+          style={[styles.cardInfoBtn, !isPro && styles.cardInfoBtnDimmed]}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={t('pos.staffDetailA11y', { name: item.name })}
+        >
+          <IconInfoCircle size={16} color="#fff" strokeWidth={2} />
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -535,11 +554,14 @@ function ModifierSheet({
 
 export default function PosOrderScreen() {
   const c = useThemeColors();
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<PosOrderNav>();
   const route = useRoute<PosOrderRoute>();
-  const { businessId, businessName, tableId, tableLabel } = route.params;
+  const { businessId, businessName, tableId, tableLabel, plan } = route.params;
+
+  // ── Plan features ───────────────────────────────────────────────────────────
+  const isPro = plan === 'pro';
 
   // ── Menu state ──────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -554,6 +576,9 @@ export default function PosOrderScreen() {
 
   // ── Modifier sheet state ────────────────────────────────────────────────────
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
+
+  // ── Staff detail sheet state ─────────────────────────────────────────────────
+  const [staffDetailItem, setStaffDetailItem] = useState<MenuItem | null>(null);
 
   // ── Submit state ────────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false);
@@ -738,6 +763,30 @@ export default function PosOrderScreen() {
     [modifierItem, addWithModifiers],
   );
 
+  // ── Staff detail callbacks ───────────────────────────────────────────────────
+
+  const handleInfoPress = useCallback(
+    (item: MenuItem) => {
+      if (!isPro) {
+        Alert.alert(t('pos.staffDetailProUpsellTitle'), t('pos.staffDetailProUpsell'));
+        return;
+      }
+      setStaffDetailItem(item);
+    },
+    [isPro, t],
+  );
+
+  const closeStaffDetail = useCallback(() => setStaffDetailItem(null), []);
+
+  /** Language-adaptive staff detail text. Re-computed when item or locale changes. */
+  const resolvedStaffDetail = useMemo<string | null>(() => {
+    if (!staffDetailItem) return null;
+    const isEs = i18n.language.startsWith('es');
+    return isEs
+      ? (staffDetailItem.staff_details_alt ?? staffDetailItem.staff_details)
+      : (staffDetailItem.staff_details ?? staffDetailItem.staff_details_alt);
+  }, [staffDetailItem, i18n.language]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
@@ -814,7 +863,12 @@ export default function PosOrderScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           renderItem={({ item }) => (
-            <MenuItemCard item={item} onPress={handleItemPress} />
+            <MenuItemCard
+              item={item}
+              onPress={handleItemPress}
+              onInfoPress={handleInfoPress}
+              isPro={isPro}
+            />
           )}
           columnWrapperStyle={styles.menuGridRow}
           style={styles.menuList}
@@ -915,6 +969,53 @@ export default function PosOrderScreen() {
               onClose={handleModClose}
               onAdd={handleModAdd}
             />
+          )}
+        </View>
+      </Modal>
+
+      {/* ── Staff Detail Modal ───────────────────────────────────────────────── */}
+      <Modal
+        visible={staffDetailItem !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeStaffDetail}
+        statusBarTranslucent
+      >
+        <View style={styles.modOverlay}>
+          <Pressable style={styles.modBackdrop} onPress={closeStaffDetail} />
+          {staffDetailItem !== null && (
+            <View style={[styles.modSheet, { backgroundColor: c.bgSurface }]}>
+              {/* Handle bar */}
+              <View style={[styles.modHandle, { backgroundColor: c.borderSubtle }]} />
+
+              {/* Header: item name + close button */}
+              <View style={styles.modHeader}>
+                <View style={styles.modTitleBlock}>
+                  <Text style={[styles.modItemName, { color: c.textPrimary }]}>
+                    {staffDetailItem.name}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={closeStaffDetail}
+                  style={styles.modCloseBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                >
+                  <IconX size={20} color={c.textSecondary} strokeWidth={2} />
+                </Pressable>
+              </View>
+
+              {/* Staff detail content */}
+              <ScrollView
+                style={styles.detailScroll}
+                contentContainerStyle={styles.detailScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={[styles.staffDetailText, { color: c.textPrimary }]}>
+                  {resolvedStaffDetail ?? t('pos.staffDetailNoDetails')}
+                </Text>
+              </ScrollView>
+            </View>
           )}
         </View>
       </Modal>
@@ -1232,4 +1333,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modAddBtnText: { fontSize: 16, fontWeight: '700' },
+
+  // ── ⓘ info button (top-right of each menu card) ──────────────────────────────
+  cardInfoBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** Dimmed state — shown for non-Pro users to motivate upgrade. */
+  cardInfoBtnDimmed: {
+    opacity: 0.45,
+  },
+
+  // ── Staff detail sheet ────────────────────────────────────────────────────────
+  detailScroll: {},
+  detailScrollContent: {
+    paddingHorizontal: H_PAD,
+    paddingBottom: 32,
+  },
+  staffDetailText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
 });

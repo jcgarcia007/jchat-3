@@ -62,7 +62,7 @@ export default function PosHomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<PosHomeNav>();
   const route = useRoute<PosHomeRoute>();
-  const { businessId, businessName } = route.params;
+  const { businessId, businessName, plan } = route.params;
 
   const [tables, setTables] = useState<PosTableRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +103,7 @@ export default function PosHomeScreen() {
         businessName,
         tableId: table.id,
         tableLabel: table.label,
+        plan,
       });
     },
     [navigation, businessId, businessName],
