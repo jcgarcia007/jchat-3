@@ -14,16 +14,15 @@ import SettingsScreen from '../screens/settings/SettingsScreen';
 import PrivacyScreen from '../screens/settings/PrivacyScreen';
 import PricingScreen from '../screens/settings/PricingScreen';
 import WorkModeScreen from '../screens/settings/WorkModeScreen';
-import PosHomeScreen from '../screens/settings/PosHomeScreen';
-import PosOrderScreen from '../screens/settings/PosOrderScreen';
+import PosNavigator from './PosNavigator';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Privacy: undefined;
   Pricing: undefined;
   WorkMode: undefined;
-  PosHome: { businessId: string; businessName: string; employeeId: string };
-  PosOrder: { businessId: string; businessName: string; tableId: string; tableLabel: string };
+  /** Entry point for the entire POS flow. Renders PosNavigator (nested stack + StripeTerminalProvider). */
+  PosRoot: { businessId: string; businessName: string; employeeId: string };
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -37,8 +36,7 @@ export default function SettingsStack() {
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen name="WorkMode" component={WorkModeScreen} />
-      <Stack.Screen name="PosHome" component={PosHomeScreen} />
-      <Stack.Screen name="PosOrder" component={PosOrderScreen} />
+      <Stack.Screen name="PosRoot" component={PosNavigator} />
     </Stack.Navigator>
   );
 }

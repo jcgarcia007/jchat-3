@@ -26,10 +26,10 @@ import { IconChevronLeft, IconLayoutGrid } from '@tabler/icons-react-native';
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { posTables, type PosTableRow } from '../../services/pos';
-import type { SettingsStackParamList } from '../../navigation/SettingsStack';
+import type { PosStackParamList } from '../../navigation/PosNavigator';
 
-type PosHomeNav = NativeStackNavigationProp<SettingsStackParamList, 'PosHome'>;
-type PosHomeRoute = RouteProp<SettingsStackParamList, 'PosHome'>;
+type PosHomeNav = NativeStackNavigationProp<PosStackParamList, 'PosHome'>;
+type PosHomeRoute = RouteProp<PosStackParamList, 'PosHome'>;
 
 export default function PosHomeScreen() {
   const c = useThemeColors();

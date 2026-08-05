@@ -86,6 +86,25 @@ const config: ExpoConfig = {
         enableGooglePay: false,
       },
     ],
+    // Stripe Terminal: physical card reader support for the employee POS (C2a).
+    // Adds iOS Info.plist keys and Android permissions via prebuild.
+    //   iOS:     NSBluetoothAlwaysUsageDescription, NSBluetoothPeripheralUsageDescription,
+    //            NSLocalNetworkUsagePermission, UIBackgroundModes: bluetooth-central
+    //   Android: ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BLUETOOTH_CONNECT, BLUETOOTH_SCAN
+    [
+      '@stripe/stripe-terminal-react-native',
+      {
+        bluetoothBackgroundMode: true,
+        locationWhenInUsePermission:
+          'JChat uses your location to show nearby venues on the map and to connect to card readers.',
+        bluetoothAlwaysUsagePermission:
+          'JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.',
+        bluetoothPeripheralPermission:
+          'JChat uses Bluetooth to communicate with card readers for in-person payments.',
+        localNetworkUsagePermission:
+          'JChat uses the local network to connect to WiFi-enabled card readers.',
+      },
+    ],
     'expo-web-browser',
     'expo-localization',
     '@react-native-community/datetimepicker',
@@ -98,7 +117,7 @@ const config: ExpoConfig = {
         // locationAlwaysAndWhenInUsePermission + UIBackgroundModes when Stage 4
         // wires real background geofencing (see services/geofence.ts TODO).
         locationWhenInUsePermission:
-          'JChat uses your location to show nearby venues on the map.',
+          'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.',
       },
     ],
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.

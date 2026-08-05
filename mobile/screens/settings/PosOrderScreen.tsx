@@ -49,12 +49,12 @@ import {
 import type { MenuItem, MenuCategory, ModifierGroup } from '../../services/menu';
 import { posCreateOrder } from '../../services/pos';
 import type { PosOrderItem } from '../../services/pos';
-import type { SettingsStackParamList } from '../../navigation/SettingsStack';
+import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
-type PosOrderNav = NativeStackNavigationProp<SettingsStackParamList, 'PosOrder'>;
-type PosOrderRoute = RouteProp<SettingsStackParamList, 'PosOrder'>;
+type PosOrderNav = NativeStackNavigationProp<PosStackParamList, 'PosOrder'>;
+type PosOrderRoute = RouteProp<PosStackParamList, 'PosOrder'>;
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 

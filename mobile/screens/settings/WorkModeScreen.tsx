@@ -127,7 +127,7 @@ export default function WorkModeScreen() {
   const navigateToPosHome = useCallback(
     (b: PosMyBusinessesRow) => {
       setMode('list');
-      navigation.navigate('PosHome', {
+      navigation.navigate('PosRoot', {
         businessId: b.business_id,
         businessName: b.business_name,
         employeeId: b.employee_id,
