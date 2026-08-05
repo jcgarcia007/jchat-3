@@ -739,10 +739,19 @@ async function handleWebhook(req: Request): Promise<Response> {
         break;
       }
 
-      const stripeSubId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id ?? null;
+      // El id de la suscripción vive en invoice.subscription (API vieja) o en
+      // invoice.parent.subscription_details.subscription (API nueva, 2025+).
+      const invSub = invoice as unknown as {
+        subscription?: string | { id: string } | null;
+        parent?: {
+          subscription_details?: {
+            subscription?: string | { id: string } | null;
+          } | null;
+        } | null;
+      };
+      const rawSub =
+        invSub.subscription ?? invSub.parent?.subscription_details?.subscription ?? null;
+      const stripeSubId = typeof rawSub === "string" ? rawSub : rawSub?.id ?? null;
 
       let periodEnd: string | null = null;
       if (stripeSubId) {
