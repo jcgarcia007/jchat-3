@@ -51,6 +51,7 @@ import {
   IconAlertTriangle,
   IconFish,
   IconAdjustments,
+  IconLock,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
@@ -104,6 +105,10 @@ interface MenuItem {
   low_stock_threshold: number | null;
   options: ItemOptions | null;
   sort: number;
+  /** Internal staff notes (not shown to customers). Pro-gated. */
+  staff_details: string | null;
+  /** Alt-language variant of staff_details. */
+  staff_details_alt: string | null;
 }
 
 interface CategoryForm {
@@ -126,6 +131,10 @@ interface ItemForm {
   stock_count: string;
   low_stock_threshold: string;
   options: ItemOptions;
+  /** Internal staff notes (Pro-gated). */
+  staff_details: string;
+  /** Alt-language variant of staff_details. */
+  staff_details_alt: string;
 }
 
 // Photo upload types
@@ -234,6 +243,8 @@ const EMPTY_ITEM_FORM: ItemForm = {
   stock_count: "",
   low_stock_threshold: "",
   options: { sizes: [], extras: [] },
+  staff_details: "",
+  staff_details_alt: "",
 };
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
@@ -295,6 +306,8 @@ const DEMO_ITEMS: MenuItem[] = [
       ],
     },
     sort: 0,
+    staff_details: null,
+    staff_details_alt: null,
   },
   {
     id: "demo-item-2",
@@ -313,6 +326,8 @@ const DEMO_ITEMS: MenuItem[] = [
     low_stock_threshold: null,
     options: { sizes: [], extras: [] },
     sort: 1,
+    staff_details: null,
+    staff_details_alt: null,
   },
   {
     id: "demo-item-3",
@@ -337,6 +352,8 @@ const DEMO_ITEMS: MenuItem[] = [
       ],
     },
     sort: 0,
+    staff_details: null,
+    staff_details_alt: null,
   },
 ];
 
@@ -1204,6 +1221,7 @@ function ItemEditorModal({
   onSave,
   onCancel,
   saving,
+  isPro,
 }: {
   item: ItemForm;
   categoryId: string;
@@ -1212,6 +1230,8 @@ function ItemEditorModal({
   onSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[], groups: DashModifierGroup[]) => void;
   onCancel: () => void;
   saving: boolean;
+  /** True when the business is on the Pro plan — unlocks Pro-gated fields. */
+  isPro: boolean;
 }) {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
@@ -1775,6 +1795,133 @@ function ItemEditorModal({
               onChange={(v) => set("id_required", v)}
               label={t("menuItemIdRequiredToggle")}
             />
+          </div>
+
+          {/* Staff notes (Pro-gated) ─────────────────────────────────────────── */}
+          <div>
+            {/* Label row with Pro badge */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--db-text-tertiary)",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {t("menuItemStaffDetailsLabel")}
+              </span>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  background: "var(--db-warning)",
+                  color: "#fff",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                }}
+              >
+                {t("menuItemStaffDetailsProBadge")}
+              </span>
+            </div>
+
+            {/* Primary language textarea */}
+            <textarea
+              value={form.staff_details}
+              onChange={(e) => set("staff_details", e.target.value)}
+              placeholder={t("menuItemStaffDetailsPlaceholder")}
+              disabled={!isPro}
+              rows={3}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-border)",
+                background: isPro ? "var(--db-bg-elevated)" : "var(--db-bg-base)",
+                color: "var(--db-text-primary)",
+                fontSize: "14px",
+                resize: "vertical",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+                outline: "none",
+                opacity: isPro ? 1 : 0.5,
+                cursor: isPro ? "auto" : "not-allowed",
+              }}
+            />
+
+            {/* Alt language textarea */}
+            <div style={{ marginTop: 8 }}>
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "var(--db-text-tertiary)",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                {t("menuItemStaffDetailsAltLabel")}
+              </span>
+              <textarea
+                value={form.staff_details_alt}
+                onChange={(e) => set("staff_details_alt", e.target.value)}
+                placeholder={t("menuItemStaffDetailsPlaceholder")}
+                disabled={!isPro}
+                rows={2}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1px solid var(--db-border)",
+                  background: isPro ? "var(--db-bg-elevated)" : "var(--db-bg-base)",
+                  color: "var(--db-text-primary)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  outline: "none",
+                  opacity: isPro ? 1 : 0.5,
+                  cursor: isPro ? "auto" : "not-allowed",
+                }}
+              />
+            </div>
+
+            {/* Upsell (non-Pro only) */}
+            {!isPro && (
+              <p
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  fontSize: "12px",
+                  color: "var(--db-warning)",
+                  fontWeight: 500,
+                  marginTop: 6,
+                  marginBottom: 0,
+                }}
+              >
+                <IconLock size={13} />
+                {t("menuItemStaffDetailsProUpsell")}
+              </p>
+            )}
+
+            {/* Help text (always visible) */}
+            <p
+              style={{
+                fontSize: "11px",
+                color: "var(--db-text-tertiary)",
+                marginTop: isPro ? 6 : 4,
+                marginBottom: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              {t("menuItemStaffDetailsHint")}
+            </p>
           </div>
 
           {/* Divider */}
@@ -2503,6 +2650,7 @@ function CategorySection({
   activeItemEdit,
   onItemSave,
   onItemEditCancel,
+  isPro,
 }: {
   category: MenuCategory;
   allCategories: MenuCategory[];
@@ -2523,6 +2671,8 @@ function CategorySection({
   activeItemEdit: { item: ItemForm; itemId: string | null; categoryId: string } | null;
   onItemSave: (form: ItemForm, staged: StagedPhotoFile[], toDelete: SavedPhoto[], groups: DashModifierGroup[]) => void;
   onItemEditCancel: () => void;
+  /** True when the business is on the Pro plan — unlocks Pro-gated fields. */
+  isPro: boolean;
 }) {
   const t = useTranslations("dashboardCommon");
   const [collapsed, setCollapsed] = useState(false);
@@ -2721,6 +2871,7 @@ function CategorySection({
           onSave={onItemSave}
           onCancel={onItemEditCancel}
           saving={savingItem}
+          isPro={isPro}
         />
       )}
     </div>
@@ -2737,6 +2888,8 @@ export default function MenuPage() {
   // Category card selector: null = "Todas" (show every category).
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
+  /** Plan of the active business — "pro" enables Pro-gated fields. */
+  const [bizPlan, setBizPlan] = useState<string | null>(null);
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [togglingMenu, setTogglingMenu] = useState(false);
   const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
@@ -2850,6 +3003,7 @@ export default function MenuPage() {
       setNoBusiness(false);
       const bid: string = res.business.id;
       setBusinessId(bid);
+      setBizPlan(res.business.plan);
       setMenuEnabled(res.business.menu_enabled ?? false);
       const mode = res.business.menu_mode ?? "none";
       setMenuMode(mode);
@@ -2887,7 +3041,7 @@ export default function MenuPage() {
 
       setCategories((catsResult.data as MenuCategory[]) ?? []);
       // Normalize options to guard against DB rows where options is {} or has null arrays
-      const rawItems = (itemsResult.data as MenuItem[]) ?? [];
+      const rawItems = (itemsResult.data as unknown as MenuItem[]) ?? [];
       setItems(rawItems.map((item) => ({
         ...item,
         options: item.options
@@ -3261,6 +3415,8 @@ export default function MenuPage() {
         low_stock_threshold:
           item.low_stock_threshold != null ? String(item.low_stock_threshold) : "",
         options: item.options ?? { sizes: [], extras: [] },
+        staff_details: item.staff_details ?? "",
+        staff_details_alt: item.staff_details_alt ?? "",
       },
       itemId: item.id,
       categoryId: item.category_id,
@@ -3297,6 +3453,9 @@ export default function MenuPage() {
             ? parseInt(form.low_stock_threshold, 10)
             : null,
         options: form.options,
+        // Staff notes (Pro-gated; always included in payload — DB stores null when blank).
+        staff_details: form.staff_details.trim() || null,
+        staff_details_alt: form.staff_details_alt.trim() || null,
       };
 
       if (!isSupabaseConfigured) {
@@ -4643,6 +4802,7 @@ export default function MenuPage() {
               }
               onItemSave={handleSaveItem}
               onItemEditCancel={() => setActiveItemEdit(null)}
+              isPro={bizPlan === "pro"}
             />
           ))}
         </div>
