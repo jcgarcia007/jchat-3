@@ -109,7 +109,14 @@
     "errorNoValidItems": "La orden no tiene artículos válidos.",
     "errorNoAccess": "Ya no tienes acceso al POS.",
     "errorDb": "Algo salió mal. Inténtalo de nuevo.",
-    "errorNotConfigured": "Servicio no disponible."
+    "errorNotConfigured": "Servicio no disponible.",
+    "errorModifier": "Selección de modificadores inválida. Revísala e inténtalo de nuevo.",
+    "modLoading": "Cargando opciones…",
+    "modRequired": "Requerido",
+    "modChooseMin": "Elige al menos {{min}}",
+    "modChooseUpTo": "Elige hasta {{max}}",
+    "modAdd": "Agregar a la orden",
+    "modLivePrice": "Total: {{price}}"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

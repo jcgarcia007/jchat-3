@@ -109,7 +109,14 @@
     "errorNoValidItems": "The order has no valid items.",
     "errorNoAccess": "You no longer have POS access.",
     "errorDb": "Something went wrong. Please try again.",
-    "errorNotConfigured": "Service unavailable."
+    "errorNotConfigured": "Service unavailable.",
+    "errorModifier": "Invalid modifier selection. Please review and try again.",
+    "modLoading": "Loading options…",
+    "modRequired": "Required",
+    "modChooseMin": "Choose at least {{min}}",
+    "modChooseUpTo": "Choose up to {{max}}",
+    "modAdd": "Add to Order",
+    "modLivePrice": "Total: {{price}}"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

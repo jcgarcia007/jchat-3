@@ -1,24 +1,23 @@
 /**
  * JChat 3.0 — POS Order Screen
  *
- * Reached after tapping a table in PosHomeScreen.
- * Loads the published menu for the business, lets the waiter build a local
- * cart (tap-to-add, qty +/−, optional note per item), then submits the order
- * via posCreateOrder() — no modifiers at this stage (Task 3.x part B).
+ * Reached from PosHomeScreen after tapping a table.
+ * Shows category tabs + menu item list. Tapping an item either:
+ *   • adds it to the cart directly (no modifiers), or
+ *   • opens the ModifierSheet modal to configure options first.
  *
- * Layout
- * ──────
- *   ┌─ Header (tableLabel + back) ─────────────────────┐
- *   │ Category tab bar (horizontal scroll)             │
- *   │ Menu item list            (flex 1 — FlatList)    │
- *   └─ Cart panel (always visible at bottom) ──────────┘
+ * Cart deduplication: items with the same modifiers share a line (qty++);
+ * items with different modifier combos get separate cart lines.
+ *
+ * handleSubmit sends the full order (including options) via posCreateOrder.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -33,48 +32,88 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  IconCheck,
   IconChevronLeft,
   IconMinus,
   IconPlus,
   IconShoppingCart,
+  IconX,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { getMenu, type MenuCategory, type MenuItem } from '../../services/menu';
 import {
-  posCreateOrder,
-  type PosCreateOrderError,
-  type PosOrderItem,
-} from '../../services/pos';
+  getMenu,
+  getItemModifierGroups,
+} from '../../services/menu';
+import type { MenuItem, MenuCategory, ModifierGroup } from '../../services/menu';
+import { posCreateOrder } from '../../services/pos';
+import type { PosOrderItem } from '../../services/pos';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 
-// ─── Local types ──────────────────────────────────────────────────────────────
+// ─── Navigation types ─────────────────────────────────────────────────────────
 
+type PosOrderNav = NativeStackNavigationProp<SettingsStackParamList, 'PosOrder'>;
+type PosOrderRoute = RouteProp<SettingsStackParamList, 'PosOrder'>;
+
+// ─── Internal types ───────────────────────────────────────────────────────────
+
+/** One selected modifier group ready for the payload. */
+interface PosModifierSelection {
+  group_id: string;
+  group_label: string;
+  choice_labels: string[];
+}
+
+/** One line in the cart. */
 interface CartItem {
+  /** Deterministic key — menuItemId alone when no modifiers, composite otherwise. */
+  cartKey: string;
   menuItemId: string;
   name: string;
+  /** Base price without modifier surcharges (cents). */
+  basePriceCents: number;
+  /** Sum of all selected modifier surcharges (cents). */
+  modifierExtraCents: number;
+  /** basePriceCents + modifierExtraCents — displayed price per unit. */
   priceCents: number;
   qty: number;
-  note: string;
+  /** Modifier selections (empty array when none). */
+  modifiers: PosModifierSelection[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Format cents as a locale-agnostic price string (e.g. "$12.50"). */
 function formatPrice(cents: number): string {
-  return '$' + (cents / 100).toFixed(2);
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+/**
+ * Build a deterministic cart key.
+ * Items with no modifiers use the menuItemId.
+ * Items with modifiers encode group IDs + sorted choice labels so that the same
+ * combination always maps to the same key regardless of selection order.
+ */
+function buildCartKey(menuItemId: string, mods: PosModifierSelection[]): string {
+  if (mods.length === 0) return menuItemId;
+  const canonical = [...mods]
+    .sort((a, b) => a.group_id.localeCompare(b.group_id))
+    .map((m) => `${m.group_id}:${[...m.choice_labels].sort().join(',')}`)
+    .join('|');
+  return `${menuItemId}|${canonical}`;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-/** Horizontal tab pill for a category */
+/** Single category pill for the horizontal tab bar. */
 function TabPill({
   label,
-  selected,
+  active,
   onPress,
 }: {
   label: string;
-  selected: boolean;
+  active: boolean;
   onPress: () => void;
 }) {
   const c = useThemeColors();
@@ -83,18 +122,18 @@ function TabPill({
       onPress={onPress}
       style={[
         styles.tabPill,
-        selected
-          ? { backgroundColor: c.brand }
-          : { backgroundColor: c.bgSurface, borderColor: c.borderSubtle, borderWidth: 1 },
+        {
+          backgroundColor: active ? c.brand : c.bgSurface,
+          borderColor: active ? c.brand : c.borderSubtle,
+        },
       ]}
       accessibilityRole="tab"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected: active }}
     >
       <Text
         style={[
-          styles.tabPillLabel,
-          { color: selected ? '#fff' : c.textSecondary },
-          selected && { fontWeight: '600' },
+          styles.tabPillText,
+          { color: active ? '#fff' : c.textSecondary },
         ]}
       >
         {label}
@@ -103,27 +142,27 @@ function TabPill({
   );
 }
 
-/** A single menu item row in the main list */
+/** One row in the menu item list. */
 function MenuItemRow({
   item,
   onPress,
 }: {
   item: MenuItem;
-  onPress: () => void;
+  onPress: (item: MenuItem) => void;
 }) {
   const c = useThemeColors();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onPress(item)}
       style={({ pressed }) => [
         styles.menuRow,
-        { borderBottomColor: c.borderSubtle },
-        pressed && { opacity: 0.7 },
+        { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+        pressed && { opacity: 0.72 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name} — ${formatPrice(item.price_cents)}`}
+      accessibilityLabel={item.name}
     >
-      <View style={styles.menuRowBody}>
+      <View style={styles.menuRowLeft}>
         <Text style={[styles.menuRowName, { color: c.textPrimary }]}>
           {item.name}
         </Text>
@@ -135,79 +174,87 @@ function MenuItemRow({
             {item.description}
           </Text>
         ) : null}
+        {item.has_modifiers && (
+          <Text style={[styles.menuRowModBadge, { color: c.brand }]}>
+            ✦ options
+          </Text>
+        )}
       </View>
-      <Text style={[styles.menuRowPrice, { color: c.brand }]}>
+      <Text style={[styles.menuRowPrice, { color: c.textSecondary }]}>
         {formatPrice(item.price_cents)}
       </Text>
     </Pressable>
   );
 }
 
-/** A single row in the cart panel */
+/** One line in the cart panel. */
 function CartRow({
   item,
   cartNote,
+  notePlaceholder,
   onUpdateQty,
   onUpdateNote,
 }: {
   item: CartItem;
   cartNote: string;
-  onUpdateQty: (menuItemId: string, delta: number) => void;
-  onUpdateNote: (menuItemId: string, note: string) => void;
+  notePlaceholder: string;
+  onUpdateQty: (cartKey: string, delta: number) => void;
+  onUpdateNote: (cartKey: string, note: string) => void;
 }) {
   const c = useThemeColors();
   return (
     <View style={[styles.cartRow, { borderBottomColor: c.borderSubtle }]}>
-      {/* Top row: name + line total */}
+      {/* Top row: name + modifier summary + line total */}
       <View style={styles.cartRowTop}>
-        <Text
-          numberOfLines={1}
-          style={[styles.cartRowName, { color: c.textPrimary }]}
-        >
-          {item.name}
-        </Text>
+        <View style={styles.cartRowNameBlock}>
+          <Text numberOfLines={1} style={[styles.cartRowName, { color: c.textPrimary }]}>
+            {item.name}
+          </Text>
+          {item.modifiers.length > 0 && (
+            <Text
+              numberOfLines={2}
+              style={[styles.cartModSummary, { color: c.textTertiary }]}
+            >
+              {item.modifiers
+                .map((m) => `${m.group_label}: ${m.choice_labels.join(', ')}`)
+                .join(' · ')}
+            </Text>
+          )}
+        </View>
         <Text style={[styles.cartRowTotal, { color: c.textSecondary }]}>
           {formatPrice(item.priceCents * item.qty)}
         </Text>
       </View>
-      {/* Bottom row: note input + qty controls */}
+
+      {/* Bottom row: note input + qty stepper */}
       <View style={styles.cartRowBottom}>
         <TextInput
           value={cartNote}
-          onChangeText={(v) => onUpdateNote(item.menuItemId, v)}
-          placeholder="Note…"
+          onChangeText={(v) => onUpdateNote(item.cartKey, v)}
+          placeholder={notePlaceholder}
           placeholderTextColor={c.textTertiary}
-          maxLength={200}
-          returnKeyType="done"
-          blurOnSubmit
           style={[
             styles.cartNoteInput,
-            {
-              color: c.textPrimary,
-              backgroundColor: c.bgBase,
-              borderColor: c.borderSubtle,
-            },
+            { color: c.textPrimary, borderColor: c.borderSubtle },
           ]}
+          maxLength={120}
+          returnKeyType="done"
         />
         <View style={styles.qtyControls}>
           <Pressable
-            onPress={() => onUpdateQty(item.menuItemId, -1)}
-            style={styles.qtyButton}
+            onPress={() => onUpdateQty(item.cartKey, -1)}
+            style={[styles.qtyBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
             accessibilityRole="button"
-            hitSlop={8}
           >
-            <IconMinus size={16} color={c.brand} strokeWidth={2.5} />
+            <IconMinus size={14} color={c.textSecondary} strokeWidth={2} />
           </Pressable>
-          <Text style={[styles.qtyValue, { color: c.textPrimary }]}>
-            {item.qty}
-          </Text>
+          <Text style={[styles.qtyText, { color: c.textPrimary }]}>{item.qty}</Text>
           <Pressable
-            onPress={() => onUpdateQty(item.menuItemId, 1)}
-            style={styles.qtyButton}
+            onPress={() => onUpdateQty(item.cartKey, 1)}
+            style={[styles.qtyBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
             accessibilityRole="button"
-            hitSlop={8}
           >
-            <IconPlus size={16} color={c.brand} strokeWidth={2.5} />
+            <IconPlus size={14} color={c.textSecondary} strokeWidth={2} />
           </Pressable>
         </View>
       </View>
@@ -215,10 +262,257 @@ function CartRow({
   );
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// ─── Modifier Sheet ───────────────────────────────────────────────────────────
 
-type PosOrderNav = NativeStackNavigationProp<SettingsStackParamList, 'PosOrder'>;
-type PosOrderRoute = RouteProp<SettingsStackParamList, 'PosOrder'>;
+function ModifierSheet({
+  item,
+  onClose,
+  onAdd,
+}: {
+  item: MenuItem;
+  onClose: () => void;
+  onAdd: (mods: PosModifierSelection[], extraCents: number) => void;
+}) {
+  const c = useThemeColors();
+  const { t } = useTranslation('settings');
+
+  const [groups, setGroups] = useState<ModifierGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  /** groupId → array of selected choice labels */
+  const [selections, setSelections] = useState<Record<string, string[]>>({});
+
+  // Load modifier groups on mount
+  useEffect(() => {
+    let mounted = true;
+    getItemModifierGroups(item.id)
+      .then((g) => {
+        if (mounted) setGroups(g);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [item.id]);
+
+  // Live price = base + selected modifier surcharges
+  const modifierExtraCents = useMemo(() => {
+    return groups.reduce((sum, g) => {
+      const chosen = selections[g.id] ?? [];
+      return (
+        sum +
+        g.choices
+          .filter((ch) => chosen.includes(ch.label))
+          .reduce((s, ch) => s + ch.price_cents, 0)
+      );
+    }, 0);
+  }, [groups, selections]);
+
+  const livePrice = item.price_cents + modifierExtraCents;
+
+  // All required groups satisfied?
+  const canAdd = useMemo(
+    () => groups.every((g) => (selections[g.id] ?? []).length >= g.min_select),
+    [groups, selections],
+  );
+
+  const toggleChoice = useCallback(
+    (group: ModifierGroup, label: string) => {
+      setSelections((prev) => {
+        const current = prev[group.id] ?? [];
+        if (group.type === 'single') {
+          // Radio: always select this one exclusively
+          return { ...prev, [group.id]: [label] };
+        }
+        // Multi: toggle on/off, respecting max_select
+        if (current.includes(label)) {
+          return { ...prev, [group.id]: current.filter((l) => l !== label) };
+        }
+        if (current.length >= group.max_select) {
+          return prev; // at capacity — silently ignore
+        }
+        return { ...prev, [group.id]: [...current, label] };
+      });
+    },
+    [],
+  );
+
+  const handleAdd = useCallback(() => {
+    const mods: PosModifierSelection[] = groups
+      .filter((g) => (selections[g.id] ?? []).length > 0)
+      .map((g) => ({
+        group_id: g.id,
+        group_label: g.label,
+        choice_labels: selections[g.id] ?? [],
+      }));
+    onAdd(mods, modifierExtraCents);
+  }, [groups, selections, modifierExtraCents, onAdd]);
+
+  return (
+    <View style={[styles.modSheet, { backgroundColor: c.bgSurface }]}>
+      {/* Handle bar */}
+      <View style={[styles.modHandle, { backgroundColor: c.borderSubtle }]} />
+
+      {/* Header: item name + live price + close button */}
+      <View style={styles.modHeader}>
+        <View style={styles.modTitleBlock}>
+          <Text style={[styles.modItemName, { color: c.textPrimary }]}>
+            {item.name}
+          </Text>
+          <Text style={[styles.modLivePrice, { color: c.brand }]}>
+            {t('pos.modLivePrice', { price: formatPrice(livePrice) })}
+          </Text>
+        </View>
+        <Pressable
+          onPress={onClose}
+          style={styles.modCloseBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
+          <IconX size={20} color={c.textSecondary} strokeWidth={2} />
+        </Pressable>
+      </View>
+
+      {/* Groups */}
+      {loading ? (
+        <View style={styles.modLoadingBox}>
+          <ActivityIndicator color={c.brand} />
+          <Text style={[styles.modLoadingText, { color: c.textTertiary }]}>
+            {t('pos.modLoading')}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.modScroll}
+          contentContainerStyle={styles.modScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {groups.map((group) => {
+            const chosen = selections[group.id] ?? [];
+            const isMulti = group.type === 'multi';
+            const atMax = isMulti && chosen.length >= group.max_select;
+
+            return (
+              <View key={group.id} style={styles.modGroup}>
+                {/* Group label + badges */}
+                <View style={styles.modGroupHeader}>
+                  <Text style={[styles.modGroupLabel, { color: c.textPrimary }]}>
+                    {group.label}
+                  </Text>
+                  <View style={styles.modGroupMeta}>
+                    {group.min_select > 0 && (
+                      <View style={[styles.modRequiredBadge, { backgroundColor: c.brandLight }]}>
+                        <Text style={[styles.modRequiredText, { color: c.brand }]}>
+                          {t('pos.modRequired')}
+                        </Text>
+                      </View>
+                    )}
+                    {isMulti && group.max_select > 1 && (
+                      <Text style={[styles.modGroupHint, { color: c.textTertiary }]}>
+                        {t('pos.modChooseUpTo', { max: group.max_select })}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Choices */}
+                {group.choices.map((choice) => {
+                  const isSelected = chosen.includes(choice.label);
+                  const isDisabled = !isSelected && atMax;
+
+                  return (
+                    <Pressable
+                      key={choice.label}
+                      onPress={() => toggleChoice(group, choice.label)}
+                      disabled={isDisabled}
+                      style={({ pressed }) => [
+                        styles.choiceRow,
+                        { borderBottomColor: c.borderSubtle },
+                        (pressed || isDisabled) && { opacity: 0.5 },
+                      ]}
+                      accessibilityRole={isMulti ? 'checkbox' : 'radio'}
+                      accessibilityState={{ checked: isSelected, disabled: isDisabled }}
+                      accessibilityLabel={choice.label}
+                    >
+                      {/* Indicator: radio circle or checkbox square */}
+                      {isMulti ? (
+                        <View
+                          style={[
+                            styles.checkbox,
+                            {
+                              borderColor: isSelected ? c.brand : c.borderSubtle,
+                              backgroundColor: isSelected ? c.brand : 'transparent',
+                            },
+                          ]}
+                        >
+                          {isSelected && (
+                            <IconCheck size={11} color="#fff" strokeWidth={3} />
+                          )}
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.radio,
+                            { borderColor: isSelected ? c.brand : c.borderSubtle },
+                          ]}
+                        >
+                          {isSelected && (
+                            <View style={[styles.radioDot, { backgroundColor: c.brand }]} />
+                          )}
+                        </View>
+                      )}
+
+                      <Text
+                        style={[
+                          styles.choiceLabel,
+                          { color: isDisabled ? c.textTertiary : c.textPrimary },
+                        ]}
+                      >
+                        {choice.label}
+                      </Text>
+
+                      {choice.price_cents > 0 && (
+                        <Text style={[styles.choicePrice, { color: c.textSecondary }]}>
+                          +{formatPrice(choice.price_cents)}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* Add button */}
+      <Pressable
+        onPress={handleAdd}
+        disabled={!canAdd || loading}
+        style={({ pressed }) => [
+          styles.modAddBtn,
+          { backgroundColor: canAdd && !loading ? c.brand : c.borderSubtle },
+          pressed && { opacity: 0.8 },
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canAdd || loading }}
+      >
+        <Text
+          style={[
+            styles.modAddBtnText,
+            { color: canAdd && !loading ? '#fff' : c.textTertiary },
+          ]}
+        >
+          {t('pos.modAdd')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function PosOrderScreen() {
   const c = useThemeColors();
@@ -226,163 +520,213 @@ export default function PosOrderScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<PosOrderNav>();
   const route = useRoute<PosOrderRoute>();
-  const { businessId, tableId, tableLabel } = route.params;
+  const { businessId, businessName, tableId, tableLabel } = route.params;
 
-  // ── Menu state ─────────────────────────────────────────────────────────────
+  // ── Menu state ──────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [menuLoading, setMenuLoading] = useState(true);
-  const [selectedCatId, setSelectedCatId] = useState<string | null>(null); // null = All
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  // ── Cart state ─────────────────────────────────────────────────────────────
+  // ── Cart state ──────────────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartItem[]>([]);
+  /** Notes keyed by cartKey. */
   const [notes, setNotes] = useState<Record<string, string>>({});
+
+  // ── Modifier sheet state ────────────────────────────────────────────────────
+  const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
+
+  // ── Submit state ────────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Load menu on mount ─────────────────────────────────────────────────────
+  // ── Load menu ───────────────────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
+    // getMenu returns categories with nested items; flatten items for the flat list
     getMenu(businessId)
       .then((cats) => {
-        if (mounted) setCategories(cats);
+        if (!mounted) return;
+        setCategories(cats);
+        setItems(cats.flatMap((c) => c.items));
+        setActiveCategoryId(cats.length > 0 ? cats[0].id : null);
       })
-      .catch(() => {
-        // Stay empty on error
-      })
+      .catch(() => {})
       .finally(() => {
-        if (mounted) setMenuLoading(false);
+        if (mounted) setLoadingMenu(false);
       });
     return () => {
       mounted = false;
     };
   }, [businessId]);
 
-  // ── Filtered items for selected category ───────────────────────────────────
-  const filteredItems: MenuItem[] =
-    selectedCatId === null
-      ? categories.flatMap((cat) => cat.items)
-      : (categories.find((cat) => cat.id === selectedCatId)?.items ?? []);
+  // ── Filtered items for active category ─────────────────────────────────────
+  const filteredItems = useMemo(() => {
+    if (!activeCategoryId) return items;
+    return items.filter((item) => item.category_id === activeCategoryId);
+  }, [items, activeCategoryId]);
 
-  // ── Cart helpers ───────────────────────────────────────────────────────────
+  // ── Cart subtotal ───────────────────────────────────────────────────────────
+  const subtotal = useMemo(
+    () => cart.reduce((sum, ci) => sum + ci.priceCents * ci.qty, 0),
+    [cart],
+  );
 
+  // ── Add to cart (no modifiers) ──────────────────────────────────────────────
   const addToCart = useCallback((item: MenuItem) => {
+    const key = item.id; // no modifiers → key = menuItemId
     setCart((prev) => {
-      const existing = prev.find((ci) => ci.menuItemId === item.id);
+      const existing = prev.find((ci) => ci.cartKey === key);
       if (existing) {
         return prev.map((ci) =>
-          ci.menuItemId === item.id ? { ...ci, qty: ci.qty + 1 } : ci,
+          ci.cartKey === key ? { ...ci, qty: ci.qty + 1 } : ci,
         );
       }
       return [
         ...prev,
         {
+          cartKey: key,
           menuItemId: item.id,
           name: item.name,
+          basePriceCents: item.price_cents,
+          modifierExtraCents: 0,
           priceCents: item.price_cents,
           qty: 1,
-          note: '',
+          modifiers: [],
         },
       ];
     });
   }, []);
 
-  const updateQty = useCallback((menuItemId: string, delta: number) => {
-    setCart((prev) => {
-      const next = prev.map((ci) =>
-        ci.menuItemId === menuItemId ? { ...ci, qty: ci.qty + delta } : ci,
-      );
-      return next.filter((ci) => ci.qty > 0);
-    });
-    // Also clean up note if item removed
-    if (delta === -1) {
+  // ── Add to cart (from ModifierSheet) ────────────────────────────────────────
+  const addWithModifiers = useCallback(
+    (item: MenuItem, mods: PosModifierSelection[], extraCents: number) => {
+      const key = buildCartKey(item.id, mods);
       setCart((prev) => {
-        const found = prev.find((ci) => ci.menuItemId === menuItemId);
-        if (found && found.qty - 1 <= 0) {
-          setNotes((n) => {
-            const copy = { ...n };
-            delete copy[menuItemId];
-            return copy;
-          });
+        const existing = prev.find((ci) => ci.cartKey === key);
+        if (existing) {
+          return prev.map((ci) =>
+            ci.cartKey === key ? { ...ci, qty: ci.qty + 1 } : ci,
+          );
         }
-        return prev;
+        return [
+          ...prev,
+          {
+            cartKey: key,
+            menuItemId: item.id,
+            name: item.name,
+            basePriceCents: item.price_cents,
+            modifierExtraCents: extraCents,
+            priceCents: item.price_cents + extraCents,
+            qty: 1,
+            modifiers: mods,
+          },
+        ];
       });
-    }
-  }, []);
-
-  const updateNote = useCallback((menuItemId: string, note: string) => {
-    setNotes((prev) => ({ ...prev, [menuItemId]: note }));
-  }, []);
-
-  const subtotal = cart.reduce(
-    (sum, ci) => sum + ci.priceCents * ci.qty,
-    0,
+    },
+    [],
   );
 
-  // ── Submit order ───────────────────────────────────────────────────────────
+  // ── Item tap dispatcher ─────────────────────────────────────────────────────
+  const handleItemPress = useCallback(
+    (item: MenuItem) => {
+      if (item.has_modifiers) {
+        setModifierItem(item);
+      } else {
+        addToCart(item);
+      }
+    },
+    [addToCart],
+  );
 
+  // ── Qty update (keyed by cartKey) ───────────────────────────────────────────
+  const updateQty = useCallback((key: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((ci) => (ci.cartKey === key ? { ...ci, qty: ci.qty + delta } : ci))
+        .filter((ci) => ci.qty > 0),
+    );
+  }, []);
+
+  // ── Note update (keyed by cartKey) ──────────────────────────────────────────
+  const updateNote = useCallback((key: string, note: string) => {
+    setNotes((prev) => ({ ...prev, [key]: note }));
+  }, []);
+
+  // ── Submit order ────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async () => {
     if (cart.length === 0 || submitting) return;
     setSubmitting(true);
 
-    const items: PosOrderItem[] = cart.map((ci) => {
-      const note = (notes[ci.menuItemId] ?? '').trim();
+    const posItems: PosOrderItem[] = cart.map((ci) => {
+      const note = (notes[ci.cartKey] ?? '').trim();
       return {
         menu_item_id: ci.menuItemId,
         qty: ci.qty,
         ...(note ? { special_instructions: note } : {}),
+        ...(ci.modifiers.length > 0
+          ? { options: { modifiers: ci.modifiers } }
+          : {}),
       };
     });
 
-    const result = await posCreateOrder(businessId, tableId, items);
+    const result = await posCreateOrder(businessId, tableId, posItems);
     setSubmitting(false);
 
     if (result.ok) {
-      Alert.alert(t('pos.submitSuccess'), t('pos.submitSuccessMsg'), [
-        {
-          text: t('pos.submitOk'),
-          onPress: () => {
-            setCart([]);
-            setNotes({});
-            navigation.goBack();
-          },
-        },
-      ]);
-    } else {
-      let errorMsg: string;
-      const reason: PosCreateOrderError = result.reason;
-      switch (reason) {
-        case 'table_not_in_business':
-          errorMsg = t('pos.errorTableNotInBusiness');
-          break;
-        case 'item_not_available':
-          errorMsg = t('pos.errorItemNotAvailable');
-          break;
-        case 'no_valid_items':
-          errorMsg = t('pos.errorNoValidItems');
-          break;
-        case 'no_access':
-          errorMsg = t('pos.errorNoAccess');
-          break;
-        case 'not_configured':
-          errorMsg = t('pos.errorNotConfigured');
-          break;
-        default:
-          errorMsg = t('pos.errorDb');
-      }
-      Alert.alert(t('pos.errorTitle'), errorMsg);
+      Alert.alert(
+        t('pos.submitSuccess'),
+        t('pos.submitSuccessMsg'),
+        [{ text: t('pos.submitOk'), onPress: () => navigation.goBack() }],
+      );
+      return;
     }
-  }, [cart, notes, submitting, businessId, tableId, navigation, t]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+    let errorMsg: string;
+    switch (result.reason) {
+      case 'table_not_in_business':
+        errorMsg = t('pos.errorTableNotInBusiness');
+        break;
+      case 'item_not_available':
+        errorMsg = t('pos.errorItemNotAvailable');
+        break;
+      case 'no_valid_items':
+        errorMsg = t('pos.errorNoValidItems');
+        break;
+      case 'no_access':
+        errorMsg = t('pos.errorNoAccess');
+        break;
+      case 'not_configured':
+        errorMsg = t('pos.errorNotConfigured');
+        break;
+      case 'invalid_modifier':
+        errorMsg = t('pos.errorModifier');
+        break;
+      default:
+        errorMsg = t('pos.errorDb');
+    }
+    Alert.alert(t('pos.errorTitle'), errorMsg);
+  }, [businessId, tableId, cart, notes, submitting, navigation, t]);
 
-  const isSubmitDisabled = cart.length === 0 || submitting;
+  // ── ModifierSheet callbacks ─────────────────────────────────────────────────
+  const handleModClose = useCallback(() => setModifierItem(null), []);
 
+  const handleModAdd = useCallback(
+    (mods: PosModifierSelection[], extraCents: number) => {
+      if (!modifierItem) return;
+      addWithModifiers(modifierItem, mods, extraCents);
+      setModifierItem(null);
+    },
+    [modifierItem, addWithModifiers],
+  );
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
       <StatusBar
         barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'}
       />
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View
         style={[
           styles.header,
@@ -397,135 +741,162 @@ export default function PosOrderScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
-          accessibilityLabel={t('workMode.pinCancel')}
         >
           <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
         </Pressable>
-        <Text
-          style={[styles.headerTitle, { color: c.textPrimary }]}
-          numberOfLines={1}
-        >
-          {tableLabel}
-        </Text>
+        <View style={styles.headerTitleBlock}>
+          <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
+            {businessName}
+          </Text>
+          <Text style={[styles.headerSub, { color: c.textTertiary }]}>
+            {tableLabel}
+          </Text>
+        </View>
       </View>
 
-      {/* Menu area (category tabs + item list) */}
-      {menuLoading ? (
-        <View style={styles.center}>
+      {/* ── Category tabs ───────────────────────────────────────────────────── */}
+      {categories.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.tabBar, { borderBottomColor: c.borderSubtle }]}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          <TabPill
+            label={t('pos.allCategories')}
+            active={activeCategoryId === null}
+            onPress={() => setActiveCategoryId(null)}
+          />
+          {categories.map((cat) => (
+            <TabPill
+              key={cat.id}
+              label={cat.name}
+              active={activeCategoryId === cat.id}
+              onPress={() => setActiveCategoryId(cat.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* ── Menu items ──────────────────────────────────────────────────────── */}
+      {loadingMenu ? (
+        <View style={styles.loadingCenter}>
           <ActivityIndicator color={c.brand} />
         </View>
+      ) : filteredItems.length === 0 ? (
+        <View style={styles.loadingCenter}>
+          <Text style={[styles.emptyText, { color: c.textTertiary }]}>
+            {t('pos.menuEmpty')}
+          </Text>
+        </View>
       ) : (
-        <View style={styles.menuArea}>
-          {/* Category tabs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabBar}
-            style={[styles.tabBarScroll, { borderBottomColor: c.borderSubtle }]}
-            keyboardShouldPersistTaps="handled"
-          >
-            <TabPill
-              label={t('pos.allCategories')}
-              selected={selectedCatId === null}
-              onPress={() => setSelectedCatId(null)}
-            />
-            {categories.map((cat) => (
-              <TabPill
-                key={cat.id}
-                label={cat.name}
-                selected={selectedCatId === cat.id}
-                onPress={() => setSelectedCatId(cat.id)}
+        <FlatList
+          data={filteredItems}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <MenuItemRow item={item} onPress={handleItemPress} />
+          )}
+          style={styles.menuList}
+          contentContainerStyle={[
+            styles.menuListContent,
+            { paddingBottom: cart.length > 0 ? 0 : insets.bottom + 16 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {/* ── Cart panel ──────────────────────────────────────────────────────── */}
+      {cart.length === 0 ? (
+        <View
+          style={[
+            styles.cartEmpty,
+            {
+              backgroundColor: c.bgSurface,
+              borderTopColor: c.borderSubtle,
+              paddingBottom: insets.bottom + 12,
+            },
+          ]}
+        >
+          <IconShoppingCart size={18} color={c.textTertiary} strokeWidth={1.5} />
+          <Text style={[styles.cartEmptyText, { color: c.textTertiary }]}>
+            {t('pos.cartEmpty')}
+          </Text>
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.cartPanel,
+            {
+              backgroundColor: c.bgSurface,
+              borderTopColor: c.borderSubtle,
+              paddingBottom: insets.bottom + 8,
+            },
+          ]}
+        >
+          {/* Scrollable cart rows */}
+          <ScrollView style={styles.cartScroll} showsVerticalScrollIndicator={false}>
+            {cart.map((ci) => (
+              <CartRow
+                key={ci.cartKey}
+                item={ci}
+                cartNote={notes[ci.cartKey] ?? ''}
+                notePlaceholder={t('pos.cartNote')}
+                onUpdateQty={updateQty}
+                onUpdateNote={updateNote}
               />
             ))}
           </ScrollView>
 
-          {/* Menu items */}
-          <FlatList
-            style={styles.menuList}
-            data={filteredItems}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MenuItemRow item={item} onPress={() => addToCart(item)} />
+          {/* Subtotal + submit */}
+          <View style={styles.cartFooter}>
+            <Text style={[styles.cartSubtotalLabel, { color: c.textSecondary }]}>
+              {t('pos.cartSubtotal')}
+            </Text>
+            <Text style={[styles.cartSubtotalValue, { color: c.textPrimary }]}>
+              {formatPrice(subtotal)}
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={handleSubmit}
+            disabled={submitting}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              { backgroundColor: c.brand },
+              (pressed || submitting) && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: submitting }}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.submitBtnText}>{t('pos.submitButton')}</Text>
             )}
-            ListEmptyComponent={
-              <View style={styles.menuEmpty}>
-                <Text style={[styles.menuEmptyText, { color: c.textTertiary }]}>
-                  {t('pos.menuEmpty')}
-                </Text>
-              </View>
-            }
-            keyboardShouldPersistTaps="handled"
-          />
+          </Pressable>
         </View>
       )}
 
-      {/* Cart panel — always visible at the bottom */}
-      <View
-        style={[
-          styles.cartPanel,
-          {
-            backgroundColor: c.bgSurface,
-            borderTopColor: c.borderSubtle,
-            paddingBottom: insets.bottom + 8,
-          },
-        ]}
+      {/* ── Modifier Sheet Modal ─────────────────────────────────────────────── */}
+      <Modal
+        visible={modifierItem !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={handleModClose}
+        statusBarTranslucent
       >
-        {cart.length === 0 ? (
-          <View style={styles.cartEmptyRow}>
-            <IconShoppingCart size={18} color={c.textTertiary} strokeWidth={1.5} />
-            <Text style={[styles.cartEmptyText, { color: c.textTertiary }]}>
-              {t('pos.cartEmpty')}
-            </Text>
-          </View>
-        ) : (
-          <>
-            <ScrollView
-              style={styles.cartItemsScroll}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {cart.map((ci) => (
-                <CartRow
-                  key={ci.menuItemId}
-                  item={ci}
-                  cartNote={notes[ci.menuItemId] ?? ''}
-                  onUpdateQty={updateQty}
-                  onUpdateNote={updateNote}
-                />
-              ))}
-            </ScrollView>
-
-            {/* Subtotal row */}
-            <View style={[styles.subtotalRow, { borderTopColor: c.borderSubtle }]}>
-              <Text style={[styles.subtotalLabel, { color: c.textSecondary }]}>
-                {t('pos.cartSubtotal')}
-              </Text>
-              <Text style={[styles.subtotalValue, { color: c.textPrimary }]}>
-                {formatPrice(subtotal)}
-              </Text>
-            </View>
-          </>
-        )}
-
-        {/* Submit button */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitDisabled}
-          style={({ pressed }) => [
-            styles.submitButton,
-            { backgroundColor: c.brand },
-            isSubmitDisabled && { opacity: 0.45 },
-            pressed && !isSubmitDisabled && { opacity: 0.75 },
-          ]}
-          accessibilityRole="button"
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitLabel}>{t('pos.submitButton')}</Text>
+        <View style={styles.modOverlay}>
+          {/* Backdrop tap closes the sheet */}
+          <Pressable style={styles.modBackdrop} onPress={handleModClose} />
+          {modifierItem !== null && (
+            <ModifierSheet
+              item={modifierItem}
+              onClose={handleModClose}
+              onAdd={handleModAdd}
+            />
           )}
-        </Pressable>
-      </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -537,7 +908,7 @@ const H_PAD = 16;
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -545,201 +916,256 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  backButton: { marginRight: 8, padding: 4 },
+  headerTitleBlock: { flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
+  headerSub: { fontSize: 12, marginTop: 1 },
 
-  backButton: {
-    marginRight: 8,
-    padding: 4,
-  },
-
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '600',
-  },
-
-  // ── Loading / empty ─────────────────────────────────────────────────────────
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // ── Menu area ───────────────────────────────────────────────────────────────
-  menuArea: {
-    flex: 1,
-  },
-
-  tabBarScroll: {
-    flexGrow: 0,
+  // ── Category tabs ────────────────────────────────────────────────────────────
+  tabBar: {
+    maxHeight: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-
-  tabBar: {
-    flexDirection: 'row',
+  tabBarContent: {
     paddingHorizontal: H_PAD,
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 8,
   },
-
   tabPill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
   },
+  tabPillText: { fontSize: 13, fontWeight: '500' },
 
-  tabPillLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-  },
-
-  menuList: {
-    flex: 1,
-  },
+  // ── Menu list ────────────────────────────────────────────────────────────────
+  menuList: { flex: 1 },
+  menuListContent: { paddingTop: 8 },
 
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: H_PAD,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: H_PAD,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
     gap: 12,
   },
+  menuRowLeft: { flex: 1, gap: 2 },
+  menuRowName: { fontSize: 15, fontWeight: '500' },
+  menuRowDesc: { fontSize: 12, lineHeight: 16 },
+  menuRowModBadge: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  menuRowPrice: { fontSize: 14, fontWeight: '600' },
 
-  menuRowBody: {
+  // ── Loading / empty ──────────────────────────────────────────────────────────
+  loadingCenter: {
     flex: 1,
-  },
-
-  menuRowName: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
-  menuRowDesc: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  menuRowPrice: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  menuEmpty: {
-    padding: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  emptyText: { fontSize: 14 },
 
-  menuEmptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-
-  // ── Cart panel ──────────────────────────────────────────────────────────────
-  cartPanel: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
-    paddingHorizontal: H_PAD,
-  },
-
-  cartEmptyRow: {
+  // ── Cart panel ───────────────────────────────────────────────────────────────
+  cartEmpty: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 10,
+    paddingTop: 14,
+    paddingHorizontal: H_PAD,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  cartEmptyText: { fontSize: 13 },
+
+  cartPanel: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    maxHeight: 360,
   },
 
-  cartEmptyText: {
-    fontSize: 13,
-  },
-
-  cartItemsScroll: {
-    maxHeight: 220,
-  },
+  cartScroll: { maxHeight: 220 },
 
   cartRow: {
+    paddingHorizontal: H_PAD,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 6,
   },
-
   cartRowTop: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
   },
-
-  cartRowName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  cartRowTotal: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  cartRowNameBlock: { flex: 1, gap: 2 },
+  cartRowName: { fontSize: 14, fontWeight: '500' },
+  cartModSummary: { fontSize: 11, lineHeight: 15 },
+  cartRowTotal: { fontSize: 13, fontWeight: '600', minWidth: 60, textAlign: 'right' },
 
   cartRowBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-
   cartNoteInput: {
     flex: 1,
-    height: 32,
+    fontSize: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 8,
-    borderWidth: 1,
     paddingHorizontal: 10,
-    fontSize: 13,
+    paddingVertical: 5,
+    height: 30,
   },
-
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-
-  qtyButton: {
-    padding: 4,
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  qtyValue: {
-    fontSize: 15,
+  qtyText: {
+    fontSize: 14,
     fontWeight: '600',
     minWidth: 20,
     textAlign: 'center',
   },
 
-  subtotalRow: {
+  cartFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: H_PAD,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
+  cartSubtotalLabel: { fontSize: 13 },
+  cartSubtotalValue: { fontSize: 16, fontWeight: '700' },
 
-  subtotalLabel: {
-    fontSize: 14,
-  },
-
-  subtotalValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  // ── Submit button ───────────────────────────────────────────────────────────
-  submitButton: {
-    height: 50,
+  submitBtn: {
+    marginHorizontal: H_PAD,
+    marginTop: 8,
     borderRadius: 14,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+  },
+  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // ── Modifier modal overlay ───────────────────────────────────────────────────
+  modOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modBackdrop: { flex: 1 },
+
+  // ── Modifier sheet ───────────────────────────────────────────────────────────
+  modSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingTop: 8,
+  },
+  modHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  modHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: H_PAD,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  modTitleBlock: { flex: 1, gap: 2 },
+  modItemName: { fontSize: 17, fontWeight: '700' },
+  modLivePrice: { fontSize: 14, fontWeight: '600' },
+  modCloseBtn: { padding: 4, marginTop: 2 },
+
+  modLoadingBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  modLoadingText: { fontSize: 14 },
+
+  modScroll: {},
+  modScrollContent: { paddingBottom: 12 },
+
+  modGroup: { marginBottom: 4 },
+
+  modGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  modGroupLabel: { fontSize: 14, fontWeight: '700', flex: 1 },
+  modGroupMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  modRequiredBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  modRequiredText: { fontSize: 11, fontWeight: '600' },
+  modGroupHint: { fontSize: 12 },
+
+  choiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
   },
 
-  submitLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+  // Radio (single-select)
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+
+  // Checkbox (multi-select)
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  choiceLabel: { flex: 1, fontSize: 14 },
+  choicePrice: { fontSize: 13, fontWeight: '500' },
+
+  modAddBtn: {
+    marginHorizontal: H_PAD,
+    marginTop: 12,
+    marginBottom: 16,
+    borderRadius: 14,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modAddBtnText: { fontSize: 16, fontWeight: '700' },
 });

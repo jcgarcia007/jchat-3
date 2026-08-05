@@ -54,6 +54,14 @@ export interface PosOrderItem {
   menu_item_id: string;
   qty: number;
   special_instructions?: string;
+  /** Modifier selections to send to pos_create_order. */
+  options?: {
+    modifiers: {
+      group_id: string;
+      group_label: string;
+      choice_labels: string[];
+    }[];
+  };
 }
 
 export type PosCreateOrderError =
@@ -62,7 +70,8 @@ export type PosCreateOrderError =
   | 'no_valid_items'
   | 'no_access'
   | 'db_error'
-  | 'not_configured';
+  | 'not_configured'
+  | 'invalid_modifier'; // modifier not linked to item / not found / invalid count or choice
 
 export type PosCreateOrderResult =
   | { ok: true; orderId: string }
@@ -251,6 +260,10 @@ export async function posCreateOrder(
     if (msg.includes('not available')) return { ok: false, reason: 'item_not_available' };
     if (msg.includes('no valid items')) return { ok: false, reason: 'no_valid_items' };
     if (msg.includes('no pos access')) return { ok: false, reason: 'no_access' };
+    if (msg.includes('not linked to item')) return { ok: false, reason: 'invalid_modifier' };
+    if (msg.includes('not found')) return { ok: false, reason: 'invalid_modifier' };
+    if (msg.includes('invalid selection count')) return { ok: false, reason: 'invalid_modifier' };
+    if (msg.includes('invalid choice')) return { ok: false, reason: 'invalid_modifier' };
     return { ok: false, reason: 'db_error' };
   }
 
