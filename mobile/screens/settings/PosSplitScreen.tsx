@@ -466,7 +466,7 @@ export default function PosSplitScreen(): React.ReactElement {
    */
   const handlePayAccount = useCallback(
     async (account: SubAccount) => {
-      if (activePaymentId || account.items.length === 0 || !connectedReader) return;
+      if (activePaymentId || account.items.length === 0 || readerStatus !== 'ready') return;
 
       const orderItemIds = account.items.map((i) => i.order_item_id);
 
@@ -618,7 +618,7 @@ export default function PosSplitScreen(): React.ReactElement {
   // ── Charge a single part (shared by both methods) ─────────────────────────
   const handleChargeCheck = useCallback(
     async (paymentId: string) => {
-      if (!connectedReader || activePaymentId) return;
+      if (readerStatus !== 'ready' || activePaymentId) return;
 
       setActivePaymentId(paymentId);
       setCheckoutPhase('creating');
