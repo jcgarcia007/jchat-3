@@ -156,7 +156,12 @@
     "hubSplitBill": "Dividir cuenta",
     "hubKitchenSent": "¡Orden enviada!",
     "hubKitchenSentMsg": "Los artículos fueron enviados a la cocina.",
-    "hubNoItems": "Sin artículos aún — toca una silla para agregar una orden."
+    "hubNoItems": "Sin artículos aún — toca una silla para agregar una orden.",
+    "hubBtnKitchen": "Enviar",
+    "hubBtnSplit": "Dividir",
+    "itemStatusPending": "Pendiente",
+    "itemStatusPreparing": "Preparando",
+    "itemStatusReady": "Listo"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

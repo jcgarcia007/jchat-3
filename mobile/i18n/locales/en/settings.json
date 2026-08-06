@@ -156,7 +156,12 @@
     "hubSplitBill": "Split Bill",
     "hubKitchenSent": "Order sent!",
     "hubKitchenSentMsg": "Items have been sent to the kitchen.",
-    "hubNoItems": "No items yet — tap a seat to add an order."
+    "hubNoItems": "No items yet — tap a seat to add an order.",
+    "hubBtnKitchen": "Send",
+    "hubBtnSplit": "Split",
+    "itemStatusPending": "Pending",
+    "itemStatusPreparing": "Preparing",
+    "itemStatusReady": "Ready"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

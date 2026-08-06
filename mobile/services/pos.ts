@@ -101,6 +101,11 @@ export interface PosTableItemRow {
   qty: number;
   /** Price per unit (cents). */
   price_cents: number;
+  /**
+   * Kitchen status of this item. Known values: 'pending' | 'preparing' | 'ready'.
+   * Treat any unknown value as a fallback (display as-is).
+   */
+  item_status: string;
   options: { modifiers: { group_label: string; choice_labels: string[] }[] } | null;
   special_instructions: string | null;
 }

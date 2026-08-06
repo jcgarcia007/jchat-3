@@ -22,7 +22,7 @@
  * time the screen gains focus (covers the return from PosOrderScreen).
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -48,6 +48,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import {
   posTablesOverview,
   posTableItems,
@@ -109,14 +110,34 @@ function seatPosition(i: number, total: number): { left: number; top: number } {
 function SentRow({ item }: { item: PosTableItemRow }) {
   const c = useThemeColors();
   const { t } = useTranslation('settings');
+
+  // Map item_status to display label — unknown values shown as-is (fallback).
+  const statusLabel = (() => {
+    switch (item.item_status) {
+      case 'pending':   return t('pos.itemStatusPending');
+      case 'preparing': return t('pos.itemStatusPreparing');
+      case 'ready':     return t('pos.itemStatusReady');
+      default:          return item.item_status;
+    }
+  })();
+
+  // Map item_status to color token.
+  const statusColor = (() => {
+    switch (item.item_status) {
+      case 'preparing': return c.warning;
+      case 'ready':     return c.success;
+      default:          return c.textTertiary; // pending + unknown → neutral
+    }
+  })();
+
   return (
     <View style={styles.summaryRow}>
       <Text style={[styles.rowName, { color: c.textSecondary }]} numberOfLines={1}>
         {item.qty}× {item.item_name}
       </Text>
-      <View style={[styles.sentBadge, { backgroundColor: c.success + '22' }]}>
-        <Text style={[styles.sentBadgeText, { color: c.success }]}>
-          {t('pos.hubSentBadge')}
+      <View style={[styles.sentBadge, { backgroundColor: statusColor + '22' }]}>
+        <Text style={[styles.sentBadgeText, { color: statusColor }]}>
+          {statusLabel}
         </Text>
       </View>
       <Text style={[styles.rowPrice, { color: c.textTertiary }]}>
@@ -193,6 +214,36 @@ export default function PosTableHub(): React.ReactElement {
   const [sentItems, setSentItems] = useState<PosTableItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Realtime — live order_items status updates ──────────────────────────────
+  // Debounce ref prevents flooding posTableItems when rapid UPDATE events arrive.
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const channel = supabase
+      .channel(`pos-order-items-${tableId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'order_items' },
+        () => {
+          // Batch rapid updates into a single refresh.
+          if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+          realtimeDebounceRef.current = setTimeout(() => {
+            posTableItems(businessId, tableId)
+              .then((rows) => setSentItems(rows))
+              .catch(() => {});
+          }, 400);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [businessId, tableId]);
 
   // ── Party size (local, synced to server optimistically) ─────────────────────
   const [partySize, setPartySize] = useState<number>(1);
@@ -704,6 +755,7 @@ export default function PosTableHub(): React.ReactElement {
             pressed && hasDraft && { opacity: 0.8 },
           ]}
           accessibilityRole="button"
+          accessibilityLabel={t('pos.submitButton')}
           accessibilityState={{ disabled: !hasDraft || submitting }}
         >
           {submitting ? (
@@ -715,7 +767,7 @@ export default function PosTableHub(): React.ReactElement {
                 { color: hasDraft && !submitting ? '#fff' : c.textTertiary },
               ]}
             >
-              {t('pos.submitButton')}
+              {t('pos.hubBtnKitchen')}
             </Text>
           )}
         </Pressable>
@@ -725,10 +777,11 @@ export default function PosTableHub(): React.ReactElement {
           disabled
           style={[styles.actionBtn, { backgroundColor: c.borderSubtle }]}
           accessibilityRole="button"
+          accessibilityLabel={t('pos.hubSplitBill')}
           accessibilityState={{ disabled: true }}
         >
           <Text style={[styles.actionBtnText, { color: c.textTertiary }]}>
-            {t('pos.hubSplitBill')}
+            {t('pos.hubBtnSplit')}
           </Text>
         </Pressable>
 
@@ -923,16 +976,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    flexDirection: 'row',
     paddingHorizontal: H_PAD,
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
   actionBtn: {
+    flex: 1,
     height: 46,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionBtnText: { fontSize: 15, fontWeight: '600' },
+  actionBtnText: { fontSize: 13, fontWeight: '600' },
 });
