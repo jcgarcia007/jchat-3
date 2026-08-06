@@ -95,12 +95,13 @@ function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
 
 /**
  * Three-state derivation — same precedence and colors as /dashboard/tables:
- *   🟠 occupied — combined secondary, tab open, or service call
+ *   🟠 occupied — combined secondary, table_tab open, open order, or service call
  *   🔵 reserved — not occupied and is_reserved flag set
  *   🟢 free     — everything else (party_size alone does NOT make a table occupied)
  *
- * Combined secondaries (combinedInto ≠ null) are always occupied — they are
- * part of a merged group and orders live on the primary table.
+ * `occupiedByTable` covers table_tabs; `occupiedByOrder` covers POS orders
+ * (the POS creates `orders`, not `table_tabs`). Both contribute to occupancy.
+ * Combined secondaries (combinedInto ≠ null) are always occupied.
  */
 function deriveState(
   tableId: string,
@@ -108,15 +109,17 @@ function deriveState(
   isReserved: boolean,
   combinedInto: string | null,
   occupiedByTable: Map<string, string>,
+  occupiedByOrder: Set<string>,
   callsByTable: Map<string, CallRow[]>,
 ): { state: TableState; hasCall: boolean } {
   const calls = callsByTable.get(tableId) ?? [];
   const hasCall = calls.length > 0;
 
   const isOcc =
-    combinedInto !== null ||   // always occupied when annexed to a primary
-    occupiedByTable.has(tableId) ||
-    hasCall;
+    combinedInto !== null ||        // always occupied when annexed to a primary
+    occupiedByTable.has(tableId) || // table_tab open
+    occupiedByOrder.has(tableId) || // open POS order
+    hasCall;                        // pending service call
 
   const state: TableState = isOcc ? "occupied" : isReserved ? "reserved" : "free";
   return { state, hasCall };
@@ -211,6 +214,8 @@ export default function FloorPage() {
   const [tabs, setTabs]         = useState<TabRow[]>([]);
   const [calls, setCalls]       = useState<CallRow[]>([]);
   const [todayReservations, setTodayReservations] = useState<ReservationForFloor[]>([]);
+  /** Set of table_ids with at least one open (unpaid, uncanceled) order. */
+  const [occupiedByOrder, setOccupiedByOrder] = useState<Set<string>>(new Set());
   const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [noBusiness, setNoBusiness] = useState(false);
@@ -221,6 +226,8 @@ export default function FloorPage() {
   const tabsChannel        = useRef<RealtimeChannel | null>(null);
   const callsChannel       = useRef<RealtimeChannel | null>(null);
   const reservationsChannel = useRef<RealtimeChannel | null>(null);
+  const ordersChannel      = useRef<RealtimeChannel | null>(null);
+  const ordersDebounce     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshTimer       = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickTimer          = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -270,6 +277,26 @@ export default function FloorPage() {
     setTodayReservations((data as ReservationForFloor[] | null) ?? []);
   }, []);
 
+  /**
+   * Fetch the set of table_ids that have at least one open (unpaid, uncanceled)
+   * order. The POS creates `orders`, not `table_tabs`, so this is the correct
+   * source for POS-driven occupancy.
+   */
+  const fetchOccupancy = useCallback(async (bid: string) => {
+    const { data } = await supabase
+      .from("orders")
+      .select("table_id")
+      .eq("business_id", bid)
+      .is("paid_at", null)
+      .is("canceled_at", null)
+      .not("table_id", "is", null);
+    const ids = new Set<string>();
+    for (const row of (data ?? []) as { table_id: string | null }[]) {
+      if (row.table_id) ids.add(row.table_id);
+    }
+    setOccupiedByOrder(ids);
+  }, []);
+
   // ── Bootstrap ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -298,7 +325,7 @@ export default function FloorPage() {
         const bid = res.business.id;
         bizIdRef.current = bid;
 
-        await Promise.all([fetchData(bid), fetchTodayReservations(bid)]);
+        await Promise.all([fetchData(bid), fetchTodayReservations(bid), fetchOccupancy(bid)]);
         if (!active) return;
 
         // ── Realtime: reservations ────────────────────────────────────────
@@ -341,6 +368,27 @@ export default function FloorPage() {
           )
           .subscribe();
 
+        // ── Realtime: orders (INSERT/UPDATE → refresh occupancy) ──────────
+        ordersChannel.current = supabase
+          .channel(`floor-orders-${bid}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "orders", filter: `business_id=eq.${bid}` },
+            () => {
+              if (ordersDebounce.current) clearTimeout(ordersDebounce.current);
+              ordersDebounce.current = setTimeout(() => { void fetchOccupancy(bid).catch(() => {}); }, 600);
+            },
+          )
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "orders", filter: `business_id=eq.${bid}` },
+            () => {
+              if (ordersDebounce.current) clearTimeout(ordersDebounce.current);
+              ordersDebounce.current = setTimeout(() => { void fetchOccupancy(bid).catch(() => {}); }, 600);
+            },
+          )
+          .subscribe();
+
         // ── 30s fallback refresh ─────────────────────────────────────────
         refreshTimer.current = setInterval(() => {
           if (bizIdRef.current) void fetchData(bizIdRef.current).catch(() => {});
@@ -363,10 +411,12 @@ export default function FloorPage() {
       if (tablesChannel.current) void supabase.removeChannel(tablesChannel.current);
       if (tabsChannel.current)  void supabase.removeChannel(tabsChannel.current);
       if (callsChannel.current) void supabase.removeChannel(callsChannel.current);
+      if (ordersChannel.current) void supabase.removeChannel(ordersChannel.current);
+      if (ordersDebounce.current) clearTimeout(ordersDebounce.current);
       if (refreshTimer.current) clearInterval(refreshTimer.current);
       if (tickTimer.current)    clearInterval(tickTimer.current);
     };
-  }, [fetchData, fetchTodayReservations]);
+  }, [fetchData, fetchTodayReservations, fetchOccupancy]);
 
   // ── Derivation ──────────────────────────────────────────────────────────────
 
@@ -416,7 +466,7 @@ export default function FloorPage() {
   // Derived table states — 3-state: occupied > reserved > free.
   const derived: DerivedTable[] = tables.map((tbl) => {
     const { state, hasCall } = deriveState(
-      tbl.id, tbl.party_size, tbl.is_reserved, tbl.combined_into, occupiedByTable, callsByTable,
+      tbl.id, tbl.party_size, tbl.is_reserved, tbl.combined_into, occupiedByTable, occupiedByOrder, callsByTable,
     );
     return {
       id:                    tbl.id,
