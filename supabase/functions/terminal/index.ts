@@ -382,6 +382,256 @@ async function handleMarkPaid(
   return jsonResponse({ ok: false, status: pi.status });
 }
 
+// ── Action: create_tab_payment_intent ────────────────────────────────────────
+//
+// Creates a single PaymentIntent for the full open tab of a table.
+// Amount is computed server-side via pos_tab_total — the client body is never
+// trusted for monetary values.
+
+async function handleCreateTabPaymentIntent(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  const tableId = typeof body.table_id === "string" ? body.table_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+  if (!tableId) return errorResponse("table_id is required");
+
+  // 1. Verify POS access (auth.uid() from JWT, never from body).
+  const accessErr = await checkPosAccess(userClient, businessId);
+  if (accessErr) return accessErr;
+
+  const db = getAdminClient();
+
+  // 2. Compute tab total server-side — amount never comes from the client.
+  const { data: tabTotalData, error: tabErr } = await db.rpc("pos_tab_total", {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+  if (tabErr) {
+    console.error("[terminal] pos_tab_total error:", tabErr.message);
+    return errorResponse("Internal server error", 500);
+  }
+  const tabTotalCents = typeof tabTotalData === "number" ? tabTotalData : 0;
+  if (tabTotalCents <= 0) {
+    return errorResponse("Nothing to charge: tab total is zero", 409);
+  }
+
+  // 3. Resolve the connected Stripe account.
+  const accountResult = await getStripeAccount(db, businessId);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 4. Create the PaymentIntent on the connected account (direct charges model).
+  //    No on_behalf_of, no transfer_data, no application_fee.
+  const stripe = getStripe();
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.create(
+      {
+        amount: tabTotalCents,              // server-owned amount — never from client
+        currency: "usd",
+        payment_method_types: ["card_present"],
+        capture_method: "automatic",
+        metadata: { table_id: tableId, kind: "full" },
+      },
+      { stripeAccount },                   // direct charges: charge lands on connected account
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] paymentIntents.create (tab) error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  if (!pi.client_secret) {
+    return errorResponse("PaymentIntent has no client_secret", 500);
+  }
+
+  // 5. Record the pending payment in pos_payments (admin client, bypasses RLS).
+  const { data: insertData, error: insertErr } = await db
+    .from("pos_payments")
+    .insert({
+      business_id: businessId,
+      table_id: tableId,
+      amount_cents: tabTotalCents,
+      kind: "full",
+      stripe_pi_id: pi.id,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !insertData) {
+    // PI was created — log but don't block. Operator can reconcile via Stripe dashboard.
+    console.error(
+      "[terminal] pos_payments insert error:",
+      insertErr?.message ?? "no data returned",
+    );
+    return jsonResponse({
+      client_secret: pi.client_secret,
+      payment_intent_id: pi.id,
+      payment_id: null,
+      amount_cents: tabTotalCents,
+    });
+  }
+
+  const paymentId = (insertData as { id: string }).id;
+
+  console.log(
+    `[terminal] create_tab_payment_intent: business=${businessId} table=${tableId} pi=${pi.id} amount=${tabTotalCents} payment_id=${paymentId}`,
+  );
+  return jsonResponse({
+    client_secret: pi.client_secret,
+    payment_intent_id: pi.id,
+    payment_id: paymentId,
+    amount_cents: tabTotalCents,
+  });
+}
+
+// ── Action: mark_tab_paid ─────────────────────────────────────────────────────
+//
+// Confirms tab payment by retrieving the PI directly from Stripe (never trusting
+// the client). On success, marks pos_payments row as succeeded, computes tip, and
+// closes all open orders for the table if payments now cover the full tab.
+
+async function handleMarkTabPaid(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const paymentId = typeof body.payment_id === "string" ? body.payment_id : null;
+  if (!paymentId) return errorResponse("payment_id is required");
+
+  const db = getAdminClient();
+
+  // 1. Load the pos_payments row by payment_id (admin — bypasses RLS).
+  const { data: paymentData, error: paymentErr } = await db
+    .from("pos_payments")
+    .select("id, business_id, table_id, amount_cents, stripe_pi_id, status")
+    .eq("id", paymentId)
+    .maybeSingle();
+
+  if (paymentErr) {
+    console.error("[terminal] pos_payments lookup error:", paymentErr.message);
+    return errorResponse("Internal server error", 500);
+  }
+
+  const payment = paymentData as {
+    id: string;
+    business_id: string;
+    table_id: string;
+    amount_cents: number;
+    stripe_pi_id: string | null;
+    status: string;
+  } | null;
+
+  if (!payment) return errorResponse("Payment record not found", 404);
+
+  // 2. Verify POS access for the business that owns this payment.
+  const accessErr = await checkPosAccess(userClient, payment.business_id);
+  if (accessErr) return accessErr;
+
+  // 3. Must have a Stripe PaymentIntent id on record (set during create).
+  if (!payment.stripe_pi_id) {
+    return errorResponse("No payment intent recorded for this payment", 422);
+  }
+
+  // 4. Resolve the connected Stripe account.
+  const accountResult = await getStripeAccount(db, payment.business_id);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 5. Retrieve the PI directly from Stripe — NEVER trust the client's success claim.
+  const stripe = getStripe();
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.retrieve(
+      payment.stripe_pi_id,
+      undefined,
+      { stripeAccount },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] paymentIntents.retrieve (tab) error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  console.log(
+    `[terminal] mark_tab_paid: payment=${paymentId} pi=${pi.id} status=${pi.status}`,
+  );
+
+  if (pi.status !== "succeeded") {
+    return jsonResponse({ ok: false, status: pi.status });
+  }
+
+  // 6a. Update pos_payments: status + tip_cents.
+  //     tip_cents = any amount the reader collected above the authorised amount.
+  const tipCents = Math.max(0, pi.amount - payment.amount_cents);
+  const { error: updatePaymentErr } = await db
+    .from("pos_payments")
+    .update({
+      status: "succeeded",
+      tip_cents: tipCents,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", paymentId);
+
+  if (updatePaymentErr) {
+    console.error("[terminal] pos_payments update error:", updatePaymentErr.message);
+    return errorResponse("Failed to update payment record", 500);
+  }
+
+  // 6b. Coverage check:
+  //     Sum amount_cents (not tip) of all succeeded payments for this table.
+  //     Compare with pos_tab_total (sum of open orders.total_cents).
+  //     If covered → close all open orders idempotently.
+  let tabClosed = false;
+
+  const { data: paidRows, error: paidRowsErr } = await db
+    .from("pos_payments")
+    .select("amount_cents")
+    .eq("business_id", payment.business_id)
+    .eq("table_id", payment.table_id)
+    .eq("status", "succeeded");
+
+  const sumPaidCents = paidRowsErr
+    ? payment.amount_cents  // fallback: at minimum the current payment's amount
+    : (paidRows ?? []).reduce(
+        (s: number, r: { amount_cents: number }) => s + r.amount_cents,
+        0,
+      );
+
+  const { data: remainingTotal, error: tabTotalErr } = await db.rpc("pos_tab_total", {
+    p_business_id: payment.business_id,
+    p_table_id: payment.table_id,
+  });
+  const remainingTabCents =
+    tabTotalErr || typeof remainingTotal !== "number"
+      ? null // can't determine — skip auto-close to avoid double-closing
+      : remainingTotal;
+
+  if (remainingTabCents !== null && sumPaidCents >= remainingTabCents) {
+    // Payments cover the full open tab — mark all open orders paid (idempotent).
+    const { error: closeErr } = await db
+      .from("orders")
+      .update({ paid_at: new Date().toISOString() })
+      .eq("business_id", payment.business_id)
+      .eq("table_id", payment.table_id)
+      .is("paid_at", null);
+
+    if (closeErr) {
+      // Non-fatal: payment is recorded. Operator can reconcile.
+      console.error("[terminal] failed to close open orders:", closeErr.message);
+    } else {
+      tabClosed = true;
+      console.log(
+        `[terminal] mark_tab_paid: tab closed — table=${payment.table_id} sumPaid=${sumPaidCents} tabTotal=${remainingTabCents}`,
+      );
+    }
+  }
+
+  return jsonResponse({ ok: true, tab_closed: tabClosed });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -425,6 +675,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       case "mark_paid":
         return await handleMarkPaid(body, userClient);
+
+      // ── Tab payment actions (C7 / 3a) ──────────────────────────────────────
+      case "create_tab_payment_intent":
+        return await handleCreateTabPaymentIntent(body, userClient);
+
+      case "mark_tab_paid":
+        return await handleMarkTabPaid(body, userClient);
 
       default:
         return errorResponse(`Unknown action: ${action ?? "(none)"}`);
