@@ -36,6 +36,8 @@ interface TableRow {
   room_id: string | null;
   is_reserved: boolean;
   party_size: number | null;
+  /** UUID of the primary table this table is annexed to, or null. */
+  combined_into: string | null;
 }
 
 interface TabRow {
@@ -66,6 +68,9 @@ interface DerivedTable {
   minOpenAt: string | null; // earliest open tab created_at for elapsed time
   isReserved: boolean;  // mirrors tables.is_reserved; drives the floor quick-toggle (F8)
   party_size: number | null; // live guest count set by the POS waiter
+  combined_into: string | null; // UUID of primary table when annexed
+  combinedLabel: string | null; // label of the primary table (resolved at derive time)
+  combinedSecondaryCount: number; // count of secondaries this table is primary for
 }
 
 interface ReservationForFloor {
@@ -90,14 +95,18 @@ function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
 
 /**
  * Three-state derivation — same precedence and colors as /dashboard/tables:
- *   🟠 occupied — tab open, service call, or party_size > 0
+ *   🟠 occupied — combined secondary, tab open, service call, or party_size > 0
  *   🔵 reserved — not occupied and is_reserved flag set
  *   🟢 free     — everything else
+ *
+ * Combined secondaries (combinedInto ≠ null) are always occupied — they are
+ * part of a merged group and orders live on the primary table.
  */
 function deriveState(
   tableId: string,
   partySize: number | null,
   isReserved: boolean,
+  combinedInto: string | null,
   occupiedByTable: Map<string, string>,
   callsByTable: Map<string, CallRow[]>,
 ): { state: TableState; hasCall: boolean } {
@@ -105,6 +114,7 @@ function deriveState(
   const hasCall = calls.length > 0;
 
   const isOcc =
+    combinedInto !== null ||   // always occupied when annexed to a primary
     occupiedByTable.has(tableId) ||
     hasCall ||
     (partySize != null && partySize > 0);
@@ -152,10 +162,10 @@ function resFormatTime(iso: string): string {
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
 const DEMO_TABLES: TableRow[] = [
-  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null, is_reserved: false, party_size: 3 },
-  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null, is_reserved: true,  party_size: null },
-  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null, is_reserved: false, party_size: null },
-  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null, is_reserved: false, party_size: null },
+  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null, is_reserved: false, party_size: 3,    combined_into: null },
+  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null, is_reserved: true,  party_size: null, combined_into: null },
+  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null, is_reserved: false, party_size: null, combined_into: null },
+  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null, is_reserved: false, party_size: null, combined_into: null },
 ];
 const DEMO_TABS: TabRow[] = [
   { id: "tab1", table_id: "t1", created_at: new Date(Date.now() - 45 * 60_000).toISOString(), status: "open" },
@@ -221,7 +231,7 @@ export default function FloorPage() {
     const [tablesRes, tabsRes, callsRes] = await Promise.all([
       supabase
         .from("tables")
-        .select("id, label, floor, seats, sort, room_id, is_reserved, party_size")
+        .select("id, label, floor, seats, sort, room_id, is_reserved, party_size, combined_into")
         .eq("business_id", bid)
         .eq("is_active", true)
         .order("floor", { ascending: true })
@@ -397,21 +407,31 @@ export default function FloorPage() {
     }
   }
 
+  // Combined-table helpers: label map + secondary count per primary.
+  const labelById = new Map(tables.map((tbl) => [tbl.id, tbl.label]));
+  const secondaryCount = new Map<string, number>();
+  for (const tbl of tables) {
+    if (tbl.combined_into) secondaryCount.set(tbl.combined_into, (secondaryCount.get(tbl.combined_into) ?? 0) + 1);
+  }
+
   // Derived table states — 3-state: occupied > reserved > free.
   const derived: DerivedTable[] = tables.map((tbl) => {
     const { state, hasCall } = deriveState(
-      tbl.id, tbl.party_size, tbl.is_reserved, occupiedByTable, callsByTable,
+      tbl.id, tbl.party_size, tbl.is_reserved, tbl.combined_into, occupiedByTable, callsByTable,
     );
     return {
-      id:         tbl.id,
-      label:      tbl.label,
-      floor:      tbl.floor,
-      seats:      tbl.seats,
+      id:                    tbl.id,
+      label:                 tbl.label,
+      floor:                 tbl.floor,
+      seats:                 tbl.seats,
       state,
       hasCall,
-      minOpenAt:  occupiedByTable.get(tbl.id) ?? null,
-      isReserved: tbl.is_reserved,
-      party_size: tbl.party_size,
+      minOpenAt:             occupiedByTable.get(tbl.id) ?? null,
+      isReserved:            tbl.is_reserved,
+      party_size:            tbl.party_size,
+      combined_into:         tbl.combined_into,
+      combinedLabel:         tbl.combined_into ? (labelById.get(tbl.combined_into) ?? null) : null,
+      combinedSecondaryCount: secondaryCount.get(tbl.id) ?? 0,
     };
   });
 
@@ -568,13 +588,16 @@ function TableCard({
 }) {
   const colors = stateColor(table.state);
 
-  const stateLabel = (() => {
-    switch (table.state) {
-      case "free":     return t("floorStateFree");
-      case "occupied": return t("floorStateOccupied");
-      case "reserved": return t("floorStateReserved");
-    }
-  })();
+  // Combined secondary: override label with "Combinada con {primary}"
+  const stateLabel = table.combined_into && table.combinedLabel
+    ? t("floorCombinedWith", { label: table.combinedLabel })
+    : (() => {
+        switch (table.state) {
+          case "free":     return t("floorStateFree");
+          case "occupied": return t("floorStateOccupied");
+          case "reserved": return t("floorStateReserved");
+        }
+      })();
 
   return (
     <div
@@ -644,6 +667,22 @@ function TableCard({
       <span style={{ fontSize: "11px", fontWeight: 600, color: colors.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
         {stateLabel}
       </span>
+
+      {/* Primary table: show count of annexed secondaries */}
+      {table.combinedSecondaryCount > 0 && (
+        <span
+          style={{
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "var(--db-brand)",
+            background: "color-mix(in srgb, var(--db-brand) 15%, transparent)",
+            borderRadius: "999px",
+            padding: "1px 6px",
+          }}
+        >
+          ＋{table.combinedSecondaryCount}
+        </span>
+      )}
 
       {/* Live guest count set by the POS waiter */}
       {table.party_size != null && table.party_size > 0 && (

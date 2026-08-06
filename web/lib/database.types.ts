@@ -3409,6 +3409,7 @@ export type Database = {
       tables: {
         Row: {
           business_id: string
+          combined_into: string | null
           created_at: string
           floor: string
           id: string
@@ -3426,6 +3427,7 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          combined_into?: string | null
           created_at?: string
           floor?: string
           id?: string
@@ -3443,6 +3445,7 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          combined_into?: string | null
           created_at?: string
           floor?: string
           id?: string

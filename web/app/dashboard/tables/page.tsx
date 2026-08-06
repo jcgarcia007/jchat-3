@@ -49,6 +49,8 @@ interface TableRow {
   reserved_note: string | null;
   reserved_until: string | null;
   party_size: number | null;
+  /** UUID of the primary table this table is annexed to, or null. */
+  combined_into: string | null;
 }
 
 const DEFAULT_FLOOR = "Principal";
@@ -167,7 +169,7 @@ export default function TablesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tables")
-      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until, party_size")
+      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until, party_size, combined_into")
       .eq("business_id", activeId)
       .order("floor", { ascending: true })
       .order("sort", { ascending: true })
@@ -256,6 +258,20 @@ export default function TablesPage() {
     const seen: string[] = [];
     for (const r of rows) if (!seen.includes(r.floor)) seen.push(r.floor);
     return seen;
+  }, [rows]);
+
+  /** id → label for resolving combined_into. */
+  const labelById = useMemo(
+    () => new Map(rows.map((r) => [r.id, r.label])),
+    [rows],
+  );
+  /** id → count of secondaries annexed to this table. */
+  const secondaryCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      if (r.combined_into) m.set(r.combined_into, (m.get(r.combined_into) ?? 0) + 1);
+    }
+    return m;
   }, [rows]);
 
   function openCreate() {
@@ -492,9 +508,11 @@ export default function TablesPage() {
                     {t("tablesSeatsCountPlural", { count: r.seats })}
                   </div>
 
-                  {/* Unified state badge — precedence: Ocupada > Reservada > Libre */}
+                  {/* Unified state badge — precedence: Combinada > Ocupada > Reservada > Libre */}
                   {(() => {
-                    const isOcc = occupiedTableIds.has(r.id) || (r.party_size != null && r.party_size > 0);
+                    // Combined secondary: always treated as occupied (part of a merged group).
+                    const isCombined = r.combined_into !== null;
+                    const isOcc = isCombined || occupiedTableIds.has(r.id) || (r.party_size != null && r.party_size > 0);
                     // Reserved only counts when not occupied and the slot hasn't expired.
                     const isRes = !isOcc && r.is_reserved && (
                       !r.reserved_until || new Date(r.reserved_until) > new Date()
@@ -505,34 +523,58 @@ export default function TablesPage() {
                       reserved: { token: "var(--db-accent)",  label: t("floorStateReserved") },
                       free:     { token: "var(--db-success)", label: t("floorStateFree") },
                     }[state];
+                    // Combined secondary: override label with "Combinada con {primary}"
+                    const badgeLabel = isCombined
+                      ? t("tablesCombinedWith", { label: labelById.get(r.combined_into!) ?? "—" })
+                      : meta.label;
+                    // Primary table: count of annexed secondaries for the indicator
+                    const secCount = secondaryCount.get(r.id) ?? 0;
                     return (
-                      <div
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          color: meta.token,
-                          background: `color-mix(in srgb, ${meta.token} 15%, transparent)`,
-                          borderRadius: "999px",
-                          padding: "2px 8px",
-                        }}
-                      >
-                        <span
+                      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+                        <div
                           style={{
-                            width: "6px",
-                            height: "6px",
-                            borderRadius: "50%",
-                            background: "currentColor",
-                            flexShrink: 0,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: meta.token,
+                            background: `color-mix(in srgb, ${meta.token} 15%, transparent)`,
+                            borderRadius: "999px",
+                            padding: "2px 8px",
                           }}
-                        />
-                        {meta.label}
-                        {/* Reserved: show expiry time inline when available */}
-                        {state === "reserved" && r.reserved_until && (
-                          <span style={{ fontWeight: 400, opacity: 0.75 }}>
-                            {t("tablesReservedUntilDisplay", { time: formatReservedUntil(r.reserved_until) })}
+                        >
+                          <span
+                            style={{
+                              width: "6px",
+                              height: "6px",
+                              borderRadius: "50%",
+                              background: "currentColor",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {badgeLabel}
+                          {/* Reserved: show expiry time inline when available */}
+                          {state === "reserved" && r.reserved_until && (
+                            <span style={{ fontWeight: 400, opacity: 0.75 }}>
+                              {t("tablesReservedUntilDisplay", { time: formatReservedUntil(r.reserved_until) })}
+                            </span>
+                          )}
+                        </div>
+                        {/* Primary table with secondaries: small link indicator */}
+                        {secCount > 0 && (
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              color: "var(--db-brand)",
+                              paddingLeft: "4px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                            }}
+                          >
+                            ＋{secCount} {t("tablesCombinedCount", { count: secCount })}
                           </span>
                         )}
                       </div>
