@@ -108,6 +108,12 @@ export interface PosTableItemRow {
    * Treat any unknown value as a fallback (display as-is).
    */
   item_status: string;
+  /**
+   * Kitchen status of the parent order. Known values: 'pending' | 'confirmed' |
+   * 'preparing' | 'ready'. The kitchen marks orders at the order level, so this
+   * is the authoritative source for gating Cancel/Edit.
+   */
+  order_status: string;
   options: { modifiers: { group_label: string; choice_labels: string[] }[] } | null;
   special_instructions: string | null;
 }

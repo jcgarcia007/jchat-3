@@ -229,20 +229,29 @@ export default function PosTableHub(): React.ReactElement {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
+    // Shared debounced refresh used by both listeners below.
+    const refresh = () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      realtimeDebounceRef.current = setTimeout(() => {
+        posTableItems(businessId, tableId)
+          .then((rows) => setSentItems(rows))
+          .catch(() => {});
+      }, 400);
+    };
+
     const channel = supabase
-      .channel(`pos-order-items-${tableId}`)
+      .channel(`pos-hub-rt-${tableId}`)
+      // Item-level updates (item_status: e.g. item marked ready individually)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
-        () => {
-          // Batch rapid updates into a single refresh.
-          if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-          realtimeDebounceRef.current = setTimeout(() => {
-            posTableItems(businessId, tableId)
-              .then((rows) => setSentItems(rows))
-              .catch(() => {});
-          }, 400);
-        },
+        refresh,
+      )
+      // Order-level updates (order_status: kitchen marks 'preparing' for the whole order)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        refresh,
       )
       .subscribe();
 
@@ -352,13 +361,20 @@ export default function PosTableHub(): React.ReactElement {
   }, [orderedRounds, selectedOrderId]);
 
   /**
-   * True when the action order exists AND every one of its items is still
-   * 'pending' (kitchen hasn't started it). Gates the Cancelar / Editar buttons.
+   * True when the action order exists AND it has not been picked up by the
+   * kitchen. Two conditions must both hold:
+   *   1. order_status is not 'preparing' or 'ready'  ← order-level gate
+   *      (kitchen marks orders as a whole, not per item)
+   *   2. every item_status is still 'pending'         ← item-level safety net
+   * If either fails → show "En preparación" lock text.
    */
   const selectedRoundAllPending = useMemo(() => {
     if (actionOrderId === null) return false;
     const items = sentItems.filter((i) => i.order_id === actionOrderId);
-    return items.length > 0 && items.every((i) => i.item_status === 'pending');
+    if (items.length === 0) return false;
+    const orderOk = !['preparing', 'ready'].includes(items[0].order_status);
+    const itemsOk = items.every((i) => i.item_status === 'pending');
+    return orderOk && itemsOk;
   }, [sentItems, actionOrderId]);
 
   /** Unique seat keys that have at least one item to display. */
