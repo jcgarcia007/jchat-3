@@ -843,6 +843,7 @@ export async function posCreateCheck(
     return { ok: false, reason: 'db_error' };
   }
 
-  if (!data) return { ok: false, reason: 'db_error' };
-  return { ok: true, payment_id: data.payment_id, amount_cents: data.amount_cents };
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.payment_id) return { ok: false, reason: 'db_error' };
+  return { ok: true, payment_id: row.payment_id, amount_cents: row.amount_cents };
 }
