@@ -54,7 +54,7 @@ interface CallRow {
   created_at: string;
 }
 
-type TableState = "free" | "occupied" | "bill" | "waiter" | "reserved";
+type TableState = "free" | "occupied" | "reserved";
 
 interface DerivedTable {
   id: string;
@@ -78,16 +78,6 @@ interface ReservationForFloor {
   reservation_tables: { table_id: string }[];
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const STATE_PRIORITY: Record<TableState, number> = {
-  reserved: 5,
-  bill: 4,
-  waiter: 3,
-  occupied: 2,
-  free: 1,
-};
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
@@ -98,28 +88,29 @@ function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
   return t("floorElapsedHours", { count: hours });
 }
 
+/**
+ * Three-state derivation — same precedence and colors as /dashboard/tables:
+ *   🟠 occupied — tab open, service call, or party_size > 0
+ *   🔵 reserved — not occupied and is_reserved flag set
+ *   🟢 free     — everything else
+ */
 function deriveState(
   tableId: string,
+  partySize: number | null,
+  isReserved: boolean,
   occupiedByTable: Map<string, string>,
   callsByTable: Map<string, CallRow[]>,
 ): { state: TableState; hasCall: boolean } {
   const calls = callsByTable.get(tableId) ?? [];
-  const hasBill   = calls.some((c) => c.type === "bill");
-  const hasWaiter = calls.some((c) => c.type === "waiter" || c.type === "other");
-  const isOccupied = occupiedByTable.has(tableId);
+  const hasCall = calls.length > 0;
 
-  let state: TableState = "free";
-  const candidates: TableState[] = [];
+  const isOcc =
+    occupiedByTable.has(tableId) ||
+    hasCall ||
+    (partySize != null && partySize > 0);
 
-  if (hasBill)     candidates.push("bill");
-  if (hasWaiter)   candidates.push("waiter");
-  if (isOccupied)  candidates.push("occupied");
-
-  for (const s of candidates) {
-    if (STATE_PRIORITY[s] > STATE_PRIORITY[state]) state = s;
-  }
-
-  return { state, hasCall: calls.length > 0 };
+  const state: TableState = isOcc ? "occupied" : isReserved ? "reserved" : "free";
+  return { state, hasCall };
 }
 
 function stateColor(state: TableState): {
@@ -128,35 +119,23 @@ function stateColor(state: TableState): {
   color: string;
 } {
   switch (state) {
-    case "free":
-      return {
-        background: "color-mix(in srgb, var(--db-success) 14%, transparent)",
-        border: "1px solid color-mix(in srgb, var(--db-success) 40%, transparent)",
-        color: "var(--db-success)",
-      };
     case "occupied":
-      return {
-        background: "var(--db-bg-elevated)",
-        border: "1px solid var(--db-border)",
-        color: "var(--db-text-secondary)",
-      };
-    case "bill":
       return {
         background: "color-mix(in srgb, var(--db-warning) 14%, transparent)",
         border: "1px solid color-mix(in srgb, var(--db-warning) 40%, transparent)",
         color: "var(--db-warning)",
       };
-    case "waiter":
-      return {
-        background: "var(--db-bg-elevated)",
-        border: "1px solid var(--db-border)",
-        color: "var(--db-text-secondary)",
-      };
     case "reserved":
       return {
-        background: "color-mix(in srgb, var(--db-danger) 14%, transparent)",
-        border: "1px solid color-mix(in srgb, var(--db-danger) 40%, transparent)",
-        color: "var(--db-danger)",
+        background: "color-mix(in srgb, var(--db-accent) 14%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--db-accent) 40%, transparent)",
+        color: "var(--db-accent)",
+      };
+    case "free":
+      return {
+        background: "color-mix(in srgb, var(--db-success) 14%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--db-success) 40%, transparent)",
+        color: "var(--db-success)",
       };
   }
 }
@@ -418,10 +397,11 @@ export default function FloorPage() {
     }
   }
 
-  // Derived table states. reserved (F8) takes priority over all computed states.
+  // Derived table states — 3-state: occupied > reserved > free.
   const derived: DerivedTable[] = tables.map((tbl) => {
-    const { state: computedState, hasCall } = deriveState(tbl.id, occupiedByTable, callsByTable);
-    const state: TableState = tbl.is_reserved ? "reserved" : computedState;
+    const { state, hasCall } = deriveState(
+      tbl.id, tbl.party_size, tbl.is_reserved, occupiedByTable, callsByTable,
+    );
     return {
       id:         tbl.id,
       label:      tbl.label,
@@ -443,10 +423,10 @@ export default function FloorPage() {
     void fetchData(bid).catch(() => {});
   }, [fetchData]);
 
-  // Summary counters
-  const occupiedCount = derived.filter((d) => d.state === "occupied" || d.state === "waiter").length;
+  // Summary counters (3-state)
+  const occupiedCount = derived.filter((d) => d.state === "occupied").length;
   const freeCount     = derived.filter((d) => d.state === "free").length;
-  const billCount     = derived.filter((d) => d.state === "bill").length;
+  const billCount     = derived.filter((d) => d.state === "reserved").length;
 
   // Floors in first-seen order (already sorted by the query)
   const floors: string[] = [];
@@ -592,8 +572,6 @@ function TableCard({
     switch (table.state) {
       case "free":     return t("floorStateFree");
       case "occupied": return t("floorStateOccupied");
-      case "bill":     return t("floorStateBill");
-      case "waiter":   return t("floorStateOccupied");
       case "reserved": return t("floorStateReserved");
     }
   })();
@@ -675,8 +653,8 @@ function TableCard({
         </span>
       )}
 
-      {/* Elapsed time — only when occupied or has call */}
-      {table.minOpenAt && (table.state === "occupied" || table.state === "waiter" || table.state === "bill") && (
+      {/* Elapsed time — only when occupied */}
+      {table.minOpenAt && table.state === "occupied" && (
         <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "2px" }}>
           {elapsed(table.minOpenAt, t)}
         </span>
