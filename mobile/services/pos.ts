@@ -73,6 +73,16 @@ export interface PosTablesOverviewRow {
   open_total_cents: number;
   /** ISO timestamp of the first unpaid order, or null. */
   open_since: string | null;
+  /**
+   * UUID of the primary table this table is annexed to, or null when not combined.
+   * When non-null, orders/tab live on the primary table — navigate there instead.
+   */
+  combined_into: string | null;
+  /**
+   * Total seat capacity counting this table plus all annexed secondaries.
+   * Equals `seats` when the table is not combined.
+   */
+  combined_seats: number;
 }
 
 export interface PosOrderItem {
@@ -147,6 +157,27 @@ export interface PosCheckItem {
   /** order_item_ids (from PosTableItemRow) included in this check. */
   order_item_ids: string[];
 }
+
+export type PosCombineTablesError =
+  | 'secondary_in_use'
+  | 'secondary_has_open_orders'
+  | 'secondary_already_combined'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosCombineTablesResult =
+  | { ok: true }
+  | { ok: false; reason: PosCombineTablesError };
+
+export type PosUncombineTableError =
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosUncombineTableResult =
+  | { ok: true }
+  | { ok: false; reason: PosUncombineTableError };
 
 export type PosVoidOrderError =
   | 'in_preparation'
@@ -235,6 +266,21 @@ type PosRpc = {
     params: {
       p_business_id: string;
       p_order_id: string;
+    },
+  ): Promise<{ data: null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_combine_tables',
+    params: {
+      p_business_id: string;
+      p_primary_table_id: string;
+      p_secondary_table_id: string;
+    },
+  ): Promise<{ data: null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_uncombine_table',
+    params: {
+      p_business_id: string;
+      p_table_id: string;
     },
   ): Promise<{ data: null; error: { message: string } | null }>;
 };
@@ -654,6 +700,79 @@ export async function posVoidOrder(
     if (msg.includes('split in progress'))    return { ok: false, reason: 'split_in_progress' };
     if (msg.includes('order already paid'))   return { ok: false, reason: 'already_paid' };
     if (msg.includes('no pos access'))        return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
+}
+
+// ─── posCombineTables ─────────────────────────────────────────────────────────
+
+/**
+ * Annex secondaryTableId to primaryTableId.
+ * The secondary must be free (no active table_tab) and have no open orders.
+ * After combining, the secondary's capacity is added to the primary's
+ * combined_seats and the secondary's combined_into is set to primaryTableId.
+ *
+ * Possible failure reasons:
+ *   'secondary_in_use'           — secondary table has an active table_tab
+ *   'secondary_has_open_orders'  — secondary has unpaid orders
+ *   'secondary_already_combined' — secondary is already annexed to another table
+ *   'no_access'                  — user does not have pos_access at this business
+ *   'db_error'                   — unexpected database error
+ *   'not_configured'             — Supabase is not configured
+ */
+export async function posCombineTables(
+  businessId: string,
+  primaryTableId: string,
+  secondaryTableId: string,
+): Promise<PosCombineTablesResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await posRpc.rpc('pos_combine_tables', {
+    p_business_id: businessId,
+    p_primary_table_id: primaryTableId,
+    p_secondary_table_id: secondaryTableId,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('secondary in use'))           return { ok: false, reason: 'secondary_in_use' };
+    if (msg.includes('secondary has open orders'))  return { ok: false, reason: 'secondary_has_open_orders' };
+    if (msg.includes('secondary already combined')) return { ok: false, reason: 'secondary_already_combined' };
+    if (msg.includes('no pos access'))              return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
+}
+
+// ─── posUncombineTable ────────────────────────────────────────────────────────
+
+/**
+ * Detach tableId from its primary table.
+ * tableId must currently have combined_into set (be a secondary).
+ * The server clears combined_into and recomputes combined_seats on the primary.
+ *
+ * Possible failure reasons:
+ *   'no_access'      — user does not have pos_access at this business
+ *   'db_error'       — unexpected database error (incl. table not combined)
+ *   'not_configured' — Supabase is not configured
+ */
+export async function posUncombineTable(
+  businessId: string,
+  tableId: string,
+): Promise<PosUncombineTableResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await posRpc.rpc('pos_uncombine_table', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('no pos access')) return { ok: false, reason: 'no_access' };
     return { ok: false, reason: 'db_error' };
   }
 

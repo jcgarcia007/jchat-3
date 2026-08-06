@@ -20,7 +20,7 @@
  * Navigation: tap any card → PosOrderScreen (unchanged from C4).
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -38,6 +38,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconChevronLeft,
   IconLayoutGrid,
+  IconPlugConnected,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -90,26 +91,87 @@ export default function PosHomeScreen() {
   );
 
   // ── Legend counts ─────────────────────────────────────────────────────────
-  const freeCount = tables.filter((row) => row.state === 'libre').length;
-  const occupiedCount = tables.length - freeCount;
+  const freeCount = tables.filter((row) => row.state === 'libre' && row.combined_into === null).length;
+  const occupiedCount = tables.filter((row) => row.state === 'ocupada' && row.combined_into === null).length;
+
+  // ── Combined table helpers ─────────────────────────────────────────────────
+  /** Map table_id → label for resolving combined_into references. */
+  const labelById = useMemo<Map<string, string>>(
+    () => new Map(tables.map((t) => [t.table_id, t.label])),
+    [tables],
+  );
+  /** Set of primary table IDs (those that have at least one secondary). */
+  const primaryIds = useMemo<Set<string>>(
+    () => {
+      const s = new Set<string>();
+      for (const t of tables) {
+        if (t.combined_into !== null) s.add(t.combined_into);
+      }
+      return s;
+    },
+    [tables],
+  );
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const handleTablePress = useCallback(
     (table: PosTablesOverviewRow) => {
+      // Combined (secondary) tables: navigate to the primary table's hub.
+      const targetId    = table.combined_into ?? table.table_id;
+      const targetLabel = table.combined_into
+        ? (labelById.get(table.combined_into) ?? table.label)
+        : table.label;
+
       navigation.navigate('PosTableHub', {
         businessId,
         businessName,
-        tableId: table.table_id,
-        tableLabel: table.label,
+        tableId: targetId,
+        tableLabel: targetLabel,
         plan,
       });
     },
-    [navigation, businessId, businessName, plan],
+    [navigation, businessId, businessName, plan, labelById],
   );
 
   // ── Table card ────────────────────────────────────────────────────────────
   const renderTable = ({ item }: { item: PosTablesOverviewRow }) => {
+    const isCombinedSecondary = item.combined_into !== null;
+    const isPrimary = primaryIds.has(item.table_id);
     const isOccupied = item.state === 'ocupada';
+
+    // Combined secondary: dim card, show "Combinada con X", tap → primary hub
+    if (isCombinedSecondary) {
+      const primaryLabel = labelById.get(item.combined_into!) ?? '—';
+      return (
+        <Pressable
+          onPress={() => handleTablePress(item)}
+          style={({ pressed }) => [
+            styles.tableCard,
+            {
+              backgroundColor: c.bgSurface,
+              borderColor: c.borderSubtle,
+              borderLeftColor: c.brand + '88',
+              opacity: pressed ? 0.75 : 0.72,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.label}, ${t('pos.combinedWith', { label: primaryLabel })}`}
+        >
+          <View style={styles.cardTopRow}>
+            <View style={[styles.stateChip, { backgroundColor: c.brand + '18' }]}>
+              <IconPlugConnected size={11} color={c.brand} strokeWidth={2} />
+              <Text style={[styles.stateText, { color: c.brand }]}>
+                {t('pos.combinedWith', { label: primaryLabel })}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.tableLabel, { color: c.textTertiary }]} numberOfLines={1}>
+            {item.label}
+          </Text>
+        </Pressable>
+      );
+    }
+
+    // Normal / primary table card
     const stateColor = isOccupied ? c.warning : c.success;
 
     // Assignment badge
@@ -122,7 +184,6 @@ export default function PosHomeScreen() {
       assignLabel = t('pos.assignmentOther');
       assignColor = c.textTertiary;
     } else if (isOccupied) {
-      // unassigned + occupied — flag so staff can claim it
       assignLabel = t('pos.assignmentUnassigned');
       assignColor = c.warning;
     }
@@ -156,6 +217,13 @@ export default function PosHomeScreen() {
               <Text style={[styles.assignText, { color: assignColor }]}>
                 {assignLabel}
               </Text>
+            </View>
+          ) : null}
+
+          {/* Combined-primary indicator */}
+          {isPrimary ? (
+            <View style={[styles.assignBadge, { backgroundColor: c.brand + '18' }]}>
+              <IconPlugConnected size={10} color={c.brand} strokeWidth={2} />
             </View>
           ) : null}
         </View>

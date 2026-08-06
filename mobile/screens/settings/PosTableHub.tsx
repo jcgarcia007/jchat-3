@@ -26,6 +26,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -42,6 +44,8 @@ import {
   IconChevronLeft,
   IconMinus,
   IconPlus,
+  IconPlugConnected,
+  IconPlugOff,
   IconTrash,
   IconUsers,
 } from '@tabler/icons-react-native';
@@ -55,6 +59,8 @@ import {
   posSetPartySize,
   posCreateOrder,
   posVoidOrder,
+  posCombineTables,
+  posUncombineTable,
 } from '../../services/pos';
 import type {
   PosTablesOverviewRow,
@@ -223,11 +229,19 @@ export default function PosTableHub(): React.ReactElement {
 
   // ── Remote state ────────────────────────────────────────────────────────────
   const [tableData, setTableData] = useState<PosTablesOverviewRow | null>(null);
+  /** Full list of all tables — used for combine picker and redirect logic. */
+  const [allTables, setAllTables] = useState<PosTablesOverviewRow[]>([]);
   const [sentItems, setSentItems] = useState<PosTableItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   /** order_id currently being voided — null when idle. Prevents double-tap. */
   const [voidingOrderId, setVoidingOrderId] = useState<string | null>(null);
+
+  // ── Combine state ───────────────────────────────────────────────────────────
+  const [showCombinePicker, setShowCombinePicker] = useState(false);
+  const [combining, setCombining] = useState(false);
+  /** table_id being uncombined — null when idle. */
+  const [uncombiningId, setUncombiningId] = useState<string | null>(null);
 
   // ── Round filter — null = "All" ──────────────────────────────────────────────
   /** The order_id of the currently selected round chip, or null for "All". */
@@ -274,7 +288,8 @@ export default function PosTableHub(): React.ReactElement {
 
   // ── Party size (local, synced to server optimistically) ─────────────────────
   const [partySize, setPartySize] = useState<number>(1);
-  const maxSeats = tableData?.seats ?? 12;
+  // Use combined_seats so the stepper can reach the full capacity of all merged tables.
+  const maxSeats = tableData?.combined_seats ?? tableData?.seats ?? 12;
 
   // ── Draft items (live from context — re-computed on every render) ───────────
   const tableDraft = getTableDraft(tableId);
@@ -292,6 +307,21 @@ export default function PosTableHub(): React.ReactElement {
         .then(([overviewRows, itemRows]) => {
           if (!mounted) return;
           const row = overviewRows.find((r) => r.table_id === tableId) ?? null;
+          setAllTables(overviewRows);
+
+          // Redirect: if this table is a combined secondary, navigate to the primary.
+          if (row?.combined_into) {
+            const primaryRow = overviewRows.find((r) => r.table_id === row.combined_into) ?? null;
+            navigation.replace('PosTableHub', {
+              businessId,
+              businessName,
+              tableId: row.combined_into,
+              tableLabel: primaryRow?.label ?? tableLabel,
+              plan,
+            });
+            return;
+          }
+
           setTableData(row);
           if (row) setPartySize(row.party_size ?? 1);
           setSentItems(itemRows);
@@ -304,7 +334,7 @@ export default function PosTableHub(): React.ReactElement {
       return () => {
         mounted = false;
       };
-    }, [businessId, tableId]),
+    }, [businessId, businessName, tableId, tableLabel, plan, navigation]),
   );
 
   // ── Derived ─────────────────────────────────────────────────────────────────
@@ -652,6 +682,85 @@ export default function PosTableHub(): React.ReactElement {
     [t, handleVoidOrder],
   );
 
+  // ── Combine/uncombine derived ─────────────────────────────────────────────
+  /** Tables currently annexed to this primary table. */
+  const combinedSecondaries = useMemo(
+    () => allTables.filter((t) => t.combined_into === tableId),
+    [allTables, tableId],
+  );
+  /** Free, non-combined tables available to annex (excluding self). */
+  const freeTables = useMemo(
+    () =>
+      allTables.filter(
+        (t) =>
+          t.table_id !== tableId &&
+          t.state === 'libre' &&
+          t.combined_into === null,
+      ),
+    [allTables, tableId],
+  );
+
+  // ── Refresh helper (post-combine/uncombine) ───────────────────────────────
+  const refreshAll = useCallback(() => {
+    Promise.all([
+      posTablesOverview(businessId),
+      posTableItems(businessId, tableId),
+    ])
+      .then(([overviewRows, itemRows]) => {
+        const row = overviewRows.find((r) => r.table_id === tableId) ?? null;
+        setAllTables(overviewRows);
+        setTableData(row);
+        if (row) setPartySize(row.party_size ?? 1);
+        setSentItems(itemRows);
+      })
+      .catch(() => {});
+  }, [businessId, tableId]);
+
+  // ── Combine handler ───────────────────────────────────────────────────────
+  const handleCombine = useCallback(
+    async (secondaryTableId: string) => {
+      setShowCombinePicker(false);
+      setCombining(true);
+      const result = await posCombineTables(businessId, tableId, secondaryTableId);
+      setCombining(false);
+
+      if (!result.ok) {
+        const msgMap: Record<string, string> = {
+          secondary_in_use:           t('pos.combineErrInUse'),
+          secondary_has_open_orders:  t('pos.combineErrOpenOrders'),
+          secondary_already_combined: t('pos.combineErrAlreadyCombined'),
+          no_access:                  t('pos.combineErrNoAccess'),
+        };
+        Alert.alert(
+          t('pos.errorTitle'),
+          msgMap[result.reason] ?? t('pos.combineErrGeneral'),
+        );
+        return;
+      }
+
+      refreshAll();
+    },
+    [businessId, tableId, t, refreshAll],
+  );
+
+  // ── Uncombine handler ─────────────────────────────────────────────────────
+  const handleUncombine = useCallback(
+    async (secondaryTableId: string) => {
+      if (uncombiningId) return;
+      setUncombiningId(secondaryTableId);
+      const result = await posUncombineTable(businessId, secondaryTableId);
+      setUncombiningId(null);
+
+      if (!result.ok) {
+        Alert.alert(t('pos.errorTitle'), t('pos.uncombineErr'));
+        return;
+      }
+
+      refreshAll();
+    },
+    [businessId, t, uncombiningId, refreshAll],
+  );
+
   // ── State info for header ──────────────────────────────────────────────────
   const isOccupied = tableData?.state === 'ocupada';
   const stateColor = isOccupied ? c.warning : c.success;
@@ -722,6 +831,80 @@ export default function PosTableHub(): React.ReactElement {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          {/* ── Combined tables section ────────────────────────────────────── */}
+          {(combinedSecondaries.length > 0 || combining) && (
+            <View style={[styles.combinedSection, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+              <View style={styles.combinedHeader}>
+                <IconPlugConnected size={14} color={c.brand} strokeWidth={2} />
+                <Text style={[styles.combinedHeaderText, { color: c.textSecondary }]}>
+                  {t('pos.combinedTablesSection')}
+                </Text>
+              </View>
+              {combinedSecondaries.map((sec) => (
+                <View key={sec.table_id} style={[styles.combinedRow, { borderTopColor: c.borderSubtle }]}>
+                  <Text style={[styles.combinedRowLabel, { color: c.textPrimary }]}>
+                    {sec.label}
+                  </Text>
+                  <Text style={[styles.combinedRowSeats, { color: c.textTertiary }]}>
+                    {sec.seats != null ? `${sec.seats} asientos` : ''}
+                  </Text>
+                  <Pressable
+                    onPress={() => { void handleUncombine(sec.table_id); }}
+                    disabled={!!uncombiningId}
+                    style={[styles.uncombineBtn, { borderColor: c.danger + '88' }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('pos.combineSeparar')}
+                    accessibilityState={{ disabled: !!uncombiningId }}
+                  >
+                    {uncombiningId === sec.table_id ? (
+                      <ActivityIndicator size="small" color={c.danger} />
+                    ) : (
+                      <>
+                        <IconPlugOff size={12} color={c.danger} strokeWidth={2} />
+                        <Text style={[styles.uncombineBtnText, { color: c.danger }]}>
+                          {t('pos.combineSeparar')}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              ))}
+              {combining && (
+                <View style={[styles.combinedRow, { borderTopColor: c.borderSubtle }]}>
+                  <ActivityIndicator size="small" color={c.brand} />
+                  <Text style={[styles.combinedRowLabel, { color: c.textTertiary }]}>
+                    {t('pos.combineMesa')}…
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── Combine button ─────────────────────────────────────────────── */}
+          <Pressable
+            onPress={() => {
+              if (freeTables.length === 0) {
+                Alert.alert(t('pos.combineMesa'), t('pos.combineNoFree'));
+                return;
+              }
+              setShowCombinePicker(true);
+            }}
+            disabled={combining || !!uncombiningId}
+            style={({ pressed }) => [
+              styles.combineMesaBtn,
+              { borderColor: c.brand + '66' },
+              (combining || !!uncombiningId) && { opacity: 0.4 },
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.combineMesa')}
+          >
+            <IconPlugConnected size={14} color={c.brand} strokeWidth={2} />
+            <Text style={[styles.combineMesaBtnText, { color: c.brand }]}>
+              {t('pos.combineMesa')}
+            </Text>
+          </Pressable>
+
           {/* ── Party stepper ──────────────────────────────────────────────── */}
           <View style={[styles.partyRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <IconUsers size={16} color={c.textSecondary} strokeWidth={1.5} />
@@ -1045,6 +1228,67 @@ export default function PosTableHub(): React.ReactElement {
         </ScrollView>
       )}
 
+      {/* ── Combine picker modal ──────────────────────────────────────────────── */}
+      <Modal
+        visible={showCombinePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCombinePicker(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setShowCombinePicker(false)}
+        />
+        <View style={[styles.modalSheet, { backgroundColor: c.bgSurface }]}>
+          {/* Sheet header */}
+          <View style={[styles.modalHeader, { borderBottomColor: c.borderSubtle }]}>
+            <Text style={[styles.modalTitle, { color: c.textPrimary }]}>
+              {t('pos.combineChoose')}
+            </Text>
+            <Pressable
+              onPress={() => setShowCombinePicker(false)}
+              style={styles.modalClose}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.combineCancel')}
+            >
+              <Text style={[styles.modalCloseText, { color: c.brand }]}>
+                {t('pos.combineCancel')}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Free table list */}
+          <FlatList
+            data={freeTables}
+            keyExtractor={(t) => t.table_id}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+            ItemSeparatorComponent={() => (
+              <View style={[styles.modalSep, { backgroundColor: c.borderSubtle }]} />
+            )}
+            renderItem={({ item: freeTable }) => (
+              <Pressable
+                onPress={() => { void handleCombine(freeTable.table_id); }}
+                style={({ pressed }) => [
+                  styles.modalTableRow,
+                  pressed && { backgroundColor: c.brand + '12' },
+                ]}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.modalTableLabel, { color: c.textPrimary }]}>
+                  {freeTable.label}
+                </Text>
+                {freeTable.seats != null && (
+                  <Text style={[styles.modalTableSeats, { color: c.textTertiary }]}>
+                    {freeTable.seats} asientos
+                  </Text>
+                )}
+                <IconPlugConnected size={16} color={c.brand} strokeWidth={1.5} />
+              </Pressable>
+            )}
+          />
+        </View>
+      </Modal>
+
       {/* ── Fixed action bar ──────────────────────────────────────────────────── */}
       <View
         style={[
@@ -1348,4 +1592,84 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionBtnText: { fontSize: 13, fontWeight: '600' },
+
+  // ── Combined tables section ──────────────────────────────────────────────────
+  combinedSection: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  combinedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  combinedHeaderText: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  combinedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  combinedRowLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  combinedRowSeats: { fontSize: 12 },
+  uncombineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  uncombineBtnText: { fontSize: 12, fontWeight: '600' },
+
+  // ── Combine button ───────────────────────────────────────────────────────────
+  combineMesaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  combineMesaBtnText: { fontSize: 13, fontWeight: '600' },
+
+  // ── Combine picker modal ─────────────────────────────────────────────────────
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modalTitle: { flex: 1, fontSize: 16, fontWeight: '600' },
+  modalClose: { paddingLeft: 12 },
+  modalCloseText: { fontSize: 15, fontWeight: '600' },
+  modalSep: { height: StyleSheet.hairlineWidth, marginLeft: H_PAD },
+  modalTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  modalTableLabel: { flex: 1, fontSize: 15, fontWeight: '600' },
+  modalTableSeats: { fontSize: 12 },
 });
