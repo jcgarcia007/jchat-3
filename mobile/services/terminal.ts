@@ -32,6 +32,7 @@ export type TerminalErrorReason =
   | 'no_access'
   | 'already_paid'
   | 'empty_tab'
+  | 'not_pending'
   | 'not_found'
   | 'no_stripe_account'
   | 'not_configured'
@@ -236,6 +237,60 @@ export async function markPaid(orderId: string): Promise<MarkPaidResult> {
 
   // EF returned 200 with ok: false — PI is not succeeded yet.
   return { ok: false, reason: 'not_succeeded', piStatus: data?.status };
+}
+
+// ─── chargeSplitCheck ─────────────────────────────────────────────────────────
+
+/**
+ * Result of chargeSplitCheck.
+ * Same shape as CreateTabPaymentIntentResult but paymentId is never null
+ * (the row already exists) and 409 maps to 'not_pending' (the payment row is
+ * not in the expected 'pending' status — already charged or cancelled).
+ */
+export type ChargeSplitCheckResult =
+  | { ok: true; clientSecret: string; paymentIntentId: string; paymentId: string; amountCents: number }
+  | { ok: false; reason: TerminalErrorReason; message?: string };
+
+/**
+ * Create a Stripe PaymentIntent for a single split-check row (pos_payments).
+ *
+ * The amount is read server-side from pos_payments.amount_cents — this call
+ * never sends a price. Returns { ok: false, reason: 'not_pending' } when the
+ * payment row is no longer in 'pending' status (e.g. already collected).
+ *
+ * @param paymentId — the UUID of the pos_payments row created by posCreateSplit
+ */
+export async function chargeSplitCheck(paymentId: string): Promise<ChargeSplitCheckResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await supabase.functions.invoke<{
+    client_secret: string;
+    payment_intent_id: string;
+    payment_id: string;
+    amount_cents: number;
+  }>('terminal', {
+    body: { action: 'charge_split_check', payment_id: paymentId },
+  });
+
+  if (error) {
+    const { httpStatus, message } = await readEfError(error);
+    // 409 from this action means the payment row is not in 'pending' status
+    // (already charged or cancelled) — distinct from 'already_paid'.
+    if (httpStatus === 409) return { ok: false, reason: 'not_pending', message };
+    return { ok: false, reason: mapReason(httpStatus, message), message };
+  }
+
+  if (!data?.client_secret || !data?.payment_intent_id || data?.amount_cents == null) {
+    return { ok: false, reason: 'error', message: 'Incomplete response from server' };
+  }
+
+  return {
+    ok: true,
+    clientSecret: data.client_secret,
+    paymentIntentId: data.payment_intent_id,
+    paymentId: data.payment_id,
+    amountCents: data.amount_cents,
+  };
 }
 
 // ─── createTabPaymentIntent ───────────────────────────────────────────────────

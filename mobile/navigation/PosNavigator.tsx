@@ -34,6 +34,7 @@ import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
 import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
+import PosSplitScreen from '../screens/settings/PosSplitScreen';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -75,6 +76,14 @@ export type PosStackParamList = {
     businessId: string;
     tableId: string;
     tableLabel: string;
+  };
+  /** Equal-split payment screen — splits tab among N guests (C11). */
+  PosSplit: {
+    businessId: string;
+    tableId: string;
+    tableLabel: string;
+    /** Optional hint for N stepper default (comes from PosTableHub's partySize). */
+    partySize?: number;
   };
 };
 
@@ -146,6 +155,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosOrder" component={PosOrderScreen} />
           {/* PosCheckout must be inside this navigator (needs useStripeTerminal) */}
           <PosStack.Screen name="PosCheckout" component={PosCheckoutScreen} />
+          {/* PosSplit: equal-split payment screen (C11) */}
+          <PosStack.Screen name="PosSplit" component={PosSplitScreen} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

@@ -110,6 +110,34 @@ export interface PosTableItemRow {
   special_instructions: string | null;
 }
 
+/**
+ * One split-check row returned by the pos_create_split RPC.
+ * Each row represents one payment unit (a "check") created for the table.
+ * The amount is server-computed — never trust or send it from the client.
+ */
+export interface PosSplitCheckRow {
+  /** UUID of the pos_payments record — passed to chargeSplitCheck. */
+  payment_id: string;
+  /** Split method that generated this row (e.g. 'even'). */
+  kind: string;
+  /** Seat number this check covers, or null for table-level split. */
+  seat: number | null;
+  /** Amount this check must collect (cents). Server-authoritative. */
+  amount_cents: number;
+  /** order_item IDs covered by this check (may be empty for even split). */
+  order_item_ids: string[];
+}
+
+export type PosCreateSplitError =
+  | 'no_access'
+  | 'empty_tab'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosCreateSplitResult =
+  | { ok: true; checks: PosSplitCheckRow[] }
+  | { ok: false; reason: PosCreateSplitError };
+
 export type PosCreateOrderError =
   | 'table_not_in_business'
   | 'item_not_available'
@@ -160,6 +188,16 @@ type PosRpc = {
     fn: 'pos_table_items',
     params: { p_business_id: string; p_table_id: string },
   ): Promise<{ data: PosTableItemRow[] | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_create_split',
+    params: {
+      p_business_id: string;
+      p_table_id: string;
+      p_method: string;
+      p_ways: number | null;
+      p_checks: null;
+    },
+  ): Promise<{ data: PosSplitCheckRow[] | null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -491,4 +529,54 @@ export async function posSetPartySize(
   });
 
   if (error) throw new Error(error.message);
+}
+
+// ─── posCreateSplit ───────────────────────────────────────────────────────────
+
+/**
+ * Create N equal-split payment rows for a table via the pos_create_split RPC.
+ *
+ * The server computes the amount for each part from the tab total — the client
+ * sends only method + N. Returns an array of PosSplitCheckRow, one per part.
+ * Pass each row's payment_id to chargeSplitCheck to collect payment.
+ *
+ * @param businessId — business whose tab is being split
+ * @param tableId    — the table to split
+ * @param method     — split strategy; currently only 'even' is supported
+ * @param ways       — number of equal parts (≥ 2); null means use server default
+ * @param checks     — reserved for future seat-specific split; always pass null
+ *
+ * Possible failure reasons:
+ *   'no_access'      — user does not have pos_access at this business
+ *   'empty_tab'      — tab total is zero; nothing to split
+ *   'db_error'       — unexpected database error
+ *   'not_configured' — Supabase is not configured
+ */
+export async function posCreateSplit(
+  businessId: string,
+  tableId: string,
+  method: 'even',
+  ways?: number | null,
+  checks?: null,
+): Promise<PosCreateSplitResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await posRpc.rpc('pos_create_split', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+    p_method: method,
+    p_ways: ways ?? null,
+    p_checks: checks ?? null,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('no pos access')) return { ok: false, reason: 'no_access' };
+    if (msg.includes('empty tab') || msg.includes('nothing to split')) {
+      return { ok: false, reason: 'empty_tab' };
+    }
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true, checks: data ?? [] };
 }

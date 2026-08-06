@@ -163,7 +163,22 @@
     "itemStatusPreparing": "Preparando",
     "itemStatusReady": "Listo",
     "filterAll": "Todos",
-    "filterOrderN": "Orden #{{n}}"
+    "filterOrderN": "Orden #{{n}}",
+    "splitTitle": "Dividir cuenta",
+    "splitTabTotal": "Total de la cuenta",
+    "splitPartyQuestion": "¿Entre cuántas personas?",
+    "splitEach": "por persona",
+    "splitCreateBtn": "Crear división",
+    "splitCreating": "Creando…",
+    "splitPartN": "Parte {{n}}",
+    "splitPaidOf": "{{paid}} de {{total}} pagado",
+    "splitPaid": "Pagado ✓",
+    "splitPending": "Pendiente",
+    "splitCharge": "Cobrar",
+    "splitAllPaid": "Mesa pagada ✓",
+    "splitAllPaidMsg": "Todas las partes han sido cobradas.",
+    "splitErrorCreate": "No se pudo crear la división. Inténtalo de nuevo.",
+    "splitErrorTitle": "Error"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

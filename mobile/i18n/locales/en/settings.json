@@ -163,7 +163,22 @@
     "itemStatusPreparing": "Preparing",
     "itemStatusReady": "Ready",
     "filterAll": "All",
-    "filterOrderN": "Order #{{n}}"
+    "filterOrderN": "Order #{{n}}",
+    "splitTitle": "Split Bill",
+    "splitTabTotal": "Tab total",
+    "splitPartyQuestion": "Split between how many guests?",
+    "splitEach": "per person",
+    "splitCreateBtn": "Create split",
+    "splitCreating": "Creating…",
+    "splitPartN": "Part {{n}}",
+    "splitPaidOf": "{{paid}} of {{total}} paid",
+    "splitPaid": "Paid ✓",
+    "splitPending": "Pending",
+    "splitCharge": "Charge",
+    "splitAllPaid": "Table paid ✓",
+    "splitAllPaidMsg": "All parts have been charged.",
+    "splitErrorCreate": "Could not create split. Please try again.",
+    "splitErrorTitle": "Error"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

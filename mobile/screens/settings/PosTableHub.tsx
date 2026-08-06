@@ -506,6 +506,11 @@ export default function PosTableHub(): React.ReactElement {
     navigation.navigate('PosCheckout', { businessId, tableId, tableLabel });
   }, [navigation, businessId, tableId, tableLabel]);
 
+  // ── Dividir ───────────────────────────────────────────────────────────────
+  const handleDividir = useCallback(() => {
+    navigation.navigate('PosSplit', { businessId, tableId, tableLabel, partySize });
+  }, [navigation, businessId, tableId, tableLabel, partySize]);
+
   // ── State info for header ──────────────────────────────────────────────────
   const isOccupied = tableData?.state === 'ocupada';
   const stateColor = isOccupied ? c.warning : c.success;
@@ -873,15 +878,20 @@ export default function PosTableHub(): React.ReactElement {
           )}
         </Pressable>
 
-        {/* Split Bill — disabled (Stage 3 future) */}
+        {/* Split Bill — active when sent items exist (C11) */}
         <Pressable
-          disabled
-          style={[styles.actionBtn, { backgroundColor: c.borderSubtle }]}
+          onPress={hasSent ? handleDividir : undefined}
+          disabled={!hasSent}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            { backgroundColor: hasSent ? c.brandPurple : c.borderSubtle },
+            pressed && hasSent && { opacity: 0.8 },
+          ]}
           accessibilityRole="button"
           accessibilityLabel={t('pos.hubSplitBill')}
-          accessibilityState={{ disabled: true }}
+          accessibilityState={{ disabled: !hasSent }}
         >
-          <Text style={[styles.actionBtnText, { color: c.textTertiary }]}>
+          <Text style={[styles.actionBtnText, { color: hasSent ? '#fff' : c.textTertiary }]}>
             {t('pos.hubBtnSplit')}
           </Text>
         </Pressable>
