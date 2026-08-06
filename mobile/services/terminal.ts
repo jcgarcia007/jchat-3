@@ -20,16 +20,18 @@ import { supabase, isSupabaseConfigured } from './supabase';
 
 /**
  * Shared error reasons for Terminal Edge Function calls.
- *   no_access        — 403: employee lacks pos_access at this business
- *   already_paid     — 409: the order has already been marked paid
- *   not_found        — 404: order or business not found
+ *   no_access         — 403: employee lacks pos_access at this business
+ *   already_paid      — 409: the order has already been marked paid
+ *   empty_tab         — 409: tab total is zero (nothing to charge)
+ *   not_found         — 404: order, payment record, or business not found
  *   no_stripe_account — 422: business has no connected Stripe account
- *   not_configured   — local guard: Supabase not configured
- *   error            — any other server/network error
+ *   not_configured    — local guard: Supabase not configured
+ *   error             — any other server/network error
  */
 export type TerminalErrorReason =
   | 'no_access'
   | 'already_paid'
+  | 'empty_tab'
   | 'not_found'
   | 'no_stripe_account'
   | 'not_configured'
@@ -41,6 +43,22 @@ export type CreatePaymentIntentResult =
 
 export type MarkPaidResult =
   | { ok: true }
+  /** pi.status !== 'succeeded' — piStatus is the raw Stripe status. */
+  | { ok: false; reason: 'not_succeeded'; piStatus?: string }
+  | { ok: false; reason: TerminalErrorReason; message?: string };
+
+/**
+ * Result of createTabPaymentIntent.
+ *   paymentId may be null if the pos_payments INSERT failed server-side after
+ *   the PI was created — the PI is still valid for collection; the operator
+ *   must reconcile via the Stripe dashboard.
+ */
+export type CreateTabPaymentIntentResult =
+  | { ok: true; clientSecret: string; paymentIntentId: string; paymentId: string | null; amountCents: number }
+  | { ok: false; reason: TerminalErrorReason; message?: string };
+
+export type MarkTabPaidResult =
+  | { ok: true; tabClosed: boolean }
   /** pi.status !== 'succeeded' — piStatus is the raw Stripe status. */
   | { ok: false; reason: 'not_succeeded'; piStatus?: string }
   | { ok: false; reason: TerminalErrorReason; message?: string };
@@ -215,6 +233,92 @@ export async function markPaid(orderId: string): Promise<MarkPaidResult> {
   }
 
   if (data?.ok === true) return { ok: true };
+
+  // EF returned 200 with ok: false — PI is not succeeded yet.
+  return { ok: false, reason: 'not_succeeded', piStatus: data?.status };
+}
+
+// ─── createTabPaymentIntent ───────────────────────────────────────────────────
+
+/**
+ * Create a Stripe PaymentIntent for the full tab of a table (all unpaid orders).
+ *
+ * The amount is read server-side via pos_tab_total — this call never sends a
+ * price. Returns `{ ok: false, reason: 'empty_tab' }` when the tab total is
+ * zero (nothing to charge yet). paymentId may be null in the rare case where
+ * the pos_payments INSERT failed after a successful PI creation; the PI is
+ * still valid for collection but the operator must reconcile via Stripe.
+ *
+ * @param businessId — the business whose connected Stripe account will be used
+ * @param tableId    — the UUID of the table in the `tables` table
+ */
+export async function createTabPaymentIntent(
+  businessId: string,
+  tableId: string,
+): Promise<CreateTabPaymentIntentResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await supabase.functions.invoke<{
+    client_secret: string;
+    payment_intent_id: string;
+    payment_id: string | null;
+    amount_cents: number;
+  }>('terminal', {
+    body: { action: 'create_tab_payment_intent', business_id: businessId, table_id: tableId },
+  });
+
+  if (error) {
+    const { httpStatus, message } = await readEfError(error);
+    // 409 from this action means "nothing to charge" (tab total is zero),
+    // not "already paid" — override mapReason's default for 409.
+    if (httpStatus === 409) return { ok: false, reason: 'empty_tab', message };
+    return { ok: false, reason: mapReason(httpStatus, message), message };
+  }
+
+  if (!data?.client_secret || !data?.payment_intent_id || data?.amount_cents == null) {
+    return { ok: false, reason: 'error', message: 'Incomplete response from server' };
+  }
+
+  return {
+    ok: true,
+    clientSecret: data.client_secret,
+    paymentIntentId: data.payment_intent_id,
+    paymentId: data.payment_id ?? null,
+    amountCents: data.amount_cents,
+  };
+}
+
+// ─── markTabPaid ──────────────────────────────────────────────────────────────
+
+/**
+ * Confirm that a tab PaymentIntent has succeeded and mark all unpaid orders
+ * for the table as paid.
+ *
+ * The server retrieves the PI directly from Stripe — it never trusts the
+ * client's claim that the charge succeeded. Returns `{ ok: true, tabClosed }`
+ * where tabClosed is true when the server confirmed all orders are paid.
+ *
+ * @param paymentId — the UUID of the pos_payments record (from createTabPaymentIntent)
+ */
+export async function markTabPaid(paymentId: string): Promise<MarkTabPaidResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await supabase.functions.invoke<{
+    ok: boolean;
+    tab_closed?: boolean;
+    status?: string;
+  }>('terminal', {
+    body: { action: 'mark_tab_paid', payment_id: paymentId },
+  });
+
+  if (error) {
+    const { httpStatus, message } = await readEfError(error);
+    return { ok: false, reason: mapReason(httpStatus, message), message };
+  }
+
+  if (data?.ok === true) {
+    return { ok: true, tabClosed: data.tab_closed ?? false };
+  }
 
   // EF returned 200 with ok: false — PI is not succeeded yet.
   return { ok: false, reason: 'not_succeeded', piStatus: data?.status };

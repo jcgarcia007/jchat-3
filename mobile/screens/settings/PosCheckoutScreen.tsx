@@ -1,25 +1,27 @@
 /**
- * JChat 3.0 — POS Checkout Screen (C2b)
+ * JChat 3.0 — POS Checkout Screen (C8)
  *
- * In-person card payment via Stripe Terminal (simulated reader for dev builds).
- * Rendered inside PosNavigator → inside StripeTerminalProvider.
+ * In-person card payment via Stripe Terminal for the full tab of a table
+ * (all open orders in one shot). Rendered inside PosNavigator → inside
+ * StripeTerminalProvider.
  *
  * ── Flow ──────────────────────────────────────────────────────────────────────
- * 1. Load open orders for the table via posOpenOrders().
+ * 1. Load tab total preview from posTableItems() — display only.
  * 2. Auto-discover + auto-connect to the first simulated reader on mount.
- * 3. Employee selects the order to charge (auto-selected when only one exists).
- * 4. Tap "Cobrar $X.XX":
- *    a. createPaymentIntent(orderId)   — amount server-side, never from client
+ * 3. Tap "Cobrar $X.XX":
+ *    a. createTabPaymentIntent(businessId, tableId) — amount server-side via
+ *       pos_tab_total, never sent from the client
  *    b. retrievePaymentIntent(secret)  — SDK needs the full PI object
  *    c. collectPaymentMethod(pi)       — simulated reader auto-collects
  *    d. confirmPaymentIntent(pi)       — confirms the payment
- *    e. markPaid(orderId)              — server verifies PI at Stripe, marks paid
- * 5. Success banner → auto-navigate back to PosHome (which refreshes badges).
+ *    e. markTabPaid(paymentId)         — server verifies PI at Stripe, marks
+ *       all orders as paid and returns tabClosed
+ * 4. Success banner (tabClosed shown) → auto-navigate back to hub.
  *
  * ── Security ──────────────────────────────────────────────────────────────────
- * • The charge amount comes exclusively from the server (orders.total_cents).
+ * • Amount comes exclusively from the server (pos_tab_total RPC).
  * • No Stripe API keys on the client — connection token via Edge Function.
- * • markPaid() retrieves the PI directly from Stripe before updating the DB.
+ * • markTabPaid() retrieves the PI directly from Stripe before updating the DB.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -49,8 +51,11 @@ import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalS
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posOpenOrders, type PosOpenOrder } from '../../services/pos';
-import { createPaymentIntent, markPaid } from '../../services/terminal';
+import { posTableItems } from '../../services/pos';
+import {
+  createTabPaymentIntent,
+  markTabPaid,
+} from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
@@ -76,19 +81,6 @@ type CheckoutPhase =
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -120,30 +112,34 @@ export default function PosCheckoutScreen() {
   // Guard against double-connect race when discoveredReaders fires multiple times
   const isConnectingRef = useRef(false);
 
-  // ── Order data ──────────────────────────────────────────────────────────────
-  const [orders, setOrders] = useState<PosOpenOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  // ── Tab data (preview, display only — authoritative amount comes from EF) ──
+  const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
+  const [tabLoading, setTabLoading] = useState(true);
+
+  // paymentId returned by createTabPaymentIntent and consumed by markTabPaid
+  const paymentIdRef = useRef<string | null>(null);
+
+  // tabClosed returned by markTabPaid (for success banner)
+  const [tabClosed, setTabClosed] = useState(false);
 
   // ── Checkout state ──────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // ── Load open orders on mount ───────────────────────────────────────────────
+  // ── Load tab total preview on mount (display only, not used for the charge) ──
   useEffect(() => {
     let mounted = true;
-    posOpenOrders(businessId, tableId)
+    posTableItems(businessId, tableId)
       .then((rows) => {
         if (!mounted) return;
-        setOrders(rows);
-        // Auto-select when there's only one order
-        if (rows.length === 1) setSelectedOrderId(rows[0].id);
+        const total = rows.reduce((sum, r) => sum + r.price_cents * r.qty, 0);
+        setTabAmountCents(total > 0 ? total : null);
       })
       .catch(() => {
-        if (mounted) setOrders([]);
+        if (mounted) setTabAmountCents(null);
       })
       .finally(() => {
-        if (mounted) setOrdersLoading(false);
+        if (mounted) setTabLoading(false);
       });
     return () => { mounted = false; };
   }, [businessId, tableId]);
@@ -227,19 +223,17 @@ export default function PosCheckoutScreen() {
 
   // ── Charge ─────────────────────────────────────────────────────────────────
   const handleCharge = useCallback(async () => {
-    const order = orders.find((o) => o.id === selectedOrderId);
-    if (!order || !connectedReader) return;
-
+    if (!connectedReader) return;
     setCheckoutError(null);
 
-    // ── Step 1: Create PaymentIntent server-side ──
+    // ── Step 1: Create PaymentIntent for the full tab (amount from server) ──
     setPhase('creating');
-    const piResult = await createPaymentIntent(order.id);
+    const piResult = await createTabPaymentIntent(businessId, tableId);
     if (!piResult.ok) {
       setPhase('error');
       switch (piResult.reason) {
-        case 'already_paid':
-          setCheckoutError(t('pos.errorAlreadyPaid'));
+        case 'empty_tab':
+          setCheckoutError(t('pos.noOpenOrders'));
           break;
         case 'no_access':
           setCheckoutError(t('pos.errorNoAccess'));
@@ -249,6 +243,14 @@ export default function PosCheckoutScreen() {
       }
       return;
     }
+
+    // Store the DB record id — needed by markTabPaid in step 5.
+    // paymentId can be null if the pos_payments INSERT failed server-side
+    // (PI is still valid; operator reconciles via Stripe dashboard).
+    paymentIdRef.current = piResult.paymentId;
+
+    // Update display amount to server-confirmed value
+    setTabAmountCents(piResult.amountCents);
 
     // ── Step 2: Retrieve PaymentIntent (SDK needs the full object) ──
     setPhase('retrieving');
@@ -281,15 +283,20 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Step 5: Mark paid server-side (server verifies at Stripe first) ──
+    // ── Step 5: markTabPaid — server verifies PI at Stripe, marks orders paid ──
+    if (!paymentIdRef.current) {
+      // PI was created + confirmed at Stripe but the pos_payments record was
+      // not saved server-side. Card was charged; operator must reconcile.
+      setPhase('error');
+      setCheckoutError(t('pos.errorMarkPaid'));
+      return;
+    }
     setPhase('marking');
-    const markResult = await markPaid(order.id);
+    const markResult = await markTabPaid(paymentIdRef.current);
     if (!markResult.ok) {
       setPhase('error');
       if (markResult.reason === 'not_succeeded') {
         setCheckoutError(t('pos.errorNotSucceeded', { status: markResult.piStatus ?? 'unknown' }));
-      } else if (markResult.reason === 'already_paid') {
-        setCheckoutError(t('pos.errorAlreadyPaid'));
       } else {
         setCheckoutError(t('pos.errorMarkPaid'));
       }
@@ -297,15 +304,16 @@ export default function PosCheckoutScreen() {
     }
 
     // ── Success ──
+    setTabClosed(markResult.tabClosed);
     setPhase('success');
     // Navigate back after a short celebration pause so the employee sees the ✓
     setTimeout(() => {
       if (navigation.canGoBack()) navigation.goBack();
     }, 2200);
   }, [
-    orders,
-    selectedOrderId,
     connectedReader,
+    businessId,
+    tableId,
     retrievePaymentIntent,
     collectPaymentMethod,
     confirmPaymentIntent,
@@ -314,7 +322,6 @@ export default function PosCheckoutScreen() {
   ]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
   const isProcessing =
     phase === 'creating' ||
     phase === 'retrieving' ||
@@ -322,9 +329,11 @@ export default function PosCheckoutScreen() {
     phase === 'confirming' ||
     phase === 'marking';
 
+  const hasTab = tabAmountCents !== null && tabAmountCents > 0;
+
   const canCharge =
     readerStatus === 'ready' &&
-    selectedOrderId !== null &&
+    hasTab &&
     !isProcessing &&
     phase !== 'success';
 
@@ -508,61 +517,30 @@ export default function PosCheckoutScreen() {
           ) : null}
         </View>
 
-        {/* ── Orders section ── */}
-        {ordersLoading ? (
+        {/* ── Tab total preview ── */}
+        {tabLoading ? (
           <View style={styles.ordersLoading}>
             <ActivityIndicator color={c.brand} />
           </View>
-        ) : orders.length === 0 ? (
+        ) : !hasTab ? (
           <View style={[styles.emptyOrders, { borderColor: c.borderSubtle }]}>
             <Text style={[styles.emptyOrdersText, { color: c.textTertiary }]}>
               {t('pos.noOpenOrders')}
             </Text>
           </View>
         ) : (
-          <View style={styles.ordersSection}>
-            {orders.length > 1 ? (
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                {t('pos.selectOrder')}
-              </Text>
-            ) : null}
-
-            {orders.map((order) => {
-              const isSelected = order.id === selectedOrderId;
-              return (
-                <Pressable
-                  key={order.id}
-                  onPress={() => setSelectedOrderId(order.id)}
-                  style={({ pressed }) => [
-                    styles.orderCard,
-                    {
-                      backgroundColor: isSelected ? c.brandLight : c.bgSurface,
-                      borderColor: isSelected ? c.brand : c.borderSubtle,
-                    },
-                    pressed && !isSelected && { opacity: 0.72 },
-                  ]}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <View style={styles.orderCardMain}>
-                    <Text style={[styles.orderAmount, { color: c.textPrimary }]}>
-                      {formatCents(order.total_cents)}
-                    </Text>
-                    <Text style={[styles.orderMeta, { color: c.textTertiary }]}>
-                      {formatDate(order.created_at)}
-                      {order.status ? ` · ${order.status}` : ''}
-                    </Text>
-                  </View>
-                  {isSelected ? (
-                    <View style={[styles.orderCheck, { backgroundColor: c.brand }]}>
-                      <IconCheck size={14} color="#fff" strokeWidth={3} />
-                    </View>
-                  ) : (
-                    <View style={[styles.orderCheckEmpty, { borderColor: c.borderSubtle }]} />
-                  )}
-                </Pressable>
-              );
-            })}
+          <View
+            style={[
+              styles.tabAmountCard,
+              { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+            ]}
+          >
+            <Text style={[styles.tabAmountLabel, { color: c.textSecondary }]}>
+              {t('pos.openTab')} — {tableLabel}
+            </Text>
+            <Text style={[styles.tabAmountValue, { color: c.textPrimary }]}>
+              {formatCents(tabAmountCents!)}
+            </Text>
           </View>
         )}
 
@@ -596,6 +574,7 @@ export default function PosCheckoutScreen() {
               {phase === 'success' ? (
                 <Text style={[styles.progressSub, { color: c.success }]}>
                   {t('pos.paymentSuccessMsg')}
+                  {tabClosed ? ' ✓' : null}
                 </Text>
               ) : null}
             </View>
@@ -637,15 +616,15 @@ export default function PosCheckoutScreen() {
           ]}
           accessibilityRole="button"
           accessibilityLabel={
-            selectedOrder
-              ? t('pos.chargeButton', { amount: formatCents(selectedOrder.total_cents) })
+            hasTab
+              ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
               : t('pos.cobrar')
           }
         >
           <IconCreditCard size={20} color="#fff" strokeWidth={2} />
           <Text style={styles.chargeBtnText}>
-            {selectedOrder
-              ? t('pos.chargeButton', { amount: formatCents(selectedOrder.total_cents) })
+            {hasTab
+              ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
               : t('pos.cobrar')}
           </Text>
         </Pressable>
@@ -692,7 +671,7 @@ const styles = StyleSheet.create({
   readerBannerText: { flex: 1, fontSize: 14, fontWeight: '500' },
   retryBtn: { padding: 4 },
 
-  // ── Orders ────────────────────────────────────────────────────────────────────
+  // ── Tab total ─────────────────────────────────────────────────────────────────
   ordersLoading: { height: 80, alignItems: 'center', justifyContent: 'center' },
 
   emptyOrders: {
@@ -704,34 +683,15 @@ const styles = StyleSheet.create({
   },
   emptyOrdersText: { fontSize: 14 },
 
-  ordersSection: { gap: 10 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
-
-  orderCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 16,
-    gap: 12,
+  tabAmountCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    gap: 6,
   },
-  orderCardMain: { flex: 1, gap: 4 },
-  orderAmount: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
-  orderMeta: { fontSize: 13 },
-
-  orderCheck: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderCheckEmpty: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
+  tabAmountLabel: { fontSize: 13, fontWeight: '500' },
+  tabAmountValue: { fontSize: 36, fontWeight: '800', letterSpacing: -1 },
 
   // ── Progress banner ────────────────────────────────────────────────────────────
   progressBanner: {
