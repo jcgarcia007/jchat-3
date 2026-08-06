@@ -26,7 +26,7 @@ import type { RouteProp } from '@react-navigation/native';
 import {
   StripeTerminalProvider,
   useStripeTerminal,
-} from '@stripe/stripe-terminal-react-native';
+} from '../services/terminalSdk';
 
 import { getConnectionTokenSecret } from '../services/terminal';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';

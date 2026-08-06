@@ -146,7 +146,9 @@
     "assignmentMine": "Mía",
     "assignmentOther": "Otro mesero",
     "assignmentUnassigned": "Sin asignar",
-    "partyPeople": "{{count}} pers"
+    "partyPeople": "{{count}} pers",
+    "terminalUnavailableTitle": "El cobro requiere un dispositivo físico",
+    "terminalUnavailableSub": "Stripe Terminal no está disponible en el simulador. Usa un EAS build en un iPhone físico para procesar pagos."
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

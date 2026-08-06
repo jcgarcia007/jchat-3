@@ -45,7 +45,7 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react-native';
-import { useStripeTerminal } from '@stripe/stripe-terminal-react-native';
+import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalSdk';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
@@ -151,7 +151,7 @@ export default function PosCheckoutScreen() {
   // ── Start reader discovery on mount ────────────────────────────────────────
   useEffect(() => {
     setReaderStatus('discovering');
-    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true }).then((res) => {
+    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true }).then((res: { error?: { message: string } | null }) => {
       // discoverReaders resolves when scanning ends (cancelled or error).
       // If it ended with an error AND we're not already connecting/connected,
       // surface it as a reader error.
@@ -193,7 +193,7 @@ export default function PosCheckoutScreen() {
           locationId: reader.locationId ?? reader.location?.id ?? '',
         }),
       )
-      .then((result) => {
+      .then((result: { error?: { message: string } | null }) => {
         if (result.error) {
           setReaderStatus('error');
           setReaderError(result.error.message ?? t('pos.readerError'));
@@ -346,6 +346,67 @@ export default function PosCheckoutScreen() {
         return null;
     }
   })();
+
+  // ── Terminal unavailable (simulator / Expo Go — no native build) ──────────
+  // All hooks above run unconditionally (rules of hooks). Stub values are safe:
+  //   discoveredReaders=[] → auto-connect never fires
+  //   disconnectReader / cancelDiscovering → no-ops
+  // We only need to block the real payment UI from rendering.
+  if (!isTerminalAvailable) {
+    return (
+      <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: insets.top + 12,
+              backgroundColor: c.bgBase,
+              borderBottomColor: c.borderSubtle,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('workMode.pinCancel')}
+          >
+            <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          </Pressable>
+          <View style={styles.headerTitles}>
+            <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
+              {t('pos.checkoutTitle')}
+            </Text>
+            <Text style={[styles.headerSub, { color: c.textTertiary }]} numberOfLines={1}>
+              {tableLabel}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.unavailableBody}>
+          <IconWifiOff size={44} color={c.textTertiary} strokeWidth={1.5} />
+          <Text style={[styles.unavailableTitle, { color: c.textPrimary }]}>
+            {t('pos.terminalUnavailableTitle')}
+          </Text>
+          <Text style={[styles.unavailableSub, { color: c.textTertiary }]}>
+            {t('pos.terminalUnavailableSub')}
+          </Text>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [
+              styles.unavailableBack,
+              { backgroundColor: c.brand },
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('workMode.pinCancel')}
+          >
+            <Text style={styles.unavailableBackText}>{t('workMode.pinCancel')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -709,6 +770,24 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   errorRetryText: { fontSize: 13, fontWeight: '600' },
+
+  // ── Unavailable (simulator / no EAS build) ────────────────────────────────────
+  unavailableBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 14,
+  },
+  unavailableTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  unavailableSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  unavailableBack: {
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  unavailableBackText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
   // ── Footer ─────────────────────────────────────────────────────────────────────
   footer: {

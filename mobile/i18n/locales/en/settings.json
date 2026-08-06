@@ -146,7 +146,9 @@
     "assignmentMine": "Mine",
     "assignmentOther": "Other",
     "assignmentUnassigned": "Unassigned",
-    "partyPeople": "{{count}} guests"
+    "partyPeople": "{{count}} guests",
+    "terminalUnavailableTitle": "Physical device required for payments",
+    "terminalUnavailableSub": "Stripe Terminal is not available in the Simulator. Use an EAS build on a physical iPhone to process payments."
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",
