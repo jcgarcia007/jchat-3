@@ -95,9 +95,9 @@ function elapsed(iso: string, t: ReturnType<typeof useTranslations>): string {
 
 /**
  * Three-state derivation — same precedence and colors as /dashboard/tables:
- *   🟠 occupied — combined secondary, tab open, service call, or party_size > 0
+ *   🟠 occupied — combined secondary, tab open, or service call
  *   🔵 reserved — not occupied and is_reserved flag set
- *   🟢 free     — everything else
+ *   🟢 free     — everything else (party_size alone does NOT make a table occupied)
  *
  * Combined secondaries (combinedInto ≠ null) are always occupied — they are
  * part of a merged group and orders live on the primary table.
@@ -116,8 +116,7 @@ function deriveState(
   const isOcc =
     combinedInto !== null ||   // always occupied when annexed to a primary
     occupiedByTable.has(tableId) ||
-    hasCall ||
-    (partySize != null && partySize > 0);
+    hasCall;
 
   const state: TableState = isOcc ? "occupied" : isReserved ? "reserved" : "free";
   return { state, hasCall };

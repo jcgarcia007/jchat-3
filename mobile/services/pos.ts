@@ -83,6 +83,12 @@ export interface PosTablesOverviewRow {
    * Equals `seats` when the table is not combined.
    */
   combined_seats: number;
+  /**
+   * True only when this table can be annexed as a secondary:
+   * no open orders, no active table_tab, no party_size set, and not already combined.
+   * A table can be 'libre' (free) but still not combinable (e.g. has guests but no order).
+   */
+  combinable: boolean;
 }
 
 export interface PosOrderItem {

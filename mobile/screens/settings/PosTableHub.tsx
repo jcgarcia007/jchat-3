@@ -693,14 +693,13 @@ export default function PosTableHub(): React.ReactElement {
     () => allTables.filter((t) => t.combined_into === tableId),
     [allTables, tableId],
   );
-  /** Free, non-combined tables available to annex (excluding self). */
+  /** Tables that can be annexed as a secondary (server-verified combinable flag). */
   const freeTables = useMemo(
     () =>
       allTables.filter(
         (t) =>
           t.table_id !== tableId &&
-          t.state === 'libre' &&
-          t.combined_into === null,
+          t.combinable === true,
       ),
     [allTables, tableId],
   );

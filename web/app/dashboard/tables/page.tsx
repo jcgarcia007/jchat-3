@@ -512,7 +512,7 @@ export default function TablesPage() {
                   {(() => {
                     // Combined secondary: always treated as occupied (part of a merged group).
                     const isCombined = r.combined_into !== null;
-                    const isOcc = isCombined || occupiedTableIds.has(r.id) || (r.party_size != null && r.party_size > 0);
+                    const isOcc = isCombined || occupiedTableIds.has(r.id);
                     // Reserved only counts when not occupied and the slot hasn't expired.
                     const isRes = !isOcc && r.is_reserved && (
                       !r.reserved_until || new Date(r.reserved_until) > new Date()
