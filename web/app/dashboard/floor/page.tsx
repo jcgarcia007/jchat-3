@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconBell, IconCalendar } from "@tabler/icons-react";
+import { IconBell, IconCalendar, IconUsers } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 
@@ -35,6 +35,7 @@ interface TableRow {
   sort: number;
   room_id: string | null;
   is_reserved: boolean;
+  party_size: number | null;
 }
 
 interface TabRow {
@@ -64,6 +65,7 @@ interface DerivedTable {
   hasCall: boolean;     // true if any pending/acknowledged service call
   minOpenAt: string | null; // earliest open tab created_at for elapsed time
   isReserved: boolean;  // mirrors tables.is_reserved; drives the floor quick-toggle (F8)
+  party_size: number | null; // live guest count set by the POS waiter
 }
 
 interface ReservationForFloor {
@@ -171,10 +173,10 @@ function resFormatTime(iso: string): string {
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
 const DEMO_TABLES: TableRow[] = [
-  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null, is_reserved: false },
-  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null, is_reserved: true },
-  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null, is_reserved: false },
-  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null, is_reserved: false },
+  { id: "t1", label: "1", floor: "Principal", seats: 4, sort: 1, room_id: null, is_reserved: false, party_size: 3 },
+  { id: "t2", label: "2", floor: "Principal", seats: 2, sort: 2, room_id: null, is_reserved: true,  party_size: null },
+  { id: "t3", label: "3", floor: "Principal", seats: 6, sort: 3, room_id: null, is_reserved: false, party_size: null },
+  { id: "t4", label: "4", floor: "Terraza",   seats: 4, sort: 4, room_id: null, is_reserved: false, party_size: null },
 ];
 const DEMO_TABS: TabRow[] = [
   { id: "tab1", table_id: "t1", created_at: new Date(Date.now() - 45 * 60_000).toISOString(), status: "open" },
@@ -227,6 +229,7 @@ export default function FloorPage() {
   const [, setTick] = useState(0); // for elapsed-time re-render
 
   const bizIdRef           = useRef<string | null>(null);
+  const tablesChannel      = useRef<RealtimeChannel | null>(null);
   const tabsChannel        = useRef<RealtimeChannel | null>(null);
   const callsChannel       = useRef<RealtimeChannel | null>(null);
   const reservationsChannel = useRef<RealtimeChannel | null>(null);
@@ -239,7 +242,7 @@ export default function FloorPage() {
     const [tablesRes, tabsRes, callsRes] = await Promise.all([
       supabase
         .from("tables")
-        .select("id, label, floor, seats, sort, room_id, is_reserved")
+        .select("id, label, floor, seats, sort, room_id, is_reserved, party_size")
         .eq("business_id", bid)
         .eq("is_active", true)
         .order("floor", { ascending: true })
@@ -320,6 +323,16 @@ export default function FloorPage() {
           )
           .subscribe();
 
+        // ── Realtime: tables (party_size live update) ─────────────────────
+        tablesChannel.current = supabase
+          .channel(`floor-tables-${bid}`)
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "tables", filter: `business_id=eq.${bid}` },
+            () => { void fetchData(bid).catch(() => {}); },
+          )
+          .subscribe();
+
         // ── Realtime: table_tabs ──────────────────────────────────────────
         tabsChannel.current = supabase
           .channel(`floor-tabs-${bid}`)
@@ -359,6 +372,7 @@ export default function FloorPage() {
     return () => {
       active = false;
       if (reservationsChannel.current) void supabase.removeChannel(reservationsChannel.current);
+      if (tablesChannel.current) void supabase.removeChannel(tablesChannel.current);
       if (tabsChannel.current)  void supabase.removeChannel(tabsChannel.current);
       if (callsChannel.current) void supabase.removeChannel(callsChannel.current);
       if (refreshTimer.current) clearInterval(refreshTimer.current);
@@ -417,6 +431,7 @@ export default function FloorPage() {
       hasCall,
       minOpenAt:  occupiedByTable.get(tbl.id) ?? null,
       isReserved: tbl.is_reserved,
+      party_size: tbl.party_size,
     };
   });
 
@@ -651,6 +666,14 @@ function TableCard({
       <span style={{ fontSize: "11px", fontWeight: 600, color: colors.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
         {stateLabel}
       </span>
+
+      {/* Live guest count set by the POS waiter */}
+      {table.party_size != null && table.party_size > 0 && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--db-text-tertiary)" }}>
+          <IconUsers size={11} />
+          {table.party_size}
+        </span>
+      )}
 
       {/* Elapsed time — only when occupied or has call */}
       {table.minOpenAt && (table.state === "occupied" || table.state === "waiter" || table.state === "bill") && (

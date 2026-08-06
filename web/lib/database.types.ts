@@ -3414,6 +3414,7 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          party_size: number | null
           qr_token: string
           room_id: string | null
           is_reserved: boolean
@@ -3431,6 +3432,7 @@ export type Database = {
           is_active?: boolean
           is_reserved?: boolean
           label: string
+          party_size?: number | null
           qr_token: string
           reserved_note?: string | null
           reserved_until?: string | null
@@ -3447,6 +3449,7 @@ export type Database = {
           is_active?: boolean
           is_reserved?: boolean
           label?: string
+          party_size?: number | null
           qr_token?: string
           reserved_note?: string | null
           reserved_until?: string | null

@@ -16,8 +16,9 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconPlus,
   IconMinus,
@@ -47,6 +48,7 @@ interface TableRow {
   is_reserved: boolean;
   reserved_note: string | null;
   reserved_until: string | null;
+  party_size: number | null;
 }
 
 const DEFAULT_FLOOR = "Principal";
@@ -93,6 +95,9 @@ export default function TablesPage() {
   // Assigned-waiter count per table (B4), shown on each card. Read-only tally.
   const [waiterCounts, setWaiterCounts] = useState<Record<string, number>>({});
 
+  // Realtime channel for tables — live party_size updates.
+  const tablesChannelRef = useRef<RealtimeChannel | null>(null);
+
   const loadBizSettings = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) return;
     const { data } = await supabase
@@ -138,7 +143,7 @@ export default function TablesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tables")
-      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until")
+      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until, party_size")
       .eq("business_id", activeId)
       .order("floor", { ascending: true })
       .order("sort", { ascending: true })
@@ -168,6 +173,25 @@ export default function TablesPage() {
       active = false;
     };
   }, [load, loadWaiterCounts, loadBizSettings, reloadKey]);
+
+  // Realtime: subscribe to tables UPDATE so party_size refreshes live.
+  useEffect(() => {
+    if (!activeId || !isSupabaseConfigured) return;
+    tablesChannelRef.current = supabase
+      .channel(`tables-party-${activeId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tables", filter: `business_id=eq.${activeId}` },
+        () => { void load().catch(() => {}); },
+      )
+      .subscribe();
+    return () => {
+      if (tablesChannelRef.current) {
+        void supabase.removeChannel(tablesChannelRef.current);
+        tablesChannelRef.current = null;
+      }
+    };
+  }, [activeId, load]);
 
   // Floors present, in first-seen order; drives the optional grouping headers.
   const floors = useMemo(() => {
@@ -423,6 +447,12 @@ export default function TablesPage() {
                       </div>
                     );
                   })()}
+                  {r.party_size != null && r.party_size > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--db-accent)" }}>
+                      <IconUsers size={13} />
+                      {r.party_size}
+                    </div>
+                  )}
                   {r.is_reserved && (
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--db-danger)" }}>
                       <IconCalendar size={13} />

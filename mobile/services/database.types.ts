@@ -3354,6 +3354,7 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          party_size: number | null
           qr_token: string
           room_id: string | null
           seats: number
@@ -3367,6 +3368,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
+          party_size?: number | null
           qr_token: string
           room_id?: string | null
           seats?: number
@@ -3380,6 +3382,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          party_size?: number | null
           qr_token?: string
           room_id?: string | null
           seats?: number
