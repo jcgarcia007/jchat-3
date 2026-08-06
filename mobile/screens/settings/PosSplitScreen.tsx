@@ -1,27 +1,31 @@
 /**
  * JChat 3.0 — POS Split Screen (C11)
  *
- * Splits the open tab of a table into N equal parts and charges each one
- * individually via Stripe Terminal.
+ * Splits the open tab of a table using one of two methods:
+ *
+ *   • Partes iguales (even)  — N equal parts
+ *   • Por silla / artículo (items) — sub-account builder where each item
+ *     is manually assigned to a seat-based or custom check
  *
  * ── Flow ──────────────────────────────────────────────────────────────────────
- * 1. Load tab total preview (display-only) from posTableItems().
- * 2. Employee sets N (default = partySize param or 2, range 2–20).
- * 3. "Crear división" → posCreateSplit(businessId, tableId, 'even', N)
- *    → server creates N pos_payments rows, each with amount_cents computed
- *    server-side. Client receives PosSplitCheckRow[].
- * 4. For each part:
- *    a. chargeSplitCheck(payment_id)  — creates PI on connected Stripe account
- *    b. retrievePaymentIntent(secret) — SDK needs the full PI object
- *    c. collectPaymentMethod(pi)      — simulated reader auto-collects
- *    d. confirmPaymentIntent(pi)      — confirms the payment
- *    e. markTabPaid(payment_id)       — server verifies PI at Stripe; marks
- *       orders as paid, returns tabClosed when all parts are settled
- * 5. When markTabPaid returns tabClosed:true → alert + navigate back.
+ * 1. Employee selects method (even vs items).
+ *
+ * Even path:
+ *   a. N stepper (2–20).
+ *   b. "Crear división" → posCreateSplit(…, 'even', N, null).
+ *   c. Charge list (split_created phase).
+ *
+ * Items path:
+ *   a. posTableItems() loaded on mount; builder groups them by seat.
+ *   b. Employee reassigns items between sub-accounts via "Mover".
+ *   c. Validation: "Sin asignar" must be empty + ≥2 non-empty sub-accounts.
+ *   d. "Crear división" → posCreateSplit(…, 'items', null, checks[]).
+ *      checks[] = [{ seat, order_item_ids }] — no amounts from client.
+ *   e. Charge list (same split_created phase as even).
  *
  * ── Security ──────────────────────────────────────────────────────────────────
- * • Amount comes exclusively from pos_payments.amount_cents (server-side).
- * • Client sends only method + N — no amounts ever travel from the client.
+ * • Client never sends amounts — posCreateSplit sends only method + N (even)
+ *   or order_item_id groups (items); the server validates + computes amounts.
  * • markTabPaid() retrieves the PI directly from Stripe before updating the DB.
  */
 
@@ -55,7 +59,7 @@ import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalS
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { posTableItems, posCreateSplit } from '../../services/pos';
-import type { PosSplitCheckRow } from '../../services/pos';
+import type { PosSplitCheckRow, PosTableItemRow, PosCheckItem } from '../../services/pos';
 import { chargeSplitCheck, markTabPaid } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
@@ -66,12 +70,21 @@ type PosSplitRoute = RouteProp<PosStackParamList, 'PosSplit'>;
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
-/** Outer phase: setup = N stepper + create button; split_created = charge list. */
-type SplitPhase = 'setup' | 'split_created';
+/** The split method the employee selected. */
+type SplitMethod = 'even' | 'items';
+
+/**
+ * Outer phase.
+ *   method_select — entry: employee picks even vs items
+ *   setup         — even: N stepper
+ *   building      — items: sub-account editor
+ *   split_created — charging checks (shared by both methods)
+ */
+type SplitPhase = 'method_select' | 'setup' | 'building' | 'split_created';
 
 /**
  * Inner per-payment phase while charging a single part.
- * Resets to 'idle' after each successful payment so the next part can be charged.
+ * Resets to 'idle' after each successful charge so the next part can proceed.
  */
 type CheckoutPhase =
   | 'idle'       // waiting for employee to tap "Cobrar"
@@ -83,6 +96,21 @@ type CheckoutPhase =
   | 'error';     // something went wrong — employee can retry
 
 type ReaderStatus = 'discovering' | 'connecting' | 'ready' | 'error';
+
+/** A sub-account in the items-split builder. */
+interface SubAccount {
+  /** Stable local key (React key + mutation target). */
+  id: string;
+  /** Display label shown in cards and the move picker. */
+  label: string;
+  /**
+   * Physical seat this account corresponds to; null for mixed or custom accounts.
+   * Sent as-is to the server in the checks array.
+   */
+  seat: number | null;
+  /** Items currently assigned to this account. */
+  items: PosTableItemRow[];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,8 +132,8 @@ export default function PosSplitScreen(): React.ReactElement {
   const { businessId, tableId, tableLabel, partySize: partySizeHint } = route.params;
 
   // ── Stripe Terminal ─────────────────────────────────────────────────────────
-  // All hooks called unconditionally (Rules of Hooks). Stub values returned by
-  // terminalSdk when !isTerminalAvailable are safe (no-ops / empty arrays).
+  // All hooks called unconditionally (Rules of Hooks). terminalSdk stubs are
+  // safe when !isTerminalAvailable: no-ops / empty arrays / disconnected.
   const {
     discoverReaders,
     cancelDiscovering,
@@ -126,12 +154,22 @@ export default function PosSplitScreen(): React.ReactElement {
 
   // ── Tab total (preview — display only; authoritative amount from server) ────
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
+  const [tabItems, setTabItems] = useState<PosTableItemRow[]>([]);
   const [tabLoading, setTabLoading] = useState(true);
 
-  // ── Split setup ─────────────────────────────────────────────────────────────
+  // ── Method + outer phase ────────────────────────────────────────────────────
+  const [splitPhase, setSplitPhase] = useState<SplitPhase>('method_select');
+
+  // ── Even-split setup ────────────────────────────────────────────────────────
   const defaultWays = Math.max(MIN_WAYS, Math.min(MAX_WAYS, partySizeHint ?? MIN_WAYS));
   const [ways, setWays] = useState<number>(defaultWays);
-  const [splitPhase, setSplitPhase] = useState<SplitPhase>('setup');
+
+  // ── Items-split builder ─────────────────────────────────────────────────────
+  const [subAccounts, setSubAccounts] = useState<SubAccount[]>([]);
+  /** Increments each time a custom account is created; gives stable labels. */
+  const newAccountCounterRef = useRef(0);
+
+  // ── Shared split state (used by both methods) ───────────────────────────────
   const [splitting, setSplitting] = useState(false);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [checks, setChecks] = useState<PosSplitCheckRow[]>([]);
@@ -144,22 +182,23 @@ export default function PosSplitScreen(): React.ReactElement {
   const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // ── Load tab total preview on mount ────────────────────────────────────────
+  // ── Load tab items + total preview on mount ─────────────────────────────────
   useEffect(() => {
     let mounted = true;
     posTableItems(businessId, tableId)
       .then((rows) => {
         if (!mounted) return;
+        setTabItems(rows);
         const total = rows.reduce((sum, r) => sum + r.price_cents * r.qty, 0);
         setTabAmountCents(total > 0 ? total : null);
       })
-      .catch(() => { if (mounted) setTabAmountCents(null); })
+      .catch(() => { if (mounted) { setTabItems([]); setTabAmountCents(null); } })
       .finally(() => { if (mounted) setTabLoading(false); });
     return () => { mounted = false; };
   }, [businessId, tableId]);
 
   // ── Start reader discovery on mount ────────────────────────────────────────
-  // Starting early so the reader is ready by the time the employee creates the split.
+  // Starting early so the reader is ready by the time splits are created.
   useEffect(() => {
     setReaderStatus('discovering');
     discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true }).then(
@@ -206,7 +245,7 @@ export default function PosSplitScreen(): React.ReactElement {
           isConnectingRef.current = false;
         } else {
           setReaderStatus('ready');
-          // isConnectingRef stays true (we're connected — prevents re-connect)
+          // isConnectingRef stays true (connected — prevents re-entry)
         }
       })
       .catch((err: unknown) => {
@@ -229,7 +268,7 @@ export default function PosSplitScreen(): React.ReactElement {
     discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true });
   }, [discoverReaders]);
 
-  // ── N stepper ────────────────────────────────────────────────────────────────
+  // ── Even method — N stepper ───────────────────────────────────────────────
   const handleDecrement = useCallback(
     () => setWays((w) => Math.max(MIN_WAYS, w - 1)),
     [],
@@ -239,8 +278,148 @@ export default function PosSplitScreen(): React.ReactElement {
     [],
   );
 
-  // ── Create split ──────────────────────────────────────────────────────────────
-  const handleCreateSplit = useCallback(async () => {
+  // ── Items method — init builder ────────────────────────────────────────────
+  /**
+   * Group tabItems by seat into initial sub-accounts.
+   * Items with seat=null go into "Sin asignar" (always last).
+   * Called when employee selects the 'items' method.
+   */
+  const initBuilder = useCallback(() => {
+    const seatMap = new Map<number, PosTableItemRow[]>();
+    const unassignedItems: PosTableItemRow[] = [];
+
+    for (const item of tabItems) {
+      if (item.seat === null) {
+        unassignedItems.push(item);
+      } else {
+        const existing = seatMap.get(item.seat);
+        if (existing) {
+          existing.push(item);
+        } else {
+          seatMap.set(item.seat, [item]);
+        }
+      }
+    }
+
+    const accounts: SubAccount[] = [];
+
+    // Seat-based accounts sorted ascending
+    for (const seat of [...seatMap.keys()].sort((a, b) => a - b)) {
+      accounts.push({
+        id: `seat-${seat}`,
+        label: t('pos.hubSeatLabel', { n: seat }),
+        seat,
+        items: seatMap.get(seat)!,
+      });
+    }
+
+    // "Sin asignar" — always last
+    accounts.push({
+      id: 'unassigned',
+      label: t('pos.splitUnassigned'),
+      seat: null,
+      items: unassignedItems,
+    });
+
+    newAccountCounterRef.current = 0;
+    setSplitError(null);
+    setSubAccounts(accounts);
+    setSplitPhase('building');
+  }, [tabItems, t]);
+
+  // ── Items method — move item between accounts ──────────────────────────────
+  const moveItemBetweenAccounts = useCallback(
+    (orderItemId: string, fromId: string, toId: string) => {
+      setSubAccounts((prev) => {
+        const fromAcc = prev.find((a) => a.id === fromId);
+        const itemToMove = fromAcc?.items.find((i) => i.order_item_id === orderItemId);
+        if (!itemToMove) return prev;
+        return prev.map((a) => {
+          if (a.id === fromId) {
+            return { ...a, items: a.items.filter((i) => i.order_item_id !== orderItemId) };
+          }
+          if (a.id === toId) {
+            return { ...a, items: [...a.items, itemToMove] };
+          }
+          return a;
+        });
+      });
+    },
+    [],
+  );
+
+  /** Create a new custom sub-account and move one item into it. */
+  const createAccountWithItem = useCallback(
+    (item: PosTableItemRow, fromId: string) => {
+      newAccountCounterRef.current += 1;
+      const n = newAccountCounterRef.current;
+      const newId = `custom-${n}`;
+      const newLabel = t('pos.splitAccountN', { n });
+
+      setSubAccounts((prev) => {
+        const without = prev.map((a) =>
+          a.id === fromId
+            ? { ...a, items: a.items.filter((i) => i.order_item_id !== item.order_item_id) }
+            : a,
+        );
+        // Insert before "Sin asignar"
+        const unassignedIdx = without.findIndex((a) => a.id === 'unassigned');
+        const newAcc: SubAccount = { id: newId, label: newLabel, seat: null, items: [item] };
+        if (unassignedIdx >= 0) {
+          const next = [...without];
+          next.splice(unassignedIdx, 0, newAcc);
+          return next;
+        }
+        return [...without, newAcc];
+      });
+    },
+    [t],
+  );
+
+  /** Show an Alert to let the employee choose where to move an item. */
+  const handleMoveItem = useCallback(
+    (item: PosTableItemRow, fromId: string) => {
+      const targets = subAccounts.filter((a) => a.id !== fromId);
+      Alert.alert(
+        t('pos.splitMoveTitle'),
+        undefined,
+        [
+          ...targets.map((acc) => ({
+            text: acc.label,
+            onPress: () => moveItemBetweenAccounts(item.order_item_id, fromId, acc.id),
+          })),
+          {
+            text: t('pos.splitNewAccount'),
+            onPress: () => createAccountWithItem(item, fromId),
+          },
+          { text: t('pos.splitMoveCancel'), style: 'cancel' as const },
+        ],
+      );
+    },
+    [subAccounts, t, moveItemBetweenAccounts, createAccountWithItem],
+  );
+
+  /** Create an empty custom sub-account (via "+ Agregar cuenta"). */
+  const handleAddAccount = useCallback(() => {
+    newAccountCounterRef.current += 1;
+    const n = newAccountCounterRef.current;
+    const newId = `custom-${n}`;
+    const newLabel = t('pos.splitAccountN', { n });
+
+    setSubAccounts((prev) => {
+      const newAcc: SubAccount = { id: newId, label: newLabel, seat: null, items: [] };
+      const unassignedIdx = prev.findIndex((a) => a.id === 'unassigned');
+      if (unassignedIdx >= 0) {
+        const next = [...prev];
+        next.splice(unassignedIdx, 0, newAcc);
+        return next;
+      }
+      return [...prev, newAcc];
+    });
+  }, [t]);
+
+  // ── Even method — create split ────────────────────────────────────────────
+  const handleCreateEvenSplit = useCallback(async () => {
     if (splitting) return;
     setSplitting(true);
     setSplitError(null);
@@ -266,17 +445,52 @@ export default function PosSplitScreen(): React.ReactElement {
     setSplitPhase('split_created');
   }, [splitting, businessId, tableId, ways, t]);
 
-  // ── Charge a single part ──────────────────────────────────────────────────────
+  // ── Items method — create split ────────────────────────────────────────────
+  const handleCreateItemsSplit = useCallback(async () => {
+    if (splitting) return;
+    setSplitting(true);
+    setSplitError(null);
+
+    // Build checks from non-empty, non-unassigned sub-accounts.
+    // Client sends only groupings of order_item_ids — never amounts.
+    const checksPayload: PosCheckItem[] = subAccounts
+      .filter((a) => a.id !== 'unassigned' && a.items.length > 0)
+      .map((a) => ({
+        seat: a.seat,
+        order_item_ids: a.items.map((i) => i.order_item_id),
+      }));
+
+    const result = await posCreateSplit(businessId, tableId, 'items', null, checksPayload);
+    setSplitting(false);
+
+    if (!result.ok) {
+      switch (result.reason) {
+        case 'empty_tab':
+          setSplitError(t('pos.noOpenOrders'));
+          break;
+        case 'no_access':
+          setSplitError(t('pos.errorNoAccess'));
+          break;
+        default:
+          setSplitError(t('pos.splitErrorCreate'));
+      }
+      return;
+    }
+
+    setChecks(result.checks);
+    setSplitPhase('split_created');
+  }, [splitting, businessId, tableId, subAccounts, t]);
+
+  // ── Charge a single part (shared by both methods) ─────────────────────────
   const handleChargeCheck = useCallback(
     async (paymentId: string) => {
-      // Guard: only one payment at a time, reader must be connected
       if (!connectedReader || activePaymentId) return;
 
       setActivePaymentId(paymentId);
       setCheckoutPhase('creating');
       setCheckoutError(null);
 
-      // ── Step 1: Create PI for this check (amount from server) ──
+      // Step 1: Create PI for this check (amount from server)
       const piResult = await chargeSplitCheck(paymentId);
       if (!piResult.ok) {
         setCheckoutPhase('error');
@@ -294,7 +508,7 @@ export default function PosSplitScreen(): React.ReactElement {
         return;
       }
 
-      // ── Step 2: Retrieve PI (SDK needs the full object) ──
+      // Step 2: Retrieve PI (SDK needs the full object)
       setCheckoutPhase('retrieving');
       const retrieveResult = await retrievePaymentIntent(piResult.clientSecret);
       if (retrieveResult.error) {
@@ -304,7 +518,7 @@ export default function PosSplitScreen(): React.ReactElement {
         return;
       }
 
-      // ── Step 3: Collect payment from reader ──
+      // Step 3: Collect payment from reader
       setCheckoutPhase('collecting');
       const collectResult = await collectPaymentMethod({
         paymentIntent: retrieveResult.paymentIntent,
@@ -316,7 +530,7 @@ export default function PosSplitScreen(): React.ReactElement {
         return;
       }
 
-      // ── Step 4: Confirm payment ──
+      // Step 4: Confirm payment
       setCheckoutPhase('confirming');
       const confirmResult = await confirmPaymentIntent({
         paymentIntent: collectResult.paymentIntent,
@@ -328,7 +542,7 @@ export default function PosSplitScreen(): React.ReactElement {
         return;
       }
 
-      // ── Step 5: markTabPaid — server verifies PI at Stripe, marks orders ──
+      // Step 5: markTabPaid — server verifies PI at Stripe, marks orders paid
       setCheckoutPhase('marking');
       const markResult = await markTabPaid(paymentId);
       if (!markResult.ok) {
@@ -354,7 +568,6 @@ export default function PosSplitScreen(): React.ReactElement {
       setActivePaymentId(null);
       setCheckoutError(null);
 
-      // When all parts are settled, server closes the tab → inform + go back
       if (markResult.tabClosed) {
         Alert.alert(
           t('pos.splitAllPaid'),
@@ -396,9 +609,17 @@ export default function PosSplitScreen(): React.ReactElement {
     }
   })();
 
+  // Items-split validation
+  const unassignedAccount = subAccounts.find((a) => a.id === 'unassigned');
+  const nonEmptyNonUnassigned = subAccounts.filter(
+    (a) => a.id !== 'unassigned' && a.items.length > 0,
+  );
+  const canCreateItemsSplit =
+    (unassignedAccount?.items.length ?? 0) === 0 &&
+    nonEmptyNonUnassigned.length >= 2 &&
+    !splitting;
+
   // ── Terminal unavailable guard ────────────────────────────────────────────────
-  // All hooks run unconditionally above (Rules of Hooks). Stub values are safe:
-  // discoveredReaders=[] → auto-connect never fires; disconnect → no-op.
   if (!isTerminalAvailable) {
     return (
       <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
@@ -499,7 +720,7 @@ export default function PosSplitScreen(): React.ReactElement {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Reader status banner (always shown so employee knows reader state) ── */}
+        {/* ── Reader status banner (always shown) ─────────────────────────── */}
         <View
           style={[
             styles.readerBanner,
@@ -570,7 +791,59 @@ export default function PosSplitScreen(): React.ReactElement {
         </View>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            SETUP PHASE — N stepper + "Crear división" button
+            METHOD SELECT — employee picks even vs items
+            ══════════════════════════════════════════════════════════════════ */}
+        {splitPhase === 'method_select' && (
+          <>
+            <Text style={[styles.methodSectionTitle, { color: c.textSecondary }]}>
+              {t('pos.splitMethodTitle')}
+            </Text>
+
+            {/* Even method card */}
+            <Pressable
+              onPress={() => setSplitPhase('setup')}
+              style={({ pressed }) => [
+                styles.methodCard,
+                { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+                pressed && { opacity: 0.8 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.methodCardTitle, { color: c.textPrimary }]}>
+                {t('pos.splitMethodEven')}
+              </Text>
+              <Text style={[styles.methodCardSub, { color: c.textSecondary }]}>
+                {t('pos.splitMethodEvenSub')}
+              </Text>
+            </Pressable>
+
+            {/* Items method card */}
+            <Pressable
+              onPress={() => { if (!tabLoading && tabItems.length > 0) initBuilder(); }}
+              disabled={tabLoading || tabItems.length === 0}
+              style={({ pressed }) => [
+                styles.methodCard,
+                {
+                  backgroundColor: c.bgSurface,
+                  borderColor: c.borderSubtle,
+                  opacity: tabLoading || tabItems.length === 0 ? 0.45 : 1,
+                },
+                pressed && !tabLoading && tabItems.length > 0 && { opacity: 0.8 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.methodCardTitle, { color: c.textPrimary }]}>
+                {t('pos.splitMethodItems')}
+              </Text>
+              <Text style={[styles.methodCardSub, { color: c.textSecondary }]}>
+                {t('pos.splitMethodItemsSub')}
+              </Text>
+            </Pressable>
+          </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            SETUP (EVEN) — N stepper + "Crear división" button
             ══════════════════════════════════════════════════════════════════ */}
         {splitPhase === 'setup' && (
           <>
@@ -626,14 +899,12 @@ export default function PosSplitScreen(): React.ReactElement {
               )}
             </View>
 
-            {/* Error from posCreateSplit */}
             {splitError !== null && (
               <Text style={[styles.splitError, { color: c.danger }]}>{splitError}</Text>
             )}
 
-            {/* Create split button */}
             <Pressable
-              onPress={() => void handleCreateSplit()}
+              onPress={() => void handleCreateEvenSplit()}
               disabled={splitting}
               style={({ pressed }) => [
                 styles.createBtn,
@@ -652,7 +923,142 @@ export default function PosSplitScreen(): React.ReactElement {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
-            SPLIT CREATED PHASE — paid counter + list of checks
+            BUILDING (ITEMS) — sub-account editor
+            ══════════════════════════════════════════════════════════════════ */}
+        {splitPhase === 'building' && (
+          <>
+            {/* Sub-account cards */}
+            {subAccounts.map((account) => {
+              const isUnassigned = account.id === 'unassigned';
+              const hasItems = account.items.length > 0;
+              const subtotal = account.items.reduce(
+                (sum, i) => sum + i.price_cents * i.qty,
+                0,
+              );
+              // "Sin asignar" with items → warning border; empty unassigned → subtle
+              const borderColor =
+                isUnassigned && hasItems ? c.warning : c.borderSubtle;
+              const labelColor =
+                isUnassigned && hasItems ? c.warning : c.textPrimary;
+
+              return (
+                <View
+                  key={account.id}
+                  style={[
+                    styles.subAccountCard,
+                    { backgroundColor: c.bgSurface, borderColor },
+                  ]}
+                >
+                  {/* Card header: label + subtotal */}
+                  <View style={styles.subAccountHeader}>
+                    <Text
+                      style={[styles.subAccountLabel, { color: labelColor }]}
+                      numberOfLines={1}
+                    >
+                      {account.label}
+                    </Text>
+                    <Text style={[styles.subAccountSubtotal, { color: c.textSecondary }]}>
+                      {formatCents(subtotal)}
+                    </Text>
+                  </View>
+
+                  {/* Items list */}
+                  {!hasItems ? (
+                    <Text style={[styles.subAccountEmpty, { color: c.textTertiary }]}>
+                      {t('pos.splitAccountEmpty')}
+                    </Text>
+                  ) : (
+                    account.items.map((item) => (
+                      <View
+                        key={item.order_item_id}
+                        style={[
+                          styles.builderItemRow,
+                          { borderTopColor: c.borderSubtle },
+                        ]}
+                      >
+                        <View style={styles.builderItemInfo}>
+                          <Text
+                            style={[styles.builderItemName, { color: c.textPrimary }]}
+                            numberOfLines={1}
+                          >
+                            {item.qty}× {item.item_name}
+                          </Text>
+                          <Text style={[styles.builderItemPrice, { color: c.textTertiary }]}>
+                            {formatCents(item.price_cents * item.qty)}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => handleMoveItem(item, account.id)}
+                          style={({ pressed }) => [
+                            styles.moveBtn,
+                            { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
+                            pressed && { opacity: 0.7 },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('pos.splitMove')}
+                        >
+                          <Text style={[styles.moveBtnText, { color: c.brand }]}>
+                            {t('pos.splitMove')}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  )}
+                </View>
+              );
+            })}
+
+            {/* + Agregar cuenta */}
+            <Pressable
+              onPress={handleAddAccount}
+              style={({ pressed }) => [
+                styles.addAccountBtn,
+                { borderColor: c.borderSubtle },
+                pressed && { opacity: 0.7 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.addAccountBtnText, { color: c.brand }]}>
+                {t('pos.splitAddAccount')}
+              </Text>
+            </Pressable>
+
+            {splitError !== null && (
+              <Text style={[styles.splitError, { color: c.danger }]}>{splitError}</Text>
+            )}
+
+            {/* Crear división */}
+            <Pressable
+              onPress={() => void handleCreateItemsSplit()}
+              disabled={!canCreateItemsSplit}
+              style={({ pressed }) => [
+                styles.createBtn,
+                {
+                  backgroundColor: canCreateItemsSplit ? c.brandPurple : c.borderSubtle,
+                },
+                pressed && canCreateItemsSplit && { opacity: 0.85 },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canCreateItemsSplit }}
+            >
+              {splitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text
+                  style={[
+                    styles.createBtnText,
+                    { color: canCreateItemsSplit ? '#fff' : c.textTertiary },
+                  ]}
+                >
+                  {t('pos.splitCreateBtn')}
+                </Text>
+              )}
+            </Pressable>
+          </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            SPLIT CREATED — paid counter + list of checks (shared by both methods)
             ══════════════════════════════════════════════════════════════════ */}
         {splitPhase === 'split_created' && (
           <>
@@ -709,7 +1115,6 @@ export default function PosSplitScreen(): React.ReactElement {
                       </View>
 
                       {isPaid ? (
-                        /* ── Paid badge ── */
                         <View
                           style={[
                             styles.paidBadge,
@@ -722,7 +1127,6 @@ export default function PosSplitScreen(): React.ReactElement {
                           </Text>
                         </View>
                       ) : (
-                        /* ── Pending + charge button ── */
                         <View style={styles.checkActions}>
                           <View
                             style={[
@@ -731,10 +1135,7 @@ export default function PosSplitScreen(): React.ReactElement {
                             ]}
                           >
                             <Text
-                              style={[
-                                styles.pendingBadgeText,
-                                { color: c.textTertiary },
-                              ]}
+                              style={[styles.pendingBadgeText, { color: c.textTertiary }]}
                             >
                               {t('pos.splitPending')}
                             </Text>
@@ -744,9 +1145,7 @@ export default function PosSplitScreen(): React.ReactElement {
                             disabled={!canCharge}
                             style={({ pressed }) => [
                               styles.chargeBtn,
-                              {
-                                backgroundColor: canCharge ? c.gold : c.borderSubtle,
-                              },
+                              { backgroundColor: canCharge ? c.gold : c.borderSubtle },
                               pressed && canCharge && { opacity: 0.8 },
                             ]}
                             accessibilityRole="button"
@@ -773,7 +1172,7 @@ export default function PosSplitScreen(): React.ReactElement {
               })}
             </View>
 
-            {/* ── Payment in-progress banner ── */}
+            {/* Payment in-progress banner */}
             {isProcessing && checkoutPhaseLabel !== null && (
               <View
                 style={[
@@ -788,12 +1187,11 @@ export default function PosSplitScreen(): React.ReactElement {
               </View>
             )}
 
-            {/* ── Payment error banner ── */}
+            {/* Payment error banner */}
             {checkoutPhase === 'error' && checkoutError !== null && (
               <View
                 style={[
                   styles.errorBanner,
-                  // eslint-disable-next-line react-native/no-inline-styles
                   { backgroundColor: c.danger + '18', borderColor: c.danger },
                 ]}
               >
@@ -863,7 +1261,7 @@ const styles = StyleSheet.create({
   readerBannerText: { flex: 1, fontSize: 13, fontWeight: '500' },
   retryBtn: { padding: 6 },
 
-  // ── Tab total card ───────────────────────────────────────────────────────────
+  // ── Tab total card ────────────────────────────────────────────────────────────
   totalCard: {
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
@@ -874,7 +1272,25 @@ const styles = StyleSheet.create({
   totalCardLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 },
   totalCardAmount: { fontSize: 32, fontWeight: '700', marginTop: 4 },
 
-  // ── N stepper card ───────────────────────────────────────────────────────────
+  // ── Method selector ──────────────────────────────────────────────────────────
+  methodSectionTitle: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  methodCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 4,
+  },
+  methodCardTitle: { fontSize: 16, fontWeight: '600' },
+  methodCardSub: { fontSize: 13, lineHeight: 18 },
+
+  // ── Even method stepper ───────────────────────────────────────────────────────
   stepperCard: {
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
@@ -896,14 +1312,57 @@ const styles = StyleSheet.create({
   stepperCount: { fontSize: 34, fontWeight: '700', minWidth: 44, textAlign: 'center' },
   stepperHint: { fontSize: 12 },
 
-  // ── Split error ───────────────────────────────────────────────────────────────
+  // ── Shared: split error + create button ──────────────────────────────────────
   splitError: { fontSize: 14, textAlign: 'center' },
-
-  // ── Create button ─────────────────────────────────────────────────────────────
   createBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   createBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
-  // ── Paid counter banner ────────────────────────────────────────────────────────
+  // ── Items method builder ──────────────────────────────────────────────────────
+  subAccountCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  subAccountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  subAccountLabel: { fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },
+  subAccountSubtotal: { fontSize: 13 },
+  subAccountEmpty: { fontSize: 13, paddingHorizontal: 14, paddingBottom: 10 },
+
+  builderItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  builderItemInfo: { flex: 1 },
+  builderItemName: { fontSize: 13 },
+  builderItemPrice: { fontSize: 12, marginTop: 2 },
+
+  moveBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  moveBtnText: { fontSize: 12, fontWeight: '500' },
+
+  addAccountBtn: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  addAccountBtnText: { fontSize: 14, fontWeight: '500' },
+
+  // ── Paid counter banner ───────────────────────────────────────────────────────
   counterBanner: {
     borderRadius: 12,
     borderWidth: 1,

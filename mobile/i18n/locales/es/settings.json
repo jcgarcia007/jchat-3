@@ -178,7 +178,20 @@
     "splitAllPaid": "Mesa pagada ✓",
     "splitAllPaidMsg": "Todas las partes han sido cobradas.",
     "splitErrorCreate": "No se pudo crear la división. Inténtalo de nuevo.",
-    "splitErrorTitle": "Error"
+    "splitErrorTitle": "Error",
+    "splitMethodTitle": "¿Cómo quieres dividir?",
+    "splitMethodEven": "Partes iguales",
+    "splitMethodEvenSub": "Divide el total en partes iguales entre N comensales",
+    "splitMethodItems": "Por silla / artículo",
+    "splitMethodItemsSub": "Asigna cada artículo a una cuenta específica",
+    "splitUnassigned": "Sin asignar",
+    "splitAccountEmpty": "Sin artículos",
+    "splitMove": "Mover",
+    "splitMoveTitle": "Mover artículo a…",
+    "splitMoveCancel": "Cancelar",
+    "splitNewAccount": "+ Nueva cuenta",
+    "splitAccountN": "Cuenta {{n}}",
+    "splitAddAccount": "+ Agregar cuenta"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

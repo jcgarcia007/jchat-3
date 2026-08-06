@@ -178,7 +178,20 @@
     "splitAllPaid": "Table paid ✓",
     "splitAllPaidMsg": "All parts have been charged.",
     "splitErrorCreate": "Could not create split. Please try again.",
-    "splitErrorTitle": "Error"
+    "splitErrorTitle": "Error",
+    "splitMethodTitle": "How would you like to split?",
+    "splitMethodEven": "Equal parts",
+    "splitMethodEvenSub": "Divide the total evenly between N guests",
+    "splitMethodItems": "By seat / item",
+    "splitMethodItemsSub": "Assign each item to a specific check",
+    "splitUnassigned": "Unassigned",
+    "splitAccountEmpty": "No items",
+    "splitMove": "Move",
+    "splitMoveTitle": "Move item to…",
+    "splitMoveCancel": "Cancel",
+    "splitNewAccount": "+ New check",
+    "splitAccountN": "Check {{n}}",
+    "splitAddAccount": "+ Add check"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

@@ -128,6 +128,18 @@ export interface PosSplitCheckRow {
   order_item_ids: string[];
 }
 
+/**
+ * One check element for the 'items' split method.
+ * Specifies which order_items belong to a single check.
+ * The server validates the partition and computes amounts — never send prices.
+ */
+export interface PosCheckItem {
+  /** Physical seat this check corresponds to; null for mixed or custom checks. */
+  seat: number | null;
+  /** order_item_ids (from PosTableItemRow) included in this check. */
+  order_item_ids: string[];
+}
+
 export type PosCreateSplitError =
   | 'no_access'
   | 'empty_tab'
@@ -195,7 +207,7 @@ type PosRpc = {
       p_table_id: string;
       p_method: string;
       p_ways: number | null;
-      p_checks: null;
+      p_checks: PosCheckItem[] | null;
     },
   ): Promise<{ data: PosSplitCheckRow[] | null; error: { message: string } | null }>;
 };
@@ -555,9 +567,9 @@ export async function posSetPartySize(
 export async function posCreateSplit(
   businessId: string,
   tableId: string,
-  method: 'even',
+  method: 'even' | 'items',
   ways?: number | null,
-  checks?: null,
+  checks?: PosCheckItem[] | null,
 ): Promise<PosCreateSplitResult> {
   if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
 
