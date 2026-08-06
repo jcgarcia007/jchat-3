@@ -98,6 +98,30 @@ export default function TablesPage() {
   // Realtime channel for tables — live party_size updates.
   const tablesChannelRef = useRef<RealtimeChannel | null>(null);
 
+  // Live occupancy: set of table IDs that have ≥1 open order (not paid, not cancelled).
+  const [occupiedTableIds, setOccupiedTableIds] = useState<Set<string>>(new Set());
+  const ordersChannelRef   = useRef<RealtimeChannel | null>(null);
+  const ordersDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadOccupancy = useCallback(async () => {
+    if (!activeId || !isSupabaseConfigured) {
+      setOccupiedTableIds(new Set());
+      return;
+    }
+    const { data } = await supabase
+      .from("orders")
+      .select("table_id")
+      .eq("business_id", activeId)
+      .is("paid_at", null)
+      .is("canceled_at", null)
+      .not("table_id", "is", null);
+    const ids = new Set<string>();
+    for (const row of (data ?? []) as { table_id: string | null }[]) {
+      if (row.table_id) ids.add(row.table_id);
+    }
+    setOccupiedTableIds(ids);
+  }, [activeId]);
+
   const loadBizSettings = useCallback(async () => {
     if (!activeId || !isSupabaseConfigured) return;
     const { data } = await supabase
@@ -168,11 +192,13 @@ export default function TablesPage() {
       await loadWaiterCounts();
       if (!active) return;
       await loadBizSettings();
+      if (!active) return;
+      await loadOccupancy();
     })();
     return () => {
       active = false;
     };
-  }, [load, loadWaiterCounts, loadBizSettings, reloadKey]);
+  }, [load, loadWaiterCounts, loadBizSettings, loadOccupancy, reloadKey]);
 
   // Realtime: subscribe to tables UPDATE so party_size refreshes live.
   useEffect(() => {
@@ -192,6 +218,38 @@ export default function TablesPage() {
       }
     };
   }, [activeId, load]);
+
+  // Realtime: subscribe to orders INSERT/UPDATE so occupancy refreshes live.
+  // Debounced at 600 ms to batch rapid bursts.
+  useEffect(() => {
+    if (!activeId || !isSupabaseConfigured) return;
+    ordersChannelRef.current = supabase
+      .channel(`tables-orders-occ-${activeId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders", filter: `business_id=eq.${activeId}` },
+        () => {
+          if (ordersDebounceRef.current) clearTimeout(ordersDebounceRef.current);
+          ordersDebounceRef.current = setTimeout(() => { void loadOccupancy().catch(() => {}); }, 600);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `business_id=eq.${activeId}` },
+        () => {
+          if (ordersDebounceRef.current) clearTimeout(ordersDebounceRef.current);
+          ordersDebounceRef.current = setTimeout(() => { void loadOccupancy().catch(() => {}); }, 600);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (ordersDebounceRef.current) clearTimeout(ordersDebounceRef.current);
+      if (ordersChannelRef.current) {
+        void supabase.removeChannel(ordersChannelRef.current);
+        ordersChannelRef.current = null;
+      }
+    };
+  }, [activeId, loadOccupancy]);
 
   // Floors present, in first-seen order; drives the optional grouping headers.
   const floors = useMemo(() => {
@@ -433,6 +491,40 @@ export default function TablesPage() {
                   <div style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
                     {t("tablesSeatsCountPlural", { count: r.seats })}
                   </div>
+
+                  {/* Occupancy badge — open orders or waiter has set party */}
+                  {(() => {
+                    const isOcc = occupiedTableIds.has(r.id) || (r.party_size != null && r.party_size > 0);
+                    return (
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: isOcc ? "var(--db-warning)" : "var(--db-success)",
+                          background: isOcc
+                            ? "color-mix(in srgb, var(--db-warning) 15%, transparent)"
+                            : "color-mix(in srgb, var(--db-success) 15%, transparent)",
+                          borderRadius: "999px",
+                          padding: "2px 8px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "6px",
+                            height: "6px",
+                            borderRadius: "50%",
+                            background: "currentColor",
+                            flexShrink: 0,
+                          }}
+                        />
+                        {isOcc ? t("floorStateOccupied") : t("floorStateFree")}
+                      </div>
+                    );
+                  })()}
+
                   {(() => {
                     const wc = waiterCounts[r.id] ?? 0;
                     return (

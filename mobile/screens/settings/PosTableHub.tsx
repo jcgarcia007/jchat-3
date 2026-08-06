@@ -340,14 +340,26 @@ export default function PosTableHub(): React.ReactElement {
   const showDraft = selectedOrderId === null;
 
   /**
-   * True when a specific round is selected AND every item in that round is still
+   * The order_id to use for the action panel (Cancel / Edit buttons).
+   *
+   * With exactly 1 round the panel is always available — no chip needed.
+   * With ≥2 rounds the employee must select a chip first (existing behaviour).
+   * Null → panel hidden.
+   */
+  const actionOrderId = useMemo((): string | null => {
+    if (orderedRounds.length === 1) return orderedRounds[0];
+    return selectedOrderId;
+  }, [orderedRounds, selectedOrderId]);
+
+  /**
+   * True when the action order exists AND every one of its items is still
    * 'pending' (kitchen hasn't started it). Gates the Cancelar / Editar buttons.
    */
   const selectedRoundAllPending = useMemo(() => {
-    if (selectedOrderId === null) return false;
-    const items = sentItems.filter((i) => i.order_id === selectedOrderId);
+    if (actionOrderId === null) return false;
+    const items = sentItems.filter((i) => i.order_id === actionOrderId);
     return items.length > 0 && items.every((i) => i.item_status === 'pending');
-  }, [sentItems, selectedOrderId]);
+  }, [sentItems, actionOrderId]);
 
   /** Unique seat keys that have at least one item to display. */
   const seatGroups = useMemo(() => {
@@ -853,8 +865,10 @@ export default function PosTableHub(): React.ReactElement {
             </ScrollView>
           )}
 
-          {/* ── Order actions (Cancelar / Editar — only when a round is selected) */}
-          {selectedOrderId !== null && (
+          {/* ── Order actions (Cancelar / Editar)
+               • 1 round  → always shown (actionOrderId auto-set to that round)
+               • ≥2 rounds → shown only when a chip is selected              */}
+          {actionOrderId !== null && (
             <View
               style={[
                 styles.orderActionPanel,
@@ -865,7 +879,7 @@ export default function PosTableHub(): React.ReactElement {
                 <>
                   {/* Cancelar orden */}
                   <Pressable
-                    onPress={() => handleCancelOrderPress(selectedOrderId)}
+                    onPress={() => handleCancelOrderPress(actionOrderId)}
                     disabled={!!voidingOrderId}
                     style={({ pressed }) => [
                       styles.orderActionBtn,
@@ -877,7 +891,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityLabel={t('pos.voidOrderCancelBtn')}
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
-                    {voidingOrderId === selectedOrderId ? (
+                    {voidingOrderId === actionOrderId ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
@@ -888,7 +902,7 @@ export default function PosTableHub(): React.ReactElement {
 
                   {/* Editar orden */}
                   <Pressable
-                    onPress={() => { void handleVoidOrder(selectedOrderId, 'edit'); }}
+                    onPress={() => { void handleVoidOrder(actionOrderId, 'edit'); }}
                     disabled={!!voidingOrderId}
                     style={({ pressed }) => [
                       styles.orderActionBtn,
@@ -900,7 +914,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityLabel={t('pos.voidOrderEditBtn')}
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
-                    {voidingOrderId === selectedOrderId ? (
+                    {voidingOrderId === actionOrderId ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
