@@ -51,6 +51,8 @@ import {
 import type { MenuItem, MenuCategory, ModifierGroup } from '../../services/menu';
 import { posCreateOrder } from '../../services/pos';
 import type { PosOrderItem } from '../../services/pos';
+import { usePosDraft } from '../../contexts/PosDraftContext';
+import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
@@ -559,6 +561,16 @@ export default function PosOrderScreen() {
   const navigation = useNavigation<PosOrderNav>();
   const route = useRoute<PosOrderRoute>();
   const { businessId, businessName, tableId, tableLabel, plan } = route.params;
+  /** Seat being ordered for; null = whole-table / center order. */
+  const seatParam: number | null = route.params.seat ?? null;
+  /**
+   * 'draft' (default) — save to PosDraftContext and goBack.
+   * 'submit' — original direct-to-kitchen flow.
+   */
+  const modeParam: 'draft' | 'submit' = route.params.mode ?? 'draft';
+
+  // ── Draft context ───────────────────────────────────────────────────────────
+  const { getSeatDraft, setSeatDraft } = usePosDraft();
 
   // ── Plan features ───────────────────────────────────────────────────────────
   const isPro = plan === 'pro';
@@ -569,10 +581,27 @@ export default function PosOrderScreen() {
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  // ── Cart state ──────────────────────────────────────────────────────────────
-  const [cart, setCart] = useState<CartItem[]>([]);
-  /** Notes keyed by cartKey. */
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  // ── Cart state — pre-populated from draft on first render ───────────────────
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const draft = getSeatDraft(tableId, seatParam);
+    return draft.map((d) => ({
+      cartKey: d.cartKey,
+      menuItemId: d.menuItemId,
+      name: d.name,
+      basePriceCents: d.basePriceCents,
+      modifierExtraCents: d.modifierExtraCents,
+      priceCents: d.basePriceCents + d.modifierExtraCents,
+      qty: d.qty,
+      modifiers: d.modifiers,
+    }));
+  });
+  /** Notes keyed by cartKey — pre-populated from draft. */
+  const [notes, setNotes] = useState<Record<string, string>>(() => {
+    const draft = getSeatDraft(tableId, seatParam);
+    const n: Record<string, string> = {};
+    draft.forEach((d) => { if (d.note) n[d.cartKey] = d.note; });
+    return n;
+  });
 
   // ── Modifier sheet state ────────────────────────────────────────────────────
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
@@ -750,6 +779,27 @@ export default function PosOrderScreen() {
     }
     Alert.alert(t('pos.errorTitle'), errorMsg);
   }, [businessId, tableId, cart, notes, submitting, navigation, t]);
+
+  // ── Draft save (mode === 'draft') ───────────────────────────────────────────
+  /**
+   * Save the current cart to PosDraftContext and return to PosTableHub.
+   * Called instead of handleSubmit when modeParam === 'draft'.
+   */
+  const handleDraftSave = useCallback(() => {
+    const draftItems: DraftItem[] = cart.map((ci) => ({
+      cartKey: ci.cartKey,
+      menuItemId: ci.menuItemId,
+      name: ci.name,
+      basePriceCents: ci.basePriceCents,
+      modifierExtraCents: ci.modifierExtraCents,
+      qty: ci.qty,
+      seat: seatParam,
+      modifiers: ci.modifiers,
+      note: notes[ci.cartKey] ?? '',
+    }));
+    setSeatDraft(tableId, seatParam, draftItems);
+    navigation.goBack();
+  }, [cart, notes, seatParam, tableId, setSeatDraft, navigation]);
 
   // ── ModifierSheet callbacks ─────────────────────────────────────────────────
   const handleModClose = useCallback(() => setModifierItem(null), []);
@@ -933,20 +983,22 @@ export default function PosOrderScreen() {
           </View>
 
           <Pressable
-            onPress={handleSubmit}
-            disabled={submitting}
+            onPress={modeParam === 'draft' ? handleDraftSave : handleSubmit}
+            disabled={modeParam === 'submit' && submitting}
             style={({ pressed }) => [
               styles.submitBtn,
               { backgroundColor: c.brand },
-              (pressed || submitting) && { opacity: 0.7 },
+              ((modeParam === 'submit' && submitting) || pressed) && { opacity: 0.7 },
             ]}
             accessibilityRole="button"
-            accessibilityState={{ disabled: submitting }}
+            accessibilityState={{ disabled: modeParam === 'submit' && submitting }}
           >
-            {submitting ? (
+            {modeParam === 'submit' && submitting ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitBtnText}>{t('pos.submitButton')}</Text>
+              <Text style={styles.submitBtnText}>
+                {modeParam === 'draft' ? t('pos.draftDone') : t('pos.submitButton')}
+              </Text>
             )}
           </Pressable>
         </View>

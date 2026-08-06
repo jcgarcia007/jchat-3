@@ -78,6 +78,8 @@ export interface PosTablesOverviewRow {
 export interface PosOrderItem {
   menu_item_id: string;
   qty: number;
+  /** Seat number this item belongs to; null = table-level order. */
+  seat?: number | null;
   special_instructions?: string;
   /** Modifier selections to send to pos_create_order. */
   options?: {
@@ -87,6 +89,20 @@ export interface PosOrderItem {
       choice_labels: string[];
     }[];
   };
+}
+
+/** One served item row returned by the pos_table_items RPC. */
+export interface PosTableItemRow {
+  order_item_id: string;
+  order_id: string;
+  /** null = not seat-specific (ordered for the whole table). */
+  seat: number | null;
+  item_name: string;
+  qty: number;
+  /** Price per unit (cents). */
+  price_cents: number;
+  options: { modifiers: { group_label: string; choice_labels: string[] }[] } | null;
+  special_instructions: string | null;
 }
 
 export type PosCreateOrderError =
@@ -135,6 +151,10 @@ type PosRpc = {
     fn: 'pos_set_party_size',
     params: { p_business_id: string; p_table_id: string; p_party_size: number },
   ): Promise<{ data: null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_table_items',
+    params: { p_business_id: string; p_table_id: string },
+  ): Promise<{ data: PosTableItemRow[] | null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -422,6 +442,30 @@ export async function posTablesOverview(businessId: string): Promise<PosTablesOv
 }
 
 // ─── posSetPartySize ──────────────────────────────────────────────────────────
+
+// ─── posTableItems ────────────────────────────────────────────────────────────
+
+/**
+ * Return all open (unpaid) order items for a specific table, including the seat
+ * assignment of each item. Used by PosTableHub to show the per-seat summary of
+ * what has already been sent to the kitchen.
+ *
+ * Returns an empty array when Supabase is not configured or on error.
+ */
+export async function posTableItems(
+  businessId: string,
+  tableId: string,
+): Promise<PosTableItemRow[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await posRpc.rpc('pos_table_items', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
 
 /**
  * Set the party size (number of guests) for a table.

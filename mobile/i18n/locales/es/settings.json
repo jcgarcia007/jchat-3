@@ -148,7 +148,15 @@
     "assignmentUnassigned": "Sin asignar",
     "partyPeople": "{{count}} pers",
     "terminalUnavailableTitle": "El cobro requiere un dispositivo físico",
-    "terminalUnavailableSub": "Stripe Terminal no está disponible en el simulador. Usa un EAS build en un iPhone físico para procesar pagos."
+    "terminalUnavailableSub": "Stripe Terminal no está disponible en el simulador. Usa un EAS build en un iPhone físico para procesar pagos.",
+    "draftDone": "Listo · Agregar",
+    "hubSeatLabel": "Silla {{n}}",
+    "hubTableCenter": "Mesa",
+    "hubSentBadge": "Enviado",
+    "hubSplitBill": "Dividir cuenta",
+    "hubKitchenSent": "¡Orden enviada!",
+    "hubKitchenSentMsg": "Los artículos fueron enviados a la cocina.",
+    "hubNoItems": "Sin artículos aún — toca una silla para agregar una orden."
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

@@ -96,7 +96,7 @@ export default function PosHomeScreen() {
   // ── Navigation ────────────────────────────────────────────────────────────
   const handleTablePress = useCallback(
     (table: PosTablesOverviewRow) => {
-      navigation.navigate('PosOrder', {
+      navigation.navigate('PosTableHub', {
         businessId,
         businessName,
         tableId: table.table_id,

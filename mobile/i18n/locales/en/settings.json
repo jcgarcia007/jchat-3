@@ -148,7 +148,15 @@
     "assignmentUnassigned": "Unassigned",
     "partyPeople": "{{count}} guests",
     "terminalUnavailableTitle": "Physical device required for payments",
-    "terminalUnavailableSub": "Stripe Terminal is not available in the Simulator. Use an EAS build on a physical iPhone to process payments."
+    "terminalUnavailableSub": "Stripe Terminal is not available in the Simulator. Use an EAS build on a physical iPhone to process payments.",
+    "draftDone": "Done · Add",
+    "hubSeatLabel": "Seat {{n}}",
+    "hubTableCenter": "Table",
+    "hubSentBadge": "Sent",
+    "hubSplitBill": "Split Bill",
+    "hubKitchenSent": "Order sent!",
+    "hubKitchenSentMsg": "Items have been sent to the kitchen.",
+    "hubNoItems": "No items yet — tap a seat to add an order."
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

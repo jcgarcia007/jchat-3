@@ -29,7 +29,9 @@ import {
 } from '../services/terminalSdk';
 
 import { getConnectionTokenSecret } from '../services/terminal';
+import { PosDraftProvider } from '../contexts/PosDraftContext';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
+import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
 import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
 import type { SettingsStackParamList } from './SettingsStack';
@@ -42,12 +44,31 @@ import type { SettingsStackParamList } from './SettingsStack';
  */
 export type PosStackParamList = {
   PosHome: { businessId: string; businessName: string; employeeId: string; plan: string | null };
+  /** Table hub — opened when tapping a table in PosHome (C7). */
+  PosTableHub: {
+    businessId: string;
+    businessName: string;
+    tableId: string;
+    tableLabel: string;
+    plan: string | null;
+  };
   PosOrder: {
     businessId: string;
     businessName: string;
     tableId: string;
     tableLabel: string;
     plan: string | null;
+    /**
+     * Seat being ordered for; null = whole-table order (center tap).
+     * @default null
+     */
+    seat?: number | null;
+    /**
+     * 'draft' → save to PosDraftContext and return to hub (default).
+     * 'submit' → original direct-to-kitchen flow (reserved for future use).
+     * @default 'draft'
+     */
+    mode?: 'draft' | 'submit';
   };
   /** In-person payment for an open tab on a table (C2b). */
   PosCheckout: {
@@ -109,17 +130,24 @@ export default function PosNavigator(): React.ReactElement {
   return (
     <StripeTerminalProvider tokenProvider={tokenProvider} logLevel="none">
       <PosTerminalInit />
-      <PosStack.Navigator screenOptions={screenOptions}>
-        {/* Pass params down to the first screen so it can read them from useRoute(). */}
-        <PosStack.Screen
-          name="PosHome"
-          component={PosHomeScreen}
-          initialParams={{ businessId, businessName, employeeId, plan }}
-        />
-        <PosStack.Screen name="PosOrder" component={PosOrderScreen} />
-        {/* PosCheckout must be inside this navigator (needs useStripeTerminal) */}
-        <PosStack.Screen name="PosCheckout" component={PosCheckoutScreen} />
-      </PosStack.Navigator>
+      {/* PosDraftProvider must be inside the navigator so draft state persists
+          across PosTableHub ↔ PosOrder navigations for the same table. */}
+      <PosDraftProvider>
+        <PosStack.Navigator screenOptions={screenOptions}>
+          {/* Pass params down to the first screen so it can read them from useRoute(). */}
+          <PosStack.Screen
+            name="PosHome"
+            component={PosHomeScreen}
+            initialParams={{ businessId, businessName, employeeId, plan }}
+          />
+          {/* Table hub — seat diagram + per-seat draft management (C7). */}
+          <PosStack.Screen name="PosTableHub" component={PosTableHubScreen} />
+          {/* PosOrder: in draft mode (default), saves to context instead of posting to kitchen. */}
+          <PosStack.Screen name="PosOrder" component={PosOrderScreen} />
+          {/* PosCheckout must be inside this navigator (needs useStripeTerminal) */}
+          <PosStack.Screen name="PosCheckout" component={PosCheckoutScreen} />
+        </PosStack.Navigator>
+      </PosDraftProvider>
     </StripeTerminalProvider>
   );
 }
