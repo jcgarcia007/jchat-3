@@ -215,6 +215,10 @@ export default function PosTableHub(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Round filter — null = "All" ──────────────────────────────────────────────
+  /** The order_id of the currently selected round chip, or null for "All". */
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
   // ── Realtime — live order_items status updates ──────────────────────────────
   // Debounce ref prevents flooding posTableItems when rapid UPDATE events arrive.
   const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -297,21 +301,58 @@ export default function PosTableHub(): React.ReactElement {
     [tableDraft],
   );
 
-  /** Unique seat keys that have at least one item (sent or draft). */
+  /**
+   * Ordered list of distinct order_ids from sentItems (preserving appearance
+   * order = creation order from server). Index+1 is the round number.
+   */
+  const orderedRounds = useMemo(() => {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const item of sentItems) {
+      if (!seen.has(item.order_id)) {
+        seen.add(item.order_id);
+        ids.push(item.order_id);
+      }
+    }
+    return ids;
+  }, [sentItems]);
+
+  // Reset filter selection when the selected round disappears (e.g. after refresh).
+  useEffect(() => {
+    if (selectedOrderId !== null && !orderedRounds.includes(selectedOrderId)) {
+      setSelectedOrderId(null);
+    }
+  }, [orderedRounds, selectedOrderId]);
+
+  /** Items to show in the summary — all when "All", or only matching round. */
+  const filteredSentItems = useMemo(
+    () =>
+      selectedOrderId === null
+        ? sentItems
+        : sentItems.filter((i) => i.order_id === selectedOrderId),
+    [sentItems, selectedOrderId],
+  );
+
+  /** Draft items are only shown in the "All" view, not per-round. */
+  const showDraft = selectedOrderId === null;
+
+  /** Unique seat keys that have at least one item to display. */
   const seatGroups = useMemo(() => {
     const keys = new Set<string>();
-    sentItems.forEach((i) =>
+    filteredSentItems.forEach((i) =>
       keys.add(i.seat === null ? 'table' : String(i.seat)),
     );
-    tableDraft.forEach((d) =>
-      keys.add(d.seat === null ? 'table' : String(d.seat)),
-    );
+    if (showDraft) {
+      tableDraft.forEach((d) =>
+        keys.add(d.seat === null ? 'table' : String(d.seat)),
+      );
+    }
     return [...keys].sort((a, b) => {
       if (a === 'table') return -1;
       if (b === 'table') return 1;
       return Number(a) - Number(b);
     });
-  }, [sentItems, tableDraft]);
+  }, [filteredSentItems, tableDraft, showDraft]);
 
   // ── Seat diagram positions ───────────────────────────────────────────────────
   const seatPositions = useMemo(
@@ -645,6 +686,66 @@ export default function PosTableHub(): React.ReactElement {
             </View>
           </View>
 
+          {/* ── Round filter chips (only shown with ≥2 rounds) ──────────── */}
+          {orderedRounds.length >= 2 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterRow}
+            >
+              {/* "All" chip */}
+              <Pressable
+                onPress={() => setSelectedOrderId(null)}
+                style={[
+                  styles.filterChip,
+                  selectedOrderId === null
+                    ? { backgroundColor: c.brand }
+                    : { backgroundColor: c.bgSurface, borderColor: c.borderSubtle, borderWidth: 1 },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedOrderId === null }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: selectedOrderId === null ? '#fff' : c.textSecondary },
+                  ]}
+                >
+                  {t('pos.filterAll')}
+                </Text>
+              </Pressable>
+
+              {/* Per-round chips */}
+              {orderedRounds.map((orderId, idx) => {
+                const isActive = selectedOrderId === orderId;
+                return (
+                  <Pressable
+                    key={orderId}
+                    onPress={() => setSelectedOrderId(orderId)}
+                    style={[
+                      styles.filterChip,
+                      isActive
+                        ? { backgroundColor: c.brand }
+                        : { backgroundColor: c.bgSurface, borderColor: c.borderSubtle, borderWidth: 1 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: isActive ? '#fff' : c.textSecondary },
+                      ]}
+                    >
+                      {t('pos.filterOrderN', { n: idx + 1 })}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+
           {/* ── Summary ────────────────────────────────────────────────────── */}
           {seatGroups.length === 0 ? (
             <View style={styles.emptyHint}>
@@ -656,8 +757,8 @@ export default function PosTableHub(): React.ReactElement {
             <View style={[styles.summaryCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
               {seatGroups.map((key, idx) => {
                 const seat = key === 'table' ? null : Number(key);
-                const seatSent = sentItems.filter((i) => i.seat === seat);
-                const seatDraft = tableDraft.filter((d) => d.seat === seat);
+                const seatSent = filteredSentItems.filter((i) => i.seat === seat);
+                const seatDraft = showDraft ? tableDraft.filter((d) => d.seat === seat) : [];
                 const seatLabel =
                   seat === null
                     ? t('pos.hubTableCenter')
@@ -910,6 +1011,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   seatNumber: { fontSize: 14, fontWeight: '700' },
+
+  // ── Round filter chips ────────────────────────────────────────────────────────
+  filterScroll: {
+    // Break out of the parent ScrollView's horizontal padding so chips start flush.
+    marginHorizontal: -H_PAD,
+  },
+  filterRow: {
+    paddingHorizontal: H_PAD,
+    paddingBottom: 4,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  filterChipText: { fontSize: 13, fontWeight: '600' },
 
   // ── Summary ──────────────────────────────────────────────────────────────────
   emptyHint: {

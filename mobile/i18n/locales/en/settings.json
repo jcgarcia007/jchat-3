@@ -161,7 +161,9 @@
     "hubBtnSplit": "Split",
     "itemStatusPending": "Pending",
     "itemStatusPreparing": "Preparing",
-    "itemStatusReady": "Ready"
+    "itemStatusReady": "Ready",
+    "filterAll": "All",
+    "filterOrderN": "Order #{{n}}"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",
