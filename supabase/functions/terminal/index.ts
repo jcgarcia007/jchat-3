@@ -495,8 +495,9 @@ async function handleCreateTabPaymentIntent(
 // ── Action: mark_tab_paid ─────────────────────────────────────────────────────
 //
 // Confirms tab payment by retrieving the PI directly from Stripe (never trusting
-// the client). On success, marks pos_payments row as succeeded, computes tip, and
-// closes all open orders for the table if payments now cover the full tab.
+// the client). On success, delegates all DB marking to pos_apply_payment RPC
+// (SECURITY DEFINER, not client-accessible), which marks the payment succeeded,
+// covers order_items, closes fully-covered orders, and returns tab_closed.
 
 async function handleMarkTabPaid(
   body: Record<string, unknown>,
@@ -567,72 +568,27 @@ async function handleMarkTabPaid(
     return jsonResponse({ ok: false, status: pi.status });
   }
 
-  // 6a. Update pos_payments: status + tip_cents.
-  //     tip_cents = any amount the reader collected above the authorised amount.
+  // 6. Payment confirmed by Stripe. Compute tip and delegate all DB marking
+  //    to pos_apply_payment (SECURITY DEFINER — not exposed to clients).
+  //    The RPC atomically marks pos_payments succeeded, covers order_items,
+  //    closes orders whose items are fully paid, and returns tab_closed.
   const tipCents = Math.max(0, pi.amount - payment.amount_cents);
-  const { error: updatePaymentErr } = await db
-    .from("pos_payments")
-    .update({
-      status: "succeeded",
-      tip_cents: tipCents,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", paymentId);
 
-  if (updatePaymentErr) {
-    console.error("[terminal] pos_payments update error:", updatePaymentErr.message);
-    return errorResponse("Failed to update payment record", 500);
-  }
-
-  // 6b. Coverage check:
-  //     Sum amount_cents (not tip) of all succeeded payments for this table.
-  //     Compare with pos_tab_total (sum of open orders.total_cents).
-  //     If covered → close all open orders idempotently.
-  let tabClosed = false;
-
-  const { data: paidRows, error: paidRowsErr } = await db
-    .from("pos_payments")
-    .select("amount_cents")
-    .eq("business_id", payment.business_id)
-    .eq("table_id", payment.table_id)
-    .eq("status", "succeeded");
-
-  const sumPaidCents = paidRowsErr
-    ? payment.amount_cents  // fallback: at minimum the current payment's amount
-    : (paidRows ?? []).reduce(
-        (s: number, r: { amount_cents: number }) => s + r.amount_cents,
-        0,
-      );
-
-  const { data: remainingTotal, error: tabTotalErr } = await db.rpc("pos_tab_total", {
-    p_business_id: payment.business_id,
-    p_table_id: payment.table_id,
+  const { data: rpcData, error: rpcErr } = await db.rpc("pos_apply_payment", {
+    p_payment_id: paymentId,
+    p_tip_cents: tipCents,
   });
-  const remainingTabCents =
-    tabTotalErr || typeof remainingTotal !== "number"
-      ? null // can't determine — skip auto-close to avoid double-closing
-      : remainingTotal;
 
-  if (remainingTabCents !== null && sumPaidCents >= remainingTabCents) {
-    // Payments cover the full open tab — mark all open orders paid (idempotent).
-    const { error: closeErr } = await db
-      .from("orders")
-      .update({ paid_at: new Date().toISOString() })
-      .eq("business_id", payment.business_id)
-      .eq("table_id", payment.table_id)
-      .is("paid_at", null);
-
-    if (closeErr) {
-      // Non-fatal: payment is recorded. Operator can reconcile.
-      console.error("[terminal] failed to close open orders:", closeErr.message);
-    } else {
-      tabClosed = true;
-      console.log(
-        `[terminal] mark_tab_paid: tab closed — table=${payment.table_id} sumPaid=${sumPaidCents} tabTotal=${remainingTabCents}`,
-      );
-    }
+  if (rpcErr) {
+    console.error("[terminal] pos_apply_payment error:", rpcErr.message);
+    return errorResponse("Failed to apply payment", 500);
   }
 
+  const tabClosed = rpcData === true;
+
+  console.log(
+    `[terminal] mark_tab_paid: applied payment=${paymentId} tip=${tipCents} tab_closed=${tabClosed}`,
+  );
   return jsonResponse({ ok: true, tab_closed: tabClosed });
 }
 
