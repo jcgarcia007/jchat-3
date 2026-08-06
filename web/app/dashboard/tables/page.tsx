@@ -492,9 +492,19 @@ export default function TablesPage() {
                     {t("tablesSeatsCountPlural", { count: r.seats })}
                   </div>
 
-                  {/* Occupancy badge — open orders or waiter has set party */}
+                  {/* Unified state badge — precedence: Ocupada > Reservada > Libre */}
                   {(() => {
                     const isOcc = occupiedTableIds.has(r.id) || (r.party_size != null && r.party_size > 0);
+                    // Reserved only counts when not occupied and the slot hasn't expired.
+                    const isRes = !isOcc && r.is_reserved && (
+                      !r.reserved_until || new Date(r.reserved_until) > new Date()
+                    );
+                    const state = isOcc ? "occupied" : isRes ? "reserved" : "free";
+                    const meta = {
+                      occupied: { token: "var(--db-warning)", label: t("floorStateOccupied") },
+                      reserved: { token: "var(--db-accent)",  label: t("floorStateReserved") },
+                      free:     { token: "var(--db-success)", label: t("floorStateFree") },
+                    }[state];
                     return (
                       <div
                         style={{
@@ -503,10 +513,8 @@ export default function TablesPage() {
                           gap: "5px",
                           fontSize: "11px",
                           fontWeight: 600,
-                          color: isOcc ? "var(--db-warning)" : "var(--db-success)",
-                          background: isOcc
-                            ? "color-mix(in srgb, var(--db-warning) 15%, transparent)"
-                            : "color-mix(in srgb, var(--db-success) 15%, transparent)",
+                          color: meta.token,
+                          background: `color-mix(in srgb, ${meta.token} 15%, transparent)`,
                           borderRadius: "999px",
                           padding: "2px 8px",
                         }}
@@ -520,7 +528,13 @@ export default function TablesPage() {
                             flexShrink: 0,
                           }}
                         />
-                        {isOcc ? t("floorStateOccupied") : t("floorStateFree")}
+                        {meta.label}
+                        {/* Reserved: show expiry time inline when available */}
+                        {state === "reserved" && r.reserved_until && (
+                          <span style={{ fontWeight: 400, opacity: 0.75 }}>
+                            {t("tablesReservedUntilDisplay", { time: formatReservedUntil(r.reserved_until) })}
+                          </span>
+                        )}
                       </div>
                     );
                   })()}
@@ -543,17 +557,6 @@ export default function TablesPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--db-accent)" }}>
                       <IconUsers size={13} />
                       {r.party_size}
-                    </div>
-                  )}
-                  {r.is_reserved && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--db-danger)" }}>
-                      <IconCalendar size={13} />
-                      {t("floorStateReserved")}
-                      {r.reserved_until && (
-                        <span style={{ fontWeight: 400, fontSize: "11px" }}>
-                          {t("tablesReservedUntilDisplay", { time: formatReservedUntil(r.reserved_until) })}
-                        </span>
-                      )}
                     </div>
                   )}
                   {r.room_id && (
