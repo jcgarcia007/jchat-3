@@ -112,19 +112,30 @@ function SentRow({ item }: { item: PosTableItemRow }) {
   const c = useThemeColors();
   const { t } = useTranslation('settings');
 
-  // Map item_status to display label — unknown values shown as-is (fallback).
+  // Effective status: item_status is fine-grained (set per item by the kitchen
+  // system), but the kitchen marks the order as a whole via order_status.
+  // If the item is still 'pending' but the order has been picked up, surface
+  // the order-level state so the waiter sees the real kitchen progress.
+  const effectiveStatus = (() => {
+    if (item.item_status !== 'pending') return item.item_status;
+    if (item.order_status === 'preparing') return 'preparing';
+    if (item.order_status === 'ready')     return 'ready';
+    return 'pending';
+  })();
+
+  // Map effective status to display label — unknown values shown as-is.
   const statusLabel = (() => {
-    switch (item.item_status) {
+    switch (effectiveStatus) {
       case 'pending':   return t('pos.itemStatusPending');
       case 'preparing': return t('pos.itemStatusPreparing');
       case 'ready':     return t('pos.itemStatusReady');
-      default:          return item.item_status;
+      default:          return effectiveStatus;
     }
   })();
 
-  // Map item_status to color token.
+  // Map effective status to color token.
   const statusColor = (() => {
-    switch (item.item_status) {
+    switch (effectiveStatus) {
       case 'preparing': return c.warning;
       case 'ready':     return c.success;
       default:          return c.textTertiary; // pending + unknown → neutral
