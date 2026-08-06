@@ -95,6 +95,8 @@ export interface PosOrderItem {
 export interface PosTableItemRow {
   order_item_id: string;
   order_id: string;
+  /** Menu item that was ordered — needed to reconstruct the draft on edit/void. */
+  menu_item_id: string;
   /** null = not seat-specific (ordered for the whole table). */
   seat: number | null;
   item_name: string;
@@ -139,6 +141,18 @@ export interface PosCheckItem {
   /** order_item_ids (from PosTableItemRow) included in this check. */
   order_item_ids: string[];
 }
+
+export type PosVoidOrderError =
+  | 'in_preparation'
+  | 'split_in_progress'
+  | 'already_paid'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosVoidOrderResult =
+  | { ok: true }
+  | { ok: false; reason: PosVoidOrderError };
 
 export type PosCreateSplitError =
   | 'no_access'
@@ -210,6 +224,13 @@ type PosRpc = {
       p_checks: PosCheckItem[] | null;
     },
   ): Promise<{ data: PosSplitCheckRow[] | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_void_order',
+    params: {
+      p_business_id: string;
+      p_order_id: string;
+    },
+  ): Promise<{ data: null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -591,4 +612,44 @@ export async function posCreateSplit(
   }
 
   return { ok: true, checks: data ?? [] };
+}
+
+// ─── posVoidOrder ─────────────────────────────────────────────────────────────
+
+/**
+ * Void (cancel) a pending order that the kitchen has not yet started.
+ * The server validates that every item in the order is still 'pending'
+ * and that no active split covers it before deleting the order.
+ *
+ * The client sends only businessId + orderId — no amounts, no status changes.
+ *
+ * Possible failure reasons:
+ *   'in_preparation'    — one or more items are already being prepared
+ *   'split_in_progress' — an active split covers this order
+ *   'already_paid'      — the order has already been paid
+ *   'no_access'         — user does not have pos_access at this business
+ *   'db_error'          — unexpected database error
+ *   'not_configured'    — Supabase is not configured
+ */
+export async function posVoidOrder(
+  businessId: string,
+  orderId: string,
+): Promise<PosVoidOrderResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await posRpc.rpc('pos_void_order', {
+    p_business_id: businessId,
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('order in preparation')) return { ok: false, reason: 'in_preparation' };
+    if (msg.includes('split in progress'))    return { ok: false, reason: 'split_in_progress' };
+    if (msg.includes('order already paid'))   return { ok: false, reason: 'already_paid' };
+    if (msg.includes('no pos access'))        return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
 }

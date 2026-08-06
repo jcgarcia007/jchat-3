@@ -191,7 +191,18 @@
     "splitMoveCancel": "Cancelar",
     "splitNewAccount": "+ Nueva cuenta",
     "splitAccountN": "Cuenta {{n}}",
-    "splitAddAccount": "+ Agregar cuenta"
+    "splitAddAccount": "+ Agregar cuenta",
+    "voidOrderCancelBtn": "Cancelar ronda",
+    "voidOrderEditBtn": "Editar ronda",
+    "voidOrderConfirmTitle": "¿Cancelar esta ronda?",
+    "voidOrderConfirmMsg": "La ronda se eliminará. La cocina aún no la ha tomado.",
+    "voidOrderConfirmBtn": "Cancelar ronda",
+    "voidOrderConfirmDismiss": "Conservarla",
+    "voidOrderInPrep": "En preparación — no se puede editar",
+    "voidOrderErrInPrep": "Uno o más artículos ya están en preparación.",
+    "voidOrderErrSplit": "Hay una división en curso. Cóbrala o cancélala primero.",
+    "voidOrderErrPaid": "Esta orden ya fue pagada.",
+    "voidOrderErr": "No se pudo cancelar la orden. Inténtalo de nuevo."
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

@@ -54,6 +54,7 @@ import {
   posTableItems,
   posSetPartySize,
   posCreateOrder,
+  posVoidOrder,
 } from '../../services/pos';
 import type {
   PosTablesOverviewRow,
@@ -214,6 +215,8 @@ export default function PosTableHub(): React.ReactElement {
   const [sentItems, setSentItems] = useState<PosTableItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  /** order_id currently being voided — null when idle. Prevents double-tap. */
+  const [voidingOrderId, setVoidingOrderId] = useState<string | null>(null);
 
   // ── Round filter — null = "All" ──────────────────────────────────────────────
   /** The order_id of the currently selected round chip, or null for "All". */
@@ -335,6 +338,16 @@ export default function PosTableHub(): React.ReactElement {
 
   /** Draft items are only shown in the "All" view, not per-round. */
   const showDraft = selectedOrderId === null;
+
+  /**
+   * True when a specific round is selected AND every item in that round is still
+   * 'pending' (kitchen hasn't started it). Gates the Cancelar / Editar buttons.
+   */
+  const selectedRoundAllPending = useMemo(() => {
+    if (selectedOrderId === null) return false;
+    const items = sentItems.filter((i) => i.order_id === selectedOrderId);
+    return items.length > 0 && items.every((i) => i.item_status === 'pending');
+  }, [sentItems, selectedOrderId]);
 
   /** Unique seat keys that have at least one item to display. */
   const seatGroups = useMemo(() => {
@@ -510,6 +523,95 @@ export default function PosTableHub(): React.ReactElement {
   const handleDividir = useCallback(() => {
     navigation.navigate('PosSplit', { businessId, tableId, tableLabel, partySize });
   }, [navigation, businessId, tableId, tableLabel, partySize]);
+
+  // ── Void / edit order ─────────────────────────────────────────────────────
+  /**
+   * Void the given order on the server, then either discard it (mode='cancel')
+   * or reload its items into the draft for editing (mode='edit').
+   *
+   * Security: only businessId + orderId are sent to the server.
+   * The server validates status gating and computes nothing from client data.
+   */
+  const handleVoidOrder = useCallback(
+    async (orderId: string, mode: 'cancel' | 'edit') => {
+      if (voidingOrderId) return;
+      setVoidingOrderId(orderId);
+
+      const result = await posVoidOrder(businessId, orderId);
+      setVoidingOrderId(null);
+
+      if (!result.ok) {
+        const msgMap: Record<string, string> = {
+          in_preparation:  t('pos.voidOrderErrInPrep'),
+          split_in_progress: t('pos.voidOrderErrSplit'),
+          already_paid:    t('pos.voidOrderErrPaid'),
+          no_access:       t('pos.errorNoAccess'),
+        };
+        Alert.alert(
+          t('pos.errorTitle'),
+          msgMap[result.reason] ?? t('pos.voidOrderErr'),
+        );
+        return;
+      }
+
+      if (mode === 'edit') {
+        // Rebuild the draft per-seat so the employee can adjust and re-send.
+        // menu_item_id comes from PosTableItemRow (returned by pos_table_items).
+        // Modifiers are not reconstructed (group_id not in stored data);
+        // special_instructions are preserved as the item note.
+        const orderItems = sentItems.filter((i) => i.order_id === orderId);
+        const bySeat = new Map<number | null, PosTableItemRow[]>();
+        for (const item of orderItems) {
+          const bucket = bySeat.get(item.seat);
+          if (bucket) bucket.push(item);
+          else bySeat.set(item.seat, [item]);
+        }
+        bySeat.forEach((items, seat) => {
+          const existing = getSeatDraft(tableId, seat);
+          const newItems: DraftItem[] = items.map((item) => ({
+            cartKey: item.order_item_id,
+            menuItemId: item.menu_item_id,
+            name: item.item_name,
+            basePriceCents: item.price_cents,
+            modifierExtraCents: 0,
+            qty: item.qty,
+            seat: item.seat,
+            modifiers: [],
+            note: item.special_instructions ?? '',
+          }));
+          setSeatDraft(tableId, seat, [...existing, ...newItems]);
+        });
+      }
+
+      // Refresh sent items and reset filter to "All"
+      posTableItems(businessId, tableId)
+        .then((rows) => setSentItems(rows))
+        .catch(() => {});
+      setSelectedOrderId(null);
+    },
+    // posVoidOrder + posTableItems are stable module imports — no need in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [voidingOrderId, businessId, tableId, sentItems, getSeatDraft, setSeatDraft, t],
+  );
+
+  /** Show confirmation Alert, then call handleVoidOrder in cancel mode. */
+  const handleCancelOrderPress = useCallback(
+    (orderId: string) => {
+      Alert.alert(
+        t('pos.voidOrderConfirmTitle'),
+        t('pos.voidOrderConfirmMsg'),
+        [
+          { text: t('pos.voidOrderConfirmDismiss'), style: 'cancel' },
+          {
+            text: t('pos.voidOrderConfirmBtn'),
+            style: 'destructive',
+            onPress: () => { void handleVoidOrder(orderId, 'cancel'); },
+          },
+        ],
+      );
+    },
+    [t, handleVoidOrder],
+  );
 
   // ── State info for header ──────────────────────────────────────────────────
   const isOccupied = tableData?.state === 'ocupada';
@@ -749,6 +851,71 @@ export default function PosTableHub(): React.ReactElement {
                 );
               })}
             </ScrollView>
+          )}
+
+          {/* ── Order actions (Cancelar / Editar — only when a round is selected) */}
+          {selectedOrderId !== null && (
+            <View
+              style={[
+                styles.orderActionPanel,
+                { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
+              ]}
+            >
+              {selectedRoundAllPending ? (
+                <>
+                  {/* Cancelar orden */}
+                  <Pressable
+                    onPress={() => handleCancelOrderPress(selectedOrderId)}
+                    disabled={!!voidingOrderId}
+                    style={({ pressed }) => [
+                      styles.orderActionBtn,
+                      { backgroundColor: c.danger },
+                      pressed && !voidingOrderId && { opacity: 0.8 },
+                      !!voidingOrderId && styles.orderActionBtnDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('pos.voidOrderCancelBtn')}
+                    accessibilityState={{ disabled: !!voidingOrderId }}
+                  >
+                    {voidingOrderId === selectedOrderId ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.orderActionBtnText}>
+                        {t('pos.voidOrderCancelBtn')}
+                      </Text>
+                    )}
+                  </Pressable>
+
+                  {/* Editar orden */}
+                  <Pressable
+                    onPress={() => { void handleVoidOrder(selectedOrderId, 'edit'); }}
+                    disabled={!!voidingOrderId}
+                    style={({ pressed }) => [
+                      styles.orderActionBtn,
+                      { backgroundColor: c.brand },
+                      pressed && !voidingOrderId && { opacity: 0.8 },
+                      !!voidingOrderId && styles.orderActionBtnDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('pos.voidOrderEditBtn')}
+                    accessibilityState={{ disabled: !!voidingOrderId }}
+                  >
+                    {voidingOrderId === selectedOrderId ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.orderActionBtnText}>
+                        {t('pos.voidOrderEditBtn')}
+                      </Text>
+                    )}
+                  </Pressable>
+                </>
+              ) : (
+                /* Kitchen has already started this round — lock it */
+                <Text style={[styles.orderInPrepText, { color: c.textTertiary }]}>
+                  {t('pos.voidOrderInPrep')}
+                </Text>
+              )}
+            </View>
           )}
 
           {/* ── Summary ────────────────────────────────────────────────────── */}
@@ -1098,6 +1265,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   totalItem: { fontSize: 14 },
+
+  // ── Order action panel (Cancelar / Editar per-round) ─────────────────────
+  orderActionPanel: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  orderActionBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderActionBtnDisabled: { opacity: 0.45 },
+  orderActionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  orderInPrepText: { fontSize: 13, fontStyle: 'italic', flex: 1, textAlign: 'center' },
 
   // ── Action bar ────────────────────────────────────────────────────────────
   actionBar: {

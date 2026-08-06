@@ -191,7 +191,18 @@
     "splitMoveCancel": "Cancel",
     "splitNewAccount": "+ New check",
     "splitAccountN": "Check {{n}}",
-    "splitAddAccount": "+ Add check"
+    "splitAddAccount": "+ Add check",
+    "voidOrderCancelBtn": "Cancel round",
+    "voidOrderEditBtn": "Edit round",
+    "voidOrderConfirmTitle": "Cancel this round?",
+    "voidOrderConfirmMsg": "This round will be removed. The kitchen has not started it yet.",
+    "voidOrderConfirmBtn": "Cancel round",
+    "voidOrderConfirmDismiss": "Keep it",
+    "voidOrderInPrep": "In preparation — cannot edit",
+    "voidOrderErrInPrep": "One or more items are already being prepared.",
+    "voidOrderErrSplit": "A split is in progress. Charge or cancel it first.",
+    "voidOrderErrPaid": "This order has already been paid.",
+    "voidOrderErr": "Could not cancel order. Please try again."
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",
