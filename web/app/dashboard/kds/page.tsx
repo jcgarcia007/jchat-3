@@ -84,6 +84,7 @@ export default function KdsPage() {
       .select("id, status, created_at, order_type")
       .eq("business_id", bizId)
       .in("status", [...PENDING_STATUSES, "preparing"])
+      .is("canceled_at", null)          // exclude voided orders
       .order("created_at", { ascending: true });
     if (ordErr) throw ordErr;
 
