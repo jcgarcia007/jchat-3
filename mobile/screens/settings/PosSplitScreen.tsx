@@ -58,7 +58,7 @@ import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalS
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posTableItems, posCreateSplit } from '../../services/pos';
+import { posTableItems, posCreateSplit, posCreateCheck } from '../../services/pos';
 import type { PosSplitCheckRow, PosTableItemRow, PosCheckItem } from '../../services/pos';
 import { chargeSplitCheck, markTabPaid } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -179,6 +179,11 @@ export default function PosSplitScreen(): React.ReactElement {
   const [paidIds, setPaidIds] = useState<Set<string>>(new Set());
   /** payment_id currently being charged (null = none). */
   const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
+  /**
+   * sub-account id currently being charged in the 'building' phase (null = none).
+   * Used to show a spinner on the correct Pay button while the reader flow runs.
+   */
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -445,41 +450,170 @@ export default function PosSplitScreen(): React.ReactElement {
     setSplitPhase('split_created');
   }, [splitting, businessId, tableId, ways, t]);
 
-  // ── Items method — create split ────────────────────────────────────────────
-  const handleCreateItemsSplit = useCallback(async () => {
-    if (splitting) return;
-    setSplitting(true);
-    setSplitError(null);
+  // ── Items method — pay one sub-account ───────────────────────────────────
+  /**
+   * Charge a single sub-account directly without creating a full split.
+   *
+   * Flow:
+   *   1. posCreateCheck    — server creates payment record, returns payment_id
+   *   2. chargeSplitCheck  — server creates Stripe PI, returns clientSecret
+   *   3. retrievePI        — SDK loads PI object
+   *   4. collectPayment    — reader collects card
+   *   5. confirmPI         — SDK confirms
+   *   6. markTabPaid       — server verifies Stripe, marks order_items paid,
+   *                          closes orders if all items covered
+   *   7. Refresh items     — reload posTableItems; paid items disappear
+   */
+  const handlePayAccount = useCallback(
+    async (account: SubAccount) => {
+      if (activePaymentId || account.items.length === 0 || !connectedReader) return;
 
-    // Build checks from non-empty, non-unassigned sub-accounts.
-    // Client sends only groupings of order_item_ids — never amounts.
-    const checksPayload: PosCheckItem[] = subAccounts
-      .filter((a) => a.id !== 'unassigned' && a.items.length > 0)
-      .map((a) => ({
-        seat: a.seat,
-        order_item_ids: a.items.map((i) => i.order_item_id),
-      }));
+      const orderItemIds = account.items.map((i) => i.order_item_id);
 
-    const result = await posCreateSplit(businessId, tableId, 'items', null, checksPayload);
-    setSplitting(false);
+      // ── Step 1: posCreateCheck ────────────────────────────────────────────
+      setActivePaymentId('__creating__');
+      setActiveAccountId(account.id);
+      setCheckoutPhase('creating');
+      setCheckoutError(null);
 
-    if (!result.ok) {
-      switch (result.reason) {
-        case 'empty_tab':
-          setSplitError(t('pos.noOpenOrders'));
-          break;
-        case 'no_access':
-          setSplitError(t('pos.errorNoAccess'));
-          break;
-        default:
-          setSplitError(t('pos.splitErrorCreate'));
+      const checkResult = await posCreateCheck(businessId, tableId, orderItemIds);
+      if (!checkResult.ok) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        switch (checkResult.reason) {
+          case 'invalid_item':
+            setCheckoutError(t('pos.splitCheckInvalidItem'));
+            break;
+          case 'no_items':
+            setCheckoutError(t('pos.splitCheckNoItems'));
+            break;
+          case 'no_access':
+            setCheckoutError(t('pos.errorNoAccess'));
+            break;
+          default:
+            setCheckoutError(t('pos.errorPayment'));
+        }
+        return;
       }
-      return;
-    }
 
-    setChecks(result.checks);
-    setSplitPhase('split_created');
-  }, [splitting, businessId, tableId, subAccounts, t]);
+      const paymentId = checkResult.payment_id;
+      setActivePaymentId(paymentId);
+
+      // ── Step 2: chargeSplitCheck ──────────────────────────────────────────
+      const piResult = await chargeSplitCheck(paymentId);
+      if (!piResult.ok) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        switch (piResult.reason) {
+          case 'not_pending':
+            setCheckoutError(t('pos.errorAlreadyPaid'));
+            break;
+          case 'no_access':
+            setCheckoutError(t('pos.errorNoAccess'));
+            break;
+          default:
+            setCheckoutError(piResult.message ?? t('pos.errorPayment'));
+        }
+        return;
+      }
+
+      // ── Step 3: retrievePaymentIntent ─────────────────────────────────────
+      setCheckoutPhase('retrieving');
+      const retrieveResult = await retrievePaymentIntent(piResult.clientSecret);
+      if (retrieveResult.error) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        setCheckoutError(retrieveResult.error.message ?? t('pos.errorPayment'));
+        return;
+      }
+
+      // ── Step 4: collectPaymentMethod ──────────────────────────────────────
+      setCheckoutPhase('collecting');
+      const collectResult = await collectPaymentMethod({
+        paymentIntent: retrieveResult.paymentIntent,
+      });
+      if (collectResult.error) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        setCheckoutError(collectResult.error.message ?? t('pos.errorPayment'));
+        return;
+      }
+
+      // ── Step 5: confirmPaymentIntent ──────────────────────────────────────
+      setCheckoutPhase('confirming');
+      const confirmResult = await confirmPaymentIntent({
+        paymentIntent: collectResult.paymentIntent,
+      });
+      if (confirmResult.error) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        setCheckoutError(confirmResult.error.message ?? t('pos.errorPayment'));
+        return;
+      }
+
+      // ── Step 6: markTabPaid ───────────────────────────────────────────────
+      setCheckoutPhase('marking');
+      const markResult = await markTabPaid(paymentId);
+      if (!markResult.ok) {
+        setCheckoutPhase('error');
+        setActivePaymentId(null);
+        setActiveAccountId(null);
+        if (markResult.reason === 'not_succeeded') {
+          setCheckoutError(
+            t('pos.errorNotSucceeded', { status: markResult.piStatus ?? 'unknown' }),
+          );
+        } else {
+          setCheckoutError(t('pos.errorMarkPaid'));
+        }
+        return;
+      }
+
+      // ── Step 7: refresh items — paid items disappear ──────────────────────
+      setCheckoutPhase('idle');
+      setActivePaymentId(null);
+      setActiveAccountId(null);
+      setCheckoutError(null);
+
+      try {
+        const freshItems = await posTableItems(businessId, tableId);
+        const validIds = new Set(freshItems.map((i) => i.order_item_id));
+        const newTotal = freshItems.reduce((s, i) => s + i.price_cents * i.qty, 0);
+        setTabAmountCents(newTotal > 0 ? newTotal : null);
+        setSubAccounts((prev) =>
+          prev.map((acc) => ({
+            ...acc,
+            items: acc.items.filter((i) => validIds.has(i.order_item_id)),
+          })),
+        );
+      } catch {
+        // Non-fatal: items may be stale but the payment went through
+      }
+
+      if (markResult.tabClosed) {
+        Alert.alert(
+          t('pos.splitAllPaid'),
+          t('pos.splitAllPaidMsg'),
+          [{ text: t('pos.submitOk'), onPress: () => navigation.goBack() }],
+        );
+      }
+    },
+    [
+      activePaymentId,
+      connectedReader,
+      businessId,
+      tableId,
+      retrievePaymentIntent,
+      collectPaymentMethod,
+      confirmPaymentIntent,
+      navigation,
+      t,
+    ],
+  );
 
   // ── Charge a single part (shared by both methods) ─────────────────────────
   const handleChargeCheck = useCallback(
@@ -609,15 +743,8 @@ export default function PosSplitScreen(): React.ReactElement {
     }
   })();
 
-  // Items-split validation
+  // Unassigned account reference (used for warning border in building phase)
   const unassignedAccount = subAccounts.find((a) => a.id === 'unassigned');
-  const nonEmptyNonUnassigned = subAccounts.filter(
-    (a) => a.id !== 'unassigned' && a.items.length > 0,
-  );
-  const canCreateItemsSplit =
-    (unassignedAccount?.items.length ?? 0) === 0 &&
-    nonEmptyNonUnassigned.length >= 2 &&
-    !splitting;
 
   // ── Terminal unavailable guard ────────────────────────────────────────────────
   if (!isTerminalAvailable) {
@@ -923,7 +1050,10 @@ export default function PosSplitScreen(): React.ReactElement {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
-            BUILDING (ITEMS) — sub-account editor
+            BUILDING (ITEMS) — sub-account editor with per-account Pay buttons
+            Each non-unassigned account with items shows a green "Cobrar" button
+            that runs posCreateCheck → chargeSplitCheck → reader → markTabPaid.
+            Paid items disappear after each successful charge; tab total updates.
             ══════════════════════════════════════════════════════════════════ */}
         {splitPhase === 'building' && (
           <>
@@ -935,11 +1065,19 @@ export default function PosSplitScreen(): React.ReactElement {
                 (sum, i) => sum + i.price_cents * i.qty,
                 0,
               );
-              // "Sin asignar" with items → warning border; empty unassigned → subtle
+              // "Sin asignar" with items → warning border; empty/assigned → subtle
               const borderColor =
                 isUnassigned && hasItems ? c.warning : c.borderSubtle;
               const labelColor =
                 isUnassigned && hasItems ? c.warning : c.textPrimary;
+
+              // Per-account Pay button state
+              const isThisPaying = activeAccountId === account.id;
+              const canPay =
+                !isUnassigned &&
+                hasItems &&
+                !activePaymentId &&
+                readerStatus === 'ready';
 
               return (
                 <View
@@ -949,7 +1087,7 @@ export default function PosSplitScreen(): React.ReactElement {
                     { backgroundColor: c.bgSurface, borderColor },
                   ]}
                 >
-                  {/* Card header: label + subtotal */}
+                  {/* Card header: label + subtotal + Pay button */}
                   <View style={styles.subAccountHeader}>
                     <Text
                       style={[styles.subAccountLabel, { color: labelColor }]}
@@ -957,9 +1095,37 @@ export default function PosSplitScreen(): React.ReactElement {
                     >
                       {account.label}
                     </Text>
-                    <Text style={[styles.subAccountSubtotal, { color: c.textSecondary }]}>
-                      {formatCents(subtotal)}
-                    </Text>
+                    <View style={styles.subAccountHeaderRight}>
+                      <Text style={[styles.subAccountSubtotal, { color: c.textSecondary }]}>
+                        {formatCents(subtotal)}
+                      </Text>
+                      {!isUnassigned && hasItems && (
+                        <Pressable
+                          onPress={() => void handlePayAccount(account)}
+                          disabled={!canPay}
+                          style={({ pressed }) => [
+                            styles.accountPayBtn,
+                            { backgroundColor: canPay ? c.success : c.borderSubtle },
+                            pressed && canPay && { opacity: 0.8 },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: !canPay }}
+                        >
+                          {isThisPaying && isProcessing ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <Text
+                              style={[
+                                styles.accountPayBtnText,
+                                { color: canPay ? '#fff' : c.textTertiary },
+                              ]}
+                            >
+                              {t('pos.splitCharge')}
+                            </Text>
+                          )}
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
 
                   {/* Items list */}
@@ -989,15 +1155,21 @@ export default function PosSplitScreen(): React.ReactElement {
                         </View>
                         <Pressable
                           onPress={() => handleMoveItem(item, account.id)}
+                          disabled={!!activePaymentId}
                           style={({ pressed }) => [
                             styles.moveBtn,
                             { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
-                            pressed && { opacity: 0.7 },
+                            pressed && !activePaymentId && { opacity: 0.7 },
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={t('pos.splitMove')}
                         >
-                          <Text style={[styles.moveBtnText, { color: c.brand }]}>
+                          <Text
+                            style={[
+                              styles.moveBtnText,
+                              { color: activePaymentId ? c.textTertiary : c.brand },
+                            ]}
+                          >
                             {t('pos.splitMove')}
                           </Text>
                         </Pressable>
@@ -1011,49 +1183,52 @@ export default function PosSplitScreen(): React.ReactElement {
             {/* + Agregar cuenta */}
             <Pressable
               onPress={handleAddAccount}
+              disabled={!!activePaymentId}
               style={({ pressed }) => [
                 styles.addAccountBtn,
                 { borderColor: c.borderSubtle },
-                pressed && { opacity: 0.7 },
+                pressed && !activePaymentId && { opacity: 0.7 },
               ]}
               accessibilityRole="button"
             >
-              <Text style={[styles.addAccountBtnText, { color: c.brand }]}>
+              <Text
+                style={[
+                  styles.addAccountBtnText,
+                  { color: activePaymentId ? c.textTertiary : c.brand },
+                ]}
+              >
                 {t('pos.splitAddAccount')}
               </Text>
             </Pressable>
 
-            {splitError !== null && (
-              <Text style={[styles.splitError, { color: c.danger }]}>{splitError}</Text>
+            {/* Payment in-progress banner */}
+            {isProcessing && checkoutPhaseLabel !== null && (
+              <View
+                style={[
+                  styles.progressBanner,
+                  { backgroundColor: c.brandLight, borderColor: c.brand },
+                ]}
+              >
+                <ActivityIndicator color={c.brand} style={{ marginRight: 10 }} />
+                <Text style={[styles.progressLabel, { color: c.brand }]}>
+                  {checkoutPhaseLabel}
+                </Text>
+              </View>
             )}
 
-            {/* Crear división */}
-            <Pressable
-              onPress={() => void handleCreateItemsSplit()}
-              disabled={!canCreateItemsSplit}
-              style={({ pressed }) => [
-                styles.createBtn,
-                {
-                  backgroundColor: canCreateItemsSplit ? c.brandPurple : c.borderSubtle,
-                },
-                pressed && canCreateItemsSplit && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !canCreateItemsSplit }}
-            >
-              {splitting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text
-                  style={[
-                    styles.createBtnText,
-                    { color: canCreateItemsSplit ? '#fff' : c.textTertiary },
-                  ]}
-                >
-                  {t('pos.splitCreateBtn')}
+            {/* Payment error banner */}
+            {checkoutPhase === 'error' && checkoutError !== null && (
+              <View
+                style={[
+                  styles.errorBanner,
+                  { backgroundColor: c.danger + '18', borderColor: c.danger },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: c.danger }]}>
+                  {checkoutError}
                 </Text>
-              )}
-            </Pressable>
+              </View>
+            )}
           </>
         )}
 
@@ -1331,7 +1506,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   subAccountLabel: { fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },
+  subAccountHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   subAccountSubtotal: { fontSize: 13 },
+  accountPayBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28,
+  },
+  accountPayBtnText: { fontSize: 12, fontWeight: '600' },
   subAccountEmpty: { fontSize: 13, paddingHorizontal: 14, paddingBottom: 10 },
 
   builderItemRow: {

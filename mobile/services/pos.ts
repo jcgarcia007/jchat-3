@@ -179,6 +179,17 @@ export type PosUncombineTableResult =
   | { ok: true }
   | { ok: false; reason: PosUncombineTableError };
 
+export type PosCreateCheckError =
+  | 'invalid_item'   // 'invalid or already-paid item'
+  | 'no_items'       // 'no items'
+  | 'no_access'      // 'no pos access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosCreateCheckResult =
+  | { ok: true; payment_id: string; amount_cents: number }
+  | { ok: false; reason: PosCreateCheckError };
+
 export type PosVoidOrderError =
   | 'in_preparation'
   | 'split_in_progress'
@@ -283,6 +294,17 @@ type PosRpc = {
       p_table_id: string;
     },
   ): Promise<{ data: null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_create_check',
+    params: {
+      p_business_id: string;
+      p_table_id: string;
+      p_order_item_ids: string[];
+    },
+  ): Promise<{
+    data: { payment_id: string; amount_cents: number } | null;
+    error: { message: string } | null;
+  }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -777,4 +799,50 @@ export async function posUncombineTable(
   }
 
   return { ok: true };
+}
+
+// ─── posCreateCheck ───────────────────────────────────────────────────────────
+
+/**
+ * Create a single payment record for a specific group of order items.
+ * Used by the "Per-seat / item" split method to charge one sub-account
+ * at a time without creating a full split upfront.
+ *
+ * The server validates that every item belongs to the table, is unpaid,
+ * and computes the amount — the client only sends IDs, never amounts.
+ *
+ * @param businessId    — business whose tab is being charged
+ * @param tableId       — the table containing the items
+ * @param orderItemIds  — order_item_id values to cover in this check
+ *
+ * Possible failure reasons:
+ *   'invalid_item'   — one or more items are invalid or already paid
+ *   'no_items'       — orderItemIds is empty or all items were rejected
+ *   'no_access'      — user does not have pos_access at this business
+ *   'db_error'       — unexpected database error
+ *   'not_configured' — Supabase is not configured
+ */
+export async function posCreateCheck(
+  businessId: string,
+  tableId: string,
+  orderItemIds: string[],
+): Promise<PosCreateCheckResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await posRpc.rpc('pos_create_check', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+    p_order_item_ids: orderItemIds,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('invalid or already-paid item')) return { ok: false, reason: 'invalid_item' };
+    if (msg.includes('no items'))                     return { ok: false, reason: 'no_items' };
+    if (msg.includes('no pos access'))                return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  if (!data) return { ok: false, reason: 'db_error' };
+  return { ok: true, payment_id: data.payment_id, amount_cents: data.amount_cents };
 }

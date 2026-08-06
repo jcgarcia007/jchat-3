@@ -192,6 +192,8 @@
     "splitNewAccount": "+ New check",
     "splitAccountN": "Check {{n}}",
     "splitAddAccount": "+ Add check",
+    "splitCheckInvalidItem": "Invalid or already-charged item.",
+    "splitCheckNoItems": "No items in this check.",
     "voidOrderCancelBtn": "Cancel round",
     "voidOrderEditBtn": "Edit round",
     "voidOrderConfirmTitle": "Cancel this round?",

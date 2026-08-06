@@ -192,6 +192,8 @@
     "splitNewAccount": "+ Nueva cuenta",
     "splitAccountN": "Cuenta {{n}}",
     "splitAddAccount": "+ Agregar cuenta",
+    "splitCheckInvalidItem": "Artículo inválido o ya cobrado.",
+    "splitCheckNoItems": "Esta cuenta no tiene artículos.",
     "voidOrderCancelBtn": "Cancelar ronda",
     "voidOrderEditBtn": "Editar ronda",
     "voidOrderConfirmTitle": "¿Cancelar esta ronda?",
