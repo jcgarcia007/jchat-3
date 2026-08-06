@@ -251,6 +251,11 @@ export default function PosTableHub(): React.ReactElement {
   // Debounce ref prevents flooding posTableItems when rapid UPDATE events arrive.
   const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Double-tap ref for "+" at capacity ────────────────────────────────────
+  // Stores the timestamp of the last "+" press to detect a double-tap within
+  // ~300 ms when partySize has reached maxSeats.
+  const plusLastTapRef = useRef<number>(0);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -716,6 +721,35 @@ export default function PosTableHub(): React.ReactElement {
       .catch(() => {});
   }, [businessId, tableId]);
 
+  /**
+   * Handler for the "+" stepper button.
+   *
+   * • Below capacity  → add one person (normal behaviour).
+   * • At capacity     → double-tap within ~300 ms opens the combine picker.
+   *                     Single tap at capacity → no-op (the button still renders
+   *                     with a brand tint so staff knows something can happen).
+   */
+  const handlePlusPress = useCallback(() => {
+    if (partySize < maxSeats) {
+      void handleAdjustParty(1);
+      return;
+    }
+    // At cap — detect double-tap
+    const now = Date.now();
+    if (now - plusLastTapRef.current < 300) {
+      plusLastTapRef.current = 0; // reset so a third tap starts fresh
+      if (combining || !!uncombiningId) return;
+      if (freeTables.length === 0) {
+        Alert.alert(t('pos.combineMesa'), t('pos.combineNoFree'));
+        return;
+      }
+      setShowCombinePicker(true);
+    } else {
+      plusLastTapRef.current = now;
+      // Single tap at max → no-op; a subtle brand tint on the icon signals it
+    }
+  }, [partySize, maxSeats, handleAdjustParty, combining, uncombiningId, freeTables, t]);
+
   // ── Combine handler ───────────────────────────────────────────────────────
   const handleCombine = useCallback(
     async (secondaryTableId: string) => {
@@ -880,31 +914,6 @@ export default function PosTableHub(): React.ReactElement {
             </View>
           )}
 
-          {/* ── Combine button ─────────────────────────────────────────────── */}
-          <Pressable
-            onPress={() => {
-              if (freeTables.length === 0) {
-                Alert.alert(t('pos.combineMesa'), t('pos.combineNoFree'));
-                return;
-              }
-              setShowCombinePicker(true);
-            }}
-            disabled={combining || !!uncombiningId}
-            style={({ pressed }) => [
-              styles.combineMesaBtn,
-              { borderColor: c.brand + '66' },
-              (combining || !!uncombiningId) && { opacity: 0.4 },
-              pressed && { opacity: 0.7 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t('pos.combineMesa')}
-          >
-            <IconPlugConnected size={14} color={c.brand} strokeWidth={2} />
-            <Text style={[styles.combineMesaBtnText, { color: c.brand }]}>
-              {t('pos.combineMesa')}
-            </Text>
-          </Pressable>
-
           {/* ── Party stepper ──────────────────────────────────────────────── */}
           <View style={[styles.partyRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <IconUsers size={16} color={c.textSecondary} strokeWidth={1.5} />
@@ -931,17 +940,27 @@ export default function PosTableHub(): React.ReactElement {
                 {partySize}
               </Text>
               <Pressable
-                onPress={() => void handleAdjustParty(1)}
-                disabled={partySize >= maxSeats}
+                onPress={handlePlusPress}
                 style={[
                   styles.stepBtn,
                   { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel={
+                  partySize >= maxSeats
+                    ? t('pos.combineMesa')
+                    : undefined
+                }
+                accessibilityHint={
+                  partySize >= maxSeats
+                    ? t('pos.combineMesa')
+                    : undefined
+                }
               >
                 <IconPlus
                   size={13}
-                  color={partySize < maxSeats ? c.textSecondary : c.textTertiary}
+                  // At cap: brand tint hints that double-tap opens combine picker
+                  color={partySize < maxSeats ? c.textSecondary : c.brand}
                   strokeWidth={2}
                 />
               </Pressable>
@@ -1627,19 +1646,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   uncombineBtnText: { fontSize: 12, fontWeight: '600' },
-
-  // ── Combine button ───────────────────────────────────────────────────────────
-  combineMesaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  combineMesaBtnText: { fontSize: 13, fontWeight: '600' },
 
   // ── Combine picker modal ─────────────────────────────────────────────────────
   modalBackdrop: {
