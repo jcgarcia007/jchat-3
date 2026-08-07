@@ -39,6 +39,17 @@ import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 type ItemStatus = "pending" | "preparing" | "ready";
 
+/** Per-status SLA thresholds in minutes. Set at business level (kds_settings.sla)
+ *  and optionally overridden per menu item (menu_items.sla). */
+interface SlaConfig {
+  pending_mins?: number | null;
+  preparing_mins?: number | null;
+  ready_mins?: number | null;
+}
+
+/** Card colour heat based on elapsed-vs-threshold ratio. */
+type SlaHeat = "normal" | "warning" | "exceeded";
+
 interface StationItem {
   id: string;
   order_id: string;
@@ -51,6 +62,8 @@ interface StationItem {
   created_at: string;
   preparing_at: string | null;
   ready_at: string | null;
+  /** Per-item SLA override from menu_items.sla (null = use business default). */
+  sla: SlaConfig | null;
 }
 
 interface RawOrderRow {
@@ -69,8 +82,8 @@ interface RawItemRow {
   special_instructions: string | null;
   options: unknown;
   menu_items:
-    | { name: string; station: string }
-    | { name: string; station: string }[]
+    | { name: string; station: string; sla: unknown }
+    | { name: string; station: string; sla: unknown }[]
     | null;
 }
 
@@ -126,6 +139,52 @@ const STATUS_ORDER: Record<ItemStatus, number> = {
   ready: 2,
 };
 
+// ── SLA helpers ───────────────────────────────────────────────────────────────
+
+/** Returns the configured threshold (in minutes) for the item's current status.
+ *  Item-level sla overrides the business-level biz default; returns null when
+ *  no threshold is set (or the value is zero / negative). */
+function slaThreshMins(
+  status: ItemStatus,
+  itemSla: SlaConfig | null,
+  bizSla:  SlaConfig | null,
+): number | null {
+  const key: keyof SlaConfig =
+    status === "pending"   ? "pending_mins"   :
+    status === "preparing" ? "preparing_mins" :
+    /* ready */              "ready_mins";
+  const v = itemSla?.[key] ?? bizSla?.[key] ?? null;
+  return typeof v === "number" && v > 0 ? v : null;
+}
+
+/** Card heat based on how much of the SLA threshold has elapsed.
+ *  Returns "normal" when no threshold is configured. */
+function slaHeat(item: StationItem, bizSla: SlaConfig | null): SlaHeat {
+  const threshMins = slaThreshMins(item.item_status, item.sla, bizSla);
+  if (!threshMins) return "normal";
+  const entryIso = stateEntryTs(item);
+  if (!entryIso) return "normal";
+  const elapsedMins = (Date.now() - new Date(entryIso).getTime()) / 60_000;
+  const ratio = elapsedMins / threshMins;
+  if (ratio >= 1)   return "exceeded";
+  if (ratio >= 0.8) return "warning";
+  return "normal";
+}
+
+/** Card border colour derived from SLA heat. */
+function slaBorder(heat: SlaHeat): string {
+  if (heat === "exceeded") return "var(--db-danger,  #ef4444)";
+  if (heat === "warning")  return "var(--db-warning, #f59e0b)";
+  return "var(--db-border)";
+}
+
+/** Card background tint derived from SLA heat. */
+function slaBg(heat: SlaHeat): string {
+  if (heat === "exceeded") return "rgba(239,68,68,0.06)";
+  if (heat === "warning")  return "rgba(245,158,11,0.06)";
+  return "var(--db-bg-base)";
+}
+
 // ── Demo data (when Supabase is not configured) ────────────────────────────────
 
 const ALL_DEMO: StationItem[] = [
@@ -133,32 +192,32 @@ const ALL_DEMO: StationItem[] = [
     id: "d1", order_id: "o1", table_label: "4", item_name: "Classic Burger", qty: 2,
     modifier_labels: ["No pickles", "Extra sauce"], special_instructions: "Nut allergy",
     item_status: "pending", created_at: new Date(Date.now() - 300_000).toISOString(),
-    preparing_at: null, ready_at: null,
+    preparing_at: null, ready_at: null, sla: null,
   },
   {
     id: "d2", order_id: "o1", table_label: "4", item_name: "Fries", qty: 2,
     modifier_labels: [], special_instructions: null,
     item_status: "pending", created_at: new Date(Date.now() - 300_000).toISOString(),
-    preparing_at: null, ready_at: null,
+    preparing_at: null, ready_at: null, sla: null,
   },
   {
     id: "d3", order_id: "o2", table_label: "7", item_name: "Caesar Salad", qty: 1,
     modifier_labels: ["Dressing on side"], special_instructions: null,
     item_status: "preparing", created_at: new Date(Date.now() - 600_000).toISOString(),
-    preparing_at: new Date(Date.now() - 420_000).toISOString(), ready_at: null,
+    preparing_at: new Date(Date.now() - 420_000).toISOString(), ready_at: null, sla: null,
   },
   {
     id: "d4", order_id: "o3", table_label: "2", item_name: "Margarita", qty: 2,
     modifier_labels: ["No salt"], special_instructions: null,
     item_status: "preparing", created_at: new Date(Date.now() - 480_000).toISOString(),
-    preparing_at: new Date(Date.now() - 360_000).toISOString(), ready_at: null,
+    preparing_at: new Date(Date.now() - 360_000).toISOString(), ready_at: null, sla: null,
   },
   {
     id: "d5", order_id: "o2", table_label: "7", item_name: "Pizza Margherita", qty: 1,
     modifier_labels: [], special_instructions: null,
     item_status: "ready", created_at: new Date(Date.now() - 900_000).toISOString(),
     preparing_at: new Date(Date.now() - 750_000).toISOString(),
-    ready_at: new Date(Date.now() - 120_000).toISOString(),
+    ready_at: new Date(Date.now() - 120_000).toISOString(), sla: null,
   },
 ];
 
@@ -174,6 +233,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
   const [, setTick]                     = useState(0); // drives mm:ss re-render
 
   const bizIdRef    = useRef<string | null>(null);
+  const bizSlaRef   = useRef<SlaConfig | null>(null); // business-level SLA defaults
   const ordersChRef = useRef<RealtimeChannel | null>(null);
   const itemsChRef  = useRef<RealtimeChannel | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,11 +260,11 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         return;
       }
 
-      // Step 2 — order_items (not done) with menu_items join
+      // Step 2 — order_items (not done) with menu_items join (incl. per-item sla)
       const { data: itemsData, error: itmErr } = await supabase
         .from("order_items")
         .select(
-          "id, order_id, qty, item_status, created_at, preparing_at, ready_at, special_instructions, options, menu_items!inner(name, station)",
+          "id, order_id, qty, item_status, created_at, preparing_at, ready_at, special_instructions, options, menu_items!inner(name, station, sla)",
         )
         .in("order_id", orderIds)
         .neq("item_status", "done");
@@ -231,6 +291,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
           created_at: raw.created_at,
           preparing_at: raw.preparing_at,
           ready_at: raw.ready_at,
+          sla: (mi as { sla?: unknown }).sla as SlaConfig | null ?? null,
         });
       }
 
@@ -275,7 +336,16 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         }
         const bid = res.business.id;
         bizIdRef.current = bid;
-        await loadItems(bid);
+
+        // Load items and business SLA defaults in parallel
+        const [, kdsRes] = await Promise.all([
+          loadItems(bid),
+          supabase.from("businesses").select("kds_settings").eq("id", bid).maybeSingle(),
+        ]);
+        if (!active) return;
+        const rawKds = (kdsRes.data as { kds_settings?: Record<string, unknown> | null } | null)?.kds_settings;
+        bizSlaRef.current = (rawKds?.sla as SlaConfig | null) ?? null;
+
         if (!active) return;
 
         const scheduleRefresh = () => {
@@ -441,6 +511,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
                   actionLabel={t("kdsItemStart")}
                   actionIcon={IconPlayerPlay}
                   onAction={() => void advanceItem(item.id, "preparing")}
+                  heat={slaHeat(item, bizSlaRef.current)}
                 />
               ))
             }
@@ -458,6 +529,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
                   actionLabel={t("kdsItemMarkReady")}
                   actionIcon={IconCircleCheck}
                   onAction={() => void advanceItem(item.id, "ready")}
+                  heat={slaHeat(item, bizSlaRef.current)}
                 />
               ))
             }
@@ -475,6 +547,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
                   actionLabel={null}
                   actionIcon={null}
                   onAction={null}
+                  heat={slaHeat(item, bizSlaRef.current)}
                 />
               ))
             }
@@ -540,12 +613,14 @@ function ItemCard({
   actionLabel,
   actionIcon: ActionIcon,
   onAction,
+  heat,
 }: {
   item: StationItem;
   updating: boolean;
   actionLabel: string | null;
   actionIcon: React.ComponentType<{ size?: number }> | null;
   onAction: (() => void) | null;
+  heat: SlaHeat;
 }) {
   const t = useTranslations("dashboardCommon");
   const ts = stateEntryTs(item);
@@ -553,10 +628,11 @@ function ItemCard({
   return (
     <div
       style={{
-        background: "var(--db-bg-base)",
-        border: "1px solid var(--db-border)",
+        background: slaBg(heat),
+        border: `1px solid ${slaBorder(heat)}`,
         borderRadius: "var(--db-radius-card)",
         padding: "12px",
+        transition: "border-color 0.6s ease, background 0.6s ease",
       }}
     >
       {/* Table label + elapsed */}
