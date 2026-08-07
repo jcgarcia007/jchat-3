@@ -2392,6 +2392,26 @@
     "successTitle": "¡Menú creado!",
     "successBody": "{count, plural, one {# artículo añadido como borrador.} other {# artículos añadidos como borrador.}}",
     "goToEditor": "Ir a mi editor de menú",
-    "addPhotos": "Agregar fotos"
+    "addPhotos": "Agregar fotos",
+    "photosTitle": "Fotos de tu menú",
+    "photosProgress": "{current} de {total}",
+    "photosUpload": "Subir fotos",
+    "photosGenAI": "Generar con IA",
+    "photosInternet": "Buscar en internet",
+    "photosSoon": "Próximamente",
+    "photosGalleryHint": "3 fotos lucen mejor",
+    "photosPortada": "Portada",
+    "photosSetPortada": "Portada",
+    "photosRemove": "Eliminar",
+    "photosGenerate": "Generar {count} opciones",
+    "photosGenerating": "Generando…",
+    "photosGenMore": "Generar más",
+    "photosSkip": "Saltar este",
+    "photosSkipAll": "Saltar todo",
+    "photosSave": "Guardar y continuar",
+    "photosSaving": "Guardando…",
+    "photosDoneTitle": "¡Tu menú está listo!",
+    "photosDoneBody": "{count, plural, one {# artículo creado con fotos.} other {# artículos creados con fotos.}}",
+    "photosSelectHint": "Selecciona las que quieres usar"
   }
 }

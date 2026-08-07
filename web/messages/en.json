@@ -2392,6 +2392,26 @@
     "successTitle": "Menu created!",
     "successBody": "{count, plural, one {# item added as draft.} other {# items added as draft.}}",
     "goToEditor": "Go to my menu editor",
-    "addPhotos": "Add photos"
+    "addPhotos": "Add photos",
+    "photosTitle": "Menu photos",
+    "photosProgress": "{current} of {total}",
+    "photosUpload": "Upload photos",
+    "photosGenAI": "Generate with AI",
+    "photosInternet": "Search internet",
+    "photosSoon": "Coming soon",
+    "photosGalleryHint": "3 photos look best",
+    "photosPortada": "Cover",
+    "photosSetPortada": "Cover",
+    "photosRemove": "Remove",
+    "photosGenerate": "Generate {count} options",
+    "photosGenerating": "Generating…",
+    "photosGenMore": "Generate more",
+    "photosSkip": "Skip this",
+    "photosSkipAll": "Skip all",
+    "photosSave": "Save and continue",
+    "photosSaving": "Saving…",
+    "photosDoneTitle": "Your menu is ready!",
+    "photosDoneBody": "{count, plural, one {# item created with photos.} other {# items created with photos.}}",
+    "photosSelectHint": "Select the ones you want"
   }
 }

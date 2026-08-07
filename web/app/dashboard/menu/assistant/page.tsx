@@ -48,15 +48,19 @@ import {
   IconCoffee,
   IconGlass,
   IconGlassCocktail,
+  IconGlobe,
   IconLoader2,
   IconLock,
   IconMapPin,
   IconPhoto,
   IconPlus,
   IconSparkles,
+  IconStar,
+  IconStarFilled,
   IconToolsKitchen2,
   IconTrash,
   IconTruck,
+  IconUpload,
   IconX,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -571,9 +575,20 @@ export default function MenuAssistantPage() {
   // button is gone and the only way back is the menu editor.
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [createSuccess, setCreateSuccess] = useState<{ categoryCount: number; itemCount: number } | null>(
-    null,
-  );
+  const [createSuccess, setCreateSuccess] = useState<{
+    categoryCount: number;
+    itemCount: number;
+    createdItems: Array<{ id: string; name: string; description_es: string }>;
+  } | null>(null);
+
+  // FASE 6 — photo step (only active after createSuccess is set)
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [photoPhase, setPhotoPhase] = useState<"photos" | "done">("photos");
+  const [itemGalleries, setItemGalleries] = useState<Record<string, string[]>>({});
+  const [itemPortadas, setItemPortadas] = useState<Record<string, string>>({});
+  const [aiCandidates, setAiCandidates] = useState<Record<string, string[]>>({});
+  const [aiGenerating, setAiGenerating] = useState<Record<string, boolean>>({});
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   // ── Boot: resolve the active business, its plan and its country ─────────────
   useEffect(() => {
@@ -933,6 +948,12 @@ export default function MenuAssistantPage() {
     if (!businessId) return;
     setCreating(true);
     setCreateError(null);
+    // Reset photo step in case the user somehow re-runs (shouldn't happen — button disappears on success).
+    setPhotoIdx(0);
+    setPhotoPhase("photos");
+    setItemGalleries({});
+    setItemPortadas({});
+    setAiCandidates({});
     try {
       // 1. Existing categories → name (case-insensitive) → id, so we can reuse.
       const { data: existingCats, error: catsErr } = await supabase
@@ -976,6 +997,7 @@ export default function MenuAssistantPage() {
 
       // 3. Insert the selected items of each category.
       let itemCount = 0;
+      const createdItems: Array<{ id: string; name: string; description_es: string }> = [];
       for (const catName of state.selectedCategories) {
         const catId = categoryIdMap.get(catName);
         if (!catId) continue;
@@ -1012,14 +1034,23 @@ export default function MenuAssistantPage() {
             is_available: true,
             sort: nextSort,
           };
-          const { error: itemErr } = await supabase.from("menu_items").insert(dbPayload as never);
+          const { data: newItem, error: itemErr } = await supabase
+            .from("menu_items")
+            .insert(dbPayload as never)
+            .select("id")
+            .single();
           if (itemErr) throw itemErr;
+          createdItems.push({
+            id: (newItem as { id: string }).id,
+            name: item.name,
+            description_es: item.description_es || "",
+          });
           nextSort++;
           itemCount++;
         }
       }
 
-      setCreateSuccess({ categoryCount: newCatCount, itemCount });
+      setCreateSuccess({ categoryCount: newCatCount, itemCount, createdItems });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setCreateError(msg);
@@ -1027,6 +1058,126 @@ export default function MenuAssistantPage() {
       setCreating(false);
     }
   }, [businessId, state.selectedCategories, state.itemsByCategory]);
+
+  // ── FASE 6 — Photo step handlers ──────────────────────────────────────────
+
+  /** Upload local files for an item and add public URLs to its gallery. */
+  const handlePhotoUpload = useCallback(
+    async (itemId: string, files: FileList) => {
+      if (!businessId) return;
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${businessId}/${itemId}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from("menu-photos")
+          .upload(path, file, { upsert: false });
+        if (!error) {
+          const { data: urlData } = supabase.storage
+            .from("menu-photos")
+            .getPublicUrl(path);
+          uploaded.push(urlData.publicUrl);
+        }
+      }
+      if (uploaded.length > 0) {
+        setItemGalleries((prev) => ({
+          ...prev,
+          [itemId]: [...(prev[itemId] ?? []), ...uploaded],
+        }));
+      }
+    },
+    [businessId],
+  );
+
+  /** Call generate_images EF and store AI-generated candidates for the item. */
+  const handlePhotoGenerate = useCallback(
+    async (itemId: string, itemName: string, description: string) => {
+      setAiGenerating((prev) => ({ ...prev, [itemId]: true }));
+      try {
+        const result = await callAssistant<{ ok: boolean; images: string[] }>(
+          "generate_images",
+          { item_name: itemName, description: description || undefined, count: 5 },
+        );
+        if (result?.ok && result.images?.length) {
+          setAiCandidates((prev) => ({
+            ...prev,
+            [itemId]: [...(prev[itemId] ?? []), ...result.images],
+          }));
+        }
+      } catch {
+        // silent — user can retry with the button
+      } finally {
+        setAiGenerating((prev) => ({ ...prev, [itemId]: false }));
+      }
+    },
+    [callAssistant],
+  );
+
+  /** Toggle a candidate URL into the item's gallery. */
+  const handleAddCandidateToGallery = useCallback((itemId: string, url: string) => {
+    setItemGalleries((prev) => {
+      const existing = prev[itemId] ?? [];
+      if (existing.includes(url)) {
+        // deselect
+        return { ...prev, [itemId]: existing.filter((u) => u !== url) };
+      }
+      return { ...prev, [itemId]: [...existing, url] };
+    });
+  }, []);
+
+  /** Mark a photo as the portada (cover). */
+  const handleSetPortada = useCallback((itemId: string, url: string) => {
+    setItemPortadas((prev) => ({ ...prev, [itemId]: url }));
+  }, []);
+
+  /** Remove a photo from the gallery and clear portada if it was the cover. */
+  const handleRemovePhoto = useCallback((itemId: string, url: string) => {
+    setItemGalleries((prev) => ({
+      ...prev,
+      [itemId]: (prev[itemId] ?? []).filter((u) => u !== url),
+    }));
+    setItemPortadas((prev) => {
+      if (prev[itemId] !== url) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }, []);
+
+  /** Advance to the next item (or done). */
+  const advancePhoto = useCallback(
+    (target?: number) => {
+      const items = createSuccess?.createdItems ?? [];
+      const next = target ?? photoIdx + 1;
+      if (next >= items.length) {
+        setPhotoPhase("done");
+      } else {
+        setPhotoIdx(next);
+      }
+    },
+    [createSuccess, photoIdx],
+  );
+
+  /** Save current item's photos then advance. */
+  const handleSaveAndAdvance = useCallback(
+    async (itemId: string) => {
+      setPhotoSaving(true);
+      try {
+        const gallery = itemGalleries[itemId] ?? [];
+        const portada = itemPortadas[itemId] ?? gallery[0] ?? null;
+        await supabase
+          .from("menu_items")
+          .update({ images: gallery as unknown as Json, photo_url: portada } as never)
+          .eq("id", itemId);
+      } catch {
+        // tolerate storage/db errors — advance anyway so the user isn't stuck
+      } finally {
+        setPhotoSaving(false);
+        advancePhoto();
+      }
+    },
+    [itemGalleries, itemPortadas, advancePhoto],
+  );
 
   // ── Render guards ──────────────────────────────────────────────────────────
 
@@ -2314,7 +2465,348 @@ export default function MenuAssistantPage() {
       )}
 
       {/* ── Step 4 — Preview + create ─────────────────────────────────────── */}
-      {state.step === 4 && createSuccess && (
+
+      {/* FASE 6 — Photo step (shown after menu is created, before final success) */}
+      {state.step === 4 && createSuccess && photoPhase === "photos" && createSuccess.createdItems.length > 0 && (() => {
+        const items = createSuccess.createdItems;
+        const currentItem = items[photoIdx];
+        if (!currentItem) return null;
+        const gallery = itemGalleries[currentItem.id] ?? [];
+        const portada = itemPortadas[currentItem.id] ?? gallery[0] ?? null;
+        const candidates = aiCandidates[currentItem.id] ?? [];
+        const isGenerating = aiGenerating[currentItem.id] ?? false;
+        const progress = Math.round(((photoIdx) / items.length) * 100);
+
+        return (
+          <Card key={`photo-${currentItem.id}`}>
+            {/* Header + progress */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px", flexWrap: "wrap", gap: "8px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                {t("photosTitle")}
+              </h2>
+              <span style={{ fontSize: "13px", color: "var(--db-text-tertiary)", fontWeight: 600 }}>
+                {t("photosProgress", { current: photoIdx + 1, total: items.length })}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{ height: "4px", borderRadius: "2px", background: "var(--db-border)", marginBottom: "20px", overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  borderRadius: "2px",
+                  background: "var(--db-accent)",
+                  width: `${progress}%`,
+                  transition: "width 0.4s ease",
+                }}
+              />
+            </div>
+
+            {/* Item identity */}
+            <div style={{ marginBottom: "18px" }}>
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+                {currentItem.name}
+              </p>
+              {currentItem.description_es && (
+                <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0, lineHeight: 1.5 }}>
+                  {currentItem.description_es}
+                </p>
+              )}
+            </div>
+
+            {/* Upload source buttons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "18px" }}>
+              {/* File upload */}
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "14px 8px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1.5px dashed var(--db-border)",
+                  cursor: "pointer",
+                  color: "var(--db-text-secondary)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  transition: "border-color 0.2s, color 0.2s",
+                  textAlign: "center",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--db-accent)";
+                  e.currentTarget.style.color = "var(--db-accent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--db-border)";
+                  e.currentTarget.style.color = "var(--db-text-secondary)";
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    if (e.target.files?.length) {
+                      void handlePhotoUpload(currentItem.id, e.target.files);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <IconUpload size={20} />
+                {t("photosUpload")}
+              </label>
+
+              {/* AI generate */}
+              <button
+                onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es)}
+                disabled={isGenerating}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "14px 8px",
+                  borderRadius: "var(--db-radius)",
+                  border: `1.5px dashed ${isGenerating ? "var(--db-accent)" : "var(--db-border)"}`,
+                  cursor: isGenerating ? "wait" : "pointer",
+                  color: isGenerating ? "var(--db-accent)" : "var(--db-text-secondary)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  background: "transparent",
+                  textAlign: "center",
+                  transition: "border-color 0.2s, color 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isGenerating) {
+                    e.currentTarget.style.borderColor = "var(--db-accent)";
+                    e.currentTarget.style.color = "var(--db-accent)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isGenerating) {
+                    e.currentTarget.style.borderColor = "var(--db-border)";
+                    e.currentTarget.style.color = "var(--db-text-secondary)";
+                  }
+                }}
+              >
+                {isGenerating ? <Spinner /> : <IconSparkles size={20} />}
+                {isGenerating ? t("photosGenerating") : t("photosGenAI")}
+              </button>
+
+              {/* Internet (disabled placeholder) */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "14px 8px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1.5px dashed var(--db-border)",
+                  cursor: "not-allowed",
+                  color: "var(--db-text-tertiary)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  opacity: 0.55,
+                  textAlign: "center",
+                  userSelect: "none",
+                }}
+              >
+                <IconGlobe size={20} />
+                <span>{t("photosInternet")}</span>
+                <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--db-text-tertiary)" }}>
+                  {t("photosSoon")}
+                </span>
+              </div>
+            </div>
+
+            {/* AI candidates grid (shown once generated) */}
+            {candidates.length > 0 && (
+              <div style={{ marginBottom: "18px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--db-text-secondary)", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {t("photosSelectHint")}
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "10px" }}>
+                  {candidates.map((url) => {
+                    const selected = gallery.includes(url);
+                    return (
+                      <button
+                        key={url}
+                        onClick={() => handleAddCandidateToGallery(currentItem.id, url)}
+                        style={{
+                          position: "relative",
+                          aspectRatio: "1",
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          border: selected ? "2.5px solid var(--db-accent)" : "2px solid var(--db-border)",
+                          cursor: "pointer",
+                          padding: 0,
+                          background: "var(--db-bg-elevated)",
+                          transition: "border-color 0.15s",
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        {selected && (
+                          <span style={{
+                            position: "absolute",
+                            top: "4px",
+                            right: "4px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "var(--db-accent)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}>
+                            <IconCheck size={11} color="var(--db-accent-text)" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Generate more */}
+                <button
+                  onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es)}
+                  disabled={isGenerating}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--db-accent)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: isGenerating ? "wait" : "pointer",
+                    padding: "4px 0",
+                  }}
+                >
+                  {isGenerating ? <Spinner /> : <IconSparkles size={14} />}
+                  {t("photosGenMore")}
+                </button>
+              </div>
+            )}
+
+            {/* Gallery */}
+            {gallery.length > 0 && (
+              <div style={{ marginBottom: "18px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                  {gallery.map((url) => {
+                    const isCover = url === portada;
+                    return (
+                      <div
+                        key={url}
+                        style={{
+                          position: "relative",
+                          width: "90px",
+                          height: "90px",
+                          borderRadius: "8px",
+                          overflow: "visible",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          style={{
+                            width: "90px",
+                            height: "90px",
+                            objectFit: "cover",
+                            borderRadius: "8px",
+                            display: "block",
+                            border: isCover ? "2.5px solid var(--db-accent)" : "2px solid var(--db-border)",
+                          }}
+                        />
+                        {/* Star / portada toggle */}
+                        <button
+                          onClick={() => handleSetPortada(currentItem.id, url)}
+                          title={t("photosSetPortada")}
+                          style={{
+                            position: "absolute",
+                            bottom: "4px",
+                            left: "4px",
+                            width: "22px",
+                            height: "22px",
+                            borderRadius: "50%",
+                            background: isCover ? "var(--db-accent)" : "rgba(0,0,0,0.55)",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                            transition: "background 0.15s",
+                          }}
+                        >
+                          {isCover
+                            ? <IconStarFilled size={12} color="var(--db-accent-text)" />
+                            : <IconStar size={12} color="#fff" />}
+                        </button>
+                        {/* Remove */}
+                        <button
+                          onClick={() => handleRemovePhoto(currentItem.id, url)}
+                          title={t("photosRemove")}
+                          style={{
+                            position: "absolute",
+                            top: "-6px",
+                            right: "-6px",
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            background: "var(--db-danger, #ef4444)",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                          }}
+                        >
+                          <IconX size={11} color="#fff" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Gallery hint */}
+                {gallery.length < 3 && (
+                  <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 0", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <IconPhoto size={13} />
+                    {t("photosGalleryHint")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Footer actions */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginTop: "8px" }}>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <GhostButton onClick={() => advancePhoto()}>
+                  {t("photosSkip")}
+                </GhostButton>
+                <GhostButton onClick={() => setPhotoPhase("done")}>
+                  {t("photosSkipAll")}
+                </GhostButton>
+              </div>
+              <PrimaryButton
+                onClick={() => void handleSaveAndAdvance(currentItem.id)}
+                disabled={photoSaving || gallery.length === 0}
+              >
+                {photoSaving ? <Spinner /> : <IconCircleCheck size={16} />}
+                {photoSaving ? t("photosSaving") : t("photosSave")}
+              </PrimaryButton>
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* Final success screen (shown after photo step completes or is skipped) */}
+      {state.step === 4 && createSuccess && (photoPhase === "done" || createSuccess.createdItems.length === 0) && (
         <Card>
           <div
             style={{
@@ -2328,7 +2820,7 @@ export default function MenuAssistantPage() {
           >
             <IconCircleCheck size={56} color="var(--db-success)" />
             <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--db-text-primary)", margin: 0 }}>
-              {t("successTitle")}
+              {t("photosDoneTitle")}
             </h2>
             <p
               style={{
@@ -2339,7 +2831,7 @@ export default function MenuAssistantPage() {
                 lineHeight: 1.6,
               }}
             >
-              {t("successBody", { count: createSuccess.itemCount })}
+              {t("photosDoneBody", { count: createSuccess.itemCount })}
             </p>
             <div
               style={{
@@ -2367,26 +2859,6 @@ export default function MenuAssistantPage() {
               >
                 {t("goToEditor")}
                 <IconArrowRight size={16} />
-              </Link>
-              {/* Photos live in the manual editor (same destination, different intent). */}
-              <Link
-                href="/dashboard/menu"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "11px 18px",
-                  borderRadius: "var(--db-radius)",
-                  border: "1px solid var(--db-border)",
-                  background: "var(--db-bg-elevated)",
-                  color: "var(--db-text-secondary)",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
-              >
-                <IconPhoto size={16} />
-                {t("addPhotos")}
               </Link>
             </div>
           </div>
