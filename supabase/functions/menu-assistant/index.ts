@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — Menu Assistant Edge Function (FASE 2)
  *
- * AI-assisted menu building for business owners. Four actions dispatched via
+ * AI-assisted menu building for business owners. Five actions dispatched via
  * { action: string } in the JSON body:
  *
  *   suggest_categories { business_id, business_type, sells[], country, currency, price_range }
@@ -27,8 +27,17 @@
  *     client-side in the wizard (FASE 5), always with is_published = false.
  *   • ANTHROPIC_API_KEY never leaves the server.
  *
+ *   generate_images  { business_id, item_name, description?, style?, count? (default 5, cap 6) }
+ *                                          → { ok, images: string[] }  (Storage public URLs)
+ *
  * ── Required env vars ────────────────────────────────────────────────────────
  *   ANTHROPIC_API_KEY         — Anthropic API key (supabase secrets set ...)
+ *   GEMINI_API_KEY            — Google AI API key for image generation
+ *   GEMINI_IMAGE_MODEL        — (optional) override the Gemini image model ID;
+ *                               default: "gemini-2.0-flash-preview-image-generation"
+ *                               Verify current name at:
+ *                               https://ai.google.dev/gemini-api/docs/models
+ *                               NOTE: Imagen (:predict endpoint) deprecated Aug 17 2026.
  *   SUPABASE_URL              — auto-injected
  *   SUPABASE_SERVICE_ROLE_KEY — set in Edge Function secrets
  *   SUPABASE_ANON_KEY         — for JWT verification (same as other functions)
@@ -710,6 +719,193 @@ async function handleRefineItem(body: Record<string, unknown>): Promise<Response
   });
 }
 
+// ── Action E: generate_images ─────────────────────────────────────────────────
+//
+// Generates food-photography images using Gemini's native image generation
+// (generateContent with responseModalities: ["IMAGE", "TEXT"]).
+//
+// IMPORTANT — Imagen vs Gemini:
+//   The Imagen :predict endpoint (imagen-4.0-generate-001) is deprecated and
+//   shuts down August 17 2026. This action uses the generateContent endpoint
+//   which is the current, supported path.
+//
+// API shape (Gemini image generation, as of Aug 2026):
+//   POST v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}
+//   Body: { contents: [{ parts: [{ text: prompt }] }],
+//           generationConfig: { responseModalities: ["IMAGE", "TEXT"] } }
+//   Response: candidates[0].content.parts[].inlineData.{ mimeType, data }
+//             where `data` is a base64-encoded PNG.
+//
+// One image per generateContent call → N parallel calls for N images.
+// Model is configurable via GEMINI_IMAGE_MODEL env var (default below).
+// Juan must verify the model string before deploying:
+//   https://ai.google.dev/gemini-api/docs/models
+
+const GEMINI_GENERATE_BASE =
+  "https://generativelanguage.googleapis.com/v1beta/models";
+
+/**
+ * Default model for Gemini image generation.
+ * Update GEMINI_IMAGE_MODEL env secret if Google releases a newer stable model.
+ * DO NOT use imagen-* models — they shut down Aug 17 2026.
+ */
+const GEMINI_IMAGE_MODEL_DEFAULT = "gemini-2.0-flash-preview-image-generation";
+
+/** Abstraction layer — swap the provider here without touching the handler. */
+async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      "[menu-assistant] GEMINI_API_KEY is not set — " +
+        "set it with `supabase secrets set GEMINI_API_KEY=...`",
+    );
+    throw new Error("service_not_configured");
+  }
+
+  const model =
+    Deno.env.get("GEMINI_IMAGE_MODEL") ?? GEMINI_IMAGE_MODEL_DEFAULT;
+
+  const url =
+    `${GEMINI_GENERATE_BASE}/${model}:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+  };
+
+  // Gemini generateContent yields one image per call.
+  // Fire n requests in parallel (count is capped at 6 by the handler).
+  const fetches = Array.from({ length: n }, () =>
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    })
+  );
+
+  const responses = await Promise.all(fetches);
+  const images: Uint8Array[] = [];
+
+  for (const res of responses) {
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(
+        `[menu-assistant] gemini image gen HTTP ${res.status}: ` +
+          detail.slice(0, 400),
+      );
+      throw new Error("image_gen_error");
+    }
+
+    interface GeminiImageResponse {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            inlineData?: { mimeType: string; data: string };
+          }>;
+        };
+      }>;
+    }
+
+    const data = (await res.json()) as GeminiImageResponse;
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = parts.find(
+      (p) => p.inlineData?.mimeType?.startsWith("image/"),
+    );
+
+    if (!imagePart?.inlineData?.data) {
+      console.error(
+        "[menu-assistant] gemini response had no image inlineData part; " +
+          "check model name and responseModalities support.",
+      );
+      throw new Error("image_gen_error");
+    }
+
+    // Decode base64 → Uint8Array (Deno-safe, no Buffer needed)
+    const binary = atob(imagePart.inlineData.data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    images.push(bytes);
+  }
+
+  return images;
+}
+
+async function handleGenerateImages(
+  body: Record<string, unknown>,
+  db: SupabaseClient,
+  businessId: string,
+): Promise<Response> {
+  const itemName = str(body, "item_name");
+  const description = str(body, "description");
+  const style = str(body, "style");
+  const rawCount = intField(body, "count");
+  // Default 5, cap 6 to avoid rate limit / cost overruns.
+  const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 6) : 5;
+
+  if (!itemName) return errorResponse("bad_request", 400);
+
+  // ── Build food-photography prompt ──────────────────────────────────────────
+  // Style can be overridden by the caller; otherwise a sensible default is used
+  // so all generated images share a consistent look.
+  const descPart = description ? `, ${description}` : "";
+  const styleBase =
+    style ??
+    "professional food photography, clean bright background, natural window light, " +
+      "top-down angle, appetizing, high detail, restaurant quality, no text";
+  const prompt = `${styleBase} of ${itemName}${descPart}`;
+
+  // ── Generate images ────────────────────────────────────────────────────────
+  let imageBytes: Uint8Array[];
+  try {
+    imageBytes = await generateImages(prompt, count);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // service_not_configured and image_gen_error bubble up to the main handler.
+    throw new Error(msg === "service_not_configured" ? msg : "image_gen_error");
+  }
+
+  // ── Upload to Supabase Storage → menu-photos bucket (already public) ───────
+  // Path pattern: {business_id}/ai/{uuid}.png
+  // Admin client has service-role access — no RLS to bypass.
+  const urls: string[] = [];
+  const uploadFailures: string[] = [];
+
+  for (const bytes of imageBytes) {
+    const path = `${businessId}/ai/${crypto.randomUUID()}.png`;
+
+    const { error: upErr } = await db.storage
+      .from("menu-photos")
+      .upload(path, bytes, { contentType: "image/png", upsert: false });
+
+    if (upErr) {
+      console.error(
+        `[menu-assistant] storage upload failed for ${path}:`,
+        upErr.message,
+      );
+      uploadFailures.push(upErr.message);
+      continue; // partial failure — keep uploading the rest
+    }
+
+    const { data: pubData } = db.storage
+      .from("menu-photos")
+      .getPublicUrl(path);
+    urls.push(pubData.publicUrl);
+  }
+
+  // Return partial success if at least one image made it through.
+  if (urls.length === 0) {
+    console.error(
+      "[menu-assistant] all Storage uploads failed:",
+      uploadFailures,
+    );
+    throw new Error("image_gen_error");
+  }
+
+  return okResponse({ images: urls });
+}
+
 // ── Action D: polish_item ─────────────────────────────────────────────────────
 
 async function handlePolishItem(body: Record<string, unknown>): Promise<Response> {
@@ -849,6 +1045,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case "polish_item":
         return await handlePolishItem(body);
 
+      case "generate_images":
+        return await handleGenerateImages(body, db, businessId);
+
       default:
         console.error(`[menu-assistant] unknown action: ${action ?? "(none)"}`);
         return errorResponse("bad_request", 400);
@@ -864,6 +1063,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     if (message.startsWith("anthropic_error_")) {
       return errorResponse(message, 502);
+    }
+    if (message === "image_gen_error") {
+      return errorResponse("image_gen_error", 502);
     }
 
     console.error(`[menu-assistant] unhandled error in action "${action}":`, err);
