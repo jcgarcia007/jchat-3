@@ -36,16 +36,22 @@ import { useTranslations } from "next-intl";
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconBed,
   IconBuildingStore,
   IconCheck,
   IconChefHat,
   IconChevronDown,
   IconChevronRight,
+  IconCoffee,
   IconGlass,
+  IconGlassCocktail,
   IconLoader2,
   IconLock,
+  IconMapPin,
   IconPlus,
   IconSparkles,
+  IconToolsKitchen2,
+  IconTruck,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -114,12 +120,12 @@ const INITIAL_STATE: WizardState = {
 
 /** Preset business types. "other" opens a free-text input instead. */
 const BUSINESS_TYPES = [
-  { id: "restaurant", emoji: "🍽️", labelKey: "typeRestaurant" },
-  { id: "bar", emoji: "🍺", labelKey: "typeBar" },
-  { id: "cafe", emoji: "☕", labelKey: "typeCafe" },
-  { id: "hotel", emoji: "🏨", labelKey: "typeHotel" },
-  { id: "food_truck", emoji: "🚚", labelKey: "typeFoodTruck" },
-] as const;
+  { id: "restaurant", Icon: IconToolsKitchen2, labelKey: "typeRestaurant" },
+  { id: "bar", Icon: IconGlassCocktail, labelKey: "typeBar" },
+  { id: "cafe", Icon: IconCoffee, labelKey: "typeCafe" },
+  { id: "hotel", Icon: IconBed, labelKey: "typeHotel" },
+  { id: "food_truck", Icon: IconTruck, labelKey: "typeFoodTruck" },
+];
 
 /** Always shown in full — never filtered by business type (product decision). */
 const SELL_OPTIONS = [
@@ -220,6 +226,8 @@ function PrimaryButton({
         fontSize: "14px",
         fontWeight: 700,
         cursor: disabled ? "not-allowed" : "pointer",
+        transition: "opacity 0.15s ease, background 0.15s ease",
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       {children}
@@ -244,6 +252,7 @@ function GhostButton({ children, onClick }: { children: React.ReactNode; onClick
         fontSize: "14px",
         fontWeight: 600,
         cursor: "pointer",
+        transition: "border-color 0.15s ease, color 0.15s ease",
       }}
     >
       {children}
@@ -289,6 +298,7 @@ function Chip({
         fontSize: "13px",
         fontWeight: selected ? 700 : 500,
         cursor: "pointer",
+        transition: "all 0.15s ease",
       }}
     >
       {children}
@@ -378,9 +388,9 @@ function Stepper({ step }: { step: WizardStep }) {
     <div
       style={{
         display: "flex",
-        flexWrap: "wrap",
-        gap: "10px",
-        marginBottom: "20px",
+        alignItems: "flex-start",
+        marginBottom: "32px",
+        overflow: "hidden",
       }}
     >
       {labels.map((label, i) => {
@@ -388,24 +398,69 @@ function Stepper({ step }: { step: WizardStep }) {
         const done = n < step;
         const active = n === step;
         return (
-          <div
-            key={label}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "7px 14px",
-              borderRadius: "999px",
-              border: active ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
-              background: active || done ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
-              color: active || done ? "var(--db-accent)" : "var(--db-text-tertiary)",
-              fontSize: "12px",
-              fontWeight: active ? 700 : 500,
-            }}
-          >
-            {done ? <IconCheck size={14} /> : <span style={{ fontWeight: 700 }}>{n}</span>}
-            {label}
-          </div>
+          <React.Fragment key={label}>
+            {/* Step node */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "7px",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "999px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: active || done ? "var(--db-accent)" : "var(--db-bg-elevated)",
+                  border: active || done ? "2px solid var(--db-accent)" : "2px solid var(--db-border)",
+                  color: active || done ? "var(--db-accent-text)" : "var(--db-text-tertiary)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  transition: "all 0.25s ease",
+                  flexShrink: 0,
+                }}
+              >
+                {done ? <IconCheck size={15} /> : n}
+              </div>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: active ? 700 : 500,
+                  color: active
+                    ? "var(--db-accent)"
+                    : done
+                    ? "var(--db-text-secondary)"
+                    : "var(--db-text-tertiary)",
+                  whiteSpace: "nowrap",
+                  transition: "color 0.25s ease",
+                  maxWidth: "72px",
+                  textAlign: "center",
+                  lineHeight: 1.3,
+                }}
+              >
+                {label}
+              </span>
+            </div>
+            {/* Connector line between steps */}
+            {i < labels.length - 1 && (
+              <div
+                style={{
+                  flex: 1,
+                  height: "2px",
+                  marginTop: "16px",
+                  background: n < step ? "var(--db-accent)" : "var(--db-border)",
+                  transition: "background 0.3s ease",
+                  minWidth: "16px",
+                }}
+              />
+            )}
+          </React.Fragment>
         );
       })}
     </div>
@@ -754,20 +809,19 @@ export default function MenuAssistantPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: "8px",
-                    padding: "16px 10px",
-                    borderRadius: "var(--db-radius-card)",
+                    gap: "10px",
+                    padding: "20px 12px 16px",
+                    borderRadius: "12px",
                     border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
                     background: selected ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
                     color: selected ? "var(--db-accent)" : "var(--db-text-secondary)",
                     fontSize: "13px",
                     fontWeight: selected ? 700 : 500,
                     cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  <span style={{ fontSize: "26px", lineHeight: 1 }} aria-hidden>
-                    {bt.emoji}
-                  </span>
+                  <bt.Icon size={28} />
                   {t(bt.labelKey)}
                 </button>
               );
@@ -783,15 +837,16 @@ export default function MenuAssistantPage() {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "8px",
-                padding: "16px 10px",
-                borderRadius: "var(--db-radius-card)",
+                gap: "10px",
+                padding: "20px 12px 16px",
+                borderRadius: "12px",
                 border: customTypeMode ? "2px solid var(--db-accent)" : "1px dashed var(--db-border)",
                 background: customTypeMode ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
-                color: customTypeMode ? "var(--db-accent)" : "var(--db-text-secondary)",
+                color: customTypeMode ? "var(--db-accent)" : "var(--db-text-tertiary)",
                 fontSize: "13px",
                 fontWeight: customTypeMode ? 700 : 500,
                 cursor: "pointer",
+                transition: "all 0.15s ease",
               }}
             >
               <IconPlus size={24} />
@@ -844,13 +899,28 @@ export default function MenuAssistantPage() {
           >
             <div>
               <FieldLabel>{t("countryLabel")}</FieldLabel>
-              <input
-                type="text"
-                value={state.country}
-                onChange={(e) => setState((s) => ({ ...s, country: e.target.value }))}
-                placeholder={t("countryPlaceholder")}
-                style={inputStyle}
-              />
+              <div style={{ position: "relative" }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    left: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--db-text-tertiary)",
+                    display: "flex",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <IconMapPin size={16} />
+                </span>
+                <input
+                  type="text"
+                  value={state.country}
+                  onChange={(e) => setState((s) => ({ ...s, country: e.target.value }))}
+                  placeholder={t("countryPlaceholder")}
+                  style={{ ...inputStyle, paddingLeft: "32px" }}
+                />
+              </div>
             </div>
             <div>
               <FieldLabel>{t("currencyLabel")}</FieldLabel>
@@ -864,18 +934,36 @@ export default function MenuAssistantPage() {
             </div>
           </div>
 
-          {/* Price range */}
+          {/* Price range — segmented control */}
           <div style={{ marginTop: "20px" }}>
             <FieldLabel>{t("priceRangeLabel")}</FieldLabel>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {PRICE_RANGES.map((pr) => (
-                <Chip
+            <div
+              style={{
+                display: "inline-flex",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-border)",
+                overflow: "hidden",
+              }}
+            >
+              {PRICE_RANGES.map((pr, i) => (
+                <button
                   key={pr}
-                  selected={state.priceRange === pr}
+                  type="button"
                   onClick={() => setState((s) => ({ ...s, priceRange: pr }))}
+                  style={{
+                    padding: "10px 24px",
+                    border: "none",
+                    borderLeft: i > 0 ? "1px solid var(--db-border)" : "none",
+                    background: state.priceRange === pr ? "var(--db-accent)" : "var(--db-bg-elevated)",
+                    color: state.priceRange === pr ? "var(--db-accent-text)" : "var(--db-text-secondary)",
+                    fontSize: "14px",
+                    fontWeight: state.priceRange === pr ? 700 : 500,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
                 >
-                  <span style={{ fontWeight: 700 }}>{pr}</span>
-                </Chip>
+                  {pr}
+                </button>
               ))}
             </div>
             <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
@@ -921,11 +1009,12 @@ export default function MenuAssistantPage() {
                     display: "flex",
                     alignItems: "flex-start",
                     gap: "12px",
-                    padding: "12px 14px",
-                    borderRadius: "var(--db-radius)",
-                    border: checked ? "1px solid var(--db-accent)" : "1px solid var(--db-border)",
+                    padding: "13px 16px",
+                    borderRadius: "12px",
+                    border: checked ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
                     background: checked ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
                     cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                 >
                   <input
@@ -976,7 +1065,8 @@ export default function MenuAssistantPage() {
                 placeholder={t("categoryNamePlaceholder")}
                 style={{ ...inputStyle, flex: "1 1 200px", width: "auto" }}
               />
-              <GhostButton
+              <button
+                type="button"
                 onClick={() => {
                   const name = newCategoryName.trim();
                   if (!name) return;
@@ -991,10 +1081,24 @@ export default function MenuAssistantPage() {
                   );
                   setNewCategoryName("");
                 }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 18px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1.5px dashed var(--db-accent)",
+                  background: "var(--db-accent-bg)",
+                  color: "var(--db-accent)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "opacity 0.15s ease",
+                }}
               >
-                <IconPlus size={16} />
+                <IconPlus size={15} />
                 {t("addButton")}
-              </GhostButton>
+              </button>
             </div>
           </div>
 
@@ -1051,9 +1155,10 @@ export default function MenuAssistantPage() {
                   key={categoryName}
                   style={{
                     border: "1px solid var(--db-border)",
-                    borderRadius: "var(--db-radius-card)",
+                    borderRadius: "12px",
                     background: "var(--db-bg-elevated)",
                     overflow: "hidden",
+                    transition: "border-color 0.15s ease",
                   }}
                 >
                   <button
@@ -1209,6 +1314,7 @@ export default function MenuAssistantPage() {
                                           fontSize: "12px",
                                           fontWeight: sel ? 700 : 500,
                                           cursor: "pointer",
+                                          transition: "all 0.15s ease",
                                         }}
                                       >
                                         <StIcon size={13} />
@@ -1270,10 +1376,27 @@ export default function MenuAssistantPage() {
                               placeholder={t("itemPricePlaceholder")}
                               style={{ ...inputStyle, width: "120px" }}
                             />
-                            <GhostButton onClick={() => addCustomItem(categoryName)}>
-                              <IconPlus size={16} />
+                            <button
+                              type="button"
+                              onClick={() => addCustomItem(categoryName)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "10px 16px",
+                                borderRadius: "var(--db-radius)",
+                                border: "1.5px dashed var(--db-accent)",
+                                background: "var(--db-accent-bg)",
+                                color: "var(--db-accent)",
+                                fontSize: "13px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                transition: "opacity 0.15s ease",
+                              }}
+                            >
+                              <IconPlus size={15} />
                               {t("addButton")}
-                            </GhostButton>
+                            </button>
                           </div>
                           {/* TODO(FASE futura): botón "✨ Generar descripción" que llame a
                               polish_item para autocompletar description_es/en + tags del
