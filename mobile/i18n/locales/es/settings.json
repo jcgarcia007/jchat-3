@@ -204,7 +204,7 @@
     "pickupDelivered": "Entregado",
     "pickupStatusPending": "Pendiente",
     "pickupStatusPreparing": "Preparando",
-    "pickupStatusReady": "Listo",
+    "pickupStatusReady": "Listo para recoger",
     "pickupSeat": "Asiento {{seat}}",
     "pickupErrDeliver": "No se pudo marcar como entregado. Inténtalo de nuevo.",
     "voidOrderCancelBtn": "Cancelar ronda",

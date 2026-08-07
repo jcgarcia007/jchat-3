@@ -204,7 +204,7 @@
     "pickupDelivered": "Delivered",
     "pickupStatusPending": "Pending",
     "pickupStatusPreparing": "Preparing",
-    "pickupStatusReady": "Ready",
+    "pickupStatusReady": "Ready for pickup",
     "pickupSeat": "Seat {{seat}}",
     "pickupErrDeliver": "Could not mark as delivered. Please try again.",
     "voidOrderCancelBtn": "Cancel round",
