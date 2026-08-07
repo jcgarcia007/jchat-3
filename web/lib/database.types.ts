@@ -1346,8 +1346,10 @@ export type Database = {
           photo_url: string | null
           price_cents: number
           sort: number
+          sla: Json | null
           staff_details: string | null
           staff_details_alt: string | null
+          station: string
           stock_count: number | null
           updated_at: string
         }
@@ -1370,9 +1372,11 @@ export type Database = {
           options?: Json
           photo_url?: string | null
           price_cents?: number
+          sla?: Json | null
           sort?: number
           staff_details?: string | null
           staff_details_alt?: string | null
+          station?: string
           stock_count?: number | null
           updated_at?: string
         }
@@ -1395,9 +1399,11 @@ export type Database = {
           options?: Json
           photo_url?: string | null
           price_cents?: number
+          sla?: Json | null
           sort?: number
           staff_details?: string | null
           staff_details_alt?: string | null
+          station?: string
           stock_count?: number | null
           updated_at?: string
         }

@@ -34,11 +34,13 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconCheck,
+  IconChefHat,
   IconChevronDown,
   IconChevronRight,
   IconEdit,
   IconEye,
   IconEyeOff,
+  IconGlass,
   IconLeaf,
   IconMilk,
   IconPackage,
@@ -66,6 +68,14 @@ import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Badge = "best_seller" | "new" | "hot" | null;
+type Station = "kitchen" | "bar";
+
+/** Per-item SLA time overrides (minutes). Null fields = fall back to business defaults. */
+interface SlaJsonb {
+  pending_mins?: number | null;
+  preparing_mins?: number | null;
+  ready_mins?: number | null;
+}
 
 interface OptionItem {
   label: string;
@@ -109,6 +119,10 @@ interface MenuItem {
   staff_details: string | null;
   /** Alt-language variant of staff_details. */
   staff_details_alt: string | null;
+  /** KDS routing: which station prepares this item. Default: 'kitchen'. */
+  station: Station;
+  /** Per-item SLA overrides in minutes (null = use business defaults). */
+  sla: SlaJsonb | null;
 }
 
 interface CategoryForm {
@@ -135,6 +149,10 @@ interface ItemForm {
   staff_details: string;
   /** Alt-language variant of staff_details. */
   staff_details_alt: string;
+  /** KDS routing station. */
+  station: Station;
+  /** SLA time overrides (string form for inputs; converted on save). */
+  slaForm: { pending_mins: string; preparing_mins: string; ready_mins: string };
 }
 
 // Photo upload types
@@ -245,6 +263,8 @@ const EMPTY_ITEM_FORM: ItemForm = {
   options: { sizes: [], extras: [] },
   staff_details: "",
   staff_details_alt: "",
+  station: "kitchen",
+  slaForm: { pending_mins: "", preparing_mins: "", ready_mins: "" },
 };
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
@@ -308,6 +328,8 @@ const DEMO_ITEMS: MenuItem[] = [
     sort: 0,
     staff_details: null,
     staff_details_alt: null,
+    station: "bar",
+    sla: null,
   },
   {
     id: "demo-item-2",
@@ -328,6 +350,8 @@ const DEMO_ITEMS: MenuItem[] = [
     sort: 1,
     staff_details: null,
     staff_details_alt: null,
+    station: "bar",
+    sla: null,
   },
   {
     id: "demo-item-3",
@@ -354,6 +378,8 @@ const DEMO_ITEMS: MenuItem[] = [
     sort: 0,
     staff_details: null,
     staff_details_alt: null,
+    station: "kitchen",
+    sla: null,
   },
 ];
 
@@ -1463,6 +1489,35 @@ function ItemEditorModal({
             />
           </div>
 
+          {/* Station — KDS routing */}
+          <div>
+            <SectionLabel>{t("menuItemStationLabel")}</SectionLabel>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {(["kitchen", "bar"] as const).map((s) => {
+                const sel = form.station === s;
+                const StIcon = s === "kitchen" ? IconChefHat : IconGlass;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => set("station", s)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      padding: "7px 16px", borderRadius: "var(--db-radius)",
+                      border: sel ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                      background: sel ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                      color: sel ? "var(--db-accent)" : "var(--db-text-secondary)",
+                      fontSize: "13px", fontWeight: sel ? 700 : 400, cursor: "pointer",
+                    }}
+                  >
+                    <StIcon size={13} />
+                    {s === "kitchen" ? t("menuItemStationKitchen") : t("menuItemStationBar")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Price */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
@@ -1923,6 +1978,72 @@ function ItemEditorModal({
               {t("menuItemStaffDetailsHint")}
             </p>
           </div>
+
+          {/* SLA — Timings override (collapsible, advanced) */}
+          <details
+            style={{
+              border: "1px solid var(--db-border)",
+              borderRadius: "var(--db-radius)",
+              overflow: "hidden",
+            }}
+          >
+            <summary
+              style={{
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "var(--db-text-secondary)",
+                userSelect: "none",
+                listStyle: "none",
+              }}
+            >
+              ▸ {t("menuItemSlaLabel")}
+            </summary>
+            <div
+              style={{
+                padding: "14px",
+                borderTop: "1px solid var(--db-border)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                background: "var(--db-bg-elevated)",
+              }}
+            >
+              <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", margin: 0 }}>
+                {t("menuItemSlaHint")}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                <div>
+                  <SectionLabel>{t("menuItemSlaPendingMins")}</SectionLabel>
+                  <FieldInput
+                    type="number"
+                    value={form.slaForm.pending_mins}
+                    onChange={(v) => set("slaForm", { ...form.slaForm, pending_mins: v })}
+                    placeholder="—"
+                  />
+                </div>
+                <div>
+                  <SectionLabel>{t("menuItemSlaPreparingMins")}</SectionLabel>
+                  <FieldInput
+                    type="number"
+                    value={form.slaForm.preparing_mins}
+                    onChange={(v) => set("slaForm", { ...form.slaForm, preparing_mins: v })}
+                    placeholder="—"
+                  />
+                </div>
+                <div>
+                  <SectionLabel>{t("menuItemSlaReadyMins")}</SectionLabel>
+                  <FieldInput
+                    type="number"
+                    value={form.slaForm.ready_mins}
+                    onChange={(v) => set("slaForm", { ...form.slaForm, ready_mins: v })}
+                    placeholder="—"
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
 
           {/* Divider */}
           <div
@@ -3402,6 +3523,7 @@ export default function MenuPage() {
   }, []);
 
   const openEditItem = useCallback((item: MenuItem) => {
+    const existingSla = item.sla as SlaJsonb | null;
     setActiveItemEdit({
       item: {
         name: item.name,
@@ -3417,6 +3539,12 @@ export default function MenuPage() {
         options: item.options ?? { sizes: [], extras: [] },
         staff_details: item.staff_details ?? "",
         staff_details_alt: item.staff_details_alt ?? "",
+        station: (item.station as Station) ?? "kitchen",
+        slaForm: {
+          pending_mins:   existingSla?.pending_mins   != null ? String(existingSla.pending_mins)   : "",
+          preparing_mins: existingSla?.preparing_mins != null ? String(existingSla.preparing_mins) : "",
+          ready_mins:     existingSla?.ready_mins     != null ? String(existingSla.ready_mins)     : "",
+        },
       },
       itemId: item.id,
       categoryId: item.category_id,
@@ -3433,6 +3561,15 @@ export default function MenuPage() {
       }
       setSavingItem(true);
       setError(null);
+
+      // Convert SLA string fields → jsonb or null
+      const slaOut: SlaJsonb | null = (
+        form.slaForm.pending_mins.trim() || form.slaForm.preparing_mins.trim() || form.slaForm.ready_mins.trim()
+      ) ? {
+        pending_mins:   form.slaForm.pending_mins.trim()   ? parseInt(form.slaForm.pending_mins, 10)   : null,
+        preparing_mins: form.slaForm.preparing_mins.trim() ? parseInt(form.slaForm.preparing_mins, 10) : null,
+        ready_mins:     form.slaForm.ready_mins.trim()     ? parseInt(form.slaForm.ready_mins, 10)     : null,
+      } : null;
 
       const payload = {
         category_id: activeItemEdit.categoryId,
@@ -3456,20 +3593,24 @@ export default function MenuPage() {
         // Staff notes (Pro-gated; always included in payload — DB stores null when blank).
         staff_details: form.staff_details.trim() || null,
         staff_details_alt: form.staff_details_alt.trim() || null,
+        // KDS routing & SLA
+        station: form.station,
+        sla: slaOut,
       };
 
       if (!isSupabaseConfigured) {
+        const demoPayload = { ...payload, sla: slaOut };
         if (activeItemEdit.itemId) {
           setItems((prev) =>
             prev.map((it) =>
-              it.id === activeItemEdit.itemId ? { ...it, ...payload } : it
+              it.id === activeItemEdit.itemId ? { ...it, ...demoPayload } : it
             )
           );
         } else {
           const newItem: MenuItem = {
             id: `demo-item-${Date.now()}`,
             sort: items.filter((i) => i.category_id === activeItemEdit.categoryId).length,
-            ...payload,
+            ...demoPayload,
           };
           setItems((prev) => [...prev, newItem]);
         }
@@ -3488,9 +3629,10 @@ export default function MenuPage() {
           ...payload,
           // NOT NULL with default 5 — omit when null so DB uses its default.
           low_stock_threshold: payload.low_stock_threshold ?? undefined,
-          // ItemOptions is valid JSON; cast required because Supabase types use
-          // the recursive Json type which TS can't infer from custom interfaces.
+          // ItemOptions and SlaJsonb are valid JSON; cast required because Supabase
+          // types use the recursive Json type which TS can't infer from custom interfaces.
           options: (payload.options ?? { sizes: [], extras: [] }) as unknown as Json,
+          sla: payload.sla as unknown as Json | null,
         };
 
         // 1. Create or update the menu item; for new items capture the ID.
