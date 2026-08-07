@@ -1251,6 +1251,180 @@ function PickupSheet({
 
 // ── Backdrop ──────────────────────────────────────────────────────────────────
 
+// ── Order status types ────────────────────────────────────────────────────────
+
+interface OrderStatusRpcItem {
+  name: string;
+  qty: number;
+  status: "pending" | "preparing" | "ready" | "done";
+  station: string;
+}
+
+// ── OrderStatusModal ──────────────────────────────────────────────────────────
+// Bottom sheet that polls get_table_order_status every 6 s.
+// No Realtime — customer is anonymous; polling is sufficient.
+
+function OrderStatusModal({
+  palette,
+  token,
+  onClose,
+}: {
+  palette: MenuPalette;
+  token: string;
+  onClose: () => void;
+}) {
+  const t = useTranslations("menu");
+  const [items, setItems] = useState<OrderStatusRpcItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc("get_table_order_status", {
+        p_token: token,
+      }) as { data: { enabled: boolean; items: OrderStatusRpcItem[] } | null; error: unknown };
+      const d = data as { enabled: boolean; items: OrderStatusRpcItem[] } | null;
+      if (d?.items) setItems(d.items);
+    } catch {
+      /* keep previous data on network error */
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadStatus();
+    const id = setInterval(() => void loadStatus(), 6000);
+    return () => clearInterval(id);
+  }, [loadStatus]);
+
+  const statusLabel = (s: string): string => {
+    if (s === "pending") return t("orderStatusPending");
+    if (s === "preparing") return t("orderStatusPreparing");
+    if (s === "ready") return t("orderStatusReady");
+    if (s === "done") return t("orderStatusDone");
+    return s;
+  };
+
+  const statusColor = (s: string): string => {
+    if (s === "preparing") return "var(--color-warning, #f59e0b)";
+    if (s === "ready") return "var(--color-success, #1D9E75)";
+    if (s === "done") return "var(--color-success, #1D9E75)";
+    return palette.textFaint;
+  };
+
+  return (
+    <Backdrop onClose={onClose} palette={palette}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 540,
+          background: palette.surface,
+          borderRadius: "20px 20px 0 0",
+          padding: "20px 16px 28px",
+          maxHeight: "70dvh",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ fontSize: 16, fontWeight: 700, color: palette.text }}>
+            {t("orderStatusTitle")}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              color: palette.accent,
+              padding: "4px 0",
+            }}
+          >
+            {t("orderStatusClose")}
+          </button>
+        </div>
+
+        {/* Item list */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {loading ? (
+            <p
+              style={{
+                fontSize: 13,
+                color: palette.textMuted,
+                textAlign: "center",
+                padding: "24px 0",
+                margin: 0,
+              }}
+            >
+              {t("orderStatusLoading")}
+            </p>
+          ) : items.length === 0 ? (
+            <p
+              style={{
+                fontSize: 13,
+                color: palette.textMuted,
+                textAlign: "center",
+                padding: "24px 0",
+                margin: 0,
+              }}
+            >
+              {t("orderStatusEmpty")}
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {items.map((item, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: palette.bg,
+                    border: `1px solid ${palette.border}`,
+                  }}
+                >
+                  <span style={{ fontSize: 14, color: palette.text, flex: 1 }}>
+                    {item.qty} × {item.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: statusColor(item.status),
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {statusLabel(item.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Backdrop>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Backdrop({
   children,
   onClose,
@@ -1454,6 +1628,10 @@ export default function MenuPageClient({
   // table via its token (resolved server-side in the payments EF).
   const [tableCtx, setTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
 
+  // ── Order status: gate the button on the owner's kds_settings toggle ─────────
+  const [orderStatusAvailable, setOrderStatusAvailable] = useState(false);
+  const [showOrderStatus, setShowOrderStatus] = useState(false);
+
   useEffect(() => {
     // In app mode the room context comes from ?room= URL param; skip sessionStorage.
     if (isAppMode) return;
@@ -1475,8 +1653,27 @@ export default function MenuPageClient({
     }
   }, [business.slug]);
 
+  // Check once whether the owner has enabled order-status visibility for customers.
+  // Runs when tableCtx becomes available (QR scan path only; skipped in app mode).
+  useEffect(() => {
+    if (!tableCtx || isAppMode) return;
+    void (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any).rpc("get_table_order_status", {
+          p_token: tableCtx.token,
+        }) as { data: { enabled: boolean } | null; error: unknown };
+        setOrderStatusAvailable((data as { enabled?: boolean } | null)?.enabled === true);
+      } catch {
+        setOrderStatusAvailable(false);
+      }
+    })();
+  }, [tableCtx, isAppMode]);
+
   function clearTableContext() {
     setTableCtx(null);
+    setOrderStatusAvailable(false);
+    setShowOrderStatus(false);
     try {
       sessionStorage.removeItem(TABLE_CONTEXT_KEY);
     } catch {
@@ -1711,23 +1908,44 @@ export default function MenuPageClient({
           <span>
             {t("orderingAtTable", { tableLabel: tableCtx.tableLabel ? ` ${tableCtx.tableLabel}` : "" })}
           </span>
-          <button
-            type="button"
-            onClick={clearTableContext}
-            style={{
-              background: "transparent",
-              border: `1px solid ${palette.accentText}`,
-              color: palette.accentText,
-              borderRadius: 999,
-              padding: "3px 10px",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {t("notAtThisTable")}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {orderStatusAvailable && (
+              <button
+                type="button"
+                onClick={() => setShowOrderStatus(true)}
+                style={{
+                  background: "rgba(255,255,255,0.20)",
+                  border: `1px solid ${palette.accentText}`,
+                  color: palette.accentText,
+                  borderRadius: 999,
+                  padding: "3px 10px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t("orderStatusBtn")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={clearTableContext}
+              style={{
+                background: "transparent",
+                border: `1px solid ${palette.accentText}`,
+                color: palette.accentText,
+                borderRadius: 999,
+                padding: "3px 10px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("notAtThisTable")}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1808,6 +2026,14 @@ export default function MenuPageClient({
             setCartItems([]);
             setStep("menu");
           }}
+        />
+      )}
+
+      {showOrderStatus && tableCtx && (
+        <OrderStatusModal
+          palette={palette}
+          token={tableCtx.token}
+          onClose={() => setShowOrderStatus(false)}
         />
       )}
       </main>

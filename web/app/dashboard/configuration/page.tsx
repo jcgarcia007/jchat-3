@@ -37,6 +37,7 @@ import {
   IconChevronDown,
   IconUpload,
   IconCopy,
+  IconEye,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -70,6 +71,7 @@ interface BusinessRow {
   dashboard_theme_id?: number;
   dashboard_palette_id?: number | null;
   table_subchats_enabled: boolean;
+  kds_settings: Record<string, unknown> | null;
 }
 
 /** Shape stored in businesses.hours (JSONB) */
@@ -585,6 +587,11 @@ export default function ConfigurationPage() {
   const [tableSubchatsEnabled, setTableSubchatsEnabled] = useState(false);
   const [savingSubchats, setSavingSubchats] = useState(false);
 
+  // ── Section 9b: Customer order-status visibility ───────────────────────────
+  const [kdsSettings, setKdsSettings] = useState<Record<string, unknown>>({});
+  const [customerStatusEnabled, setCustomerStatusEnabled] = useState(false);
+  const [savingCustomerStatus, setSavingCustomerStatus] = useState(false);
+
   // ── Upload refs ───────────────────────────────────────────────────────────────
   const coverObjRef = useRef<string | null>(null);
   const iconObjRef = useRef<string | null>(null);
@@ -621,7 +628,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled, kds_settings"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -646,6 +653,9 @@ export default function ConfigurationPage() {
       setTipPercentages(b.tip_percentages ?? [15, 18, 20]);
       setPayoutFrequency(b.payout_frequency ?? "weekly");
       setTableSubchatsEnabled(b.table_subchats_enabled ?? false);
+      const rawKds = (b.kds_settings as Record<string, unknown> | null) ?? {};
+      setKdsSettings(rawKds);
+      setCustomerStatusEnabled((rawKds.customer_status_enabled as boolean) ?? false);
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
       setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
@@ -858,6 +868,20 @@ export default function ConfigurationPage() {
       setSavingSubchats,
       { table_subchats_enabled: v },
       v ? t("configurationSubchatsEnabledSuccess") : t("configurationSubchatsDisabledSuccess")
+    );
+  };
+
+  const handleToggleCustomerStatus = async (v: boolean) => {
+    setCustomerStatusEnabled(v);
+    // Merge into the kds_settings jsonb — never overwrite sibling keys.
+    const merged = { ...kdsSettings, customer_status_enabled: v };
+    setKdsSettings(merged);
+    await withSave(
+      setSavingCustomerStatus,
+      { kds_settings: merged } as Record<string, unknown>,
+      v
+        ? t("configurationCustomerStatusEnabledSuccess")
+        : t("configurationCustomerStatusDisabledSuccess")
     );
   };
 
@@ -1584,6 +1608,25 @@ export default function ConfigurationPage() {
             disabled={noSupabase || noBiz || savingSubchats}
           />
           {savingSubchats && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
+      </Section>
+
+      {/* ── 5c. Customer Order Visibility ───────────────────────────────────── */}
+      <Section
+        icon={<IconEye size={18} color="var(--db-accent)" />}
+        title={t("configurationCustomerStatusSectionTitle")}
+        subtitle={t("configurationCustomerStatusSectionSubtitle")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <Toggle
+            checked={customerStatusEnabled}
+            onChange={(v) => void handleToggleCustomerStatus(v)}
+            label={t("configurationCustomerStatusEnabledLabel")}
+            disabled={noSupabase || noBiz || savingCustomerStatus}
+          />
+          {savingCustomerStatus && (
             <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
           )}
         </div>
