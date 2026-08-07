@@ -196,6 +196,31 @@ export type PosCreateCheckResult =
   | { ok: true; payment_id: string; amount_cents: number }
   | { ok: false; reason: PosCreateCheckError };
 
+/** One item row returned by the pos_pickup_board RPC (waiter pickup board). */
+export interface PosPickupItem {
+  order_item_id: string;
+  order_id: string;
+  /** Table name shown in the board header. */
+  table_label: string;
+  item_name: string;
+  qty: number;
+  /** Seat number, or null for a table-level (no-seat) order. */
+  seat: number | null;
+  /** Current kitchen status. 'ready' items can be marked delivered. */
+  item_status: 'pending' | 'preparing' | 'ready';
+}
+
+export type PosSetItemStatusError =
+  | 'invalid_status'
+  | 'item_not_found'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosSetItemStatusResult =
+  | { ok: true }
+  | { ok: false; reason: PosSetItemStatusError };
+
 export type PosVoidOrderError =
   | 'in_preparation'
   | 'split_in_progress'
@@ -311,6 +336,14 @@ type PosRpc = {
     data: { payment_id: string; amount_cents: number } | null;
     error: { message: string } | null;
   }>;
+  rpc(
+    fn: 'pos_pickup_board',
+    params: { p_business_id: string },
+  ): Promise<{ data: PosPickupItem[] | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'set_item_status',
+    params: { p_order_item_id: string; p_status: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -852,4 +885,60 @@ export async function posCreateCheck(
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || !row.payment_id) return { ok: false, reason: 'db_error' };
   return { ok: true, payment_id: row.payment_id, amount_cents: row.amount_cents };
+}
+
+// ─── posPickupBoard ───────────────────────────────────────────────────────────
+
+/**
+ * Return all open (non-delivered) order items for a business, grouped for the
+ * waiter pickup board. Each row includes table_label, item_name, qty, seat, and
+ * item_status ('pending' | 'preparing' | 'ready').
+ *
+ * Used by PosPickupScreen — read-only, does not touch checkout or split.
+ */
+export async function posPickupBoard(businessId: string): Promise<PosPickupItem[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await posRpc.rpc('pos_pickup_board', {
+    p_business_id: businessId,
+  });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// ─── posSetItemStatus ─────────────────────────────────────────────────────────
+
+/**
+ * Mark a kitchen item as delivered ('done'). Only the waiter pickup screen calls this.
+ * The server validates that the caller has pos_access at the business.
+ *
+ * Possible failure reasons:
+ *   'invalid_status'  — status value is not accepted by the RPC
+ *   'item_not_found'  — order item does not exist
+ *   'no_access'       — caller is not authenticated or lacks employee access
+ *   'db_error'        — unexpected database error
+ *   'not_configured'  — Supabase is not configured
+ */
+export async function posSetItemStatus(
+  orderItemId: string,
+  status: string,
+): Promise<PosSetItemStatusResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await posRpc.rpc('set_item_status', {
+    p_order_item_id: orderItemId,
+    p_status: status,
+  });
+
+  if (error) {
+    const msg = error.message.toUpperCase();
+    if (msg.includes('INVALID_STATUS'))      return { ok: false, reason: 'invalid_status' };
+    if (msg.includes('ITEM_NOT_FOUND'))      return { ok: false, reason: 'item_not_found' };
+    if (msg.includes('NOT_EMPLOYEE'))        return { ok: false, reason: 'no_access' };
+    if (msg.includes('NOT_AUTHENTICATED'))   return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
 }

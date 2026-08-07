@@ -35,6 +35,7 @@ import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
 import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
 import PosSplitScreen from '../screens/settings/PosSplitScreen';
+import PosPickupScreen from '../screens/settings/PosPickupScreen';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -84,6 +85,11 @@ export type PosStackParamList = {
     tableLabel: string;
     /** Optional hint for N stepper default (comes from PosTableHub's partySize). */
     partySize?: number;
+  };
+  /** Waiter pickup board — view item statuses and mark ready items as delivered. */
+  PosPickup: {
+    businessId: string;
+    businessName: string;
   };
 };
 
@@ -157,6 +163,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosCheckout" component={PosCheckoutScreen} />
           {/* PosSplit: equal-split payment screen (C11) */}
           <PosStack.Screen name="PosSplit" component={PosSplitScreen} />
+          {/* PosPickup: waiter board — item statuses + mark-as-delivered */}
+          <PosStack.Screen name="PosPickup" component={PosPickupScreen} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

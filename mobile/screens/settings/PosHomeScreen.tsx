@@ -37,6 +37,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconChevronLeft,
+  IconClipboardList,
   IconLayoutGrid,
   IconPlugConnected,
 } from '@tabler/icons-react-native';
@@ -44,6 +45,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import {
+  posPickupBoard,
   posTablesOverview,
   type PosTablesOverviewRow,
 } from '../../services/pos';
@@ -66,6 +68,7 @@ export default function PosHomeScreen() {
 
   const [tables, setTables] = useState<PosTablesOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readyCount, setReadyCount] = useState(0);
 
   // ── Reload on every focus ─────────────────────────────────────────────────
   useFocusEffect(
@@ -73,9 +76,15 @@ export default function PosHomeScreen() {
       let mounted = true;
       setLoading(true);
 
-      posTablesOverview(businessId)
-        .then((rows) => {
-          if (mounted) setTables(rows);
+      Promise.all([
+        posTablesOverview(businessId),
+        posPickupBoard(businessId).catch(() => []),
+      ])
+        .then(([rows, pickupRows]) => {
+          if (mounted) {
+            setTables(rows);
+            setReadyCount(pickupRows.filter((i) => i.item_status === 'ready').length);
+          }
         })
         .catch(() => {
           // Stay with previous data on error
@@ -268,6 +277,21 @@ export default function PosHomeScreen() {
         >
           {businessName}
         </Text>
+
+        {/* ── Órdenes (pickup board) button ────────────────────────────── */}
+        <Pressable
+          onPress={() => navigation.navigate('PosPickup', { businessId, businessName })}
+          style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('pos.ordersBtn')}
+        >
+          <IconClipboardList size={22} color={c.brand} strokeWidth={2} />
+          {readyCount > 0 && (
+            <View style={[styles.ordersBadge, { backgroundColor: c.success }]}>
+              <Text style={styles.ordersBadgeText}>{readyCount}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
@@ -429,4 +453,19 @@ const styles = StyleSheet.create({
 
   // ── Table label ──────────────────────────────────────────────────────────────
   tableLabel: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
+
+  // ── Órdenes header button ────────────────────────────────────────────────────
+  ordersButton: { padding: 6, marginLeft: 6, position: 'relative' },
+  ordersBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ordersBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 });
