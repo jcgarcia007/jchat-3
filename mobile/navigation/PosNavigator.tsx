@@ -30,6 +30,7 @@ import {
 
 import { getConnectionTokenSecret } from '../services/terminal';
 import { PosDraftProvider } from '../contexts/PosDraftContext';
+import { usePosAlerts } from '../hooks/usePosAlerts';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
@@ -96,6 +97,17 @@ export type PosStackParamList = {
 // ─── SDK initializer ──────────────────────────────────────────────────────────
 
 /**
+ * Mounts the in-app alert subscriptions while Work Mode is active.
+ * Vibrates (and eventually plays a sound) when a kitchen item flips to 'ready'
+ * or a service call is inserted for this business.
+ * Rendered inside PosDraftProvider so it shares the provider tree lifetime.
+ */
+function PosAlertsInit({ businessId }: { businessId: string }): null {
+  usePosAlerts(businessId);
+  return null;
+}
+
+/**
  * Rendered inside StripeTerminalProvider. Calls initialize() once on mount so
  * the SDK is ready to discover and connect readers. Must be a child of the
  * provider — useStripeTerminal() is unavailable above it in the tree.
@@ -148,6 +160,8 @@ export default function PosNavigator(): React.ReactElement {
       {/* PosDraftProvider must be inside the navigator so draft state persists
           across PosTableHub ↔ PosOrder navigations for the same table. */}
       <PosDraftProvider>
+        {/* In-app alert subscriptions — active exactly while Work Mode is mounted. */}
+        <PosAlertsInit businessId={businessId} />
         <PosStack.Navigator screenOptions={screenOptions}>
           {/* Pass params down to the first screen so it can read them from useRoute(). */}
           <PosStack.Screen

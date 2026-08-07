@@ -344,6 +344,10 @@ type PosRpc = {
     fn: 'set_item_status',
     params: { p_order_item_id: string; p_status: string },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_kds_settings',
+    params: { p_business_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -887,6 +891,24 @@ export async function posCreateCheck(
   return { ok: true, payment_id: row.payment_id, amount_cents: row.amount_cents };
 }
 
+// ─── Alert config types ───────────────────────────────────────────────────────
+
+export interface PosAlertConfig {
+  sound: boolean;
+  vibration: boolean;
+  tone: string; // 'ding' | 'bell' | 'chime' | 'alert' — kept for forward-compat
+}
+
+export interface PosAlertsConfig {
+  ready: PosAlertConfig;
+  service_call: PosAlertConfig;
+}
+
+const DEFAULT_ALERTS: PosAlertsConfig = {
+  ready:        { sound: true, vibration: true, tone: 'ding' },
+  service_call: { sound: true, vibration: true, tone: 'bell' },
+};
+
 // ─── posPickupBoard ───────────────────────────────────────────────────────────
 
 /**
@@ -941,4 +963,41 @@ export async function posSetItemStatus(
   }
 
   return { ok: true };
+}
+
+// ─── posKdsSettings ───────────────────────────────────────────────────────────
+
+/**
+ * Fetch the KDS alert settings for a business (sound, vibration, tone per alert
+ * type). Used by usePosAlerts to know which alerts are active.
+ *
+ * Returns safe defaults (all on) if the RPC fails so the hook always fires
+ * vibration even when the business hasn't configured alerts yet.
+ */
+export async function posKdsSettings(businessId: string): Promise<PosAlertsConfig> {
+  if (!isSupabaseConfigured) return DEFAULT_ALERTS;
+
+  const { data, error } = await posRpc.rpc('pos_kds_settings', {
+    p_business_id: businessId,
+  });
+
+  if (error || data == null) return DEFAULT_ALERTS;
+
+  const raw = data as { alerts?: Partial<{
+    ready: Partial<PosAlertConfig>;
+    service_call: Partial<PosAlertConfig>;
+  }> };
+
+  return {
+    ready: {
+      sound:     raw.alerts?.ready?.sound     ?? DEFAULT_ALERTS.ready.sound,
+      vibration: raw.alerts?.ready?.vibration ?? DEFAULT_ALERTS.ready.vibration,
+      tone:      raw.alerts?.ready?.tone      ?? DEFAULT_ALERTS.ready.tone,
+    },
+    service_call: {
+      sound:     raw.alerts?.service_call?.sound     ?? DEFAULT_ALERTS.service_call.sound,
+      vibration: raw.alerts?.service_call?.vibration ?? DEFAULT_ALERTS.service_call.vibration,
+      tone:      raw.alerts?.service_call?.tone      ?? DEFAULT_ALERTS.service_call.tone,
+    },
+  };
 }
