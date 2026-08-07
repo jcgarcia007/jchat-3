@@ -1,16 +1,17 @@
 /**
- * JChat 3.0 — AI Menu Assistant wizard (FASE 3: steps 1–3)
+ * JChat 3.0 — AI Menu Assistant wizard (steps 1–4)
  *
  * Guides a Pro owner from "what kind of business am I" to a reviewed list of
- * categories + items. NOTHING is written to the database here — persistence is
- * FASE 5 and will always insert with is_published = false.
+ * categories + items. Steps 1–3 never touch the database; step 4 is the ONLY
+ * place that writes, and everything it inserts lands as a draft
+ * (is_published = false) so the owner still decides what goes live.
  *
  * Steps
  *   1. Business  — type / what they sell / country + currency / price range
  *   2. Categories — AI suggestions (checkboxes) + "＋ add your own"
  *   3. Items      — lazy per-category suggest_items, editable price + station,
- *                   "＋ add your own"
- *   4. Refinement — placeholder, implemented in FASE 4.
+ *                   optional per-item refinement (sizes / extras)
+ *   4. Preview    — read-only review of everything selected + "Create menu"
  *
  * Plan gate: the wizard is Pro-only. The lock screen below is a UX
  * convenience — the REAL gate lives server-side in the menu-assistant Edge
@@ -35,20 +36,22 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   IconAdjustments,
+  IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
   IconBed,
-  IconBuildingStore,
   IconCheck,
   IconChefHat,
   IconChevronDown,
   IconChevronRight,
+  IconCircleCheck,
   IconCoffee,
   IconGlass,
   IconGlassCocktail,
   IconLoader2,
   IconLock,
   IconMapPin,
+  IconPhoto,
   IconPlus,
   IconSparkles,
   IconToolsKitchen2,
@@ -57,6 +60,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { Json } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
 import { readFunctionError } from "@/lib/functionError";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -170,6 +174,34 @@ const SELL_OPTIONS = [
 ] as const;
 
 const PRICE_RANGES: PriceRange[] = ["$", "$$", "$$$"];
+
+/** `menu_items.options` shape — the exact payload the manual editor persists. */
+type ItemOptions = SuggestedItem["editedOptions"];
+
+/**
+ * Renders saved options back as one readable line per group.
+ *
+ * handleSaveRefine() flattens groups into `{ sizes, extras }` with labels of the
+ * form `"<group>: <option>"`, so the group name is recovered from that prefix
+ * and the options are rejoined — e.g. `"Tamaño: Chico · Mediano · Grande"`.
+ * Rows without a prefix (or coming straight from the Edge Function) fall into a
+ * single unnamed group.
+ */
+function formatOptionGroups(options: ItemOptions): string[] {
+  if (!options) return [];
+  const rows = [...(options.sizes ?? []), ...(options.extras ?? [])];
+  if (rows.length === 0) return [];
+  const groups = new Map<string, string[]>();
+  for (const row of rows) {
+    const sep = row.label.indexOf(": ");
+    const groupLabel = sep > 0 ? row.label.slice(0, sep) : "";
+    const optionLabel = sep > 0 ? row.label.slice(sep + 2) : row.label;
+    groups.set(groupLabel, [...(groups.get(groupLabel) ?? []), optionLabel]);
+  }
+  return [...groups.entries()].map(([groupLabel, values]) =>
+    groupLabel ? `${groupLabel}: ${values.join(" · ")}` : values.join(" · "),
+  );
+}
 
 // ── Small shared UI pieces (token-only styling) ───────────────────────────────
 
@@ -533,6 +565,16 @@ export default function MenuAssistantPage() {
     Record<string, { label: string; type: "single" | "multi"; show: boolean }>
   >({});
 
+  // Step 4 — persistence. Local to the page on purpose: the wizard payload
+  // (WizardState) describes what the owner chose, not what already reached the
+  // database. `createSuccess` is a one-way latch: once the menu exists, the
+  // button is gone and the only way back is the menu editor.
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<{ categoryCount: number; itemCount: number } | null>(
+    null,
+  );
+
   // ── Boot: resolve the active business, its plan and its country ─────────────
   useEffect(() => {
     let alive = true;
@@ -877,6 +919,114 @@ export default function MenuAssistantPage() {
     },
     [updateItem],
   );
+
+  // ── Step 4 → create the menu (the only DB write in the wizard) ─────────────
+  //
+  // Insert order matters: categories first (so every item has a category_id),
+  // then the items of each category. A category whose name already exists for
+  // this business is REUSED rather than duplicated — running the wizard twice
+  // must not leave the owner with two "Bebidas".
+  //
+  // Everything is inserted with is_published = false. The owner reviews the
+  // draft in /dashboard/menu and publishes there.
+  const handleCreateMenu = useCallback(async () => {
+    if (!businessId) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      // 1. Existing categories → name (case-insensitive) → id, so we can reuse.
+      const { data: existingCats, error: catsErr } = await supabase
+        .from("menu_categories")
+        .select("id, name")
+        .eq("business_id", businessId)
+        .order("sort", { ascending: true });
+      if (catsErr) throw catsErr;
+
+      const existingByName = new Map<string, string>(
+        (existingCats ?? []).map((c: { id: string; name: string }) => [c.name.trim().toLowerCase(), c.id]),
+      );
+
+      // New categories are appended after whatever the owner already had.
+      const baseSort = (existingCats ?? []).length;
+
+      // 2. Create the missing categories and resolve every id.
+      const categoryIdMap = new Map<string, string>();
+      let newCatCount = 0;
+      for (const catName of state.selectedCategories) {
+        const key = catName.trim().toLowerCase();
+        const existingId = existingByName.get(key);
+        if (existingId) {
+          categoryIdMap.set(catName, existingId);
+        } else {
+          const { data: newCat, error: catErr } = await supabase
+            .from("menu_categories")
+            .insert({
+              business_id: businessId,
+              name: catName.trim(),
+              sort: baseSort + newCatCount,
+              is_published: false,
+            } as never)
+            .select("id")
+            .single();
+          if (catErr) throw catErr;
+          categoryIdMap.set(catName, (newCat as { id: string }).id);
+          newCatCount++;
+        }
+      }
+
+      // 3. Insert the selected items of each category.
+      let itemCount = 0;
+      for (const catName of state.selectedCategories) {
+        const catId = categoryIdMap.get(catName);
+        if (!catId) continue;
+        const items = (state.itemsByCategory[catName] ?? []).filter((it) => it.selected);
+        if (items.length === 0) continue;
+
+        // Append after the category's current items (relevant when the category
+        // was reused instead of created).
+        const { data: existingItems } = await supabase
+          .from("menu_items")
+          .select("sort")
+          .eq("category_id", catId)
+          .order("sort", { ascending: false })
+          .limit(1);
+        let nextSort = ((existingItems?.[0] as { sort?: number } | undefined)?.sort ?? -1) + 1;
+
+        for (const item of items) {
+          const priceCents =
+            item.editedPrice != null ? Math.round(item.editedPrice * 100) : item.price_cents;
+
+          const dbPayload = {
+            business_id: businessId,
+            category_id: catId,
+            name: item.name,
+            description: item.description_es || null,
+            description_alt: item.description_en || null,
+            price_cents: priceCents,
+            station: item.editedStation ?? item.station,
+            dietary_tags: item.tags,
+            // Items the owner never refined save the empty shape the manual
+            // editor also writes, so both paths produce identical rows.
+            options: (item.editedOptions ?? { sizes: [], extras: [] }) as unknown as Json,
+            is_published: false,
+            is_available: true,
+            sort: nextSort,
+          };
+          const { error: itemErr } = await supabase.from("menu_items").insert(dbPayload as never);
+          if (itemErr) throw itemErr;
+          nextSort++;
+          itemCount++;
+        }
+      }
+
+      setCreateSuccess({ categoryCount: newCatCount, itemCount });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setCreateError(msg);
+    } finally {
+      setCreating(false);
+    }
+  }, [businessId, state.selectedCategories, state.itemsByCategory]);
 
   // ── Render guards ──────────────────────────────────────────────────────────
 
@@ -2163,21 +2313,323 @@ export default function MenuAssistantPage() {
         </Card>
       )}
 
-      {/* ── Step 4 — placeholder (FASE 4) ─────────────────────────────────── */}
-      {state.step === 4 && (
+      {/* ── Step 4 — Preview + create ─────────────────────────────────────── */}
+      {state.step === 4 && createSuccess && (
         <Card>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "24px 0", textAlign: "center" }}>
-            <IconBuildingStore size={40} color="var(--db-accent)" />
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
-              {t("step4Placeholder")}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "14px",
+              padding: "28px 0 12px",
+              textAlign: "center",
+            }}
+          >
+            <IconCircleCheck size={56} color="var(--db-success)" />
+            <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--db-text-primary)", margin: 0 }}>
+              {t("successTitle")}
             </h2>
-            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0, maxWidth: 440, lineHeight: 1.5 }}>
-              {t("step4Description")}
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--db-text-secondary)",
+                margin: 0,
+                maxWidth: 420,
+                lineHeight: 1.6,
+              }}
+            >
+              {t("successBody", { count: createSuccess.itemCount })}
             </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                marginTop: "6px",
+              }}
+            >
+              <Link
+                href="/dashboard/menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "11px 22px",
+                  borderRadius: "var(--db-radius)",
+                  background: "var(--db-accent)",
+                  color: "var(--db-accent-text)",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                {t("goToEditor")}
+                <IconArrowRight size={16} />
+              </Link>
+              {/* Photos live in the manual editor (same destination, different intent). */}
+              <Link
+                href="/dashboard/menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "11px 18px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  color: "var(--db-text-secondary)",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                <IconPhoto size={16} />
+                {t("addPhotos")}
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {state.step === 4 && !createSuccess && (
+        <Card>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "12px",
+            }}
+          >
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+              {t("previewTitle")}
+            </h2>
+            <span
+              style={{
+                padding: "3px 10px",
+                borderRadius: "999px",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-text-tertiary)",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("previewBadge")}
+            </span>
+          </div>
+
+          {/* Not-yet-published notice */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              padding: "12px 16px",
+              borderRadius: "var(--db-radius)",
+              border: "1px solid var(--db-warning)",
+              background: "color-mix(in srgb, var(--db-warning) 10%, transparent)",
+              color: "var(--db-text-secondary)",
+              fontSize: "13px",
+              lineHeight: 1.5,
+              marginBottom: "24px",
+            }}
+          >
+            <IconAlertTriangle size={17} color="var(--db-warning)" style={{ flexShrink: 0, marginTop: "1px" }} />
+            <span>{t("previewBanner")}</span>
+          </div>
+
+          {/* Categories → items */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+            {orderedSelectedCategories.map((categoryName) => {
+              const emoji = state.suggestedCategories.find((c) => c.name === categoryName)?.emoji;
+              const items = (state.itemsByCategory[categoryName] ?? []).filter((it) => it.selected);
+              return (
+                <section key={categoryName}>
+                  <h3
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--db-text-secondary)",
+                      margin: "0 0 12px",
+                      paddingBottom: "8px",
+                      borderBottom: "1px solid var(--db-border)",
+                    }}
+                  >
+                    {emoji && <span style={{ fontSize: "16px" }}>{emoji}</span>}
+                    {categoryName}
+                  </h3>
+
+                  {items.length === 0 ? (
+                    <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", margin: 0 }}>
+                      {t("previewSectionEmpty")}
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {items.map((item, index) => {
+                        const price = item.editedPrice ?? item.price_cents / 100;
+                        const optionLines = formatOptionGroups(item.editedOptions);
+                        return (
+                          <article
+                            key={`${categoryName}-preview-${index}-${item.name}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: "16px",
+                              padding: "14px 16px",
+                              borderRadius: "12px",
+                              border: "1px solid var(--db-border)",
+                              background: "var(--db-bg-elevated)",
+                              transition: "border-color 0.15s ease",
+                            }}
+                          >
+                            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontSize: "14px",
+                                  fontWeight: 700,
+                                  color: "var(--db-text-primary)",
+                                }}
+                              >
+                                {item.name}
+                              </div>
+
+                              {item.description_es && (
+                                <p
+                                  style={{
+                                    fontSize: "12.5px",
+                                    color: "var(--db-text-tertiary)",
+                                    lineHeight: 1.5,
+                                    margin: "4px 0 0",
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                  }}
+                                >
+                                  {item.description_es}
+                                </p>
+                              )}
+
+                              {item.tags.length > 0 && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: "6px",
+                                    marginTop: "8px",
+                                  }}
+                                >
+                                  {item.tags.map((tag) => (
+                                    <span
+                                      key={tag}
+                                      style={{
+                                        padding: "2px 9px",
+                                        borderRadius: "999px",
+                                        border: "1px solid var(--db-border)",
+                                        background: "var(--db-bg-card)",
+                                        color: "var(--db-text-tertiary)",
+                                        fontSize: "11px",
+                                      }}
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {optionLines.length > 0 && (
+                                <div style={{ marginTop: "8px" }}>
+                                  <span
+                                    style={{
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                      color: "var(--db-text-tertiary)",
+                                      letterSpacing: "0.04em",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {t("previewOptionsLabel")}
+                                  </span>
+                                  {optionLines.map((line) => (
+                                    <div
+                                      key={line}
+                                      style={{
+                                        fontSize: "12px",
+                                        color: "var(--db-text-tertiary)",
+                                        lineHeight: 1.5,
+                                        marginTop: "2px",
+                                      }}
+                                    >
+                                      {line}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div
+                              style={{
+                                flexShrink: 0,
+                                fontSize: "14px",
+                                fontWeight: 700,
+                                color: "var(--db-text-primary)",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {`${price.toFixed(2)} ${state.currency}`}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+
+          {createError && (
+            <div style={{ marginTop: "24px" }}>
+              <ErrorBanner message={`${t("createError")} — ${createError}`} />
+            </div>
+          )}
+
+          {/* Footer */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginTop: createError ? "0" : "28px",
+              paddingTop: "18px",
+              borderTop: "1px solid var(--db-border)",
+              flexWrap: "wrap",
+            }}
+          >
             <GhostButton onClick={() => setState((s) => ({ ...s, step: 3 }))}>
               <IconArrowLeft size={16} />
               {t("backButton")}
             </GhostButton>
+            <PrimaryButton
+              onClick={() => void handleCreateMenu()}
+              disabled={creating || totalSelectedItems === 0}
+            >
+              {creating ? <Spinner /> : <IconCheck size={17} />}
+              {creating ? t("creating") : t("createButton", { count: totalSelectedItems })}
+            </PrimaryButton>
           </div>
         </Card>
       )}

@@ -2380,6 +2380,18 @@
     "refineNewGroupLabelPlaceholder": "Nombre del grupo",
     "refineSave": "Guardar opciones",
     "refineClose": "Cerrar",
-    "refineDeleteGroup": "Eliminar grupo"
+    "refineDeleteGroup": "Eliminar grupo",
+    "previewTitle": "Revisa tu menú",
+    "previewBadge": "Vista previa",
+    "previewBanner": "Aún no publicado — podrás ajustarlo antes de mostrarlo a tus clientes.",
+    "previewSectionEmpty": "No hay artículos seleccionados en esta categoría.",
+    "previewOptionsLabel": "Opciones:",
+    "createButton": "Crear menú ({count} artículos)",
+    "creating": "Creando…",
+    "createError": "Algunos artículos no se pudieron guardar. Revisa tu conexión e inténtalo de nuevo.",
+    "successTitle": "¡Menú creado!",
+    "successBody": "{count, plural, one {# artículo añadido como borrador.} other {# artículos añadidos como borrador.}}",
+    "goToEditor": "Ir a mi editor de menú",
+    "addPhotos": "Agregar fotos"
   }
 }

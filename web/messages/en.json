@@ -2380,6 +2380,18 @@
     "refineNewGroupLabelPlaceholder": "Group name",
     "refineSave": "Save options",
     "refineClose": "Close",
-    "refineDeleteGroup": "Remove group"
+    "refineDeleteGroup": "Remove group",
+    "previewTitle": "Review your menu",
+    "previewBadge": "Preview",
+    "previewBanner": "Not yet published — you can adjust it before showing it to customers.",
+    "previewSectionEmpty": "No items selected in this category.",
+    "previewOptionsLabel": "Options:",
+    "createButton": "Create menu ({count} items)",
+    "creating": "Creating…",
+    "createError": "Some items could not be saved. Check your connection and try again.",
+    "successTitle": "Menu created!",
+    "successBody": "{count, plural, one {# item added as draft.} other {# items added as draft.}}",
+    "goToEditor": "Go to my menu editor",
+    "addPhotos": "Add photos"
   }
 }
