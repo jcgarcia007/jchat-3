@@ -2365,6 +2365,21 @@
     "itemPricePlaceholder": "Precio",
     "totalSelectedItems": "{count, plural, =0 {Ningún artículo seleccionado} one {# artículo seleccionado en total} other {# artículos seleccionados en total}}",
     "step4Placeholder": "Paso 4 — Refinamiento (próximamente)",
-    "step4Description": "Aquí podrás refinar variaciones, tamaños y extras de cada artículo antes de guardarlos en tu menú."
+    "step4Description": "Aquí podrás refinar variaciones, tamaños y extras de cada artículo antes de guardarlos en tu menú.",
+    "refineButton": "Detallar",
+    "refineSaved": "✓ Detallado",
+    "refineGenerating": "Generando opciones…",
+    "refineError": "No se pudieron cargar las opciones. Inténtalo de nuevo.",
+    "refineRetry": "Reintentar",
+    "refineGroupSingle": "Elige uno",
+    "refineGroupMulti": "Elige varios",
+    "refineAddOption": "+ Otra opción",
+    "refineOptionLabelPlaceholder": "Nombre de la opción",
+    "refinePriceDeltaPlaceholder": "Precio adicional (0)",
+    "refineAddGroup": "+ Agregar grupo",
+    "refineNewGroupLabelPlaceholder": "Nombre del grupo",
+    "refineSave": "Guardar opciones",
+    "refineClose": "Cerrar",
+    "refineDeleteGroup": "Eliminar grupo"
   }
 }

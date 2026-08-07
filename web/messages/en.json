@@ -2365,6 +2365,21 @@
     "itemPricePlaceholder": "Price",
     "totalSelectedItems": "{count, plural, =0 {No items selected} one {# item selected in total} other {# items selected in total}}",
     "step4Placeholder": "Step 4 — Refinement (coming soon)",
-    "step4Description": "Here you'll refine variations, sizes and extras for each item before saving them to your menu."
+    "step4Description": "Here you'll refine variations, sizes and extras for each item before saving them to your menu.",
+    "refineButton": "Customize",
+    "refineSaved": "✓ Customized",
+    "refineGenerating": "Generating options…",
+    "refineError": "Could not load options. Try again.",
+    "refineRetry": "Retry",
+    "refineGroupSingle": "Pick one",
+    "refineGroupMulti": "Pick multiple",
+    "refineAddOption": "+ Add option",
+    "refineOptionLabelPlaceholder": "Option name",
+    "refinePriceDeltaPlaceholder": "Extra price (0)",
+    "refineAddGroup": "+ Add group",
+    "refineNewGroupLabelPlaceholder": "Group name",
+    "refineSave": "Save options",
+    "refineClose": "Close",
+    "refineDeleteGroup": "Remove group"
   }
 }

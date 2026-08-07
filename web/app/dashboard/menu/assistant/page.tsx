@@ -34,6 +34,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
+  IconAdjustments,
   IconArrowLeft,
   IconArrowRight,
   IconBed,
@@ -51,7 +52,9 @@ import {
   IconPlus,
   IconSparkles,
   IconToolsKitchen2,
+  IconTrash,
   IconTruck,
+  IconX,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -71,6 +74,19 @@ interface SuggestedCategory {
   rationale: string;
 }
 
+/** One choice inside a refined group. `price_delta_cents` is added to the item price. */
+interface RefinedOptionRow {
+  label: string;
+  price_delta_cents: number;
+}
+
+/** A refinement group the owner can edit in place (add/remove options, delete group). */
+interface MutableRefinedGroup {
+  label: string;
+  type: "single" | "multi";
+  options: RefinedOptionRow[];
+}
+
 interface SuggestedItem {
   name: string;
   description_es: string;
@@ -82,6 +98,24 @@ interface SuggestedItem {
   /** Owner override, in whole currency units (not cents). */
   editedPrice?: number;
   editedStation?: Station;
+
+  // ── Refinement (FASE 4) ──────────────────────────────────────────────────
+  /** Inline refinement panel open/closed. */
+  refineExpanded?: boolean;
+  /** refine_item in flight. */
+  refineLoading?: boolean;
+  /** refine_item already resolved once — never call it again for this item. */
+  refineLoaded?: boolean;
+  refineError?: string;
+  /** Editable groups shown as chips in the panel. */
+  refinedGroups?: MutableRefinedGroup[];
+  /** Saved result, already in the shape of `menu_items.options` (FASE 5 insert). */
+  editedOptions?: {
+    sizes: { label: string; price_cents: number }[];
+    extras: { label: string; price_cents: number }[];
+  };
+  /** Raw `modifier_groups` rows from the Edge Function, kept verbatim. */
+  modifier_groups?: unknown;
 }
 
 interface WizardState {
@@ -490,6 +524,15 @@ export default function MenuAssistantPage() {
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
   const [newItemDraft, setNewItemDraft] = useState<Record<string, { name: string; price: string }>>({});
 
+  // Refinement panel inputs (FASE 4) — purely ephemeral, never part of the wizard
+  // payload. Key = `${categoryName}|||${itemIndex}|||${groupIndex}`; the presence
+  // of a key means the mini-input for that group is open.
+  const [newOptInputs, setNewOptInputs] = useState<Record<string, { label: string; delta: string }>>({});
+  // Key = `${categoryName}|||${itemIndex}` — the "add group" form of that item.
+  const [addingGroupMap, setAddingGroupMap] = useState<
+    Record<string, { label: string; type: "single" | "multi"; show: boolean }>
+  >({});
+
   // ── Boot: resolve the active business, its plan and its country ─────────────
   useEffect(() => {
     let alive = true;
@@ -664,12 +707,24 @@ export default function MenuAssistantPage() {
   );
 
   // ── Item mutators ──────────────────────────────────────────────────────────
+  /**
+   * Patch one item. `patch` is either a plain partial or a function of the
+   * current item — the functional form is what the refinement helpers need to
+   * derive the next `refinedGroups` from the previous ones without reading
+   * stale state.
+   */
   const updateItem = useCallback(
-    (category: string, index: number, patch: Partial<SuggestedItem>) => {
+    (
+      category: string,
+      index: number,
+      patch: Partial<SuggestedItem> | ((item: SuggestedItem) => Partial<SuggestedItem>),
+    ) => {
       setState((s) => {
         const list = s.itemsByCategory[category];
         if (!list) return s;
-        const next = list.map((it, i) => (i === index ? { ...it, ...patch } : it));
+        const next = list.map((it, i) =>
+          i === index ? { ...it, ...(typeof patch === "function" ? patch(it) : patch) } : it,
+        );
         return { ...s, itemsByCategory: { ...s.itemsByCategory, [category]: next } };
       });
     },
@@ -707,6 +762,120 @@ export default function MenuAssistantPage() {
       setNewItemDraft((d) => ({ ...d, [category]: { name: "", price: "" } }));
     },
     [newItemDraft],
+  );
+
+  // ── Refinement (FASE 4) ────────────────────────────────────────────────────
+  //
+  // Refining is OPTIONAL and per item: an item the owner never expands keeps
+  // exactly the shape it had after step 3. The refine_item response is cached
+  // on the item itself (refineLoaded) so reopening the panel never re-bills a
+  // model call.
+
+  const handleOpenRefine = useCallback(
+    async (categoryName: string, index: number, item: SuggestedItem) => {
+      // Toggle close
+      if (item.refineExpanded) {
+        updateItem(categoryName, index, { refineExpanded: false });
+        return;
+      }
+      // Open
+      updateItem(categoryName, index, { refineExpanded: true });
+      // Already loaded → just show what we have (edits included)
+      if (item.refineLoaded) return;
+
+      updateItem(categoryName, index, { refineLoading: true, refineError: undefined });
+      try {
+        const result = await callAssistant<{
+          groups: MutableRefinedGroup[];
+          options: {
+            sizes: { label: string; price_cents: number }[];
+            extras: { label: string; price_cents: number }[];
+          };
+          modifier_groups: unknown;
+        }>("refine_item", {
+          item_name: item.name,
+          category_name: categoryName,
+          business_type: state.businessType,
+          country: state.country,
+        });
+        updateItem(categoryName, index, {
+          refineLoading: false,
+          refineLoaded: true,
+          refinedGroups: result.groups ?? [],
+          modifier_groups: result.modifier_groups,
+          // The EF already returns `options` in the manual-editor shape; keep it
+          // as the initial saved value so an untouched panel is still usable.
+          editedOptions: result.options,
+        });
+      } catch (err) {
+        updateItem(categoryName, index, {
+          refineLoading: false,
+          refineError: err instanceof Error ? err.message : t("refineError"),
+        });
+      }
+    },
+    [state.businessType, state.country, callAssistant, updateItem, t],
+  );
+
+  /** groups → { sizes, extras }: the exact shape of `menu_items.options`. */
+  const handleSaveRefine = useCallback(
+    (categoryName: string, index: number, item: SuggestedItem) => {
+      const groups = item.refinedGroups ?? [];
+      const sizes: { label: string; price_cents: number }[] = [];
+      const extras: { label: string; price_cents: number }[] = [];
+      for (const g of groups) {
+        for (const opt of g.options) {
+          const row = { label: `${g.label}: ${opt.label}`, price_cents: opt.price_delta_cents };
+          if (g.type === "single") sizes.push(row);
+          else extras.push(row);
+        }
+      }
+      updateItem(categoryName, index, {
+        editedOptions: { sizes, extras },
+        refineExpanded: false,
+      });
+    },
+    [updateItem],
+  );
+
+  const addOptionToGroup = useCallback(
+    (categoryName: string, itemIdx: number, groupIdx: number, opt: RefinedOptionRow) => {
+      updateItem(categoryName, itemIdx, (item: SuggestedItem) => ({
+        refinedGroups: (item.refinedGroups ?? []).map((g, gi) =>
+          gi === groupIdx ? { ...g, options: [...g.options, opt] } : g,
+        ),
+      }));
+    },
+    [updateItem],
+  );
+
+  const removeOptionFromGroup = useCallback(
+    (categoryName: string, itemIdx: number, groupIdx: number, optIdx: number) => {
+      updateItem(categoryName, itemIdx, (item: SuggestedItem) => ({
+        refinedGroups: (item.refinedGroups ?? []).map((g, gi) =>
+          gi === groupIdx ? { ...g, options: g.options.filter((_, oi) => oi !== optIdx) } : g,
+        ),
+      }));
+    },
+    [updateItem],
+  );
+
+  const addGroup = useCallback(
+    (categoryName: string, itemIdx: number, group: MutableRefinedGroup) => {
+      updateItem(categoryName, itemIdx, (item: SuggestedItem) => ({
+        refinedGroups: [...(item.refinedGroups ?? []), group],
+      }));
+    },
+    [updateItem],
+  );
+
+  const removeGroup = useCallback(
+    (categoryName: string, itemIdx: number, groupIdx: number) => {
+      updateItem(categoryName, itemIdx, (item: SuggestedItem) => ({
+        refinedGroups: (item.refinedGroups ?? []).filter((_, gi) => gi !== groupIdx),
+      }));
+    },
+    [updateItem],
   );
 
   // ── Render guards ──────────────────────────────────────────────────────────
@@ -1226,15 +1395,20 @@ export default function MenuAssistantPage() {
                       {list.map((item, index) => {
                         const station = item.editedStation ?? item.station;
                         const priceValue = item.editedPrice ?? item.price_cents / 100;
+                        // Ephemeral-input keys for this item's refinement panel.
+                        const itemKey = `${categoryName}|||${index}`;
+                        const groupForm = addingGroupMap[itemKey];
                         return (
                           <div
                             key={`${categoryName}-${index}-${item.name}`}
+                            style={{ borderTop: "1px solid var(--db-border)" }}
+                          >
+                          <div
                             style={{
                               display: "flex",
                               alignItems: "flex-start",
                               gap: "12px",
                               padding: "12px 0",
-                              borderTop: "1px solid var(--db-border)",
                             }}
                           >
                             <input
@@ -1339,8 +1513,558 @@ export default function MenuAssistantPage() {
                                     {tag}
                                   </span>
                                 ))}
+
+                                {/* Refine (FASE 4) — optional, per item */}
+                                <button
+                                  type="button"
+                                  onClick={() => void handleOpenRefine(categoryName, index, item)}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    padding: "6px 12px",
+                                    borderRadius: "var(--db-radius)",
+                                    border: item.refineExpanded
+                                      ? "2px solid var(--db-accent)"
+                                      : item.editedOptions
+                                      ? "1px solid var(--db-success)"
+                                      : "1px solid var(--db-border)",
+                                    background: item.refineExpanded
+                                      ? "var(--db-accent-bg)"
+                                      : item.editedOptions
+                                      ? "color-mix(in srgb, var(--db-success) 10%, transparent)"
+                                      : "var(--db-bg-card)",
+                                    color: item.refineExpanded
+                                      ? "var(--db-accent)"
+                                      : item.editedOptions
+                                      ? "var(--db-success)"
+                                      : "var(--db-text-secondary)",
+                                    fontSize: "12px",
+                                    fontWeight: item.refineExpanded || item.editedOptions ? 700 : 500,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  <IconAdjustments size={13} />
+                                  {item.editedOptions ? t("refineSaved") : t("refineButton")}
+                                </button>
                               </div>
                             </div>
+                          </div>
+
+                          {/* ── Refinement panel (FASE 4) ─────────────────── */}
+                          {item.refineExpanded && (
+                            <div
+                              style={{
+                                background: "var(--db-bg-card)",
+                                borderTop: "1px solid var(--db-border)",
+                                padding: "16px",
+                                borderRadius: "0 0 12px 12px",
+                                marginBottom: "12px",
+                              }}
+                            >
+                              {item.refineLoading && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "10px",
+                                    fontSize: "13px",
+                                    color: "var(--db-text-secondary)",
+                                  }}
+                                >
+                                  <Spinner />
+                                  {t("refineGenerating")}
+                                </div>
+                              )}
+
+                              {!item.refineLoading && item.refineError && (
+                                <>
+                                  <ErrorBanner message={item.refineError} />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void handleOpenRefine(categoryName, index, {
+                                        ...item,
+                                        refineExpanded: false,
+                                      })
+                                    }
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "6px",
+                                      padding: "8px 16px",
+                                      borderRadius: "var(--db-radius)",
+                                      border: "1px solid var(--db-border)",
+                                      background: "var(--db-bg-elevated)",
+                                      color: "var(--db-text-secondary)",
+                                      fontSize: "13px",
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    <IconSparkles size={14} />
+                                    {t("refineRetry")}
+                                  </button>
+                                </>
+                              )}
+
+                              {!item.refineLoading && !item.refineError && (
+                                <>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                    {(item.refinedGroups ?? []).map((group, groupIdx) => {
+                                      const optKey = `${itemKey}|||${groupIdx}`;
+                                      const optDraft = newOptInputs[optKey];
+                                      return (
+                                        <div key={`${group.label}-${groupIdx}`}>
+                                          {/* Group header */}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "8px",
+                                              flexWrap: "wrap",
+                                              marginBottom: "8px",
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                fontSize: "13px",
+                                                fontWeight: 700,
+                                                color: "var(--db-text-primary)",
+                                              }}
+                                            >
+                                              {group.label}
+                                            </span>
+                                            <span
+                                              style={{
+                                                padding: "2px 7px",
+                                                borderRadius: "4px",
+                                                background: "var(--db-bg-elevated)",
+                                                border: "1px solid var(--db-border)",
+                                                color: "var(--db-text-tertiary)",
+                                                fontSize: "10px",
+                                                fontWeight: 600,
+                                                letterSpacing: "0.03em",
+                                                textTransform: "uppercase",
+                                              }}
+                                            >
+                                              {group.type === "single"
+                                                ? t("refineGroupSingle")
+                                                : t("refineGroupMulti")}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              title={t("refineDeleteGroup")}
+                                              aria-label={t("refineDeleteGroup")}
+                                              onClick={() => removeGroup(categoryName, index, groupIdx)}
+                                              style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                padding: "3px",
+                                                border: "none",
+                                                background: "transparent",
+                                                color: "var(--db-text-tertiary)",
+                                                cursor: "pointer",
+                                                transition: "color 0.15s ease",
+                                              }}
+                                            >
+                                              <IconTrash size={14} />
+                                            </button>
+                                          </div>
+
+                                          {/* Option chips */}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              flexWrap: "wrap",
+                                              gap: "8px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            {group.options.map((opt, optIdx) => (
+                                              <span
+                                                key={`${opt.label}-${optIdx}`}
+                                                style={{
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  gap: "6px",
+                                                  padding: "6px 10px 6px 14px",
+                                                  borderRadius: "999px",
+                                                  border: "1px solid var(--db-border)",
+                                                  background: "var(--db-bg-elevated)",
+                                                  color: "var(--db-text-secondary)",
+                                                  fontSize: "12px",
+                                                  transition: "all 0.15s ease",
+                                                }}
+                                              >
+                                                {opt.label}
+                                                {opt.price_delta_cents > 0 && (
+                                                  <span
+                                                    style={{
+                                                      color: "var(--db-text-tertiary)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {`+${state.currency} ${(opt.price_delta_cents / 100).toFixed(2)}`}
+                                                  </span>
+                                                )}
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    removeOptionFromGroup(categoryName, index, groupIdx, optIdx)
+                                                  }
+                                                  style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    padding: 0,
+                                                    border: "none",
+                                                    background: "transparent",
+                                                    color: "var(--db-text-tertiary)",
+                                                    cursor: "pointer",
+                                                  }}
+                                                >
+                                                  <IconX size={13} />
+                                                </button>
+                                              </span>
+                                            ))}
+
+                                            {/* New option: dashed chip → mini form */}
+                                            {optDraft ? (
+                                              <span
+                                                style={{
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  gap: "6px",
+                                                  flexWrap: "wrap",
+                                                }}
+                                              >
+                                                <input
+                                                  type="text"
+                                                  autoFocus
+                                                  value={optDraft.label}
+                                                  onChange={(e) =>
+                                                    setNewOptInputs((m) => ({
+                                                      ...m,
+                                                      [optKey]: { ...optDraft, label: e.target.value },
+                                                    }))
+                                                  }
+                                                  placeholder={t("refineOptionLabelPlaceholder")}
+                                                  style={{
+                                                    ...inputStyle,
+                                                    width: "160px",
+                                                    padding: "6px 10px",
+                                                    fontSize: "12px",
+                                                  }}
+                                                />
+                                                <input
+                                                  type="number"
+                                                  min={0}
+                                                  step="0.01"
+                                                  value={optDraft.delta}
+                                                  onChange={(e) =>
+                                                    setNewOptInputs((m) => ({
+                                                      ...m,
+                                                      [optKey]: { ...optDraft, delta: e.target.value },
+                                                    }))
+                                                  }
+                                                  placeholder={t("refinePriceDeltaPlaceholder")}
+                                                  style={{
+                                                    ...inputStyle,
+                                                    width: "120px",
+                                                    padding: "6px 10px",
+                                                    fontSize: "12px",
+                                                  }}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const label = optDraft.label.trim();
+                                                    if (!label) return;
+                                                    const units = Number.parseFloat(optDraft.delta);
+                                                    addOptionToGroup(categoryName, index, groupIdx, {
+                                                      label,
+                                                      price_delta_cents: Number.isFinite(units)
+                                                        ? Math.max(0, Math.round(units * 100))
+                                                        : 0,
+                                                    });
+                                                    setNewOptInputs((m) => {
+                                                      const next = { ...m };
+                                                      delete next[optKey];
+                                                      return next;
+                                                    });
+                                                  }}
+                                                  style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    padding: "7px 10px",
+                                                    borderRadius: "var(--db-radius)",
+                                                    border: "none",
+                                                    background: "var(--db-accent)",
+                                                    color: "var(--db-accent-text)",
+                                                    cursor: "pointer",
+                                                  }}
+                                                >
+                                                  <IconCheck size={14} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setNewOptInputs((m) => {
+                                                      const next = { ...m };
+                                                      delete next[optKey];
+                                                      return next;
+                                                    })
+                                                  }
+                                                  style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    padding: "7px",
+                                                    border: "none",
+                                                    background: "transparent",
+                                                    color: "var(--db-text-tertiary)",
+                                                    cursor: "pointer",
+                                                  }}
+                                                >
+                                                  <IconX size={14} />
+                                                </button>
+                                              </span>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setNewOptInputs((m) => ({
+                                                    ...m,
+                                                    [optKey]: { label: "", delta: "" },
+                                                  }))
+                                                }
+                                                style={{
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  gap: "4px",
+                                                  padding: "6px 14px",
+                                                  borderRadius: "999px",
+                                                  border: "1.5px dashed var(--db-accent)",
+                                                  background: "var(--db-accent-bg)",
+                                                  color: "var(--db-accent)",
+                                                  fontSize: "12px",
+                                                  fontWeight: 600,
+                                                  cursor: "pointer",
+                                                  transition: "all 0.15s ease",
+                                                }}
+                                              >
+                                                {t("refineAddOption")}
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Add group */}
+                                  <div style={{ marginTop: "16px" }}>
+                                    {groupForm?.show ? (
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          flexWrap: "wrap",
+                                        }}
+                                      >
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          value={groupForm.label}
+                                          onChange={(e) =>
+                                            setAddingGroupMap((m) => ({
+                                              ...m,
+                                              [itemKey]: { ...groupForm, label: e.target.value },
+                                            }))
+                                          }
+                                          placeholder={t("refineNewGroupLabelPlaceholder")}
+                                          style={{
+                                            ...inputStyle,
+                                            width: "190px",
+                                            padding: "7px 10px",
+                                            fontSize: "12px",
+                                          }}
+                                        />
+                                        <span
+                                          style={{
+                                            display: "inline-flex",
+                                            borderRadius: "var(--db-radius)",
+                                            border: "1px solid var(--db-border)",
+                                            overflow: "hidden",
+                                          }}
+                                        >
+                                          {(["single", "multi"] as const).map((gt, gi) => {
+                                            const sel = groupForm.type === gt;
+                                            return (
+                                              <button
+                                                key={gt}
+                                                type="button"
+                                                onClick={() =>
+                                                  setAddingGroupMap((m) => ({
+                                                    ...m,
+                                                    [itemKey]: { ...groupForm, type: gt },
+                                                  }))
+                                                }
+                                                style={{
+                                                  padding: "7px 14px",
+                                                  border: "none",
+                                                  borderLeft: gi > 0 ? "1px solid var(--db-border)" : "none",
+                                                  background: sel ? "var(--db-accent)" : "var(--db-bg-elevated)",
+                                                  color: sel
+                                                    ? "var(--db-accent-text)"
+                                                    : "var(--db-text-secondary)",
+                                                  fontSize: "12px",
+                                                  fontWeight: sel ? 700 : 500,
+                                                  cursor: "pointer",
+                                                  transition: "all 0.15s ease",
+                                                }}
+                                              >
+                                                {gt === "single" ? t("refineGroupSingle") : t("refineGroupMulti")}
+                                              </button>
+                                            );
+                                          })}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const label = groupForm.label.trim();
+                                            if (!label) return;
+                                            addGroup(categoryName, index, {
+                                              label,
+                                              type: groupForm.type,
+                                              options: [],
+                                            });
+                                            setAddingGroupMap((m) => ({
+                                              ...m,
+                                              [itemKey]: { label: "", type: "single", show: false },
+                                            }));
+                                          }}
+                                          style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "6px",
+                                            padding: "8px 14px",
+                                            borderRadius: "var(--db-radius)",
+                                            border: "none",
+                                            background: "var(--db-accent)",
+                                            color: "var(--db-accent-text)",
+                                            fontSize: "12px",
+                                            fontWeight: 700,
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <IconPlus size={14} />
+                                          {t("addButton")}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setAddingGroupMap((m) => ({
+                                              ...m,
+                                              [itemKey]: { label: "", type: "single", show: false },
+                                            }))
+                                          }
+                                          style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            padding: "8px",
+                                            border: "none",
+                                            background: "transparent",
+                                            color: "var(--db-text-tertiary)",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <IconX size={14} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setAddingGroupMap((m) => ({
+                                            ...m,
+                                            [itemKey]: { label: "", type: "single", show: true },
+                                          }))
+                                        }
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "5px",
+                                          padding: "8px 16px",
+                                          borderRadius: "var(--db-radius)",
+                                          border: "1.5px dashed var(--db-accent)",
+                                          background: "var(--db-accent-bg)",
+                                          color: "var(--db-accent)",
+                                          fontSize: "12px",
+                                          fontWeight: 700,
+                                          cursor: "pointer",
+                                          transition: "all 0.15s ease",
+                                        }}
+                                      >
+                                        {t("refineAddGroup")}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Panel footer */}
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                      gap: "10px",
+                                      marginTop: "18px",
+                                      paddingTop: "14px",
+                                      borderTop: "1px solid var(--db-border)",
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItem(categoryName, index, { refineExpanded: false })}
+                                      style={{
+                                        padding: "9px 16px",
+                                        borderRadius: "var(--db-radius)",
+                                        border: "1px solid var(--db-border)",
+                                        background: "var(--db-bg-elevated)",
+                                        color: "var(--db-text-secondary)",
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      {t("refineClose")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveRefine(categoryName, index, item)}
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "6px",
+                                        padding: "9px 18px",
+                                        borderRadius: "var(--db-radius)",
+                                        border: "none",
+                                        background: "var(--db-accent)",
+                                        color: "var(--db-accent-text)",
+                                        fontSize: "13px",
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      <IconCheck size={15} />
+                                      {t("refineSave")}
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                           </div>
                         );
                       })}
