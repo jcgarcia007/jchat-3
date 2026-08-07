@@ -38,6 +38,7 @@ import {
   IconUpload,
   IconCopy,
   IconEye,
+  IconBell,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -82,6 +83,21 @@ interface DayHours {
 }
 
 type HoursJson = Record<string, DayHours>;
+
+// ── Alerts types ──────────────────────────────────────────────────────────────
+type AlertTone = "ding" | "bell" | "chime" | "alert";
+
+interface AlertConfig {
+  sound: boolean;
+  vibration: boolean;
+  tone: AlertTone;
+}
+
+const ALERT_TONES: AlertTone[] = ["ding", "bell", "chime", "alert"];
+const DEFAULT_READY_ALERT: AlertConfig = { sound: true, vibration: true, tone: "ding" };
+const DEFAULT_SC_ALERT: AlertConfig    = { sound: true, vibration: true, tone: "bell" };
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const DAYS = [
   "Monday",
@@ -592,6 +608,11 @@ export default function ConfigurationPage() {
   const [customerStatusEnabled, setCustomerStatusEnabled] = useState(false);
   const [savingCustomerStatus, setSavingCustomerStatus] = useState(false);
 
+  // ── Section 9c: Waiter alerts ─────────────────────────────────────────────
+  const [alertsReady, setAlertsReady] = useState<AlertConfig>(DEFAULT_READY_ALERT);
+  const [alertsServiceCall, setAlertsServiceCall] = useState<AlertConfig>(DEFAULT_SC_ALERT);
+  const [savingAlerts, setSavingAlerts] = useState(false);
+
   // ── Upload refs ───────────────────────────────────────────────────────────────
   const coverObjRef = useRef<string | null>(null);
   const iconObjRef = useRef<string | null>(null);
@@ -656,6 +677,20 @@ export default function ConfigurationPage() {
       const rawKds = (b.kds_settings as Record<string, unknown> | null) ?? {};
       setKdsSettings(rawKds);
       setCustomerStatusEnabled((rawKds.customer_status_enabled as boolean) ?? false);
+      const rawAlerts = (rawKds.alerts as {
+        ready?: Partial<AlertConfig>;
+        service_call?: Partial<AlertConfig>;
+      } | null) ?? {};
+      setAlertsReady({
+        sound:     rawAlerts.ready?.sound     ?? DEFAULT_READY_ALERT.sound,
+        vibration: rawAlerts.ready?.vibration ?? DEFAULT_READY_ALERT.vibration,
+        tone:     (rawAlerts.ready?.tone      as AlertTone) ?? DEFAULT_READY_ALERT.tone,
+      });
+      setAlertsServiceCall({
+        sound:     rawAlerts.service_call?.sound     ?? DEFAULT_SC_ALERT.sound,
+        vibration: rawAlerts.service_call?.vibration ?? DEFAULT_SC_ALERT.vibration,
+        tone:     (rawAlerts.service_call?.tone      as AlertTone) ?? DEFAULT_SC_ALERT.tone,
+      });
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
       setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
@@ -885,6 +920,19 @@ export default function ConfigurationPage() {
     );
   };
 
+  const handleSaveAlerts = async () => {
+    // Merge alerts into kds_settings — never overwrite other kds_settings keys.
+    const merged = {
+      ...kdsSettings,
+      alerts: { ready: alertsReady, service_call: alertsServiceCall },
+    };
+    setKdsSettings(merged);
+    await withSave(
+      setSavingAlerts,
+      { kds_settings: merged } as Record<string, unknown>,
+      t("configurationAlertsSavedSuccess")
+    );
+  };
 
   const handleThemePick = useCallback(
     async (id: number) => {
@@ -1630,6 +1678,143 @@ export default function ConfigurationPage() {
             <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
           )}
         </div>
+      </Section>
+
+      {/* ── 5d. Waiter Alerts ──────────────────────────────────────────────────── */}
+      <Section
+        icon={<IconBell size={18} color="var(--db-accent)" />}
+        title={t("configurationAlertsSectionTitle")}
+        subtitle={t("configurationAlertsSectionSubtitle")}
+      >
+        {/* Helper vars for tone chip styling */}
+        {(() => {
+          const toneLabels: Record<AlertTone, string> = {
+            ding:   t("configurationAlertsToneDing"),
+            bell:   t("configurationAlertsToneBell"),
+            chime:  t("configurationAlertsToneChime"),
+            alert:  t("configurationAlertsToneAlert"),
+          };
+          const disabled = noSupabase || noBiz || savingAlerts;
+
+          const chipStyle = (active: boolean): React.CSSProperties => ({
+            padding: "4px 12px",
+            borderRadius: 999,
+            border: `1px solid ${active ? "var(--db-accent)" : "var(--db-border)"}`,
+            background: active ? "var(--db-accent)" : "transparent",
+            color: active ? "var(--db-accent-text, #fff)" : "var(--db-text-secondary)",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: disabled ? "not-allowed" : "pointer",
+            opacity: disabled ? 0.5 : 1,
+            transition: "background 0.15s, border-color 0.15s",
+          });
+
+          const groupCard = (
+            groupTitle: string,
+            groupSubtitle: string,
+            config: AlertConfig,
+            setConfig: React.Dispatch<React.SetStateAction<AlertConfig>>
+          ) => (
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 10,
+                border: "1px solid var(--db-border)",
+                background: "var(--db-surface-elevated, var(--db-surface))",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              {/* Group header */}
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--db-text-primary)" }}>
+                  {groupTitle}
+                </p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--db-text-secondary)" }}>
+                  {groupSubtitle}
+                </p>
+              </div>
+
+              {/* Sound */}
+              <Toggle
+                checked={config.sound}
+                onChange={(v) => !disabled && setConfig((c) => ({ ...c, sound: v }))}
+                label={t("configurationAlertsSoundLabel")}
+                disabled={disabled}
+              />
+
+              {/* Vibration */}
+              <Toggle
+                checked={config.vibration}
+                onChange={(v) => !disabled && setConfig((c) => ({ ...c, vibration: v }))}
+                label={t("configurationAlertsVibrationLabel")}
+                disabled={disabled}
+              />
+
+              {/* Tone chips */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)", marginRight: 2 }}>
+                  {t("configurationAlertsToneLabel")}:
+                </span>
+                {ALERT_TONES.map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => !disabled && setConfig((c) => ({ ...c, tone }))}
+                    style={chipStyle(config.tone === tone)}
+                  >
+                    {toneLabels[tone]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {groupCard(
+                t("configurationAlertsReadyTitle"),
+                t("configurationAlertsReadySubtitle"),
+                alertsReady,
+                setAlertsReady
+              )}
+              {groupCard(
+                t("configurationAlertsServiceCallTitle"),
+                t("configurationAlertsServiceCallSubtitle"),
+                alertsServiceCall,
+                setAlertsServiceCall
+              )}
+
+              {/* Save row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveAlerts()}
+                  disabled={disabled}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: disabled ? "var(--db-border)" : "var(--db-accent)",
+                    color: disabled ? "var(--db-text-secondary)" : "var(--db-accent-text, #fff)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: disabled ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {t("configurationAlertsSaveBtn")}
+                </button>
+                {savingAlerts && (
+                  <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                    {t("tablesSavingState")}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </Section>
 
       {/* ── 6. Dashboard Theme + Palette ────────────────────────────────────── */}
