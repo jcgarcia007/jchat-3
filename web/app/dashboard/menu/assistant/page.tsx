@@ -1,0 +1,1339 @@
+/**
+ * JChat 3.0 — AI Menu Assistant wizard (FASE 3: steps 1–3)
+ *
+ * Guides a Pro owner from "what kind of business am I" to a reviewed list of
+ * categories + items. NOTHING is written to the database here — persistence is
+ * FASE 5 and will always insert with is_published = false.
+ *
+ * Steps
+ *   1. Business  — type / what they sell / country + currency / price range
+ *   2. Categories — AI suggestions (checkboxes) + "＋ add your own"
+ *   3. Items      — lazy per-category suggest_items, editable price + station,
+ *                   "＋ add your own"
+ *   4. Refinement — placeholder, implemented in FASE 4.
+ *
+ * Plan gate: the wizard is Pro-only. The lock screen below is a UX
+ * convenience — the REAL gate lives server-side in the menu-assistant Edge
+ * Function (requireProOwner), which refuses every action for a non-Pro owner.
+ * When the plan is not 'pro' this page never calls the Edge Function at all.
+ *
+ * Edge Function calls: supabase.functions.invoke("menu-assistant", { body }) —
+ * the same pattern as dashboard/payments (stripe-connect) and dashboard/billing
+ * (subscriptions). invoke() attaches the signed-in user's access token as
+ * `Authorization: Bearer …` automatically, which is the JWT the function needs.
+ * Non-2xx replies arrive as FunctionsHttpError, whose real { error } body is
+ * unwrapped with the shared readFunctionError() helper.
+ *
+ * Design: var(--db-*) tokens only, no hardcoded hex. Icons: @tabler/icons-react.
+ * i18n: every string comes from the `menuAssistant` namespace.
+ */
+
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconBuildingStore,
+  IconCheck,
+  IconChefHat,
+  IconChevronDown,
+  IconChevronRight,
+  IconGlass,
+  IconLoader2,
+  IconLock,
+  IconPlus,
+  IconSparkles,
+} from "@tabler/icons-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveBusiness } from "@/lib/business";
+import { readFunctionError } from "@/lib/functionError";
+import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Station = "kitchen" | "bar";
+type PriceRange = "$" | "$$" | "$$$";
+/** Step 4 exists only as a FASE 4 placeholder for now. */
+type WizardStep = 1 | 2 | 3 | 4;
+
+interface SuggestedCategory {
+  name: string;
+  emoji?: string;
+  rationale: string;
+}
+
+interface SuggestedItem {
+  name: string;
+  description_es: string;
+  description_en: string;
+  price_cents: number;
+  station: Station;
+  tags: string[];
+  selected: boolean;
+  /** Owner override, in whole currency units (not cents). */
+  editedPrice?: number;
+  editedStation?: Station;
+}
+
+interface WizardState {
+  step: WizardStep;
+  // Step 1
+  businessType: string;
+  sells: string[];
+  country: string;
+  currency: string;
+  priceRange: PriceRange;
+  // Step 2
+  suggestedCategories: SuggestedCategory[];
+  selectedCategories: string[];
+  customCategories: string[];
+  // Step 3
+  itemsByCategory: Record<string, SuggestedItem[]>;
+  /** Categories whose suggest_items call already resolved (cache key). */
+  loadedCategories: string[];
+  customItems: Record<string, Array<{ name: string; price_cents: number }>>;
+}
+
+const INITIAL_STATE: WizardState = {
+  step: 1,
+  businessType: "",
+  sells: [],
+  country: "",
+  currency: "USD",
+  priceRange: "$$",
+  suggestedCategories: [],
+  selectedCategories: [],
+  customCategories: [],
+  itemsByCategory: {},
+  loadedCategories: [],
+  customItems: {},
+};
+
+/** Preset business types. "other" opens a free-text input instead. */
+const BUSINESS_TYPES = [
+  { id: "restaurant", emoji: "🍽️", labelKey: "typeRestaurant" },
+  { id: "bar", emoji: "🍺", labelKey: "typeBar" },
+  { id: "cafe", emoji: "☕", labelKey: "typeCafe" },
+  { id: "hotel", emoji: "🏨", labelKey: "typeHotel" },
+  { id: "food_truck", emoji: "🚚", labelKey: "typeFoodTruck" },
+] as const;
+
+/** Always shown in full — never filtered by business type (product decision). */
+const SELL_OPTIONS = [
+  { id: "menu_cocina", labelKey: "sellsMenuCocina" },
+  { id: "room_service", labelKey: "sellsRoomService" },
+  { id: "amenidades", labelKey: "sellsAmenidades" },
+  { id: "minibar", labelKey: "sellsMinibar" },
+] as const;
+
+const PRICE_RANGES: PriceRange[] = ["$", "$$", "$$$"];
+
+// ── Small shared UI pieces (token-only styling) ───────────────────────────────
+
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        background: "var(--db-bg-card)",
+        border: "1px solid var(--db-border)",
+        borderRadius: "var(--db-radius-card)",
+        padding: "20px 24px",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: "12px",
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        color: "var(--db-text-secondary)",
+        marginBottom: "10px",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <>
+      <IconLoader2 size={size} style={{ animation: "jc-spin 1s linear infinite" }} />
+      <style>{"@keyframes jc-spin { to { transform: rotate(360deg); } }"}</style>
+    </>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        padding: "12px 16px",
+        borderRadius: "var(--db-radius)",
+        border: "1px solid var(--db-danger)",
+        color: "var(--db-danger)",
+        background: "var(--db-bg-elevated)",
+        fontSize: "13px",
+        lineHeight: 1.5,
+        marginBottom: "16px",
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+function PrimaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "11px 22px",
+        borderRadius: "var(--db-radius)",
+        border: "none",
+        background: disabled ? "var(--db-bg-elevated)" : "var(--db-accent)",
+        color: disabled ? "var(--db-text-tertiary)" : "var(--db-accent-text)",
+        fontSize: "14px",
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GhostButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "11px 18px",
+        borderRadius: "var(--db-radius)",
+        border: "1px solid var(--db-border)",
+        background: "var(--db-bg-elevated)",
+        color: "var(--db-text-secondary)",
+        fontSize: "14px",
+        fontWeight: 600,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: "var(--db-radius)",
+  border: "1px solid var(--db-border)",
+  background: "var(--db-bg-elevated)",
+  color: "var(--db-text-primary)",
+  fontSize: "14px",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+function Chip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "8px 16px",
+        borderRadius: "999px",
+        border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+        background: selected ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+        color: selected ? "var(--db-accent)" : "var(--db-text-secondary)",
+        fontSize: "13px",
+        fontWeight: selected ? 700 : 500,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Plan gate screen ──────────────────────────────────────────────────────────
+
+function LockedScreen() {
+  const t = useTranslations("menuAssistant");
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "55vh",
+        gap: "16px",
+        textAlign: "center",
+        padding: "0 16px",
+      }}
+    >
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "64px",
+          height: "64px",
+          borderRadius: "18px",
+          background: "var(--db-accent-bg)",
+          color: "var(--db-accent)",
+        }}
+      >
+        <IconLock size={32} />
+      </span>
+      <h2 style={{ fontSize: "22px", fontWeight: 800, color: "var(--db-text-primary)", margin: 0 }}>
+        {t("lockedTitle")}
+      </h2>
+      <p
+        style={{
+          fontSize: "14px",
+          color: "var(--db-text-secondary)",
+          maxWidth: "460px",
+          lineHeight: 1.6,
+          margin: 0,
+        }}
+      >
+        {t("lockedDescription")}
+      </p>
+      <Link
+        href="/dashboard/billing"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "12px 26px",
+          borderRadius: "var(--db-radius)",
+          background: "var(--db-accent)",
+          color: "var(--db-accent-text)",
+          fontSize: "14px",
+          fontWeight: 700,
+          textDecoration: "none",
+        }}
+      >
+        {t("lockedCta")}
+        <IconArrowRight size={16} />
+      </Link>
+      <Link
+        href="/dashboard/menu"
+        style={{ fontSize: "13px", color: "var(--db-text-tertiary)", textDecoration: "none" }}
+      >
+        {t("backToMenu")}
+      </Link>
+    </div>
+  );
+}
+
+// ── Stepper ───────────────────────────────────────────────────────────────────
+
+function Stepper({ step }: { step: WizardStep }) {
+  const t = useTranslations("menuAssistant");
+  const labels = [t("stepBusiness"), t("stepCategories"), t("stepItems"), t("stepRefine")];
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "10px",
+        marginBottom: "20px",
+      }}
+    >
+      {labels.map((label, i) => {
+        const n = (i + 1) as WizardStep;
+        const done = n < step;
+        const active = n === step;
+        return (
+          <div
+            key={label}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "7px 14px",
+              borderRadius: "999px",
+              border: active ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+              background: active || done ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+              color: active || done ? "var(--db-accent)" : "var(--db-text-tertiary)",
+              fontSize: "12px",
+              fontWeight: active ? 700 : 500,
+            }}
+          >
+            {done ? <IconCheck size={14} /> : <span style={{ fontWeight: 700 }}>{n}</span>}
+            {label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function MenuAssistantPage() {
+  const t = useTranslations("menuAssistant");
+
+  // Business resolution + plan gate
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
+  const [bootLoading, setBootLoading] = useState(true);
+  const [noBusiness, setNoBusiness] = useState(false);
+
+  // Wizard data — one state object, as specced.
+  const [state, setState] = useState<WizardState>(INITIAL_STATE);
+
+  // Ephemeral UI state (not part of the wizard payload)
+  const [customTypeMode, setCustomTypeMode] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
+  const [newItemDraft, setNewItemDraft] = useState<Record<string, { name: string; price: string }>>({});
+
+  // ── Boot: resolve the active business, its plan and its country ─────────────
+  useEffect(() => {
+    let alive = true;
+
+    async function boot() {
+      if (!isSupabaseConfigured) {
+        // Demo mode mirrors isBusinessPro(): treat as Pro so the UI is reviewable.
+        if (alive) {
+          setPlan("pro");
+          setBootLoading(false);
+        }
+        return;
+      }
+      const res = await resolveActiveBusiness();
+      if (!alive) return;
+      if (!res.ok) {
+        if (res.reason === "no_business" || res.reason === "unauthenticated") setNoBusiness(true);
+        else setError(res.message);
+        setBootLoading(false);
+        return;
+      }
+      setBusinessId(res.business.id);
+      setPlan(res.business.plan);
+
+      // resolveActiveBusiness() doesn't select country — read it separately so
+      // step 1 can prefill it. There is no per-business currency column, so the
+      // currency default stays USD (see lib/currency.ts).
+      const { data } = await supabase
+        .from("businesses")
+        .select("country")
+        .eq("id", res.business.id)
+        .maybeSingle();
+      if (!alive) return;
+      const country = (data as { country?: string } | null)?.country;
+      if (country) setState((s) => ({ ...s, country }));
+      setBootLoading(false);
+    }
+
+    void boot();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const isPro = plan === "pro";
+
+  // ── Edge Function caller ───────────────────────────────────────────────────
+  // Same pattern as dashboard/payments + dashboard/billing: invoke() signs the
+  // request with the user's access token; a non-2xx becomes FunctionsHttpError
+  // whose { error } body readFunctionError() unwraps.
+  const callAssistant = useCallback(
+    async <T,>(action: string, params: Record<string, unknown>): Promise<T> => {
+      const { data, error: fnError } = await supabase.functions.invoke("menu-assistant", {
+        body: { action, business_id: businessId, ...params },
+      });
+      if (fnError) throw new Error(await readFunctionError(fnError));
+      const payload = data as ({ ok?: boolean; error?: string } & T) | null;
+      if (!payload || payload.ok !== true) {
+        throw new Error(payload?.error ?? t("errorGeneric"));
+      }
+      return payload as T;
+    },
+    [businessId, t],
+  );
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  /** Categories in step-2 display order, filtered to the selected ones. */
+  const orderedSelectedCategories = useMemo(() => {
+    const all = [...state.suggestedCategories.map((c) => c.name), ...state.customCategories];
+    return all.filter((name) => state.selectedCategories.includes(name));
+  }, [state.suggestedCategories, state.customCategories, state.selectedCategories]);
+
+  const totalSelectedItems = useMemo(
+    () =>
+      Object.values(state.itemsByCategory).reduce(
+        (sum, list) => sum + list.filter((i) => i.selected).length,
+        0,
+      ),
+    [state.itemsByCategory],
+  );
+
+  const step1Ready =
+    state.businessType.trim().length > 0 &&
+    state.sells.length > 0 &&
+    state.country.trim().length > 0 &&
+    state.priceRange.length > 0;
+
+  // ── Step 1 → suggest_categories ────────────────────────────────────────────
+  const handleGenerateCategories = useCallback(async () => {
+    setError(null);
+    setGenerating(true);
+    try {
+      const res = await callAssistant<{ categories: Array<{ name: string; emoji: string | null; rationale: string }> }>(
+        "suggest_categories",
+        {
+          business_type: state.businessType,
+          sells: state.sells,
+          country: state.country,
+          currency: state.currency,
+          price_range: state.priceRange,
+        },
+      );
+      const categories: SuggestedCategory[] = res.categories.map((c) => ({
+        name: c.name,
+        emoji: c.emoji ?? undefined,
+        rationale: c.rationale,
+      }));
+      setState((s) => ({
+        ...s,
+        step: 2,
+        suggestedCategories: categories,
+        // Everything is checked by default.
+        selectedCategories: [...categories.map((c) => c.name), ...s.customCategories],
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errorGeneric"));
+    } finally {
+      setGenerating(false);
+    }
+  }, [callAssistant, state.businessType, state.sells, state.country, state.currency, state.priceRange, t]);
+
+  // ── Step 3 → suggest_items (lazy, cached per category) ─────────────────────
+  const loadItemsFor = useCallback(
+    async (categoryName: string) => {
+      if (state.loadedCategories.includes(categoryName)) return;
+      setError(null);
+      setLoadingCategory(categoryName);
+      try {
+        const res = await callAssistant<{
+          items: Array<{
+            name: string;
+            description_es: string;
+            description_en: string;
+            price_cents: number;
+            station: Station;
+            tags: string[];
+          }>;
+        }>("suggest_items", {
+          business_type: state.businessType,
+          country: state.country,
+          currency: state.currency,
+          price_range: state.priceRange,
+          category_name: categoryName,
+        });
+        const items: SuggestedItem[] = res.items.map((i) => ({ ...i, selected: true }));
+        setState((s) => ({
+          ...s,
+          // Keep any custom items the owner already added to this category.
+          itemsByCategory: { ...s.itemsByCategory, [categoryName]: [...(s.itemsByCategory[categoryName] ?? []), ...items] },
+          loadedCategories: [...s.loadedCategories, categoryName],
+        }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("errorGeneric"));
+      } finally {
+        setLoadingCategory(null);
+      }
+    },
+    [callAssistant, state.loadedCategories, state.businessType, state.country, state.currency, state.priceRange, t],
+  );
+
+  const toggleCategoryPanel = useCallback(
+    (name: string) => {
+      if (expandedCategory === name) {
+        setExpandedCategory(null);
+        return;
+      }
+      setExpandedCategory(name);
+      void loadItemsFor(name);
+    },
+    [expandedCategory, loadItemsFor],
+  );
+
+  // ── Item mutators ──────────────────────────────────────────────────────────
+  const updateItem = useCallback(
+    (category: string, index: number, patch: Partial<SuggestedItem>) => {
+      setState((s) => {
+        const list = s.itemsByCategory[category];
+        if (!list) return s;
+        const next = list.map((it, i) => (i === index ? { ...it, ...patch } : it));
+        return { ...s, itemsByCategory: { ...s.itemsByCategory, [category]: next } };
+      });
+    },
+    [],
+  );
+
+  const addCustomItem = useCallback(
+    (category: string) => {
+      const draft = newItemDraft[category];
+      const name = draft?.name.trim() ?? "";
+      if (!name) return;
+      const priceUnits = Number.parseFloat(draft?.price ?? "");
+      const priceCents = Number.isFinite(priceUnits) ? Math.max(0, Math.round(priceUnits * 100)) : 0;
+      setState((s) => {
+        const entry: SuggestedItem = {
+          name,
+          description_es: "",
+          description_en: "",
+          price_cents: priceCents,
+          station: "kitchen",
+          tags: [],
+          selected: true,
+        };
+        return {
+          ...s,
+          // Rendered from itemsByCategory (one list to draw); customItems keeps
+          // the separate record of what the owner typed, for FASE 5 insertion.
+          itemsByCategory: { ...s.itemsByCategory, [category]: [...(s.itemsByCategory[category] ?? []), entry] },
+          customItems: {
+            ...s.customItems,
+            [category]: [...(s.customItems[category] ?? []), { name, price_cents: priceCents }],
+          },
+        };
+      });
+      setNewItemDraft((d) => ({ ...d, [category]: { name: "", price: "" } }));
+    },
+    [newItemDraft],
+  );
+
+  // ── Render guards ──────────────────────────────────────────────────────────
+
+  if (bootLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--db-text-secondary)", fontSize: "14px" }}>
+        <Spinner />
+        {t("loading")}
+      </div>
+    );
+  }
+
+  if (noBusiness) {
+    return (
+      <div style={{ maxWidth: 880 }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", marginBottom: "16px" }}>
+          {t("title")}
+        </h1>
+        <NoBusinessCTA message={t("noBusinessMessage")} />
+      </div>
+    );
+  }
+
+  if (!isPro) return <LockedScreen />;
+
+  // ── Wizard ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ marginBottom: "20px" }}>
+        <Link
+          href="/dashboard/menu"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "13px",
+            color: "var(--db-text-tertiary)",
+            textDecoration: "none",
+            marginBottom: "10px",
+          }}
+        >
+          <IconArrowLeft size={15} />
+          {t("backToMenu")}
+        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+            {t("title")}
+          </h1>
+          <span
+            style={{
+              padding: "3px 10px",
+              borderRadius: "999px",
+              background: "var(--db-accent-bg)",
+              color: "var(--db-accent)",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {t("proBadge")}
+          </span>
+        </div>
+        <p style={{ fontSize: "14px", color: "var(--db-text-secondary)", margin: "6px 0 0", lineHeight: 1.5 }}>
+          {t("subtitle")}
+        </p>
+      </div>
+
+      <Stepper step={state.step} />
+
+      {error && <ErrorBanner message={error} />}
+
+      {/* ── Step 1 — Business ─────────────────────────────────────────────── */}
+      {state.step === 1 && (
+        <Card>
+          {/* Business type */}
+          <FieldLabel>{t("businessTypeLabel")}</FieldLabel>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+              gap: "10px",
+              marginBottom: "12px",
+            }}
+          >
+            {BUSINESS_TYPES.map((bt) => {
+              const selected = !customTypeMode && state.businessType === bt.id;
+              return (
+                <button
+                  key={bt.id}
+                  type="button"
+                  onClick={() => {
+                    setCustomTypeMode(false);
+                    setState((s) => ({ ...s, businessType: bt.id }));
+                  }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "16px 10px",
+                    borderRadius: "var(--db-radius-card)",
+                    border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                    background: selected ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                    color: selected ? "var(--db-accent)" : "var(--db-text-secondary)",
+                    fontSize: "13px",
+                    fontWeight: selected ? 700 : 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: "26px", lineHeight: 1 }} aria-hidden>
+                    {bt.emoji}
+                  </span>
+                  {t(bt.labelKey)}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                setCustomTypeMode(true);
+                setState((s) => ({ ...s, businessType: "" }));
+              }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "16px 10px",
+                borderRadius: "var(--db-radius-card)",
+                border: customTypeMode ? "2px solid var(--db-accent)" : "1px dashed var(--db-border)",
+                background: customTypeMode ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                color: customTypeMode ? "var(--db-accent)" : "var(--db-text-secondary)",
+                fontSize: "13px",
+                fontWeight: customTypeMode ? 700 : 500,
+                cursor: "pointer",
+              }}
+            >
+              <IconPlus size={24} />
+              {t("typeOther")}
+            </button>
+          </div>
+          {customTypeMode && (
+            <input
+              type="text"
+              value={state.businessType}
+              onChange={(e) => setState((s) => ({ ...s, businessType: e.target.value }))}
+              placeholder={t("typeOtherPlaceholder")}
+              style={{ ...inputStyle, marginBottom: "20px" }}
+            />
+          )}
+
+          {/* What do you sell */}
+          <div style={{ marginTop: customTypeMode ? 0 : "20px" }}>
+            <FieldLabel>{t("sellsLabel")}</FieldLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {SELL_OPTIONS.map((opt) => {
+                const selected = state.sells.includes(opt.id);
+                return (
+                  <Chip
+                    key={opt.id}
+                    selected={selected}
+                    onClick={() =>
+                      setState((s) => ({
+                        ...s,
+                        sells: selected ? s.sells.filter((v) => v !== opt.id) : [...s.sells, opt.id],
+                      }))
+                    }
+                  >
+                    {selected && <IconCheck size={14} />}
+                    {t(opt.labelKey)}
+                  </Chip>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Country + currency */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "16px",
+              marginTop: "20px",
+            }}
+          >
+            <div>
+              <FieldLabel>{t("countryLabel")}</FieldLabel>
+              <input
+                type="text"
+                value={state.country}
+                onChange={(e) => setState((s) => ({ ...s, country: e.target.value }))}
+                placeholder={t("countryPlaceholder")}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>{t("currencyLabel")}</FieldLabel>
+              <input
+                type="text"
+                value={state.currency}
+                onChange={(e) => setState((s) => ({ ...s, currency: e.target.value }))}
+                placeholder={t("currencyPlaceholder")}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Price range */}
+          <div style={{ marginTop: "20px" }}>
+            <FieldLabel>{t("priceRangeLabel")}</FieldLabel>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {PRICE_RANGES.map((pr) => (
+                <Chip
+                  key={pr}
+                  selected={state.priceRange === pr}
+                  onClick={() => setState((s) => ({ ...s, priceRange: pr }))}
+                >
+                  <span style={{ fontWeight: 700 }}>{pr}</span>
+                </Chip>
+              ))}
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
+              {t("priceRangeHint")}
+            </p>
+          </div>
+
+          {/* Generate */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "24px", flexWrap: "wrap" }}>
+            <PrimaryButton onClick={() => void handleGenerateCategories()} disabled={!step1Ready || generating}>
+              {generating ? <Spinner /> : <IconSparkles size={17} />}
+              {t("generateButton")}
+            </PrimaryButton>
+            {generating && (
+              <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                {t("generatingCategories")}
+              </span>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Step 2 — Categories ───────────────────────────────────────────── */}
+      {state.step === 2 && (
+        <Card>
+          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            {t("categoriesTitle")}
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 18px", lineHeight: 1.5 }}>
+            {t("categoriesSubtitle")}
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              ...state.suggestedCategories,
+              ...state.customCategories.map((name): SuggestedCategory => ({ name, rationale: "" })),
+            ].map((cat) => {
+              const checked = state.selectedCategories.includes(cat.name);
+              return (
+                <label
+                  key={cat.name}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "12px",
+                    padding: "12px 14px",
+                    borderRadius: "var(--db-radius)",
+                    border: checked ? "1px solid var(--db-accent)" : "1px solid var(--db-border)",
+                    background: checked ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setState((s) => ({
+                        ...s,
+                        selectedCategories: checked
+                          ? s.selectedCategories.filter((n) => n !== cat.name)
+                          : [...s.selectedCategories, cat.name],
+                      }))
+                    }
+                    style={{ marginTop: "3px", accentColor: "var(--db-accent)", cursor: "pointer" }}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+                      {cat.emoji ? `${cat.emoji} ` : ""}
+                      {cat.name}
+                    </span>
+                    {cat.rationale && (
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: "12px",
+                          color: "var(--db-text-tertiary)",
+                          marginTop: "3px",
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        {cat.rationale}
+                      </span>
+                    )}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* Add your own */}
+          <div style={{ marginTop: "16px" }}>
+            <FieldLabel>{t("addOwnCategory")}</FieldLabel>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder={t("categoryNamePlaceholder")}
+                style={{ ...inputStyle, flex: "1 1 200px", width: "auto" }}
+              />
+              <GhostButton
+                onClick={() => {
+                  const name = newCategoryName.trim();
+                  if (!name) return;
+                  setState((s) =>
+                    s.customCategories.includes(name) || s.suggestedCategories.some((c) => c.name === name)
+                      ? s
+                      : {
+                          ...s,
+                          customCategories: [...s.customCategories, name],
+                          selectedCategories: [...s.selectedCategories, name],
+                        },
+                  );
+                  setNewCategoryName("");
+                }}
+              >
+                <IconPlus size={16} />
+                {t("addButton")}
+              </GhostButton>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginTop: "24px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>
+              {t("selectedCategoriesCount", { count: state.selectedCategories.length })}
+            </span>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <GhostButton onClick={() => setState((s) => ({ ...s, step: 1 }))}>
+                <IconArrowLeft size={16} />
+                {t("backButton")}
+              </GhostButton>
+              <PrimaryButton
+                onClick={() => setState((s) => ({ ...s, step: 3 }))}
+                disabled={state.selectedCategories.length === 0}
+              >
+                {t("nextButton")}
+                <IconArrowRight size={16} />
+              </PrimaryButton>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Step 3 — Items ────────────────────────────────────────────────── */}
+      {state.step === 3 && (
+        <Card>
+          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "0 0 4px" }}>
+            {t("itemsTitle")}
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 18px", lineHeight: 1.5 }}>
+            {t("itemsSubtitle")}
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {orderedSelectedCategories.map((categoryName) => {
+              const list = state.itemsByCategory[categoryName] ?? [];
+              const selectedCount = list.filter((i) => i.selected).length;
+              const expanded = expandedCategory === categoryName;
+              const isLoading = loadingCategory === categoryName;
+              const draft = newItemDraft[categoryName] ?? { name: "", price: "" };
+              return (
+                <div
+                  key={categoryName}
+                  style={{
+                    border: "1px solid var(--db-border)",
+                    borderRadius: "var(--db-radius-card)",
+                    background: "var(--db-bg-elevated)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleCategoryPanel(categoryName)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      width: "100%",
+                      padding: "14px 16px",
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--db-text-primary)",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                      {expanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{categoryName}</span>
+                    </span>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        padding: "3px 10px",
+                        borderRadius: "999px",
+                        background: "var(--db-accent-bg)",
+                        color: "var(--db-accent)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t("itemsSelectedBadge", { count: selectedCount })}
+                    </span>
+                  </button>
+
+                  {expanded && (
+                    <div style={{ padding: "0 16px 16px" }}>
+                      {isLoading && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "12px 0",
+                            fontSize: "13px",
+                            color: "var(--db-text-secondary)",
+                          }}
+                        >
+                          <Spinner />
+                          {t("loadingItems")}
+                        </div>
+                      )}
+
+                      {!isLoading && list.length === 0 && (
+                        <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", margin: "6px 0 12px" }}>
+                          {t("noItems")}
+                        </p>
+                      )}
+
+                      {list.map((item, index) => {
+                        const station = item.editedStation ?? item.station;
+                        const priceValue = item.editedPrice ?? item.price_cents / 100;
+                        return (
+                          <div
+                            key={`${categoryName}-${index}-${item.name}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: "12px",
+                              padding: "12px 0",
+                              borderTop: "1px solid var(--db-border)",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={() => updateItem(categoryName, index, { selected: !item.selected })}
+                              style={{ marginTop: "4px", accentColor: "var(--db-accent)", cursor: "pointer" }}
+                            />
+                            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                              <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+                                {item.name}
+                              </div>
+                              {item.description_es && (
+                                <div
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "var(--db-text-tertiary)",
+                                    marginTop: "3px",
+                                    lineHeight: 1.45,
+                                  }}
+                                >
+                                  {item.description_es}
+                                </div>
+                              )}
+
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  flexWrap: "wrap",
+                                  marginTop: "10px",
+                                }}
+                              >
+                                {/* Price */}
+                                <label style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                  <span style={{ fontSize: "12px", color: "var(--db-text-secondary)" }}>
+                                    {t("priceLabel")}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={priceValue}
+                                    onChange={(e) => {
+                                      const parsed = Number.parseFloat(e.target.value);
+                                      updateItem(categoryName, index, {
+                                        editedPrice: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+                                      });
+                                    }}
+                                    style={{ ...inputStyle, width: "104px", padding: "6px 10px", fontSize: "13px" }}
+                                  />
+                                  <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
+                                    {state.currency}
+                                  </span>
+                                </label>
+
+                                {/* Station */}
+                                <span style={{ display: "inline-flex", gap: "6px" }}>
+                                  {(["kitchen", "bar"] as const).map((st) => {
+                                    const sel = station === st;
+                                    const StIcon = st === "kitchen" ? IconChefHat : IconGlass;
+                                    return (
+                                      <button
+                                        key={st}
+                                        type="button"
+                                        onClick={() => updateItem(categoryName, index, { editedStation: st })}
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "5px",
+                                          padding: "6px 12px",
+                                          borderRadius: "var(--db-radius)",
+                                          border: sel ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                                          background: sel ? "var(--db-accent-bg)" : "var(--db-bg-card)",
+                                          color: sel ? "var(--db-accent)" : "var(--db-text-secondary)",
+                                          fontSize: "12px",
+                                          fontWeight: sel ? 700 : 500,
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        <StIcon size={13} />
+                                        {st === "kitchen" ? t("stationKitchen") : t("stationBar")}
+                                      </button>
+                                    );
+                                  })}
+                                </span>
+
+                                {/* Tags (read-only) */}
+                                {item.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    style={{
+                                      padding: "3px 9px",
+                                      borderRadius: "999px",
+                                      border: "1px solid var(--db-border)",
+                                      color: "var(--db-text-tertiary)",
+                                      fontSize: "11px",
+                                    }}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Add your own item */}
+                      {!isLoading && (
+                        <div style={{ borderTop: "1px solid var(--db-border)", paddingTop: "12px", marginTop: "4px" }}>
+                          <FieldLabel>{t("addOwnItem")}</FieldLabel>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            <input
+                              type="text"
+                              value={draft.name}
+                              onChange={(e) =>
+                                setNewItemDraft((d) => ({
+                                  ...d,
+                                  [categoryName]: { name: e.target.value, price: draft.price },
+                                }))
+                              }
+                              placeholder={t("itemNamePlaceholder")}
+                              style={{ ...inputStyle, flex: "1 1 180px", width: "auto" }}
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={draft.price}
+                              onChange={(e) =>
+                                setNewItemDraft((d) => ({
+                                  ...d,
+                                  [categoryName]: { name: draft.name, price: e.target.value },
+                                }))
+                              }
+                              placeholder={t("itemPricePlaceholder")}
+                              style={{ ...inputStyle, width: "120px" }}
+                            />
+                            <GhostButton onClick={() => addCustomItem(categoryName)}>
+                              <IconPlus size={16} />
+                              {t("addButton")}
+                            </GhostButton>
+                          </div>
+                          {/* TODO(FASE futura): botón "✨ Generar descripción" que llame a
+                              polish_item para autocompletar description_es/en + tags del
+                              artículo propio. Se deja fuera de FASE 3 para no ampliar
+                              el alcance del wizard. */}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginTop: "24px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-secondary)" }}>
+              {t("totalSelectedItems", { count: totalSelectedItems })}
+            </span>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <GhostButton onClick={() => setState((s) => ({ ...s, step: 2 }))}>
+                <IconArrowLeft size={16} />
+                {t("backButton")}
+              </GhostButton>
+              <PrimaryButton onClick={() => setState((s) => ({ ...s, step: 4 }))} disabled={totalSelectedItems === 0}>
+                {t("nextButton")}
+                <IconArrowRight size={16} />
+              </PrimaryButton>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Step 4 — placeholder (FASE 4) ─────────────────────────────────── */}
+      {state.step === 4 && (
+        <Card>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "24px 0", textAlign: "center" }}>
+            <IconBuildingStore size={40} color="var(--db-accent)" />
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+              {t("step4Placeholder")}
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0, maxWidth: 440, lineHeight: 1.5 }}>
+              {t("step4Description")}
+            </p>
+            <GhostButton onClick={() => setState((s) => ({ ...s, step: 3 }))}>
+              <IconArrowLeft size={16} />
+              {t("backButton")}
+            </GhostButton>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}

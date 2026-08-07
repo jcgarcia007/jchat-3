@@ -26,6 +26,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { CATEGORY_ICONS, getCategoryIcon, CategoryFallbackIcon } from "@/lib/categoryIcons";
 import { CategoryCards, type CategoryCard } from "@/components/dashboard/CategoryCards";
@@ -54,6 +55,7 @@ import {
   IconFish,
   IconAdjustments,
   IconLock,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
@@ -2999,11 +3001,43 @@ function CategorySection({
   );
 }
 
+// ── AI Menu Assistant entry point (Pro) ───────────────────────────────────────
+
+const assistantEntryStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  padding: "9px 16px",
+  borderRadius: "var(--db-radius)",
+  border: "1px solid var(--db-accent)",
+  background: "var(--db-accent-bg)",
+  color: "var(--db-accent)",
+  fontSize: "13px",
+  fontWeight: 700,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
+};
+
+const assistantProBadgeStyle: React.CSSProperties = {
+  padding: "2px 8px",
+  borderRadius: "999px",
+  background: "var(--db-accent)",
+  color: "var(--db-accent-text)",
+  fontSize: "10px",
+  fontWeight: 800,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
 // ── Main page component ────────────────────────────────────────────────────────
 
 export default function MenuPage() {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+  /** Strings for the AI Menu Assistant entry point (own namespace). */
+  const tAssistant = useTranslations("menuAssistant");
+  /** Shown when a non-Pro owner taps the assistant entry point. */
+  const [showAssistantProNotice, setShowAssistantProNotice] = useState(false);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   // Category card selector: null = "Todas" (show every category).
@@ -3985,6 +4019,26 @@ export default function MenuPage() {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+          {/* AI Menu Assistant (Pro) — the real plan gate lives server-side in the
+              menu-assistant Edge Function; this only avoids a dead-end click. */}
+          {bizPlan === "pro" || !isSupabaseConfigured ? (
+            <Link href="/dashboard/menu/assistant" style={assistantEntryStyle}>
+              <IconSparkles size={16} />
+              {tAssistant("entryButton")}
+              <span style={assistantProBadgeStyle}>{tAssistant("proBadge")}</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAssistantProNotice(true)}
+              style={{ ...assistantEntryStyle, cursor: "pointer" }}
+            >
+              <IconSparkles size={16} />
+              {tAssistant("entryButton")}
+              <span style={assistantProBadgeStyle}>{tAssistant("proBadge")}</span>
+            </button>
+          )}
+
           {/* menu_enabled toggle */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
             <Toggle
@@ -4022,6 +4076,78 @@ export default function MenuPage() {
             strong: (chunks) => <strong>{chunks}</strong>,
             code: (chunks) => <code>{chunks}</code>,
           })}
+        </div>
+      )}
+
+      {/* AI Menu Assistant — "Pro only" notice for non-Pro owners */}
+      {showAssistantProNotice && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowAssistantProNotice(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--db-bg-card)",
+              border: "1px solid var(--db-border)",
+              borderRadius: "var(--db-radius-card)",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <IconLock size={32} color="var(--db-accent)" />
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--db-text-primary)", margin: "10px 0 6px" }}>
+              {tAssistant("proOnlyTitle")}
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 18px", lineHeight: 1.5 }}>
+              {tAssistant("proOnlyMessage")}
+            </p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
+              <Link
+                href="/dashboard/billing"
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: "var(--db-radius)",
+                  background: "var(--db-accent)",
+                  color: "var(--db-accent-text)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                {tAssistant("lockedCta")}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowAssistantProNotice(false)}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  color: "var(--db-text-secondary)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {tAssistant("proOnlyClose")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
