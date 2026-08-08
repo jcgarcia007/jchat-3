@@ -588,6 +588,7 @@ export default function MenuAssistantPage() {
   const [itemPortadas, setItemPortadas] = useState<Record<string, string>>({});
   const [aiCandidates, setAiCandidates] = useState<Record<string, string[]>>({});
   const [aiGenerating, setAiGenerating] = useState<Record<string, boolean>>({});
+  const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
   const [photoSaving, setPhotoSaving] = useState(false);
 
   // ── Boot: resolve the active business, its plan and its country ─────────────
@@ -954,6 +955,7 @@ export default function MenuAssistantPage() {
     setItemGalleries({});
     setItemPortadas({});
     setAiCandidates({});
+    setAiErrors({});
     try {
       // 1. Existing categories → name (case-insensitive) → id, so we can reuse.
       const { data: existingCats, error: catsErr } = await supabase
@@ -1092,6 +1094,13 @@ export default function MenuAssistantPage() {
   /** Call generate_images EF and store AI-generated candidates for the item. */
   const handlePhotoGenerate = useCallback(
     async (itemId: string, itemName: string, description: string) => {
+      // Clear any previous error for this item before each attempt.
+      setAiErrors((prev) => {
+        if (!prev[itemId]) return prev;
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
       setAiGenerating((prev) => ({ ...prev, [itemId]: true }));
       try {
         const result = await callAssistant<{ ok: boolean; images: string[] }>(
@@ -1104,8 +1113,9 @@ export default function MenuAssistantPage() {
             [itemId]: [...(prev[itemId] ?? []), ...result.images],
           }));
         }
-      } catch {
-        // silent — user can retry with the button
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setAiErrors((prev) => ({ ...prev, [itemId]: msg }));
       } finally {
         setAiGenerating((prev) => ({ ...prev, [itemId]: false }));
       }
@@ -2475,6 +2485,7 @@ export default function MenuAssistantPage() {
         const portada = itemPortadas[currentItem.id] ?? gallery[0] ?? null;
         const candidates = aiCandidates[currentItem.id] ?? [];
         const isGenerating = aiGenerating[currentItem.id] ?? false;
+        const aiError = aiErrors[currentItem.id] ?? null;
         const progress = Math.round(((photoIdx) / items.length) * 100);
 
         return (
@@ -2620,6 +2631,27 @@ export default function MenuAssistantPage() {
                 </span>
               </div>
             </div>
+
+            {/* AI error banner */}
+            {aiError && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  padding: "10px 14px",
+                  borderRadius: "var(--db-radius)",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  marginBottom: "14px",
+                }}
+              >
+                <IconAlertTriangle size={16} color="var(--db-danger, #ef4444)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: "12px", color: "var(--db-danger, #ef4444)", lineHeight: 1.5, wordBreak: "break-word" }}>
+                  {aiError}
+                </span>
+              </div>
+            )}
 
             {/* AI candidates grid (shown once generated) */}
             {candidates.length > 0 && (

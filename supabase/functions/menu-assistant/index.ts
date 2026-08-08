@@ -788,12 +788,12 @@ async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> 
 
   for (const res of responses) {
     if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error(
-        `[menu-assistant] gemini image gen HTTP ${res.status}: ` +
-          detail.slice(0, 400),
-      );
-      throw new Error("image_gen_error");
+      const raw = await res.text().catch(() => "");
+      // Redact the API key in case it appears in error URLs or bodies.
+      const safe = raw.replace(/key=[^&"'\s,\]}\n]+/g, "key=REDACTED");
+      const geminiDetail = `HTTP ${res.status}: ${safe.slice(0, 200)}`;
+      console.error(`[menu-assistant] gemini image gen: ${geminiDetail}`);
+      throw Object.assign(new Error("image_gen_error"), { geminiDetail });
     }
 
     interface GeminiImageResponse {
@@ -813,11 +813,10 @@ async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> 
     );
 
     if (!imagePart?.inlineData?.data) {
-      console.error(
-        "[menu-assistant] gemini response had no image inlineData part; " +
-          "check model name and responseModalities support.",
-      );
-      throw new Error("image_gen_error");
+      const geminiDetail =
+        "No image part in Gemini response — check GEMINI_IMAGE_MODEL supports image generation and responseModalities=[IMAGE]";
+      console.error(`[menu-assistant] ${geminiDetail}`);
+      throw Object.assign(new Error("image_gen_error"), { geminiDetail });
     }
 
     // Decode base64 → Uint8Array (Deno-safe, no Buffer needed)
@@ -862,8 +861,10 @@ async function handleGenerateImages(
     imageBytes = await generateImages(prompt, count);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // service_not_configured and image_gen_error bubble up to the main handler.
-    throw new Error(msg === "service_not_configured" ? msg : "image_gen_error");
+    if (msg === "service_not_configured") throw err;
+    // Forward any Gemini detail so the caller can surface it for debugging.
+    const detail = (err as { geminiDetail?: string }).geminiDetail;
+    throw Object.assign(new Error("image_gen_error"), detail ? { geminiDetail: detail } : {});
   }
 
   // ── Upload to Supabase Storage → menu-photos bucket (already public) ───────
@@ -1065,7 +1066,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return errorResponse(message, 502);
     }
     if (message === "image_gen_error") {
-      return errorResponse("image_gen_error", 502);
+      const detail = (err as { geminiDetail?: string }).geminiDetail;
+      return jsonResponse(
+        { ok: false, error: "image_gen_error", ...(detail ? { detail } : {}) },
+        502,
+      );
     }
 
     console.error(`[menu-assistant] unhandled error in action "${action}":`, err);

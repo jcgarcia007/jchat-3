@@ -21,7 +21,10 @@ export async function readFunctionError(error: unknown): Promise<string> {
     try {
       const body = await (source.json as () => Promise<unknown>)();
       const msg = (body as { error?: unknown })?.error;
-      if (typeof msg === "string" && msg.length > 0) return msg;
+      const det = (body as { detail?: unknown })?.detail;
+      if (typeof msg === "string" && msg.length > 0) {
+        return typeof det === "string" && det ? `${msg}: ${det}` : msg;
+      }
     } catch {
       /* fall through to text */
     }
@@ -34,7 +37,10 @@ export async function readFunctionError(error: unknown): Promise<string> {
         try {
           const body = JSON.parse(raw);
           const msg = (body as { error?: unknown })?.error;
-          if (typeof msg === "string" && msg.length > 0) return msg;
+          const det = (body as { detail?: unknown })?.detail;
+          if (typeof msg === "string" && msg.length > 0) {
+            return typeof det === "string" && det ? `${msg}: ${det}` : msg;
+          }
         } catch {
           return raw;
         }
