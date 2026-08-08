@@ -2410,6 +2410,7 @@
     "photosSkipAll": "Skip all",
     "photosSave": "Save and continue",
     "photosSaving": "Saving…",
+    "photosSaveError": "Could not save photos",
     "photosDoneTitle": "Your menu is ready!",
     "photosDoneBody": "{count, plural, one {# item created with photos.} other {# items created with photos.}}",
     "photosSelectHint": "Select the ones you want"

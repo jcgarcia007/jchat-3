@@ -2410,6 +2410,7 @@
     "photosSkipAll": "Saltar todo",
     "photosSave": "Guardar y continuar",
     "photosSaving": "Guardando…",
+    "photosSaveError": "No se pudieron guardar las fotos",
     "photosDoneTitle": "¡Tu menú está listo!",
     "photosDoneBody": "{count, plural, one {# artículo creado con fotos.} other {# artículos creados con fotos.}}",
     "photosSelectHint": "Selecciona las que quieres usar"

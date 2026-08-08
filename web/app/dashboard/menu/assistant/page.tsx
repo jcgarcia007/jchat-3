@@ -590,6 +590,7 @@ export default function MenuAssistantPage() {
   const [aiGenerating, setAiGenerating] = useState<Record<string, boolean>>({});
   const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
   const [photoSaving, setPhotoSaving] = useState(false);
+  const [photoSaveError, setPhotoSaveError] = useState<string | null>(null);
 
   // ── Boot: resolve the active business, its plan and its country ─────────────
   useEffect(() => {
@@ -1172,19 +1173,28 @@ export default function MenuAssistantPage() {
   const handleSaveAndAdvance = useCallback(
     async (itemId: string) => {
       setPhotoSaving(true);
+      setPhotoSaveError(null);
       try {
         const gallery = itemGalleries[itemId] ?? [];
         const portada = itemPortadas[itemId] ?? gallery[0] ?? null;
-        await supabase
+        const { error } = await supabase
           .from("menu_items")
           .update({ images: gallery as unknown as Json, photo_url: portada } as never)
           .eq("id", itemId);
-      } catch {
-        // tolerate storage/db errors — advance anyway so the user isn't stuck
+        if (error) {
+          console.error("[menu-assistant] photo save error:", error);
+          setPhotoSaveError(error.message);
+          return; // stay on this item so the user can retry
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[menu-assistant] photo save exception:", msg);
+        setPhotoSaveError(msg);
+        return; // stay on this item so the user can retry
       } finally {
         setPhotoSaving(false);
-        advancePhoto();
       }
+      advancePhoto();
     },
     [itemGalleries, itemPortadas, advancePhoto],
   );
@@ -2813,6 +2823,11 @@ export default function MenuAssistantPage() {
                   </p>
                 )}
               </div>
+            )}
+
+            {/* Save error */}
+            {photoSaveError && (
+              <ErrorBanner message={`${t("photosSaveError")} — ${photoSaveError}`} />
             )}
 
             {/* Footer actions */}
