@@ -721,38 +721,120 @@ async function handleRefineItem(body: Record<string, unknown>): Promise<Response
 
 // ── Action E: generate_images ─────────────────────────────────────────────────
 //
-// Generates food-photography images using Gemini's native image generation
-// (generateContent with responseModalities: ["IMAGE", "TEXT"]).
+// Generates food-photography images.
+// Default provider: OpenAI gpt-image-1 (single call, n images, b64 response).
+// Fallback: Gemini generateContent (n parallel calls, one image each).
+// Toggle with IMAGE_PROVIDER env var: "openai" (default) | "gemini".
 //
-// IMPORTANT — Imagen vs Gemini:
-//   The Imagen :predict endpoint (imagen-4.0-generate-001) is deprecated and
-//   shuts down August 17 2026. This action uses the generateContent endpoint
-//   which is the current, supported path.
+// OpenAI API shape (verified Aug 2026):
+//   POST https://api.openai.com/v1/images/generations
+//   Auth: Authorization: Bearer OPENAI_API_KEY
+//   Body: { model, prompt, n (1-10), size, quality }
+//   Response: { data: [{ b64_json }], usage }
+//   GPT models always return b64_json — no response_format needed.
+//   Model default: gpt-image-1. Override with OPENAI_IMAGE_MODEL env var.
 //
-// API shape (Gemini image generation, as of Aug 2026):
+// Gemini API shape (kept as fallback):
 //   POST v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}
-//   Body: { contents: [{ parts: [{ text: prompt }] }],
-//           generationConfig: { responseModalities: ["IMAGE", "TEXT"] } }
-//   Response: candidates[0].content.parts[].inlineData.{ mimeType, data }
-//             where `data` is a base64-encoded PNG.
-//
-// One image per generateContent call → N parallel calls for N images.
-// Model is configurable via GEMINI_IMAGE_MODEL env var (default below).
-// Juan must verify the model string before deploying:
-//   https://ai.google.dev/gemini-api/docs/models
+//   Body: { contents, generationConfig: { responseModalities: ["IMAGE"] } }
+//   One image per call → N parallel fetches.
+//   IMPORTANT: Imagen :predict endpoint shut down Aug 17 2026. Use generateContent.
+
+const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
+const OPENAI_IMAGE_MODEL_DEFAULT = "gpt-image-1";
 
 const GEMINI_GENERATE_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
-
-/**
- * Default model for Gemini image generation.
- * Update GEMINI_IMAGE_MODEL env secret if Google releases a newer stable model.
- * DO NOT use imagen-* models — they shut down Aug 17 2026.
- */
 const GEMINI_IMAGE_MODEL_DEFAULT = "gemini-2.0-flash-preview-image-generation";
 
-/** Abstraction layer — swap the provider here without touching the handler. */
-async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> {
+// ── Shared utilities ───────────────────────────────────────────────────────────
+
+/** Decode base64 string → Uint8Array (Deno-safe, no Buffer). */
+function b64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Redact credentials that might appear in API error bodies. */
+function redactCreds(text: string): string {
+  return text
+    .replace(/Bearer [^"'\s,\]}\n]+/g, "Bearer REDACTED")
+    .replace(/key=[^&"'\s,\]}\n]+/g, "key=REDACTED");
+}
+
+/** Throw an image_gen_error with a human-readable detail attached. */
+function imgError(detail: string): never {
+  console.error(`[menu-assistant] image gen error: ${detail}`);
+  throw Object.assign(new Error("image_gen_error"), { imageGenDetail: detail });
+}
+
+// ── OpenAI provider ────────────────────────────────────────────────────────────
+
+async function generateImagesOpenAI(
+  prompt: string,
+  n: number,
+): Promise<Uint8Array[]> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      "[menu-assistant] OPENAI_API_KEY is not set — " +
+        "set it with `supabase secrets set OPENAI_API_KEY=...`",
+    );
+    throw new Error("service_not_configured");
+  }
+
+  const model = Deno.env.get("OPENAI_IMAGE_MODEL") ?? OPENAI_IMAGE_MODEL_DEFAULT;
+
+  const res = await fetch(OPENAI_IMAGES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      n,
+      size: "1024x1024",
+      quality: "medium",
+      // gpt-image-1 always returns b64_json; output_format defaults to png
+    }),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    imgError(`HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`);
+  }
+
+  interface OpenAIImagesResponse {
+    data?: Array<{ b64_json?: string }>;
+  }
+  const json = (await res.json()) as OpenAIImagesResponse;
+  const items = json.data ?? [];
+
+  if (items.length === 0) {
+    imgError(
+      "OpenAI returned empty data array — check model and request shape",
+    );
+  }
+
+  return items.map((item) => {
+    if (!item.b64_json) {
+      imgError("OpenAI image item missing b64_json field");
+    }
+    // imgError() throws (never), so TypeScript knows b64_json is string here.
+    return b64ToBytes(item.b64_json as string);
+  });
+}
+
+// ── Gemini provider (fallback) ─────────────────────────────────────────────────
+
+async function generateImagesGemini(
+  prompt: string,
+  n: number,
+): Promise<Uint8Array[]> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
     console.error(
@@ -762,38 +844,30 @@ async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> 
     throw new Error("service_not_configured");
   }
 
-  const model =
-    Deno.env.get("GEMINI_IMAGE_MODEL") ?? GEMINI_IMAGE_MODEL_DEFAULT;
-
-  const url =
-    `${GEMINI_GENERATE_BASE}/${model}:generateContent?key=${apiKey}`;
-
+  const model = Deno.env.get("GEMINI_IMAGE_MODEL") ?? GEMINI_IMAGE_MODEL_DEFAULT;
+  const url = `${GEMINI_GENERATE_BASE}/${model}:generateContent?key=${apiKey}`;
   const requestBody = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
   };
 
-  // Gemini generateContent yields one image per call.
-  // Fire n requests in parallel (count is capped at 6 by the handler).
-  const fetches = Array.from({ length: n }, () =>
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    })
+  // Gemini generateContent yields one image per call → N parallel calls.
+  const responses = await Promise.all(
+    Array.from({ length: n }, () =>
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      })
+    ),
   );
 
-  const responses = await Promise.all(fetches);
   const images: Uint8Array[] = [];
 
   for (const res of responses) {
     if (!res.ok) {
       const raw = await res.text().catch(() => "");
-      // Redact the API key in case it appears in error URLs or bodies.
-      const safe = raw.replace(/key=[^&"'\s,\]}\n]+/g, "key=REDACTED");
-      const geminiDetail = `HTTP ${res.status}: ${safe.slice(0, 200)}`;
-      console.error(`[menu-assistant] gemini image gen: ${geminiDetail}`);
-      throw Object.assign(new Error("image_gen_error"), { geminiDetail });
+      imgError(`HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`);
     }
 
     interface GeminiImageResponse {
@@ -805,7 +879,6 @@ async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> 
         };
       }>;
     }
-
     const data = (await res.json()) as GeminiImageResponse;
     const parts = data.candidates?.[0]?.content?.parts ?? [];
     const imagePart = parts.find(
@@ -813,22 +886,30 @@ async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> 
     );
 
     if (!imagePart?.inlineData?.data) {
-      const geminiDetail =
-        "No image part in Gemini response — check GEMINI_IMAGE_MODEL supports image generation and responseModalities=[IMAGE]";
-      console.error(`[menu-assistant] ${geminiDetail}`);
-      throw Object.assign(new Error("image_gen_error"), { geminiDetail });
+      imgError(
+        "No image part in Gemini response — " +
+          "check GEMINI_IMAGE_MODEL supports image generation and responseModalities=[IMAGE]",
+      );
     }
 
-    // Decode base64 → Uint8Array (Deno-safe, no Buffer needed)
-    const binary = atob(imagePart.inlineData.data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    images.push(bytes);
+    // imgError() throws, so imagePart.inlineData.data is string here.
+    images.push(b64ToBytes((imagePart as NonNullable<typeof imagePart>).inlineData!.data));
   }
 
   return images;
+}
+
+// ── Dispatcher ─────────────────────────────────────────────────────────────────
+
+/**
+ * Abstraction layer — routes to OpenAI (default) or Gemini based on the
+ * IMAGE_PROVIDER env var. Set IMAGE_PROVIDER=gemini to use Gemini as fallback.
+ */
+async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> {
+  const provider = Deno.env.get("IMAGE_PROVIDER") ?? "openai";
+  return provider === "gemini"
+    ? generateImagesGemini(prompt, n)
+    : generateImagesOpenAI(prompt, n);
 }
 
 async function handleGenerateImages(
@@ -840,14 +921,12 @@ async function handleGenerateImages(
   const description = str(body, "description");
   const style = str(body, "style");
   const rawCount = intField(body, "count");
-  // Default 5, cap 6 to avoid rate limit / cost overruns.
+  // Default 5, cap 6 to avoid rate-limit / cost overruns.
   const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 6) : 5;
 
   if (!itemName) return errorResponse("bad_request", 400);
 
   // ── Build food-photography prompt ──────────────────────────────────────────
-  // Style can be overridden by the caller; otherwise a sensible default is used
-  // so all generated images share a consistent look.
   const descPart = description ? `, ${description}` : "";
   const styleBase =
     style ??
@@ -862,14 +941,16 @@ async function handleGenerateImages(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "service_not_configured") throw err;
-    // Forward any Gemini detail so the caller can surface it for debugging.
-    const detail = (err as { geminiDetail?: string }).geminiDetail;
-    throw Object.assign(new Error("image_gen_error"), detail ? { geminiDetail: detail } : {});
+    // Forward provider detail so the caller can surface it for debugging.
+    const detail = (err as { imageGenDetail?: string }).imageGenDetail;
+    throw Object.assign(
+      new Error("image_gen_error"),
+      detail ? { imageGenDetail: detail } : {},
+    );
   }
 
   // ── Upload to Supabase Storage → menu-photos bucket (already public) ───────
-  // Path pattern: {business_id}/ai/{uuid}.png
-  // Admin client has service-role access — no RLS to bypass.
+  // Path: {business_id}/ai/{uuid}.png  — service-role client, no RLS bypass needed.
   const urls: string[] = [];
   const uploadFailures: string[] = [];
 
@@ -1066,7 +1147,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return errorResponse(message, 502);
     }
     if (message === "image_gen_error") {
-      const detail = (err as { geminiDetail?: string }).geminiDetail;
+      const detail = (err as { imageGenDetail?: string }).imageGenDetail;
       return jsonResponse(
         { ok: false, error: "image_gen_error", ...(detail ? { detail } : {}) },
         502,
