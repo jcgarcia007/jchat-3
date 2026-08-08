@@ -721,23 +721,28 @@ async function handleRefineItem(body: Record<string, unknown>): Promise<Response
 
 // ── Action E: generate_images ─────────────────────────────────────────────────
 //
-// Generates food-photography images.
-// Default provider: OpenAI gpt-image-1 (single call, n images, b64 response).
-// Fallback: Gemini generateContent (n parallel calls, one image each).
+// Generates food-photography images with angle variation.
+// - Each image uses a different camera angle to maximise visual variety.
+// - Calls are sequential (one at a time) with a 1 s gap between them.
+// - 429 responses are retried up to 3 times (respects Retry-After header).
+// - Partial success: skips failed images, returns those that succeeded.
+//   Only throws image_gen_error if zero images were produced.
+//
+// Default provider: OpenAI gpt-image-1 (n=1 per call, always b64_json).
+// Fallback: Gemini generateContent (n=1 per call, sequential).
 // Toggle with IMAGE_PROVIDER env var: "openai" (default) | "gemini".
 //
 // OpenAI API shape (verified Aug 2026):
 //   POST https://api.openai.com/v1/images/generations
 //   Auth: Authorization: Bearer OPENAI_API_KEY
-//   Body: { model, prompt, n (1-10), size, quality }
+//   Body: { model, prompt, n: 1, size, quality }
 //   Response: { data: [{ b64_json }], usage }
 //   GPT models always return b64_json — no response_format needed.
 //   Model default: gpt-image-1. Override with OPENAI_IMAGE_MODEL env var.
 //
 // Gemini API shape (kept as fallback):
 //   POST v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}
-//   Body: { contents, generationConfig: { responseModalities: ["IMAGE"] } }
-//   One image per call → N parallel fetches.
+//   One call per image (generateContent supports one image per request).
 //   IMPORTANT: Imagen :predict endpoint shut down Aug 17 2026. Use generateContent.
 
 const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
@@ -746,6 +751,21 @@ const OPENAI_IMAGE_MODEL_DEFAULT = "gpt-image-1";
 const GEMINI_GENERATE_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 const GEMINI_IMAGE_MODEL_DEFAULT = "gemini-2.0-flash-preview-image-generation";
+
+/**
+ * Camera angles cycled per image to maximise visual variety.
+ * Index wraps with modulo so it works for any count 1–6.
+ */
+const PHOTO_ANGLES: string[] = [
+  "top-down overhead shot",
+  "45-degree side angle",
+  "close-up macro detail shot",
+  "eye-level front view",
+  "three-quarter angle",
+];
+
+/** Milliseconds to pause between sequential image generation calls. */
+const INTER_CALL_DELAY_MS = 1_000;
 
 // ── Shared utilities ───────────────────────────────────────────────────────────
 
@@ -770,10 +790,47 @@ function imgError(detail: string): never {
   throw Object.assign(new Error("image_gen_error"), { imageGenDetail: detail });
 }
 
+/** Pause for `ms` milliseconds. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch with automatic retry on HTTP 429 (rate limit).
+ * Respects the Retry-After response header (seconds); falls back to baseSleepMs.
+ * Returns the final Response — caller handles non-2xx statuses.
+ */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 3,
+  baseSleepMs = 3_000,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) {
+      console.warn("[menu-assistant] 429 rate limit — no more retries, returning last response");
+      return res;
+    }
+    const retryAfter = res.headers.get("Retry-After");
+    const waitMs = retryAfter
+      ? Math.max(parseInt(retryAfter, 10), 1) * 1_000
+      : baseSleepMs;
+    console.warn(
+      `[menu-assistant] 429 rate limit (attempt ${attempt + 1}/${maxRetries + 1}), ` +
+        `retrying in ${waitMs}ms`,
+    );
+    await sleep(waitMs);
+  }
+  // Unreachable — every path in the loop either returns or awaits and loops.
+  throw new Error("fetchWithRetry: unreachable");
+}
+
 // ── OpenAI provider ────────────────────────────────────────────────────────────
 
 async function generateImagesOpenAI(
-  prompt: string,
+  basePrompt: string,
   n: number,
 ): Promise<Uint8Array[]> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
@@ -786,53 +843,78 @@ async function generateImagesOpenAI(
   }
 
   const model = Deno.env.get("OPENAI_IMAGE_MODEL") ?? OPENAI_IMAGE_MODEL_DEFAULT;
+  const images: Uint8Array[] = [];
+  let lastFailDetail = "";
 
-  const res = await fetch(OPENAI_IMAGES_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      prompt,
-      n,
-      size: "1024x1024",
-      quality: "medium",
-      // gpt-image-1 always returns b64_json; output_format defaults to png
-    }),
-  });
+  for (let i = 0; i < n; i++) {
+    // Small gap between calls to stay well under rate limits.
+    if (i > 0) await sleep(INTER_CALL_DELAY_MS);
 
-  if (!res.ok) {
-    const raw = await res.text().catch(() => "");
-    imgError(`HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`);
-  }
+    const angle = PHOTO_ANGLES[i % PHOTO_ANGLES.length];
+    const prompt = `${basePrompt}, ${angle}`;
 
-  interface OpenAIImagesResponse {
-    data?: Array<{ b64_json?: string }>;
-  }
-  const json = (await res.json()) as OpenAIImagesResponse;
-  const items = json.data ?? [];
+    const res = await fetchWithRetry(OPENAI_IMAGES_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "medium",
+        // gpt-image-1 always returns b64_json; output_format defaults to png
+      }),
+    });
 
-  if (items.length === 0) {
-    imgError(
-      "OpenAI returned empty data array — check model and request shape",
-    );
-  }
-
-  return items.map((item) => {
-    if (!item.b64_json) {
-      imgError("OpenAI image item missing b64_json field");
+    if (!res.ok) {
+      const raw = await res.text().catch(() => "");
+      lastFailDetail = `HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`;
+      console.error(
+        `[menu-assistant] openai image ${i + 1}/${n} failed: ${lastFailDetail}`,
+      );
+      continue; // partial failure — skip this image, keep going
     }
-    // imgError() throws (never), so TypeScript knows b64_json is string here.
-    return b64ToBytes(item.b64_json as string);
-  });
+
+    interface OpenAIImagesResponse {
+      data?: Array<{ b64_json?: string }>;
+    }
+    let json: OpenAIImagesResponse;
+    try {
+      json = (await res.json()) as OpenAIImagesResponse;
+    } catch {
+      lastFailDetail = "Failed to parse OpenAI JSON response";
+      console.error(
+        `[menu-assistant] openai image ${i + 1}/${n}: ${lastFailDetail}`,
+      );
+      continue;
+    }
+
+    const b64 = json.data?.[0]?.b64_json;
+    if (!b64) {
+      lastFailDetail = "OpenAI image item missing b64_json field";
+      console.error(
+        `[menu-assistant] openai image ${i + 1}/${n}: ${lastFailDetail}`,
+      );
+      continue;
+    }
+
+    images.push(b64ToBytes(b64));
+  }
+
+  if (images.length === 0) {
+    imgError(lastFailDetail || "OpenAI returned no usable images");
+  }
+
+  return images;
 }
 
 // ── Gemini provider (fallback) ─────────────────────────────────────────────────
 
 async function generateImagesGemini(
-  prompt: string,
+  basePrompt: string,
   n: number,
 ): Promise<Uint8Array[]> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
@@ -845,29 +927,32 @@ async function generateImagesGemini(
   }
 
   const model = Deno.env.get("GEMINI_IMAGE_MODEL") ?? GEMINI_IMAGE_MODEL_DEFAULT;
-  const url = `${GEMINI_GENERATE_BASE}/${model}:generateContent?key=${apiKey}`;
-  const requestBody = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
-  };
-
-  // Gemini generateContent yields one image per call → N parallel calls.
-  const responses = await Promise.all(
-    Array.from({ length: n }, () =>
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      })
-    ),
-  );
-
+  const geminiUrl = `${GEMINI_GENERATE_BASE}/${model}:generateContent?key=${apiKey}`;
   const images: Uint8Array[] = [];
+  let lastFailDetail = "";
 
-  for (const res of responses) {
+  for (let i = 0; i < n; i++) {
+    if (i > 0) await sleep(INTER_CALL_DELAY_MS);
+
+    const angle = PHOTO_ANGLES[i % PHOTO_ANGLES.length];
+    const prompt = `${basePrompt}, ${angle}`;
+
+    const res = await fetchWithRetry(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+      }),
+    });
+
     if (!res.ok) {
       const raw = await res.text().catch(() => "");
-      imgError(`HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`);
+      lastFailDetail = `HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`;
+      console.error(
+        `[menu-assistant] gemini image ${i + 1}/${n} failed: ${lastFailDetail}`,
+      );
+      continue;
     }
 
     interface GeminiImageResponse {
@@ -879,21 +964,37 @@ async function generateImagesGemini(
         };
       }>;
     }
-    const data = (await res.json()) as GeminiImageResponse;
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find(
-      (p) => p.inlineData?.mimeType?.startsWith("image/"),
-    );
-
-    if (!imagePart?.inlineData?.data) {
-      imgError(
-        "No image part in Gemini response — " +
-          "check GEMINI_IMAGE_MODEL supports image generation and responseModalities=[IMAGE]",
+    let data: GeminiImageResponse;
+    try {
+      data = (await res.json()) as GeminiImageResponse;
+    } catch {
+      lastFailDetail = "Failed to parse Gemini JSON response";
+      console.error(
+        `[menu-assistant] gemini image ${i + 1}/${n}: ${lastFailDetail}`,
       );
+      continue;
     }
 
-    // imgError() throws, so imagePart.inlineData.data is string here.
-    images.push(b64ToBytes((imagePart as NonNullable<typeof imagePart>).inlineData!.data));
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const inlineData = parts.find(
+      (p) => p.inlineData?.mimeType?.startsWith("image/"),
+    )?.inlineData;
+
+    if (!inlineData?.data) {
+      lastFailDetail =
+        "No image part in Gemini response — " +
+        "check GEMINI_IMAGE_MODEL supports image generation and responseModalities=[IMAGE]";
+      console.error(
+        `[menu-assistant] gemini image ${i + 1}/${n}: ${lastFailDetail}`,
+      );
+      continue;
+    }
+
+    images.push(b64ToBytes(inlineData.data));
+  }
+
+  if (images.length === 0) {
+    imgError(lastFailDetail || "Gemini returned no usable images");
   }
 
   return images;
@@ -904,12 +1005,18 @@ async function generateImagesGemini(
 /**
  * Abstraction layer — routes to OpenAI (default) or Gemini based on the
  * IMAGE_PROVIDER env var. Set IMAGE_PROVIDER=gemini to use Gemini as fallback.
+ *
+ * `basePrompt` is the style+subject description; each provider appends a
+ * per-image angle suffix before calling the API.
  */
-async function generateImages(prompt: string, n: number): Promise<Uint8Array[]> {
+async function generateImages(
+  basePrompt: string,
+  n: number,
+): Promise<Uint8Array[]> {
   const provider = Deno.env.get("IMAGE_PROVIDER") ?? "openai";
   return provider === "gemini"
-    ? generateImagesGemini(prompt, n)
-    : generateImagesOpenAI(prompt, n);
+    ? generateImagesGemini(basePrompt, n)
+    : generateImagesOpenAI(basePrompt, n);
 }
 
 async function handleGenerateImages(
@@ -921,23 +1028,25 @@ async function handleGenerateImages(
   const description = str(body, "description");
   const style = str(body, "style");
   const rawCount = intField(body, "count");
-  // Default 5, cap 6 to avoid rate-limit / cost overruns.
-  const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 6) : 5;
+  // Default 3, cap 6 to avoid rate-limit / cost overruns.
+  const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 6) : 3;
 
   if (!itemName) return errorResponse("bad_request", 400);
 
-  // ── Build food-photography prompt ──────────────────────────────────────────
+  // ── Build base food-photography prompt ─────────────────────────────────────
+  // Angle is NOT included here — each provider appends it per-call so every
+  // image in the set comes from a different camera perspective.
   const descPart = description ? `, ${description}` : "";
   const styleBase =
     style ??
     "professional food photography, clean bright background, natural window light, " +
-      "top-down angle, appetizing, high detail, restaurant quality, no text";
-  const prompt = `${styleBase} of ${itemName}${descPart}`;
+      "appetizing, high detail, restaurant quality, no text";
+  const basePrompt = `${styleBase} of ${itemName}${descPart}`;
 
-  // ── Generate images ────────────────────────────────────────────────────────
+  // ── Generate images (sequential, with angle variation per call) ────────────
   let imageBytes: Uint8Array[];
   try {
-    imageBytes = await generateImages(prompt, count);
+    imageBytes = await generateImages(basePrompt, count);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "service_not_configured") throw err;
