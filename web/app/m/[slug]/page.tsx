@@ -11,6 +11,8 @@
  * Next.js 16: params is a Promise — must be awaited.
  */
 
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
