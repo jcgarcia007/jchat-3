@@ -27,8 +27,15 @@
  *     client-side in the wizard (FASE 5), always with is_published = false.
  *   • ANTHROPIC_API_KEY never leaves the server.
  *
- *   generate_images  { business_id, item_name, description?, style?, count? (default 5, cap 6) }
+ *   generate_images  { business_id, item_name, description?, style?, style_hint?,
+ *                      reference_image_urls?: string[], count? (default 5, cap 6) }
  *                                          → { ok, images: string[] }  (Storage public URLs)
+ *
+ *   When reference_image_urls is provided the function uses
+ *   POST /v1/images/edits (gpt-image-1, multipart/form-data) so the model uses
+ *   those images as style/composition reference. Without reference_image_urls the
+ *   function falls back to POST /v1/images/generations (current text-to-image flow).
+ *   style_hint overrides the default photography prompt prefix.
  *
  * ── Required env vars ────────────────────────────────────────────────────────
  *   ANTHROPIC_API_KEY         — Anthropic API key (supabase secrets set ...)
@@ -753,6 +760,7 @@ async function handleRefineItem(body: Record<string, unknown>): Promise<Response
 //   IMPORTANT: Imagen :predict endpoint shut down Aug 17 2026. Use generateContent.
 
 const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
+const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const OPENAI_IMAGE_MODEL_DEFAULT = "gpt-image-1";
 
 const GEMINI_GENERATE_BASE =
@@ -834,6 +842,32 @@ async function fetchWithRetry(
   throw new Error("fetchWithRetry: unreachable");
 }
 
+// ── Reference-image download helper ───────────────────────────────────────────
+
+/**
+ * Download a public image URL → raw bytes.
+ * Returns null on any network or HTTP error (non-blocking — caller skips it).
+ */
+async function downloadPublicImage(url: string): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) {
+      console.warn(
+        `[menu-assistant] ref image download failed HTTP ${res.status}: ${url.slice(0, 100)}`,
+      );
+      return null;
+    }
+    const buf = await res.arrayBuffer();
+    return new Uint8Array(buf);
+  } catch (err) {
+    console.warn(
+      `[menu-assistant] ref image download error for ${url.slice(0, 100)}:`,
+      err,
+    );
+    return null;
+  }
+}
+
 // ── OpenAI provider ────────────────────────────────────────────────────────────
 
 async function generateImagesOpenAI(
@@ -913,6 +947,112 @@ async function generateImagesOpenAI(
 
   if (images.length === 0) {
     imgError(lastFailDetail || "OpenAI returned no usable images");
+  }
+
+  return images;
+}
+
+// ── OpenAI edits provider (reference-image mode) ──────────────────────────────
+
+/**
+ * Generate images with the OpenAI /v1/images/edits endpoint, using downloaded
+ * reference images as style / composition reference.
+ *
+ * gpt-image-1 accepts up to 16 input images via multipart `image[]` fields.
+ * No mask is required for the reference-only use case.
+ * Response shape is identical to /generations: { data: [{ b64_json }] }.
+ *
+ * Falls back to returning an empty array (not throwing) so the caller can
+ * gracefully degrade to the generations endpoint when all calls fail.
+ */
+async function generateImagesOpenAIEditsWithRefs(
+  basePrompt: string,
+  n: number,
+  refBytes: Uint8Array[],
+): Promise<Uint8Array[]> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      "[menu-assistant] OPENAI_API_KEY is not set — " +
+        "set it with `supabase secrets set OPENAI_API_KEY=...`",
+    );
+    throw new Error("service_not_configured");
+  }
+
+  const model = Deno.env.get("OPENAI_IMAGE_MODEL") ?? OPENAI_IMAGE_MODEL_DEFAULT;
+  const images: Uint8Array[] = [];
+  let lastFailDetail = "";
+
+  for (let i = 0; i < n; i++) {
+    if (i > 0) await sleep(INTER_CALL_DELAY_MS);
+
+    const angle = PHOTO_ANGLES[i % PHOTO_ANGLES.length];
+    const prompt = `${basePrompt}, ${angle}`;
+
+    // Build multipart body. gpt-image-1 edits accepts repeated `image[]` fields
+    // (array) for multiple reference images — standard multipart array encoding.
+    const fd = new FormData();
+    fd.append("model", model);
+    fd.append("prompt", prompt);
+    fd.append("n", "1");
+    fd.append("size", "1024x1024");
+    fd.append("quality", "medium");
+    for (const [idx, bytes] of refBytes.entries()) {
+      // Use image[] to signal an array; provide a filename so the server can
+      // infer content-type from the extension.
+      // downloadPublicImage() wraps res.arrayBuffer() in new Uint8Array(buf),
+      // so bytes.buffer is always a plain ArrayBuffer — the cast is safe.
+      fd.append(
+        "image[]",
+        new Blob([bytes.buffer as ArrayBuffer], { type: "image/png" }),
+        `ref_${idx}.png`,
+      );
+    }
+
+    const res = await fetchWithRetry(OPENAI_IMAGES_EDITS_URL, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      // Do NOT set Content-Type — the runtime sets it with the correct boundary.
+      body: fd,
+    });
+
+    if (!res.ok) {
+      const raw = await res.text().catch(() => "");
+      lastFailDetail = `HTTP ${res.status}: ${redactCreds(raw).slice(0, 200)}`;
+      console.error(
+        `[menu-assistant] openai edits image ${i + 1}/${n} failed: ${lastFailDetail}`,
+      );
+      continue; // partial failure — skip, keep going
+    }
+
+    interface OpenAIImagesResponse {
+      data?: Array<{ b64_json?: string }>;
+    }
+    let json: OpenAIImagesResponse;
+    try {
+      json = (await res.json()) as OpenAIImagesResponse;
+    } catch {
+      lastFailDetail = "Failed to parse OpenAI edits JSON response";
+      console.error(
+        `[menu-assistant] openai edits image ${i + 1}/${n}: ${lastFailDetail}`,
+      );
+      continue;
+    }
+
+    const b64 = json.data?.[0]?.b64_json;
+    if (!b64) {
+      lastFailDetail = "OpenAI edits item missing b64_json field";
+      console.error(
+        `[menu-assistant] openai edits image ${i + 1}/${n}: ${lastFailDetail}`,
+      );
+      continue;
+    }
+
+    images.push(b64ToBytes(b64));
+  }
+
+  if (images.length === 0) {
+    imgError(lastFailDetail || "OpenAI edits returned no usable images");
   }
 
   return images;
@@ -1034,6 +1174,8 @@ async function handleGenerateImages(
   const itemName = str(body, "item_name");
   const description = str(body, "description");
   const style = str(body, "style");
+  const styleHint = str(body, "style_hint");                 // NEW: per-item style override
+  const referenceImageUrls = strArray(body, "reference_image_urls"); // NEW: brand-kit URLs
   const rawCount = intField(body, "count");
   // Default 3, cap 6 to avoid rate-limit / cost overruns.
   const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 6) : 3;
@@ -1041,19 +1183,43 @@ async function handleGenerateImages(
   if (!itemName) return errorResponse("bad_request", 400);
 
   // ── Build base food-photography prompt ─────────────────────────────────────
-  // Angle is NOT included here — each provider appends it per-call so every
-  // image in the set comes from a different camera perspective.
+  // style_hint overrides the per-call style string; style is kept for backwards compat.
+  // Angle is NOT included here — each provider appends it per-call.
   const descPart = description ? `, ${description}` : "";
   const styleBase =
+    styleHint ??
     style ??
     "professional food photography, clean bright background, natural window light, " +
       "appetizing, high detail, restaurant quality, no text";
   const basePrompt = `${styleBase} of ${itemName}${descPart}`;
 
-  // ── Generate images (sequential, with angle variation per call) ────────────
+  // ── Generate images ────────────────────────────────────────────────────────
+  // With reference_image_urls → OpenAI /v1/images/edits (style composition).
+  // Without reference_image_urls → /v1/images/generations (text-to-image).
+  // If reference image downloads all fail, fall back to generations silently.
   let imageBytes: Uint8Array[];
   try {
-    imageBytes = await generateImages(basePrompt, count);
+    if (referenceImageUrls.length > 0) {
+      console.log(
+        `[menu-assistant] edits mode: downloading ${referenceImageUrls.length} reference images`,
+      );
+      const refResults = await Promise.all(referenceImageUrls.map(downloadPublicImage));
+      const refBytes = refResults.filter((b): b is Uint8Array => b !== null);
+      if (refBytes.length === 0) {
+        // All downloads failed — graceful fallback to text-to-image.
+        console.warn(
+          "[menu-assistant] all ref image downloads failed — falling back to generations",
+        );
+        imageBytes = await generateImages(basePrompt, count);
+      } else {
+        console.log(
+          `[menu-assistant] edits mode: ${refBytes.length}/${referenceImageUrls.length} refs downloaded`,
+        );
+        imageBytes = await generateImagesOpenAIEditsWithRefs(basePrompt, count, refBytes);
+      }
+    } else {
+      imageBytes = await generateImages(basePrompt, count);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "service_not_configured") throw err;

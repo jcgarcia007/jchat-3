@@ -2410,6 +2410,14 @@
     "publishError": "Could not publish the menu",
     "publishDecisionTitle": "Ready to go live?",
     "detailsLabel": "Tell us more about your business",
-    "detailsPlaceholder": "e.g. Mexican cuisine, specialty in tacos and seafood"
+    "detailsPlaceholder": "e.g. Mexican cuisine, specialty in tacos and seafood",
+    "brandKitTitle": "Brand Kit",
+    "brandKitDescription": "Upload reference photos so the AI generates images that match your style.",
+    "brandKitEnabled": "Use brand kit",
+    "brandKitPlates": "Plates & food",
+    "brandKitDrinkware": "Glasses & drinks",
+    "brandKitUploadHint": "Upload photos",
+    "itemStyleHintLabel": "Style hint (optional)",
+    "itemStyleHintPlaceholder": "e.g. dark moody, warm tones, minimalist…"
   }
 }

@@ -2410,6 +2410,14 @@
     "publishError": "No se pudo publicar el menú",
     "publishDecisionTitle": "¿Publicar ahora?",
     "detailsLabel": "Cuéntanos más de tu negocio",
-    "detailsPlaceholder": "Ej.: cocina mexicana, especialidad en tacos y mariscos"
+    "detailsPlaceholder": "Ej.: cocina mexicana, especialidad en tacos y mariscos",
+    "brandKitTitle": "Kit de marca",
+    "brandKitDescription": "Sube fotos de referencia para que la IA genere imágenes acordes a tu estilo.",
+    "brandKitEnabled": "Usar kit de marca",
+    "brandKitPlates": "Platos y comida",
+    "brandKitDrinkware": "Copas y bebidas",
+    "brandKitUploadHint": "Subir fotos",
+    "itemStyleHintLabel": "Sugerencia de estilo (opcional)",
+    "itemStyleHintPlaceholder": "Ej.: oscuro y dramático, tonos cálidos, minimalista…"
   }
 }

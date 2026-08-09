@@ -71,6 +71,16 @@ import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Station = "kitchen" | "bar";
+
+/** Brand kit stored in businesses.brand_kit. */
+interface BrandKit {
+  enabled: boolean;
+  /** Public URLs of food/plate reference photos (used for station=kitchen items). */
+  plates: string[];
+  /** Public URLs of drink/glass reference photos (used for station=bar items). */
+  drinkware: string[];
+}
+const DEFAULT_BRAND_KIT: BrandKit = { enabled: false, plates: [], drinkware: [] };
 /** Step 4 exists only as a FASE 4 placeholder for now. */
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -531,7 +541,7 @@ export default function MenuAssistantPage() {
   const [createSuccess, setCreateSuccess] = useState<{
     categoryCount: number;
     itemCount: number;
-    createdItems: Array<{ id: string; name: string; description_es: string }>;
+    createdItems: Array<{ id: string; name: string; description_es: string; station: Station }>;
     /** IDs of categories actually inserted this run (not reused ones). */
     newCategoryIds: string[];
     /** IDs of all menu_items inserted this run. */
@@ -553,6 +563,12 @@ export default function MenuAssistantPage() {
   const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
   const [photoSaving, setPhotoSaving] = useState(false);
   const [photoSaveError, setPhotoSaveError] = useState<string | null>(null);
+
+  // Brand Kit — loaded in boot, persisted to businesses.brand_kit on change.
+  const [brandKit, setBrandKit] = useState<BrandKit>(DEFAULT_BRAND_KIT);
+  const [brandKitSaving, setBrandKitSaving] = useState(false);
+  // Per-item style hint input (item id → free-text).
+  const [itemStyleHints, setItemStyleHints] = useState<Record<string, string>>({});
 
   // ── Boot: resolve the active business, its plan and its country ─────────────
   useEffect(() => {
@@ -578,17 +594,28 @@ export default function MenuAssistantPage() {
       setBusinessId(res.business.id);
       setPlan(res.business.plan);
 
-      // resolveActiveBusiness() doesn't select country — read it separately so
-      // step 1 can prefill it. There is no per-business currency column, so the
-      // currency default stays USD (see lib/currency.ts).
+      // resolveActiveBusiness() doesn't select country or brand_kit — read them
+      // separately. Country prefills step 1; brand_kit is the AI reference kit.
       const { data } = await supabase
         .from("businesses")
-        .select("country")
+        .select("country, brand_kit")
         .eq("id", res.business.id)
         .maybeSingle();
       if (!alive) return;
-      const country = (data as { country?: string } | null)?.country;
-      if (country) setState((s) => ({ ...s, country }));
+      const biz = data as { country?: string; brand_kit?: unknown } | null;
+      if (biz?.country) setState((s) => ({ ...s, country: biz.country as string }));
+      if (biz?.brand_kit && typeof biz.brand_kit === "object" && !Array.isArray(biz.brand_kit)) {
+        const k = biz.brand_kit as { enabled?: unknown; plates?: unknown; drinkware?: unknown };
+        setBrandKit({
+          enabled: k.enabled === true,
+          plates: Array.isArray(k.plates)
+            ? (k.plates as unknown[]).filter((u): u is string => typeof u === "string")
+            : [],
+          drinkware: Array.isArray(k.drinkware)
+            ? (k.drinkware as unknown[]).filter((u): u is string => typeof u === "string")
+            : [],
+        });
+      }
       setBootLoading(false);
     }
 
@@ -962,7 +989,7 @@ export default function MenuAssistantPage() {
 
       // 3. Insert the selected items of each category.
       let itemCount = 0;
-      const createdItems: Array<{ id: string; name: string; description_es: string }> = [];
+      const createdItems: Array<{ id: string; name: string; description_es: string; station: Station }> = [];
       // All item IDs from this run — used by the publish step.
       const allItemIds: string[] = [];
       for (const catName of state.selectedCategories) {
@@ -1012,6 +1039,7 @@ export default function MenuAssistantPage() {
             id: newItemId,
             name: item.name,
             description_es: item.description_es || "",
+            station: item.editedStation ?? item.station,
           });
           allItemIds.push(newItemId);
           nextSort++;
@@ -1060,7 +1088,7 @@ export default function MenuAssistantPage() {
 
   /** Call generate_images EF and store AI-generated candidates for the item. */
   const handlePhotoGenerate = useCallback(
-    async (itemId: string, itemName: string, description: string) => {
+    async (itemId: string, itemName: string, description: string, station: Station) => {
       // Clear any previous error for this item before each attempt.
       setAiErrors((prev) => {
         if (!prev[itemId]) return prev;
@@ -1070,9 +1098,23 @@ export default function MenuAssistantPage() {
       });
       setAiGenerating((prev) => ({ ...prev, [itemId]: true }));
       try {
+        // Build reference image list from the brand kit based on station.
+        const refs: string[] = [];
+        if (brandKit.enabled) {
+          const pool = station === "bar" ? brandKit.drinkware : brandKit.plates;
+          refs.push(...pool.slice(0, 4)); // pass up to 4 reference images
+        }
+        const styleHint = (itemStyleHints[itemId] ?? "").trim() || undefined;
+
         const result = await callAssistant<{ ok: boolean; images: string[] }>(
           "generate_images",
-          { item_name: itemName, description: description || undefined, count: 5 },
+          {
+            item_name: itemName,
+            description: description || undefined,
+            count: 5,
+            style_hint: styleHint,
+            reference_image_urls: refs.length > 0 ? refs : undefined,
+          },
         );
         if (result?.ok && result.images?.length) {
           setAiCandidates((prev) => ({
@@ -1087,7 +1129,7 @@ export default function MenuAssistantPage() {
         setAiGenerating((prev) => ({ ...prev, [itemId]: false }));
       }
     },
-    [callAssistant],
+    [callAssistant, brandKit, itemStyleHints],
   );
 
   /** Toggle a candidate URL into the item's gallery. */
@@ -1133,6 +1175,61 @@ export default function MenuAssistantPage() {
       }
     },
     [createSuccess, photoIdx],
+  );
+
+  // ── Brand Kit handlers ─────────────────────────────────────────────────────
+
+  /** Persist a brand kit value to businesses.brand_kit. */
+  const saveBrandKit = useCallback(async (kit: BrandKit) => {
+    if (!businessId) return;
+    setBrandKitSaving(true);
+    try {
+      await supabase.from("businesses").update({ brand_kit: kit } as never).eq("id", businessId);
+    } finally {
+      setBrandKitSaving(false);
+    }
+  }, [businessId]);
+
+  /** Toggle enabled and persist. */
+  const handleBrandKitToggle = useCallback(async () => {
+    const next: BrandKit = { ...brandKit, enabled: !brandKit.enabled };
+    setBrandKit(next);
+    await saveBrandKit(next);
+  }, [brandKit, saveBrandKit]);
+
+  /** Upload reference photos to the brand slot and persist. */
+  const handleBrandKitUpload = useCallback(
+    async (slot: "plates" | "drinkware", files: FileList) => {
+      if (!businessId) return;
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${businessId}/brand/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from("menu-photos")
+          .upload(path, file, { upsert: false });
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(path);
+          uploaded.push(urlData.publicUrl);
+        }
+      }
+      if (uploaded.length > 0) {
+        const next: BrandKit = { ...brandKit, [slot]: [...brandKit[slot], ...uploaded] };
+        setBrandKit(next);
+        await saveBrandKit(next);
+      }
+    },
+    [businessId, brandKit, saveBrandKit],
+  );
+
+  /** Remove a reference photo from the brand kit and persist. */
+  const handleBrandKitRemove = useCallback(
+    async (slot: "plates" | "drinkware", url: string) => {
+      const next: BrandKit = { ...brandKit, [slot]: brandKit[slot].filter((u) => u !== url) };
+      setBrandKit(next);
+      await saveBrandKit(next);
+    },
+    [brandKit, saveBrandKit],
   );
 
   /**
@@ -2418,6 +2515,88 @@ export default function MenuAssistantPage() {
 
       {/* ── Step 4 — Preview + create ─────────────────────────────────────── */}
 
+      {/* ── Brand Kit (persistent during photo step) ────────────────────────── */}
+      {state.step === 4 && createSuccess && photoPhase === "photos" && (
+        <Card>
+          {/* Header row */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)" }}>
+                {t("brandKitTitle")}
+              </h3>
+              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--db-text-secondary)", lineHeight: 1.5 }}>
+                {t("brandKitDescription")}
+              </p>
+            </div>
+            {/* Enabled toggle */}
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", flexShrink: 0, marginTop: "2px" }}>
+              <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--db-text-secondary)" }}>
+                {t("brandKitEnabled")}
+              </span>
+              <input
+                type="checkbox"
+                checked={brandKit.enabled}
+                onChange={() => void handleBrandKitToggle()}
+                style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--db-accent)" }}
+              />
+              {brandKitSaving && <Spinner />}
+            </label>
+          </div>
+
+          {/* Two upload columns: Plates | Drinkware */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            {(["plates", "drinkware"] as const).map((slot) => (
+              <div key={slot}>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {t(slot === "plates" ? "brandKitPlates" : "brandKitDrinkware")}
+                </p>
+                {/* Thumbnails */}
+                {brandKit[slot].length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+                    {brandKit[slot].map((url) => (
+                      <div key={url} style={{ position: "relative", width: "56px", height: "56px", borderRadius: "6px", overflow: "visible", flexShrink: 0 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          style={{ width: "56px", height: "56px", objectFit: "cover", borderRadius: "6px", display: "block", border: "1px solid var(--db-border)" }}
+                        />
+                        <button
+                          onClick={() => void handleBrandKitRemove(slot, url)}
+                          title={t("photosRemove")}
+                          style={{ position: "absolute", top: "-5px", right: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: "var(--db-danger, #ef4444)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        >
+                          <IconX size={10} color="#fff" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Upload label */}
+                <label
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1.5px dashed var(--db-border)", cursor: "pointer", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, transition: "border-color 0.2s, color 0.2s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--db-accent)"; e.currentTarget.style.color = "var(--db-accent)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--db-border)"; e.currentTarget.style.color = "var(--db-text-secondary)"; }}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files?.length) void handleBrandKitUpload(slot, e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <IconUpload size={14} />
+                  {t("brandKitUploadHint")}
+                </label>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* FASE 6 — Photo step (shown after menu is created, before final success) */}
       {state.step === 4 && createSuccess && photoPhase === "photos" && createSuccess.createdItems.length > 0 && (() => {
         const items = createSuccess.createdItems;
@@ -2466,6 +2645,36 @@ export default function MenuAssistantPage() {
               )}
             </div>
 
+            {/* Per-item style hint */}
+            <div style={{ marginBottom: "14px" }}>
+              <label
+                htmlFor={`style-hint-${currentItem.id}`}
+                style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.06em" }}
+              >
+                {t("itemStyleHintLabel")}
+              </label>
+              <input
+                id={`style-hint-${currentItem.id}`}
+                type="text"
+                value={itemStyleHints[currentItem.id] ?? ""}
+                onChange={(e) =>
+                  setItemStyleHints((prev) => ({ ...prev, [currentItem.id]: e.target.value }))
+                }
+                placeholder={t("itemStyleHintPlaceholder")}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  color: "var(--db-text-primary)",
+                  fontSize: "13px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
             {/* Upload source buttons */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "18px" }}>
               {/* File upload */}
@@ -2512,7 +2721,7 @@ export default function MenuAssistantPage() {
 
               {/* AI generate */}
               <button
-                onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es)}
+                onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es, currentItem.station)}
                 disabled={isGenerating}
                 style={{
                   display: "flex",
@@ -2644,7 +2853,7 @@ export default function MenuAssistantPage() {
                 </div>
                 {/* Generate more */}
                 <button
-                  onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es)}
+                  onClick={() => void handlePhotoGenerate(currentItem.id, currentItem.name, currentItem.description_es, currentItem.station)}
                   disabled={isGenerating}
                   style={{
                     display: "inline-flex",
