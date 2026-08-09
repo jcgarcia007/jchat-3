@@ -2413,6 +2413,12 @@
     "photosSaveError": "No se pudieron guardar las fotos",
     "photosDoneTitle": "¡Tu menú está listo!",
     "photosDoneBody": "{count, plural, one {# artículo creado con fotos.} other {# artículos creados con fotos.}}",
-    "photosSelectHint": "Selecciona las que quieres usar"
+    "photosSelectHint": "Selecciona las que quieres usar",
+    "publishNowButton": "Publicar menú ahora",
+    "draftButton": "Dejar en borrador",
+    "publishing": "Publicando…",
+    "publishedResult": "{count, plural, one {# plato publicado} other {# platos publicados}} — ya visibles en tu menú",
+    "publishError": "No se pudo publicar el menú",
+    "publishDecisionTitle": "¿Publicar ahora?"
   }
 }

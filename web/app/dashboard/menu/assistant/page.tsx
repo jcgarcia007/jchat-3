@@ -579,7 +579,16 @@ export default function MenuAssistantPage() {
     categoryCount: number;
     itemCount: number;
     createdItems: Array<{ id: string; name: string; description_es: string }>;
+    /** IDs of categories actually inserted this run (not reused ones). */
+    newCategoryIds: string[];
+    /** IDs of all menu_items inserted this run. */
+    allItemIds: string[];
   } | null>(null);
+
+  // Publish decision (shown on final success screen)
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishResult, setPublishResult] = useState<{ items: number; categories: number } | null>(null);
 
   // FASE 6 — photo step (only active after createSuccess is set)
   const [photoIdx, setPhotoIdx] = useState(0);
@@ -950,13 +959,15 @@ export default function MenuAssistantPage() {
     if (!businessId) return;
     setCreating(true);
     setCreateError(null);
-    // Reset photo step in case the user somehow re-runs (shouldn't happen — button disappears on success).
+    // Reset photo + publish state in case the user somehow re-runs (shouldn't happen — button disappears on success).
     setPhotoIdx(0);
     setPhotoPhase("photos");
     setItemGalleries({});
     setItemPortadas({});
     setAiCandidates({});
     setAiErrors({});
+    setPublishResult(null);
+    setPublishError(null);
     try {
       // 1. Existing categories → name (case-insensitive) → id, so we can reuse.
       const { data: existingCats, error: catsErr } = await supabase
@@ -975,6 +986,9 @@ export default function MenuAssistantPage() {
 
       // 2. Create the missing categories and resolve every id.
       const categoryIdMap = new Map<string, string>();
+      // Track IDs of categories actually inserted this run (not reused) so the
+      // publish step knows exactly which rows to flip to is_published = true.
+      const newCategoryIds: string[] = [];
       let newCatCount = 0;
       for (const catName of state.selectedCategories) {
         const key = catName.trim().toLowerCase();
@@ -993,7 +1007,9 @@ export default function MenuAssistantPage() {
             .select("id")
             .single();
           if (catErr) throw catErr;
-          categoryIdMap.set(catName, (newCat as { id: string }).id);
+          const newCatId = (newCat as { id: string }).id;
+          categoryIdMap.set(catName, newCatId);
+          newCategoryIds.push(newCatId);
           newCatCount++;
         }
       }
@@ -1001,6 +1017,8 @@ export default function MenuAssistantPage() {
       // 3. Insert the selected items of each category.
       let itemCount = 0;
       const createdItems: Array<{ id: string; name: string; description_es: string }> = [];
+      // All item IDs from this run — used by the publish step.
+      const allItemIds: string[] = [];
       for (const catName of state.selectedCategories) {
         const catId = categoryIdMap.get(catName);
         if (!catId) continue;
@@ -1043,17 +1061,19 @@ export default function MenuAssistantPage() {
             .select("id")
             .single();
           if (itemErr) throw itemErr;
+          const newItemId = (newItem as { id: string }).id;
           createdItems.push({
-            id: (newItem as { id: string }).id,
+            id: newItemId,
             name: item.name,
             description_es: item.description_es || "",
           });
+          allItemIds.push(newItemId);
           nextSort++;
           itemCount++;
         }
       }
 
-      setCreateSuccess({ categoryCount: newCatCount, itemCount, createdItems });
+      setCreateSuccess({ categoryCount: newCatCount, itemCount, createdItems, newCategoryIds, allItemIds });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setCreateError(msg);
@@ -1169,7 +1189,15 @@ export default function MenuAssistantPage() {
     [createSuccess, photoIdx],
   );
 
-  /** Save current item's photos then advance. */
+  /**
+   * Save current item's photos then advance.
+   *
+   * Writes to `menu_item_photos` (one row per photo, sort = index).
+   * Keeps `menu_items.photo_url` in sync with the cover photo.
+   * Deletes any rows already in `menu_item_photos` for this item before
+   * inserting so a retry never produces duplicates.
+   * Does NOT write `menu_items.images` (legacy column — abandoned).
+   */
   const handleSaveAndAdvance = useCallback(
     async (itemId: string) => {
       setPhotoSaving(true);
@@ -1177,18 +1205,36 @@ export default function MenuAssistantPage() {
       try {
         const gallery = itemGalleries[itemId] ?? [];
         const portada = itemPortadas[itemId] ?? gallery[0] ?? null;
-        const { error } = await supabase
-          .from("menu_items")
-          .update({ images: gallery as unknown as Json, photo_url: portada } as never)
-          .eq("id", itemId);
-        if (error) {
-          console.error("[menu-assistant] photo save error:", error);
-          setPhotoSaveError(error.message);
-          return; // stay on this item so the user can retry
+
+        // 1. Remove any previous photos for this item (idempotent retry-safe).
+        const { error: delErr } = await supabase
+          .from("menu_item_photos")
+          .delete()
+          .eq("menu_item_id", itemId);
+        if (delErr) throw new Error(delErr.message);
+
+        // 2. Insert gallery rows — one per photo, sort = position index.
+        if (gallery.length > 0 && businessId) {
+          const rows = gallery.map((url, sort) => ({
+            menu_item_id: itemId,
+            business_id: businessId,
+            url,
+            sort,
+          }));
+          const { error: insertErr } = await supabase
+            .from("menu_item_photos")
+            .insert(rows as never);
+          if (insertErr) throw new Error(insertErr.message);
         }
+
+        // 3. Sync cover to menu_items.photo_url (kept for backwards compat).
+        const { error: updateErr } = await supabase
+          .from("menu_items")
+          .update({ photo_url: portada } as never)
+          .eq("id", itemId);
+        if (updateErr) throw new Error(updateErr.message);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        console.error("[menu-assistant] photo save exception:", msg);
         setPhotoSaveError(msg);
         return; // stay on this item so the user can retry
       } finally {
@@ -1196,8 +1242,44 @@ export default function MenuAssistantPage() {
       }
       advancePhoto();
     },
-    [itemGalleries, itemPortadas, advancePhoto],
+    [businessId, itemGalleries, itemPortadas, advancePhoto],
   );
+
+  /** Publish all categories and items created in this wizard run. */
+  const handlePublishMenu = useCallback(async () => {
+    if (!createSuccess) return;
+    setPublishLoading(true);
+    setPublishError(null);
+    try {
+      const { newCategoryIds, allItemIds } = createSuccess;
+
+      if (newCategoryIds.length > 0) {
+        const { error: catErr } = await supabase
+          .from("menu_categories")
+          .update({ is_published: true } as never)
+          .in("id", newCategoryIds);
+        if (catErr) throw new Error(catErr.message);
+      }
+
+      if (allItemIds.length > 0) {
+        const { error: itemErr } = await supabase
+          .from("menu_items")
+          .update({ is_published: true } as never)
+          .in("id", allItemIds);
+        if (itemErr) throw new Error(itemErr.message);
+      }
+
+      setPublishResult({
+        categories: newCategoryIds.length,
+        items: allItemIds.length,
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setPublishError(msg);
+    } finally {
+      setPublishLoading(false);
+    }
+  }, [createSuccess]);
 
   // ── Render guards ──────────────────────────────────────────────────────────
 
@@ -2880,33 +2962,88 @@ export default function MenuAssistantPage() {
             >
               {t("photosDoneBody", { count: createSuccess.itemCount })}
             </p>
+
+            {/* ── Publish decision ──────────────────────────────────────────── */}
             <div
               style={{
+                width: "100%",
+                maxWidth: 460,
+                marginTop: "10px",
+                padding: "20px 24px",
+                borderRadius: "var(--db-radius-card)",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
                 display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                marginTop: "6px",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "14px",
+                textAlign: "center",
               }}
             >
-              <Link
-                href="/dashboard/menu"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "11px 22px",
-                  borderRadius: "var(--db-radius)",
-                  background: "var(--db-accent)",
-                  color: "var(--db-accent-text)",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  textDecoration: "none",
-                }}
-              >
-                {t("goToEditor")}
-                <IconArrowRight size={16} />
-              </Link>
+              {publishResult ? (
+                /* ── Already published ─────────────────────────────────── */
+                <>
+                  <IconCircleCheck size={28} color="var(--db-success)" />
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                    {t("publishedResult", { count: publishResult.items })}
+                  </p>
+                  <Link
+                    href="/dashboard/menu"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "11px 22px",
+                      borderRadius: "var(--db-radius)",
+                      background: "var(--db-accent)",
+                      color: "var(--db-accent-text)",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      textDecoration: "none",
+                    }}
+                  >
+                    {t("goToEditor")}
+                    <IconArrowRight size={16} />
+                  </Link>
+                </>
+              ) : (
+                /* ── Decision: publish now or keep as draft ─────────────── */
+                <>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)", margin: 0 }}>
+                    {t("publishDecisionTitle")}
+                  </p>
+                  {publishError && (
+                    <ErrorBanner message={`${t("publishError")} — ${publishError}`} />
+                  )}
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
+                    <PrimaryButton
+                      onClick={() => void handlePublishMenu()}
+                      disabled={publishLoading}
+                    >
+                      {publishLoading ? <Spinner /> : <IconCircleCheck size={16} />}
+                      {publishLoading ? t("publishing") : t("publishNowButton")}
+                    </PrimaryButton>
+                    <Link
+                      href="/dashboard/menu"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "11px 18px",
+                        borderRadius: "var(--db-radius)",
+                        border: "1px solid var(--db-border)",
+                        background: "var(--db-bg-card)",
+                        color: "var(--db-text-secondary)",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                    >
+                      {t("draftButton")}
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Card>

@@ -2413,6 +2413,12 @@
     "photosSaveError": "Could not save photos",
     "photosDoneTitle": "Your menu is ready!",
     "photosDoneBody": "{count, plural, one {# item created with photos.} other {# items created with photos.}}",
-    "photosSelectHint": "Select the ones you want"
+    "photosSelectHint": "Select the ones you want",
+    "publishNowButton": "Publish menu now",
+    "draftButton": "Leave as draft",
+    "publishing": "Publishing…",
+    "publishedResult": "{count, plural, one {# dish published} other {# dishes published}} — now visible in your menu",
+    "publishError": "Could not publish the menu",
+    "publishDecisionTitle": "Ready to go live?"
   }
 }
