@@ -6,6 +6,7 @@
  * valid employee JWT and POS access at the target business.
  *
  *   connection_token         { business_id }  → { secret }
+ *   get_or_create_location   { business_id }  → { location_id }
  *   create_payment_intent    { order_id }     → { client_secret, payment_intent_id }
  *   mark_paid                { order_id }     → { ok: boolean, status?: string }
  *   create_tab_payment_intent{ business_id, table_id }
@@ -169,6 +170,103 @@ async function getStripeAccount(
     return errorResponse("Business has no connected Stripe account", 422);
   }
   return { stripeAccount };
+}
+
+// ── Action: get_or_create_location ───────────────────────────────────────────
+//
+// Returns a Terminal Location id on the connected Stripe account.
+// Lists first (limit=1) to avoid duplicates; creates one if none exist.
+// The locationId is REQUIRED by ConnectBluetoothReaderParams — must be fetched
+// server-side because we never expose the platform Stripe secret to the client.
+//
+// Location address is a placeholder; the business owner can update it via the
+// Stripe dashboard once the Terminal integration is live. country is read from
+// businesses.country so the correct EMV config is applied to the M2 reader.
+
+async function handleGetOrCreateLocation(
+  body: Record<string, unknown>,
+  userClient: SupabaseClient,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+
+  // 1. Verify POS access (auth.uid() from JWT, never from body).
+  const accessErr = await checkPosAccess(userClient, businessId);
+  if (accessErr) return accessErr;
+
+  const db = getAdminClient();
+
+  // 2. Get the connected Stripe account + business metadata.
+  const accountResult = await getStripeAccount(db, businessId);
+  if (accountResult instanceof Response) return accountResult;
+  const { stripeAccount } = accountResult;
+
+  // 3. Fetch business name + country for the location display_name/address.
+  const { data: bizData } = await db
+    .from("businesses")
+    .select("name, country")
+    .eq("id", businessId)
+    .maybeSingle();
+  const biz = bizData as { name?: string | null; country?: string | null } | null;
+  const displayName = (biz?.name ?? "JChat POS").trim() || "JChat POS";
+  // country must be a 2-letter ISO code; fall back to "US" if unknown.
+  const country = (biz?.country ?? "US").toUpperCase().slice(0, 2) || "US";
+
+  const stripe = getStripe();
+
+  // 4. List existing Terminal Locations on the connected account (limit 1).
+  //    This prevents duplicate locations on every session start.
+  let locationId: string | null = null;
+  try {
+    const list = await stripe.terminal.locations.list(
+      { limit: 1 },
+      { stripeAccount },
+    );
+    if (list.data.length > 0) {
+      locationId = list.data[0].id;
+      console.log(
+        `[terminal] get_or_create_location: reusing existing location=${locationId} for business=${businessId}`,
+      );
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] locations.list error:", msg);
+    return errorResponse(msg, 502);
+  }
+
+  // 5. Create a new location if none exist on this connected account.
+  //    The address is a placeholder — business owner updates it via Stripe dashboard.
+  //    For non-US countries the address fields may need adjustment; Stripe validates
+  //    them in live mode but is lenient in test mode.
+  if (!locationId) {
+    try {
+      const location = await stripe.terminal.locations.create(
+        {
+          display_name: displayName,
+          address: {
+            country,
+            // Placeholder US address — valid for test mode.
+            // For production the business owner should update via Stripe dashboard.
+            line1: "1 Main St",
+            city: "San Francisco",
+            state: "CA",
+            postal_code: "94105",
+          },
+        },
+        { stripeAccount },
+      );
+      locationId = location.id;
+      console.log(
+        `[terminal] get_or_create_location: created location=${locationId} for business=${businessId} country=${country}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Stripe error";
+      console.error("[terminal] locations.create error:", msg);
+      return errorResponse(msg, 502);
+    }
+  }
+
+  return jsonResponse({ location_id: locationId });
 }
 
 // ── Action: connection_token ──────────────────────────────────────────────────
@@ -744,6 +842,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     switch (action) {
       case "connection_token":
         return await handleConnectionToken(body, userClient);
+
+      case "get_or_create_location":
+        return await handleGetOrCreateLocation(body, userClient);
 
       case "create_payment_intent":
         return await handleCreatePaymentIntent(body, userClient);

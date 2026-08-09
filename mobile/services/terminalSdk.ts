@@ -104,10 +104,14 @@ const STUB_HOOK_RESULT: Record<string, any> = Object.freeze({
  * object reference that doesn't trigger re-renders. Screens should check
  * `isTerminalAvailable` and render an appropriate fallback UI; they must
  * NOT attempt real payments when this returns stub values.
+ *
+ * The optional `props` parameter mirrors the SDK signature — callbacks such
+ * as onDidStartInstallingUpdate are forwarded to the real hook when Terminal
+ * is available and silently ignored by the stub (no native events fire).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const useStripeTerminal: () => any =
+export const useStripeTerminal: (props?: Record<string, any>) => any =
   sdk
     ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sdk.useStripeTerminal as () => any)
-    : () => STUB_HOOK_RESULT;
+      (sdk.useStripeTerminal as (props?: Record<string, any>) => any)
+    : (_props?: Record<string, any>) => STUB_HOOK_RESULT;

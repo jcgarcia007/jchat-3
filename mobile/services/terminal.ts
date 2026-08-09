@@ -132,6 +132,46 @@ function mapReason(httpStatus: number | null, message: string): TerminalErrorRea
   return 'error';
 }
 
+// ─── getOrCreateTerminalLocation ─────────────────────────────────────────────
+
+/**
+ * Fetch (or create) a Stripe Terminal Location on the business's connected
+ * Stripe account. The locationId is required by ConnectBluetoothReaderParams
+ * and must always come from the server — never generated client-side.
+ *
+ * The EF lists existing locations first (limit=1) to avoid duplicates.
+ * If none exist it creates one with the business name and a placeholder address
+ * (editable via the Stripe dashboard for production use).
+ *
+ * @param businessId — the business whose connected Stripe account will be used
+ */
+export type GetOrCreateLocationResult =
+  | { ok: true; locationId: string }
+  | { ok: false; reason: TerminalErrorReason; message?: string };
+
+export async function getOrCreateTerminalLocation(
+  businessId: string,
+): Promise<GetOrCreateLocationResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await supabase.functions.invoke<{
+    location_id: string;
+  }>('terminal', {
+    body: { action: 'get_or_create_location', business_id: businessId },
+  });
+
+  if (error) {
+    const { httpStatus, message } = await readEfError(error);
+    return { ok: false, reason: mapReason(httpStatus, message), message };
+  }
+
+  if (!data?.location_id) {
+    return { ok: false, reason: 'error', message: 'No location_id in response' };
+  }
+
+  return { ok: true, locationId: data.location_id };
+}
+
 // ─── getConnectionTokenSecret ─────────────────────────────────────────────────
 
 /**

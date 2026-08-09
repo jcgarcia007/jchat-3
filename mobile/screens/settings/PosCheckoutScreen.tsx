@@ -1,18 +1,26 @@
 /**
  * JChat 3.0 — POS Checkout Screen (C8)
  *
- * In-person card payment via Stripe Terminal for the full tab of a table
- * (all open orders in one shot). Rendered inside PosNavigator → inside
- * StripeTerminalProvider.
+ * In-person card payment via Stripe Terminal (physical M2 reader) for the
+ * full tab of a table (all open orders in one shot). Rendered inside
+ * PosNavigator → inside StripeTerminalProvider.
  *
  * ── Flow ──────────────────────────────────────────────────────────────────────
  * 1. Load tab total preview from posTableItems() — display only.
- * 2. Auto-discover + auto-connect to the first simulated reader on mount.
+ * 2. On mount:
+ *    a. getOrCreateTerminalLocation(businessId) — EF returns a Stripe Terminal
+ *       Location id (required by ConnectBluetoothReaderParams). Lists first to
+ *       avoid duplicates; creates once if none exist on the connected account.
+ *    b. discoverReaders({ bluetoothScan, simulated: false }) — real BT scan.
+ *    c. Auto-connect first discovered reader with the server locationId.
+ *    d. If the M2 has a pending firmware update the SDK installs it automatically
+ *       (required) or announces it via callback (optional). Progress is shown in
+ *       the reader banner. connectReader resolves only after the update completes.
  * 3. Tap "Cobrar $X.XX":
  *    a. createTabPaymentIntent(businessId, tableId) — amount server-side via
  *       pos_tab_total, never sent from the client
  *    b. retrievePaymentIntent(secret)  — SDK needs the full PI object
- *    c. collectPaymentMethod(pi)       — simulated reader auto-collects
+ *    c. collectPaymentMethod(pi)       — waits for physical card tap/insert/swipe
  *    d. confirmPaymentIntent(pi)       — confirms the payment
  *    e. markTabPaid(paymentId)         — server verifies PI at Stripe, marks
  *       all orders as paid and returns tabClosed
@@ -54,6 +62,7 @@ import { useThemeColors } from '../../theme/colors';
 import { posTableItems } from '../../services/pos';
 import {
   createTabPaymentIntent,
+  getOrCreateTerminalLocation,
   markTabPaid,
 } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -65,7 +74,7 @@ type PosCheckoutRoute = RouteProp<PosStackParamList, 'PosCheckout'>;
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
-type ReaderStatus = 'discovering' | 'connecting' | 'ready' | 'error';
+type ReaderStatus = 'locating' | 'discovering' | 'connecting' | 'updating' | 'ready' | 'error';
 
 type CheckoutPhase =
   | 'idle'        // waiting for employee to tap "Cobrar"
@@ -93,6 +102,16 @@ export default function PosCheckoutScreen() {
   const route = useRoute<PosCheckoutRoute>();
   const { businessId, tableId, tableLabel } = route.params;
 
+  // ── Reader state ────────────────────────────────────────────────────────────
+  const [readerStatus, setReaderStatus] = useState<ReaderStatus>('locating');
+  const [readerError, setReaderError] = useState<string | null>(null);
+  // Firmware update progress — 0–100, null when no update in progress.
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  // Guard against double-connect race when discoveredReaders fires multiple times.
+  const isConnectingRef = useRef(false);
+  // Terminal Location id fetched from server (required by ConnectBluetoothReaderParams).
+  const locationIdRef = useRef<string | null>(null);
+
   // ── Stripe Terminal ─────────────────────────────────────────────────────────
   const {
     discoverReaders,
@@ -104,13 +123,36 @@ export default function PosCheckoutScreen() {
     disconnectReader,
     discoveredReaders,
     connectedReader,
-  } = useStripeTerminal();
-
-  // ── Reader state ────────────────────────────────────────────────────────────
-  const [readerStatus, setReaderStatus] = useState<ReaderStatus>('discovering');
-  const [readerError, setReaderError] = useState<string | null>(null);
-  // Guard against double-connect race when discoveredReaders fires multiple times
-  const isConnectingRef = useRef(false);
+  } = useStripeTerminal({
+    // ── Reader software update callbacks ─────────────────────────────────────
+    // Required updates are installed automatically during connectReader.
+    // Optional updates are also auto-installed here for a seamless employee UX.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onDidStartInstallingUpdate: (_update: any) => {
+      setReaderStatus('updating');
+      setUpdateProgress(0);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onDidReportReaderSoftwareUpdateProgress: (progress: any) => {
+      // progress is a string "0.0"–"1.0" representing fraction complete.
+      const fraction = typeof progress === 'string' ? parseFloat(progress) : NaN;
+      setUpdateProgress(isFinite(fraction) ? Math.round(fraction * 100) : null);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onDidFinishInstallingUpdate: (result: any) => {
+      setUpdateProgress(null);
+      if (result?.error) {
+        // Update failed — reader is disconnected; show error and allow retry.
+        setReaderStatus('error');
+        setReaderError(
+          (result.error as { message?: string })?.message ?? t('pos.readerError'),
+        );
+        isConnectingRef.current = false;
+      }
+      // On success: connectReader is waiting for the update and will resolve
+      // normally — readerStatus will be set to 'ready' in the connect .then().
+    },
+  });
 
   // ── Tab data (preview, display only — authoritative amount comes from EF) ──
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
@@ -145,34 +187,64 @@ export default function PosCheckoutScreen() {
   }, [businessId, tableId]);
 
   // ── Start reader discovery on mount ────────────────────────────────────────
+  // Step 1: fetch a Terminal Location from the server (needed for connect).
+  // Step 2: start a real Bluetooth scan (simulated: false).
   useEffect(() => {
-    setReaderStatus('discovering');
-    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true }).then((res: { error?: { message: string } | null }) => {
+    let cancelled = false;
+
+    async function startDiscovery() {
+      // ── Phase 1: get Terminal Location id (required by Bluetooth connect) ──
+      setReaderStatus('locating');
+      setReaderError(null);
+      setUpdateProgress(null);
+
+      const locResult = await getOrCreateTerminalLocation(businessId);
+      if (cancelled) return;
+
+      if (!locResult.ok) {
+        setReaderStatus('error');
+        setReaderError(locResult.message ?? t('pos.readerError'));
+        return;
+      }
+      locationIdRef.current = locResult.locationId;
+
+      // ── Phase 2: start Bluetooth scan (real reader, not simulated) ─────────
+      setReaderStatus('discovering');
+      const res = await discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
+      if (cancelled) return;
+
       // discoverReaders resolves when scanning ends (cancelled or error).
       // If it ended with an error AND we're not already connecting/connected,
       // surface it as a reader error.
       if (res.error) {
         setReaderStatus((prev) =>
-          prev === 'connecting' || prev === 'ready' ? prev : 'error',
+          prev === 'connecting' || prev === 'updating' || prev === 'ready' ? prev : 'error',
         );
         setReaderError(res.error.message ?? t('pos.readerError'));
       }
-    });
+    }
+
+    startDiscovery();
 
     return () => {
-      // Cancel the ongoing scan when leaving this screen
+      cancelled = true;
       cancelDiscovering();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — runs only on mount
 
   // ── Auto-connect when first reader appears ─────────────────────────────────
+  // locationIdRef.current is set by the discovery effect before scan starts.
+  // If the M2 has a required firmware update, connectReader waits for it to
+  // complete before resolving (callbacks set status to 'updating' + progress).
   useEffect(() => {
     if (
       discoveredReaders.length === 0 ||
       connectedReader ||
       isConnectingRef.current ||
-      readerStatus === 'ready'
+      readerStatus === 'ready' ||
+      readerStatus === 'updating' ||
+      !locationIdRef.current  // wait until location is fetched from server
     ) {
       return;
     }
@@ -180,13 +252,17 @@ export default function PosCheckoutScreen() {
     isConnectingRef.current = true;
     setReaderStatus('connecting');
     const reader = discoveredReaders[0];
+    const locationId = locationIdRef.current; // stable: set once before scan
 
     cancelDiscovering()
       .then(() =>
         connectReader({
           discoveryMethod: 'bluetoothScan',
           reader,
-          locationId: reader.locationId ?? reader.location?.id ?? '',
+          locationId,
+          // Automatically reconnect if the reader drops mid-session
+          // (e.g. BT interference, reader sleep). The SDK handles the retry.
+          autoReconnectOnUnexpectedDisconnect: true,
         }),
       )
       .then((result: { error?: { message: string } | null }) => {
@@ -195,7 +271,11 @@ export default function PosCheckoutScreen() {
           setReaderError(result.error.message ?? t('pos.readerError'));
           isConnectingRef.current = false;
         } else {
+          // connectReader resolved without error → reader is ready (update, if
+          // any, has already completed and status may already be 'updating' →
+          // overwrite with 'ready' now that connect has fully resolved).
           setReaderStatus('ready');
+          setUpdateProgress(null);
           // isConnectingRef.current stays true (we're connected)
         }
       })
@@ -216,10 +296,28 @@ export default function PosCheckoutScreen() {
   // ── Retry reader connection ─────────────────────────────────────────────────
   const handleRetryReader = useCallback(() => {
     isConnectingRef.current = false;
-    setReaderStatus('discovering');
     setReaderError(null);
-    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true });
-  }, [discoverReaders]);
+    setUpdateProgress(null);
+
+    if (locationIdRef.current) {
+      // Location already resolved — skip the EF call and go straight to scan.
+      setReaderStatus('discovering');
+      discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
+    } else {
+      // Location fetch failed on mount — retry the full startup sequence.
+      setReaderStatus('locating');
+      getOrCreateTerminalLocation(businessId).then((locResult) => {
+        if (!locResult.ok) {
+          setReaderStatus('error');
+          setReaderError(locResult.message ?? t('pos.readerError'));
+          return;
+        }
+        locationIdRef.current = locResult.locationId;
+        setReaderStatus('discovering');
+        discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
+      });
+    }
+  }, [businessId, discoverReaders, t]);
 
   // ── Charge ─────────────────────────────────────────────────────────────────
   const handleCharge = useCallback(async () => {
@@ -261,7 +359,7 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Step 3: Collect payment from reader (simulated: auto-collects) ──
+    // ── Step 3: Present the reader to the customer — waits for card tap/insert/swipe ──
     setPhase('collecting');
     const collectResult = await collectPaymentMethod({
       paymentIntent: retrieveResult.paymentIntent,
@@ -335,7 +433,8 @@ export default function PosCheckoutScreen() {
     readerStatus === 'ready' &&
     hasTab &&
     !isProcessing &&
-    phase !== 'success';
+    phase !== 'success' &&
+    phase !== 'error';
 
   // ── Phase label for the progress indicator ──────────────────────────────────
   const phaseLabel = (() => {
@@ -500,8 +599,10 @@ export default function PosCheckoutScreen() {
               ? t('pos.readerReady')
               : readerStatus === 'error'
               ? (readerError ?? t('pos.readerError'))
-              : readerStatus === 'connecting'
-              ? t('pos.readerConnecting')
+              : readerStatus === 'updating'
+              ? t('pos.readerUpdating', { pct: updateProgress ?? 0 })
+              : readerStatus === 'locating'
+              ? t('pos.readerLocating')
               : t('pos.readerConnecting')}
           </Text>
 
