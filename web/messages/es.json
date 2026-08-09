@@ -2331,17 +2331,6 @@
     "typeFoodTruck": "Food truck",
     "typeOther": "Otro",
     "typeOtherPlaceholder": "Escribe tu tipo de negocio",
-    "sellsLabel": "¿Qué vas a vender?",
-    "sellsMenuCocina": "Menú de cocina",
-    "sellsRoomService": "Room service",
-    "sellsAmenidades": "Amenidades",
-    "sellsMinibar": "Minibar",
-    "countryLabel": "País",
-    "countryPlaceholder": "Ej. República Dominicana",
-    "currencyLabel": "Moneda",
-    "currencyPlaceholder": "Ej. USD",
-    "priceRangeLabel": "Rango de precios",
-    "priceRangeHint": "$ económico · $$ intermedio · $$$ premium",
     "generateButton": "Generar sugerencias con IA",
     "generatingCategories": "Generando categorías…",
     "categoriesTitle": "Categorías sugeridas",
@@ -2419,6 +2408,8 @@
     "publishing": "Publicando…",
     "publishedResult": "{count, plural, one {# plato publicado} other {# platos publicados}} — ya visibles en tu menú",
     "publishError": "No se pudo publicar el menú",
-    "publishDecisionTitle": "¿Publicar ahora?"
+    "publishDecisionTitle": "¿Publicar ahora?",
+    "detailsLabel": "Cuéntanos más de tu negocio",
+    "detailsPlaceholder": "Ej.: cocina mexicana, especialidad en tacos y mariscos"
   }
 }

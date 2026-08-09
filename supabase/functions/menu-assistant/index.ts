@@ -358,7 +358,8 @@ async function handleSuggestCategories(
 ): Promise<Response> {
   const businessType = str(body, "business_type");
   const country = str(body, "country");
-  const currency = str(body, "currency");
+  const details = str(body, "details"); // optional free-text ("cocina mexicana, tacos y mariscos")
+  // Legacy fields — still accepted for backwards compat.
   const priceRange = str(body, "price_range");
   const sells = strArray(body, "sells");
 
@@ -376,17 +377,18 @@ async function handleSuggestCategories(
 
   const userMsg = [
     `Tipo de negocio: ${businessType}`,
+    details ? `Especialidad/detalles: ${details}` : null,
     country ? `País: ${country}` : null,
-    currency ? `Moneda: ${currency}` : null,
     priceRange ? `Rango de precios: ${priceRange}` : null,
     sells.length > 0 ? `Qué va a vender: ${sells.join(", ")}` : null,
     context || null,
     "",
     "Propón entre 6 y 12 categorías de menú apropiadas para este rubro y país. " +
+      "Si se indicó una especialidad o cocina específica, úsala para personalizar " +
+      "las categorías (por ejemplo, una taquería mexicana necesita Tacos, Antojitos " +
+      "y Aguas Frescas, no 'Entrantes' genéricos). " +
       "Ordénalas como se mostrarían en el menú (de entradas a postres/bebidas, " +
-      "o el orden natural del rubro). Si el negocio marcó amenidades, room " +
-      "service o minibar, incluye categorías para eso. No repitas categorías " +
-      "que el negocio ya tiene.",
+      "o el orden natural del rubro). No repitas categorías que el negocio ya tiene.",
   ]
     .filter((l) => l !== null)
     .join("\n");
@@ -425,7 +427,8 @@ async function handleSuggestItems(
   const businessType = str(body, "business_type");
   const categoryName = str(body, "category_name");
   const country = str(body, "country");
-  const currency = str(body, "currency");
+  const details = str(body, "details"); // optional free-text ("cocina mexicana, tacos y mariscos")
+  // Legacy fields — still accepted for backwards compat.
   const priceRange = str(body, "price_range");
   const rawCount = intField(body, "count");
   const count = rawCount !== null ? Math.min(Math.max(rawCount, 1), 20) : 8;
@@ -441,25 +444,29 @@ async function handleSuggestItems(
     '"price_cents": number, "station": "kitchen" | "bar", "tags": string[] } ] }\n' +
     `"tags" solo puede contener valores de esta lista fija: ${DIETARY_TAGS.join(", ")}. ` +
     'Usa solo los que apliquen; si ninguno aplica, devuelve un arreglo vacío. ' +
-    '"price_cents" es un entero en centavos de la moneda indicada (por ejemplo ' +
-    "12500 = 125.00). Las bebidas (incluidas las alcohólicas y el café de barra) " +
+    '"price_cents" es un entero en centavos USD (por ejemplo 1250 = $12.50). ' +
+    "Las bebidas (incluidas las alcohólicas y el café de barra) " +
     'usan station "bar"; todo lo demás usa "kitchen".';
 
   const userMsg = [
     `Tipo de negocio: ${businessType}`,
     `Categoría: ${categoryName}`,
+    details ? `Especialidad/detalles del negocio: ${details}` : null,
     country ? `País: ${country}` : null,
-    currency ? `Moneda: ${currency}` : null,
     priceRange ? `Rango de precios: ${priceRange}` : null,
     context || null,
     "",
     `Propón exactamente ${count} artículos típicos de la categoría "${categoryName}" ` +
-      "para este rubro y país. Para cada artículo: nombre en el idioma local, " +
+      "para este rubro y país. " +
+      (details
+        ? `Personaliza los artículos según la especialidad indicada ("${details}") — ` +
+          "usa nombres y platos propios de esa cocina o estilo, no genéricos. "
+        : "") +
+      "Para cada artículo: nombre en el idioma local, " +
       "descripción apetitosa y CORTA (máximo 20 palabras) en español y en inglés, " +
-      "precio sugerido en centavos acorde al rango y al país, estación de " +
-      "preparación y etiquetas dietéticas. Incluye marcas locales frecuentes " +
-      "cuando aplique (aguas, cervezas, licores del país). No repitas artículos " +
-      "que el negocio ya tiene.",
+      "precio sugerido en centavos USD acorde al país, estación de preparación " +
+      "y etiquetas dietéticas. Incluye marcas locales frecuentes cuando aplique " +
+      "(aguas, cervezas, licores del país). No repitas artículos que el negocio ya tiene.",
   ]
     .filter((l) => l !== null)
     .join("\n");

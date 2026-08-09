@@ -51,7 +51,6 @@ import {
   IconGlobe,
   IconLoader2,
   IconLock,
-  IconMapPin,
   IconPhoto,
   IconPlus,
   IconSparkles,
@@ -72,7 +71,6 @@ import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Station = "kitchen" | "bar";
-type PriceRange = "$" | "$$" | "$$$";
 /** Step 4 exists only as a FASE 4 placeholder for now. */
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -130,10 +128,10 @@ interface WizardState {
   step: WizardStep;
   // Step 1
   businessType: string;
-  sells: string[];
+  /** Optional free-text context ("cocina mexicana, especialidad en tacos"). */
+  details: string;
+  /** Loaded silently from the business record — never shown in the UI. */
   country: string;
-  currency: string;
-  priceRange: PriceRange;
   // Step 2
   suggestedCategories: SuggestedCategory[];
   selectedCategories: string[];
@@ -148,10 +146,8 @@ interface WizardState {
 const INITIAL_STATE: WizardState = {
   step: 1,
   businessType: "",
-  sells: [],
+  details: "",
   country: "",
-  currency: "USD",
-  priceRange: "$$",
   suggestedCategories: [],
   selectedCategories: [],
   customCategories: [],
@@ -168,16 +164,6 @@ const BUSINESS_TYPES = [
   { id: "hotel", Icon: IconBed, labelKey: "typeHotel" },
   { id: "food_truck", Icon: IconTruck, labelKey: "typeFoodTruck" },
 ];
-
-/** Always shown in full — never filtered by business type (product decision). */
-const SELL_OPTIONS = [
-  { id: "menu_cocina", labelKey: "sellsMenuCocina" },
-  { id: "room_service", labelKey: "sellsRoomService" },
-  { id: "amenidades", labelKey: "sellsAmenidades" },
-  { id: "minibar", labelKey: "sellsMinibar" },
-] as const;
-
-const PRICE_RANGES: PriceRange[] = ["$", "$$", "$$$"];
 
 /** `menu_items.options` shape — the exact payload the manual editor persists. */
 type ItemOptions = SuggestedItem["editedOptions"];
@@ -342,39 +328,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   outline: "none",
 };
-
-function Chip({
-  selected,
-  onClick,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "8px 16px",
-        borderRadius: "999px",
-        border: selected ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
-        background: selected ? "var(--db-accent-bg)" : "var(--db-bg-elevated)",
-        color: selected ? "var(--db-accent)" : "var(--db-text-secondary)",
-        fontSize: "13px",
-        fontWeight: selected ? 700 : 500,
-        cursor: "pointer",
-        transition: "all 0.15s ease",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
 
 // ── Plan gate screen ──────────────────────────────────────────────────────────
 
@@ -683,11 +636,7 @@ export default function MenuAssistantPage() {
     [state.itemsByCategory],
   );
 
-  const step1Ready =
-    state.businessType.trim().length > 0 &&
-    state.sells.length > 0 &&
-    state.country.trim().length > 0 &&
-    state.priceRange.length > 0;
+  const step1Ready = state.businessType.trim().length > 0;
 
   // ── Step 1 → suggest_categories ────────────────────────────────────────────
   const handleGenerateCategories = useCallback(async () => {
@@ -698,10 +647,8 @@ export default function MenuAssistantPage() {
         "suggest_categories",
         {
           business_type: state.businessType,
-          sells: state.sells,
-          country: state.country,
-          currency: state.currency,
-          price_range: state.priceRange,
+          details: state.details || undefined,
+          country: state.country || undefined,
         },
       );
       const categories: SuggestedCategory[] = res.categories.map((c) => ({
@@ -721,7 +668,7 @@ export default function MenuAssistantPage() {
     } finally {
       setGenerating(false);
     }
-  }, [callAssistant, state.businessType, state.sells, state.country, state.currency, state.priceRange, t]);
+  }, [callAssistant, state.businessType, state.details, state.country, t]);
 
   // ── Step 3 → suggest_items (lazy, cached per category) ─────────────────────
   const loadItemsFor = useCallback(
@@ -741,9 +688,8 @@ export default function MenuAssistantPage() {
           }>;
         }>("suggest_items", {
           business_type: state.businessType,
-          country: state.country,
-          currency: state.currency,
-          price_range: state.priceRange,
+          details: state.details || undefined,
+          country: state.country || undefined,
           category_name: categoryName,
         });
         const items: SuggestedItem[] = res.items.map((i) => ({ ...i, selected: true }));
@@ -759,7 +705,7 @@ export default function MenuAssistantPage() {
         setLoadingCategory(null);
       }
     },
-    [callAssistant, state.loadedCategories, state.businessType, state.country, state.currency, state.priceRange, t],
+    [callAssistant, state.loadedCategories, state.businessType, state.details, state.country, t],
   );
 
   const toggleCategoryPanel = useCallback(
@@ -1435,112 +1381,16 @@ export default function MenuAssistantPage() {
             />
           )}
 
-          {/* What do you sell */}
+          {/* Details — optional free-text context */}
           <div style={{ marginTop: customTypeMode ? 0 : "20px" }}>
-            <FieldLabel>{t("sellsLabel")}</FieldLabel>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {SELL_OPTIONS.map((opt) => {
-                const selected = state.sells.includes(opt.id);
-                return (
-                  <Chip
-                    key={opt.id}
-                    selected={selected}
-                    onClick={() =>
-                      setState((s) => ({
-                        ...s,
-                        sells: selected ? s.sells.filter((v) => v !== opt.id) : [...s.sells, opt.id],
-                      }))
-                    }
-                  >
-                    {selected && <IconCheck size={14} />}
-                    {t(opt.labelKey)}
-                  </Chip>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Country + currency */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "16px",
-              marginTop: "20px",
-            }}
-          >
-            <div>
-              <FieldLabel>{t("countryLabel")}</FieldLabel>
-              <div style={{ position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--db-text-tertiary)",
-                    display: "flex",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <IconMapPin size={16} />
-                </span>
-                <input
-                  type="text"
-                  value={state.country}
-                  onChange={(e) => setState((s) => ({ ...s, country: e.target.value }))}
-                  placeholder={t("countryPlaceholder")}
-                  style={{ ...inputStyle, paddingLeft: "32px" }}
-                />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>{t("currencyLabel")}</FieldLabel>
-              <input
-                type="text"
-                value={state.currency}
-                onChange={(e) => setState((s) => ({ ...s, currency: e.target.value }))}
-                placeholder={t("currencyPlaceholder")}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-
-          {/* Price range — segmented control */}
-          <div style={{ marginTop: "20px" }}>
-            <FieldLabel>{t("priceRangeLabel")}</FieldLabel>
-            <div
-              style={{
-                display: "inline-flex",
-                borderRadius: "var(--db-radius)",
-                border: "1px solid var(--db-border)",
-                overflow: "hidden",
-              }}
-            >
-              {PRICE_RANGES.map((pr, i) => (
-                <button
-                  key={pr}
-                  type="button"
-                  onClick={() => setState((s) => ({ ...s, priceRange: pr }))}
-                  style={{
-                    padding: "10px 24px",
-                    border: "none",
-                    borderLeft: i > 0 ? "1px solid var(--db-border)" : "none",
-                    background: state.priceRange === pr ? "var(--db-accent)" : "var(--db-bg-elevated)",
-                    color: state.priceRange === pr ? "var(--db-accent-text)" : "var(--db-text-secondary)",
-                    fontSize: "14px",
-                    fontWeight: state.priceRange === pr ? 700 : 500,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {pr}
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
-              {t("priceRangeHint")}
-            </p>
+            <FieldLabel>{t("detailsLabel")}</FieldLabel>
+            <input
+              type="text"
+              value={state.details}
+              onChange={(e) => setState((s) => ({ ...s, details: e.target.value }))}
+              placeholder={t("detailsPlaceholder")}
+              style={inputStyle}
+            />
           </div>
 
           {/* Generate */}
@@ -1865,7 +1715,7 @@ export default function MenuAssistantPage() {
                                     style={{ ...inputStyle, width: "104px", padding: "6px 10px", fontSize: "13px" }}
                                   />
                                   <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>
-                                    {state.currency}
+                                    USD
                                   </span>
                                 </label>
 
@@ -2109,7 +1959,7 @@ export default function MenuAssistantPage() {
                                                       fontWeight: 600,
                                                     }}
                                                   >
-                                                    {`+${state.currency} ${(opt.price_delta_cents / 100).toFixed(2)}`}
+                                                    {`+USD ${(opt.price_delta_cents / 100).toFixed(2)}`}
                                                   </span>
                                                 )}
                                                 <button
@@ -3244,7 +3094,7 @@ export default function MenuAssistantPage() {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {`${price.toFixed(2)} ${state.currency}`}
+                              {`${price.toFixed(2)} USD`}
                             </div>
                           </article>
                         );
