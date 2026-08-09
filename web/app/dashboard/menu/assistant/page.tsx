@@ -81,6 +81,72 @@ interface BrandKit {
   drinkware: string[];
 }
 const DEFAULT_BRAND_KIT: BrandKit = { enabled: false, plates: [], drinkware: [] };
+
+// ── Image normalization (client-side, before upload) ──────────────────────────
+
+/**
+ * Converts ANY image file to a JPEG Blob ≤ 2048 px on the long side.
+ *
+ * Pipeline:
+ *   1. createImageBitmap(file)   — works for JPEG / PNG / WEBP in all modern browsers
+ *   2. <img> + createObjectURL   — fallback for formats createImageBitmap rejects
+ *   3. Throws "unsupported_format" if both fail (e.g. raw HEIC on Firefox)
+ *
+ * This ensures the Supabase bucket policy (image/jpeg|png|webp, 10 MB limit)
+ * is always satisfied regardless of what the user picked.
+ */
+async function normalizeImage(file: File): Promise<Blob> {
+  const MAX_PX = 2048;
+  const QUALITY = 0.85;
+
+  /** Draw an image source onto an off-screen canvas → JPEG Blob. */
+  function drawAndExport(
+    source: ImageBitmap | HTMLImageElement,
+    naturalW: number,
+    naturalH: number,
+  ): Promise<Blob> {
+    const scale = Math.min(1, MAX_PX / Math.max(naturalW, naturalH, 1));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(naturalW * scale));
+    canvas.height = Math.max(1, Math.round(naturalH * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("unsupported_format");
+    ctx.drawImage(source as CanvasImageSource, 0, 0, canvas.width, canvas.height);
+    return new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("unsupported_format"))),
+        "image/jpeg",
+        QUALITY,
+      ),
+    );
+  }
+
+  // 1. Fast path — createImageBitmap (no DOM, works for JPEG/PNG/WEBP everywhere).
+  try {
+    const bmp = await createImageBitmap(file);
+    const blob = await drawAndExport(bmp, bmp.width, bmp.height);
+    bmp.close();
+    return blob;
+  } catch {
+    // Fall through to <img> fallback.
+  }
+
+  // 2. <img> fallback — covers some edge cases and browser-specific quirks.
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = document.createElement("img");
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("unsupported_format"));
+      el.src = objectUrl;
+    });
+    return await drawAndExport(img, img.naturalWidth, img.naturalHeight);
+  } catch {
+    throw new Error("unsupported_format");
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 /** Step 4 exists only as a FASE 4 placeholder for now. */
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -567,6 +633,12 @@ export default function MenuAssistantPage() {
   // Brand Kit — loaded in boot, persisted to businesses.brand_kit on change.
   const [brandKit, setBrandKit] = useState<BrandKit>(DEFAULT_BRAND_KIT);
   const [brandKitSaving, setBrandKitSaving] = useState(false);
+  // Per-slot upload progress and errors (key: "plates" | "drinkware").
+  const [brandKitUploading, setBrandKitUploading] = useState<Record<string, boolean>>({});
+  const [brandKitErrors, setBrandKitErrors] = useState<Record<string, string | null>>({});
+  // Per-item upload progress and errors (key: item id).
+  const [photoUploading, setPhotoUploading] = useState<Record<string, boolean>>({});
+  const [photoUploadErrors, setPhotoUploadErrors] = useState<Record<string, string | null>>({});
   // Per-item style hint input (item id → free-text).
   const [itemStyleHints, setItemStyleHints] = useState<Record<string, string>>({});
 
@@ -1058,23 +1130,41 @@ export default function MenuAssistantPage() {
 
   // ── FASE 6 — Photo step handlers ──────────────────────────────────────────
 
-  /** Upload local files for an item and add public URLs to its gallery. */
+  /** Upload local files for an item — normalizes to JPEG first, shows progress + errors. */
   const handlePhotoUpload = useCallback(
     async (itemId: string, files: FileList) => {
       if (!businessId) return;
+      // Clear previous upload error for this item.
+      setPhotoUploadErrors((prev) => ({ ...prev, [itemId]: null }));
+      setPhotoUploading((prev) => ({ ...prev, [itemId]: true }));
       const uploaded: string[] = [];
-      for (const file of Array.from(files)) {
-        const ext = file.name.split(".").pop() ?? "jpg";
-        const path = `${businessId}/${itemId}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("menu-photos")
-          .upload(path, file, { upsert: false });
-        if (!error) {
-          const { data: urlData } = supabase.storage
+      try {
+        for (const file of Array.from(files)) {
+          // Normalize: convert any format to JPEG ≤ 2048 px.
+          let blob: Blob;
+          try {
+            blob = await normalizeImage(file);
+          } catch {
+            setPhotoUploadErrors((prev) => ({
+              ...prev,
+              [itemId]: t("uploadFormatError"),
+            }));
+            continue; // skip this file, try the rest
+          }
+
+          const path = `${businessId}/${itemId}/${crypto.randomUUID()}.jpg`;
+          const { error: upErr } = await supabase.storage
             .from("menu-photos")
-            .getPublicUrl(path);
+            .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+          if (upErr) {
+            setPhotoUploadErrors((prev) => ({ ...prev, [itemId]: upErr.message }));
+            continue; // skip, try the rest
+          }
+          const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(path);
           uploaded.push(urlData.publicUrl);
         }
+      } finally {
+        setPhotoUploading((prev) => ({ ...prev, [itemId]: false }));
       }
       if (uploaded.length > 0) {
         setItemGalleries((prev) => ({
@@ -1083,7 +1173,7 @@ export default function MenuAssistantPage() {
         }));
       }
     },
-    [businessId],
+    [businessId, t],
   );
 
   /** Call generate_images EF and store AI-generated candidates for the item. */
@@ -1197,21 +1287,37 @@ export default function MenuAssistantPage() {
     await saveBrandKit(next);
   }, [brandKit, saveBrandKit]);
 
-  /** Upload reference photos to the brand slot and persist. */
+  /** Upload reference photos to the brand kit slot — normalizes to JPEG, shows progress + errors. */
   const handleBrandKitUpload = useCallback(
     async (slot: "plates" | "drinkware", files: FileList) => {
       if (!businessId) return;
+      // Clear previous error for this slot.
+      setBrandKitErrors((prev) => ({ ...prev, [slot]: null }));
+      setBrandKitUploading((prev) => ({ ...prev, [slot]: true }));
       const uploaded: string[] = [];
-      for (const file of Array.from(files)) {
-        const ext = file.name.split(".").pop() ?? "jpg";
-        const path = `${businessId}/brand/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("menu-photos")
-          .upload(path, file, { upsert: false });
-        if (!error) {
+      try {
+        for (const file of Array.from(files)) {
+          let blob: Blob;
+          try {
+            blob = await normalizeImage(file);
+          } catch {
+            setBrandKitErrors((prev) => ({ ...prev, [slot]: t("uploadFormatError") }));
+            continue;
+          }
+
+          const path = `${businessId}/brand/${crypto.randomUUID()}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from("menu-photos")
+            .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+          if (upErr) {
+            setBrandKitErrors((prev) => ({ ...prev, [slot]: upErr.message }));
+            continue;
+          }
           const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(path);
           uploaded.push(urlData.publicUrl);
         }
+      } finally {
+        setBrandKitUploading((prev) => ({ ...prev, [slot]: false }));
       }
       if (uploaded.length > 0) {
         const next: BrandKit = { ...brandKit, [slot]: [...brandKit[slot], ...uploaded] };
@@ -1219,7 +1325,7 @@ export default function MenuAssistantPage() {
         await saveBrandKit(next);
       }
     },
-    [businessId, brandKit, saveBrandKit],
+    [businessId, brandKit, saveBrandKit, t],
   );
 
   /** Remove a reference photo from the brand kit and persist. */
@@ -2545,54 +2651,80 @@ export default function MenuAssistantPage() {
 
           {/* Two upload columns: Plates | Drinkware */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            {(["plates", "drinkware"] as const).map((slot) => (
-              <div key={slot}>
-                <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {t(slot === "plates" ? "brandKitPlates" : "brandKitDrinkware")}
-                </p>
-                {/* Thumbnails */}
-                {brandKit[slot].length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
-                    {brandKit[slot].map((url) => (
-                      <div key={url} style={{ position: "relative", width: "56px", height: "56px", borderRadius: "6px", overflow: "visible", flexShrink: 0 }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={url}
-                          alt=""
-                          style={{ width: "56px", height: "56px", objectFit: "cover", borderRadius: "6px", display: "block", border: "1px solid var(--db-border)" }}
-                        />
-                        <button
-                          onClick={() => void handleBrandKitRemove(slot, url)}
-                          title={t("photosRemove")}
-                          style={{ position: "absolute", top: "-5px", right: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: "var(--db-danger, #ef4444)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                        >
-                          <IconX size={10} color="#fff" />
-                        </button>
-                      </div>
-                    ))}
+            {(["plates", "drinkware"] as const).map((slot) => {
+              const isSlotUploading = brandKitUploading[slot] ?? false;
+              const slotError = brandKitErrors[slot] ?? null;
+              const photoCount = brandKit[slot].length;
+              return (
+                <div key={slot}>
+                  {/* Slot label + count */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-secondary)", margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {t(slot === "plates" ? "brandKitPlates" : "brandKitDrinkware")}
+                    </p>
+                    {photoCount > 0 && (
+                      <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--db-text-tertiary)" }}>
+                        {t("brandKitPhotoCount", { count: photoCount })}
+                      </span>
+                    )}
                   </div>
-                )}
-                {/* Upload label */}
-                <label
-                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1.5px dashed var(--db-border)", cursor: "pointer", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, transition: "border-color 0.2s, color 0.2s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--db-accent)"; e.currentTarget.style.color = "var(--db-accent)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--db-border)"; e.currentTarget.style.color = "var(--db-text-secondary)"; }}
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      if (e.target.files?.length) void handleBrandKitUpload(slot, e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  <IconUpload size={14} />
-                  {t("brandKitUploadHint")}
-                </label>
-              </div>
-            ))}
+                  {/* Thumbnails */}
+                  {brandKit[slot].length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+                      {brandKit[slot].map((url) => (
+                        <div key={url} style={{ position: "relative", width: "56px", height: "56px", borderRadius: "6px", overflow: "visible", flexShrink: 0 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt=""
+                            style={{ width: "56px", height: "56px", objectFit: "cover", borderRadius: "6px", display: "block", border: "1px solid var(--db-border)" }}
+                          />
+                          <button
+                            onClick={() => void handleBrandKitRemove(slot, url)}
+                            title={t("photosRemove")}
+                            style={{ position: "absolute", top: "-5px", right: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: "var(--db-danger, #ef4444)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                          >
+                            <IconX size={10} color="#fff" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Upload label or uploading indicator */}
+                  {isSlotUploading ? (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: "var(--db-accent)" }}>
+                      <Spinner />
+                      {t("uploading")}
+                    </div>
+                  ) : (
+                    <label
+                      style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1.5px dashed var(--db-border)", cursor: "pointer", color: "var(--db-text-secondary)", fontSize: "12px", fontWeight: 600, transition: "border-color 0.2s, color 0.2s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--db-accent)"; e.currentTarget.style.color = "var(--db-accent)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--db-border)"; e.currentTarget.style.color = "var(--db-text-secondary)"; }}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          if (e.target.files?.length) void handleBrandKitUpload(slot, e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <IconUpload size={14} />
+                      {t("brandKitUploadHint")}
+                    </label>
+                  )}
+                  {/* Slot-level upload error */}
+                  {slotError && (
+                    <p style={{ fontSize: "11px", color: "var(--db-danger, #ef4444)", margin: "6px 0 0", lineHeight: 1.4 }}>
+                      {slotError}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -2606,7 +2738,9 @@ export default function MenuAssistantPage() {
         const portada = itemPortadas[currentItem.id] ?? gallery[0] ?? null;
         const candidates = aiCandidates[currentItem.id] ?? [];
         const isGenerating = aiGenerating[currentItem.id] ?? false;
+        const isUploading = photoUploading[currentItem.id] ?? false;
         const aiError = aiErrors[currentItem.id] ?? null;
+        const uploadError = photoUploadErrors[currentItem.id] ?? null;
         const progress = Math.round(((photoIdx) / items.length) * 100);
 
         return (
@@ -2677,47 +2811,68 @@ export default function MenuAssistantPage() {
 
             {/* Upload source buttons */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "18px" }}>
-              {/* File upload */}
-              <label
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "14px 8px",
-                  borderRadius: "var(--db-radius)",
-                  border: "1.5px dashed var(--db-border)",
-                  cursor: "pointer",
-                  color: "var(--db-text-secondary)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  transition: "border-color 0.2s, color 0.2s",
-                  textAlign: "center",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--db-accent)";
-                  e.currentTarget.style.color = "var(--db-accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--db-border)";
-                  e.currentTarget.style.color = "var(--db-text-secondary)";
-                }}
-              >
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    if (e.target.files?.length) {
-                      void handlePhotoUpload(currentItem.id, e.target.files);
-                    }
-                    e.target.value = "";
+              {/* File upload — shows spinner while converting/uploading */}
+              {isUploading ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "14px 8px",
+                    borderRadius: "var(--db-radius)",
+                    border: "1.5px dashed var(--db-accent)",
+                    color: "var(--db-accent)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    textAlign: "center",
                   }}
-                />
-                <IconUpload size={20} />
-                {t("photosUpload")}
-              </label>
+                >
+                  <Spinner />
+                  {t("uploading")}
+                </div>
+              ) : (
+                <label
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "14px 8px",
+                    borderRadius: "var(--db-radius)",
+                    border: "1.5px dashed var(--db-border)",
+                    cursor: "pointer",
+                    color: "var(--db-text-secondary)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    transition: "border-color 0.2s, color 0.2s",
+                    textAlign: "center",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--db-accent)";
+                    e.currentTarget.style.color = "var(--db-accent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--db-border)";
+                    e.currentTarget.style.color = "var(--db-text-secondary)";
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        void handlePhotoUpload(currentItem.id, e.target.files);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <IconUpload size={20} />
+                  {t("photosUpload")}
+                </label>
+              )}
 
               {/* AI generate */}
               <button
@@ -2782,6 +2937,27 @@ export default function MenuAssistantPage() {
                 </span>
               </div>
             </div>
+
+            {/* Upload error banner */}
+            {uploadError && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  padding: "10px 14px",
+                  borderRadius: "var(--db-radius)",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  marginBottom: "14px",
+                }}
+              >
+                <IconAlertTriangle size={16} color="var(--db-danger, #ef4444)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: "12px", color: "var(--db-danger, #ef4444)", lineHeight: 1.5, wordBreak: "break-word" }}>
+                  {uploadError}
+                </span>
+              </div>
+            )}
 
             {/* AI error banner */}
             {aiError && (

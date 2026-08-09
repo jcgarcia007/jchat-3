@@ -2417,7 +2417,10 @@
     "brandKitPlates": "Platos y comida",
     "brandKitDrinkware": "Copas y bebidas",
     "brandKitUploadHint": "Subir fotos",
+    "brandKitPhotoCount": "{count, plural, one {# foto} other {# fotos}}",
     "itemStyleHintLabel": "Sugerencia de estilo (opcional)",
-    "itemStyleHintPlaceholder": "Ej.: oscuro y dramático, tonos cálidos, minimalista…"
+    "itemStyleHintPlaceholder": "Ej.: oscuro y dramático, tonos cálidos, minimalista…",
+    "uploading": "Subiendo…",
+    "uploadFormatError": "Formato no soportado — usa JPG, PNG o WEBP"
   }
 }

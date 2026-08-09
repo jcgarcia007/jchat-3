@@ -2417,7 +2417,10 @@
     "brandKitPlates": "Plates & food",
     "brandKitDrinkware": "Glasses & drinks",
     "brandKitUploadHint": "Upload photos",
+    "brandKitPhotoCount": "{count, plural, one {# photo} other {# photos}}",
     "itemStyleHintLabel": "Style hint (optional)",
-    "itemStyleHintPlaceholder": "e.g. dark moody, warm tones, minimalist…"
+    "itemStyleHintPlaceholder": "e.g. dark moody, warm tones, minimalist…",
+    "uploading": "Uploading…",
+    "uploadFormatError": "Unsupported format — use JPG, PNG or WEBP"
   }
 }
