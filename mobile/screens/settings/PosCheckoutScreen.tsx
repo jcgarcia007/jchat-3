@@ -55,7 +55,8 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react-native';
-import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalSdk';
+import { isTerminalAvailable } from '../../services/terminalSdk';
+import { usePosReader } from '../../hooks/usePosReader';
 import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
@@ -63,7 +64,6 @@ import { useThemeColors } from '../../theme/colors';
 import { posTableItems } from '../../services/pos';
 import {
   createTabPaymentIntent,
-  getOrCreateTerminalLocation,
   markTabPaid,
 } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -74,8 +74,6 @@ type PosCheckoutNav = NativeStackNavigationProp<PosStackParamList, 'PosCheckout'
 type PosCheckoutRoute = RouteProp<PosStackParamList, 'PosCheckout'>;
 
 // ─── Local types ──────────────────────────────────────────────────────────────
-
-type ReaderStatus = 'locating' | 'discovering' | 'connecting' | 'updating' | 'ready' | 'error';
 
 type CheckoutPhase =
   | 'idle'        // waiting for employee to tap "Cobrar"
@@ -104,57 +102,17 @@ export default function PosCheckoutScreen() {
   const route = useRoute<PosCheckoutRoute>();
   const { businessId, tableId, tableLabel } = route.params;
 
-  // ── Reader state ────────────────────────────────────────────────────────────
-  const [readerStatus, setReaderStatus] = useState<ReaderStatus>('locating');
-  const [readerError, setReaderError] = useState<string | null>(null);
-  // Firmware update progress — 0–100, null when no update in progress.
-  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
-  // Guard against double-connect race when discoveredReaders fires multiple times.
-  const isConnectingRef = useRef(false);
-  // Terminal Location id fetched from server (required by ConnectBluetoothReaderParams).
-  const locationIdRef = useRef<string | null>(null);
-
-  // ── Stripe Terminal ─────────────────────────────────────────────────────────
+  // ── Reader state + lifecycle (managed by usePosReader) ─────────────────────
   const {
-    discoverReaders,
-    cancelDiscovering,
-    connectReader,
+    readerStatus,
+    readerError,
+    updateProgress,
+    connectedReader,
     retrievePaymentIntent,
     collectPaymentMethod,
     confirmPaymentIntent,
-    disconnectReader,
-    discoveredReaders,
-    connectedReader,
-  } = useStripeTerminal({
-    // ── Reader software update callbacks ─────────────────────────────────────
-    // Required updates are installed automatically during connectReader.
-    // Optional updates are also auto-installed here for a seamless employee UX.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onDidStartInstallingUpdate: (_update: any) => {
-      setReaderStatus('updating');
-      setUpdateProgress(0);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onDidReportReaderSoftwareUpdateProgress: (progress: any) => {
-      // progress is a string "0.0"–"1.0" representing fraction complete.
-      const fraction = typeof progress === 'string' ? parseFloat(progress) : NaN;
-      setUpdateProgress(isFinite(fraction) ? Math.round(fraction * 100) : null);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onDidFinishInstallingUpdate: (result: any) => {
-      setUpdateProgress(null);
-      if (result?.error) {
-        // Update failed — reader is disconnected; show error and allow retry.
-        setReaderStatus('error');
-        setReaderError(
-          (result.error as { message?: string })?.message ?? t('pos.readerError'),
-        );
-        isConnectingRef.current = false;
-      }
-      // On success: connectReader is waiting for the update and will resolve
-      // normally — readerStatus will be set to 'ready' in the connect .then().
-    },
-  });
+    handleRetryReader,
+  } = usePosReader({ businessId });
 
   // ── Tab data (preview, display only — authoritative amount comes from EF) ──
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
@@ -195,139 +153,6 @@ export default function PosCheckoutScreen() {
       });
     return () => { mounted = false; };
   }, [businessId, tableId]);
-
-  // ── Start reader discovery on mount ────────────────────────────────────────
-  // Step 1: fetch a Terminal Location from the server (needed for connect).
-  // Step 2: start a real Bluetooth scan (simulated: false).
-  useEffect(() => {
-    let cancelled = false;
-
-    async function startDiscovery() {
-      // ── Phase 1: get Terminal Location id (required by Bluetooth connect) ──
-      setReaderStatus('locating');
-      setReaderError(null);
-      setUpdateProgress(null);
-
-      const locResult = await getOrCreateTerminalLocation(businessId);
-      if (cancelled) return;
-
-      if (!locResult.ok) {
-        setReaderStatus('error');
-        setReaderError(locResult.message ?? t('pos.readerError'));
-        return;
-      }
-      locationIdRef.current = locResult.locationId;
-
-      // ── Phase 2: start Bluetooth scan (real reader, not simulated) ─────────
-      setReaderStatus('discovering');
-      const res = await discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
-      if (cancelled) return;
-
-      // discoverReaders resolves when scanning ends (cancelled or error).
-      // If it ended with an error AND we're not already connecting/connected,
-      // surface it as a reader error.
-      if (res.error) {
-        setReaderStatus((prev) =>
-          prev === 'connecting' || prev === 'updating' || prev === 'ready' ? prev : 'error',
-        );
-        setReaderError(res.error.message ?? t('pos.readerError'));
-      }
-    }
-
-    startDiscovery();
-
-    return () => {
-      cancelled = true;
-      cancelDiscovering();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — runs only on mount
-
-  // ── Auto-connect when first reader appears ─────────────────────────────────
-  // locationIdRef.current is set by the discovery effect before scan starts.
-  // If the M2 has a required firmware update, connectReader waits for it to
-  // complete before resolving (callbacks set status to 'updating' + progress).
-  useEffect(() => {
-    if (
-      discoveredReaders.length === 0 ||
-      connectedReader ||
-      isConnectingRef.current ||
-      readerStatus === 'ready' ||
-      readerStatus === 'updating' ||
-      !locationIdRef.current  // wait until location is fetched from server
-    ) {
-      return;
-    }
-
-    isConnectingRef.current = true;
-    setReaderStatus('connecting');
-    const reader = discoveredReaders[0];
-    const locationId = locationIdRef.current; // stable: set once before scan
-
-    cancelDiscovering()
-      .then(() =>
-        connectReader({
-          discoveryMethod: 'bluetoothScan',
-          reader,
-          locationId,
-          // Automatically reconnect if the reader drops mid-session
-          // (e.g. BT interference, reader sleep). The SDK handles the retry.
-          autoReconnectOnUnexpectedDisconnect: true,
-        }),
-      )
-      .then((result: { error?: { message: string } | null }) => {
-        if (result.error) {
-          setReaderStatus('error');
-          setReaderError(result.error.message ?? t('pos.readerError'));
-          isConnectingRef.current = false;
-        } else {
-          // connectReader resolved without error → reader is ready (update, if
-          // any, has already completed and status may already be 'updating' →
-          // overwrite with 'ready' now that connect has fully resolved).
-          setReaderStatus('ready');
-          setUpdateProgress(null);
-          // isConnectingRef.current stays true (we're connected)
-        }
-      })
-      .catch((err: unknown) => {
-        setReaderStatus('error');
-        setReaderError(err instanceof Error ? err.message : t('pos.readerError'));
-        isConnectingRef.current = false;
-      });
-  }, [discoveredReaders, connectedReader, readerStatus, cancelDiscovering, connectReader, t]);
-
-  // ── Disconnect reader when leaving the screen ───────────────────────────────
-  useEffect(() => {
-    return () => {
-      disconnectReader().catch(() => {});
-    };
-  }, [disconnectReader]);
-
-  // ── Retry reader connection ─────────────────────────────────────────────────
-  const handleRetryReader = useCallback(() => {
-    isConnectingRef.current = false;
-    setReaderError(null);
-    setUpdateProgress(null);
-
-    if (locationIdRef.current) {
-      // Location already resolved — skip the EF call and go straight to scan.
-      setReaderStatus('discovering');
-      discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
-    } else {
-      // Location fetch failed on mount — retry the full startup sequence.
-      setReaderStatus('locating');
-      getOrCreateTerminalLocation(businessId).then((locResult) => {
-        if (!locResult.ok) {
-          setReaderStatus('error');
-          setReaderError(locResult.message ?? t('pos.readerError'));
-          return;
-        }
-        locationIdRef.current = locResult.locationId;
-        setReaderStatus('discovering');
-        discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: false });
-      });
-    }
-  }, [businessId, discoverReaders, t]);
 
   // ── Computed tip in cents ────────────────────────────────────────────────────
   // Derived from the tip picker selection at the moment the employee taps

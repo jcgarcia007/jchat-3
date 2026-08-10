@@ -54,7 +54,8 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react-native';
-import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalSdk';
+import { isTerminalAvailable } from '../../services/terminalSdk';
+import { usePosReader } from '../../hooks/usePosReader';
 import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
@@ -95,8 +96,6 @@ type CheckoutPhase =
   | 'confirming' // confirmPaymentIntent
   | 'marking'    // calling markTabPaid EF
   | 'error';     // something went wrong — employee can retry
-
-type ReaderStatus = 'discovering' | 'connecting' | 'ready' | 'error';
 
 /** A sub-account in the items-split builder. */
 interface SubAccount {
@@ -141,26 +140,19 @@ export default function PosSplitScreen(): React.ReactElement {
   const route = useRoute<PosSplitRoute>();
   const { businessId, tableId, tableLabel, partySize: partySizeHint } = route.params;
 
-  // ── Stripe Terminal ─────────────────────────────────────────────────────────
+  // ── Reader state + lifecycle (managed by usePosReader) ─────────────────────
   // All hooks called unconditionally (Rules of Hooks). terminalSdk stubs are
   // safe when !isTerminalAvailable: no-ops / empty arrays / disconnected.
   const {
-    discoverReaders,
-    cancelDiscovering,
-    connectReader,
+    readerStatus,
+    readerError,
+    updateProgress,
+    connectedReader,
     retrievePaymentIntent,
     collectPaymentMethod,
     confirmPaymentIntent,
-    disconnectReader,
-    discoveredReaders,
-    connectedReader,
-  } = useStripeTerminal();
-
-  // ── Reader state ────────────────────────────────────────────────────────────
-  const [readerStatus, setReaderStatus] = useState<ReaderStatus>('discovering');
-  const [readerError, setReaderError] = useState<string | null>(null);
-  // Guard against double-connect race when discoveredReaders fires multiple times
-  const isConnectingRef = useRef(false);
+    handleRetryReader,
+  } = usePosReader({ businessId });
 
   // ── Tab total (preview — display only; authoritative amount from server) ────
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
@@ -219,77 +211,6 @@ export default function PosSplitScreen(): React.ReactElement {
       .finally(() => { if (mounted) setTabLoading(false); });
     return () => { mounted = false; };
   }, [businessId, tableId]);
-
-  // ── Start reader discovery on mount ────────────────────────────────────────
-  // Starting early so the reader is ready by the time splits are created.
-  useEffect(() => {
-    setReaderStatus('discovering');
-    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true }).then(
-      (res: { error?: { message: string } | null }) => {
-        if (res.error) {
-          setReaderStatus((prev) =>
-            prev === 'connecting' || prev === 'ready' ? prev : 'error',
-          );
-          setReaderError(res.error.message ?? t('pos.readerError'));
-        }
-      },
-    );
-    return () => { cancelDiscovering(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — runs only on mount
-
-  // ── Auto-connect when first reader appears ─────────────────────────────────
-  useEffect(() => {
-    if (
-      discoveredReaders.length === 0 ||
-      connectedReader ||
-      isConnectingRef.current ||
-      readerStatus === 'ready'
-    ) {
-      return;
-    }
-
-    isConnectingRef.current = true;
-    setReaderStatus('connecting');
-    const reader = discoveredReaders[0];
-
-    cancelDiscovering()
-      .then(() =>
-        connectReader({
-          discoveryMethod: 'bluetoothScan',
-          reader,
-          locationId: reader.locationId ?? reader.location?.id ?? '',
-        }),
-      )
-      .then((result: { error?: { message: string } | null }) => {
-        if (result.error) {
-          setReaderStatus('error');
-          setReaderError(result.error.message ?? t('pos.readerError'));
-          isConnectingRef.current = false;
-        } else {
-          setReaderStatus('ready');
-          // isConnectingRef stays true (connected — prevents re-entry)
-        }
-      })
-      .catch((err: unknown) => {
-        setReaderStatus('error');
-        setReaderError(err instanceof Error ? err.message : t('pos.readerError'));
-        isConnectingRef.current = false;
-      });
-  }, [discoveredReaders, connectedReader, readerStatus, cancelDiscovering, connectReader, t]);
-
-  // ── Disconnect reader when leaving the screen ───────────────────────────────
-  useEffect(() => {
-    return () => { disconnectReader().catch(() => {}); };
-  }, [disconnectReader]);
-
-  // ── Retry reader connection ─────────────────────────────────────────────────
-  const handleRetryReader = useCallback(() => {
-    isConnectingRef.current = false;
-    setReaderStatus('discovering');
-    setReaderError(null);
-    discoverReaders({ discoveryMethod: 'bluetoothScan', simulated: true });
-  }, [discoverReaders]);
 
   // ── Even method — N stepper ───────────────────────────────────────────────
   const handleDecrement = useCallback(
@@ -1066,6 +987,10 @@ export default function PosSplitScreen(): React.ReactElement {
               ? t('pos.readerReady')
               : readerStatus === 'error'
               ? (readerError ?? t('pos.readerError'))
+              : readerStatus === 'updating'
+              ? t('pos.readerUpdating', { pct: updateProgress ?? 0 })
+              : readerStatus === 'locating'
+              ? t('pos.readerLocating')
               : t('pos.readerConnecting')}
           </Text>
           {readerStatus === 'error' && (
