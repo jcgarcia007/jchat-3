@@ -16,17 +16,21 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  IconChevronLeft,
   IconChevronRight,
   IconEye,
   IconEyeOff,
@@ -383,6 +387,7 @@ export default function PrivacyScreen() {
   const { t } = useTranslation('settings');
   const { user } = useAuth();
   const navigation = useNavigation<PrivacyNavProp>();
+  const insets = useSafeAreaInsets();
 
   const [settings, setSettings] = useState<PrivacySettings>({ ...DEFAULT_SETTINGS });
   const [loading, setLoading] = useState(true);
@@ -516,11 +521,34 @@ export default function PrivacyScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bgBase }}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
+      <StatusBar barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'} />
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 12, backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle },
+        ]}
+      >
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
+          {t('main.privacySettings')}
+        </Text>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       {/* ── LOCATION WARNING BANNER (always pinned at top) ─────────────────── */}
       {/* PRIVACY: location is permanently locked — never render a toggle here */}
       <View
@@ -849,7 +877,8 @@ export default function PrivacyScreen() {
 
       {/* Bottom spacer */}
       <View style={styles.bottomSpacer} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -858,6 +887,22 @@ export default function PrivacyScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: { marginRight: 8, padding: 4 },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,

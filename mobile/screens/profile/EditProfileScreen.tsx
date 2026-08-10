@@ -49,6 +49,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconCamera,
   IconCheck,
+  IconChevronLeft,
   IconChevronRight,
   IconLogout,
   IconPalette,
@@ -436,10 +437,10 @@ export default function EditProfileScreen(): React.JSX.Element {
           onPress={handleCancel}
           style={styles.headerBtn}
           accessibilityRole="button"
-          accessibilityLabel={t('actions.cancel', { ns: 'common' })}
+          accessibilityLabel={t('actions.back', { ns: 'common', defaultValue: 'Back' })}
           disabled={saving}
         >
-          <IconX size={22} color={c.textSecondary} />
+          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>

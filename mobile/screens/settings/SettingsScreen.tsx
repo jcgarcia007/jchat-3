@@ -43,6 +43,7 @@ import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
   IconBriefcase,
+  IconChevronLeft,
   IconChevronRight,
   IconCreditCard,
   IconFingerprint,
@@ -501,6 +502,14 @@ export default function SettingsScreen() {
           { paddingTop: insets.top + 12, backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle },
         ]}
       >
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+        </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('main.title')}</Text>
       </View>
 
@@ -768,15 +777,19 @@ const styles = StyleSheet.create({
   },
 
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: H_PAD,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 
+  backButton: { marginRight: 8, padding: 4 },
+
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
   },
 
   scroll: {
