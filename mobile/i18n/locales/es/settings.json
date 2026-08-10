@@ -235,7 +235,17 @@
     "combineConfirmTitle": "Combinar {{label}}",
     "combineConfirmMsg": "Elegir mesa secundaria a combinar con esta.",
     "combineCancel": "Cancelar",
-    "combinedTablesSection": "Mesas combinadas"
+    "combinedTablesSection": "Mesas combinadas",
+    "tipTitle": "¿Agregar propina?",
+    "tipBase": "Total de cuenta",
+    "tipNone": "Sin propina",
+    "tipCustom": "Personalizado",
+    "tipCustomPctPlaceholder": "ej. 22",
+    "tipCustomAmtPlaceholder": "ej. 5.00",
+    "tipTotalLabel": "Total a cobrar",
+    "tipBack": "Regresar",
+    "tipChargeBtn": "Cobrar {{total}}",
+    "tipTipLabel": "incl. propina {{tip}}"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

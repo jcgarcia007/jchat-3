@@ -32,14 +32,17 @@
  * • markTabPaid() retrieves the PI directly from Stripe before updating the DB.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -78,13 +81,25 @@ type ReaderStatus = 'locating' | 'discovering' | 'connecting' | 'updating' | 're
 
 type CheckoutPhase =
   | 'idle'        // waiting for employee to tap "Cobrar"
-  | 'creating'    // calling createPaymentIntent EF
+  | 'tip'         // tip picker is open
+  | 'creating'    // calling createTabPaymentIntent EF
   | 'retrieving'  // calling SDK retrievePaymentIntent
   | 'collecting'  // collectPaymentMethod on reader
   | 'confirming'  // confirmPaymentIntent
-  | 'marking'     // calling markPaid EF
+  | 'marking'     // calling markTabPaid EF
   | 'success'     // done
   | 'error';      // something went wrong
+
+// ─── Tip constants ─────────────────────────────────────────────────────────────
+// Presets (pct, key). Easy to make configurable per-business later — just
+// replace this constant with a prop or remote config value.
+
+type TipOption = { key: string; pct: number };
+const TIP_PRESETS: TipOption[] = [
+  { key: '15', pct: 15 },
+  { key: '18', pct: 18 },
+  { key: '20', pct: 20 },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -167,6 +182,14 @@ export default function PosCheckoutScreen() {
   // ── Checkout state ──────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // ── Tip picker state ────────────────────────────────────────────────────────
+  // selectedTipOption: key of a preset ('15'|'18'|'20'), 'custom', or 'none'.
+  const [selectedTipOption, setSelectedTipOption] = useState<string>('none');
+  // For custom: whether the user is entering a % or a fixed $ amount.
+  const [customTipMode, setCustomTipMode] = useState<'pct' | 'amt'>('pct');
+  // Raw text input for the custom option (parsed on confirm).
+  const [customTipInput, setCustomTipInput] = useState<string>('');
 
   // ── Load tab total preview on mount (display only, not used for the charge) ──
   useEffect(() => {
@@ -319,14 +342,32 @@ export default function PosCheckoutScreen() {
     }
   }, [businessId, discoverReaders, t]);
 
+  // ── Computed tip in cents ────────────────────────────────────────────────────
+  // Derived from the tip picker selection at the moment the employee taps
+  // "Charge". The base used for % presets is the display value from posTableItems
+  // — the EF will validate against the real server total and cap if needed.
+  const computedTipCents = useMemo((): number => {
+    const base = tabAmountCents ?? 0;
+    if (selectedTipOption === 'none' || base === 0) return 0;
+    const preset = TIP_PRESETS.find((p) => p.key === selectedTipOption);
+    if (preset) return Math.round((base * preset.pct) / 100);
+    if (selectedTipOption === 'custom') {
+      const raw = parseFloat(customTipInput.replace(',', '.'));
+      if (!isFinite(raw) || raw <= 0) return 0;
+      if (customTipMode === 'pct') return Math.round((base * raw) / 100);
+      return Math.round(raw * 100); // fixed dollar amount → cents
+    }
+    return 0;
+  }, [tabAmountCents, selectedTipOption, customTipMode, customTipInput]);
+
   // ── Charge ─────────────────────────────────────────────────────────────────
-  const handleCharge = useCallback(async () => {
+  const handleCharge = useCallback(async (tipCents: number) => {
     if (!connectedReader) return;
     setCheckoutError(null);
 
     // ── Step 1: Create PaymentIntent for the full tab (amount from server) ──
     setPhase('creating');
-    const piResult = await createTabPaymentIntent(businessId, tableId);
+    const piResult = await createTabPaymentIntent(businessId, tableId, tipCents);
     if (!piResult.ok) {
       setPhase('error');
       switch (piResult.reason) {
@@ -347,8 +388,9 @@ export default function PosCheckoutScreen() {
     // (PI is still valid; operator reconciles via Stripe dashboard).
     paymentIdRef.current = piResult.paymentId;
 
-    // Update display amount to server-confirmed value
-    setTabAmountCents(piResult.amountCents);
+    // Update display amount to server-confirmed base (without tip) so the
+    // tab card stays consistent. Total (with tip) is piResult.totalCents.
+    setTabAmountCents(piResult.baseCents);
 
     // ── Step 2: Retrieve PaymentIntent (SDK needs the full object) ──
     setPhase('retrieving');
@@ -429,12 +471,15 @@ export default function PosCheckoutScreen() {
 
   const hasTab = tabAmountCents !== null && tabAmountCents > 0;
 
+  // canCharge: reader ready + tab loaded + not processing + not in tip picker
+  // (when in tip phase the footer shows back/confirm, not the charge button)
   const canCharge =
     readerStatus === 'ready' &&
     hasTab &&
     !isProcessing &&
     phase !== 'success' &&
-    phase !== 'error';
+    phase !== 'error' &&
+    phase !== 'tip';
 
   // ── Phase label for the progress indicator ──────────────────────────────────
   const phaseLabel = (() => {
@@ -645,6 +690,191 @@ export default function PosCheckoutScreen() {
           </View>
         )}
 
+        {/* ── Tip picker ─────────────────────────────────────────────────────── */}
+        {phase === 'tip' && hasTab ? (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={[styles.tipCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+              {/* Title */}
+              <Text style={[styles.tipTitle, { color: c.textPrimary }]}>
+                {t('pos.tipTitle')}
+              </Text>
+
+              {/* Base row */}
+              <View style={styles.tipBaseRow}>
+                <Text style={[styles.tipBaseLabel, { color: c.textSecondary }]}>
+                  {t('pos.tipBase')}
+                </Text>
+                <Text style={[styles.tipBaseValue, { color: c.textPrimary }]}>
+                  {formatCents(tabAmountCents!)}
+                </Text>
+              </View>
+
+              <View style={[styles.tipDivider, { backgroundColor: c.borderSubtle }]} />
+
+              {/* Preset buttons: 15 / 18 / 20 */}
+              <View style={styles.tipPresets}>
+                {TIP_PRESETS.map(({ key, pct }) => {
+                  const tipAmt = Math.round((tabAmountCents! * pct) / 100);
+                  const isActive = selectedTipOption === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => setSelectedTipOption(key)}
+                      style={({ pressed }) => [
+                        styles.tipPresetBtn,
+                        isActive
+                          ? { backgroundColor: c.brand, borderColor: c.brand }
+                          : { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
+                        pressed && !isActive && { opacity: 0.7 },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${pct}% — ${formatCents(tipAmt)}`}
+                    >
+                      <Text
+                        style={[
+                          styles.tipPresetPct,
+                          { color: isActive ? '#fff' : c.textPrimary },
+                        ]}
+                      >
+                        {pct}%
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tipPresetAmt,
+                          { color: isActive ? 'rgba(255,255,255,0.85)' : c.textSecondary },
+                        ]}
+                      >
+                        {formatCents(tipAmt)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Custom tip */}
+              <Pressable
+                onPress={() => setSelectedTipOption('custom')}
+                style={[
+                  styles.tipCustomRow,
+                  selectedTipOption === 'custom'
+                    ? { borderColor: c.brand, backgroundColor: c.brandLight }
+                    : { borderColor: c.borderSubtle, backgroundColor: c.bgBase },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('pos.tipCustom')}
+              >
+                <Text
+                  style={[
+                    styles.tipCustomLabel,
+                    { color: selectedTipOption === 'custom' ? c.brand : c.textSecondary },
+                  ]}
+                >
+                  {t('pos.tipCustom')}
+                </Text>
+
+                {selectedTipOption === 'custom' ? (
+                  <View style={styles.tipCustomInputRow}>
+                    {/* Mode toggle: % / $ */}
+                    <Pressable
+                      onPress={() => { setCustomTipMode('pct'); setCustomTipInput(''); }}
+                      style={[
+                        styles.tipModeBtn,
+                        customTipMode === 'pct'
+                          ? { backgroundColor: c.brand }
+                          : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tipModeBtnText,
+                          { color: customTipMode === 'pct' ? '#fff' : c.textSecondary },
+                        ]}
+                      >
+                        %
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { setCustomTipMode('amt'); setCustomTipInput(''); }}
+                      style={[
+                        styles.tipModeBtn,
+                        customTipMode === 'amt'
+                          ? { backgroundColor: c.brand }
+                          : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tipModeBtnText,
+                          { color: customTipMode === 'amt' ? '#fff' : c.textSecondary },
+                        ]}
+                      >
+                        $
+                      </Text>
+                    </Pressable>
+                    <TextInput
+                      style={[
+                        styles.tipInput,
+                        {
+                          color: c.textPrimary,
+                          borderColor: c.brand,
+                          backgroundColor: c.bgSurface,
+                        },
+                      ]}
+                      value={customTipInput}
+                      onChangeText={setCustomTipInput}
+                      keyboardType="decimal-pad"
+                      placeholder={
+                        customTipMode === 'pct'
+                          ? t('pos.tipCustomPctPlaceholder')
+                          : t('pos.tipCustomAmtPlaceholder')
+                      }
+                      placeholderTextColor={c.textTertiary}
+                      autoFocus
+                      selectTextOnFocus
+                    />
+                  </View>
+                ) : null}
+              </Pressable>
+
+              {/* No tip — visible and never hidden */}
+              <Pressable
+                onPress={() => setSelectedTipOption('none')}
+                style={[
+                  styles.tipNoneBtn,
+                  selectedTipOption === 'none'
+                    ? { borderColor: c.textSecondary, backgroundColor: c.bgBase }
+                    : { borderColor: c.borderSubtle, backgroundColor: 'transparent' },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('pos.tipNone')}
+              >
+                <Text
+                  style={[
+                    styles.tipNoneBtnText,
+                    { color: selectedTipOption === 'none' ? c.textPrimary : c.textTertiary },
+                  ]}
+                >
+                  {t('pos.tipNone')}
+                </Text>
+              </Pressable>
+
+              <View style={[styles.tipDivider, { backgroundColor: c.borderSubtle }]} />
+
+              {/* Total summary */}
+              <View style={styles.tipSummaryRow}>
+                <Text style={[styles.tipSummaryLabel, { color: c.textSecondary }]}>
+                  {t('pos.tipTotalLabel')}
+                </Text>
+                <Text style={[styles.tipSummaryValue, { color: c.textPrimary }]}>
+                  {formatCents((tabAmountCents ?? 0) + computedTipCents)}
+                </Text>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        ) : null}
+
         {/* ── Payment progress / success ── */}
         {(isProcessing || phase === 'success') && phaseLabel ? (
           <View
@@ -700,35 +930,88 @@ export default function PosCheckoutScreen() {
         ) : null}
       </ScrollView>
 
-      {/* ── Charge button (pinned to bottom) ── */}
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <View
         style={[
           styles.footer,
           { paddingBottom: insets.bottom + 16, borderTopColor: c.borderSubtle, backgroundColor: c.bgBase },
         ]}
       >
-        <Pressable
-          onPress={handleCharge}
-          disabled={!canCharge}
-          style={({ pressed }) => [
-            styles.chargeBtn,
-            { backgroundColor: canCharge ? c.brand : c.borderSubtle },
-            pressed && canCharge && { opacity: 0.82 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={
-            hasTab
-              ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
-              : t('pos.cobrar')
-          }
-        >
-          <IconCreditCard size={20} color="#fff" strokeWidth={2} />
-          <Text style={styles.chargeBtnText}>
-            {hasTab
-              ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
-              : t('pos.cobrar')}
-          </Text>
-        </Pressable>
+        {/* Normal state: "Cobrar $X.XX" opens the tip picker */}
+        {phase !== 'tip' && phase !== 'success' ? (
+          <Pressable
+            onPress={() => {
+              if (canCharge) {
+                // Reset tip picker to default every time it opens
+                setSelectedTipOption('none');
+                setCustomTipInput('');
+                setCustomTipMode('pct');
+                setPhase('tip');
+              }
+            }}
+            disabled={!canCharge}
+            style={({ pressed }) => [
+              styles.chargeBtn,
+              { backgroundColor: canCharge ? c.brand : c.borderSubtle },
+              pressed && canCharge && { opacity: 0.82 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              hasTab
+                ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
+                : t('pos.cobrar')
+            }
+          >
+            <IconCreditCard size={20} color="#fff" strokeWidth={2} />
+            <Text style={styles.chargeBtnText}>
+              {hasTab
+                ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
+                : t('pos.cobrar')}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* Tip phase: back + confirm with total */}
+        {phase === 'tip' ? (
+          <View style={styles.tipFooterRow}>
+            <Pressable
+              onPress={() => setPhase('idle')}
+              style={[styles.tipBackBtn, { borderColor: c.borderSubtle }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.tipBack')}
+            >
+              <Text style={[styles.tipBackBtnText, { color: c.textSecondary }]}>
+                {t('pos.tipBack')}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => handleCharge(computedTipCents)}
+              style={({ pressed }) => [
+                styles.tipConfirmBtn,
+                { backgroundColor: c.brand },
+                pressed && { opacity: 0.82 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.tipChargeBtn', {
+                total: formatCents((tabAmountCents ?? 0) + computedTipCents),
+              })}
+            >
+              <Text style={styles.tipConfirmBtnText}>
+                {t('pos.tipChargeBtn', {
+                  total: formatCents((tabAmountCents ?? 0) + computedTipCents),
+                })}
+              </Text>
+              {computedTipCents > 0 ? (
+                <Text style={styles.tipConfirmBtnSub}>
+                  {t('pos.tipTipLabel', { tip: formatCents(computedTipCents) })}
+                </Text>
+              ) : (
+                <Text style={styles.tipConfirmBtnSub}>{t('pos.tipNone')}</Text>
+              )}
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -870,5 +1153,127 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+
+  // ── Tip picker card ──────────────────────────────────────────────────────────
+  tipCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 14,
+  },
+  tipTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  tipBaseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tipBaseLabel: { fontSize: 14, fontWeight: '500' },
+  tipBaseValue: { fontSize: 18, fontWeight: '700' },
+  tipDivider: { height: StyleSheet.hairlineWidth },
+
+  // Preset buttons
+  tipPresets: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tipPresetBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  tipPresetPct: { fontSize: 18, fontWeight: '800' },
+  tipPresetAmt: { fontSize: 12, fontWeight: '500' },
+
+  // Custom tip row
+  tipCustomRow: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  tipCustomLabel: { fontSize: 14, fontWeight: '600' },
+  tipCustomInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tipModeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipModeBtnText: { fontSize: 16, fontWeight: '700' },
+  tipInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // No tip button
+  tipNoneBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  tipNoneBtnText: { fontSize: 15, fontWeight: '500' },
+
+  // Total summary
+  tipSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tipSummaryLabel: { fontSize: 13, fontWeight: '500' },
+  tipSummaryValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+
+  // Tip footer: back + confirm
+  tipFooterRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tipBackBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipBackBtnText: { fontSize: 15, fontWeight: '600' },
+  tipConfirmBtn: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 2,
+  },
+  tipConfirmBtnText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  tipConfirmBtnSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

@@ -50,12 +50,25 @@ export type MarkPaidResult =
 
 /**
  * Result of createTabPaymentIntent.
- *   paymentId may be null if the pos_payments INSERT failed server-side after
- *   the PI was created — the PI is still valid for collection; the operator
- *   must reconcile via the Stripe dashboard.
+ *   baseCents  — tab total without tip (= pos_payments.amount_cents)
+ *   tipCents   — tip selected by the waiter (may be 0)
+ *   totalCents — PI amount = baseCents + tipCents (what the card is charged)
+ *   amountCents — alias of totalCents (backwards-compat for screens that already use it)
+ *   paymentId  — null if the pos_payments INSERT failed after PI creation;
+ *                the PI is still valid — operator must reconcile via Stripe.
  */
 export type CreateTabPaymentIntentResult =
-  | { ok: true; clientSecret: string; paymentIntentId: string; paymentId: string | null; amountCents: number }
+  | {
+      ok: true;
+      clientSecret: string;
+      paymentIntentId: string;
+      paymentId: string | null;
+      baseCents: number;
+      tipCents: number;
+      totalCents: number;
+      /** @deprecated use totalCents — kept for backwards compat */
+      amountCents: number;
+    }
   | { ok: false; reason: TerminalErrorReason; message?: string };
 
 export type MarkTabPaidResult =
@@ -338,18 +351,23 @@ export async function chargeSplitCheck(paymentId: string): Promise<ChargeSplitCh
 /**
  * Create a Stripe PaymentIntent for the full tab of a table (all unpaid orders).
  *
- * The amount is read server-side via pos_tab_total — this call never sends a
- * price. Returns `{ ok: false, reason: 'empty_tab' }` when the tab total is
- * zero (nothing to charge yet). paymentId may be null in the rare case where
- * the pos_payments INSERT failed after a successful PI creation; the PI is
- * still valid for collection but the operator must reconcile via Stripe.
+ * The base amount is read server-side via pos_tab_total — this call never
+ * sends a price. An optional tipCents (integer ≥ 0) is forwarded to the EF;
+ * the PI total = base + tip. pos_payments.amount_cents stores the base only
+ * so markTabPaid can derive tip = pi.amount − base correctly.
+ *
+ * Returns `{ ok: false, reason: 'empty_tab' }` when the tab total is zero.
+ * paymentId may be null in the rare case where the pos_payments INSERT failed
+ * after a successful PI creation; the PI is still valid for collection.
  *
  * @param businessId — the business whose connected Stripe account will be used
  * @param tableId    — the UUID of the table in the `tables` table
+ * @param tipCents   — waiter-selected tip in cents (default 0 = no tip)
  */
 export async function createTabPaymentIntent(
   businessId: string,
   tableId: string,
+  tipCents = 0,
 ): Promise<CreateTabPaymentIntentResult> {
   if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
 
@@ -357,9 +375,17 @@ export async function createTabPaymentIntent(
     client_secret: string;
     payment_intent_id: string;
     payment_id: string | null;
-    amount_cents: number;
+    base_cents: number;
+    tip_cents: number;
+    total_cents: number;
+    amount_cents: number;  // compat alias = total_cents
   }>('terminal', {
-    body: { action: 'create_tab_payment_intent', business_id: businessId, table_id: tableId },
+    body: {
+      action: 'create_tab_payment_intent',
+      business_id: businessId,
+      table_id: tableId,
+      tip_cents: tipCents,
+    },
   });
 
   if (error) {
@@ -370,16 +396,23 @@ export async function createTabPaymentIntent(
     return { ok: false, reason: mapReason(httpStatus, message), message };
   }
 
-  if (!data?.client_secret || !data?.payment_intent_id || data?.amount_cents == null) {
+  if (!data?.client_secret || !data?.payment_intent_id || data?.total_cents == null) {
     return { ok: false, reason: 'error', message: 'Incomplete response from server' };
   }
+
+  const baseCents  = data.base_cents  ?? data.amount_cents ?? 0;
+  const tipCentsR  = data.tip_cents   ?? 0;
+  const totalCents = data.total_cents ?? data.amount_cents ?? 0;
 
   return {
     ok: true,
     clientSecret: data.client_secret,
     paymentIntentId: data.payment_intent_id,
     paymentId: data.payment_id ?? null,
-    amountCents: data.amount_cents,
+    baseCents,
+    tipCents: tipCentsR,
+    totalCents,
+    amountCents: totalCents,
   };
 }
 

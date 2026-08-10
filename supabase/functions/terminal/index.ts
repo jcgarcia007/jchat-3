@@ -487,8 +487,14 @@ async function handleMarkPaid(
 // ── Action: create_tab_payment_intent ────────────────────────────────────────
 //
 // Creates a single PaymentIntent for the full open tab of a table.
-// Amount is computed server-side via pos_tab_total — the client body is never
-// trusted for monetary values.
+// Base amount is computed server-side via pos_tab_total — the client body is
+// never trusted for monetary values.
+//
+// Optional tip_cents (integer ≥ 0, ≤ tab base): the PaymentIntent is created
+// with amount = base + tip. pos_payments.amount_cents stores the base only so
+// that mark_tab_paid can derive tip = pi.amount − base correctly.
+//
+// Response: { base_cents, tip_cents, total_cents, amount_cents (= total, compat) }
 
 async function handleCreateTabPaymentIntent(
   body: Record<string, unknown>,
@@ -505,7 +511,7 @@ async function handleCreateTabPaymentIntent(
 
   const db = getAdminClient();
 
-  // 2. Compute tab total server-side — amount never comes from the client.
+  // 2. Compute tab total server-side — base amount never comes from the client.
   const { data: tabTotalData, error: tabErr } = await db.rpc("pos_tab_total", {
     p_business_id: businessId,
     p_table_id: tableId,
@@ -514,28 +520,53 @@ async function handleCreateTabPaymentIntent(
     console.error("[terminal] pos_tab_total error:", tabErr.message);
     return errorResponse("Internal server error", 500);
   }
-  const tabTotalCents = typeof tabTotalData === "number" ? tabTotalData : 0;
-  if (tabTotalCents <= 0) {
+  const baseCents = typeof tabTotalData === "number" ? tabTotalData : 0;
+  if (baseCents <= 0) {
     return errorResponse("Nothing to charge: tab total is zero", 409);
   }
 
-  // 3. Resolve the connected Stripe account.
+  // 3. Parse and validate optional tip_cents.
+  //    tip_cents is sent by the client ONLY as a positive selection (15%/18%/20%/custom).
+  //    We cap it at the base (100% tip limit) as a sanity guard.
+  //    The tip does NOT affect pos_payments.amount_cents — that stays at base so
+  //    mark_tab_paid can derive tipCents = pi.amount − base.
+  const tipCentsRaw = body.tip_cents;
+  let tipCents = 0;
+  if (tipCentsRaw !== undefined && tipCentsRaw !== null) {
+    if (
+      typeof tipCentsRaw !== "number" ||
+      !Number.isInteger(tipCentsRaw) ||
+      tipCentsRaw < 0
+    ) {
+      return errorResponse("tip_cents must be a non-negative integer", 422);
+    }
+    if (tipCentsRaw > baseCents) {
+      return errorResponse(
+        `tip_cents (${tipCentsRaw}) cannot exceed the tab total (${baseCents})`,
+        422,
+      );
+    }
+    tipCents = tipCentsRaw;
+  }
+  const totalCents = baseCents + tipCents;
+
+  // 4. Resolve the connected Stripe account.
   const accountResult = await getStripeAccount(db, businessId);
   if (accountResult instanceof Response) return accountResult;
   const { stripeAccount } = accountResult;
 
-  // 4. Create the PaymentIntent on the connected account (direct charges model).
+  // 5. Create the PaymentIntent with the full amount (base + tip).
   //    No on_behalf_of, no transfer_data, no application_fee.
   const stripe = getStripe();
   let pi: Stripe.PaymentIntent;
   try {
     pi = await stripe.paymentIntents.create(
       {
-        amount: tabTotalCents,              // server-owned amount — never from client
+        amount: totalCents,                 // server-owned total (base + tip)
         currency: "usd",
         payment_method_types: ["card_present"],
         capture_method: "automatic",
-        metadata: { table_id: tableId, kind: "full" },
+        metadata: { table_id: tableId, kind: "full", tip_cents: String(tipCents) },
       },
       { stripeAccount },                   // direct charges: charge lands on connected account
     );
@@ -549,13 +580,15 @@ async function handleCreateTabPaymentIntent(
     return errorResponse("PaymentIntent has no client_secret", 500);
   }
 
-  // 5. Record the pending payment in pos_payments (admin client, bypasses RLS).
+  // 6. Record the pending payment in pos_payments with amount_cents = BASE only.
+  //    tip is implicit: mark_tab_paid reads pi.amount from Stripe and derives
+  //    tip = pi.amount − pos_payments.amount_cents automatically.
   const { data: insertData, error: insertErr } = await db
     .from("pos_payments")
     .insert({
       business_id: businessId,
       table_id: tableId,
-      amount_cents: tabTotalCents,
+      amount_cents: baseCents,            // base only — tip is NOT stored here
       kind: "full",
       stripe_pi_id: pi.id,
       status: "pending",
@@ -573,20 +606,27 @@ async function handleCreateTabPaymentIntent(
       client_secret: pi.client_secret,
       payment_intent_id: pi.id,
       payment_id: null,
-      amount_cents: tabTotalCents,
+      base_cents: baseCents,
+      tip_cents: tipCents,
+      total_cents: totalCents,
+      amount_cents: totalCents,           // compat alias (= total)
     });
   }
 
   const paymentId = (insertData as { id: string }).id;
 
   console.log(
-    `[terminal] create_tab_payment_intent: business=${businessId} table=${tableId} pi=${pi.id} amount=${tabTotalCents} payment_id=${paymentId}`,
+    `[terminal] create_tab_payment_intent: business=${businessId} table=${tableId}` +
+    ` pi=${pi.id} base=${baseCents} tip=${tipCents} total=${totalCents} payment_id=${paymentId}`,
   );
   return jsonResponse({
     client_secret: pi.client_secret,
     payment_intent_id: pi.id,
     payment_id: paymentId,
-    amount_cents: tabTotalCents,
+    base_cents: baseCents,
+    tip_cents: tipCents,
+    total_cents: totalCents,
+    amount_cents: totalCents,             // compat alias (= total)
   });
 }
 

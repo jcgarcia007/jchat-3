@@ -235,7 +235,17 @@
     "combineConfirmTitle": "Combine {{label}}",
     "combineConfirmMsg": "Choose a secondary table to combine with this one.",
     "combineCancel": "Cancel",
-    "combinedTablesSection": "Combined tables"
+    "combinedTablesSection": "Combined tables",
+    "tipTitle": "Add a Tip?",
+    "tipBase": "Tab total",
+    "tipNone": "No tip",
+    "tipCustom": "Custom",
+    "tipCustomPctPlaceholder": "e.g. 22",
+    "tipCustomAmtPlaceholder": "e.g. 5.00",
+    "tipTotalLabel": "Total to charge",
+    "tipBack": "Back",
+    "tipChargeBtn": "Charge {{total}}",
+    "tipTipLabel": "incl. {{tip}} tip"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",
