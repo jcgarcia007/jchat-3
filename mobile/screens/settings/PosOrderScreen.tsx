@@ -171,7 +171,11 @@ function MenuItemCard({
   return (
     <Pressable
       onPress={() => onPress(item)}
-      style={({ pressed }) => [styles.menuCard, pressed && { opacity: 0.80 }]}
+      style={({ pressed }) => [
+        styles.menuCard,
+        { backgroundColor: c.bgSurface },
+        pressed && { opacity: 0.80 },
+      ]}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ${formatPrice(item.price_cents)}${item.has_modifiers ? ', options available' : ''}`}
     >
@@ -223,6 +227,16 @@ function MenuItemCard({
           <IconInfoCircle size={16} color="#fff" strokeWidth={2} />
         </Pressable>
       </View>
+
+      {/* Description — below the photo, muted, max 2 lines */}
+      {item.description ? (
+        <Text
+          numberOfLines={2}
+          style={[styles.cardDesc, { color: c.textSecondary }]}
+        >
+          {item.description}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -1174,6 +1188,14 @@ const styles = StyleSheet.create({
   cardModDot: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  // Dish description shown below the photo card — muted, max 2 lines.
+  cardDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    paddingHorizontal: 8,
+    paddingTop: 5,
+    paddingBottom: 6,
   },
 
   // ── Loading / empty ──────────────────────────────────────────────────────────
