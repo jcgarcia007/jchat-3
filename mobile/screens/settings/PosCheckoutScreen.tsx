@@ -35,14 +35,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,6 +56,7 @@ import {
   IconWifiOff,
 } from '@tabler/icons-react-native';
 import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalSdk';
+import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
@@ -89,17 +87,6 @@ type CheckoutPhase =
   | 'marking'     // calling markTabPaid EF
   | 'success'     // done
   | 'error';      // something went wrong
-
-// ─── Tip constants ─────────────────────────────────────────────────────────────
-// Presets (pct, key). Easy to make configurable per-business later — just
-// replace this constant with a prop or remote config value.
-
-type TipOption = { key: string; pct: number };
-const TIP_PRESETS: TipOption[] = [
-  { key: '15', pct: 15 },
-  { key: '18', pct: 18 },
-  { key: '20', pct: 20 },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -692,187 +679,16 @@ export default function PosCheckoutScreen() {
 
         {/* ── Tip picker ─────────────────────────────────────────────────────── */}
         {phase === 'tip' && hasTab ? (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
-            <View style={[styles.tipCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              {/* Title */}
-              <Text style={[styles.tipTitle, { color: c.textPrimary }]}>
-                {t('pos.tipTitle')}
-              </Text>
-
-              {/* Base row */}
-              <View style={styles.tipBaseRow}>
-                <Text style={[styles.tipBaseLabel, { color: c.textSecondary }]}>
-                  {t('pos.tipBase')}
-                </Text>
-                <Text style={[styles.tipBaseValue, { color: c.textPrimary }]}>
-                  {formatCents(tabAmountCents!)}
-                </Text>
-              </View>
-
-              <View style={[styles.tipDivider, { backgroundColor: c.borderSubtle }]} />
-
-              {/* Preset buttons: 15 / 18 / 20 */}
-              <View style={styles.tipPresets}>
-                {TIP_PRESETS.map(({ key, pct }) => {
-                  const tipAmt = Math.round((tabAmountCents! * pct) / 100);
-                  const isActive = selectedTipOption === key;
-                  return (
-                    <Pressable
-                      key={key}
-                      onPress={() => setSelectedTipOption(key)}
-                      style={({ pressed }) => [
-                        styles.tipPresetBtn,
-                        isActive
-                          ? { backgroundColor: c.brand, borderColor: c.brand }
-                          : { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
-                        pressed && !isActive && { opacity: 0.7 },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${pct}% — ${formatCents(tipAmt)}`}
-                    >
-                      <Text
-                        style={[
-                          styles.tipPresetPct,
-                          { color: isActive ? '#fff' : c.textPrimary },
-                        ]}
-                      >
-                        {pct}%
-                      </Text>
-                      <Text
-                        style={[
-                          styles.tipPresetAmt,
-                          { color: isActive ? 'rgba(255,255,255,0.85)' : c.textSecondary },
-                        ]}
-                      >
-                        {formatCents(tipAmt)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* Custom tip */}
-              <Pressable
-                onPress={() => setSelectedTipOption('custom')}
-                style={[
-                  styles.tipCustomRow,
-                  selectedTipOption === 'custom'
-                    ? { borderColor: c.brand, backgroundColor: c.brandLight }
-                    : { borderColor: c.borderSubtle, backgroundColor: c.bgBase },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('pos.tipCustom')}
-              >
-                <Text
-                  style={[
-                    styles.tipCustomLabel,
-                    { color: selectedTipOption === 'custom' ? c.brand : c.textSecondary },
-                  ]}
-                >
-                  {t('pos.tipCustom')}
-                </Text>
-
-                {selectedTipOption === 'custom' ? (
-                  <View style={styles.tipCustomInputRow}>
-                    {/* Mode toggle: % / $ */}
-                    <Pressable
-                      onPress={() => { setCustomTipMode('pct'); setCustomTipInput(''); }}
-                      style={[
-                        styles.tipModeBtn,
-                        customTipMode === 'pct'
-                          ? { backgroundColor: c.brand }
-                          : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.tipModeBtnText,
-                          { color: customTipMode === 'pct' ? '#fff' : c.textSecondary },
-                        ]}
-                      >
-                        %
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => { setCustomTipMode('amt'); setCustomTipInput(''); }}
-                      style={[
-                        styles.tipModeBtn,
-                        customTipMode === 'amt'
-                          ? { backgroundColor: c.brand }
-                          : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.tipModeBtnText,
-                          { color: customTipMode === 'amt' ? '#fff' : c.textSecondary },
-                        ]}
-                      >
-                        $
-                      </Text>
-                    </Pressable>
-                    <TextInput
-                      style={[
-                        styles.tipInput,
-                        {
-                          color: c.textPrimary,
-                          borderColor: c.brand,
-                          backgroundColor: c.bgSurface,
-                        },
-                      ]}
-                      value={customTipInput}
-                      onChangeText={setCustomTipInput}
-                      keyboardType="decimal-pad"
-                      placeholder={
-                        customTipMode === 'pct'
-                          ? t('pos.tipCustomPctPlaceholder')
-                          : t('pos.tipCustomAmtPlaceholder')
-                      }
-                      placeholderTextColor={c.textTertiary}
-                      autoFocus
-                      selectTextOnFocus
-                    />
-                  </View>
-                ) : null}
-              </Pressable>
-
-              {/* No tip — visible and never hidden */}
-              <Pressable
-                onPress={() => setSelectedTipOption('none')}
-                style={[
-                  styles.tipNoneBtn,
-                  selectedTipOption === 'none'
-                    ? { borderColor: c.textSecondary, backgroundColor: c.bgBase }
-                    : { borderColor: c.borderSubtle, backgroundColor: 'transparent' },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('pos.tipNone')}
-              >
-                <Text
-                  style={[
-                    styles.tipNoneBtnText,
-                    { color: selectedTipOption === 'none' ? c.textPrimary : c.textTertiary },
-                  ]}
-                >
-                  {t('pos.tipNone')}
-                </Text>
-              </Pressable>
-
-              <View style={[styles.tipDivider, { backgroundColor: c.borderSubtle }]} />
-
-              {/* Total summary */}
-              <View style={styles.tipSummaryRow}>
-                <Text style={[styles.tipSummaryLabel, { color: c.textSecondary }]}>
-                  {t('pos.tipTotalLabel')}
-                </Text>
-                <Text style={[styles.tipSummaryValue, { color: c.textPrimary }]}>
-                  {formatCents((tabAmountCents ?? 0) + computedTipCents)}
-                </Text>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
+          <PosTipPicker
+            baseCents={tabAmountCents!}
+            selectedOption={selectedTipOption}
+            onSelectOption={setSelectedTipOption}
+            customMode={customTipMode}
+            onCustomModeChange={setCustomTipMode}
+            customInput={customTipInput}
+            onCustomInputChange={setCustomTipInput}
+            computedTipCents={computedTipCents}
+          />
         ) : null}
 
         {/* ── Payment progress / success ── */}
@@ -1154,94 +970,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-
-  // ── Tip picker card ──────────────────────────────────────────────────────────
-  tipCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    gap: 14,
-  },
-  tipTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  tipBaseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  tipBaseLabel: { fontSize: 14, fontWeight: '500' },
-  tipBaseValue: { fontSize: 18, fontWeight: '700' },
-  tipDivider: { height: StyleSheet.hairlineWidth },
-
-  // Preset buttons
-  tipPresets: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  tipPresetBtn: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    paddingVertical: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  tipPresetPct: { fontSize: 18, fontWeight: '800' },
-  tipPresetAmt: { fontSize: 12, fontWeight: '500' },
-
-  // Custom tip row
-  tipCustomRow: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  tipCustomLabel: { fontSize: 14, fontWeight: '600' },
-  tipCustomInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  tipModeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tipModeBtnText: { fontSize: 16, fontWeight: '700' },
-  tipInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // No tip button
-  tipNoneBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  tipNoneBtnText: { fontSize: 15, fontWeight: '500' },
-
-  // Total summary
-  tipSummaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  tipSummaryLabel: { fontSize: 13, fontWeight: '500' },
-  tipSummaryValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
 
   // Tip footer: back + confirm
   tipFooterRow: {

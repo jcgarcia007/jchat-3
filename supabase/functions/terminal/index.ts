@@ -12,7 +12,9 @@
  *   create_tab_payment_intent{ business_id, table_id }
  *                                             → { client_secret, payment_intent_id, payment_id, amount_cents }
  *   mark_tab_paid            { payment_id }   → { ok: boolean, tab_closed?: boolean, status?: string }
- *   charge_split_check       { payment_id }   → { client_secret, payment_intent_id, payment_id, amount_cents }
+ *   charge_split_check       { payment_id, tip_cents? }
+ *                                             → { client_secret, payment_intent_id, payment_id,
+ *                                                 base_cents, tip_cents, total_cents, amount_cents }
  *
  * ── Security invariants ──────────────────────────────────────────────────────
  *   • Every action calls pos_can_access(p_business_id) via the CALLER's own JWT
@@ -733,9 +735,17 @@ async function handleMarkTabPaid(
 // ── Action: charge_split_check ────────────────────────────────────────────────
 //
 // Creates a Stripe PaymentIntent for one already-created split-payment row in
-// pos_payments (e.g. inserted by the pos_create_split RPC). The amount is read
-// exclusively from pos_payments.amount_cents — the client body never supplies or
-// influences monetary values.
+// pos_payments (e.g. inserted by the pos_create_split RPC). The base amount is
+// read exclusively from pos_payments.amount_cents — the client body never
+// supplies or influences the base monetary value.
+//
+// Optional tip_cents: integer ≥ 0, capped at pos_payments.amount_cents (100 %).
+// PI amount = base + tip_cents. pos_payments.amount_cents is NOT updated — the
+// tip is stored only in the PI's metadata so mark_tab_paid can derive it as
+// pi.amount − base.
+//
+// Returns: { client_secret, payment_intent_id, payment_id,
+//            base_cents, tip_cents, total_cents, amount_cents (= total) }
 //
 // The caller must later call mark_tab_paid { payment_id } to confirm the charge
 // server-side; mark_tab_paid already handles both full and split rows.
@@ -746,6 +756,13 @@ async function handleChargeSplitCheck(
 ): Promise<Response> {
   const paymentId = typeof body.payment_id === "string" ? body.payment_id : null;
   if (!paymentId) return errorResponse("payment_id is required");
+
+  // Validate tip_cents: optional integer ≥ 0 (cap enforced after base is loaded)
+  const rawTip = body.tip_cents;
+  const tipCentsRaw =
+    typeof rawTip === "number" && Number.isInteger(rawTip) && rawTip >= 0
+      ? rawTip
+      : 0;
 
   const db = getAdminClient();
 
@@ -785,6 +802,10 @@ async function handleChargeSplitCheck(
     return errorResponse("Payment amount must be greater than zero", 422);
   }
 
+  // Cap tip at 100 % of the base (guard against client bugs; sane maximum).
+  const tipCents = Math.min(tipCentsRaw, payment.amount_cents);
+  const totalCents = payment.amount_cents + tipCents;
+
   // 4. Resolve the connected Stripe account.
   const accountResult = await getStripeAccount(db, payment.business_id);
   if (accountResult instanceof Response) return accountResult;
@@ -792,14 +813,17 @@ async function handleChargeSplitCheck(
 
   // 5. Create the PaymentIntent on the connected account (direct charges model).
   //    No on_behalf_of, no transfer_data, no application_fee.
-  //    Amount is ALWAYS from pos_payments.amount_cents — never from the client body.
+  //    Base amount is ALWAYS from pos_payments.amount_cents — never from the client body.
+  //    tip_cents is validated and added server-side; stored in PI metadata only.
+  //    pos_payments.amount_cents is NOT updated — mark_tab_paid derives tip as
+  //    pi.amount − base (pi.amount is the source of truth).
   //    Note: calling this twice creates a second PI; the orphan auto-cancels (v1 caveat).
   const stripe = getStripe();
   let pi: Stripe.PaymentIntent;
   try {
     pi = await stripe.paymentIntents.create(
       {
-        amount: payment.amount_cents,       // server-owned amount — never from client
+        amount: totalCents,                 // base + tip — server-owned; never from client
         currency: "usd",
         payment_method_types: ["card_present"],
         capture_method: "automatic",
@@ -807,6 +831,8 @@ async function handleChargeSplitCheck(
           payment_id: paymentId,
           table_id: payment.table_id,
           kind: payment.kind,
+          base_cents: String(payment.amount_cents),
+          tip_cents: String(tipCents),
         },
       },
       { stripeAccount },                   // direct charges: charge lands on connected account
@@ -823,6 +849,7 @@ async function handleChargeSplitCheck(
 
   // 6. Persist the PaymentIntent id back to the pos_payments row so that
   //    mark_tab_paid can retrieve it from Stripe for confirmation.
+  //    pos_payments.amount_cents stays = base (tip derived from pi.amount − base).
   const { error: updateErr } = await db
     .from("pos_payments")
     .update({ stripe_pi_id: pi.id })
@@ -835,13 +862,16 @@ async function handleChargeSplitCheck(
   }
 
   console.log(
-    `[terminal] charge_split_check: payment=${paymentId} pi=${pi.id} amount=${payment.amount_cents} kind=${payment.kind}`,
+    `[terminal] charge_split_check: payment=${paymentId} pi=${pi.id} base=${payment.amount_cents} tip=${tipCents} total=${totalCents} kind=${payment.kind}`,
   );
   return jsonResponse({
     client_secret: pi.client_secret,
     payment_intent_id: pi.id,
     payment_id: paymentId,
-    amount_cents: payment.amount_cents,
+    base_cents: payment.amount_cents,
+    tip_cents: tipCents,
+    total_cents: totalCents,
+    amount_cents: totalCents,             // compat alias for callers using amountCents
   });
 }
 

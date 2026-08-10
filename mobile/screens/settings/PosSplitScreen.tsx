@@ -29,7 +29,7 @@
  * • markTabPaid() retrieves the PI directly from Stripe before updating the DB.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -55,6 +55,7 @@ import {
   IconWifiOff,
 } from '@tabler/icons-react-native';
 import { useStripeTerminal, isTerminalAvailable } from '../../services/terminalSdk';
+import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
@@ -111,6 +112,15 @@ interface SubAccount {
   /** Items currently assigned to this account. */
   items: PosTableItemRow[];
 }
+
+/**
+ * Context for the tip picker overlay.
+ * Shown before starting a charge — the employee picks a tip, then the charge
+ * flow runs. Dismissed on back (no server calls have been made yet).
+ */
+type TipPickerCtx =
+  | { kind: 'even'; check: PosSplitCheckRow; baseCents: number }
+  | { kind: 'items'; account: SubAccount; baseCents: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -186,6 +196,14 @@ export default function PosSplitScreen(): React.ReactElement {
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // ── Tip picker state ────────────────────────────────────────────────────────
+  // When tipPickerCtx is non-null the tip "screen" is shown (early return below).
+  // All tip-picker state is reset when tipPickerCtx is set.
+  const [tipPickerCtx, setTipPickerCtx] = useState<TipPickerCtx | null>(null);
+  const [tipOption, setTipOption] = useState<string>('none');
+  const [tipCustomMode, setTipCustomMode] = useState<'pct' | 'amt'>('pct');
+  const [tipCustomInput, setTipCustomInput] = useState<string>('');
 
   // ── Load tab items + total preview on mount ─────────────────────────────────
   useEffect(() => {
@@ -453,10 +471,11 @@ export default function PosSplitScreen(): React.ReactElement {
   // ── Items method — pay one sub-account ───────────────────────────────────
   /**
    * Charge a single sub-account directly without creating a full split.
+   * Called by handleTipConfirm after the employee selects a tip amount.
    *
    * Flow:
    *   1. posCreateCheck    — server creates payment record, returns payment_id
-   *   2. chargeSplitCheck  — server creates Stripe PI, returns clientSecret
+   *   2. chargeSplitCheck  — server creates Stripe PI (base + tip), returns clientSecret
    *   3. retrievePI        — SDK loads PI object
    *   4. collectPayment    — reader collects card
    *   5. confirmPI         — SDK confirms
@@ -464,8 +483,8 @@ export default function PosSplitScreen(): React.ReactElement {
    *                          closes orders if all items covered
    *   7. Refresh items     — reload posTableItems; paid items disappear
    */
-  const handlePayAccount = useCallback(
-    async (account: SubAccount) => {
+  const doPayAccount = useCallback(
+    async (account: SubAccount, tipCents: number) => {
       if (activePaymentId || account.items.length === 0 || readerStatus !== 'ready') return;
 
       const orderItemIds = account.items.map((i) => i.order_item_id);
@@ -500,8 +519,8 @@ export default function PosSplitScreen(): React.ReactElement {
       const paymentId = checkResult.payment_id;
       setActivePaymentId(paymentId);
 
-      // ── Step 2: chargeSplitCheck ──────────────────────────────────────────
-      const piResult = await chargeSplitCheck(paymentId);
+      // ── Step 2: chargeSplitCheck (base from server + waiter-selected tip) ──
+      const piResult = await chargeSplitCheck(paymentId, tipCents);
       if (!piResult.ok) {
         setCheckoutPhase('error');
         setActivePaymentId(null);
@@ -615,17 +634,17 @@ export default function PosSplitScreen(): React.ReactElement {
     ],
   );
 
-  // ── Charge a single part (shared by both methods) ─────────────────────────
-  const handleChargeCheck = useCallback(
-    async (paymentId: string) => {
+  // ── Charge a single part — even split (called by handleTipConfirm) ────────
+  const doChargeCheck = useCallback(
+    async (paymentId: string, tipCents: number) => {
       if (readerStatus !== 'ready' || activePaymentId) return;
 
       setActivePaymentId(paymentId);
       setCheckoutPhase('creating');
       setCheckoutError(null);
 
-      // Step 1: Create PI for this check (amount from server)
-      const piResult = await chargeSplitCheck(paymentId);
+      // Step 1: Create PI for this check (base from server + waiter-selected tip)
+      const piResult = await chargeSplitCheck(paymentId, tipCents);
       if (!piResult.ok) {
         setCheckoutPhase('error');
         setActivePaymentId(null);
@@ -721,6 +740,61 @@ export default function PosSplitScreen(): React.ReactElement {
     ],
   );
 
+  // ── Tip picker helpers ────────────────────────────────────────────────────────
+
+  /** Tip in cents derived from the current picker state, for the active check. */
+  const computedSplitTipCents = useMemo((): number => {
+    const base = tipPickerCtx?.baseCents ?? 0;
+    if (tipOption === 'none' || base === 0) return 0;
+    const preset = TIP_PRESETS.find((p) => p.key === tipOption);
+    if (preset) return Math.round((base * preset.pct) / 100);
+    if (tipOption === 'custom') {
+      const raw = parseFloat(tipCustomInput.replace(',', '.'));
+      if (!isFinite(raw) || raw <= 0) return 0;
+      if (tipCustomMode === 'pct') return Math.round((base * raw) / 100);
+      return Math.round(raw * 100); // fixed dollar amount → cents
+    }
+    return 0;
+  }, [tipPickerCtx, tipOption, tipCustomMode, tipCustomInput]);
+
+  /** Open the tip picker for an even-split check. */
+  const handleTapChargeCheck = useCallback(
+    (check: PosSplitCheckRow) => {
+      if (readerStatus !== 'ready' || activePaymentId) return;
+      setTipOption('none');
+      setTipCustomInput('');
+      setTipCustomMode('pct');
+      setTipPickerCtx({ kind: 'even', check, baseCents: check.amount_cents });
+    },
+    [readerStatus, activePaymentId],
+  );
+
+  /** Open the tip picker for an items-split sub-account. */
+  const handleTapPayAccount = useCallback(
+    (account: SubAccount) => {
+      if (activePaymentId || account.items.length === 0 || readerStatus !== 'ready') return;
+      const subtotal = account.items.reduce((sum, i) => sum + i.price_cents * i.qty, 0);
+      setTipOption('none');
+      setTipCustomInput('');
+      setTipCustomMode('pct');
+      setTipPickerCtx({ kind: 'items', account, baseCents: subtotal });
+    },
+    [activePaymentId, readerStatus],
+  );
+
+  /** Confirm the current tip selection and run the charge flow. */
+  const handleTipConfirm = useCallback(() => {
+    if (!tipPickerCtx) return;
+    const ctx = tipPickerCtx;
+    const tip = computedSplitTipCents;
+    setTipPickerCtx(null); // close picker before async work starts
+    if (ctx.kind === 'even') {
+      void doChargeCheck(ctx.check.payment_id, tip);
+    } else {
+      void doPayAccount(ctx.account, tip);
+    }
+  }, [tipPickerCtx, computedSplitTipCents, doChargeCheck, doPayAccount]);
+
   // ── Derived ──────────────────────────────────────────────────────────────────
   const isProcessing =
     checkoutPhase === 'creating' ||
@@ -795,6 +869,114 @@ export default function PosSplitScreen(): React.ReactElement {
             accessibilityRole="button"
           >
             <Text style={styles.unavailableBackText}>{t('workMode.pinCancel')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Tip picker view (shown when employee taps "Cobrar" on any check) ────────
+  // Replaces the split screen content. Back → dismiss (no server calls made yet).
+  // Confirm → runs the charge flow (doChargeCheck or doPayAccount).
+  if (tipPickerCtx !== null) {
+    return (
+      <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
+        <StatusBar
+          barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'}
+        />
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: insets.top + 12,
+              backgroundColor: c.bgBase,
+              borderBottomColor: c.borderSubtle,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => setTipPickerCtx(null)}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.tipBack')}
+          >
+            <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          </Pressable>
+          <View style={styles.headerTitles}>
+            <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
+              {t('pos.tipTitle')}
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 120 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <PosTipPicker
+            baseCents={tipPickerCtx.baseCents}
+            selectedOption={tipOption}
+            onSelectOption={setTipOption}
+            customMode={tipCustomMode}
+            onCustomModeChange={setTipCustomMode}
+            customInput={tipCustomInput}
+            onCustomInputChange={setTipCustomInput}
+            computedTipCents={computedSplitTipCents}
+          />
+        </ScrollView>
+
+        {/* Footer: back + charge */}
+        <View
+          style={[
+            styles.tipFooter,
+            {
+              paddingBottom: insets.bottom + 16,
+              borderTopColor: c.borderSubtle,
+              backgroundColor: c.bgBase,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => setTipPickerCtx(null)}
+            style={[styles.tipBackBtn, { borderColor: c.borderSubtle }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.tipBack')}
+          >
+            <Text style={[styles.tipBackBtnText, { color: c.textSecondary }]}>
+              {t('pos.tipBack')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleTipConfirm}
+            style={({ pressed }) => [
+              styles.tipConfirmBtn,
+              { backgroundColor: c.brand },
+              pressed && { opacity: 0.82 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.tipChargeBtn', {
+              total: `$${((tipPickerCtx.baseCents + computedSplitTipCents) / 100).toFixed(2)}`,
+            })}
+          >
+            <Text style={styles.tipConfirmBtnText}>
+              {t('pos.tipChargeBtn', {
+                total: `$${((tipPickerCtx.baseCents + computedSplitTipCents) / 100).toFixed(2)}`,
+              })}
+            </Text>
+            {computedSplitTipCents > 0 ? (
+              <Text style={styles.tipConfirmBtnSub}>
+                {t('pos.tipTipLabel', {
+                  tip: `$${(computedSplitTipCents / 100).toFixed(2)}`,
+                })}
+              </Text>
+            ) : (
+              <Text style={styles.tipConfirmBtnSub}>{t('pos.tipNone')}</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -1101,7 +1283,7 @@ export default function PosSplitScreen(): React.ReactElement {
                       </Text>
                       {!isUnassigned && hasItems && (
                         <Pressable
-                          onPress={() => void handlePayAccount(account)}
+                          onPress={() => handleTapPayAccount(account)}
                           disabled={!canPay}
                           style={({ pressed }) => [
                             styles.accountPayBtn,
@@ -1316,7 +1498,7 @@ export default function PosSplitScreen(): React.ReactElement {
                             </Text>
                           </View>
                           <Pressable
-                            onPress={() => void handleChargeCheck(check.payment_id)}
+                            onPress={() => handleTapChargeCheck(check)}
                             disabled={!canCharge}
                             style={({ pressed }) => [
                               styles.chargeBtn,
@@ -1621,4 +1803,41 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: { fontSize: 14 },
+
+  // ── Tip picker footer (shared with the tip view early return) ─────────────────
+  tipFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tipBackBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipBackBtnText: { fontSize: 15, fontWeight: '600' },
+  tipConfirmBtn: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 2,
+  },
+  tipConfirmBtnText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  tipConfirmBtnSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
 });

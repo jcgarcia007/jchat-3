@@ -296,33 +296,58 @@ export async function markPaid(orderId: string): Promise<MarkPaidResult> {
 
 /**
  * Result of chargeSplitCheck.
- * Same shape as CreateTabPaymentIntentResult but paymentId is never null
- * (the row already exists) and 409 maps to 'not_pending' (the payment row is
- * not in the expected 'pending' status — already charged or cancelled).
+ *   baseCents  — pos_payments.amount_cents for this check (server-owned)
+ *   tipCents   — waiter-selected tip in cents (may be 0)
+ *   totalCents — PI amount = baseCents + tipCents (what the card is charged)
+ *   amountCents — alias of totalCents (backwards-compat)
+ *   paymentId  — always non-null (the row already exists before this call)
+ * 409 maps to 'not_pending' (the payment row is not in the expected 'pending'
+ * status — already charged or cancelled).
  */
 export type ChargeSplitCheckResult =
-  | { ok: true; clientSecret: string; paymentIntentId: string; paymentId: string; amountCents: number }
+  | {
+      ok: true;
+      clientSecret: string;
+      paymentIntentId: string;
+      paymentId: string;
+      baseCents: number;
+      tipCents: number;
+      totalCents: number;
+      /** @deprecated use totalCents */
+      amountCents: number;
+    }
   | { ok: false; reason: TerminalErrorReason; message?: string };
 
 /**
  * Create a Stripe PaymentIntent for a single split-check row (pos_payments).
  *
- * The amount is read server-side from pos_payments.amount_cents — this call
- * never sends a price. Returns { ok: false, reason: 'not_pending' } when the
- * payment row is no longer in 'pending' status (e.g. already collected).
+ * The base amount is read server-side from pos_payments.amount_cents — this
+ * call never sends a price. An optional tipCents (integer ≥ 0) is forwarded to
+ * the EF; the PI total = base + tip. pos_payments.amount_cents is NOT updated —
+ * mark_tab_paid derives tip as pi.amount − base.
+ *
+ * Returns { ok: false, reason: 'not_pending' } when the payment row is no
+ * longer in 'pending' status (e.g. already collected).
  *
  * @param paymentId — the UUID of the pos_payments row created by posCreateSplit
+ * @param tipCents  — waiter-selected tip in cents (default 0 = no tip)
  */
-export async function chargeSplitCheck(paymentId: string): Promise<ChargeSplitCheckResult> {
+export async function chargeSplitCheck(
+  paymentId: string,
+  tipCents = 0,
+): Promise<ChargeSplitCheckResult> {
   if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
 
   const { data, error } = await supabase.functions.invoke<{
     client_secret: string;
     payment_intent_id: string;
     payment_id: string;
-    amount_cents: number;
+    base_cents: number;
+    tip_cents: number;
+    total_cents: number;
+    amount_cents: number; // compat alias = total_cents
   }>('terminal', {
-    body: { action: 'charge_split_check', payment_id: paymentId },
+    body: { action: 'charge_split_check', payment_id: paymentId, tip_cents: tipCents },
   });
 
   if (error) {
@@ -333,16 +358,23 @@ export async function chargeSplitCheck(paymentId: string): Promise<ChargeSplitCh
     return { ok: false, reason: mapReason(httpStatus, message), message };
   }
 
-  if (!data?.client_secret || !data?.payment_intent_id || data?.amount_cents == null) {
+  if (!data?.client_secret || !data?.payment_intent_id || data?.total_cents == null) {
     return { ok: false, reason: 'error', message: 'Incomplete response from server' };
   }
+
+  const baseCents  = data.base_cents  ?? data.amount_cents ?? 0;
+  const tipCentsR  = data.tip_cents   ?? 0;
+  const totalCents = data.total_cents ?? data.amount_cents ?? 0;
 
   return {
     ok: true,
     clientSecret: data.client_secret,
     paymentIntentId: data.payment_intent_id,
     paymentId: data.payment_id,
-    amountCents: data.amount_cents,
+    baseCents,
+    tipCents: tipCentsR,
+    totalCents,
+    amountCents: totalCents,
   };
 }
 
