@@ -3208,8 +3208,10 @@ export default function MenuPage() {
   // Category card selector: null = "Todas" (show every category).
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
-  /** Plan of the active business — "pro" enables Pro-gated fields. */
+  /** Plan of the owner (users.plan) — "pro" enables Pro-gated fields. */
   const [bizPlan, setBizPlan] = useState<string | null>(null);
+  /** Subscription status of the owner (users.plan_status) — must be active/trialing. */
+  const [bizPlanStatus, setBizPlanStatus] = useState<string | null>(null);
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [togglingMenu, setTogglingMenu] = useState(false);
   const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
@@ -3305,6 +3307,9 @@ export default function MenuPage() {
     if (!isSupabaseConfigured) {
       setCategories(DEMO_CATEGORIES);
       setItems(DEMO_ITEMS);
+      // Demo mode has no auth session — unlock Pro-gated UI so it stays previewable.
+      setBizPlan("pro");
+      setBizPlanStatus("active");
       return;
     }
     setLoading(true);
@@ -3323,7 +3328,19 @@ export default function MenuPage() {
       setNoBusiness(false);
       const bid: string = res.business.id;
       setBusinessId(bid);
-      setBizPlan(res.business.plan);
+      // Read plan from the USER, not the business (billing is per-user — migration 106).
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: planRow } = await supabase
+          .from("users")
+          .select("plan, plan_status")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (planRow) {
+          setBizPlan((planRow as { plan: string; plan_status: string }).plan);
+          setBizPlanStatus((planRow as { plan: string; plan_status: string }).plan_status);
+        }
+      }
       setMenuEnabled(res.business.menu_enabled ?? false);
       const mode = res.business.menu_mode ?? "none";
       setMenuMode(mode);
@@ -4191,7 +4208,8 @@ export default function MenuPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
           {/* AI Menu Assistant (Pro) — the real plan gate lives server-side in the
               menu-assistant Edge Function; this only avoids a dead-end click. */}
-          {bizPlan === "pro" || !isSupabaseConfigured ? (
+          {(bizPlan === "pro" && (bizPlanStatus === "active" || bizPlanStatus === "trialing")) ||
+          !isSupabaseConfigured ? (
             <Link href="/dashboard/menu/assistant" style={assistantEntryStyle}>
               <IconSparkles size={16} />
               {tAssistant("entryButton")}
@@ -5240,7 +5258,7 @@ export default function MenuPage() {
               }
               onItemSave={handleSaveItem}
               onItemEditCancel={() => setActiveItemEdit(null)}
-              isPro={bizPlan === "pro"}
+              isPro={bizPlan === "pro" && (bizPlanStatus === "active" || bizPlanStatus === "trialing")}
             />
           ))}
         </div>
