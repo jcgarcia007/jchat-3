@@ -42,6 +42,7 @@ import {
   IconEye,
   IconEyeOff,
   IconGlass,
+  IconLanguage,
   IconLeaf,
   IconMilk,
   IconPackage,
@@ -57,6 +58,7 @@ import {
   IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
+import { readFunctionError } from "@/lib/functionError";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { COLOR_PALETTES, PALETTE_FAMILIES, COLOR_PALETTES_BY_SLUG } from "@/app/m/[slug]/templates/shared/colorPalettes";
 import type { PublicBusiness, PublicMenuCategory, PublicMenuItem } from "@/app/m/[slug]/page";
@@ -125,6 +127,10 @@ interface MenuItem {
   station: Station;
   /** Per-item SLA overrides in minutes (null = use business defaults). */
   sla: SlaJsonb | null;
+  /** Alt-language description for bilingual menus (migration 044). */
+  description_alt: string | null;
+  /** Alt-language name for bilingual menus (migration 044). */
+  name_alt: string | null;
 }
 
 interface CategoryForm {
@@ -155,6 +161,10 @@ interface ItemForm {
   station: Station;
   /** SLA time overrides (string form for inputs; converted on save). */
   slaForm: { pending_mins: string; preparing_mins: string; ready_mins: string };
+  /** Alt-language description (populated by translate button or manually). */
+  description_alt: string;
+  /** Alt-language name (manually edited — EF does not translate names). */
+  name_alt: string;
 }
 
 // Photo upload types
@@ -267,6 +277,8 @@ const EMPTY_ITEM_FORM: ItemForm = {
   staff_details_alt: "",
   station: "kitchen",
   slaForm: { pending_mins: "", preparing_mins: "", ready_mins: "" },
+  description_alt: "",
+  name_alt: "",
 };
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
@@ -332,6 +344,8 @@ const DEMO_ITEMS: MenuItem[] = [
     staff_details_alt: null,
     station: "bar",
     sla: null,
+    description_alt: null,
+    name_alt: null,
   },
   {
     id: "demo-item-2",
@@ -354,6 +368,8 @@ const DEMO_ITEMS: MenuItem[] = [
     staff_details_alt: null,
     station: "bar",
     sla: null,
+    description_alt: null,
+    name_alt: null,
   },
   {
     id: "demo-item-3",
@@ -382,6 +398,8 @@ const DEMO_ITEMS: MenuItem[] = [
     staff_details_alt: null,
     station: "kitchen",
     sla: null,
+    description_alt: null,
+    name_alt: null,
   },
 ];
 
@@ -1282,6 +1300,34 @@ function ItemEditorModal({
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
+  // ── Description translate state ──────────────────────────────────────────────
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  const handleTranslate = async (direction: "es_to_en" | "en_to_es") => {
+    if (!isPro || !form.description.trim() || translating) return;
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("menu-assistant", {
+        body: {
+          action: "polish_item",
+          business_id: businessId,
+          name: form.name || "item",
+          description: form.description,
+          direction,
+        },
+      });
+      if (error) throw error;
+      const translated = (data as { translated?: string })?.translated ?? "";
+      set("description_alt", translated);
+    } catch (err) {
+      setTranslateError(await readFunctionError(err));
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // ── Multi-photo state ────────────────────────────────────────────────────────
   const [savedPhotos, setSavedPhotos] = useState<SavedPhoto[]>([]);
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhotoFile[]>([]);
@@ -1465,11 +1511,95 @@ function ItemEditorModal({
               onChange={(v) => set("name", v)}
               placeholder={t("menuItemNamePlaceholder")}
             />
+            {/* Alt-language name (manual only — EF does not translate names) */}
+            <div style={{ marginTop: 6 }}>
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "var(--db-text-tertiary)",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                {t("menuItemNameAltLabel")}
+              </span>
+              <FieldInput
+                value={form.name_alt}
+                onChange={(v) => set("name_alt", v)}
+                placeholder={t("menuItemNameAltPlaceholder")}
+              />
+            </div>
           </div>
 
           {/* Description */}
           <div>
-            <SectionLabel>{t("menuItemDescriptionLabel")}</SectionLabel>
+            {/* Label row with translate buttons */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <SectionLabel>{t("menuItemDescriptionLabel")}</SectionLabel>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {translateError && (
+                  <span style={{ fontSize: 11, color: "var(--db-danger)", maxWidth: 180, textAlign: "right" }}>
+                    {translateError}
+                  </span>
+                )}
+                {translating && (
+                  <span style={{ fontSize: 11, color: "var(--db-text-tertiary)" }}>
+                    {t("menuItemTranslating")}
+                  </span>
+                )}
+                {(["es_to_en", "en_to_es"] as const).map((dir) => (
+                  <button
+                    key={dir}
+                    type="button"
+                    disabled={!isPro || translating || !form.description.trim()}
+                    onClick={() => void handleTranslate(dir)}
+                    title={!isPro ? t("menuItemTranslateProUpsell") : undefined}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "3px 8px",
+                      borderRadius: "var(--db-radius)",
+                      border: "1px solid var(--db-border)",
+                      background: "var(--db-bg-elevated)",
+                      color: (isPro && !translating && form.description.trim())
+                        ? "var(--db-accent)"
+                        : "var(--db-text-tertiary)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: (isPro && !translating && form.description.trim())
+                        ? "pointer"
+                        : "not-allowed",
+                      opacity: (!isPro || translating || !form.description.trim()) ? 0.5 : 1,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <IconLanguage size={12} />
+                    {dir === "es_to_en" ? t("menuItemTranslateToEN") : t("menuItemTranslateToES")}
+                    {!isPro && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          background: "var(--db-warning)",
+                          color: "#fff",
+                          padding: "1px 4px",
+                          borderRadius: 999,
+                          marginLeft: 2,
+                        }}
+                      >
+                        {t("menuItemTranslateProBadge")}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
@@ -1489,6 +1619,41 @@ function ItemEditorModal({
                 outline: "none",
               }}
             />
+            {/* Alt-language description (filled by translate or manually) */}
+            <div style={{ marginTop: 8 }}>
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "var(--db-text-tertiary)",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                {t("menuItemDescriptionAltLabel")}
+              </span>
+              <textarea
+                value={form.description_alt}
+                onChange={(e) => set("description_alt", e.target.value)}
+                placeholder={t("menuItemDescriptionAltPlaceholder")}
+                rows={2}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: "var(--db-radius)",
+                  border: "1px solid var(--db-border)",
+                  background: "var(--db-bg-elevated)",
+                  color: "var(--db-text-primary)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  outline: "none",
+                }}
+              />
+            </div>
           </div>
 
           {/* Station — KDS routing */}
@@ -3574,6 +3739,8 @@ export default function MenuPage() {
         staff_details: item.staff_details ?? "",
         staff_details_alt: item.staff_details_alt ?? "",
         station: (item.station as Station) ?? "kitchen",
+        description_alt: item.description_alt ?? "",
+        name_alt: item.name_alt ?? "",
         slaForm: {
           pending_mins:   existingSla?.pending_mins   != null ? String(existingSla.pending_mins)   : "",
           preparing_mins: existingSla?.preparing_mins != null ? String(existingSla.preparing_mins) : "",
@@ -3627,6 +3794,9 @@ export default function MenuPage() {
         // Staff notes (Pro-gated; always included in payload — DB stores null when blank).
         staff_details: form.staff_details.trim() || null,
         staff_details_alt: form.staff_details_alt.trim() || null,
+        // Bilingual description & name (migration 044).
+        description_alt: form.description_alt.trim() || null,
+        name_alt: form.name_alt.trim() || null,
         // KDS routing & SLA
         station: form.station,
         sla: slaOut,
