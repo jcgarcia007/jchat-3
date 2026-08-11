@@ -20,8 +20,9 @@
  *   • Every action resolves auth.uid() server-side from the caller's JWT — the
  *     body never supplies a user id.
  *   • Every action re-checks businesses.owner_id === user.id AND
- *     businesses.plan === 'pro' with the SERVICE-ROLE client. The Pro gate lives
- *     here, not only in the dashboard UI.
+ *     users.plan === 'pro' + users.plan_status ∈ {active, trialing} with the
+ *     SERVICE-ROLE client. The Pro gate is per-USER (billing model), not per-business.
+ *     The gate lives here, not only in the dashboard UI.
  *   • Nothing is written to the DB by this function. It only READS menu context
  *     (menu_items / menu_categories) to feed the prompt. All inserts happen
  *     client-side in the wizard (FASE 5), always with is_published = false.
@@ -138,28 +139,34 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
 // ── Pro gate (SERVER-SIDE, every action) ──────────────────────────────────────
 
 /**
- * The business must exist, be owned by the caller, and be on the Pro plan.
- * Returns null on success or a Response to return immediately.
- * All three failure modes collapse to `pro_required` for the client so the
- * endpoint can't be used to probe which business ids exist.
+ * Two-step gate:
+ *   1. Business exists and the caller owns it (businesses.owner_id).
+ *   2. The caller is on the Pro plan — checked on the USERS table, not the
+ *      businesses table. Billing is per-user (migration 106); a user on Pro
+ *      gets access across all their businesses without a per-business flag.
+ *
+ * Both failure modes collapse to `pro_required` so the endpoint can't be used
+ * to probe which business ids or user ids exist.
+ * Returns null on success, or a Response to return immediately.
  */
 async function requireProOwner(
   db: SupabaseClient,
   businessId: string,
   authUserId: string,
 ): Promise<Response | null> {
-  const { data, error } = await db
+  // ── 1. Ownership check ───────────────────────────────────────────────────────
+  const { data: bizData, error: bizError } = await db
     .from("businesses")
-    .select("id, owner_id, plan")
+    .select("id, owner_id")
     .eq("id", businessId)
     .maybeSingle();
 
-  if (error) {
-    console.error("[menu-assistant] businesses lookup error:", error.message);
+  if (bizError) {
+    console.error("[menu-assistant] businesses lookup error:", bizError.message);
     return errorResponse("service_not_configured", 500);
   }
 
-  const business = data as { id: string; owner_id: string; plan: string } | null;
+  const business = bizData as { id: string; owner_id: string } | null;
 
   if (!business) {
     console.error(`[menu-assistant] business not found: ${businessId}`);
@@ -171,10 +178,32 @@ async function requireProOwner(
     );
     return errorResponse("pro_required", 403);
   }
-  if (business.plan !== "pro") {
-    console.error(`[menu-assistant] plan=${business.plan} for business=${businessId}`);
+
+  // ── 2. Per-user Pro plan check ───────────────────────────────────────────────
+  const { data: userData, error: userError } = await db
+    .from("users")
+    .select("plan, plan_status")
+    .eq("id", authUserId)
+    .maybeSingle();
+
+  if (userError) {
+    console.error("[menu-assistant] users lookup error:", userError.message);
+    return errorResponse("service_not_configured", 500);
+  }
+
+  const caller = userData as { plan: string; plan_status: string } | null;
+
+  if (
+    !caller ||
+    caller.plan !== "pro" ||
+    !["active", "trialing"].includes(caller.plan_status)
+  ) {
+    console.error(
+      `[menu-assistant] plan=${caller?.plan ?? "null"} status=${caller?.plan_status ?? "null"} for user=${authUserId}`,
+    );
     return errorResponse("pro_required", 403);
   }
+
   return null;
 }
 
