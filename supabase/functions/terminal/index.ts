@@ -2,9 +2,9 @@
  * JChat 3.0 — Terminal Edge Function
  * Stripe Terminal in-person payments for the employee POS (direct charges model).
  *
- * Six actions dispatched via { action: string } in the JSON body. All require a
- * valid employee JWT and POS access at the target business.
+ * Actions dispatched via { action: string } in the JSON body.
  *
+ * ── Employee/POS actions (require valid JWT + pos_can_access) ────────────────
  *   connection_token         { business_id }  → { secret }
  *   get_or_create_location   { business_id }  → { location_id }
  *   create_payment_intent    { order_id }     → { client_secret, payment_intent_id }
@@ -16,15 +16,22 @@
  *                                             → { client_secret, payment_intent_id, payment_id,
  *                                                 base_cents, tip_cents, total_cents, amount_cents }
  *
+ * ── Owner-only actions (require valid JWT + owner_id === authUserId) ─────────
+ *   list_readers     { business_id }                           → { ok, readers[] }
+ *   register_reader  { business_id, registration_code, label } → { ok, reader }
+ *   update_reader    { business_id, reader_id, label }         → { ok, reader }
+ *   remove_reader    { business_id, reader_id }                → { ok, id }
+ *
  * ── Security invariants ──────────────────────────────────────────────────────
- *   • Every action calls pos_can_access(p_business_id) via the CALLER's own JWT
- *     (auth.uid() is resolved server-side from the token — never from the body).
- *   • Amounts are read from orders.total_cents (service role); the client body
- *     never supplies or influences the charge amount.
+ *   • POS actions: pos_can_access(p_business_id) via JWT (auth.uid() is server-side).
+ *   • Owner actions: businesses.owner_id === authUserId (requireOwnerAccount helper).
+ *   • Amounts are read from orders.total_cents (service role); never from the client.
  *   • Direct charges model: every Stripe API call carries { stripeAccount }.
  *     NO on_behalf_of, NO transfer_data, NO application_fee.
  *   • mark_paid retrieves the PaymentIntent directly from Stripe to confirm
  *     pi.status === 'succeeded' — it never trusts the client's claim.
+ *   • update_reader / remove_reader: reader is retrieved first from the connected
+ *     account to confirm ownership before any mutation.
  *
  * ── Required env vars ────────────────────────────────────────────────────────
  *   STRIPE_SECRET_KEY         — platform secret key (sk_live_… or sk_test_…)
@@ -90,6 +97,14 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function errorResponse(message: string, status = 400): Response {
   return jsonResponse({ error: message }, status);
+}
+
+// ── Credential redaction (used in register_reader error details) ──────────────
+
+function redactCreds(text: string): string {
+  return text
+    .replace(/Bearer [^"'\s,\]}\n]+/g, "Bearer REDACTED")
+    .replace(/key=[^&"'\s,\]}\n]+/g, "key=REDACTED");
 }
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -172,6 +187,105 @@ async function getStripeAccount(
     return errorResponse("Business has no connected Stripe account", 422);
   }
   return { stripeAccount };
+}
+
+// ── Owner gate: verify caller is the business owner + return stripeAccount ────
+//
+// Used by the reader-management actions (list/register/update/remove).
+// Only the business owner may manage readers; employees and platform admins
+// are intentionally excluded from this gate.
+//
+// Returns { stripeAccount } on success, or a 403/404/422/500 Response on failure.
+
+async function requireOwnerAccount(
+  businessId: string,
+  authUserId: string,
+): Promise<{ stripeAccount: string } | Response> {
+  const db = getAdminClient();
+  const { data: biz, error } = await db
+    .from("businesses")
+    .select("owner_id, stripe_account_id")
+    .eq("id", businessId)
+    .maybeSingle();
+  if (error) {
+    console.error("[terminal] requireOwnerAccount db error:", error.message);
+    return errorResponse("Internal server error", 500);
+  }
+  if (!biz) return errorResponse("Business not found", 404);
+  const b = biz as { owner_id: string | null; stripe_account_id: string | null };
+  if (b.owner_id !== authUserId) {
+    return errorResponse("Forbidden: only the business owner can manage readers", 403);
+  }
+  if (!b.stripe_account_id) {
+    return errorResponse("Business has no connected Stripe account", 422);
+  }
+  return { stripeAccount: b.stripe_account_id };
+}
+
+// ── Shared: resolve (or lazily create) the Terminal Location for a business ───
+//
+// Lists existing locations on the connected account (limit 1) — reuses the
+// first one found to avoid duplicates. Creates one if none exist.
+// Same logic as handleGetOrCreateLocation but returns the id directly (not a
+// full Response) so that register_reader can consume it without nested awaits.
+//
+// Returns location id string, or a Response on Stripe error.
+
+async function resolveLocationId(
+  db: SupabaseClient,
+  stripe: Stripe,
+  businessId: string,
+  stripeAccount: string,
+): Promise<string | Response> {
+  const { data: bizData } = await db
+    .from("businesses")
+    .select("name, country")
+    .eq("id", businessId)
+    .maybeSingle();
+  const biz = bizData as { name?: string | null; country?: string | null } | null;
+  const displayName = (biz?.name ?? "JChat POS").trim() || "JChat POS";
+  const country = (biz?.country ?? "US").toUpperCase().slice(0, 2) || "US";
+
+  try {
+    const list = await stripe.terminal.locations.list(
+      { limit: 1 },
+      { stripeAccount },
+    );
+    if (list.data.length > 0) {
+      console.log(
+        `[terminal] resolveLocationId: reusing location=${list.data[0].id} business=${businessId}`,
+      );
+      return list.data[0].id;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] locations.list error (resolveLocationId):", msg);
+    return errorResponse(msg, 502);
+  }
+
+  try {
+    const location = await stripe.terminal.locations.create(
+      {
+        display_name: displayName,
+        address: {
+          country,
+          line1: "1 Main St",
+          city: "San Francisco",
+          state: "CA",
+          postal_code: "94105",
+        },
+      },
+      { stripeAccount },
+    );
+    console.log(
+      `[terminal] resolveLocationId: created location=${location.id} business=${businessId} country=${country}`,
+    );
+    return location.id;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] locations.create error (resolveLocationId):", msg);
+    return errorResponse(msg, 502);
+  }
 }
 
 // ── Action: get_or_create_location ───────────────────────────────────────────
@@ -875,6 +989,284 @@ async function handleChargeSplitCheck(
   });
 }
 
+// ── Action: list_readers (owner only) ────────────────────────────────────────
+//
+// Lists all Terminal readers registered on the business's connected Stripe account.
+// Bluetooth readers (M2, WisePad 3) appear here only if they were registered via
+// the API; in practice they are paired at transaction time by the SDK and may not
+// appear in this list — the UI should note this.
+//
+// Body: { business_id }
+// Response: { ok: true, readers: ReaderSummary[] }
+
+async function handleListReaders(
+  body: Record<string, unknown>,
+  authUserId: string,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+
+  const ownerResult = await requireOwnerAccount(businessId, authUserId);
+  if (ownerResult instanceof Response) return ownerResult;
+  const { stripeAccount } = ownerResult;
+
+  const stripe = getStripe();
+  try {
+    const readers = await stripe.terminal.readers.list(
+      { limit: 100 },
+      { stripeAccount },
+    );
+    console.log(
+      `[terminal] list_readers: business=${businessId} count=${readers.data.length}`,
+    );
+    return jsonResponse({
+      ok: true,
+      readers: readers.data.map((r) => ({
+        id: r.id,
+        label: r.label,
+        device_type: r.device_type,  // e.g. 'bbpos_wisepos_e' | 'stripe_s700' | 'stripe_m2' …
+        status: r.status,            // 'online' | 'offline' | null
+        serial_number: r.serial_number,
+        location: typeof r.location === "string" ? r.location : r.location?.id ?? null,
+      })),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.list error:", msg);
+    return errorResponse(msg, 502);
+  }
+}
+
+// ── Action: register_reader (owner only) ─────────────────────────────────────
+//
+// Registers a smart reader (WisePOS E, S700, S710, T600, Verifone) on the
+// business's connected Stripe account via a registration code (3-word pairing
+// code shown on the reader's screen, e.g. "sepia-cerulean-orca").
+//
+// Bluetooth readers (M2, WisePad 3) are NOT registered via API — they pair at
+// transaction time. This action will fail for those device types.
+//
+// Body: { business_id, registration_code, label? }
+// Response: { ok: true, reader } on success
+//           { ok: false, error: "register_failed", detail } on Stripe error
+//             (detail is redacted — no keys or tokens)
+
+async function handleRegisterReader(
+  body: Record<string, unknown>,
+  authUserId: string,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+
+  const ownerResult = await requireOwnerAccount(businessId, authUserId);
+  if (ownerResult instanceof Response) return ownerResult;
+  const { stripeAccount } = ownerResult;
+
+  // Validate the registration code: Stripe issues 3-word hyphen-separated codes,
+  // e.g. "sepia-cerulean-orca". Test mode uses "simulated-wpe".
+  // Pattern: 2–4 lowercase alpha words joined by hyphens.
+  const code = (typeof body.registration_code === "string"
+    ? body.registration_code
+    : ""
+  ).trim().toLowerCase();
+  if (!code || !/^[a-z]+(-[a-z]+){1,3}$/.test(code)) {
+    return errorResponse("registration_code is missing or has an invalid format", 400);
+  }
+
+  // Label: free text, max 60 chars, falls back to "Lector" if empty.
+  const label = (typeof body.label === "string" ? body.label : "")
+    .trim()
+    .slice(0, 60) || "Lector";
+
+  const db = getAdminClient();
+  const stripe = getStripe();
+
+  // Resolve (or lazily create) the Terminal Location for this business.
+  const locationResult = await resolveLocationId(db, stripe, businessId, stripeAccount);
+  if (locationResult instanceof Response) return locationResult;
+  const locationId = locationResult;
+
+  try {
+    const reader = await stripe.terminal.readers.create(
+      { registration_code: code, label, location: locationId },
+      { stripeAccount },
+    );
+    console.log(
+      `[terminal] register_reader: business=${businessId} reader=${reader.id}` +
+      ` label="${reader.label}" device_type=${reader.device_type}`,
+    );
+    return jsonResponse({
+      ok: true,
+      reader: {
+        id: reader.id,
+        label: reader.label,
+        device_type: reader.device_type,
+        status: reader.status,
+        serial_number: reader.serial_number,
+        location: typeof reader.location === "string"
+          ? reader.location
+          : reader.location?.id ?? null,
+      },
+    });
+  } catch (err) {
+    // Surface structured errors the UI can display (invalid/expired code, already
+    // registered, offline). Redact to avoid leaking platform credentials.
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.create error:", msg);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "register_failed",
+        detail: redactCreds(msg).slice(0, 300),
+      },
+      400,
+    );
+  }
+}
+
+// ── Action: update_reader (owner only) ────────────────────────────────────────
+//
+// Renames a Terminal reader that belongs to this business's connected account.
+// Retrieves the reader first to confirm it exists on the account (Stripe returns
+// 404 for readers that don't belong to the given { stripeAccount }) before
+// issuing the update — defence-in-depth ownership check.
+//
+// Body: { business_id, reader_id, label }
+// Response: { ok: true, reader }
+
+async function handleUpdateReader(
+  body: Record<string, unknown>,
+  authUserId: string,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  const readerId = typeof body.reader_id === "string" ? body.reader_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+  if (!readerId) return errorResponse("reader_id is required");
+
+  const ownerResult = await requireOwnerAccount(businessId, authUserId);
+  if (ownerResult instanceof Response) return ownerResult;
+  const { stripeAccount } = ownerResult;
+
+  const label = (typeof body.label === "string" ? body.label : "").trim().slice(0, 60);
+  if (!label) return errorResponse("label is required and cannot be empty");
+
+  const stripe = getStripe();
+
+  // Defence: retrieve the reader first to confirm it exists on this account.
+  // Stripe returns 404 for readers that don't belong to the connected account.
+  // stripe@16 types `retrieve` as Response<Reader|DeletedReader>; cast via unknown
+  // to access Reader fields safely — the retrieve always returns a Reader here
+  // (DeletedReader only comes from the object notation after deletion).
+  try {
+    const retrieved = await stripe.terminal.readers.retrieve(
+      readerId,
+      undefined,
+      { stripeAccount },
+    );
+    if ((retrieved as unknown as { deleted?: boolean }).deleted) {
+      return errorResponse("Reader not found or not accessible", 404);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.retrieve (update check) error:", msg);
+    return errorResponse("Reader not found or not accessible", 404);
+  }
+
+  // stripe@16 types `update` as Response<Reader|DeletedReader>; update never
+  // deletes the reader, so cast to Reader via unknown to access its fields.
+  type ReaderLike = {
+    id: string;
+    label: string;
+    device_type: string;
+    status: string | null;
+    serial_number: string;
+    location: string | { id: string } | null;
+  };
+
+  try {
+    const updated = await stripe.terminal.readers.update(
+      readerId,
+      { label },
+      { stripeAccount },
+    ) as unknown as ReaderLike;
+    console.log(
+      `[terminal] update_reader: business=${businessId} reader=${readerId} label="${label}"`,
+    );
+    return jsonResponse({
+      ok: true,
+      reader: {
+        id: updated.id,
+        label: updated.label,
+        device_type: updated.device_type,
+        status: updated.status,
+        serial_number: updated.serial_number,
+        location: typeof updated.location === "string"
+          ? updated.location
+          : updated.location?.id ?? null,
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.update error:", msg);
+    return errorResponse(msg, 502);
+  }
+}
+
+// ── Action: remove_reader (owner only) ───────────────────────────────────────
+//
+// Deletes (deregisters) a Terminal reader from the business's connected Stripe
+// account. Retrieves the reader first to confirm ownership before deletion.
+// After removal the reader can be re-registered via a new pairing code.
+//
+// Body: { business_id, reader_id }
+// Response: { ok: true, id }
+
+async function handleRemoveReader(
+  body: Record<string, unknown>,
+  authUserId: string,
+): Promise<Response> {
+  const businessId = typeof body.business_id === "string" ? body.business_id : null;
+  const readerId = typeof body.reader_id === "string" ? body.reader_id : null;
+  if (!businessId) return errorResponse("business_id is required");
+  if (!readerId) return errorResponse("reader_id is required");
+
+  const ownerResult = await requireOwnerAccount(businessId, authUserId);
+  if (ownerResult instanceof Response) return ownerResult;
+  const { stripeAccount } = ownerResult;
+
+  const stripe = getStripe();
+
+  // Defence: retrieve the reader first to confirm it exists on this account.
+  // Stripe returns 404 for readers that don't belong to the connected account,
+  // preventing a caller from blindly deleting readers on other accounts.
+  try {
+    const existing = await stripe.terminal.readers.retrieve(
+      readerId,
+      undefined,
+      { stripeAccount },
+    );
+    if ((existing as unknown as { deleted?: boolean }).deleted) {
+      return errorResponse("Reader not found or not accessible", 404);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.retrieve (remove check) error:", msg);
+    return errorResponse("Reader not found or not accessible", 404);
+  }
+
+  try {
+    await stripe.terminal.readers.del(readerId, { stripeAccount });
+    console.log(
+      `[terminal] remove_reader: business=${businessId} reader=${readerId} deleted`,
+    );
+    return jsonResponse({ ok: true, id: readerId });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[terminal] readers.del error:", msg);
+    return errorResponse(msg, 502);
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -932,6 +1324,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // ── Split-check action (3b) ─────────────────────────────────────────────
       case "charge_split_check":
         return await handleChargeSplitCheck(body, userClient);
+
+      // ── Owner-only: reader management (Fase 1 — dispositivos de pago) ───────
+      case "list_readers":
+        return await handleListReaders(body, authUserId);
+
+      case "register_reader":
+        return await handleRegisterReader(body, authUserId);
+
+      case "update_reader":
+        return await handleUpdateReader(body, authUserId);
+
+      case "remove_reader":
+        return await handleRemoveReader(body, authUserId);
 
       default:
         return errorResponse(`Unknown action: ${action ?? "(none)"}`);
