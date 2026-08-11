@@ -571,9 +571,10 @@ function Stepper({ step }: { step: WizardStep }) {
 export default function MenuAssistantPage() {
   const t = useTranslations("menuAssistant");
 
-  // Business resolution + plan gate
+  // Business resolution + plan gate (plan is per-USER, not per-business — migration 106)
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
+  const [planStatus, setPlanStatus] = useState<string | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [noBusiness, setNoBusiness] = useState(false);
 
@@ -651,6 +652,7 @@ export default function MenuAssistantPage() {
         // Demo mode mirrors isBusinessPro(): treat as Pro so the UI is reviewable.
         if (alive) {
           setPlan("pro");
+          setPlanStatus("active");
           setBootLoading(false);
         }
         return;
@@ -664,7 +666,21 @@ export default function MenuAssistantPage() {
         return;
       }
       setBusinessId(res.business.id);
-      setPlan(res.business.plan);
+
+      // Read the Pro gate from the USER, not the business (billing is per-user).
+      // resolveActiveBusiness() already verified authentication, so getUser() is cheap.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!alive || !user) return;
+      const { data: planRow } = await supabase
+        .from("users")
+        .select("plan, plan_status")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!alive) return;
+      if (planRow) {
+        setPlan((planRow as { plan: string; plan_status: string }).plan);
+        setPlanStatus((planRow as { plan: string; plan_status: string }).plan_status);
+      }
 
       // resolveActiveBusiness() doesn't select country or brand_kit — read them
       // separately. Country prefills step 1; brand_kit is the AI reference kit.
@@ -697,7 +713,8 @@ export default function MenuAssistantPage() {
     };
   }, []);
 
-  const isPro = plan === "pro";
+  const isPro =
+    plan === "pro" && (planStatus === "active" || planStatus === "trialing");
 
   // ── Edge Function caller ───────────────────────────────────────────────────
   // Same pattern as dashboard/payments + dashboard/billing: invoke() signs the
