@@ -1,0 +1,39 @@
+{
+  "version": "5",
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.44.4": "a96a02bafe801ff76e2e90464d11dae7c1b53bf7be1b8d573d1ba8d817e99a24"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@hcaptcha/react-hcaptcha@^2.0.2",
+        "npm:@stripe/react-stripe-js@^6.8.0",
+        "npm:@stripe/stripe-js@^9.10.0",
+        "npm:@supabase/ssr@0.12",
+        "npm:@supabase/supabase-js@^2.108.2",
+        "npm:@tabler/icons-react@^3.44.0",
+        "npm:@tailwindcss/postcss@4",
+        "npm:@types/node@20",
+        "npm:@types/qrcode@^1.5.6",
+        "npm:@types/react-dom@19",
+        "npm:@types/react@19",
+        "npm:@vis.gl/react-google-maps@^1.8.3",
+        "npm:emoji-picker-react@^4.19.1",
+        "npm:eslint-config-next@16.2.9",
+        "npm:eslint@9",
+        "npm:jspdf@^4.2.1",
+        "npm:next-intl@^4.13.4",
+        "npm:next@16.2.9",
+        "npm:playwright@^1.61.1",
+        "npm:qr-code-styling@^1.9.2",
+        "npm:qrcode@^1.5.4",
+        "npm:react-dom@19.2.4",
+        "npm:react@19.2.4",
+        "npm:recharts@^3.8.1",
+        "npm:stripe@^22.2.2",
+        "npm:tailwindcss@4",
+        "npm:typescript@5"
+      ]
+    }
+  }
+}

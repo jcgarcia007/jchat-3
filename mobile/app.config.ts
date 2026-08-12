@@ -80,6 +80,12 @@ const config: ExpoConfig = {
       },
     ],
     [
+      'expo-camera',
+      {
+        cameraPermission: 'Para escanear códigos de barras del inventario.',
+      },
+    ],
+    [
       '@stripe/stripe-react-native',
       {
         merchantIdentifier: 'merchant.com.juangarciacruz.jchatapp',

@@ -965,6 +965,185 @@ export async function posSetItemStatus(
   return { ok: true };
 }
 
+// ─── Inventory types ──────────────────────────────────────────────────────────
+
+/** Row returned when listing menu items for the inventory screen. */
+export interface PosInventoryItem {
+  id: string;
+  name: string;
+  stock_count: number | null;
+  low_stock_threshold: number;
+  barcode: string | null;
+}
+
+export type PosStockMode = 'count' | 'receive' | 'waste';
+
+export type PosApplyStockError =
+  | 'forbidden'
+  | 'item_not_found'
+  | 'bad_mode'
+  | 'bad_quantity'
+  | 'not_configured'
+  | 'db_error';
+
+export type PosApplyStockResult =
+  | { ok: true; newStock: number; movementId: string }
+  | { ok: false; reason: PosApplyStockError };
+
+export type PosLinkBarcodeError =
+  | 'forbidden'
+  | 'item_not_found'
+  | 'bad_barcode'
+  | 'not_configured'
+  | 'db_error';
+
+export type PosLinkBarcodeResult =
+  | { ok: true }
+  | { ok: false; reason: PosLinkBarcodeError };
+
+// ─── posGetInventory ──────────────────────────────────────────────────────────
+
+/**
+ * Return all active menu items for a business, ordered by name.
+ * Used by PosInventoryScreen to list and search items.
+ * Each row includes stock_count, low_stock_threshold, and barcode.
+ */
+export async function posGetInventory(businessId: string): Promise<PosInventoryItem[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await (supabase as unknown as {
+    from(t: string): {
+      select(cols: string): {
+        eq(col: string, val: unknown): {
+          eq(col: string, val: unknown): {
+            order(col: string, opts?: { ascending: boolean }): Promise<{
+              data: PosInventoryItem[] | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+  })
+    .from('menu_items')
+    .select('id, name, stock_count, low_stock_threshold, barcode')
+    .eq('business_id', businessId)
+    .eq('is_available', true)
+    .order('name', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// ─── posApplyStockMovement ────────────────────────────────────────────────────
+
+/**
+ * Adjust the stock of a menu item via the pos_apply_stock_movement RPC.
+ *
+ * Modes:
+ *   'count'   — set stock_count to exactly p_quantity (e.g. physical count)
+ *   'receive' — add p_quantity to current stock (incoming delivery)
+ *   'waste'   — subtract p_quantity from current stock (damage / spoilage)
+ *
+ * Possible failure reasons:
+ *   'forbidden'      — caller is not the owner nor has inventory_manage
+ *   'item_not_found' — menu item does not belong to this business
+ *   'bad_mode'       — mode is not count | receive | waste
+ *   'bad_quantity'   — quantity is null, negative, or > 1,000,000
+ *   'db_error'       — unexpected server error
+ *   'not_configured' — Supabase is not configured
+ */
+export async function posApplyStockMovement(
+  businessId: string,
+  menuItemId: string,
+  mode: PosStockMode,
+  quantity: number,
+  note?: string,
+): Promise<PosApplyStockResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await (posRpc as unknown as {
+    rpc(
+      fn: 'pos_apply_stock_movement',
+      params: {
+        p_business_id: string;
+        p_menu_item_id: string;
+        p_mode: string;
+        p_quantity: number;
+        p_note: string | null;
+      },
+    ): Promise<{
+      data: Array<{ new_stock: number; movement_id: string }> | null;
+      error: { message: string } | null;
+    }>;
+  }).rpc('pos_apply_stock_movement', {
+    p_business_id:  businessId,
+    p_menu_item_id: menuItemId,
+    p_mode:         mode,
+    p_quantity:     quantity,
+    p_note:         note ?? null,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('forbidden') || msg.includes('42501')) return { ok: false, reason: 'forbidden' };
+    if (msg.includes('item_not_found'))                     return { ok: false, reason: 'item_not_found' };
+    if (msg.includes('bad_mode'))                           return { ok: false, reason: 'bad_mode' };
+    if (msg.includes('bad_quantity'))                       return { ok: false, reason: 'bad_quantity' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return { ok: false, reason: 'db_error' };
+  return { ok: true, newStock: row.new_stock, movementId: row.movement_id };
+}
+
+// ─── posLinkBarcode ───────────────────────────────────────────────────────────
+
+/**
+ * Link a barcode to a menu item via the pos_link_barcode RPC.
+ * After linking, scanning that barcode will resolve to this item.
+ *
+ * Possible failure reasons:
+ *   'forbidden'      — caller is not the owner nor has inventory_manage
+ *   'item_not_found' — menu item does not belong to this business
+ *   'bad_barcode'    — barcode is null, < 6 chars, > 20 chars, or non-numeric
+ *   'db_error'       — unexpected server error
+ *   'not_configured' — Supabase is not configured
+ */
+export async function posLinkBarcode(
+  businessId: string,
+  menuItemId: string,
+  barcode: string,
+): Promise<PosLinkBarcodeResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await (posRpc as unknown as {
+    rpc(
+      fn: 'pos_link_barcode',
+      params: {
+        p_business_id: string;
+        p_menu_item_id: string;
+        p_barcode: string;
+      },
+    ): Promise<{ data: boolean | null; error: { message: string } | null }>;
+  }).rpc('pos_link_barcode', {
+    p_business_id:  businessId,
+    p_menu_item_id: menuItemId,
+    p_barcode:      barcode,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('forbidden') || msg.includes('42501')) return { ok: false, reason: 'forbidden' };
+    if (msg.includes('item_not_found'))                     return { ok: false, reason: 'item_not_found' };
+    if (msg.includes('bad_barcode'))                        return { ok: false, reason: 'bad_barcode' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
+}
+
 // ─── posKdsSettings ───────────────────────────────────────────────────────────
 
 /**

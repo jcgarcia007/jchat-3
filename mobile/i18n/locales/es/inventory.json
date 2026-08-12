@@ -1,0 +1,53 @@
+{
+  "title": "Inventario",
+  "scanBtn": "Escanear código",
+  "searchPlaceholder": "Buscar artículo…",
+  "filterLow": "Bajo stock",
+  "badgeLow": "bajo",
+  "stockLabel": "En existencia",
+  "noItems": "No hay artículos en el menú.",
+  "noMatch": "Ningún artículo coincide con \"{{query}}\".",
+  "loadError": "No se pudo cargar el inventario. Intenta de nuevo.",
+  "scanner": {
+    "permissionTitle": "Permiso de cámara",
+    "permissionMsg": "JChat necesita acceso a la cámara para escanear códigos de barras del inventario.",
+    "permissionGrant": "Permitir",
+    "permissionDeny": "No ahora",
+    "guide": "Apunta al código de barras",
+    "close": "Cerrar"
+  },
+  "sheet": {
+    "title": "Ajuste de inventario",
+    "currentStock": "Existencia actual",
+    "modeCount": "Conteo",
+    "modeReceive": "Recepción",
+    "modeWaste": "Merma",
+    "modeCountHint": "Establece la cantidad exacta en almacén",
+    "modeReceiveHint": "Agrega unidades recibidas",
+    "modeWasteHint": "Descuenta unidades dañadas o perdidas",
+    "qtyLabel": "Cantidad",
+    "noteLabel": "Nota (opcional)",
+    "notePlaceholder": "Ej. Entrega de proveedor",
+    "apply": "Aplicar",
+    "applying": "Aplicando…",
+    "newStock": "Nueva existencia: {{count}}",
+    "successMsg": "Inventario actualizado"
+  },
+  "link": {
+    "unknownTitle": "Código no reconocido",
+    "unknownMsg": "El código {{code}} no está vinculado a ningún artículo.",
+    "linkBtn": "Vincular a artículo",
+    "dismiss": "Ignorar",
+    "pickTitle": "Selecciona artículo",
+    "searchPlaceholder": "Buscar…",
+    "linkSuccess": "Código vinculado correctamente"
+  },
+  "errors": {
+    "forbidden": "No tienes permiso para ajustar el inventario.",
+    "item_not_found": "Artículo no encontrado.",
+    "bad_mode": "Modo de ajuste no válido.",
+    "bad_quantity": "La cantidad debe ser entre 0 y 1,000,000.",
+    "bad_barcode": "El código escaneado no es válido (6-20 dígitos).",
+    "generic": "Error inesperado. Intenta de nuevo."
+  }
+}

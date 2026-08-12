@@ -1,0 +1,53 @@
+{
+  "title": "Inventory",
+  "scanBtn": "Scan barcode",
+  "searchPlaceholder": "Search item…",
+  "filterLow": "Low stock",
+  "badgeLow": "low",
+  "stockLabel": "In stock",
+  "noItems": "No menu items found.",
+  "noMatch": "No items match \"{{query}}\".",
+  "loadError": "Could not load inventory. Try again.",
+  "scanner": {
+    "permissionTitle": "Camera permission",
+    "permissionMsg": "JChat needs access to your camera to scan inventory barcodes.",
+    "permissionGrant": "Allow",
+    "permissionDeny": "Not now",
+    "guide": "Point at the barcode",
+    "close": "Close"
+  },
+  "sheet": {
+    "title": "Stock adjustment",
+    "currentStock": "Current stock",
+    "modeCount": "Count",
+    "modeReceive": "Receive",
+    "modeWaste": "Waste",
+    "modeCountHint": "Set the exact quantity on hand",
+    "modeReceiveHint": "Add received units",
+    "modeWasteHint": "Deduct damaged or lost units",
+    "qtyLabel": "Quantity",
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "e.g. Supplier delivery",
+    "apply": "Apply",
+    "applying": "Applying…",
+    "newStock": "New stock: {{count}}",
+    "successMsg": "Stock updated"
+  },
+  "link": {
+    "unknownTitle": "Unrecognised code",
+    "unknownMsg": "Code {{code}} is not linked to any item.",
+    "linkBtn": "Link to item",
+    "dismiss": "Dismiss",
+    "pickTitle": "Select item",
+    "searchPlaceholder": "Search…",
+    "linkSuccess": "Barcode linked successfully"
+  },
+  "errors": {
+    "forbidden": "You don't have permission to adjust stock.",
+    "item_not_found": "Item not found.",
+    "bad_mode": "Invalid adjustment mode.",
+    "bad_quantity": "Quantity must be between 0 and 1,000,000.",
+    "bad_barcode": "Scanned code is not valid (6-20 digits).",
+    "generic": "Unexpected error. Please try again."
+  }
+}

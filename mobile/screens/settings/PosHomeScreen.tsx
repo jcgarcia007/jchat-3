@@ -20,7 +20,7 @@
  * Navigation: tap any card → PosOrderScreen (unchanged from C4).
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -36,6 +36,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  IconArchive,
   IconChevronLeft,
   IconClipboardList,
   IconLayoutGrid,
@@ -49,6 +50,8 @@ import {
   posTablesOverview,
   type PosTablesOverviewRow,
 } from '../../services/pos';
+import { getChatPermissions } from '../../services/permissions';
+import { supabase } from '../../services/supabase';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
@@ -69,6 +72,21 @@ export default function PosHomeScreen() {
   const [tables, setTables] = useState<PosTablesOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [readyCount, setReadyCount] = useState(0);
+  const [canInventory, setCanInventory] = useState(false);
+
+  // One-time permission check for the Inventory button
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const perms = await getChatPermissions({ businessId, userId: user.id });
+        setCanInventory(perms.inventory_manage);
+      } catch {
+        // Non-fatal — button stays hidden
+      }
+    })();
+  }, [businessId]);
 
   // ── Reload on every focus ─────────────────────────────────────────────────
   useFocusEffect(
@@ -277,6 +295,18 @@ export default function PosHomeScreen() {
         >
           {businessName}
         </Text>
+
+        {/* ── Inventory button (inventory_manage or owner) ──────────── */}
+        {canInventory ? (
+          <Pressable
+            onPress={() => navigation.navigate('PosInventory', { businessId, businessName })}
+            style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.inventoryBtn', { defaultValue: 'Inventario' })}
+          >
+            <IconArchive size={22} color={c.brand} strokeWidth={2} />
+          </Pressable>
+        ) : null}
 
         {/* ── Órdenes (pickup board) button ────────────────────────────── */}
         <Pressable

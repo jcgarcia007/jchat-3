@@ -37,6 +37,7 @@ import PosOrderScreen from '../screens/settings/PosOrderScreen';
 import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
 import PosSplitScreen from '../screens/settings/PosSplitScreen';
 import PosPickupScreen from '../screens/settings/PosPickupScreen';
+import PosInventoryScreen from '../screens/settings/PosInventoryScreen';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -89,6 +90,11 @@ export type PosStackParamList = {
   };
   /** Waiter pickup board — view item statuses and mark ready items as delivered. */
   PosPickup: {
+    businessId: string;
+    businessName: string;
+  };
+  /** Inventory management — list, adjust stock, scan barcodes. */
+  PosInventory: {
     businessId: string;
     businessName: string;
   };
@@ -179,6 +185,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosSplit" component={PosSplitScreen} />
           {/* PosPickup: waiter board — item statuses + mark-as-delivered */}
           <PosStack.Screen name="PosPickup" component={PosPickupScreen} />
+          {/* PosInventory: stock management + barcode scanner (inventory_manage required) */}
+          <PosStack.Screen name="PosInventory" component={PosInventoryScreen} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>
