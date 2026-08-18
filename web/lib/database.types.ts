@@ -1247,6 +1247,42 @@ export type Database = {
           },
         ]
       }
+      menu_item_costs: {
+        Row: {
+          business_id: string
+          cost_cents: number | null
+          menu_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          cost_cents?: number | null
+          menu_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          cost_cents?: number | null
+          menu_item_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_costs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_costs_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: true
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_modifier_groups: {
         Row: {
           id: string

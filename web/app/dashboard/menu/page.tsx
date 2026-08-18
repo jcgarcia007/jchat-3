@@ -146,6 +146,12 @@ interface ItemForm {
   name: string;
   description: string;
   priceDollars: string;
+  /**
+   * Unit cost in dollars (string form for the input). Confidential — owner-only.
+   * Never stored on `menu_items`; persisted to `menu_item_costs` (migration 128)
+   * so the public menu SELECT can never leak it. Empty string = no cost set.
+   */
+  costDollars: string;
   photo_url: string;
   dietary_tags: string[];
   id_required: boolean;
@@ -266,6 +272,7 @@ const EMPTY_ITEM_FORM: ItemForm = {
   name: "",
   description: "",
   priceDollars: "",
+  costDollars: "",
   photo_url: "",
   dietary_tags: [],
   id_required: false,
@@ -535,11 +542,18 @@ function Alert({
   children,
   onClose,
 }: {
-  type: "error" | "success";
+  /** "warning" = non-fatal: the main action succeeded, a side effect did not. */
+  type: "error" | "success" | "warning";
   children: React.ReactNode;
   onClose?: () => void;
 }) {
   const isError = type === "error";
+  const isWarning = type === "warning";
+  const accent = isError
+    ? "var(--db-danger)"
+    : isWarning
+      ? "var(--db-warning)"
+      : "var(--db-success)";
   return (
     <div
       style={{
@@ -548,14 +562,14 @@ function Alert({
         gap: "8px",
         padding: "12px 16px",
         borderRadius: "var(--db-radius)",
-        background: isError ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)",
-        color: isError ? "var(--db-danger)" : "var(--db-success)",
+        background: `color-mix(in srgb, ${accent} 12%, transparent)`,
+        color: accent,
         fontSize: "13px",
         marginBottom: "16px",
         lineHeight: 1.5,
       }}
     >
-      {isError ? <IconAlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} /> : <IconCheck size={16} style={{ flexShrink: 0, marginTop: 1 }} />}
+      {isError || isWarning ? <IconAlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} /> : <IconCheck size={16} style={{ flexShrink: 0, marginTop: 1 }} />}
       <span style={{ flex: 1 }}>{children}</span>
       {onClose && (
         <button
@@ -1192,6 +1206,33 @@ function GroupCard({
   );
 }
 
+/** Placeholder shown instead of a number when the cost is not set (never "0"). */
+const EM_DASH = "\u2014";
+
+/** "$" affix for the money inputs (price / cost) in the item editor. */
+const moneyPrefixStyle: React.CSSProperties = {
+  position: "absolute",
+  left: 12,
+  top: "50%",
+  transform: "translateY(-50%)",
+  fontSize: "14px",
+  color: "var(--db-text-tertiary)",
+  pointerEvents: "none",
+};
+
+/** Shared style for the price / cost inputs (leaves room for the "$" affix). */
+const moneyInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px 9px 26px",
+  borderRadius: "var(--db-radius)",
+  border: "1px solid var(--db-border)",
+  background: "var(--db-bg-elevated)",
+  color: "var(--db-text-primary)",
+  fontSize: "14px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 const optionInputStyle: React.CSSProperties = {
   padding: "7px 10px",
   borderRadius: "var(--db-radius)",
@@ -1299,6 +1340,23 @@ function ItemEditorModal({
   const [form, setForm] = useState<ItemForm>(item);
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  // ── Cost % / margin (owner-only) ─────────────────────────────────────────────
+  // The row appears once a price is set; the figures are only computed when a
+  // cost is present too — otherwise they render as an em dash, never as 0.
+  const costMetrics = useMemo(() => {
+    const priceCents = form.priceDollars.trim() ? parsePriceCents(form.priceDollars) : 0;
+    const hasCost = form.costDollars.trim() !== "";
+    const costCents = hasCost ? parsePriceCents(form.costDollars) : 0;
+    const marginCents = priceCents - costCents;
+    return {
+      showRow: priceCents > 0,
+      hasCost,
+      costPct: priceCents > 0 ? (costCents / priceCents) * 100 : 0,
+      marginCents,
+      marginPct: priceCents > 0 ? (marginCents / priceCents) * 100 : 0,
+    };
+  }, [form.priceDollars, form.costDollars]);
 
   // ── Description translate state ──────────────────────────────────────────────
   const [translating, setTranslating] = useState(false);
@@ -1685,24 +1743,18 @@ function ItemEditorModal({
             </div>
           </div>
 
-          {/* Price */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          {/* Price · Cost · Stock */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "12px",
+            }}
+          >
             <div>
               <SectionLabel>{t("menuItemBasePriceLabel")}</SectionLabel>
               <div style={{ position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    fontSize: "14px",
-                    color: "var(--db-text-tertiary)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  $
-                </span>
+                <span style={moneyPrefixStyle}>$</span>
                 <input
                   type="number"
                   min="0"
@@ -1710,19 +1762,30 @@ function ItemEditorModal({
                   value={form.priceDollars}
                   onChange={(e) => set("priceDollars", e.target.value)}
                   placeholder="0.00"
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px 9px 26px",
-                    borderRadius: "var(--db-radius)",
-                    border: "1px solid var(--db-border)",
-                    background: "var(--db-bg-elevated)",
-                    color: "var(--db-text-primary)",
-                    fontSize: "14px",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  style={moneyInputStyle}
                 />
               </div>
+            </div>
+
+            {/* Unit cost — confidential, owner-only. Stored in menu_item_costs,
+                never on menu_items, so it cannot leak via the public menu. */}
+            <div>
+              <SectionLabel>{t("menuItemCostLabel")}</SectionLabel>
+              <div style={{ position: "relative" }}>
+                <span style={moneyPrefixStyle}>$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.costDollars}
+                  onChange={(e) => set("costDollars", e.target.value)}
+                  placeholder="0.00"
+                  style={moneyInputStyle}
+                />
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: 4 }}>
+                {t("menuItemCostHint")}
+              </p>
             </div>
 
             {/* Stock count */}
@@ -1739,6 +1802,46 @@ function ItemEditorModal({
               </p>
             </div>
           </div>
+
+          {/* Cost % / margin — owner-only maths. Rendered once a price exists;
+              each figure falls back to an em dash (never 0) while cost is blank. */}
+          {costMetrics.showRow && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "16px",
+                fontSize: "12px",
+                color: "var(--db-text-secondary)",
+                marginTop: -4,
+              }}
+            >
+              <span>
+                {t("menuItemCostPctLabel")}{" "}
+                <strong style={{ color: "var(--db-text-primary)" }}>
+                  {costMetrics.hasCost ? `${costMetrics.costPct.toFixed(1)}%` : EM_DASH}
+                </strong>
+              </span>
+              <span>
+                {t("menuItemMarginLabel")}{" "}
+                <strong
+                  style={{
+                    color: !costMetrics.hasCost
+                      ? "var(--db-text-primary)"
+                      : costMetrics.marginCents < 0
+                        ? "var(--db-danger)"
+                        : "var(--db-success)",
+                  }}
+                >
+                  {costMetrics.hasCost
+                    ? `${costMetrics.marginCents < 0 ? "\u2212" : ""}$${formatDollars(
+                        Math.abs(costMetrics.marginCents)
+                      )} (${costMetrics.marginPct.toFixed(1)}%)`
+                    : EM_DASH}
+                </strong>
+              </span>
+            </div>
+          )}
 
           {/* Low stock threshold */}
           {form.stock_count !== "" && (
@@ -3205,6 +3308,14 @@ export default function MenuPage() {
   const [showAssistantProNotice, setShowAssistantProNotice] = useState(false);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  /**
+   * Unit cost per item, in cents (migration 128). Kept OUT of `MenuItem` on
+   * purpose: `menu_items` never carries the cost, so the public menu cannot
+   * leak it. RLS on `menu_item_costs` already limits this to the owner.
+   */
+  const [costsByItemId, setCostsByItemId] = useState<Record<string, number | null>>({});
+  /** Soft, non-blocking notice (e.g. the item saved but its cost did not). */
+  const [warning, setWarning] = useState<string | null>(null);
   // Category card selector: null = "Todas" (show every category).
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
@@ -3353,7 +3464,7 @@ export default function MenuPage() {
       setBizSlug((res.business as unknown as { slug?: string }).slug ?? null);
       setBizName(res.business.name ?? "");
 
-      const [catsResult, itemsResult, bizExtResult] = await Promise.all([
+      const [catsResult, itemsResult, bizExtResult, costsResult] = await Promise.all([
         supabase
           .from("menu_categories")
           .select("*")
@@ -3369,12 +3480,28 @@ export default function MenuPage() {
           .select("cover_url, icon_emoji")
           .eq("id", bid)
           .maybeSingle(),
+        supabase
+          .from("menu_item_costs")
+          .select("menu_item_id, cost_cents")
+          .eq("business_id", bid),
       ]);
 
       if (catsResult.error) throw catsResult.error;
       if (itemsResult.error) throw itemsResult.error;
       setBizCoverUrl((bizExtResult.data as { cover_url?: string | null } | null)?.cover_url ?? null);
       setBizIconEmoji((bizExtResult.data as { icon_emoji?: string | null } | null)?.icon_emoji ?? null);
+
+      // Costs are non-fatal: a failure here must not block the menu editor,
+      // it only means the cost fields come up blank.
+      const costMap: Record<string, number | null> = {};
+      if (costsResult.error) {
+        console.warn("[menu] could not load item costs:", costsResult.error.message);
+      } else {
+        for (const row of (costsResult.data ?? []) as { menu_item_id: string; cost_cents: number | null }[]) {
+          costMap[row.menu_item_id] = row.cost_cents;
+        }
+      }
+      setCostsByItemId(costMap);
 
       setCategories((catsResult.data as MenuCategory[]) ?? []);
       // Normalize options to guard against DB rows where options is {} or has null arrays
@@ -3740,11 +3867,13 @@ export default function MenuPage() {
 
   const openEditItem = useCallback((item: MenuItem) => {
     const existingSla = item.sla as SlaJsonb | null;
+    const costCents = costsByItemId[item.id];
     setActiveItemEdit({
       item: {
         name: item.name,
         description: item.description ?? "",
         priceDollars: formatDollars(item.price_cents),
+        costDollars: costCents != null ? formatDollars(costCents) : "",
         photo_url: item.photo_url ?? "",
         dietary_tags: item.dietary_tags ?? [],
         id_required: item.id_required,
@@ -3767,7 +3896,7 @@ export default function MenuPage() {
       itemId: item.id,
       categoryId: item.category_id,
     });
-  }, []);
+  }, [costsByItemId]);
 
   // ── Save item (with multi-photo support) ────────────────────────────────────
   const handleSaveItem = useCallback(
@@ -3779,6 +3908,7 @@ export default function MenuPage() {
       }
       setSavingItem(true);
       setError(null);
+      setWarning(null);
 
       // Convert SLA string fields → jsonb or null
       const slaOut: SlaJsonb | null = (
@@ -3788,6 +3918,12 @@ export default function MenuPage() {
         preparing_mins: form.slaForm.preparing_mins.trim() ? parseInt(form.slaForm.preparing_mins, 10) : null,
         ready_mins:     form.slaForm.ready_mins.trim()     ? parseInt(form.slaForm.ready_mins, 10)     : null,
       } : null;
+
+      // Unit cost → cents (or null when the field is left blank). Deliberately
+      // NOT part of `payload`: it is persisted to `menu_item_costs`, never to
+      // `menu_items` (see migration 128).
+      const costCentsOut: number | null =
+        form.costDollars.trim() !== "" ? parsePriceCents(form.costDollars) : null;
 
       const payload = {
         category_id: activeItemEdit.categoryId,
@@ -3821,6 +3957,7 @@ export default function MenuPage() {
 
       if (!isSupabaseConfigured) {
         const demoPayload = { ...payload, sla: slaOut };
+        let demoItemId = activeItemEdit.itemId ?? "";
         if (activeItemEdit.itemId) {
           setItems((prev) =>
             prev.map((it) =>
@@ -3834,12 +3971,16 @@ export default function MenuPage() {
             ...demoPayload,
           };
           setItems((prev) => [...prev, newItem]);
+          demoItemId = newItem.id;
         }
+        setCostsByItemId((prev) => ({ ...prev, [demoItemId]: costCentsOut }));
         setActiveItemEdit(null);
         setSavingItem(false);
         setSuccess(t("menuItemSavedSuccess", { name: form.name.trim() }));
         return;
       }
+
+      let costSaveFailed = false;
 
       try {
         // low_stock_threshold is NOT NULL with default 5 in the DB.
@@ -3876,6 +4017,31 @@ export default function MenuPage() {
             .single();
           if (err) throw err;
           resolvedItemId = (newRow as { id: string }).id;
+        }
+
+        // 1b. Persist the confidential unit cost. Non-fatal on purpose: the item
+        // itself is already saved at this point, so a cost write failure must not
+        // surface as a failed save — warn softly and keep the product.
+        try {
+          const { error: costErr } = await supabase
+            .from("menu_item_costs")
+            .upsert(
+              {
+                menu_item_id: resolvedItemId,
+                business_id: businessId,
+                cost_cents: costCentsOut,
+              },
+              { onConflict: "menu_item_id" }
+            );
+          if (costErr) throw costErr;
+        } catch (costErr: unknown) {
+          // Swallowed by design — a transport failure here must not roll the
+          // whole save back into the outer catch.
+          console.warn(
+            "[menu] could not save item cost:",
+            costErr instanceof Error ? costErr.message : String(costErr)
+          );
+          costSaveFailed = true;
         }
 
         // 2. Delete photos removed by the user (Storage object + DB row).
@@ -3988,6 +4154,7 @@ export default function MenuPage() {
         }
 
         setSuccess(t("menuItemSavedSuccess", { name: form.name.trim() }));
+        if (costSaveFailed) setWarning(t("menuItemCostSaveWarning"));
         setActiveItemEdit(null);
         await loadData();
       } catch (e: unknown) {
@@ -4343,6 +4510,11 @@ export default function MenuPage() {
       {error && (
         <Alert type="error" onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {warning && (
+        <Alert type="warning" onClose={() => setWarning(null)}>
+          {warning}
         </Alert>
       )}
       {success && (
