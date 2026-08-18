@@ -3761,6 +3761,19 @@ export type Database = {
         Returns: string
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
+      inventory_report: {
+        Args: { p_business_id: string; p_from: string; p_to: string }
+        Returns: {
+          count_adj: number
+          item_name: string
+          menu_item_id: string
+          received: number
+          sold: number
+          stock_now: number
+          voided: number
+          waste: number
+        }[]
+      }
       is_blocked: { Args: { a: string; b: string }; Returns: boolean }
       is_employee_of_business: {
         Args: { p_business_id: string }

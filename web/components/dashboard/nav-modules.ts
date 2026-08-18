@@ -19,6 +19,7 @@ import {
   IconCalendar,
   IconToolsKitchen2,
   IconPackage,
+  IconClipboardList,
   IconTag,
   IconChartBar,
   IconChartHistogram,
@@ -86,6 +87,7 @@ export const NAV_MODULES: NavModule[] = [
     pages: [
       { labelKey: "railMenu", href: "/dashboard/menu", icon: IconToolsKitchen2 },
       { labelKey: "railInventario", href: "/dashboard/inventory", icon: IconPackage },
+      { labelKey: "railReporteInventario", href: "/dashboard/inventory-report", icon: IconClipboardList },
       { labelKey: "railOfertas", href: "/dashboard/offers", icon: IconTag },
     ],
   },
