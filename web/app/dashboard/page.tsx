@@ -14,7 +14,7 @@ interface SalesRow {
   total_cents: number;
 }
 
-interface TabRow {
+interface OccupiedRow {
   table_id: string;
 }
 
@@ -136,12 +136,16 @@ export default function OverviewPage() {
             .eq("business_id", businessId)
             .in("status", ["pending", "confirmed", "preparing"]),
 
-          // c) Mesas ocupadas: distinct tables with an open tab
+          // c) Mesas ocupadas: distinct tables con orden abierta (sin pagar y sin anular)
+          //    Misma definición que el plano de mesas (tables/page.tsx → loadOccupancy).
+          //    table_tabs está vacía; orders es la fuente de verdad.
           supabase
-            .from("table_tabs")
+            .from("orders")
             .select("table_id")
             .eq("business_id", businessId)
-            .eq("status", "open"),
+            .is("paid_at", null)
+            .is("canceled_at", null)
+            .not("table_id", "is", null),
 
           // c) Total de mesas registradas
           supabase
@@ -163,7 +167,7 @@ export default function OverviewPage() {
           .reduce((sum, r) => sum + (r.total_cents ?? 0), 0);
 
         const uniqueOccupied = new Set(
-          (tabsRes.data as TabRow[]).map((r) => r.table_id)
+          (tabsRes.data as OccupiedRow[]).map((r) => r.table_id)
         ).size;
 
         setKpi({
