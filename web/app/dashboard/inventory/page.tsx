@@ -1,28 +1,25 @@
 /**
  * JChat 3.0 — Dashboard Inventory Management (Task 3.10)
+ * Updated: Ladrillo 1 — category grouping, search, filters, Par column.
  *
  * Features:
- *  1. Product list — current stock count from `menu_items.stock_count`.
- *  2. Inline stock edit — updates `menu_items.stock_count` and logs a
- *     `stock_movements` row (delta + reason).
- *  3. Low-stock threshold — editable per product (`low_stock_threshold`,
- *     default 5); rows at/below threshold are highlighted.
- *  4. "Hidden" badge when stock_count === 0 (getMenu already filters these out).
- *  5. Stock movement history log — reads `stock_movements`, newest first.
- *  6. Bulk CSV import — client-side parse of name/sku/stock columns;
- *     updates counts for matching products and logs movements.
- *
- * TODO(server/Edge Function): email owner on low stock — stub is at the bottom.
+ *  1. Product list grouped by category, with Par column (read-only).
+ *  2. Inline stock edit — updates menu_items + logs stock_movements.
+ *  3. Low-stock threshold — editable per product.
+ *  4. "Hidden" badge when stock_count === 0 (getMenu filters these out).
+ *  5. Stock movement history log.
+ *  6. Bulk CSV import.
+ *  7. Search (client-side) + category chips + status tiles (combinable).
+ *  8. "Add Product" form with required category selector + optional par level.
  *
  * Design: var(--db-*) tokens only. No hardcoded hex.
  * Icons: @tabler/icons-react only.
- * Guard: isSupabaseConfigured before any live Supabase call.
  */
 
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -37,18 +34,28 @@ import {
   IconEyeOff,
   IconPlus,
   IconDownload,
+  IconSearch,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+interface MenuCategory {
+  id: string;
+  name: string;
+  name_alt: string | null;
+  sort: number;
+}
+
 interface MenuItem {
   id: string;
   business_id: string;
+  category_id: string;
   name: string;
   stock_count: number;
   low_stock_threshold: number;
+  par_level: number | null;
   is_published: boolean;
 }
 
@@ -65,19 +72,23 @@ interface StockMovement {
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
+const DEMO_CATEGORIES: MenuCategory[] = [
+  { id: "demo-cat-1", name: "General", name_alt: null, sort: 0 },
+];
+
 const DEMO_ITEMS: MenuItem[] = [
-  { id: "demo-1", business_id: "demo-biz", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  is_published: true  },
-  { id: "demo-2", business_id: "demo-biz", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  is_published: true  },
-  { id: "demo-3", business_id: "demo-biz", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  is_published: false },
-  { id: "demo-4", business_id: "demo-biz", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, is_published: true  },
-  { id: "demo-5", business_id: "demo-biz", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, is_published: true  },
+  { id: "demo-1", business_id: "demo-biz", category_id: "demo-cat-1", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  par_level: null, is_published: true  },
+  { id: "demo-2", business_id: "demo-biz", category_id: "demo-cat-1", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  par_level: null, is_published: true  },
+  { id: "demo-3", business_id: "demo-biz", category_id: "demo-cat-1", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  par_level: null, is_published: false },
+  { id: "demo-4", business_id: "demo-biz", category_id: "demo-cat-1", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, par_level: null, is_published: true  },
+  { id: "demo-5", business_id: "demo-biz", category_id: "demo-cat-1", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, par_level: null, is_published: true  },
 ];
 
 const DEMO_MOVEMENTS: StockMovement[] = [
-  { id: "mv-1", menu_item_id: "demo-2", business_id: "demo-biz", delta: -2,  reason: "Sold",           created_at: new Date(Date.now() - 3_600_000).toISOString(),  item_name: "Caesar Salad"     },
-  { id: "mv-2", menu_item_id: "demo-3", business_id: "demo-biz", delta: -5,  reason: "Sold",           created_at: new Date(Date.now() - 7_200_000).toISOString(),  item_name: "Margherita Pizza" },
-  { id: "mv-3", menu_item_id: "demo-1", business_id: "demo-biz", delta: +20, reason: "Restock",        created_at: new Date(Date.now() - 86_400_000).toISOString(), item_name: "Classic Burger"   },
-  { id: "mv-4", menu_item_id: "demo-4", business_id: "demo-biz", delta: +15, reason: "CSV import",     created_at: new Date(Date.now() - 172_800_000).toISOString(), item_name: "Chocolate Cake"  },
+  { id: "mv-1", menu_item_id: "demo-2", business_id: "demo-biz", delta: -2,  reason: "Sold",       created_at: new Date(Date.now() - 3_600_000).toISOString(),   item_name: "Caesar Salad"     },
+  { id: "mv-2", menu_item_id: "demo-3", business_id: "demo-biz", delta: -5,  reason: "Sold",       created_at: new Date(Date.now() - 7_200_000).toISOString(),   item_name: "Margherita Pizza" },
+  { id: "mv-3", menu_item_id: "demo-1", business_id: "demo-biz", delta: +20, reason: "Restock",    created_at: new Date(Date.now() - 86_400_000).toISOString(),  item_name: "Classic Burger"   },
+  { id: "mv-4", menu_item_id: "demo-4", business_id: "demo-biz", delta: +15, reason: "CSV import", created_at: new Date(Date.now() - 172_800_000).toISOString(), item_name: "Chocolate Cake"   },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -99,6 +110,11 @@ function isLowStock(item: MenuItem): boolean {
 /** True when item is out of stock → hidden from menu. */
 function isOutOfStock(item: MenuItem): boolean {
   return item.stock_count <= 0;
+}
+
+/** Locale-aware category display name. */
+function catDisplayName(cat: MenuCategory, locale: string): string {
+  return locale === "es" && cat.name_alt ? cat.name_alt : cat.name;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -185,6 +201,14 @@ interface EditState {
 }
 
 // ── Stock row ─────────────────────────────────────────────────────────────────
+//
+// Grid (6 columns — identical for header, view mode, and edit mode):
+//   "1fr   110px  80px  130px      130px   120px"
+//    Name  Stock  Par   Threshold  Reason  Actions
+//
+// Par is always read-only (edit it in the menu editor).
+
+const ROW_GRID = "1fr 110px 80px 130px 130px 120px";
 
 function StockRow({
   item,
@@ -219,7 +243,7 @@ function StockRow({
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "1fr 110px 130px 130px 120px",
+        gridTemplateColumns: ROW_GRID,
         alignItems: "center",
         gap: "12px",
         padding: "12px 16px",
@@ -228,7 +252,7 @@ function StockRow({
         borderBottom: "1px solid var(--db-border)",
       }}
     >
-      {/* Name + badges */}
+      {/* Col 1: Name + status badges */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
         <span
           style={{
@@ -286,7 +310,7 @@ function StockRow({
         )}
       </div>
 
-      {/* Stock count / input */}
+      {/* Col 2: Stock count / edit input */}
       {editing ? (
         <input
           type="number"
@@ -313,7 +337,12 @@ function StockRow({
         </span>
       )}
 
-      {/* Threshold / input */}
+      {/* Col 3: Par level — always read-only in both view and edit mode */}
+      <span style={{ fontSize: "13px", color: "var(--db-text-secondary)", textAlign: "right" }}>
+        {item.par_level != null ? item.par_level : "—"}
+      </span>
+
+      {/* Col 4: Low-stock threshold / edit input */}
       {editing ? (
         <input
           type="number"
@@ -329,7 +358,7 @@ function StockRow({
         </span>
       )}
 
-      {/* Reason (edit only) */}
+      {/* Col 5: Reason (edit mode only; empty span in view mode) */}
       {editing ? (
         <input
           type="text"
@@ -342,7 +371,7 @@ function StockRow({
         <span />
       )}
 
-      {/* Actions */}
+      {/* Col 6: Actions */}
       {editing ? (
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
           <button
@@ -374,6 +403,8 @@ function StockRow({
     </div>
   );
 }
+
+// ── Shared style constants ────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -415,6 +446,23 @@ function btnStyle(bg: string, color: string): React.CSSProperties {
   };
 }
 
+function chipStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "5px 12px",
+    borderRadius: "999px",
+    fontSize: "12px",
+    fontWeight: active ? 700 : 500,
+    border: active ? "1px solid var(--db-accent)" : "1px solid var(--db-border)",
+    background: active
+      ? "color-mix(in srgb, var(--db-accent) 12%, transparent)"
+      : "var(--db-bg-elevated)",
+    color: active ? "var(--db-accent)" : "var(--db-text-secondary)",
+    cursor: "pointer",
+    transition: "all 0.15s",
+    whiteSpace: "nowrap",
+  };
+}
+
 // ── CSV import helpers ────────────────────────────────────────────────────────
 
 interface CsvRow {
@@ -426,7 +474,6 @@ function parseCsv(text: string): CsvRow[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
-  // Detect header indices (case-insensitive)
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
   const nameIdx  = headers.findIndex((h) => h === "name");
   const stockIdx = headers.findIndex((h) => h === "stock" || h === "stock_count");
@@ -446,51 +493,60 @@ function parseCsv(text: string): CsvRow[] {
 // ── TODO(server/Edge Function) stub ──────────────────────────────────────────
 // async function notifyOwnerLowStock(_businessId: string, _items: MenuItem[]) {
 //   // TODO(server/Edge Function): email owner on low stock
-//   // Call a Supabase Edge Function like:
-//   //   await supabase.functions.invoke('notify-low-stock', {
-//   //     body: { business_id: _businessId, items: _items.map(i => ({ id: i.id, name: i.name, stock_count: i.stock_count })) },
-//   //   });
+//   //   await supabase.functions.invoke('notify-low-stock', { body: { ... } });
 // }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
-  const t = useTranslations("dashboardCommon");
+  const t       = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
+  const locale  = useLocale();
+
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories]     = useState<MenuCategory[]>([]);
+  const [items, setItems]               = useState<MenuItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movements, setMovements]               = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory]           = useState(false);
 
   // Inline edit: map of item.id → EditState
-  const [editMap, setEditMap] = useState<Record<string, EditState>>({});
+  const [editMap, setEditMap]   = useState<Record<string, EditState>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Manual "Add Product" form
-  const [newName, setNewName] = useState("");
-  const [newStock, setNewStock] = useState("");
-  const [newThreshold, setNewThreshold] = useState("");
-  const [adding, setAdding] = useState(false);
+  // "Add Product" form fields
+  const [newName, setNewName]                     = useState("");
+  const [newStock, setNewStock]                   = useState("");
+  const [newThreshold, setNewThreshold]           = useState("");
+  const [newCategoryId, setNewCategoryId]         = useState("");
+  const [newCategoryName, setNewCategoryName]     = useState("");
+  const [creatingCategory, setCreatingCategory]   = useState(false);
+  const [newParLevel, setNewParLevel]             = useState("");
+  const [adding, setAdding]                       = useState(false);
 
   // CSV import
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [csvReport, setCsvReport] = useState<string | null>(null);
+  const [importing, setImporting]   = useState(false);
+  const [csvReport, setCsvReport]   = useState<string | null>(null);
 
   // Feedback
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Filters (combinable)
+  const [filterCategory, setFilterCategory]                 = useState<string>("all");
+  const [filterStatus, setFilterStatus]                     = useState<"all" | "low" | "out">("all");
+  const [search, setSearch]                                 = useState("");
 
   // ── Resolve business id ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoadingBiz(false);
-      // Use demo data
+      setCategories(DEMO_CATEGORIES);
       setItems(DEMO_ITEMS);
       setMovements(DEMO_MOVEMENTS);
       return;
@@ -511,6 +567,20 @@ export default function InventoryPage() {
     })();
   }, []);
 
+  // ── Load categories ──────────────────────────────────────────────────────────
+  const loadCategories = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("menu_categories")
+        .select("id, name, name_alt, sort")
+        .eq("business_id", bizId)
+        .order("sort", { ascending: true });
+      setCategories((data as MenuCategory[]) ?? []);
+    } catch {
+      // non-fatal — chips simply won't appear
+    }
+  }, []);
+
   // ── Load menu items ──────────────────────────────────────────────────────────
   const loadItems = useCallback(async (bizId: string) => {
     setLoadingItems(true);
@@ -518,7 +588,7 @@ export default function InventoryPage() {
     try {
       const { data, error: err } = await supabase
         .from("menu_items")
-        .select("id, business_id, name, stock_count, low_stock_threshold, is_published")
+        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published")
         .eq("business_id", bizId)
         .order("name", { ascending: true });
       if (err) throw err;
@@ -559,8 +629,9 @@ export default function InventoryPage() {
   useEffect(() => {
     if (businessId) {
       void loadItems(businessId);
+      void loadCategories(businessId);
     }
-  }, [businessId, loadItems]);
+  }, [businessId, loadItems, loadCategories]);
 
   // ── Inline edit handlers ─────────────────────────────────────────────────────
   function startEdit(item: MenuItem) {
@@ -595,19 +666,19 @@ export default function InventoryPage() {
     const state = editMap[item.id];
     if (!state) return;
 
-    const newStock     = parseInt(state.stockInput, 10);
-    const newThreshold = parseInt(state.thresholdInput, 10);
+    const newStockVal     = parseInt(state.stockInput, 10);
+    const newThresholdVal = parseInt(state.thresholdInput, 10);
 
-    if (isNaN(newStock) || newStock < 0) {
+    if (isNaN(newStockVal) || newStockVal < 0) {
       setError(t("inventoryStockCountNonNegativeError"));
       return;
     }
-    if (isNaN(newThreshold) || newThreshold < 0) {
+    if (isNaN(newThresholdVal) || newThresholdVal < 0) {
       setError(t("inventoryLowStockThresholdError"));
       return;
     }
 
-    const delta  = newStock - item.stock_count;
+    const delta  = newStockVal - item.stock_count;
     const reason = state.reasonInput.trim() || (delta >= 0 ? t("inventoryManualAdjustmentReason") : t("inventoryManualDeductionReason"));
 
     if (!isSupabaseConfigured) {
@@ -615,7 +686,7 @@ export default function InventoryPage() {
       setItems((prev) =>
         prev.map((i) =>
           i.id === item.id
-            ? { ...i, stock_count: newStock, low_stock_threshold: newThreshold }
+            ? { ...i, stock_count: newStockVal, low_stock_threshold: newThresholdVal }
             : i
         )
       );
@@ -645,7 +716,7 @@ export default function InventoryPage() {
       // 1. Update menu_items
       const { error: upErr } = await supabase
         .from("menu_items")
-        .update({ stock_count: newStock, low_stock_threshold: newThreshold })
+        .update({ stock_count: newStockVal, low_stock_threshold: newThresholdVal })
         .eq("id", item.id);
       if (upErr) throw upErr;
 
@@ -663,15 +734,15 @@ export default function InventoryPage() {
       }
 
       // TODO(server/Edge Function): email owner on low stock
-      // if (newStock <= newThreshold && newThreshold > 0 && newStock > 0 && businessId) {
-      //   await notifyOwnerLowStock(businessId, [{ ...item, stock_count: newStock }]);
+      // if (newStockVal <= newThresholdVal && newThresholdVal > 0 && newStockVal > 0 && businessId) {
+      //   await notifyOwnerLowStock(businessId, [{ ...item, stock_count: newStockVal }]);
       // }
 
       // 3. Refresh local state
       setItems((prev) =>
         prev.map((i) =>
           i.id === item.id
-            ? { ...i, stock_count: newStock, low_stock_threshold: newThreshold }
+            ? { ...i, stock_count: newStockVal, low_stock_threshold: newThresholdVal }
             : i
         )
       );
@@ -727,7 +798,6 @@ export default function InventoryPage() {
         const delta = row.stock - match.stock_count;
 
         if (!isSupabaseConfigured) {
-          // Demo: update local state
           setItems((prev) =>
             prev.map((i) =>
               i.id === match.id ? { ...i, stock_count: row.stock } : i
@@ -768,9 +838,6 @@ export default function InventoryPage() {
         }
 
         // TODO(server/Edge Function): email owner on low stock after CSV import
-        // if (row.stock <= match.low_stock_threshold && match.low_stock_threshold > 0 && row.stock > 0 && businessId) {
-        //   await notifyOwnerLowStock(businessId, [{ ...match, stock_count: row.stock }]);
-        // }
 
         setItems((prev) =>
           prev.map((i) => (i.id === match.id ? { ...i, stock_count: row.stock } : i))
@@ -790,9 +857,10 @@ export default function InventoryPage() {
 
   // ── Manual add product ───────────────────────────────────────────────────────
   async function addProduct() {
-    const name = newName.trim();
-    const stockNum = parseInt(newStock, 10);
+    const name         = newName.trim();
+    const stockNum     = parseInt(newStock, 10);
     const thresholdNum = newThreshold.trim() === "" ? 5 : parseInt(newThreshold, 10);
+    const parNum: number | null = newParLevel.trim() !== "" ? parseInt(newParLevel, 10) : null;
 
     if (!name) {
       setError(t("inventoryProductNameRequiredError"));
@@ -806,28 +874,50 @@ export default function InventoryPage() {
       setError(t("inventoryAlertThresholdNonNegativeError"));
       return;
     }
+    // Category is required
+    if (!creatingCategory && newCategoryId === "") {
+      setError(t("inventoryCategoryRequiredError"));
+      return;
+    }
+    if (creatingCategory && newCategoryName.trim() === "") {
+      setError(t("inventoryCategoryRequiredError"));
+      return;
+    }
 
     setError(null);
     setSuccess(null);
 
     // Demo mode: append locally only.
     if (!isSupabaseConfigured) {
+      let catId = newCategoryId;
+      if (creatingCategory) {
+        catId = `demo-cat-${Date.now()}`;
+        const newCat: MenuCategory = {
+          id: catId,
+          name: newCategoryName.trim(),
+          name_alt: null,
+          sort: categories.length,
+        };
+        setCategories((prev) => [...prev, newCat]);
+      }
       setItems((prev) =>
         [
           ...prev,
           {
-            id: `demo-new-${Date.now()}`,
-            business_id: "demo-biz",
+            id:                  `demo-new-${Date.now()}`,
+            business_id:         "demo-biz",
+            category_id:         catId,
             name,
-            stock_count: stockNum,
+            stock_count:         stockNum,
             low_stock_threshold: thresholdNum,
-            is_published: true,
+            par_level:           parNum,
+            is_published:        true,
           },
         ].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      setNewName("");
-      setNewStock("");
-      setNewThreshold("");
+      setNewName(""); setNewStock(""); setNewThreshold("");
+      setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
+      setNewParLevel("");
       setSuccess(t("inventoryAddedDemoSuccess", { name }));
       return;
     }
@@ -839,39 +929,32 @@ export default function InventoryPage() {
 
     setAdding(true);
     try {
-      // menu_items.category_id is NOT NULL → find or create a default category.
-      let categoryId: string;
-      const { data: cats, error: catSelErr } = await supabase
-        .from("menu_categories")
-        .select("id")
-        .eq("business_id", businessId)
-        .order("sort", { ascending: true })
-        .limit(1);
-      if (catSelErr) throw catSelErr;
+      let categoryId = newCategoryId;
 
-      if (cats && cats.length > 0) {
-        categoryId = cats[0].id as string;
-      } else {
+      // Create new category if the user typed a new one
+      if (creatingCategory) {
         const { data: newCat, error: catInsErr } = await supabase
           .from("menu_categories")
-          .insert({ business_id: businessId, name: "Uncategorized" })
-          .select("id")
+          .insert({ business_id: businessId, name: newCategoryName.trim() })
+          .select("id, name, name_alt, sort")
           .single();
         if (catInsErr || !newCat) throw new Error(catInsErr?.message ?? t("inventoryCreateCategoryError"));
-        categoryId = newCat.id as string;
+        categoryId = (newCat as MenuCategory).id;
+        setCategories((prev) => [...prev, newCat as MenuCategory]);
       }
 
       const { data: inserted, error: insErr } = await supabase
         .from("menu_items")
         .insert({
-          business_id: businessId,
-          category_id: categoryId,
+          business_id:         businessId,
+          category_id:         categoryId,
           name,
-          stock_count: stockNum,
+          stock_count:         stockNum,
           low_stock_threshold: thresholdNum,
-          price_cents: 0,
+          par_level:           parNum,
+          price_cents:         0,
         })
-        .select("id, business_id, name, stock_count, low_stock_threshold, is_published")
+        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published")
         .single();
       if (insErr || !inserted) throw new Error(insErr?.message ?? t("inventoryAddProductGenericError"));
 
@@ -879,18 +962,18 @@ export default function InventoryPage() {
       if (stockNum > 0) {
         await supabase.from("stock_movements").insert({
           menu_item_id: (inserted as MenuItem).id,
-          business_id: businessId,
-          delta: stockNum,
-          reason: t("inventoryInitialStockReason"),
+          business_id:  businessId,
+          delta:        stockNum,
+          reason:       t("inventoryInitialStockReason"),
         });
       }
 
       setItems((prev) =>
         [...prev, inserted as MenuItem].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      setNewName("");
-      setNewStock("");
-      setNewThreshold("");
+      setNewName(""); setNewStock(""); setNewThreshold("");
+      setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
+      setNewParLevel("");
       setSuccess(t("inventoryAddedSuccess", { name }));
       if (showHistory) void loadMovements(businessId);
     } catch (e: unknown) {
@@ -918,6 +1001,53 @@ export default function InventoryPage() {
   const lowCount = items.filter((i) => isLowStock(i)).length;
   const outCount = items.filter((i) => isOutOfStock(i)).length;
 
+  // Items matching search + status, WITHOUT category filter.
+  // Used for chip counts so each chip always shows "how many I'd see if I clicked it."
+  const itemsMatchingSearchAndStatus = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchesSearch = q === "" || item.name.toLowerCase().includes(q);
+      const matchesStatus =
+        filterStatus === "all"  ? true :
+        filterStatus === "low"  ? isLowStock(item) :
+        /* "out" */               isOutOfStock(item);
+      return matchesSearch && matchesStatus;
+    });
+  }, [items, search, filterStatus]);
+
+  // Count per category (reflects search + status; used in chip badges).
+  const countByCat = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of itemsMatchingSearchAndStatus) {
+      counts[item.category_id] = (counts[item.category_id] ?? 0) + 1;
+    }
+    return counts;
+  }, [itemsMatchingSearchAndStatus]);
+
+  // Full filtered list (apply category filter on top of search + status).
+  const filteredItems = useMemo(() => {
+    if (filterCategory === "all") return itemsMatchingSearchAndStatus;
+    return itemsMatchingSearchAndStatus.filter((i) => i.category_id === filterCategory);
+  }, [itemsMatchingSearchAndStatus, filterCategory]);
+
+  // Grouped by category, sorted: categories by sort→name, items by name.
+  const groupedItems = useMemo(() => {
+    const catMap: Record<string, { category: MenuCategory; items: MenuItem[] }> = {};
+    for (const item of filteredItems) {
+      if (!catMap[item.category_id]) {
+        const cat =
+          categories.find((c) => c.id === item.category_id) ??
+          { id: item.category_id, name: item.category_id, name_alt: null, sort: 999 };
+        catMap[item.category_id] = { category: cat, items: [] };
+      }
+      catMap[item.category_id].items.push(item);
+    }
+    return Object.values(catMap).sort((a, b) => {
+      if (a.category.sort !== b.category.sort) return a.category.sort - b.category.sort;
+      return a.category.name.localeCompare(b.category.name);
+    });
+  }, [filteredItems, categories]);
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (loadingBiz) {
     return (
@@ -926,6 +1056,13 @@ export default function InventoryPage() {
       </div>
     );
   }
+
+  // Tiles config
+  const tiles: { key: "all" | "low" | "out"; label: string; value: number; color: string }[] = [
+    { key: "all", label: t("inventoryTotalProductsLabel"), value: items.length,  color: "var(--db-text-primary)" },
+    { key: "low", label: t("inventoryLowStockBadge"),      value: lowCount,      color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
+    { key: "out", label: t("inventoryOutOfStockLabel"),    value: outCount,      color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
+  ];
 
   return (
     <div style={{ maxWidth: "960px" }}>
@@ -966,7 +1103,7 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Summary stats */}
+      {/* Summary tiles — clickable status filters */}
       <div
         style={{
           display: "grid",
@@ -975,36 +1112,39 @@ export default function InventoryPage() {
           marginBottom: "24px",
         }}
       >
-        {[
-          { label: t("inventoryTotalProductsLabel"), value: items.length, color: "var(--db-text-primary)" },
-          { label: t("inventoryLowStockBadge"),       value: lowCount,     color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
-          { label: t("inventoryOutOfStockLabel"),     value: outCount,     color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
-        ].map(({ label, value, color }) => (
-          <div
-            key={label}
-            style={{
-              background: "var(--db-bg-surface)",
-              border: "1px solid var(--db-border)",
-              borderRadius: "var(--db-radius-card)",
-              padding: "16px 20px",
-            }}
-          >
-            <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {label}
-            </div>
-            <div style={{ fontSize: "28px", fontWeight: 700, color }}>
-              {value}
-            </div>
-          </div>
-        ))}
+        {tiles.map(({ key, label, value, color }) => {
+          const active = filterStatus === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(active ? "all" : key)}
+              style={{
+                background: "var(--db-bg-surface)",
+                border: active ? "2px solid var(--db-accent)" : "1px solid var(--db-border)",
+                borderRadius: "var(--db-radius-card)",
+                padding: active ? "15px 19px" : "16px 20px",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+              }}
+            >
+              <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                {label}
+              </div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color }}>
+                {value}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Feedback banners */}
-      {error   && <AlertBanner type="error"   message={error}   />}
-      {success && <AlertBanner type="success" message={success} />}
-      {csvReport && <AlertBanner type="info"  message={csvReport} />}
+      {error     && <AlertBanner type="error"   message={error}     />}
+      {success   && <AlertBanner type="success" message={success}   />}
+      {csvReport && <AlertBanner type="info"    message={csvReport} />}
 
-      {/* Manual add product */}
+      {/* ── Manual add product ───────────────────────────────────────────── */}
       <SectionCard>
         <SectionTitle>
           <IconPlus size={16} color="var(--db-accent)" />
@@ -1013,6 +1153,73 @@ export default function InventoryPage() {
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
           {t("inventoryAddProductDescription")}
         </p>
+
+        {/* Row 1: Category (required) + Par level (optional) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
+          <div>
+            <label style={addLabelStyle}>{t("inventoryCategoryLabel")}</label>
+            {creatingCategory ? (
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={t("inventoryNewCategoryNameLabel")}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setCreatingCategory(false); setNewCategoryName(""); }}
+                  style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                >
+                  <IconX size={14} />
+                </button>
+              </div>
+            ) : (
+              <select
+                value={newCategoryId}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") {
+                    setCreatingCategory(true);
+                    setNewCategoryId("");
+                  } else {
+                    setNewCategoryId(e.target.value);
+                  }
+                }}
+                style={{ ...inputStyle }}
+              >
+                <option value="">— {t("inventoryCategoryLabel")} —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {catDisplayName(cat, locale)}
+                  </option>
+                ))}
+                <option value="__new__">{t("inventoryNewCategoryOption")}</option>
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label style={addLabelStyle}>{t("inventoryParLevelLabel")}</label>
+            <input
+              type="number"
+              min="0"
+              value={newParLevel}
+              onChange={(e) => setNewParLevel(e.target.value)}
+              placeholder="—"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Name + Stock + Threshold + Add button */}
         <div
           style={{
             display: "grid",
@@ -1070,7 +1277,7 @@ export default function InventoryPage() {
         </div>
       </SectionCard>
 
-      {/* CSV import */}
+      {/* ── CSV import ───────────────────────────────────────────────────── */}
       <SectionCard>
         <SectionTitle>
           <IconUpload size={16} color="var(--db-accent)" />
@@ -1179,18 +1386,67 @@ export default function InventoryPage() {
         </p>
       </SectionCard>
 
-      {/* Product table */}
+      {/* ── Product table ────────────────────────────────────────────────── */}
       <SectionCard>
         <SectionTitle>
           <IconBox size={16} color="var(--db-accent)" />
           {t("inventoryProductsSectionTitle")}
         </SectionTitle>
 
-        {/* Table header */}
+        {/* Search */}
+        <div style={{ position: "relative", marginBottom: "12px" }}>
+          <span
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--db-text-tertiary)",
+              display: "flex",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <IconSearch size={14} />
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("inventorySearchPlaceholder")}
+            style={{ ...inputStyle, paddingLeft: "30px" }}
+          />
+        </div>
+
+        {/* Category chips (visible once categories are loaded) */}
+        {categories.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+            {/* "All" chip — count reflects current search + status filter */}
+            <button
+              onClick={() => setFilterCategory("all")}
+              style={chipStyle(filterCategory === "all")}
+            >
+              {t("inventoryFilterAll")} ({itemsMatchingSearchAndStatus.length})
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() =>
+                  setFilterCategory(filterCategory === cat.id ? "all" : cat.id)
+                }
+                style={chipStyle(filterCategory === cat.id)}
+              >
+                {catDisplayName(cat, locale)} ({countByCat[cat.id] ?? 0})
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Table header — same 6-column grid as StockRow */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 110px 130px 130px 120px",
+            gridTemplateColumns: ROW_GRID,
             gap: "12px",
             padding: "8px 16px",
             fontSize: "11px",
@@ -1204,6 +1460,7 @@ export default function InventoryPage() {
         >
           <span>{t("analyticsProductColumnLabel")}</span>
           <span style={{ textAlign: "right" }}>{t("inventoryStockColumnLabel")}</span>
+          <span style={{ textAlign: "right" }}>{t("inventoryParColumnLabel")}</span>
           <span style={{ textAlign: "right" }}>{t("inventoryAlertAtColumnLabel")}</span>
           <span>{t("inventoryReasonColumnLabel")}</span>
           <span style={{ textAlign: "right" }}>{t("chatRoomsColAction")}</span>
@@ -1214,33 +1471,75 @@ export default function InventoryPage() {
             {t("inventoryLoadingProductsState")}
           </div>
         ) : items.length === 0 ? (
+          // Truly empty — no products at all
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
             {t("inventoryNoProductsMessage")}
           </div>
+        ) : filteredItems.length === 0 ? (
+          // Products exist, but none match the active filters
+          <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
+            {t("inventoryNoResultsMessage")}
+          </div>
         ) : (
-          items.map((item) => (
-            <StockRow
-              key={item.id}
-              item={item}
-              editing={!!editMap[item.id]}
-              editState={
-                editMap[item.id] ?? {
-                  stockInput:     String(item.stock_count),
-                  thresholdInput: String(item.low_stock_threshold),
-                  reasonInput:    "",
-                }
-              }
-              saving={savingId === item.id}
-              onStartEdit={() => startEdit(item)}
-              onCancelEdit={() => cancelEdit(item.id)}
-              onChangeEdit={(patch) => patchEdit(item.id, patch)}
-              onSave={() => void saveEdit(item)}
-            />
+          // Grouped list
+          groupedItems.map(({ category, items: catItems }) => (
+            <div key={category.id}>
+              {/* Category section header */}
+              <div
+                style={{
+                  padding: "6px 16px 4px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--db-text-tertiary)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  borderBottom: "1px solid var(--db-border)",
+                  marginTop: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                {catDisplayName(category, locale)}
+                <span
+                  style={{
+                    padding: "1px 7px",
+                    borderRadius: "999px",
+                    background: "var(--db-accent-bg)",
+                    color: "var(--db-accent)",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {catItems.length}
+                </span>
+              </div>
+              {/* Items in this category */}
+              {catItems.map((item) => (
+                <StockRow
+                  key={item.id}
+                  item={item}
+                  editing={!!editMap[item.id]}
+                  editState={
+                    editMap[item.id] ?? {
+                      stockInput:     String(item.stock_count),
+                      thresholdInput: String(item.low_stock_threshold),
+                      reasonInput:    "",
+                    }
+                  }
+                  saving={savingId === item.id}
+                  onStartEdit={() => startEdit(item)}
+                  onCancelEdit={() => cancelEdit(item.id)}
+                  onChangeEdit={(patch) => patchEdit(item.id, patch)}
+                  onSave={() => void saveEdit(item)}
+                />
+              ))}
+            </div>
           ))
         )}
       </SectionCard>
 
-      {/* Movement history */}
+      {/* ── Movement history ─────────────────────────────────────────────── */}
       <SectionCard>
         <div
           style={{
