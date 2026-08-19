@@ -3761,6 +3761,19 @@ export type Database = {
         Returns: string
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
+      inventory_kpis: {
+        Args: { p_business_id: string; p_from: string; p_to: string }
+        Returns: {
+          total_revenue_cents: number
+          costed_revenue_cents: number
+          cogs_cents: number
+          pour_cost_pct: number | null
+          coverage_pct: number | null
+          inventory_value_cents: number
+          turnover: number | null
+          days_on_hand: number | null
+        }[]
+      }
       inventory_report: {
         Args: { p_business_id: string; p_from: string; p_to: string }
         Returns: {
