@@ -6,13 +6,15 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronDown,
   IconChevronUp,
+  IconDownload,
   IconUser,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -75,6 +77,9 @@ interface OrderDetail {
   order_type: string | null;
   total_cents: number;
   tip_cents: number | null;
+  subtotal_cents: number | null;
+  tax_cents: number | null;
+  discount_cents: number | null;
   status: string;
   items: { name: string; qty: number; price_cents: number }[];
 }
@@ -171,6 +176,10 @@ function chunk<T>(arr: T[], n: number): T[][] {
   return out;
 }
 
+function isValidDate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(`${s}T00:00:00`).getTime());
+}
+
 // ── LetterAvatar ──────────────────────────────────────────────────────────────
 
 function LetterAvatar({ name, size = 32 }: { name: string; size?: number }) {
@@ -207,6 +216,7 @@ function DateRangePicker({
   onCustomStart,
   onCustomEnd,
   t,
+  rightSlot,
 }: {
   preset: RangePreset;
   customStart: string;
@@ -215,6 +225,7 @@ function DateRangePicker({
   onCustomStart: (v: string) => void;
   onCustomEnd: (v: string) => void;
   t: ReturnType<typeof useTranslations>;
+  rightSlot?: React.ReactNode;
 }) {
   const presets: { key: RangePreset; label: string }[] = [
     { key: "today", label: t("salesRangeToday") },
@@ -271,6 +282,7 @@ function DateRangePicker({
           <input type="date" value={customEnd} onChange={(e) => onCustomEnd(e.target.value)} style={inputStyle} />
         </>
       )}
+      {rightSlot && <div style={{ marginLeft: "auto" }}>{rightSlot}</div>}
     </div>
   );
 }
@@ -538,13 +550,18 @@ function BreakdownRow({ label, value, bold, accent }: { label: string; value: st
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function SalesPage() {
+function SalesPageInner() {
   const t = useTranslations("dashboardCommon");
   const locale = useLocale();
 
-  const [preset, setPreset]           = useState<RangePreset>("today");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd]     = useState("");
+  const searchParams = useSearchParams();
+  const fromParam    = searchParams.get("from") ?? "";
+  const toParam      = searchParams.get("to")   ?? "";
+  const hasCustom    = isValidDate(fromParam) && isValidDate(toParam);
+
+  const [preset, setPreset]           = useState<RangePreset>(hasCustom ? "custom" : "today");
+  const [customStart, setCustomStart] = useState(hasCustom ? fromParam : "");
+  const [customEnd, setCustomEnd]     = useState(hasCustom ? toParam   : "");
 
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(false);
@@ -656,7 +673,7 @@ export default function SalesPage() {
         }
       }
 
-      // Build order detail for this seller's list
+      // Build order detail for this seller's list (ALL orders, incl. cancelled)
       const orderItems = (itemsByOrder.get(order.id) ?? []).map((it) => ({
         name: it.menu_items?.name ?? "—",
         qty: it.qty,
@@ -669,6 +686,9 @@ export default function SalesPage() {
         order_type: order.order_type,
         total_cents: order.total_cents,
         tip_cents: order.tip_cents,
+        subtotal_cents: order.subtotal_cents,
+        tax_cents: order.tax_cents,
+        discount_cents: order.discount_cents,
         status: order.status,
         items: orderItems,
       });
@@ -756,6 +776,65 @@ export default function SalesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, customStart, customEnd]);
 
+  // ── CSV export ─────────────────────────────────────────────────────────────
+
+  function downloadCsv() {
+    const { start, end } = getRange(preset, customStart, customEnd);
+    function fmtLocal(d: Date): string {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    const fromStr = fmtLocal(start);
+    const toStr   = fmtLocal(end);
+
+    const headers = [
+      t("csvColDate"), t("csvColTime"), t("csvColSeller"), t("csvColTable"),
+      t("csvColType"), t("csvColStatus"), t("csvColSubtotal"), t("csvColTax"),
+      t("csvColDiscount"), t("csvColTip"), t("csvColTotal"),
+    ];
+
+    const rows: string[][] = [];
+    for (const seller of sellers) {
+      for (const o of seller.orders) {
+        const dt = new Date(o.paid_at);
+        const datePart = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        const timePart = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+        rows.push([
+          datePart,
+          timePart,
+          seller.displayName,
+          o.table_label ?? "",
+          o.order_type ?? "",
+          o.status,
+          ((o.subtotal_cents ?? 0) / 100).toFixed(2),
+          ((o.tax_cents ?? 0) / 100).toFixed(2),
+          ((o.discount_cents ?? 0) / 100).toFixed(2),
+          ((o.tip_cents ?? 0) / 100).toFixed(2),
+          (o.total_cents / 100).toFixed(2),
+        ]);
+      }
+    }
+
+    function csvEsc(v: string): string {
+      return `"${v.replace(/"/g, '""')}"`;
+    }
+
+    const lines = [
+      headers.map(csvEsc).join(","),
+      ...rows.map((r) => r.map(csvEsc).join(",")),
+    ];
+
+    const content = "﻿" + lines.join("\r\n");
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ventas_${fromStr}_${toStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   function navigate(dir: -1 | 1) {
@@ -771,6 +850,12 @@ export default function SalesPage() {
   if (noBusiness) {
     return <div><NoBusinessCTA /></div>;
   }
+
+  // Summary totals for strip + CSV filename range
+  const totalSalesCents = sellers.reduce((s, sl) => s + sl.totalCents, 0);
+  const totalOrders     = sellers.reduce((s, sl) => s + sl.orderCount, 0);
+  const totalTipCents   = sellers.reduce((s, sl) => s + sl.tipCents, 0);
+  const avgTicketCents  = totalOrders > 0 ? Math.round(totalSalesCents / totalOrders) : null;
 
   return (
     <div>
@@ -813,6 +898,28 @@ export default function SalesPage() {
         onCustomStart={setCustomStart}
         onCustomEnd={setCustomEnd}
         t={t}
+        rightSlot={!loading && !error && sellers.length > 0 ? (
+          <button
+            type="button"
+            onClick={downloadCsv}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "5px 12px",
+              borderRadius: "999px",
+              fontSize: "12px",
+              fontWeight: 600,
+              border: "1px solid var(--db-border)",
+              background: "var(--db-bg-elevated)",
+              color: "var(--db-text-secondary)",
+              cursor: "pointer",
+            }}
+          >
+            <IconDownload size={14} />
+            {t("salesDownloadCsv")}
+          </button>
+        ) : undefined}
       />
 
       {loading && (
@@ -835,6 +942,28 @@ export default function SalesPage() {
 
       {!loading && !error && sellers.length > 0 && (
         <div>
+          {/* Business summary strip */}
+          <div
+            style={{
+              display: "flex",
+              gap: "20px",
+              flexWrap: "wrap",
+              padding: "12px 20px",
+              marginBottom: "16px",
+              background: "var(--db-bg-surface)",
+              border: "1px solid var(--db-border)",
+              borderRadius: "var(--db-radius-card)",
+            }}
+          >
+            <StatCell label={t("salesSummaryTotal")} value={formatCents(totalSalesCents, locale)} />
+            <StatCell label={t("salesSummaryOrders")} value={String(totalOrders)} />
+            <StatCell label={t("salesSummaryTips")} value={formatCents(totalTipCents, locale)} />
+            <StatCell
+              label={t("salesSummaryAvgTicket")}
+              value={avgTicketCents !== null ? formatCents(avgTicketCents, locale) : "—"}
+            />
+          </div>
+
           {sellers.map((seller, idx) => {
             const isUnassigned = seller.userId === null;
             const isSelected   = selectedIdx === idx;
@@ -868,5 +997,13 @@ export default function SalesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={null}>
+      <SalesPageInner />
+    </Suspense>
   );
 }

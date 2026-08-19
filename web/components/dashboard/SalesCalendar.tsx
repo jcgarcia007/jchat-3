@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -39,17 +40,23 @@ interface OrderRow {
   paid_at: string;
 }
 
+function formatLocalDate(y: number, m: number, d: number): string {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 export function SalesCalendar() {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const WEEKDAYS = t.raw("weekdays") as string[];
   const { id: activeId } = useActiveBusinessName();
+  const router = useRouter();
 
   // View month state (local time). Start on the current local month.
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth()); // 0-11
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
   const [totals, setTotals] = useState<Record<number, DayTotals>>({});
   const [loading, setLoading] = useState(true);
@@ -268,32 +275,34 @@ export function SalesCalendar() {
           const entry = totals[day];
           const isToday =
             viewYear === today.y && viewMonth === today.m && day === today.d;
+          const isClickable =
+            viewYear < today.y ||
+            (viewYear === today.y && viewMonth < today.m) ||
+            (viewYear === today.y && viewMonth === today.m && day <= today.d);
           // On error, every day shows the neutral dash — never a "0" total.
           const hasDay = !loading && !loadError && !!entry && entry.cents > 0;
+          const isHovered = isClickable && !loadError && hoveredDay === day;
+          const border = isToday
+            ? "2px solid var(--db-accent)"
+            : isHovered
+            ? "1px solid var(--db-accent)"
+            : "1px solid var(--db-border)";
 
-          return (
-            <div
-              key={day}
-              style={{
-                minHeight: "72px",
-                borderRadius: "10px",
-                border: isToday
-                  ? "2px solid var(--db-accent)"
-                  : "1px solid var(--db-border)",
-                background: hasDay ? "var(--db-accent-bg)" : "var(--db-bg-surface)",
-                padding: "6px 8px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "12px",
-                  fontWeight: isToday ? 800 : 600,
-                  color: isToday ? "var(--db-accent)" : "var(--db-text-secondary)",
-                }}
-              >
+          const sharedStyle: React.CSSProperties = {
+            minHeight: "72px",
+            borderRadius: "10px",
+            border,
+            background: hasDay ? "var(--db-accent-bg)" : "var(--db-bg-surface)",
+            padding: "6px 8px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            transition: "border-color 0.15s",
+          };
+
+          const inner = (
+            <>
+              <span style={{ fontSize: "12px", fontWeight: isToday ? 800 : 600, color: isToday ? "var(--db-accent)" : "var(--db-text-secondary)" }}>
                 {day}
               </span>
               {hasDay ? (
@@ -305,7 +314,36 @@ export function SalesCalendar() {
                   —
                 </span>
               )}
-            </div>
+            </>
+          );
+
+          if (!isClickable) {
+            return <div key={day} style={sharedStyle}>{inner}</div>;
+          }
+
+          return (
+            <button
+              key={day}
+              type="button"
+              aria-label={formatLocalDate(viewYear, viewMonth, day)}
+              onClick={() => {
+                const dateStr = formatLocalDate(viewYear, viewMonth, day);
+                router.push(`/dashboard/sales?from=${dateStr}&to=${dateStr}`);
+              }}
+              onMouseEnter={() => setHoveredDay(day)}
+              onMouseLeave={() => setHoveredDay(null)}
+              style={{
+                ...sharedStyle,
+                appearance: "none",
+                WebkitAppearance: "none",
+                fontFamily: "inherit",
+                textAlign: "left",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              {inner}
+            </button>
           );
         })}
       </div>
