@@ -117,6 +117,7 @@ interface MenuItem {
   is_published: boolean;
   stock_count: number | null;
   low_stock_threshold: number | null;
+  par_level: number | null;
   options: ItemOptions | null;
   sort: number;
   /** Internal staff notes (not shown to customers). Pro-gated. */
@@ -158,6 +159,7 @@ interface ItemForm {
   badge: Badge;
   stock_count: string;
   low_stock_threshold: string;
+  par_level: string;
   options: ItemOptions;
   /** Internal staff notes (Pro-gated). */
   staff_details: string;
@@ -279,6 +281,7 @@ const EMPTY_ITEM_FORM: ItemForm = {
   badge: null,
   stock_count: "",
   low_stock_threshold: "",
+  par_level: "",
   options: { sizes: [], extras: [] },
   staff_details: "",
   staff_details_alt: "",
@@ -336,6 +339,7 @@ const DEMO_ITEMS: MenuItem[] = [
     is_published: true,
     stock_count: null,
     low_stock_threshold: null,
+    par_level: null,
     options: {
       sizes: [
         { label: "Regular", price_cents: 0 },
@@ -369,6 +373,7 @@ const DEMO_ITEMS: MenuItem[] = [
     is_published: true,
     stock_count: null,
     low_stock_threshold: null,
+    par_level: null,
     options: { sizes: [], extras: [] },
     sort: 1,
     staff_details: null,
@@ -393,6 +398,7 @@ const DEMO_ITEMS: MenuItem[] = [
     is_published: true,
     stock_count: 5,
     low_stock_threshold: 3,
+    par_level: null,
     options: {
       sizes: [],
       extras: [
@@ -1853,6 +1859,22 @@ function ItemEditorModal({
                 onChange={(v) => set("low_stock_threshold", v)}
                 placeholder={t("menuItemLowStockPlaceholder")}
               />
+            </div>
+          )}
+
+          {/* Par level — opt-in, only shown when stock tracking is enabled */}
+          {form.stock_count !== "" && (
+            <div>
+              <SectionLabel>{t("menuItemParLevelLabel")}</SectionLabel>
+              <FieldInput
+                type="number"
+                value={form.par_level}
+                onChange={(v) => set("par_level", v)}
+                placeholder={t("menuItemParLevelPlaceholder")}
+              />
+              <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: 4 }}>
+                {t("menuItemParLevelHint")}
+              </p>
             </div>
           )}
 
@@ -3881,6 +3903,7 @@ export default function MenuPage() {
         stock_count: item.stock_count != null ? String(item.stock_count) : "",
         low_stock_threshold:
           item.low_stock_threshold != null ? String(item.low_stock_threshold) : "",
+        par_level: item.par_level != null ? String(item.par_level) : "",
         options: item.options ?? { sizes: [], extras: [] },
         staff_details: item.staff_details ?? "",
         staff_details_alt: item.staff_details_alt ?? "",
@@ -3943,6 +3966,8 @@ export default function MenuPage() {
           form.low_stock_threshold.trim() !== ""
             ? parseInt(form.low_stock_threshold, 10)
             : null,
+        par_level:
+          form.par_level.trim() !== "" ? parseInt(form.par_level, 10) : null,
         options: form.options,
         // Staff notes (Pro-gated; always included in payload — DB stores null when blank).
         staff_details: form.staff_details.trim() || null,
