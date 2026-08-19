@@ -1382,6 +1382,7 @@ export type Database = {
           name: string
           name_alt: string | null
           options: Json
+          par_level: number | null
           photo_url: string | null
           price_cents: number
           sort: number
@@ -1409,6 +1410,7 @@ export type Database = {
           name: string
           name_alt?: string | null
           options?: Json
+          par_level?: number | null
           photo_url?: string | null
           price_cents?: number
           sla?: Json | null
@@ -1436,6 +1438,7 @@ export type Database = {
           name?: string
           name_alt?: string | null
           options?: Json
+          par_level?: number | null
           photo_url?: string | null
           price_cents?: number
           sla?: Json | null
@@ -3806,6 +3809,19 @@ export type Database = {
         Returns: Json
       }
       owns_business_of_table: { Args: { p_table_id: string }; Returns: boolean }
+      purchase_suggestion: {
+        Args: { p_business_id: string }
+        Returns: {
+          menu_item_id: string
+          item_name: string
+          stock_count: number
+          low_stock_threshold: number
+          par_level: number
+          suggested_qty: number
+          unit_cost_cents: number | null
+          suggested_cost_cents: number | null
+        }[]
+      }
       purge_expired_messages: { Args: never; Returns: undefined }
       purge_stale_pending_carts: { Args: never; Returns: number }
       regenerate_room_qr_token: { Args: { _room_id: string }; Returns: string }
