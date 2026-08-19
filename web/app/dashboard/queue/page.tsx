@@ -19,7 +19,7 @@ import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type FeedKind = "order" | "service_call" | "reservation" | "review";
+type FeedKind = "order" | "service_call" | "reservation" | "review" | "low_stock";
 type FilterKind = "all" | FeedKind;
 
 interface OrderPayload {
@@ -65,11 +65,24 @@ interface LowStockItem {
   stock_count: number;
 }
 
+/**
+ * A `low_stock` notification row (migration 130). The trigger writes one per
+ * threshold CROSSING, so these are point-in-time events — distinct from the
+ * `lowStock` banner above, which reflects what is low RIGHT NOW.
+ */
+interface LowStockPayload {
+  id: string;
+  item_name: string;
+  stock: number;
+  threshold: number;
+  created_at: string;
+}
+
 interface FeedEvent {
   id: string;
   kind: FeedKind;
   timestamp: string;
-  payload: OrderPayload | CallPayload | ReservationPayload | ReviewPayload;
+  payload: OrderPayload | CallPayload | ReservationPayload | ReviewPayload | LowStockPayload;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -133,6 +146,7 @@ function FeedRow({ event, tick, locale, t }: {
     service_call: "/dashboard/service",
     reservation:  "/dashboard/reservations",
     review:       "/dashboard/reviews",
+    low_stock:    "/dashboard/inventory",
   };
 
   const icon: Record<FeedKind, React.ReactNode> = {
@@ -140,6 +154,7 @@ function FeedRow({ event, tick, locale, t }: {
     service_call: <IconBell size={16} />,
     reservation:  <IconCalendar size={16} />,
     review:       <IconStar size={16} />,
+    low_stock:    <IconAlertTriangle size={16} />,
   };
 
   function renderDesc(): React.ReactNode {
@@ -187,6 +202,19 @@ function FeedRow({ event, tick, locale, t }: {
       return (
         <span>
           {t("queueReservationFor", { count: p.party_size, when: fmtReservedAt(p.reserved_at, locale) })}
+        </span>
+      );
+    }
+
+    if (event.kind === "low_stock") {
+      const p = event.payload as LowStockPayload;
+      return (
+        <span style={{ color: "var(--db-warning)", fontWeight: 600 }}>
+          {t("queueLowStockEvent", {
+            name: p.item_name,
+            stock: p.stock,
+            threshold: p.threshold,
+          })}
         </span>
       );
     }
@@ -280,6 +308,7 @@ function FilterChips({ active, onChange, t }: {
     { key: "service_call", label: t("queueFilterCalls") },
     { key: "reservation",  label: t("queueFilterReservations") },
     { key: "review",       label: t("queueFilterReviews") },
+    { key: "low_stock",    label: t("queueFilterLowStock") },
   ];
 
   return (
@@ -333,13 +362,14 @@ export default function QueuePage() {
   const callsChannel   = useRef<RealtimeChannel | null>(null);
   const resvChannel    = useRef<RealtimeChannel | null>(null);
   const reviewChannel  = useRef<RealtimeChannel | null>(null);
+  const notifChannel   = useRef<RealtimeChannel | null>(null); // low_stock events from notifications table
   const refreshTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function fetchData(bid: string) {
     const start = dayStart();
 
-    const [ordersRes, callsRes, resvRes, reviewsRes, stockRes] = await Promise.all([
+    const [ordersRes, callsRes, resvRes, reviewsRes, stockRes, notifRes] = await Promise.all([
       supabase
         .from("orders")
         .select("id, status, order_type, total_cents, table_label, created_at, status_updated_at, paid_at")
@@ -375,9 +405,19 @@ export default function QueuePage() {
         .eq("business_id", bid)
         .gt("low_stock_threshold", 0)
         .gt("stock_count", 0),
+
+      // low_stock threshold-crossing events (one row per crossing, written by migration 130 trigger)
+      supabase
+        .from("notifications")
+        .select("id, payload, created_at")
+        .eq("type", "low_stock")
+        .filter("payload->>business_id", "eq", bid)
+        .gte("created_at", start.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
-    if (ordersRes.error || callsRes.error || resvRes.error || reviewsRes.error || stockRes.error) {
+    if (ordersRes.error || callsRes.error || resvRes.error || reviewsRes.error || stockRes.error || notifRes.error) {
       setError(true);
       setLoading(false);
       return;
@@ -419,6 +459,22 @@ export default function QueuePage() {
         kind: "review",
         timestamp: rv.created_at,
         payload: rv as ReviewPayload,
+      });
+    }
+
+    for (const n of notifRes.data ?? []) {
+      const p = n.payload as { item_name: string; stock: number; threshold: number };
+      events.push({
+        id: `low_stock::${n.id}`,
+        kind: "low_stock",
+        timestamp: n.created_at as string,
+        payload: {
+          id: n.id as string,
+          item_name: p.item_name ?? "",
+          stock: p.stock ?? 0,
+          threshold: p.threshold ?? 0,
+          created_at: n.created_at as string,
+        } as LowStockPayload,
       });
     }
 
@@ -484,6 +540,12 @@ export default function QueuePage() {
           .on("postgres_changes", { event: "*", schema: "public", table: "reviews", filter: `business_id=eq.${bid}` }, reload)
           .subscribe();
 
+        // low_stock threshold-crossings: only INSERTs matter (trigger fires once per crossing)
+        notifChannel.current = supabase
+          .channel(`queue-low-stock-${bid}`)
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `type=eq.low_stock` }, reload)
+          .subscribe();
+
         refreshTimer.current = setInterval(reload, 30_000);
         tickTimer.current    = setInterval(() => { setTick((n) => n + 1); }, 60_000);
       } catch {
@@ -500,6 +562,7 @@ export default function QueuePage() {
       if (callsChannel.current)   void supabase.removeChannel(callsChannel.current);
       if (resvChannel.current)    void supabase.removeChannel(resvChannel.current);
       if (reviewChannel.current)  void supabase.removeChannel(reviewChannel.current);
+      if (notifChannel.current)   void supabase.removeChannel(notifChannel.current);
       if (refreshTimer.current)   clearInterval(refreshTimer.current);
       if (tickTimer.current)      clearInterval(tickTimer.current);
     };
