@@ -237,10 +237,11 @@ export default function OverviewPage() {
             .gte("paid_at", dayStart.toISOString())
             .lt("paid_at",  dayEnd.toISOString()),
 
-          // b) Pedidos activos — filas reales para el drill-down (máx 8)
+          // b) Pedidos activos — conteo exacto + filas para el panel (máx 8)
+          //    count: "exact" da el total real; .limit(8) solo recorta la lista del drill-down.
           supabase
             .from("orders")
-            .select("id, table_label, status, total_cents, created_at")
+            .select("id, table_label, status, total_cents, created_at", { count: "exact" })
             .eq("business_id", businessId)
             .in("status", ["pending", "confirmed", "preparing"])
             .order("created_at", { ascending: false })
@@ -282,7 +283,7 @@ export default function OverviewPage() {
 
         setKpi({
           salesTodayCents,
-          activeOrders:   ordersData.length,
+          activeOrders:   ordersRes.count ?? ordersData.length, // count real; data.length solo si count es null
           occupiedTables: uniqueOccupied,
           totalTables:    tablesData.length,
           error:          false,
