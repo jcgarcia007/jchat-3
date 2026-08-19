@@ -9,6 +9,10 @@
  * tabs, mark tabs paid/closed, and attach/detach recent unassigned orders via
  * the attach_order_to_tab RPC.
  *
+ * Also lets the owner assign / remove waiters for this table inline, writing
+ * to table_waiters (same as WaiterAssignment). business_id is set by trigger
+ * 070 — do NOT send it; cast payload as never.
+ *
  * Reads are owner-scoped by RLS (the dashboard actor is the business owner or a
  * platform admin — a mesero can't reach the web dashboard). Honest states:
  * loading / empty / load-error (distinct, with Reintentar). Tokens: --db-* only.
@@ -72,6 +76,11 @@ interface Item {
   special_instructions: string | null;
 }
 
+interface WaiterEntry {
+  employeeId: string;
+  name: string;
+}
+
 function rpcErrorMessage(msg: string, t: TFn): string {
   if (msg.includes("NOT_ALLOWED")) return t("tablesNoPermission");
   if (msg.includes("CROSS_BUSINESS")) return t("tablesDetailCrossBusiness");
@@ -97,10 +106,12 @@ export function TableDetailPanel({
   table,
   businessId,
   onClose,
+  onWaitersChanged,
 }: {
   table: PanelTable;
   businessId: string;
   onClose: () => void;
+  onWaitersChanged?: () => void;
 }) {
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
@@ -109,7 +120,13 @@ export function TableDetailPanel({
   const [items, setItems] = useState<Item[]>([]);
   const [menuNames, setMenuNames] = useState<Map<string, string>>(new Map());
   const [unassigned, setUnassigned] = useState<OrderLite[]>([]);
-  const [waiterNames, setWaiterNames] = useState<string[]>([]);
+
+  // Waiter assignment state
+  const [allWaiters, setAllWaiters] = useState<WaiterEntry[]>([]);
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  const [waiterSel, setWaiterSel] = useState("");
+  const [busyWaiter, setBusyWaiter] = useState<Set<string>>(new Set());
+  const [waiterError, setWaiterError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -143,7 +160,7 @@ export function TableDetailPanel({
 
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      const [attachedRes, unassignedRes, waitersRes] = await Promise.all([
+      const [attachedRes, unassignedRes, waitersRes, allEmpsRes] = await Promise.all([
         tabIds.length
           ? supabase.from("orders").select("id, tab_id, total_cents, status, created_at").in("tab_id", tabIds)
           : Promise.resolve({ data: [], error: null }),
@@ -157,6 +174,11 @@ export function TableDetailPanel({
           .order("created_at", { ascending: false })
           .limit(25),
         supabase.from("table_waiters").select("employee_id").eq("table_id", table.id),
+        supabase
+          .from("employees")
+          .select("id, user_id")
+          .eq("business_id", businessId)
+          .eq("status", "accepted"),
       ]);
       if (attachedRes.error) throw attachedRes.error;
       if (unassignedRes.error) throw unassignedRes.error;
@@ -180,25 +202,30 @@ export function TableDetailPanel({
         names = new Map(((mi ?? []) as { id: string; name: string }[]).map((m) => [m.id, m.name]));
       }
 
-      // Assigned waiter names (employees → public_profiles).
-      const empIds = [...new Set(((waitersRes.data ?? []) as { employee_id: string }[]).map((w) => w.employee_id))];
-      let wNames: string[] = [];
-      if (empIds.length) {
-        const { data: emps } = await supabase.from("employees").select("id, user_id").in("id", empIds);
-        const userIds = [...new Set(((emps ?? []) as { id: string; user_id: string }[]).map((e) => e.user_id))];
-        if (userIds.length) {
-          const { data: profs } = await supabase
-            .from("public_profiles")
-            .select("id, username, display_name")
-            .in("id", userIds);
-          const pmap = new Map(
-            ((profs ?? []) as { id: string; username: string; display_name: string | null }[]).map((p) => [
-              p.id,
-              p.display_name ?? p.username,
-            ]),
-          );
-          wNames = ((emps ?? []) as { id: string; user_id: string }[]).map((e) => pmap.get(e.user_id) ?? "—");
-        }
+      // Build waiter data: all accepted employees + who's assigned to this table.
+      // allEmpsRes soft-fails — if it errors we just show an empty waiter list.
+      const allEmps = (allEmpsRes.data ?? []) as { id: string; user_id: string }[];
+      const assignedSet = new Set(
+        ((waitersRes.data ?? []) as { employee_id: string }[]).map((w) => w.employee_id),
+      );
+
+      let allWaitersBuilt: WaiterEntry[] = [];
+      if (allEmps.length) {
+        const userIds = [...new Set(allEmps.map((e) => e.user_id))];
+        const { data: profs } = await supabase
+          .from("public_profiles")
+          .select("id, username, display_name")
+          .in("id", userIds);
+        const pmap = new Map(
+          ((profs ?? []) as { id: string; username: string | null; display_name: string | null }[]).map((p) => [
+            p.id,
+            p.display_name ?? p.username ?? "—",
+          ]),
+        );
+        allWaitersBuilt = allEmps.map((e) => ({
+          employeeId: e.id,
+          name: pmap.get(e.user_id) ?? "—",
+        }));
       }
 
       setTabs(tabRows);
@@ -206,7 +233,8 @@ export function TableDetailPanel({
       setItems(itemRows);
       setMenuNames(names);
       setUnassigned((unassignedRes.data ?? []) as OrderLite[]);
-      setWaiterNames(wNames);
+      setAllWaiters(allWaitersBuilt);
+      setAssignedIds(assignedSet);
     } catch {
       setLoadError(true);
     } finally {
@@ -235,6 +263,11 @@ export function TableDetailPanel({
   const unpaidTotal = tabs.filter(isTabDebt).reduce((s, t) => s + tabTotal(t.id), 0);
   // Already collected = prepaid customer tabs + waiter tabs marked paid.
   const collectedTotal = tabs.filter(isTabCollected).reduce((s, t) => s + tabTotal(t.id), 0);
+
+  // Derive assigned / available waiter lists from state
+  const assignedWaiters = allWaiters.filter((w) => assignedIds.has(w.employeeId));
+  const availableWaiters = allWaiters.filter((w) => !assignedIds.has(w.employeeId));
+  const waiterNames = assignedWaiters.map((w) => w.name);
 
   function toggleExpand(id: string) {
     setExpanded((s) => {
@@ -305,6 +338,58 @@ export function TableDetailPanel({
     await load();
   }
 
+  async function assignWaiter(employeeId: string) {
+    setWaiterError(null);
+    setBusyWaiter((s) => new Set(s).add(employeeId));
+    // business_id is set by trigger 070 — do NOT send it.
+    const payload = { table_id: table.id, employee_id: employeeId } as never;
+    const { error } = await supabase.from("table_waiters").insert(payload);
+    setBusyWaiter((s) => {
+      const n = new Set(s);
+      n.delete(employeeId);
+      return n;
+    });
+    if (error) {
+      const code = (error as { code?: string }).code ?? "";
+      setWaiterError(
+        code === "23505"
+          ? t("tablesWaiterAlreadyAssigned")
+          : code === "42501"
+          ? t("tablesNoPermissionAssign")
+          : t("tablesAssignUpdateError"),
+      );
+      return;
+    }
+    setWaiterSel("");
+    await load();
+    onWaitersChanged?.();
+  }
+
+  async function removeWaiter(employeeId: string) {
+    setWaiterError(null);
+    setBusyWaiter((s) => new Set(s).add(employeeId));
+    const { error } = await supabase
+      .from("table_waiters")
+      .delete()
+      .eq("table_id", table.id)
+      .eq("employee_id", employeeId);
+    setBusyWaiter((s) => {
+      const n = new Set(s);
+      n.delete(employeeId);
+      return n;
+    });
+    if (error) {
+      setWaiterError(
+        (error as { code?: string }).code === "42501"
+          ? t("tablesNoPermissionAssign")
+          : t("tablesAssignUpdateError"),
+      );
+      return;
+    }
+    await load();
+    onWaitersChanged?.();
+  }
+
   return (
     <aside
       role="dialog"
@@ -365,6 +450,102 @@ export function TableDetailPanel({
           </div>
         ) : (
           <>
+            {/* Waiters */}
+            <Section title={t("tablesDetailWaitersSection")}>
+              {/* Assigned chips */}
+              {assignedWaiters.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {assignedWaiters.map((w) => (
+                    <span
+                      key={w.employeeId}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "3px 8px 3px 10px",
+                        borderRadius: "999px",
+                        background: "color-mix(in srgb, var(--db-accent) 12%, transparent)",
+                        color: "var(--db-accent)",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {w.name}
+                      <button
+                        type="button"
+                        disabled={busyWaiter.has(w.employeeId)}
+                        onClick={() => void removeWaiter(w.employeeId)}
+                        aria-label={t("tablesDetailRemoveWaiterAria", { name: w.name })}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "16px",
+                          height: "16px",
+                          borderRadius: "50%",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--db-accent)",
+                          padding: 0,
+                          opacity: busyWaiter.has(w.employeeId) ? 0.4 : 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <IconX size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* No waiter assigned */}
+              {assignedWaiters.length === 0 && (
+                <Empty>{t("tablesDetailNoWaiterAssigned")}</Empty>
+              )}
+
+              {/* Assign row */}
+              {allWaiters.length === 0 ? (
+                <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginTop: "4px" }}>
+                  {t("tablesNoEmployeesYet")}{" "}
+                  <a href="/dashboard/employees" style={{ color: "var(--db-accent)", fontWeight: 600 }}>
+                    {t("tablesAddEmployeesLink")}
+                  </a>
+                </div>
+              ) : availableWaiters.length === 0 ? (
+                <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginTop: "4px" }}>
+                  {t("tablesDetailAllWaitersAssigned")}
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: assignedWaiters.length > 0 ? "4px" : 0 }}>
+                  <select
+                    value={waiterSel}
+                    onChange={(e) => setWaiterSel(e.target.value)}
+                    style={{ ...inputStyle, flex: 1, fontSize: "13px", padding: "7px 10px" }}
+                  >
+                    <option value="">{t("tablesDetailChooseWaiterOption")}</option>
+                    {availableWaiters.map((w) => (
+                      <option key={w.employeeId} value={w.employeeId}>{w.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!waiterSel || busyWaiter.size > 0}
+                    onClick={() => { if (waiterSel) void assignWaiter(waiterSel); }}
+                    style={{ ...secondaryBtn, opacity: !waiterSel || busyWaiter.size > 0 ? 0.5 : 1 }}
+                  >
+                    {t("tablesDetailAssignButton")}
+                  </button>
+                </div>
+              )}
+
+              {waiterError && (
+                <div style={{ fontSize: "12px", color: "var(--db-danger)", marginTop: "2px" }}>
+                  {waiterError}
+                </div>
+              )}
+            </Section>
+
             {/* Tabs */}
             <Section title={t("tablesDetailTabsSection")}>
               {tabs.length === 0 ? (

@@ -670,6 +670,7 @@ export default function TablesPage() {
           table={detailTable}
           businessId={activeId}
           onClose={() => setDetailTable(null)}
+          onWaitersChanged={() => void loadWaiterCounts()}
         />
       )}
 
