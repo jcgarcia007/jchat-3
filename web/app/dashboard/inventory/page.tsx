@@ -35,6 +35,7 @@ import {
   IconPlus,
   IconDownload,
   IconSearch,
+  IconBarcode,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -519,6 +520,9 @@ export default function InventoryPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   // "Add Product" form fields
+  const [newBarcode, setNewBarcode]               = useState("");
+  const [lookingUp, setLookingUp]                 = useState(false);
+  const [catalogHint, setCatalogHint]             = useState<{ found: boolean; text: string } | null>(null);
   const [newName, setNewName]                     = useState("");
   const [newStock, setNewStock]                   = useState("");
   const [newThreshold, setNewThreshold]           = useState("");
@@ -855,6 +859,68 @@ export default function InventoryPage() {
     reader.readAsText(file);
   }
 
+  // ── Barcode catalog lookup ───────────────────────────────────────────────────
+  async function lookupBarcode() {
+    const code = newBarcode.trim();
+    if (!code) return;
+
+    // Demo mode: no RPC available, show "not in catalog" note.
+    if (!isSupabaseConfigured) {
+      setCatalogHint({ found: false, text: t("inventoryCatalogNotFoundHint") });
+      return;
+    }
+
+    setLookingUp(true);
+    setCatalogHint(null);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("catalog_lookup", { p_barcode: code });
+      if (rpcErr) throw rpcErr;
+
+      const row = (data as {
+        barcode: string | null;
+        brand: string | null;
+        name: string | null;
+        size_value: number | null;
+        size_unit: string | null;
+        packaging: string | null;
+        category: string | null;
+        subcategory: string | null;
+        image_url: string | null;
+      }[] | null)?.[0];
+
+      if (!row) {
+        setCatalogHint({ found: false, text: t("inventoryCatalogNotFoundHint") });
+        return;
+      }
+
+      // Pre-fill name: "[brand] [name] [size_value size_unit]" — collapse blanks
+      const parts: string[] = [];
+      if (row.brand)      parts.push(row.brand);
+      if (row.name)       parts.push(row.name);
+      if (row.size_value != null && row.size_unit) parts.push(`${row.size_value} ${row.size_unit}`);
+      else if (row.packaging) parts.push(row.packaging);
+      const composed = parts.join(" ").replace(/\s{2,}/g, " ").trim();
+      if (composed) setNewName(composed);
+
+      // Hint text: "Found in catalog: [brand] · [size_value size_unit]"
+      const hintParts: string[] = [];
+      if (row.brand)      hintParts.push(row.brand);
+      if (row.size_value != null && row.size_unit) hintParts.push(`${row.size_value} ${row.size_unit}`);
+      else if (row.packaging) hintParts.push(row.packaging);
+      if (row.category)   hintParts.push(row.category);
+      const hintDetail = hintParts.join(" · ");
+      setCatalogHint({
+        found: true,
+        text: `${t("inventoryCatalogFoundHint")}${hintDetail ? ": " + hintDetail : ""}`,
+      });
+    } catch {
+      // Non-fatal: the barcode is still saved; just clear the hint
+      setCatalogHint({ found: false, text: t("inventoryCatalogNotFoundHint") });
+    } finally {
+      setLookingUp(false);
+    }
+  }
+
   // ── Manual add product ───────────────────────────────────────────────────────
   async function addProduct() {
     const name         = newName.trim();
@@ -915,6 +981,7 @@ export default function InventoryPage() {
           },
         ].sort((a, b) => a.name.localeCompare(b.name)),
       );
+      setNewBarcode(""); setCatalogHint(null);
       setNewName(""); setNewStock(""); setNewThreshold("");
       setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
       setNewParLevel("");
@@ -952,6 +1019,7 @@ export default function InventoryPage() {
           stock_count:         stockNum,
           low_stock_threshold: thresholdNum,
           par_level:           parNum,
+          barcode:             newBarcode.trim() || null,
           price_cents:         0,
         })
         .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published")
@@ -971,6 +1039,7 @@ export default function InventoryPage() {
       setItems((prev) =>
         [...prev, inserted as MenuItem].sort((a, b) => a.name.localeCompare(b.name)),
       );
+      setNewBarcode(""); setCatalogHint(null);
       setNewName(""); setNewStock(""); setNewThreshold("");
       setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
       setNewParLevel("");
@@ -1153,6 +1222,57 @@ export default function InventoryPage() {
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "14px" }}>
           {t("inventoryAddProductDescription")}
         </p>
+
+        {/* Row 0: Barcode scanner / manual entry */}
+        <div style={{ marginBottom: "12px" }}>
+          <label style={addLabelStyle}>
+            <IconBarcode size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} />
+            {t("inventoryBarcodeLabel")}
+          </label>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={newBarcode}
+              onChange={(e) => { setNewBarcode(e.target.value); setCatalogHint(null); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); void lookupBarcode(); }
+              }}
+              placeholder="0 000000 000000"
+              style={{ ...inputStyle, flex: 1, fontFamily: "var(--font-mono, monospace)", letterSpacing: "0.04em" }}
+            />
+            <button
+              type="button"
+              onClick={() => void lookupBarcode()}
+              disabled={lookingUp || !newBarcode.trim()}
+              style={{
+                ...btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)"),
+                opacity: lookingUp || !newBarcode.trim() ? 0.5 : 1,
+                cursor:  lookingUp || !newBarcode.trim() ? "not-allowed" : "pointer",
+              }}
+            >
+              <IconSearch size={14} />
+              {lookingUp ? "…" : t("inventoryBarcodeSearchButton")}
+            </button>
+          </div>
+          {/* Catalog hint */}
+          {catalogHint && (
+            <div
+              style={{
+                marginTop: "6px",
+                fontSize: "12px",
+                color: catalogHint.found ? "var(--db-success)" : "var(--db-text-tertiary)",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+              }}
+            >
+              {catalogHint.found
+                ? <IconCheck size={12} />
+                : <IconAlertCircle size={12} />}
+              {catalogHint.text}
+            </div>
+          )}
+        </div>
 
         {/* Row 1: Category (required) + Par level (optional) */}
         <div

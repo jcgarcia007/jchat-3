@@ -1367,6 +1367,7 @@ export type Database = {
       menu_items: {
         Row: {
           badge: string | null
+          barcode: string | null
           business_id: string
           category_id: string
           created_at: string
@@ -1395,6 +1396,7 @@ export type Database = {
         }
         Insert: {
           badge?: string | null
+          barcode?: string | null
           business_id: string
           category_id: string
           created_at?: string
@@ -1423,6 +1425,7 @@ export type Database = {
         }
         Update: {
           badge?: string | null
+          barcode?: string | null
           business_id?: string
           category_id?: string
           created_at?: string
@@ -3715,6 +3718,20 @@ export type Database = {
       can_view_user_content: {
         Args: { dimension: string; owner: string; viewer: string }
         Returns: boolean
+      }
+      catalog_lookup: {
+        Args: { p_barcode: string }
+        Returns: {
+          barcode: string | null
+          brand: string | null
+          name: string | null
+          size_value: number | null
+          size_unit: string | null
+          packaging: string | null
+          category: string | null
+          subcategory: string | null
+          image_url: string | null
+        }[]
       }
       check_geofence_and_join_room: {
         Args: { _lat: number; _lng: number; _room_id: string }
