@@ -1129,6 +1129,8 @@
     "metricsCSVWithinSla": "Dentro de meta",
     "metricsCSVYes": "Sí",
     "metricsCSVNo": "No",
+    "metricsDeltaBetter": "mejor",
+    "metricsDeltaWorse": "peor",
     "metricsEmpty": "Sin datos en este período",
     "metricsEmptySub": "Las órdenes procesadas en este rango aparecerán aquí.",
     "metricsErrorLoad": "Error al cargar las métricas.",

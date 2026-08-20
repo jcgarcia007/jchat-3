@@ -773,45 +773,51 @@ export default function MetricsPage() {
       {!loadingRpc && !isEmpty && metrics && (
         <>
           {/* Section 1 — KPI cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px", marginBottom: "20px" }}>
-            <KpiCard
-              label={t("metricsKpiSla")}
-              sub={t("metricsKpiSlaSub")}
-              value={overall?.sla_pct != null ? `${overall.sla_pct}%` : "—"}
-              icon={<IconStar size={14} />}
-              accent={slaPctColor(overall?.sla_pct ?? null)}
-              delta={buildDelta(overall?.sla_pct ?? null, prev?.sla_pct ?? null, "sla")}
-            />
-            <KpiCard
-              label={t("metricsCardQueue")}
-              sub={t("metricsCardQueueSub")}
-              value={fmtSecs(overall?.queue_secs)}
-              accent="var(--db-warning)"
-              delta={buildDelta(overall?.queue_secs ?? null, prev?.queue_secs ?? null, "time")}
-            />
-            <KpiCard
-              label={t("metricsCardPrep")}
-              sub={t("metricsCardPrepSub")}
-              value={fmtSecs(overall?.prep_secs)}
-              accent="var(--db-accent)"
-              delta={buildDelta(overall?.prep_secs ?? null, prev?.prep_secs ?? null, "time")}
-            />
-            <KpiCard
-              label={t("metricsCardPickup")}
-              sub={t("metricsCardPickupSub")}
-              value={fmtSecs(overall?.pickup_secs)}
-              accent="var(--db-success)"
-              delta={buildDelta(overall?.pickup_secs ?? null, prev?.pickup_secs ?? null, "time")}
-            />
-            <KpiCard
-              label={t("metricsCardItems")}
-              sub={t("metricsKpiItemsSub")}
-              value={String(overall?.count ?? 0)}
-              accent="var(--db-text-secondary)"
-              large={false}
-              delta={null}
-            />
-          </div>
+          {(() => {
+            const better = t("metricsDeltaBetter");
+            const worse  = t("metricsDeltaWorse");
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px", marginBottom: "20px" }}>
+                <KpiCard
+                  label={t("metricsKpiSla")}
+                  sub={t("metricsKpiSlaSub")}
+                  value={overall?.sla_pct != null ? `${overall.sla_pct}%` : "—"}
+                  icon={<IconStar size={14} />}
+                  accent={slaPctColor(overall?.sla_pct ?? null)}
+                  delta={buildDelta(overall?.sla_pct ?? null, prev?.sla_pct ?? null, "sla", better, worse)}
+                />
+                <KpiCard
+                  label={t("metricsCardQueue")}
+                  sub={t("metricsCardQueueSub")}
+                  value={fmtSecs(overall?.queue_secs)}
+                  accent="var(--db-warning)"
+                  delta={buildDelta(overall?.queue_secs ?? null, prev?.queue_secs ?? null, "time", better, worse)}
+                />
+                <KpiCard
+                  label={t("metricsCardPrep")}
+                  sub={t("metricsCardPrepSub")}
+                  value={fmtSecs(overall?.prep_secs)}
+                  accent="var(--db-accent)"
+                  delta={buildDelta(overall?.prep_secs ?? null, prev?.prep_secs ?? null, "time", better, worse)}
+                />
+                <KpiCard
+                  label={t("metricsCardPickup")}
+                  sub={t("metricsCardPickupSub")}
+                  value={fmtSecs(overall?.pickup_secs)}
+                  accent="var(--db-success)"
+                  delta={buildDelta(overall?.pickup_secs ?? null, prev?.pickup_secs ?? null, "time", better, worse)}
+                />
+                <KpiCard
+                  label={t("metricsCardItems")}
+                  sub={t("metricsKpiItemsSub")}
+                  value={String(overall?.count ?? 0)}
+                  accent="var(--db-text-secondary)"
+                  large={false}
+                  delta={null}
+                />
+              </div>
+            );
+          })()}
 
           {/* Section 2 — Platos por hora */}
           {metrics.by_hour.length > 0 && (
@@ -1002,16 +1008,21 @@ export default function MetricsPage() {
                 const d = new Date(order.created_at);
                 const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
+                const toggleExpanded = () => setExpanded((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(order.id)) next.delete(order.id);
+                  else next.add(order.id);
+                  return next;
+                });
                 return [
                   <TRow
                     key={order.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
                     style={{ cursor: "pointer" }}
-                    onClick={() => setExpanded((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(order.id)) next.delete(order.id);
-                      else next.add(order.id);
-                      return next;
-                    })}
+                    onClick={toggleExpanded}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExpanded(); } }}
                   >
                     <TD>
                       <span style={{ color: "var(--db-text-tertiary)", display: "flex", alignItems: "center" }}>
@@ -1094,19 +1105,28 @@ export default function MetricsPage() {
 interface DeltaInfo {
   label: string;
   good: boolean;
+  suffix: string; // already-resolved "better"/"worse" in the UI locale
 }
 
-function buildDelta(cur: number | null, prev: number | null, kind: "time" | "sla"): DeltaInfo | null {
+function buildDelta(
+  cur: number | null,
+  prev: number | null,
+  kind: "time" | "sla",
+  betterStr: string,
+  worseStr: string,
+): DeltaInfo | null {
   if (cur == null || prev == null || prev === 0) return null;
   if (kind === "sla") {
     const diff = cur - prev;
     if (diff === 0) return null;
-    return { label: `${diff > 0 ? "+" : ""}${diff} pts`, good: diff > 0 };
+    const good = diff > 0;
+    return { label: `${good ? "+" : ""}${diff} pts`, good, suffix: good ? betterStr : worseStr };
   }
   // time: less is better
   const pct = Math.round(((prev - cur) / prev) * 100);
   if (pct === 0) return null;
-  return { label: `${pct > 0 ? "−" : "+"}${Math.abs(pct)}%`, good: pct > 0 };
+  const good = pct > 0;
+  return { label: `${good ? "−" : "+"}${Math.abs(pct)}%`, good, suffix: good ? betterStr : worseStr };
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -1150,7 +1170,7 @@ function KpiCard({
       <div style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>{sub}</div>
       {delta && (
         <div style={{ marginTop: "6px", fontSize: "11px", fontWeight: 700, color: delta.good ? "var(--db-success)" : "var(--db-danger)" }}>
-          {delta.good ? "▲" : "▼"} {delta.label} {delta.good ? "mejor" : "peor"}
+          {delta.good ? "▲" : "▼"} {delta.label} {delta.suffix}
         </div>
       )}
     </div>
@@ -1196,9 +1216,26 @@ function TH({ children, style }: { children?: React.ReactNode; style?: React.CSS
   );
 }
 
-function TRow({ children, onClick, style }: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties }) {
+function TRow({
+  children, onClick, onKeyDown, role, tabIndex, "aria-expanded": ariaExpanded, style,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTableRowElement>) => void;
+  role?: string;
+  tabIndex?: number;
+  "aria-expanded"?: boolean;
+  style?: React.CSSProperties;
+}) {
   return (
-    <tr onClick={onClick} style={{ borderBottom: "1px solid var(--db-border)", ...style }}>
+    <tr
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      role={role}
+      tabIndex={tabIndex}
+      aria-expanded={ariaExpanded}
+      style={{ borderBottom: "1px solid var(--db-border)", ...style }}
+    >
       {children}
     </tr>
   );

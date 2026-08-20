@@ -1129,6 +1129,8 @@
     "metricsCSVWithinSla": "Within Target",
     "metricsCSVYes": "Yes",
     "metricsCSVNo": "No",
+    "metricsDeltaBetter": "better",
+    "metricsDeltaWorse": "worse",
     "metricsEmpty": "No data for this period",
     "metricsEmptySub": "Orders processed in this range will appear here.",
     "metricsErrorLoad": "Failed to load metrics.",
