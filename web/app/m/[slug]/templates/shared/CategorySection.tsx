@@ -141,7 +141,8 @@ export function ItemCard({
     revealDescStyle,
   } = buildEffectStyles(effect, isHovered, mx, my);
 
-  const primaryUrl = item.photos[0]?.url ?? item.photo_url;
+  const galleryUrl = item.photos.find((p) => p.url && p.url.trim() !== "")?.url;
+  const primaryUrl = galleryUrl ?? (item.photo_url && item.photo_url.trim() !== "" ? item.photo_url : undefined);
 
   return (
     <div
