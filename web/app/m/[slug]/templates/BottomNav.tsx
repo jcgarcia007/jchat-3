@@ -133,7 +133,7 @@ export default function BottomNav({
                   borderRadius: "var(--radius-md, 10px)",
                   border: "none",
                   background: active ? "var(--color-brand-light, rgba(92,124,250,0.12))" : "transparent",
-                  color: active ? "var(--color-brand, #5C7CFA)" : "var(--text-muted)",
+                  color: active ? "var(--color-brand, #5C7CFA)" : "var(--text-tertiary)",
                   cursor: "pointer",
                   transition: "background 0.15s, color 0.15s",
                   whiteSpace: "nowrap",

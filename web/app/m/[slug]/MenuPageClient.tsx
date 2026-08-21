@@ -1973,7 +1973,7 @@ export default function MenuPageClient({
       </MenuPaletteContext.Provider>
 
       {/* Templates that render their own docked cart bar suppress the shared FAB. */}
-      {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized"].includes(business.menu_template_id) && (
+      {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized", "bottom-nav"].includes(business.menu_template_id) && (
         <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
       )}
 
