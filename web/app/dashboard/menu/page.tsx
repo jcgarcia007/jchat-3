@@ -230,7 +230,19 @@ const BADGE_OPTIONS: { value: Badge; label: string }[] = [
 ];
 
 // Menu template options — shared by the selector grid and the collapsed summary.
-const MENU_TEMPLATE_OPTIONS = [
+// hidden?: true → the entry exists in the renderer switch but is NOT shown in
+// the selector UI. Useful for in-progress templates that can be tested by setting
+// businesses.menu_template_id directly via MCP/Supabase, without exposing them
+// to owners yet. Remove hidden:true to graduate a template to general availability.
+type TemplateOption = {
+  id: string;
+  name: string;
+  desc: string;
+  emoji: string;
+  hidden?: true;
+};
+
+const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "classic",         name: "Clásica (actual)",      desc: "El diseño de menú actual de JChat — chips de categoría + grid de tarjetas con efectos.", emoji: "⭐" },
   { id: "bottom-nav",      name: "Barra inferior",        desc: "Pestañas abajo + cuadrícula",  emoji: "📱" },
   { id: "left-drawer",     name: "Cajón lateral",         desc: "Menú hamburguesa",             emoji: "☰" },
@@ -252,7 +264,39 @@ const MENU_TEMPLATE_OPTIONS = [
   { id: "ai-personalized", name: "IA personalizada",      desc: "Se reordena por cliente",      emoji: "🤖" },
   { id: "immersive",       name: "Inmersivo",             desc: "Cada platillo a pantalla completa", emoji: "🖼️" },
   { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
-] as const;
+];
+
+/**
+ * Thumbnail for a template card in the selector.
+ * Falls back to an emoji placeholder if the PNG is missing.
+ */
+function TemplateThumb({ id, emoji, alt }: { id: string; emoji: string; alt: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div
+        style={{
+          width: "100%", height: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--db-bg-elevated)", fontSize: 36,
+          borderRadius: "var(--db-radius-card)",
+        }}
+      >
+        {emoji}
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/menu-templates/${id}.png`}
+      alt={alt}
+      loading="lazy"
+      onError={() => setBroken(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
+    />
+  );
+}
 
 // Card hover-effect options — shared by the selector grid and the collapsed summary.
 const CARD_EFFECT_OPTIONS = [
@@ -4806,7 +4850,7 @@ export default function MenuPage() {
               marginTop: 16,
             }}
           >
-            {MENU_TEMPLATE_OPTIONS.map((opt) => {
+            {MENU_TEMPLATE_OPTIONS.filter((opt) => !opt.hidden).map((opt) => {
               const active = menuTemplate === opt.id;
               const saving = savingTemplate === opt.id;
               const hovered = hoveredTemplate === opt.id;
@@ -4847,18 +4891,10 @@ export default function MenuPage() {
                       background: "var(--db-bg-elevated)",
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/menu-templates/${opt.id}.png`}
+                    <TemplateThumb
+                      id={opt.id}
+                      emoji={opt.emoji}
                       alt={t("menuTemplatePreviewAlt", { name: templateLabels[opt.id] ?? opt.id })}
-                      loading="lazy"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "top",
-                        display: "block",
-                      }}
                     />
                     {saving && (
                       <div
@@ -4897,11 +4933,6 @@ export default function MenuPage() {
                       {active && (
                         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--db-accent)", flexShrink: 0 }}>
                           {t("menuTemplateActiveBadge")}
-                        </span>
-                      )}
-                      {opt.id === "bottom-nav" && !active && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--db-text-tertiary)", flexShrink: 0, letterSpacing: "0.03em" }}>
-                          Próximamente
                         </span>
                       )}
                     </div>

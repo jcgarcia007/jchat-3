@@ -20,6 +20,7 @@ import Stories from "./Stories";
 import CardStack from "./CardStack";
 import Gesture from "./Gesture";
 import AiPersonalized from "./AiPersonalized";
+import BottomNav from "./BottomNav";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -72,8 +73,7 @@ export default function MenuTemplateRenderer({
     case "ai-personalized":
       return <AiPersonalized {...props} />;
     case "bottom-nav":
-      // TODO: portar bottom-nav real del board (#01)
-      return <Classic {...props} />;
+      return <BottomNav {...props} />;
     default:
       return <Classic {...props} />;
   }
