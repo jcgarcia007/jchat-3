@@ -23,6 +23,9 @@ import AiPersonalized from "./AiPersonalized";
 import BottomNav from "./BottomNav";
 import Bento from "./Bento";
 import HeroList from "./HeroList";
+import SplitDiagonal from "./SplitDiagonal";
+import Polaroid from "./Polaroid";
+import Catalog from "./Catalog";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -80,6 +83,12 @@ export default function MenuTemplateRenderer({
       return <Bento {...props} />;
     case "hero-list":
       return <HeroList {...props} />;
+    case "split-diagonal":
+      return <SplitDiagonal {...props} />;
+    case "polaroid":
+      return <Polaroid {...props} />;
+    case "catalog":
+      return <Catalog {...props} />;
     default:
       return <Classic {...props} />;
   }

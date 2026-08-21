@@ -266,6 +266,9 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
   { id: "bento",           name: "Bento",                 desc: "Bloques de distinto tamaño",   emoji: "🍱", hidden: true },
   { id: "hero-list",       name: "Hero + Lista",          desc: "Foto gigante del plato estrella arriba, lista debajo", emoji: "🖼️", hidden: true },
+  { id: "split-diagonal",  name: "Split Diagonal",        desc: "Foto en diagonal, info al lado", emoji: "◣", hidden: true },
+  { id: "polaroid",        name: "Polaroid",              desc: "Fotos instantánea con marquito", emoji: "📸", hidden: true },
+  { id: "catalog",         name: "Catálogo",              desc: "Rejilla tipo tienda con filtros", emoji: "🛍️", hidden: true },
 ];
 
 /**
@@ -4354,6 +4357,9 @@ export default function MenuPage() {
     luxury: t("menuTemplateLuxury"),
     bento: t("menuTemplateBento"),
     "hero-list": t("menuTemplateHeroList"),
+    "split-diagonal": t("menuTemplateSplitDiagonal"),
+    polaroid: t("menuTemplatePolaroid"),
+    catalog: t("menuTemplateCatalog"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4379,6 +4385,9 @@ export default function MenuPage() {
     luxury: t("menuTemplateDescLuxury"),
     bento: t("menuTemplateDescBento"),
     "hero-list": t("menuTemplateDescHeroList"),
+    "split-diagonal": t("menuTemplateDescSplitDiagonal"),
+    polaroid: t("menuTemplateDescPolaroid"),
+    catalog: t("menuTemplateDescCatalog"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),
