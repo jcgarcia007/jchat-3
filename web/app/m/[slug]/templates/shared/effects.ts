@@ -41,7 +41,9 @@ export function buildEffectStyles(
   };
   let photoWrapStyle: React.CSSProperties = {
     position: "relative",
-    aspectRatio: "16 / 10",
+    width: "100%",
+    height: 0,
+    paddingBottom: "62.5%", // 10/16 = 62.5% — padding-bottom trick (universal browser support)
     overflow: "hidden",
   };
   let imgStyle: React.CSSProperties = {
@@ -78,7 +80,7 @@ export function buildEffectStyles(
   } else if (eff === "reveal") {
     belowInfo = false;
     revealInfo = true;
-    photoWrapStyle = { ...photoWrapStyle, aspectRatio: "3 / 4" };
+    photoWrapStyle = { ...photoWrapStyle, paddingBottom: "133.333%" }; // 4/3 — portrait ratio, overrides default 62.5%
     cardStyle = {
       ...cardStyle,
       transition: "box-shadow .3s ease",
