@@ -264,6 +264,8 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "ai-personalized", name: "IA personalizada",      desc: "Se reordena por cliente",      emoji: "🤖" },
   { id: "immersive",       name: "Inmersivo",             desc: "Cada platillo a pantalla completa", emoji: "🖼️" },
   { id: "luxury",          name: "Lujo experimental",     desc: "Un objeto por capítulo",       emoji: "💎" },
+  { id: "bento",           name: "Bento",                 desc: "Bloques de distinto tamaño",   emoji: "🍱", hidden: true },
+  { id: "hero-list",       name: "Hero + Lista",          desc: "Foto gigante del plato estrella arriba, lista debajo", emoji: "🖼️", hidden: true },
 ];
 
 /**
@@ -4350,6 +4352,8 @@ export default function MenuPage() {
     "ai-personalized": t("menuTemplateAiPersonalized"),
     immersive: t("menuTemplateImmersive"),
     luxury: t("menuTemplateLuxury"),
+    bento: t("menuTemplateBento"),
+    "hero-list": t("menuTemplateHeroList"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4373,6 +4377,8 @@ export default function MenuPage() {
     "ai-personalized": t("menuTemplateDescAiPersonalized"),
     immersive: t("menuTemplateDescImmersive"),
     luxury: t("menuTemplateDescLuxury"),
+    bento: t("menuTemplateDescBento"),
+    "hero-list": t("menuTemplateDescHeroList"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

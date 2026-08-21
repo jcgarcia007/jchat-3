@@ -21,6 +21,8 @@ import CardStack from "./CardStack";
 import Gesture from "./Gesture";
 import AiPersonalized from "./AiPersonalized";
 import BottomNav from "./BottomNav";
+import Bento from "./Bento";
+import HeroList from "./HeroList";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -74,6 +76,10 @@ export default function MenuTemplateRenderer({
       return <AiPersonalized {...props} />;
     case "bottom-nav":
       return <BottomNav {...props} />;
+    case "bento":
+      return <Bento {...props} />;
+    case "hero-list":
+      return <HeroList {...props} />;
     default:
       return <Classic {...props} />;
   }
