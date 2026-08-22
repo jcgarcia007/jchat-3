@@ -1,19 +1,24 @@
 /**
- * JChat 3.0 — Dashboard Inventory Management (Task 3.10)
- * Updated: Ladrillo 1 — category grouping, search, filters, Par column.
+ * JChat 3.0 — Dashboard Inventory Management (Task 3.10) — v2
+ * Redesigned: flat sortable table, cost/value columns, checkboxes, CSV export.
  *
  * Features:
- *  1. Product list grouped by category, with Par column (read-only).
- *  2. Inline stock edit — updates menu_items + logs stock_movements.
- *  3. Low-stock threshold — editable per product.
+ *  1. Flat table sortable by ALL columns (click header → asc/desc toggle).
+ *  2. Inline stock edit per row — updates menu_items + logs stock_movements.
+ *  3. Low-stock threshold editable inline per row.
  *  4. "Hidden" badge when stock_count === 0 (getMenu filters these out).
- *  5. Stock movement history log.
+ *  5. Stock movement history log (collapsible, lazy-loaded).
  *  6. Bulk CSV import.
- *  7. Search (client-side) + category chips + status tiles (combinable).
- *  8. "Add Product" form with required category selector + optional par level.
+ *  7. Search + category chips + status tiles (combinable filters).
+ *  8. "Add Product" with required category + optional barcode/par (catalog_lookup).
+ *  9. Row checkboxes → "Export CSV" panel (column selector + scope, BOM UTF-8).
+ * 10. KPIs: total tracked, low stock, out of stock, shelf value.
+ * 11. Cost/Value columns from menu_item_costs (owner-only, dashboard-only).
+ * 12. Demo mode (isSupabaseConfigured=false) fully supported.
  *
  * Design: var(--db-*) tokens only. No hardcoded hex.
  * Icons: @tabler/icons-react only.
+ * Scope: NO location, NO supplier (future phases).
  */
 
 "use client";
@@ -36,6 +41,8 @@ import {
   IconDownload,
   IconSearch,
   IconBarcode,
+  IconSelector,
+  IconFileExport,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
@@ -71,19 +78,35 @@ interface StockMovement {
   item_name?: string;
 }
 
+type SortCol = "name" | "category" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
+type SortDir = "asc" | "desc";
+
+type ExportCol = "name" | "category" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
+
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
 const DEMO_CATEGORIES: MenuCategory[] = [
-  { id: "demo-cat-1", name: "General", name_alt: null, sort: 0 },
+  { id: "demo-cat-1", name: "Burgers",  name_alt: "Hamburguesas", sort: 0 },
+  { id: "demo-cat-2", name: "Salads",   name_alt: "Ensaladas",    sort: 1 },
+  { id: "demo-cat-3", name: "Desserts", name_alt: "Postres",      sort: 2 },
+  { id: "demo-cat-4", name: "Drinks",   name_alt: "Bebidas",      sort: 3 },
 ];
 
 const DEMO_ITEMS: MenuItem[] = [
-  { id: "demo-1", business_id: "demo-biz", category_id: "demo-cat-1", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  par_level: null, is_published: true  },
-  { id: "demo-2", business_id: "demo-biz", category_id: "demo-cat-1", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  par_level: null, is_published: true  },
-  { id: "demo-3", business_id: "demo-biz", category_id: "demo-cat-1", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  par_level: null, is_published: false },
-  { id: "demo-4", business_id: "demo-biz", category_id: "demo-cat-1", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, par_level: null, is_published: true  },
-  { id: "demo-5", business_id: "demo-biz", category_id: "demo-cat-1", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, par_level: null, is_published: true  },
+  { id: "demo-1", business_id: "demo-biz", category_id: "demo-cat-1", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  par_level: 30, is_published: true  },
+  { id: "demo-2", business_id: "demo-biz", category_id: "demo-cat-2", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  par_level: 10, is_published: true  },
+  { id: "demo-3", business_id: "demo-biz", category_id: "demo-cat-3", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  par_level: null, is_published: false },
+  { id: "demo-4", business_id: "demo-biz", category_id: "demo-cat-3", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, par_level: 20, is_published: true  },
+  { id: "demo-5", business_id: "demo-biz", category_id: "demo-cat-4", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, par_level: 60, is_published: true  },
 ];
+
+const DEMO_COSTS: Record<string, number | null> = {
+  "demo-1": 350,  // $3.50
+  "demo-2": 200,
+  "demo-3": null,
+  "demo-4": 450,
+  "demo-5": 80,
+};
 
 const DEMO_MOVEMENTS: StockMovement[] = [
   { id: "mv-1", menu_item_id: "demo-2", business_id: "demo-biz", delta: -2,  reason: "Sold",       created_at: new Date(Date.now() - 3_600_000).toISOString(),   item_name: "Caesar Salad"     },
@@ -103,6 +126,11 @@ function formatDatetime(iso: string): string {
   });
 }
 
+function formatCents(cents: number | null | undefined, locale: string): string {
+  if (cents == null) return "—";
+  return (cents / 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 /** Returns true when stock_count is at or below threshold (and threshold > 0). */
 function isLowStock(item: MenuItem): boolean {
   return item.low_stock_threshold > 0 && item.stock_count <= item.low_stock_threshold && item.stock_count > 0;
@@ -116,6 +144,12 @@ function isOutOfStock(item: MenuItem): boolean {
 /** Locale-aware category display name. */
 function catDisplayName(cat: MenuCategory, locale: string): string {
   return locale === "es" && cat.name_alt ? cat.name_alt : cat.name;
+}
+
+function statusKey(item: MenuItem): "out" | "low" | "ok" {
+  if (isOutOfStock(item)) return "out";
+  if (isLowStock(item))   return "low";
+  return "ok";
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -199,210 +233,6 @@ interface EditState {
   stockInput: string;
   thresholdInput: string;
   reasonInput: string;
-}
-
-// ── Stock row ─────────────────────────────────────────────────────────────────
-//
-// Grid (6 columns — identical for header, view mode, and edit mode):
-//   "1fr   110px  80px  130px      130px   120px"
-//    Name  Stock  Par   Threshold  Reason  Actions
-//
-// Par is always read-only (edit it in the menu editor).
-
-const ROW_GRID = "1fr 110px 80px 130px 130px 120px";
-
-function StockRow({
-  item,
-  editing,
-  editState,
-  saving,
-  onStartEdit,
-  onCancelEdit,
-  onChangeEdit,
-  onSave,
-}: {
-  item: MenuItem;
-  editing: boolean;
-  editState: EditState;
-  saving: boolean;
-  onStartEdit: () => void;
-  onCancelEdit: () => void;
-  onChangeEdit: (patch: Partial<EditState>) => void;
-  onSave: () => void;
-}) {
-  const t = useTranslations("dashboardCommon");
-  const low = isLowStock(item);
-  const out = isOutOfStock(item);
-
-  const rowBg = out
-    ? "rgba(239,68,68,0.07)"
-    : low
-    ? "rgba(245,158,11,0.07)"
-    : "transparent";
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: ROW_GRID,
-        alignItems: "center",
-        gap: "12px",
-        padding: "12px 16px",
-        borderRadius: "var(--db-radius)",
-        background: rowBg,
-        borderBottom: "1px solid var(--db-border)",
-      }}
-    >
-      {/* Col 1: Name + status badges */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-        <span
-          style={{
-            fontSize: "14px",
-            fontWeight: 500,
-            color: "var(--db-text-primary)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.name}
-        </span>
-        {out && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "2px 8px",
-              borderRadius: "999px",
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              background: "rgba(239,68,68,0.15)",
-              color: "var(--db-danger)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <IconEyeOff size={10} />
-            {t("hiddenBadge")}
-          </span>
-        )}
-        {low && !out && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "2px 8px",
-              borderRadius: "999px",
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              background: "rgba(245,158,11,0.15)",
-              color: "var(--db-warning)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <IconAlertTriangle size={10} />
-            {t("inventoryLowStockBadge")}
-          </span>
-        )}
-      </div>
-
-      {/* Col 2: Stock count / edit input */}
-      {editing ? (
-        <input
-          type="number"
-          min="0"
-          value={editState.stockInput}
-          onChange={(e) => onChangeEdit({ stockInput: e.target.value })}
-          style={inputStyle}
-          autoFocus
-        />
-      ) : (
-        <span
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: out
-              ? "var(--db-danger)"
-              : low
-              ? "var(--db-warning)"
-              : "var(--db-text-primary)",
-            textAlign: "right",
-          }}
-        >
-          {item.stock_count}
-        </span>
-      )}
-
-      {/* Col 3: Par level — always read-only in both view and edit mode */}
-      <span style={{ fontSize: "13px", color: "var(--db-text-secondary)", textAlign: "right" }}>
-        {item.par_level != null ? item.par_level : "—"}
-      </span>
-
-      {/* Col 4: Low-stock threshold / edit input */}
-      {editing ? (
-        <input
-          type="number"
-          min="0"
-          value={editState.thresholdInput}
-          onChange={(e) => onChangeEdit({ thresholdInput: e.target.value })}
-          style={inputStyle}
-          placeholder={t("inventoryThresholdPlaceholder")}
-        />
-      ) : (
-        <span style={{ fontSize: "13px", color: "var(--db-text-secondary)", textAlign: "right" }}>
-          {item.low_stock_threshold}
-        </span>
-      )}
-
-      {/* Col 5: Reason (edit mode only; empty span in view mode) */}
-      {editing ? (
-        <input
-          type="text"
-          value={editState.reasonInput}
-          onChange={(e) => onChangeEdit({ reasonInput: e.target.value })}
-          style={inputStyle}
-          placeholder={t("inventoryReasonOptionalPlaceholder")}
-        />
-      ) : (
-        <span />
-      )}
-
-      {/* Col 6: Actions */}
-      {editing ? (
-        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-          <button
-            onClick={onSave}
-            disabled={saving}
-            style={btnStyle("var(--db-accent)", "var(--db-accent-text)")}
-          >
-            {saving ? "…" : <IconCheck size={14} />}
-          </button>
-          <button
-            onClick={onCancelEdit}
-            disabled={saving}
-            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
-          >
-            <IconX size={14} />
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={onStartEdit}
-            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
-            title={t("inventoryEditStockTitle")}
-          >
-            <IconEdit size={14} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Shared style constants ────────────────────────────────────────────────────
@@ -491,11 +321,221 @@ function parseCsv(text: string): CsvRow[] {
   return rows;
 }
 
-// ── TODO(server/Edge Function) stub ──────────────────────────────────────────
-// async function notifyOwnerLowStock(_businessId: string, _items: MenuItem[]) {
-//   // TODO(server/Edge Function): email owner on low stock
-//   //   await supabase.functions.invoke('notify-low-stock', { body: { ... } });
-// }
+// ── Export CSV helper ─────────────────────────────────────────────────────────
+
+interface ExportRow {
+  name: string;
+  category: string;
+  stock: number;
+  threshold: number;
+  par: string;
+  cost: string;
+  value: string;
+  status: string;
+}
+
+function buildExportCsv(
+  rows: ExportRow[],
+  cols: ExportCol[],
+  colLabels: Record<ExportCol, string>,
+): string {
+  const header = cols.map((c) => `"${colLabels[c].replace(/"/g, '""')}"`).join(",");
+  const body = rows.map((r) =>
+    cols.map((c) => `"${String(r[c]).replace(/"/g, '""')}"`).join(","),
+  );
+  return "﻿" + [header, ...body].join("\r\n");
+}
+
+function downloadBlob(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── SortHeader cell ───────────────────────────────────────────────────────────
+
+function SortTh({
+  col,
+  active,
+  dir,
+  onClick,
+  children,
+  align = "left",
+}: {
+  col: SortCol;
+  active: boolean;
+  dir: SortDir;
+  onClick: (col: SortCol) => void;
+  children: React.ReactNode;
+  align?: "left" | "right" | "center";
+}) {
+  return (
+    <th
+      onClick={() => onClick(col)}
+      style={{
+        padding: "9px 12px",
+        fontSize: "11px",
+        fontWeight: 700,
+        color: active ? "var(--db-accent)" : "var(--db-text-tertiary)",
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        borderBottom: "1px solid var(--db-border)",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        textAlign: align,
+        background: "var(--db-bg-elevated)",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}>
+        {children}
+        {active ? (
+          dir === "asc"
+            ? <IconChevronUp size={12} />
+            : <IconChevronDown size={12} />
+        ) : (
+          <IconSelector size={11} style={{ opacity: 0.4 }} />
+        )}
+      </span>
+    </th>
+  );
+}
+
+// ── Export panel ──────────────────────────────────────────────────────────────
+
+const ALL_EXPORT_COLS: ExportCol[] = ["name", "category", "stock", "threshold", "par", "cost", "value", "status"];
+
+function ExportPanel({
+  filteredCount,
+  selectedCount,
+  colLabels,
+  onExport,
+  onClose,
+}: {
+  filteredCount: number;
+  selectedCount: number;
+  colLabels: Record<ExportCol, string>;
+  onExport: (cols: ExportCol[], scope: "filtered" | "selected") => void;
+  onClose: () => void;
+}) {
+  const t = useTranslations("dashboardCommon");
+  const [cols, setCols]   = useState<Set<ExportCol>>(new Set(ALL_EXPORT_COLS));
+  const [scope, setScope] = useState<"filtered" | "selected">(
+    selectedCount > 0 ? "selected" : "filtered",
+  );
+
+  function toggleCol(c: ExportCol) {
+    setCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(c)) { if (next.size > 1) next.delete(c); }
+      else next.add(c);
+      return next;
+    });
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.35)",
+          zIndex: 9998,
+        }}
+      />
+      {/* Panel */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 9999,
+          background: "var(--db-bg-surface)",
+          border: "1px solid var(--db-border)",
+          borderRadius: "var(--db-radius-card)",
+          padding: "24px",
+          width: "360px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+          <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)" }}>
+            {t("inventoryExportPanelTitle")}
+          </span>
+          <button onClick={onClose} style={{ ...btnStyle("transparent", "var(--db-text-secondary)"), padding: "4px" }}>
+            <IconX size={16} />
+          </button>
+        </div>
+
+        {/* Column checkboxes */}
+        <div style={{ marginBottom: "18px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>
+            {t("inventoryExportColumnsLabel")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+            {ALL_EXPORT_COLS.map((c) => (
+              <label
+                key={c}
+                style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--db-text-primary)", cursor: "pointer" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={cols.has(c)}
+                  onChange={() => toggleCol(c)}
+                  style={{ accentColor: "var(--db-accent)" }}
+                />
+                {colLabels[c]}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Scope */}
+        <div style={{ marginBottom: "20px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>
+            {t("inventoryExportScopeLabel")}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--db-text-primary)", cursor: "pointer" }}>
+              <input type="radio" name="scope" value="filtered" checked={scope === "filtered"} onChange={() => setScope("filtered")} style={{ accentColor: "var(--db-accent)" }} />
+              {t("inventoryScopeAllFiltered", { count: filteredCount })}
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                color: selectedCount === 0 ? "var(--db-text-tertiary)" : "var(--db-text-primary)",
+                cursor: selectedCount === 0 ? "not-allowed" : "pointer",
+                opacity: selectedCount === 0 ? 0.5 : 1,
+              }}
+            >
+              <input type="radio" name="scope" value="selected" checked={scope === "selected"} onChange={() => setScope("selected")} disabled={selectedCount === 0} style={{ accentColor: "var(--db-accent)" }} />
+              {t("inventoryScopeSelected", { count: selectedCount })}
+            </label>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onExport(ALL_EXPORT_COLS.filter((c) => cols.has(c)), scope)}
+          style={{ ...btnStyle("var(--db-accent)", "var(--db-accent-text)"), width: "100%", justifyContent: "center", padding: "10px" }}
+        >
+          <IconDownload size={14} />
+          {t("inventoryExportButton")}
+        </button>
+      </div>
+    </>
+  );
+}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -511,6 +551,9 @@ export default function InventoryPage() {
   const [items, setItems]               = useState<MenuItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
+  // Cost map: menu_item_id → cost_cents | null
+  const [costMap, setCostMap] = useState<Record<string, number | null>>({});
+
   const [movements, setMovements]               = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
   const [showHistory, setShowHistory]           = useState(false);
@@ -520,31 +563,41 @@ export default function InventoryPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   // "Add Product" form fields
-  const [newBarcode, setNewBarcode]               = useState("");
-  const [lookingUp, setLookingUp]                 = useState(false);
-  const [catalogHint, setCatalogHint]             = useState<{ found: boolean; text: string } | null>(null);
-  const [newName, setNewName]                     = useState("");
-  const [newStock, setNewStock]                   = useState("");
-  const [newThreshold, setNewThreshold]           = useState("");
-  const [newCategoryId, setNewCategoryId]         = useState("");
-  const [newCategoryName, setNewCategoryName]     = useState("");
-  const [creatingCategory, setCreatingCategory]   = useState(false);
-  const [newParLevel, setNewParLevel]             = useState("");
-  const [adding, setAdding]                       = useState(false);
+  const [newBarcode, setNewBarcode]             = useState("");
+  const [lookingUp, setLookingUp]               = useState(false);
+  const [catalogHint, setCatalogHint]           = useState<{ found: boolean; text: string } | null>(null);
+  const [newName, setNewName]                   = useState("");
+  const [newStock, setNewStock]                 = useState("");
+  const [newThreshold, setNewThreshold]         = useState("");
+  const [newCategoryId, setNewCategoryId]       = useState("");
+  const [newCategoryName, setNewCategoryName]   = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newParLevel, setNewParLevel]           = useState("");
+  const [adding, setAdding]                     = useState(false);
 
   // CSV import
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting]   = useState(false);
-  const [csvReport, setCsvReport]   = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [csvReport, setCsvReport] = useState<string | null>(null);
 
   // Feedback
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Filters (combinable)
-  const [filterCategory, setFilterCategory]                 = useState<string>("all");
-  const [filterStatus, setFilterStatus]                     = useState<"all" | "low" | "out">("all");
-  const [search, setSearch]                                 = useState("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStatus, setFilterStatus]     = useState<"all" | "low" | "out">("all");
+  const [search, setSearch]                 = useState("");
+
+  // Sortable table
+  const [sortCol, setSortCol] = useState<SortCol>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Checkboxes
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Export panel
+  const [showExport, setShowExport] = useState(false);
 
   // ── Resolve business id ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -552,6 +605,7 @@ export default function InventoryPage() {
       setLoadingBiz(false);
       setCategories(DEMO_CATEGORIES);
       setItems(DEMO_ITEMS);
+      setCostMap(DEMO_COSTS);
       setMovements(DEMO_MOVEMENTS);
       return;
     }
@@ -604,6 +658,23 @@ export default function InventoryPage() {
     }
   }, [t]);
 
+  // ── Load costs (menu_item_costs — owner-only, dashboard-only) ────────────────
+  const loadCosts = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("menu_item_costs")
+        .select("menu_item_id, cost_cents")
+        .eq("business_id", bizId);
+      const map: Record<string, number | null> = {};
+      for (const row of (data ?? []) as { menu_item_id: string; cost_cents: number | null }[]) {
+        map[row.menu_item_id] = row.cost_cents;
+      }
+      setCostMap(map);
+    } catch {
+      // non-fatal — cost/value columns show "—"
+    }
+  }, []);
+
   // ── Load movements ───────────────────────────────────────────────────────────
   const loadMovements = useCallback(async (bizId: string) => {
     setLoadingMovements(true);
@@ -634,8 +705,9 @@ export default function InventoryPage() {
     if (businessId) {
       void loadItems(businessId);
       void loadCategories(businessId);
+      void loadCosts(businessId);
     }
-  }, [businessId, loadItems, loadCategories]);
+  }, [businessId, loadItems, loadCategories, loadCosts]);
 
   // ── Inline edit handlers ─────────────────────────────────────────────────────
   function startEdit(item: MenuItem) {
@@ -737,11 +809,6 @@ export default function InventoryPage() {
         if (mvErr) throw mvErr;
       }
 
-      // TODO(server/Edge Function): email owner on low stock
-      // if (newStockVal <= newThresholdVal && newThresholdVal > 0 && newStockVal > 0 && businessId) {
-      //   await notifyOwnerLowStock(businessId, [{ ...item, stock_count: newStockVal }]);
-      // }
-
       // 3. Refresh local state
       setItems((prev) =>
         prev.map((i) =>
@@ -841,8 +908,6 @@ export default function InventoryPage() {
           });
         }
 
-        // TODO(server/Edge Function): email owner on low stock after CSV import
-
         setItems((prev) =>
           prev.map((i) => (i.id === match.id ? { ...i, stock_count: row.stock } : i))
         );
@@ -864,7 +929,6 @@ export default function InventoryPage() {
     const code = newBarcode.trim();
     if (!code) return;
 
-    // Demo mode: no RPC available, show "not in catalog" note.
     if (!isSupabaseConfigured) {
       setCatalogHint({ found: false, text: t("inventoryCatalogNotFoundHint") });
       return;
@@ -893,7 +957,6 @@ export default function InventoryPage() {
         return;
       }
 
-      // Pre-fill name: "[brand] [name] [size_value size_unit]" — collapse blanks
       const parts: string[] = [];
       if (row.brand)      parts.push(row.brand);
       if (row.name)       parts.push(row.name);
@@ -902,7 +965,6 @@ export default function InventoryPage() {
       const composed = parts.join(" ").replace(/\s{2,}/g, " ").trim();
       if (composed) setNewName(composed);
 
-      // Hint text: "Found in catalog: [brand] · [size_value size_unit]"
       const hintParts: string[] = [];
       if (row.brand)      hintParts.push(row.brand);
       if (row.size_value != null && row.size_unit) hintParts.push(`${row.size_value} ${row.size_unit}`);
@@ -914,7 +976,6 @@ export default function InventoryPage() {
         text: `${t("inventoryCatalogFoundHint")}${hintDetail ? ": " + hintDetail : ""}`,
       });
     } catch {
-      // Non-fatal: the barcode is still saved; just clear the hint
       setCatalogHint({ found: false, text: t("inventoryCatalogNotFoundHint") });
     } finally {
       setLookingUp(false);
@@ -940,7 +1001,6 @@ export default function InventoryPage() {
       setError(t("inventoryAlertThresholdNonNegativeError"));
       return;
     }
-    // Category is required
     if (!creatingCategory && newCategoryId === "") {
       setError(t("inventoryCategoryRequiredError"));
       return;
@@ -953,7 +1013,6 @@ export default function InventoryPage() {
     setError(null);
     setSuccess(null);
 
-    // Demo mode: append locally only.
     if (!isSupabaseConfigured) {
       let catId = newCategoryId;
       if (creatingCategory) {
@@ -998,7 +1057,6 @@ export default function InventoryPage() {
     try {
       let categoryId = newCategoryId;
 
-      // Create new category if the user typed a new one
       if (creatingCategory) {
         const { data: newCat, error: catInsErr } = await supabase
           .from("menu_categories")
@@ -1026,7 +1084,6 @@ export default function InventoryPage() {
         .single();
       if (insErr || !inserted) throw new Error(insErr?.message ?? t("inventoryAddProductGenericError"));
 
-      // Log the initial stock as a movement.
       if (stockNum > 0) {
         await supabase.from("stock_movements").insert({
           menu_item_id: (inserted as MenuItem).id,
@@ -1055,23 +1112,58 @@ export default function InventoryPage() {
   // ── Download a CSV template ──────────────────────────────────────────────────
   function downloadCsvTemplate() {
     const csv = "name,stock\nHamburger,50\nFrench Fries,30\nCoca Cola,100\n";
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "inventory_template.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(csv, "inventory_template.csv");
+  }
+
+  // ── Sort handler ─────────────────────────────────────────────────────────────
+  function handleSort(col: SortCol) {
+    if (col === sortCol) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
+
+  // ── Checkbox handlers ────────────────────────────────────────────────────────
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(visibleIds: string[]) {
+    const allSelected = visibleIds.every((id) => selectedIds.has(id)) && visibleIds.length > 0;
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        visibleIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        visibleIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
   }
 
   // ── Derived stats ────────────────────────────────────────────────────────────
   const lowCount = items.filter((i) => isLowStock(i)).length;
   const outCount = items.filter((i) => isOutOfStock(i)).length;
 
+  const shelfValueCents = useMemo(() =>
+    items.reduce((acc, i) => {
+      const c = costMap[i.id];
+      return c != null ? acc + i.stock_count * c : acc;
+    }, 0),
+  [items, costMap]);
+
   // Items matching search + status, WITHOUT category filter.
-  // Used for chip counts so each chip always shows "how many I'd see if I clicked it."
   const itemsMatchingSearchAndStatus = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((item) => {
@@ -1093,29 +1185,94 @@ export default function InventoryPage() {
     return counts;
   }, [itemsMatchingSearchAndStatus]);
 
-  // Full filtered list (apply category filter on top of search + status).
+  // Full filtered list (apply category filter).
   const filteredItems = useMemo(() => {
     if (filterCategory === "all") return itemsMatchingSearchAndStatus;
     return itemsMatchingSearchAndStatus.filter((i) => i.category_id === filterCategory);
   }, [itemsMatchingSearchAndStatus, filterCategory]);
 
-  // Grouped by category, sorted: categories by sort→name, items by name.
-  const groupedItems = useMemo(() => {
-    const catMap: Record<string, { category: MenuCategory; items: MenuItem[] }> = {};
-    for (const item of filteredItems) {
-      if (!catMap[item.category_id]) {
-        const cat =
-          categories.find((c) => c.id === item.category_id) ??
-          { id: item.category_id, name: item.category_id, name_alt: null, sort: 999 };
-        catMap[item.category_id] = { category: cat, items: [] };
+  // Sorted flat list
+  const sortedItems = useMemo(() => {
+    const catName = (item: MenuItem) => {
+      const cat = categories.find((c) => c.id === item.category_id);
+      return cat ? catDisplayName(cat, locale) : "";
+    };
+
+    return [...filteredItems].sort((a, b) => {
+      let valA: string | number;
+      let valB: string | number;
+
+      switch (sortCol) {
+        case "name":      valA = a.name.toLowerCase();     valB = b.name.toLowerCase();     break;
+        case "category":  valA = catName(a).toLowerCase(); valB = catName(b).toLowerCase(); break;
+        case "stock":     valA = a.stock_count;            valB = b.stock_count;            break;
+        case "threshold": valA = a.low_stock_threshold;    valB = b.low_stock_threshold;    break;
+        case "par":       valA = a.par_level ?? -1;        valB = b.par_level ?? -1;        break;
+        case "cost":      valA = costMap[a.id] ?? -1;      valB = costMap[b.id] ?? -1;      break;
+        case "value":     valA = a.stock_count * (costMap[a.id] ?? -1); valB = b.stock_count * (costMap[b.id] ?? -1); break;
+        case "status": {
+          const order = { out: 0, low: 1, ok: 2 };
+          valA = order[statusKey(a)]; valB = order[statusKey(b)]; break;
+        }
+        default: valA = a.name.toLowerCase(); valB = b.name.toLowerCase();
       }
-      catMap[item.category_id].items.push(item);
-    }
-    return Object.values(catMap).sort((a, b) => {
-      if (a.category.sort !== b.category.sort) return a.category.sort - b.category.sort;
-      return a.category.name.localeCompare(b.category.name);
+
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ?  1 : -1;
+      return 0;
     });
-  }, [filteredItems, categories]);
+  }, [filteredItems, sortCol, sortDir, categories, locale, costMap]);
+
+  const visibleIds = useMemo(() => sortedItems.map((i) => i.id), [sortedItems]);
+  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someSelected = visibleIds.some((id) => selectedIds.has(id));
+
+  // ── Column labels (used for table headers and export panel) ─────────────────
+  const colLabels: Record<ExportCol, string> = {
+    name:      t("analyticsProductColumnLabel"),
+    category:  t("inventoryCategoryLabel"),
+    stock:     t("inventoryStockColumnLabel"),
+    threshold: t("inventoryAlertAtColumnLabel"),
+    par:       t("inventoryParColumnLabel"),
+    cost:      t("inventoryCostColumnLabel"),
+    value:     t("inventoryValueColumnLabel"),
+    status:    t("inventoryStatusColumnLabel"),
+  };
+
+  // ── Export handler ───────────────────────────────────────────────────────────
+  function handleExport(cols: ExportCol[], scope: "filtered" | "selected") {
+    const statusLabel = (item: MenuItem) => {
+      const sk = statusKey(item);
+      if (sk === "out") return t("inventoryOutOfStockLabel");
+      if (sk === "low") return t("inventoryLowStockBadge");
+      return t("inventoryStatusOk");
+    };
+
+    const sourceItems = scope === "selected"
+      ? sortedItems.filter((i) => selectedIds.has(i.id))
+      : sortedItems;
+
+    const catName = (item: MenuItem) => {
+      const cat = categories.find((c) => c.id === item.category_id);
+      return cat ? catDisplayName(cat, locale) : "";
+    };
+
+    const rows: ExportRow[] = sourceItems.map((item) => ({
+      name:      item.name,
+      category:  catName(item),
+      stock:     item.stock_count,
+      threshold: item.low_stock_threshold,
+      par:       item.par_level != null ? String(item.par_level) : "",
+      cost:      formatCents(costMap[item.id], locale),
+      value:     formatCents(item.stock_count * (costMap[item.id] ?? 0) || (costMap[item.id] == null ? null : 0), locale),
+      status:    statusLabel(item),
+    }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const csv = buildExportCsv(rows, cols, colLabels);
+    downloadBlob(csv, `inventario_${today}.csv`);
+    setShowExport(false);
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────────
   if (loadingBiz) {
@@ -1126,15 +1283,72 @@ export default function InventoryPage() {
     );
   }
 
-  // Tiles config
-  const tiles: { key: "all" | "low" | "out"; label: string; value: number; color: string }[] = [
-    { key: "all", label: t("inventoryTotalProductsLabel"), value: items.length,  color: "var(--db-text-primary)" },
-    { key: "low", label: t("inventoryLowStockBadge"),      value: lowCount,      color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
-    { key: "out", label: t("inventoryOutOfStockLabel"),    value: outCount,      color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
+  // Status badge cell
+  const StatusBadge = ({ item }: { item: MenuItem }) => {
+    const sk = statusKey(item);
+    if (sk === "out") return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: "rgba(239,68,68,0.15)", color: "var(--db-danger)", whiteSpace: "nowrap" }}>
+        <IconEyeOff size={10} />{t("hiddenBadge")}
+      </span>
+    );
+    if (sk === "low") return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: "rgba(245,158,11,0.15)", color: "var(--db-warning)", whiteSpace: "nowrap" }}>
+        <IconAlertTriangle size={10} />{t("inventoryLowStockBadge")}
+      </span>
+    );
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: "rgba(34,197,94,0.12)", color: "var(--db-success)", whiteSpace: "nowrap" }}>
+        <IconCheck size={10} />{t("inventoryStatusOk")}
+      </span>
+    );
+  };
+
+  // Tiles config (4 tiles)
+  const tiles: { key: "all" | "low" | "out"; label: string; value: string; color: string }[] = [
+    { key: "all", label: t("inventoryTotalProductsLabel"), value: String(items.length),                color: "var(--db-text-primary)" },
+    { key: "low", label: t("inventoryLowStockBadge"),      value: String(lowCount),                    color: lowCount > 0 ? "var(--db-warning)" : "var(--db-success)" },
+    { key: "out", label: t("inventoryOutOfStockLabel"),    value: String(outCount),                    color: outCount > 0 ? "var(--db-danger)"  : "var(--db-success)" },
   ];
 
+  const shelfTile = {
+    label: t("inventoryShelfValueLabel"),
+    value: shelfValueCents > 0 ? `$${formatCents(shelfValueCents, locale)}` : "—",
+    color: "var(--db-text-primary)",
+  };
+
+  const thStyle: React.CSSProperties = {
+    padding: "9px 12px",
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "var(--db-text-tertiary)",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    borderBottom: "1px solid var(--db-border)",
+    whiteSpace: "nowrap",
+    background: "var(--db-bg-elevated)",
+  };
+
+  const tdStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    fontSize: "13px",
+    color: "var(--db-text-primary)",
+    borderBottom: "1px solid var(--db-border)",
+    verticalAlign: "middle",
+  };
+
   return (
-    <div style={{ maxWidth: "960px" }}>
+    <div style={{ maxWidth: "1100px" }}>
+      {/* Export panel overlay */}
+      {showExport && (
+        <ExportPanel
+          filteredCount={sortedItems.length}
+          selectedCount={selectedIds.size}
+          colLabels={colLabels}
+          onExport={handleExport}
+          onClose={() => setShowExport(false)}
+        />
+      )}
+
       {/* Page header */}
       <div style={{ marginBottom: "24px" }}>
         <h1
@@ -1172,11 +1386,11 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Summary tiles — clickable status filters */}
+      {/* Summary tiles — 3 status tiles + 1 shelf-value tile */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(4, 1fr)",
           gap: "16px",
           marginBottom: "24px",
         }}
@@ -1206,6 +1420,22 @@ export default function InventoryPage() {
             </button>
           );
         })}
+        {/* Shelf value tile — not a filter */}
+        <div
+          style={{
+            background: "var(--db-bg-surface)",
+            border: "1px solid var(--db-border)",
+            borderRadius: "var(--db-radius-card)",
+            padding: "16px 20px",
+          }}
+        >
+          <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            {shelfTile.label}
+          </div>
+          <div style={{ fontSize: "28px", fontWeight: 700, color: shelfTile.color }}>
+            {shelfTile.value}
+          </div>
+        </div>
       </div>
 
       {/* Feedback banners */}
@@ -1223,7 +1453,7 @@ export default function InventoryPage() {
           {t("inventoryAddProductDescription")}
         </p>
 
-        {/* Row 0: Barcode scanner / manual entry */}
+        {/* Row 0: Barcode */}
         <div style={{ marginBottom: "12px" }}>
           <label style={addLabelStyle}>
             <IconBarcode size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} />
@@ -1254,35 +1484,16 @@ export default function InventoryPage() {
               {lookingUp ? "…" : t("inventoryBarcodeSearchButton")}
             </button>
           </div>
-          {/* Catalog hint */}
           {catalogHint && (
-            <div
-              style={{
-                marginTop: "6px",
-                fontSize: "12px",
-                color: catalogHint.found ? "var(--db-success)" : "var(--db-text-tertiary)",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-            >
-              {catalogHint.found
-                ? <IconCheck size={12} />
-                : <IconAlertCircle size={12} />}
+            <div style={{ marginTop: "6px", fontSize: "12px", color: catalogHint.found ? "var(--db-success)" : "var(--db-text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
+              {catalogHint.found ? <IconCheck size={12} /> : <IconAlertCircle size={12} />}
               {catalogHint.text}
             </div>
           )}
         </div>
 
-        {/* Row 1: Category (required) + Par level (optional) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "12px",
-            marginBottom: "12px",
-          }}
-        >
+        {/* Row 1: Category + Par */}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px", marginBottom: "12px" }}>
           <div>
             <label style={addLabelStyle}>{t("inventoryCategoryLabel")}</label>
             {creatingCategory ? (
@@ -1325,7 +1536,6 @@ export default function InventoryPage() {
               </select>
             )}
           </div>
-
           <div>
             <label style={addLabelStyle}>{t("inventoryParLevelLabel")}</label>
             <input
@@ -1339,15 +1549,8 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* Row 2: Name + Stock + Threshold + Add button */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 130px 150px auto",
-            gap: "12px",
-            alignItems: "end",
-          }}
-        >
+        {/* Row 2: Name + Stock + Threshold + Add */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 150px auto", gap: "12px", alignItems: "end" }}>
           <div>
             <label style={addLabelStyle}>{t("inventoryProductNameLabel")}</label>
             <input
@@ -1434,55 +1637,22 @@ export default function InventoryPage() {
           </span>
         </div>
 
-        {/* CSV format example + downloadable template */}
         <div style={{ marginTop: "16px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "var(--db-text-tertiary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginBottom: "8px",
-            }}
-          >
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
             {t("inventoryExampleLabel")}
           </div>
-          <table
-            style={{
-              borderCollapse: "collapse",
-              fontSize: "13px",
-              color: "var(--db-text-primary)",
-              marginBottom: "12px",
-              minWidth: "280px",
-            }}
-          >
+          <table style={{ borderCollapse: "collapse", fontSize: "13px", color: "var(--db-text-primary)", marginBottom: "12px", minWidth: "280px" }}>
             <thead>
               <tr>
                 {["name", "stock"].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: "left",
-                      padding: "6px 16px",
-                      border: "1px solid var(--db-border)",
-                      background: "var(--db-bg-elevated)",
-                      fontFamily: "var(--font-mono, monospace)",
-                      fontSize: "12px",
-                      color: "var(--db-text-secondary)",
-                    }}
-                  >
+                  <th key={h} style={{ textAlign: "left", padding: "6px 16px", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", fontFamily: "var(--font-mono, monospace)", fontSize: "12px", color: "var(--db-text-secondary)" }}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {[
-                ["Hamburger", "50"],
-                ["French Fries", "30"],
-                ["Coca Cola", "100"],
-              ].map(([n, s]) => (
+              {[["Hamburger", "50"], ["French Fries", "30"], ["Coca Cola", "100"]].map(([n, s]) => (
                 <tr key={n}>
                   <td style={{ padding: "6px 16px", border: "1px solid var(--db-border)" }}>{n}</td>
                   <td style={{ padding: "6px 16px", border: "1px solid var(--db-border)" }}>{s}</td>
@@ -1490,43 +1660,36 @@ export default function InventoryPage() {
               ))}
             </tbody>
           </table>
-          <button
-            type="button"
-            onClick={downloadCsvTemplate}
-            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
-          >
+          <button type="button" onClick={downloadCsvTemplate} style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}>
             <IconDownload size={14} />
             {t("inventoryDownloadTemplateButton")}
           </button>
         </div>
 
         <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: "10px", fontStyle: "italic" }}>
-          {/* TODO(server/Edge Function): email owner on low stock */}
           {t("inventoryEmailAlertsNote")}
         </p>
       </SectionCard>
 
       {/* ── Product table ────────────────────────────────────────────────── */}
       <SectionCard>
-        <SectionTitle>
-          <IconBox size={16} color="var(--db-accent)" />
-          {t("inventoryProductsSectionTitle")}
-        </SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <SectionTitle>
+            <IconBox size={16} color="var(--db-accent)" />
+            {t("inventoryProductsSectionTitle")}
+          </SectionTitle>
+          <button
+            onClick={() => setShowExport(true)}
+            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+          >
+            <IconFileExport size={14} />
+            {t("inventoryExportCsvButton")}
+          </button>
+        </div>
 
         {/* Search */}
         <div style={{ position: "relative", marginBottom: "12px" }}>
-          <span
-            style={{
-              position: "absolute",
-              left: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--db-text-tertiary)",
-              display: "flex",
-              alignItems: "center",
-              pointerEvents: "none",
-            }}
-          >
+          <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--db-text-tertiary)", display: "flex", alignItems: "center", pointerEvents: "none" }}>
             <IconSearch size={14} />
           </span>
           <input
@@ -1538,22 +1701,16 @@ export default function InventoryPage() {
           />
         </div>
 
-        {/* Category chips (visible once categories are loaded) */}
+        {/* Category chips */}
         {categories.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
-            {/* "All" chip — count reflects current search + status filter */}
-            <button
-              onClick={() => setFilterCategory("all")}
-              style={chipStyle(filterCategory === "all")}
-            >
+            <button onClick={() => setFilterCategory("all")} style={chipStyle(filterCategory === "all")}>
               {t("inventoryFilterAll")} ({itemsMatchingSearchAndStatus.length})
             </button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() =>
-                  setFilterCategory(filterCategory === cat.id ? "all" : cat.id)
-                }
+                onClick={() => setFilterCategory(filterCategory === cat.id ? "all" : cat.id)}
                 style={chipStyle(filterCategory === cat.id)}
               >
                 {catDisplayName(cat, locale)} ({countByCat[cat.id] ?? 0})
@@ -1562,138 +1719,230 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Table header — same 6-column grid as StockRow */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: ROW_GRID,
-            gap: "12px",
-            padding: "8px 16px",
-            fontSize: "11px",
-            fontWeight: 700,
-            color: "var(--db-text-tertiary)",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            borderBottom: "1px solid var(--db-border)",
-            marginBottom: "4px",
-          }}
-        >
-          <span>{t("analyticsProductColumnLabel")}</span>
-          <span style={{ textAlign: "right" }}>{t("inventoryStockColumnLabel")}</span>
-          <span style={{ textAlign: "right" }}>{t("inventoryParColumnLabel")}</span>
-          <span style={{ textAlign: "right" }}>{t("inventoryAlertAtColumnLabel")}</span>
-          <span>{t("inventoryReasonColumnLabel")}</span>
-          <span style={{ textAlign: "right" }}>{t("chatRoomsColAction")}</span>
-        </div>
+        {/* Selection action bar */}
+        {selectedIds.size > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "var(--db-radius)", background: "color-mix(in srgb, var(--db-accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--db-accent) 30%, transparent)", marginBottom: "12px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-accent)" }}>
+              {t("inventorySelectionBarLabel", { count: selectedIds.size })}
+            </span>
+            <button onClick={() => setShowExport(true)} style={btnStyle("var(--db-accent)", "var(--db-accent-text)")}>
+              <IconFileExport size={13} />
+              {t("inventoryExportCsvButton")}
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} style={{ ...btnStyle("transparent", "var(--db-text-secondary)"), marginLeft: "auto" }}>
+              <IconX size={13} />
+            </button>
+          </div>
+        )}
 
         {loadingItems ? (
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
             {t("inventoryLoadingProductsState")}
           </div>
         ) : items.length === 0 ? (
-          // Truly empty — no products at all
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
             {t("inventoryNoProductsMessage")}
           </div>
         ) : filteredItems.length === 0 ? (
-          // Products exist, but none match the active filters
           <div style={{ padding: "32px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "14px" }}>
             {t("inventoryNoResultsMessage")}
           </div>
         ) : (
-          // Grouped list
-          groupedItems.map(({ category, items: catItems }) => (
-            <div key={category.id}>
-              {/* Category section header */}
-              <div
-                style={{
-                  padding: "6px 16px 4px",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--db-text-tertiary)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  borderBottom: "1px solid var(--db-border)",
-                  marginTop: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                {catDisplayName(category, locale)}
-                <span
-                  style={{
-                    padding: "1px 7px",
-                    borderRadius: "999px",
-                    background: "var(--db-accent-bg)",
-                    color: "var(--db-accent)",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {catItems.length}
-                </span>
-              </div>
-              {/* Items in this category */}
-              {catItems.map((item) => (
-                <StockRow
-                  key={item.id}
-                  item={item}
-                  editing={!!editMap[item.id]}
-                  editState={
-                    editMap[item.id] ?? {
-                      stockInput:     String(item.stock_count),
-                      thresholdInput: String(item.low_stock_threshold),
-                      reasonInput:    "",
-                    }
-                  }
-                  saving={savingId === item.id}
-                  onStartEdit={() => startEdit(item)}
-                  onCancelEdit={() => cancelEdit(item.id)}
-                  onChangeEdit={(patch) => patchEdit(item.id, patch)}
-                  onSave={() => void saveEdit(item)}
-                />
-              ))}
-            </div>
-          ))
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" }}>
+              <thead>
+                <tr>
+                  {/* Checkbox master */}
+                  <th style={{ ...thStyle, width: "36px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                      onChange={() => toggleSelectAll(visibleIds)}
+                      style={{ accentColor: "var(--db-accent)", cursor: "pointer" }}
+                    />
+                  </th>
+                  <SortTh col="name"      active={sortCol === "name"}      dir={sortDir} onClick={handleSort} align="left">
+                    {colLabels.name}
+                  </SortTh>
+                  <SortTh col="category"  active={sortCol === "category"}  dir={sortDir} onClick={handleSort} align="left">
+                    {colLabels.category}
+                  </SortTh>
+                  <SortTh col="stock"     active={sortCol === "stock"}     dir={sortDir} onClick={handleSort} align="right">
+                    {colLabels.stock}
+                  </SortTh>
+                  <SortTh col="threshold" active={sortCol === "threshold"} dir={sortDir} onClick={handleSort} align="right">
+                    {colLabels.threshold}
+                  </SortTh>
+                  <SortTh col="par"       active={sortCol === "par"}       dir={sortDir} onClick={handleSort} align="right">
+                    {colLabels.par}
+                  </SortTh>
+                  <SortTh col="cost"      active={sortCol === "cost"}      dir={sortDir} onClick={handleSort} align="right">
+                    {colLabels.cost}
+                  </SortTh>
+                  <SortTh col="value"     active={sortCol === "value"}     dir={sortDir} onClick={handleSort} align="right">
+                    {colLabels.value}
+                  </SortTh>
+                  <SortTh col="status"    active={sortCol === "status"}    dir={sortDir} onClick={handleSort} align="center">
+                    {colLabels.status}
+                  </SortTh>
+                  {/* Actions — not sortable */}
+                  <th style={{ ...thStyle, textAlign: "right" }}>{t("chatRoomsColAction")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedItems.map((item) => {
+                  const editing = !!editMap[item.id];
+                  const saving  = savingId === item.id;
+                  const es      = editMap[item.id] ?? { stockInput: String(item.stock_count), thresholdInput: String(item.low_stock_threshold), reasonInput: "" };
+                  const sk      = statusKey(item);
+                  const rowBg   = sk === "out" ? "rgba(239,68,68,0.05)" : sk === "low" ? "rgba(245,158,11,0.05)" : "transparent";
+                  const catObj  = categories.find((c) => c.id === item.category_id);
+                  const costVal = costMap[item.id] ?? null;
+                  const valueVal = costVal != null ? item.stock_count * costVal : null;
+
+                  return (
+                    <tr key={item.id} style={{ background: rowBg }}>
+                      {/* Checkbox */}
+                      <td style={{ ...tdStyle, textAlign: "center", width: "36px" }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelect(item.id)}
+                          style={{ accentColor: "var(--db-accent)", cursor: "pointer" }}
+                        />
+                      </td>
+
+                      {/* Name */}
+                      <td style={{ ...tdStyle, fontWeight: 500, minWidth: "120px" }}>
+                        {item.name}
+                      </td>
+
+                      {/* Category */}
+                      <td style={{ ...tdStyle, color: "var(--db-text-secondary)", minWidth: "80px" }}>
+                        {catObj ? catDisplayName(catObj, locale) : "—"}
+                      </td>
+
+                      {/* Stock — editable */}
+                      <td style={{ ...tdStyle, textAlign: "right", width: "100px" }}>
+                        {editing ? (
+                          <input
+                            type="number"
+                            min="0"
+                            value={es.stockInput}
+                            onChange={(e) => patchEdit(item.id, { stockInput: e.target.value })}
+                            style={{ ...inputStyle, width: "80px", textAlign: "right" }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span style={{ fontWeight: 600, color: sk === "out" ? "var(--db-danger)" : sk === "low" ? "var(--db-warning)" : "var(--db-text-primary)" }}>
+                            {item.stock_count}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Threshold — editable */}
+                      <td style={{ ...tdStyle, textAlign: "right", width: "100px" }}>
+                        {editing ? (
+                          <input
+                            type="number"
+                            min="0"
+                            value={es.thresholdInput}
+                            onChange={(e) => patchEdit(item.id, { thresholdInput: e.target.value })}
+                            style={{ ...inputStyle, width: "80px", textAlign: "right" }}
+                            placeholder={t("inventoryThresholdPlaceholder")}
+                          />
+                        ) : (
+                          <span style={{ color: "var(--db-text-secondary)" }}>
+                            {item.low_stock_threshold}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Par — read-only */}
+                      <td style={{ ...tdStyle, textAlign: "right", color: "var(--db-text-secondary)" }}>
+                        {item.par_level != null ? item.par_level : "—"}
+                      </td>
+
+                      {/* Cost — read-only */}
+                      <td style={{ ...tdStyle, textAlign: "right", color: "var(--db-text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                        {formatCents(costVal, locale)}
+                      </td>
+
+                      {/* Value — derived, read-only */}
+                      <td style={{ ...tdStyle, textAlign: "right", color: "var(--db-text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                        {formatCents(valueVal, locale)}
+                      </td>
+
+                      {/* Status badge */}
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <StatusBadge item={item} />
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
+                        {editing ? (
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
+                            {/* Reason input inline */}
+                            <input
+                              type="text"
+                              value={es.reasonInput}
+                              onChange={(e) => patchEdit(item.id, { reasonInput: e.target.value })}
+                              style={{ ...inputStyle, width: "130px" }}
+                              placeholder={t("inventoryReasonOptionalPlaceholder")}
+                            />
+                            <button
+                              onClick={() => void saveEdit(item)}
+                              disabled={saving}
+                              style={{ ...btnStyle("var(--db-accent)", "var(--db-accent-text)"), minWidth: "32px" }}
+                            >
+                              {saving ? "…" : <IconCheck size={14} />}
+                            </button>
+                            <button
+                              onClick={() => cancelEdit(item.id)}
+                              disabled={saving}
+                              style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                            >
+                              <IconX size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEdit(item)}
+                            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                            title={t("inventoryEditStockTitle")}
+                          >
+                            <IconEdit size={14} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </SectionCard>
 
       {/* ── Movement history ─────────────────────────────────────────────── */}
       <SectionCard>
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
           onClick={() => void toggleHistory()}
         >
           <SectionTitle>
             <IconHistory size={16} color="var(--db-accent)" />
             {t("inventoryMovementHistorySectionTitle")}
             {movements.length > 0 && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  borderRadius: "999px",
-                  background: "var(--db-accent-bg)",
-                  color: "var(--db-accent)",
-                }}
-              >
+              <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "999px", background: "var(--db-accent-bg)", color: "var(--db-accent)" }}>
                 {movements.length}
               </span>
             )}
           </SectionTitle>
-          {showHistory ? (
-            <IconChevronUp size={18} color="var(--db-text-secondary)" />
-          ) : (
-            <IconChevronDown size={18} color="var(--db-text-secondary)" />
-          )}
+          {showHistory
+            ? <IconChevronUp size={18} color="var(--db-text-secondary)" />
+            : <IconChevronDown size={18} color="var(--db-text-secondary)" />}
         </div>
 
         {showHistory && (
@@ -1708,64 +1957,25 @@ export default function InventoryPage() {
               </div>
             ) : (
               <>
-                {/* History header */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 80px 1fr 130px",
-                    gap: "12px",
-                    padding: "8px 16px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "var(--db-text-tertiary)",
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    borderBottom: "1px solid var(--db-border)",
-                    marginBottom: "4px",
-                  }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 1fr 130px", gap: "12px", padding: "8px 16px", fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--db-border)", marginBottom: "4px" }}>
                   <span>{t("analyticsProductColumnLabel")}</span>
                   <span style={{ textAlign: "right" }}>{t("inventoryDeltaColumnLabel")}</span>
                   <span>{t("inventoryReasonColumnLabel")}</span>
                   <span style={{ textAlign: "right" }}>{t("inventoryDateColumnLabel")}</span>
                 </div>
-
                 {movements.map((mv) => (
                   <div
                     key={mv.id}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 80px 1fr 130px",
-                      gap: "12px",
-                      padding: "10px 16px",
-                      fontSize: "13px",
-                      borderBottom: "1px solid var(--db-border)",
-                      alignItems: "center",
-                    }}
+                    style={{ display: "grid", gridTemplateColumns: "1fr 80px 1fr 130px", gap: "12px", padding: "10px 16px", fontSize: "13px", borderBottom: "1px solid var(--db-border)", alignItems: "center" }}
                   >
-                    <span
-                      style={{
-                        color: "var(--db-text-primary)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                    <span style={{ color: "var(--db-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {mv.item_name ?? mv.menu_item_id}
                     </span>
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        textAlign: "right",
-                        color: mv.delta >= 0 ? "var(--db-success)" : "var(--db-danger)",
-                      }}
-                    >
+                    <span style={{ fontWeight: 700, textAlign: "right", color: mv.delta >= 0 ? "var(--db-success)" : "var(--db-danger)" }}>
                       {mv.delta >= 0 ? `+${mv.delta}` : String(mv.delta)}
                     </span>
                     <span style={{ color: "var(--db-text-secondary)" }}>{mv.reason}</span>
-                    <span style={{ color: "var(--db-text-tertiary)", textAlign: "right" }}>
-                      {formatDatetime(mv.created_at)}
-                    </span>
+                    <span style={{ color: "var(--db-text-tertiary)", textAlign: "right" }}>{formatDatetime(mv.created_at)}</span>
                   </div>
                 ))}
               </>
