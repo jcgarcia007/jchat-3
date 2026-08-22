@@ -323,7 +323,7 @@ function TemplateThumb({ id, emoji, alt }: { id: string; emoji: string; alt: str
       alt={alt}
       loading="lazy"
       onError={() => setBroken(true)}
-      style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
+      style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "top", display: "block" }}
     />
   );
 }
@@ -5026,9 +5026,7 @@ export default function MenuPage() {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--db-text-secondary)", marginTop: 2, lineHeight: 1.35 }}>
-                      {templateDescs[opt.id] ?? opt.desc}
-                    </div>
+
                   </div>
                 </button>
               );
