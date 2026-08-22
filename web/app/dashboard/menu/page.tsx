@@ -5624,7 +5624,7 @@ export default function MenuPage() {
       </div>
 
       {bizSlug && menuMode !== "external" && (
-        <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 80 }}>
+        <aside className="hidden xl:block" style={{ flex: "0 0 auto", position: "sticky", top: 24, maxHeight: "calc(100dvh - 96px)", overflow: "hidden" }}>
           {/* Label */}
           <div style={{ marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
