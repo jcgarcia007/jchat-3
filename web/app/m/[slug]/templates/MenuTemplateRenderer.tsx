@@ -27,6 +27,7 @@ import SplitDiagonal from "./SplitDiagonal";
 import Polaroid from "./Polaroid";
 import Catalog from "./Catalog";
 import PhotoSpotlight from "./PhotoSpotlight";
+import ArchCrop from "./ArchCrop";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -92,6 +93,8 @@ export default function MenuTemplateRenderer({
       return <Catalog {...props} />;
     case "photo-spotlight":
       return <PhotoSpotlight {...props} />;
+    case "arch-crop":
+      return <ArchCrop {...props} />;
     default:
       return <Classic {...props} />;
   }

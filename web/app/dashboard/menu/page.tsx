@@ -270,6 +270,7 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "polaroid",        name: "Polaroid",              desc: "Fotos instantánea con marquito", emoji: "📸", hidden: true },
   { id: "catalog",         name: "Catálogo",              desc: "Rejilla tipo tienda con filtros", emoji: "🛍️", hidden: true },
   { id: "photo-spotlight", name: "Photo Spotlight",       desc: "Foto enorme + tarjeta flotante de cristal", emoji: "📷", hidden: true },
+  { id: "arch-crop",       name: "Arch Crop",             desc: "Fotos en arco suave, estilo boutique", emoji: "🫚", hidden: true },
 ];
 
 /**
@@ -4362,6 +4363,7 @@ export default function MenuPage() {
     polaroid: t("menuTemplatePolaroid"),
     catalog: t("menuTemplateCatalog"),
     "photo-spotlight": t("menuTemplatePhotoSpotlight"),
+    "arch-crop": t("menuTemplateArchCrop"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4391,6 +4393,7 @@ export default function MenuPage() {
     polaroid: t("menuTemplateDescPolaroid"),
     catalog: t("menuTemplateDescCatalog"),
     "photo-spotlight": t("menuTemplateDescPhotoSpotlight"),
+    "arch-crop": t("menuTemplateDescArchCrop"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

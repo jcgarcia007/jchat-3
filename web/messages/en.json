@@ -172,7 +172,9 @@
     "nextItemAria": "Next item",
     "openCartAria": "Open cart",
     "noItems": "No items available",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "item": "item",
+    "items": "items"
   },
   "dashboardCommon": {
     "navOverview": "Overview",
@@ -2060,7 +2062,9 @@
     "devicesRenameSuccess": "Reader renamed.",
     "devicesRemoveSuccess": "Reader removed.",
     "menuTemplatePhotoSpotlight": "Photo Spotlight",
-    "menuTemplateDescPhotoSpotlight": "One enormous photo fills the screen; a floating glass card holds the details and add button."
+    "menuTemplateDescPhotoSpotlight": "One enormous photo fills the screen; a floating glass card holds the details and add button.",
+    "menuTemplateArchCrop": "Arch Crop",
+    "menuTemplateDescArchCrop": "Photos crowned with an arch — soft, boutique-bakery style with curved tops."
   },
   "superAdmin": {
     "shell": {

@@ -172,7 +172,9 @@
     "nextItemAria": "Siguiente plato",
     "openCartAria": "Abrir carrito",
     "noItems": "Sin elementos disponibles",
-    "unavailable": "No disponible"
+    "unavailable": "No disponible",
+    "item": "artículo",
+    "items": "artículos"
   },
   "dashboardCommon": {
     "navOverview": "Resumen",
@@ -2060,7 +2062,9 @@
     "devicesRenameSuccess": "Lector renombrado.",
     "devicesRemoveSuccess": "Lector quitado.",
     "menuTemplatePhotoSpotlight": "Foto Destacada",
-    "menuTemplateDescPhotoSpotlight": "Una foto enorme llena la pantalla; una tarjeta flotante de cristal muestra los detalles y el botón de agregar."
+    "menuTemplateDescPhotoSpotlight": "Una foto enorme llena la pantalla; una tarjeta flotante de cristal muestra los detalles y el botón de agregar.",
+    "menuTemplateArchCrop": "Arco Suave",
+    "menuTemplateDescArchCrop": "Fotos coronadas con un arco suave — estilo boutique y panadería artesanal."
   },
   "superAdmin": {
     "shell": {

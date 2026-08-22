@@ -321,6 +321,23 @@ const CATEGORY_SIDEBAR_PALETTE: MenuPalette = {
   danger: "var(--color-danger)", overlay: "rgba(58,46,31,0.4)",
 };
 
+// #35 "Maison Arche" boutique bakery — warm cream, brown text, amber accent.
+const ARCH_CROP_PALETTE: MenuPalette = {
+  bg: "#FBF6EE",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F3ECD8",
+  text: "#4A3A28",
+  textMuted: "#6E5B4E",
+  textFaint: "#9C8E7B",
+  border: "#E7DFD3",
+  accent: "#C07C3A",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(192,124,58,0.12)",
+  price: "#C07C3A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(30,15,8,0.5)",
+};
+
 // #31 "SEAR" smash burgers — pitch black, fiery orange-red accent, white text.
 const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
   bg: "#0A0A0A",
@@ -360,6 +377,7 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "streaming-rows": STREAMING_ROWS_PALETTE,
   "sticky-tabs": STICKY_TABS_PALETTE,
   "photo-spotlight": PHOTO_SPOTLIGHT_PALETTE,
+  "arch-crop": ARCH_CROP_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */
