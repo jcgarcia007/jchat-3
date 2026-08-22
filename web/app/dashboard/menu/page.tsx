@@ -4938,6 +4938,8 @@ export default function MenuPage() {
               gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
               gap: 16,
               marginTop: 16,
+              maxHeight: "clamp(300px, 52dvh, 580px)",
+              overflowY: "auto",
             }}
           >
             {MENU_TEMPLATE_OPTIONS.filter((opt) => !opt.hidden).map((opt) => {
