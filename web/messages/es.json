@@ -2103,7 +2103,15 @@
     "menuTemplateStoryChapters": "Capítulos",
     "menuTemplateDescStoryChapters": "Cada categoría es un capítulo con portada en Playfair Display y platos como páginas tipográficas. Ideal para café-librería.",
     "menuTemplateDuotoneSpotlight": "Duotono Spotlight",
-    "menuTemplateDescDuotoneSpotlight": "Fotos con efecto duotono de color vibrante. Grid oscuro de estilo galería gráfica, ideal para bar de tapas moderno."
+    "menuTemplateDescDuotoneSpotlight": "Fotos con efecto duotono de color vibrante. Grid oscuro de estilo galería gráfica, ideal para bar de tapas moderno.",
+    "menuTemplateRadialFan": "Abanico Radial",
+    "menuTemplateDescRadialFan": "Categorías como pétalos en arco semicircular. Toca un pétalo para cambiar; los ítems se muestran como tarjetas cálidas apiladas.",
+    "menuTemplateBlobMask": "Blob Mask",
+    "menuTemplateDescBlobMask": "Fotos recortadas con formas blob orgánicas alternantes en una cuadrícula 2-col. Look juguetón y natural para bares de salud o smoothies.",
+    "menuTemplateHorizontalFilmstrip": "Filmstrip Horizontal",
+    "menuTemplateDescHorizontalFilmstrip": "Cada categoría es una tira de película horizontal con agujeros de sprocket. Scroll independiente por categoría, estética de cine.",
+    "menuTemplateDiagonalMosaic": "Mosaico Diagonal",
+    "menuTemplateDescDiagonalMosaic": "Grid de 3 columnas con la central escalonada hacia abajo para crear un mosaico diagonal entrelazado. Fotos con corte diagonal en la base."
   },
   "superAdmin": {
     "shell": {

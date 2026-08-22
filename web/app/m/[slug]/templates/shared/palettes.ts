@@ -644,6 +644,74 @@ const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
   overlay: "rgba(0,0,0,.75)",
 };
 
+// #38 "CARTA" modern tapas — dark espresso, amber accent, petal fan nav.
+const RADIAL_FAN_PALETTE: MenuPalette = {
+  bg: "#1A0F04",
+  surface: "#241606",
+  surfaceElevated: "#2A1A08",
+  text: "#FDF6EC",
+  textMuted: "rgba(253,246,236,.6)",
+  textFaint: "rgba(253,246,236,.3)",
+  border: "rgba(245,158,11,.2)",
+  accent: "#F59E0B",
+  accentText: "#1A0F04",
+  accentSoft: "rgba(245,158,11,.12)",
+  price: "#F59E0B",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
+// #43 "VERDE" smoothie & health bar — light mint, emerald accent, blob masks.
+const BLOB_MASK_PALETTE: MenuPalette = {
+  bg: "#F0FDF4",
+  surface: "#FFFFFF",
+  surfaceElevated: "#DCFCE7",
+  text: "#064E3B",
+  textMuted: "#4B7A67",
+  textFaint: "#86B8A4",
+  border: "#D1FAE5",
+  accent: "#10B981",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(16,185,129,.1)",
+  price: "#10B981",
+  danger: "var(--color-danger)",
+  overlay: "rgba(6,78,59,.45)",
+};
+
+// #44 "REEL" cinema-themed bar — film black, film-yellow accent, Netflix strips.
+const HORIZONTAL_FILMSTRIP_PALETTE: MenuPalette = {
+  bg: "#0A0A0A",
+  surface: "#141414",
+  surfaceElevated: "#1E1E1E",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.6)",
+  textFaint: "rgba(255,255,255,.25)",
+  border: "rgba(252,211,77,.2)",
+  accent: "#FCD34D",
+  accentText: "#0A0A0A",
+  accentSoft: "rgba(252,211,77,.1)",
+  price: "#FCD34D",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #45 "SLANT" modern wine bar — warm stone, deep purple accent, diagonal mosaic.
+const DIAGONAL_MOSAIC_PALETTE: MenuPalette = {
+  bg: "#FAF7F2",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F3EEE8",
+  text: "#1C1428",
+  textMuted: "#6B5A7E",
+  textFaint: "#A090B0",
+  border: "#EBE5F0",
+  accent: "#7C3AED",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(124,58,237,.08)",
+  price: "#7C3AED",
+  danger: "var(--color-danger)",
+  overlay: "rgba(28,20,40,.45)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
   "store-sections": STORE_SECTIONS_PALETTE,
@@ -684,6 +752,10 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "featured-grid": FEATURED_GRID_PALETTE,
   "story-chapters": STORY_CHAPTERS_PALETTE,
   "duotone-spotlight": DUOTONE_SPOTLIGHT_PALETTE,
+  "radial-fan": RADIAL_FAN_PALETTE,
+  "blob-mask": BLOB_MASK_PALETTE,
+  "horizontal-filmstrip": HORIZONTAL_FILMSTRIP_PALETTE,
+  "diagonal-mosaic": DIAGONAL_MOSAIC_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

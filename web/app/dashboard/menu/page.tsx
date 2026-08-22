@@ -288,6 +288,10 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "featured-grid",   name: "Featured + Grid",      desc: "Primer plato destacado en hero, resto en grid 2-col compacto", emoji: "⭐", hidden: true },
   { id: "story-chapters",  name: "Story Chapters",       desc: "Cada categoría es un capítulo con portada y páginas tipográficas", emoji: "📖", hidden: true },
   { id: "duotone-spotlight", name: "Duotone Spotlight",  desc: "Fotos con efecto duotono gráfico, grid oscuro, badge de precio", emoji: "🎨", hidden: true },
+  { id: "radial-fan",       name: "Radial Fan",          desc: "Categorías en pétalos radiales semicirculares, items como cards cálidas", emoji: "🌀", hidden: true },
+  { id: "blob-mask",        name: "Blob Mask",            desc: "Fotos recortadas con formas orgánicas blob, cuadrícula 2-col playful", emoji: "🫧", hidden: true },
+  { id: "horizontal-filmstrip", name: "Horizontal Filmstrip", desc: "Categorías como tiras de película, scroll horizontal por categoría", emoji: "🎞", hidden: true },
+  { id: "diagonal-mosaic",  name: "Diagonal Mosaic",      desc: "Grid 3-col con columna central escalonada, fotos con corte diagonal", emoji: "🔷", hidden: true },
 ];
 
 /**
@@ -4398,6 +4402,10 @@ export default function MenuPage() {
     "featured-grid": t("menuTemplateFeaturedGrid"),
     "story-chapters": t("menuTemplateStoryChapters"),
     "duotone-spotlight": t("menuTemplateDuotoneSpotlight"),
+    "radial-fan": t("menuTemplateRadialFan"),
+    "blob-mask": t("menuTemplateBlobMask"),
+    "horizontal-filmstrip": t("menuTemplateHorizontalFilmstrip"),
+    "diagonal-mosaic": t("menuTemplateDiagonalMosaic"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4445,6 +4453,10 @@ export default function MenuPage() {
     "featured-grid": t("menuTemplateDescFeaturedGrid"),
     "story-chapters": t("menuTemplateDescStoryChapters"),
     "duotone-spotlight": t("menuTemplateDescDuotoneSpotlight"),
+    "radial-fan": t("menuTemplateDescRadialFan"),
+    "blob-mask": t("menuTemplateDescBlobMask"),
+    "horizontal-filmstrip": t("menuTemplateDescHorizontalFilmstrip"),
+    "diagonal-mosaic": t("menuTemplateDescDiagonalMosaic"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

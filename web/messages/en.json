@@ -2103,7 +2103,15 @@
     "menuTemplateStoryChapters": "Story Chapters",
     "menuTemplateDescStoryChapters": "Every category is a chapter with a Playfair Display title page and items as typographic 'pages'. Great for a bookstore café.",
     "menuTemplateDuotoneSpotlight": "Duotone Spotlight",
-    "menuTemplateDescDuotoneSpotlight": "Photos converted to bold duotone color with a vivid tint overlay. A graphic, gallery-like grid for a modern tapas bar."
+    "menuTemplateDescDuotoneSpotlight": "Photos converted to bold duotone color with a vivid tint overlay. A graphic, gallery-like grid for a modern tapas bar.",
+    "menuTemplateRadialFan": "Radial Fan",
+    "menuTemplateDescRadialFan": "Categories as petal-shaped chips fanned in a semicircular arc. Tap a petal to switch, items shown as warm stacked cards.",
+    "menuTemplateBlobMask": "Blob Mask",
+    "menuTemplateDescBlobMask": "Item photos clipped into organic blob shapes that alternate across a 2-col grid. Playful, organic feel for a health or smoothie bar.",
+    "menuTemplateHorizontalFilmstrip": "Horizontal Filmstrip",
+    "menuTemplateDescHorizontalFilmstrip": "Each category is a horizontal filmstrip shelf with sprocket-hole edges. Scroll each strip independently, cinema-themed aesthetic.",
+    "menuTemplateDiagonalMosaic": "Diagonal Mosaic",
+    "menuTemplateDescDiagonalMosaic": "3-column grid with the middle column staggered down for an interlocking diagonal mosaic. Photos have a diagonal cut at the bottom edge."
   },
   "superAdmin": {
     "shell": {

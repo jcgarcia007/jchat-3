@@ -45,6 +45,10 @@ import FullBleedSwipe from "./FullBleedSwipe";
 import FeaturedGrid from "./FeaturedGrid";
 import StoryChapters from "./StoryChapters";
 import DuotoneSpotlight from "./DuotoneSpotlight";
+import RadialFan from "./RadialFan";
+import BlobMask from "./BlobMask";
+import HorizontalFilmstrip from "./HorizontalFilmstrip";
+import DiagonalMosaic from "./DiagonalMosaic";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -146,6 +150,14 @@ export default function MenuTemplateRenderer({
       return <StoryChapters {...props} />;
     case "duotone-spotlight":
       return <DuotoneSpotlight {...props} />;
+    case "radial-fan":
+      return <RadialFan {...props} />;
+    case "blob-mask":
+      return <BlobMask {...props} />;
+    case "horizontal-filmstrip":
+      return <HorizontalFilmstrip {...props} />;
+    case "diagonal-mosaic":
+      return <DiagonalMosaic {...props} />;
     default:
       return <Classic {...props} />;
   }
