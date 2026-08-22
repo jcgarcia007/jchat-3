@@ -15,10 +15,11 @@
  * 10. KPIs: total tracked, low stock, out of stock, shelf value.
  * 11. Cost/Value columns from menu_item_costs (owner-only, dashboard-only).
  * 12. Demo mode (isSupabaseConfigured=false) fully supported.
+ * 13. Suppliers tab — CRUD for suppliers + supplier column/sort/filter in table.
  *
  * Design: var(--db-*) tokens only. No hardcoded hex.
  * Icons: @tabler/icons-react only.
- * Scope: NO location, NO supplier (future phases).
+ * Scope: NO location. Suppliers: Fase 1 implemented.
  */
 
 "use client";
@@ -46,6 +47,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import SuppliersTab from "./SuppliersTab";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +67,21 @@ interface MenuItem {
   low_stock_threshold: number;
   par_level: number | null;
   is_published: boolean;
+  supplier_id: string | null;
+}
+
+interface Supplier {
+  id: string;
+  business_id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  account_number: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface StockMovement {
@@ -78,10 +95,10 @@ interface StockMovement {
   item_name?: string;
 }
 
-type SortCol = "name" | "category" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
+type SortCol = "name" | "category" | "supplier" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
 type SortDir = "asc" | "desc";
 
-type ExportCol = "name" | "category" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
+type ExportCol = "name" | "category" | "supplier" | "stock" | "threshold" | "par" | "cost" | "value" | "status";
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
@@ -92,12 +109,17 @@ const DEMO_CATEGORIES: MenuCategory[] = [
   { id: "demo-cat-4", name: "Drinks",   name_alt: "Bebidas",      sort: 3 },
 ];
 
+const DEMO_SUPPLIERS: Supplier[] = [
+  { id: "demo-sup-1", business_id: "demo-biz", name: "FreshFoods Co.",  contact_name: "Alice",  email: "alice@freshfoods.com",  phone: "555-1001", account_number: "FF-001", notes: null, is_active: true,  created_at: "", updated_at: "" },
+  { id: "demo-sup-2", business_id: "demo-biz", name: "BevSupply Inc.",  contact_name: "Bob",    email: "bob@bevsupply.com",     phone: "555-1002", account_number: "BS-042", notes: null, is_active: true,  created_at: "", updated_at: "" },
+];
+
 const DEMO_ITEMS: MenuItem[] = [
-  { id: "demo-1", business_id: "demo-biz", category_id: "demo-cat-1", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  par_level: 30, is_published: true  },
-  { id: "demo-2", business_id: "demo-biz", category_id: "demo-cat-2", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  par_level: 10, is_published: true  },
-  { id: "demo-3", business_id: "demo-biz", category_id: "demo-cat-3", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  par_level: null, is_published: false },
-  { id: "demo-4", business_id: "demo-biz", category_id: "demo-cat-3", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, par_level: 20, is_published: true  },
-  { id: "demo-5", business_id: "demo-biz", category_id: "demo-cat-4", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, par_level: 60, is_published: true  },
+  { id: "demo-1", business_id: "demo-biz", category_id: "demo-cat-1", name: "Classic Burger",   stock_count: 24, low_stock_threshold: 5,  par_level: 30,   is_published: true,  supplier_id: "demo-sup-1" },
+  { id: "demo-2", business_id: "demo-biz", category_id: "demo-cat-2", name: "Caesar Salad",     stock_count: 3,  low_stock_threshold: 5,  par_level: 10,   is_published: true,  supplier_id: "demo-sup-1" },
+  { id: "demo-3", business_id: "demo-biz", category_id: "demo-cat-3", name: "Margherita Pizza", stock_count: 0,  low_stock_threshold: 5,  par_level: null, is_published: false, supplier_id: null         },
+  { id: "demo-4", business_id: "demo-biz", category_id: "demo-cat-3", name: "Chocolate Cake",   stock_count: 8,  low_stock_threshold: 10, par_level: 20,   is_published: true,  supplier_id: null         },
+  { id: "demo-5", business_id: "demo-biz", category_id: "demo-cat-4", name: "Sparkling Water",  stock_count: 50, low_stock_threshold: 10, par_level: 60,   is_published: true,  supplier_id: "demo-sup-2" },
 ];
 
 const DEMO_COSTS: Record<string, number | null> = {
@@ -326,6 +348,7 @@ function parseCsv(text: string): CsvRow[] {
 interface ExportRow {
   name: string;
   category: string;
+  supplier: string;
   stock: number;
   threshold: number;
   par: string;
@@ -409,7 +432,7 @@ function SortTh({
 
 // ── Export panel ──────────────────────────────────────────────────────────────
 
-const ALL_EXPORT_COLS: ExportCol[] = ["name", "category", "stock", "threshold", "par", "cost", "value", "status"];
+const ALL_EXPORT_COLS: ExportCol[] = ["name", "category", "supplier", "stock", "threshold", "par", "cost", "value", "status"];
 
 function ExportPanel({
   filteredCount,
@@ -547,9 +570,15 @@ export default function InventoryPage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
+  // Tabs: "inventory" | "suppliers"
+  const [activeTab, setActiveTab] = useState<"inventory" | "suppliers">("inventory");
+
   const [categories, setCategories]     = useState<MenuCategory[]>([]);
   const [items, setItems]               = useState<MenuItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+
+  // Suppliers list
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   // Cost map: menu_item_id → cost_cents | null
   const [costMap, setCostMap] = useState<Record<string, number | null>>({});
@@ -573,6 +602,7 @@ export default function InventoryPage() {
   const [newCategoryName, setNewCategoryName]   = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newParLevel, setNewParLevel]           = useState("");
+  const [newSupplierId, setNewSupplierId]       = useState("");
   const [adding, setAdding]                     = useState(false);
 
   // CSV import
@@ -584,9 +614,15 @@ export default function InventoryPage() {
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Mass-assign supplier
+  const [showAssignSupplier, setShowAssignSupplier]   = useState(false);
+  const [assignSupplierValue, setAssignSupplierValue] = useState<string>("");
+  const [assigningSupplier, setAssigningSupplier]     = useState(false);
+
   // Filters (combinable)
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus]     = useState<"all" | "low" | "out">("all");
+  const [filterSupplier, setFilterSupplier] = useState<string>("all");
   const [search, setSearch]                 = useState("");
 
   // Sortable table
@@ -607,6 +643,7 @@ export default function InventoryPage() {
       setItems(DEMO_ITEMS);
       setCostMap(DEMO_COSTS);
       setMovements(DEMO_MOVEMENTS);
+      setSuppliers(DEMO_SUPPLIERS);
       return;
     }
     void (async () => {
@@ -646,7 +683,7 @@ export default function InventoryPage() {
     try {
       const { data, error: err } = await supabase
         .from("menu_items")
-        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published")
+        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published, supplier_id")
         .eq("business_id", bizId)
         .order("name", { ascending: true });
       if (err) throw err;
@@ -657,6 +694,20 @@ export default function InventoryPage() {
       setLoadingItems(false);
     }
   }, [t]);
+
+  // ── Load suppliers ───────────────────────────────────────────────────────────
+  const loadSuppliers = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("suppliers")
+        .select("id, business_id, name, contact_name, email, phone, account_number, notes, is_active, created_at, updated_at")
+        .eq("business_id", bizId)
+        .order("name", { ascending: true });
+      setSuppliers((data as Supplier[]) ?? []);
+    } catch {
+      // non-fatal — suppliers tab will be empty
+    }
+  }, []);
 
   // ── Load costs (menu_item_costs — owner-only, dashboard-only) ────────────────
   const loadCosts = useCallback(async (bizId: string) => {
@@ -706,8 +757,9 @@ export default function InventoryPage() {
       void loadItems(businessId);
       void loadCategories(businessId);
       void loadCosts(businessId);
+      void loadSuppliers(businessId);
     }
-  }, [businessId, loadItems, loadCategories, loadCosts]);
+  }, [businessId, loadItems, loadCategories, loadCosts, loadSuppliers]);
 
   // ── Inline edit handlers ─────────────────────────────────────────────────────
   function startEdit(item: MenuItem) {
@@ -1037,13 +1089,14 @@ export default function InventoryPage() {
             low_stock_threshold: thresholdNum,
             par_level:           parNum,
             is_published:        true,
+            supplier_id:         newSupplierId || null,
           },
         ].sort((a, b) => a.name.localeCompare(b.name)),
       );
       setNewBarcode(""); setCatalogHint(null);
       setNewName(""); setNewStock(""); setNewThreshold("");
       setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
-      setNewParLevel("");
+      setNewParLevel(""); setNewSupplierId("");
       setSuccess(t("inventoryAddedDemoSuccess", { name }));
       return;
     }
@@ -1079,8 +1132,9 @@ export default function InventoryPage() {
           par_level:           parNum,
           barcode:             newBarcode.trim() || null,
           price_cents:         0,
+          supplier_id:         newSupplierId || null,
         })
-        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published")
+        .select("id, business_id, category_id, name, stock_count, low_stock_threshold, par_level, is_published, supplier_id")
         .single();
       if (insErr || !inserted) throw new Error(insErr?.message ?? t("inventoryAddProductGenericError"));
 
@@ -1099,7 +1153,7 @@ export default function InventoryPage() {
       setNewBarcode(""); setCatalogHint(null);
       setNewName(""); setNewStock(""); setNewThreshold("");
       setNewCategoryId(""); setNewCategoryName(""); setCreatingCategory(false);
-      setNewParLevel("");
+      setNewParLevel(""); setNewSupplierId("");
       setSuccess(t("inventoryAddedSuccess", { name }));
       if (showHistory) void loadMovements(businessId);
     } catch (e: unknown) {
@@ -1152,6 +1206,13 @@ export default function InventoryPage() {
     }
   }
 
+  // ── Supplier lookup map ──────────────────────────────────────────────────────
+  const supplierById = useMemo<Record<string, Supplier>>(() => {
+    const map: Record<string, Supplier> = {};
+    for (const s of suppliers) map[s.id] = s;
+    return map;
+  }, [suppliers]);
+
   // ── Derived stats ────────────────────────────────────────────────────────────
   const lowCount = items.filter((i) => isLowStock(i)).length;
   const outCount = items.filter((i) => isOutOfStock(i)).length;
@@ -1185,11 +1246,14 @@ export default function InventoryPage() {
     return counts;
   }, [itemsMatchingSearchAndStatus]);
 
-  // Full filtered list (apply category filter).
+  // Full filtered list (apply category + supplier filters).
   const filteredItems = useMemo(() => {
-    if (filterCategory === "all") return itemsMatchingSearchAndStatus;
-    return itemsMatchingSearchAndStatus.filter((i) => i.category_id === filterCategory);
-  }, [itemsMatchingSearchAndStatus, filterCategory]);
+    let list = itemsMatchingSearchAndStatus;
+    if (filterCategory !== "all") list = list.filter((i) => i.category_id === filterCategory);
+    if (filterSupplier === "__none__") list = list.filter((i) => i.supplier_id == null);
+    else if (filterSupplier !== "all") list = list.filter((i) => i.supplier_id === filterSupplier);
+    return list;
+  }, [itemsMatchingSearchAndStatus, filterCategory, filterSupplier]);
 
   // Sorted flat list
   const sortedItems = useMemo(() => {
@@ -1197,6 +1261,8 @@ export default function InventoryPage() {
       const cat = categories.find((c) => c.id === item.category_id);
       return cat ? catDisplayName(cat, locale) : "";
     };
+    const supName = (item: MenuItem) =>
+      item.supplier_id ? (supplierById[item.supplier_id]?.name ?? "") : "";
 
     return [...filteredItems].sort((a, b) => {
       let valA: string | number;
@@ -1205,6 +1271,7 @@ export default function InventoryPage() {
       switch (sortCol) {
         case "name":      valA = a.name.toLowerCase();     valB = b.name.toLowerCase();     break;
         case "category":  valA = catName(a).toLowerCase(); valB = catName(b).toLowerCase(); break;
+        case "supplier":  valA = supName(a).toLowerCase(); valB = supName(b).toLowerCase(); break;
         case "stock":     valA = a.stock_count;            valB = b.stock_count;            break;
         case "threshold": valA = a.low_stock_threshold;    valB = b.low_stock_threshold;    break;
         case "par":       valA = a.par_level ?? -1;        valB = b.par_level ?? -1;        break;
@@ -1221,7 +1288,7 @@ export default function InventoryPage() {
       if (valA > valB) return sortDir === "asc" ?  1 : -1;
       return 0;
     });
-  }, [filteredItems, sortCol, sortDir, categories, locale, costMap]);
+  }, [filteredItems, sortCol, sortDir, categories, locale, costMap, supplierById]);
 
   const visibleIds = useMemo(() => sortedItems.map((i) => i.id), [sortedItems]);
   const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
@@ -1231,6 +1298,7 @@ export default function InventoryPage() {
   const colLabels: Record<ExportCol, string> = {
     name:      t("analyticsProductColumnLabel"),
     category:  t("inventoryCategoryLabel"),
+    supplier:  t("inventorySupplierColumnLabel"),
     stock:     t("inventoryStockColumnLabel"),
     threshold: t("inventoryAlertAtColumnLabel"),
     par:       t("inventoryParColumnLabel"),
@@ -1260,6 +1328,7 @@ export default function InventoryPage() {
     const rows: ExportRow[] = sourceItems.map((item) => ({
       name:      item.name,
       category:  catName(item),
+      supplier:  item.supplier_id ? (supplierById[item.supplier_id]?.name ?? "") : "",
       stock:     item.stock_count,
       threshold: item.low_stock_threshold,
       par:       item.par_level != null ? String(item.par_level) : "",
@@ -1272,6 +1341,42 @@ export default function InventoryPage() {
     const csv = buildExportCsv(rows, cols, colLabels);
     downloadBlob(csv, `inventario_${today}.csv`);
     setShowExport(false);
+  }
+
+  // ── Mass assign supplier ─────────────────────────────────────────────────────
+  async function handleAssignSupplier() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const newSupplierId = assignSupplierValue === "__none__" ? null : (assignSupplierValue || null);
+
+    if (!isSupabaseConfigured) {
+      setItems((prev) =>
+        prev.map((i) => ids.includes(i.id) ? { ...i, supplier_id: newSupplierId } : i)
+      );
+      setShowAssignSupplier(false);
+      setAssignSupplierValue("");
+      return;
+    }
+    if (!businessId) return;
+
+    setAssigningSupplier(true);
+    try {
+      const { error: upErr } = await supabase
+        .from("menu_items")
+        .update({ supplier_id: newSupplierId })
+        .in("id", ids)
+        .eq("business_id", businessId);
+      if (upErr) throw upErr;
+      setItems((prev) =>
+        prev.map((i) => ids.includes(i.id) ? { ...i, supplier_id: newSupplierId } : i)
+      );
+      setShowAssignSupplier(false);
+      setAssignSupplierValue("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error assigning supplier");
+    } finally {
+      setAssigningSupplier(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -1350,7 +1455,7 @@ export default function InventoryPage() {
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: "24px" }}>
+      <div style={{ marginBottom: "16px" }}>
         <h1
           style={{
             fontSize: "22px",
@@ -1385,6 +1490,74 @@ export default function InventoryPage() {
           </span>
         )}
       </div>
+
+      {/* Tab bar */}
+      <div
+        style={{
+          display: "flex",
+          gap: "4px",
+          borderBottom: "2px solid var(--db-border)",
+          marginBottom: "24px",
+        }}
+      >
+        {(["inventory", "suppliers"] as const).map((tab) => {
+          const label = tab === "inventory" ? t("inventoryTabInventory") : t("inventoryTabSuppliers");
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                background: "none",
+                border: "none",
+                borderBottom: isActive ? "2px solid var(--db-accent)" : "2px solid transparent",
+                marginBottom: "-2px",
+                padding: "8px 16px",
+                fontSize: "14px",
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? "var(--db-accent)" : "var(--db-text-secondary)",
+                cursor: "pointer",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+            >
+              {label}
+              {tab === "suppliers" && suppliers.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "var(--db-accent-bg)",
+                    color: "var(--db-accent)",
+                    borderRadius: 999,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {suppliers.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Suppliers tab content */}
+      {activeTab === "suppliers" && (
+        <SuppliersTab
+          businessId={businessId ?? "demo-biz"}
+          suppliers={suppliers}
+          items={items}
+          onRefresh={() => {
+            if (businessId) {
+              void loadSuppliers(businessId);
+              void loadItems(businessId);
+            }
+          }}
+        />
+      )}
+
+      {/* Inventory tab content */}
+      {activeTab === "inventory" && (<>
 
       {/* Summary tiles — 3 status tiles + 1 shelf-value tile */}
       <div
@@ -1549,6 +1722,23 @@ export default function InventoryPage() {
           </div>
         </div>
 
+        {/* Row 1b: Supplier (only when suppliers exist) */}
+        {suppliers.length > 0 && (
+          <div style={{ marginBottom: "12px" }}>
+            <label style={addLabelStyle}>{t("inventorySupplierColumnLabel")}</label>
+            <select
+              value={newSupplierId}
+              onChange={(e) => setNewSupplierId(e.target.value)}
+              style={{ ...inputStyle }}
+            >
+              <option value="">— {t("inventoryNoSupplierOption")} —</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Row 2: Name + Stock + Threshold + Add */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 150px auto", gap: "12px", alignItems: "end" }}>
           <div>
@@ -1703,7 +1893,7 @@ export default function InventoryPage() {
 
         {/* Category chips */}
         {categories.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
             <button onClick={() => setFilterCategory("all")} style={chipStyle(filterCategory === "all")}>
               {t("inventoryFilterAll")} ({itemsMatchingSearchAndStatus.length})
             </button>
@@ -1719,9 +1909,33 @@ export default function InventoryPage() {
           </div>
         )}
 
+        {/* Supplier filter chips */}
+        {suppliers.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+            <button onClick={() => setFilterSupplier("all")} style={chipStyle(filterSupplier === "all")}>
+              {t("inventoryAllSuppliersOption")}
+            </button>
+            {suppliers.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setFilterSupplier(filterSupplier === s.id ? "all" : s.id)}
+                style={chipStyle(filterSupplier === s.id)}
+              >
+                {s.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setFilterSupplier(filterSupplier === "__none__" ? "all" : "__none__")}
+              style={chipStyle(filterSupplier === "__none__")}
+            >
+              {t("inventoryNoSupplierOption")}
+            </button>
+          </div>
+        )}
+
         {/* Selection action bar */}
         {selectedIds.size > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "var(--db-radius)", background: "color-mix(in srgb, var(--db-accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--db-accent) 30%, transparent)", marginBottom: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "var(--db-radius)", background: "color-mix(in srgb, var(--db-accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--db-accent) 30%, transparent)", marginBottom: "12px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-accent)" }}>
               {t("inventorySelectionBarLabel", { count: selectedIds.size })}
             </span>
@@ -1729,10 +1943,80 @@ export default function InventoryPage() {
               <IconFileExport size={13} />
               {t("inventoryExportCsvButton")}
             </button>
+            {suppliers.length > 0 && (
+              <button
+                onClick={() => { setAssignSupplierValue(""); setShowAssignSupplier(true); }}
+                style={btnStyle("var(--db-bg-elevated)", "var(--db-text-primary)")}
+              >
+                {t("inventoryAssignSupplierButton")}
+              </button>
+            )}
             <button onClick={() => setSelectedIds(new Set())} style={{ ...btnStyle("transparent", "var(--db-text-secondary)"), marginLeft: "auto" }}>
               <IconX size={13} />
             </button>
           </div>
+        )}
+
+        {/* Assign supplier modal */}
+        {showAssignSupplier && (
+          <>
+            <div
+              onClick={() => setShowAssignSupplier(false)}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 9998 }}
+            />
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 9999,
+                background: "var(--db-bg-surface)",
+                border: "1px solid var(--db-border)",
+                borderRadius: "var(--db-radius-card)",
+                padding: "24px",
+                width: "340px",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--db-text-primary)" }}>
+                  {t("inventoryAssignSupplierTitle")}
+                </span>
+                <button onClick={() => setShowAssignSupplier(false)} style={{ ...btnStyle("transparent", "var(--db-text-secondary)"), padding: "4px" }}>
+                  <IconX size={16} />
+                </button>
+              </div>
+              <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", marginBottom: "12px" }}>
+                {t("inventorySelectionBarLabel", { count: selectedIds.size })}
+              </p>
+              <select
+                value={assignSupplierValue}
+                onChange={(e) => setAssignSupplierValue(e.target.value)}
+                style={{ ...inputStyle, marginBottom: "16px" }}
+              >
+                <option value="">— {t("inventorySupplierColumnLabel")} —</option>
+                <option value="__none__">{t("inventoryNoSupplierOption")}</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => void handleAssignSupplier()}
+                disabled={assigningSupplier || assignSupplierValue === ""}
+                style={{
+                  ...btnStyle("var(--db-accent)", "var(--db-accent-text)"),
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "10px",
+                  opacity: assigningSupplier || assignSupplierValue === "" ? 0.6 : 1,
+                  cursor: assigningSupplier || assignSupplierValue === "" ? "not-allowed" : "pointer",
+                }}
+              >
+                {assigningSupplier ? "…" : t("inventoryAssignConfirm")}
+              </button>
+            </div>
+          </>
         )}
 
         {loadingItems ? (
@@ -1767,6 +2051,9 @@ export default function InventoryPage() {
                   </SortTh>
                   <SortTh col="category"  active={sortCol === "category"}  dir={sortDir} onClick={handleSort} align="left">
                     {colLabels.category}
+                  </SortTh>
+                  <SortTh col="supplier"  active={sortCol === "supplier"}  dir={sortDir} onClick={handleSort} align="left">
+                    {colLabels.supplier}
                   </SortTh>
                   <SortTh col="stock"     active={sortCol === "stock"}     dir={sortDir} onClick={handleSort} align="right">
                     {colLabels.stock}
@@ -1821,6 +2108,11 @@ export default function InventoryPage() {
                       {/* Category */}
                       <td style={{ ...tdStyle, color: "var(--db-text-secondary)", minWidth: "80px" }}>
                         {catObj ? catDisplayName(catObj, locale) : "—"}
+                      </td>
+
+                      {/* Supplier */}
+                      <td style={{ ...tdStyle, color: "var(--db-text-secondary)", minWidth: "80px" }}>
+                        {item.supplier_id ? (supplierById[item.supplier_id]?.name ?? "—") : "—"}
                       </td>
 
                       {/* Stock — editable */}
@@ -1983,6 +2275,7 @@ export default function InventoryPage() {
           </>
         )}
       </SectionCard>
+      </>)}
     </div>
   );
 }

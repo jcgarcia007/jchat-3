@@ -1392,6 +1392,7 @@ export type Database = {
           staff_details_alt: string | null
           station: string
           stock_count: number | null
+          supplier_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1421,6 +1422,7 @@ export type Database = {
           staff_details_alt?: string | null
           station?: string
           stock_count?: number | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1450,6 +1452,7 @@ export type Database = {
           staff_details_alt?: string | null
           station?: string
           stock_count?: number | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1465,6 +1468,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3280,6 +3290,56 @@ export type Database = {
             foreignKeyName: "subscriptions_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          account_number: string | null
+          business_id: string
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          business_id: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          business_id?: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
