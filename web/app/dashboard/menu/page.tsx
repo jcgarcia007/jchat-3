@@ -284,6 +284,10 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "double-page-spread", name: "Double-Page Spread", desc: "Layout editorial de doble página, estilo revista impresa", emoji: "📰", hidden: true },
   { id: "curved-hero",     name: "Curved Hero",          desc: "Hero con arco convexo que fluye hacia el contenido", emoji: "🌿", hidden: true },
   { id: "coverflow-3d",    name: "Coverflow 3D",         desc: "Coverflow con perspectiva 3D tipo iTunes, bar de cocktails", emoji: "💿", hidden: true },
+  { id: "full-bleed-swipe", name: "Full-Bleed Swipe",    desc: "Cada plato ocupa la pantalla completa, desliza horizontalmente", emoji: "👆", hidden: true },
+  { id: "featured-grid",   name: "Featured + Grid",      desc: "Primer plato destacado en hero, resto en grid 2-col compacto", emoji: "⭐", hidden: true },
+  { id: "story-chapters",  name: "Story Chapters",       desc: "Cada categoría es un capítulo con portada y páginas tipográficas", emoji: "📖", hidden: true },
+  { id: "duotone-spotlight", name: "Duotone Spotlight",  desc: "Fotos con efecto duotono gráfico, grid oscuro, badge de precio", emoji: "🎨", hidden: true },
 ];
 
 /**
@@ -4390,6 +4394,10 @@ export default function MenuPage() {
     "double-page-spread": t("menuTemplateDoublePageSpread"),
     "curved-hero": t("menuTemplateCurvedHero"),
     "coverflow-3d": t("menuTemplateCoverflow3D"),
+    "full-bleed-swipe": t("menuTemplateFullBleedSwipe"),
+    "featured-grid": t("menuTemplateFeaturedGrid"),
+    "story-chapters": t("menuTemplateStoryChapters"),
+    "duotone-spotlight": t("menuTemplateDuotoneSpotlight"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4433,6 +4441,10 @@ export default function MenuPage() {
     "double-page-spread": t("menuTemplateDescDoublePageSpread"),
     "curved-hero": t("menuTemplateDescCurvedHero"),
     "coverflow-3d": t("menuTemplateDescCoverflow3D"),
+    "full-bleed-swipe": t("menuTemplateDescFullBleedSwipe"),
+    "featured-grid": t("menuTemplateDescFeaturedGrid"),
+    "story-chapters": t("menuTemplateDescStoryChapters"),
+    "duotone-spotlight": t("menuTemplateDescDuotoneSpotlight"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

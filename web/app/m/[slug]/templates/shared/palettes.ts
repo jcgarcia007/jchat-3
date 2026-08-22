@@ -491,6 +491,74 @@ const FRAMED_GALLERY_PALETTE: MenuPalette = {
   overlay: "rgba(43,33,24,.45)",
 };
 
+// #39 "COAST" beachside seafood — deep ocean bg, teal accent, full-bleed swipe.
+const FULL_BLEED_SWIPE_PALETTE: MenuPalette = {
+  bg: "#0A1628",
+  surface: "#112240",
+  surfaceElevated: "#1A3358",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.65)",
+  textFaint: "rgba(255,255,255,.35)",
+  border: "rgba(20,184,166,.2)",
+  accent: "#14B8A6",
+  accentText: "#0A1628",
+  accentSoft: "rgba(20,184,166,.12)",
+  price: "#14B8A6",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
+// #42 "URBAN KITCHEN" modern casual — warm white, burnt orange accent, featured + grid.
+const FEATURED_GRID_PALETTE: MenuPalette = {
+  bg: "#F8F7F5",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F0EDEA",
+  text: "#1A1208",
+  textMuted: "#6B5B48",
+  textFaint: "#9E8E7E",
+  border: "#EAE5DE",
+  accent: "#E8622A",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(232,98,42,.08)",
+  price: "#E8622A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(26,18,8,.45)",
+};
+
+// #47 "CHAPTERS" bookstore café — warm near-black, parchment gold, Playfair.
+const STORY_CHAPTERS_PALETTE: MenuPalette = {
+  bg: "#1C1812",
+  surface: "#242018",
+  surfaceElevated: "#2C2820",
+  text: "#F5F0E8",
+  textMuted: "rgba(245,240,232,.6)",
+  textFaint: "rgba(245,240,232,.3)",
+  border: "rgba(212,175,106,.2)",
+  accent: "#D4AF6A",
+  accentText: "#1C1812",
+  accentSoft: "rgba(212,175,106,.1)",
+  price: "#D4AF6A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
+// #49 "PRISM" modern tapas — near-black, electric yellow duotone accent.
+const DUOTONE_SPOTLIGHT_PALETTE: MenuPalette = {
+  bg: "#0F0F0F",
+  surface: "#1A1A1A",
+  surfaceElevated: "#242424",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.6)",
+  textFaint: "rgba(255,255,255,.35)",
+  border: "rgba(250,204,21,.15)",
+  accent: "#FACC15",
+  accentText: "#0F0F0F",
+  accentSoft: "rgba(250,204,21,.1)",
+  price: "#FACC15",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
 // #36 "GIGS" bar & live venue — near-black, red accent, concert poster feel.
 const POSTER_WALL_PALETTE: MenuPalette = {
   bg: "#111111",
@@ -612,6 +680,10 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "double-page-spread": DOUBLE_PAGE_SPREAD_PALETTE,
   "curved-hero": CURVED_HERO_PALETTE,
   "coverflow-3d": COVERFLOW_3D_PALETTE,
+  "full-bleed-swipe": FULL_BLEED_SWIPE_PALETTE,
+  "featured-grid": FEATURED_GRID_PALETTE,
+  "story-chapters": STORY_CHAPTERS_PALETTE,
+  "duotone-spotlight": DUOTONE_SPOTLIGHT_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

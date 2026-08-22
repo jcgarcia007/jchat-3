@@ -41,6 +41,10 @@ import PosterWall from "./PosterWall";
 import DoublePageSpread from "./DoublePageSpread";
 import CurvedHero from "./CurvedHero";
 import Coverflow3D from "./Coverflow3D";
+import FullBleedSwipe from "./FullBleedSwipe";
+import FeaturedGrid from "./FeaturedGrid";
+import StoryChapters from "./StoryChapters";
+import DuotoneSpotlight from "./DuotoneSpotlight";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -134,6 +138,14 @@ export default function MenuTemplateRenderer({
       return <CurvedHero {...props} />;
     case "coverflow-3d":
       return <Coverflow3D {...props} />;
+    case "full-bleed-swipe":
+      return <FullBleedSwipe {...props} />;
+    case "featured-grid":
+      return <FeaturedGrid {...props} />;
+    case "story-chapters":
+      return <StoryChapters {...props} />;
+    case "duotone-spotlight":
+      return <DuotoneSpotlight {...props} />;
     default:
       return <Classic {...props} />;
   }

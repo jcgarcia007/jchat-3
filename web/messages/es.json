@@ -2095,7 +2095,15 @@
     "menuTemplateCurvedHero": "Hero Curvado",
     "menuTemplateDescCurvedHero": "Foto a ancho completo con arco convexo en la parte inferior que fluye hacia la lista de contenido. Look café jardín, fresco y abierto.",
     "menuTemplateCoverflow3D": "Coverflow 3D",
-    "menuTemplateDescCoverflow3D": "Coverflow estilo iTunes: la tarjeta central de frente mientras las laterales giran en perspectiva 3D. Perfecto para bares de cócteles."
+    "menuTemplateDescCoverflow3D": "Coverflow estilo iTunes: la tarjeta central de frente mientras las laterales giran en perspectiva 3D. Perfecto para bares de cócteles.",
+    "menuTemplateFullBleedSwipe": "Desliza Pantalla Completa",
+    "menuTemplateDescFullBleedSwipe": "Cada plato ocupa la pantalla entera — desliza horizontalmente para navegar. Pager de puntos y botón grande de agregar.",
+    "menuTemplateFeaturedGrid": "Destacado + Grid",
+    "menuTemplateDescFeaturedGrid": "El primer plato de cada categoría tiene un hero de ancho completo. El resto llena un grid compacto de 2 columnas.",
+    "menuTemplateStoryChapters": "Capítulos",
+    "menuTemplateDescStoryChapters": "Cada categoría es un capítulo con portada en Playfair Display y platos como páginas tipográficas. Ideal para café-librería.",
+    "menuTemplateDuotoneSpotlight": "Duotono Spotlight",
+    "menuTemplateDescDuotoneSpotlight": "Fotos con efecto duotono de color vibrante. Grid oscuro de estilo galería gráfica, ideal para bar de tapas moderno."
   },
   "superAdmin": {
     "shell": {
