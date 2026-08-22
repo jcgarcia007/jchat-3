@@ -292,6 +292,9 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "blob-mask",        name: "Blob Mask",            desc: "Fotos recortadas con formas orgánicas blob, cuadrícula 2-col playful", emoji: "🫧", hidden: true },
   { id: "horizontal-filmstrip", name: "Horizontal Filmstrip", desc: "Categorías como tiras de película, scroll horizontal por categoría", emoji: "🎞", hidden: true },
   { id: "diagonal-mosaic",  name: "Diagonal Mosaic",      desc: "Grid 3-col con columna central escalonada, fotos con corte diagonal", emoji: "🔷", hidden: true },
+  { id: "sticky-hero-sheet", name: "Sticky Hero + Sheet",  desc: "Foto hero fija arriba y sheet de menú deslizable debajo como drawer de iOS", emoji: "🪟", hidden: true },
+  { id: "top-arc-dial",     name: "Top-Arc Dial",          desc: "Categorías posicionadas en un arco cóncavo en el top, grid oscuro con fuchsia", emoji: "🔮", hidden: true },
+  { id: "bento-deluxe",     name: "Bento Deluxe",          desc: "Grid bento con tamaños variados: hero full-width → par 2-col → trío 3-col", emoji: "🗂️", hidden: true },
 ];
 
 /**
@@ -4406,6 +4409,9 @@ export default function MenuPage() {
     "blob-mask": t("menuTemplateBlobMask"),
     "horizontal-filmstrip": t("menuTemplateHorizontalFilmstrip"),
     "diagonal-mosaic": t("menuTemplateDiagonalMosaic"),
+    "sticky-hero-sheet": t("menuTemplateStickyHeroSheet"),
+    "top-arc-dial": t("menuTemplateTopArcDial"),
+    "bento-deluxe": t("menuTemplateBentoDeluxe"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4457,6 +4463,9 @@ export default function MenuPage() {
     "blob-mask": t("menuTemplateDescBlobMask"),
     "horizontal-filmstrip": t("menuTemplateDescHorizontalFilmstrip"),
     "diagonal-mosaic": t("menuTemplateDescDiagonalMosaic"),
+    "sticky-hero-sheet": t("menuTemplateDescStickyHeroSheet"),
+    "top-arc-dial": t("menuTemplateDescTopArcDial"),
+    "bento-deluxe": t("menuTemplateDescBentoDeluxe"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

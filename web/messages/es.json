@@ -2111,7 +2111,13 @@
     "menuTemplateHorizontalFilmstrip": "Filmstrip Horizontal",
     "menuTemplateDescHorizontalFilmstrip": "Cada categoría es una tira de película horizontal con agujeros de sprocket. Scroll independiente por categoría, estética de cine.",
     "menuTemplateDiagonalMosaic": "Mosaico Diagonal",
-    "menuTemplateDescDiagonalMosaic": "Grid de 3 columnas con la central escalonada hacia abajo para crear un mosaico diagonal entrelazado. Fotos con corte diagonal en la base."
+    "menuTemplateDescDiagonalMosaic": "Grid de 3 columnas con la central escalonada hacia abajo para crear un mosaico diagonal entrelazado. Fotos con corte diagonal en la base.",
+    "menuTemplateStickyHeroSheet": "Hero + Sheet",
+    "menuTemplateDescStickyHeroSheet": "Foto hero fija de fondo mientras un sheet estilo iOS con el menú se desliza encima desde abajo.",
+    "menuTemplateTopArcDial": "Dial de Arco",
+    "menuTemplateDescTopArcDial": "Chips de categoría posicionados en un arco cóncavo en la parte superior. Toca uno para mostrar su menú debajo.",
+    "menuTemplateBentoDeluxe": "Bento Deluxe",
+    "menuTemplateDescBentoDeluxe": "Grid bento evolucionado con hero full-width, pares 2-col y tríos 3-col. Tipografía editorial con Playfair Display."
   },
   "superAdmin": {
     "shell": {

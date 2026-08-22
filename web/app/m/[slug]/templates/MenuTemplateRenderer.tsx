@@ -49,6 +49,9 @@ import RadialFan from "./RadialFan";
 import BlobMask from "./BlobMask";
 import HorizontalFilmstrip from "./HorizontalFilmstrip";
 import DiagonalMosaic from "./DiagonalMosaic";
+import StickyHeroSheet from "./StickyHeroSheet";
+import TopArcDial from "./TopArcDial";
+import BentoDeluxe from "./BentoDeluxe";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -158,6 +161,12 @@ export default function MenuTemplateRenderer({
       return <HorizontalFilmstrip {...props} />;
     case "diagonal-mosaic":
       return <DiagonalMosaic {...props} />;
+    case "sticky-hero-sheet":
+      return <StickyHeroSheet {...props} />;
+    case "top-arc-dial":
+      return <TopArcDial {...props} />;
+    case "bento-deluxe":
+      return <BentoDeluxe {...props} />;
     default:
       return <Classic {...props} />;
   }

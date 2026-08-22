@@ -712,6 +712,57 @@ const DIAGONAL_MOSAIC_PALETTE: MenuPalette = {
   overlay: "rgba(28,20,40,.45)",
 };
 
+// #46 "ANCHOR" coastal American — deep navy bg, coral accent, sticky hero + sheet.
+const STICKY_HERO_SHEET_PALETTE: MenuPalette = {
+  bg: "#1A2332",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F8F9FB",
+  text: "#1A2332",
+  textMuted: "#6B7FA3",
+  textFaint: "#9AACC4",
+  border: "#E8EDF5",
+  accent: "#FF7A5C",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(255,122,92,.08)",
+  price: "#FF7A5C",
+  danger: "var(--color-danger)",
+  overlay: "rgba(26,35,50,.6)",
+};
+
+// #48 "ORBITA" molecular gastronomy — deep space bg, neon fuchsia, arc dial.
+const TOP_ARC_DIAL_PALETTE: MenuPalette = {
+  bg: "#0D0D1A",
+  surface: "#151525",
+  surfaceElevated: "#1C1C30",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.6)",
+  textFaint: "rgba(255,255,255,.3)",
+  border: "rgba(232,121,249,.15)",
+  accent: "#E879F9",
+  accentText: "#0D0D1A",
+  accentSoft: "rgba(232,121,249,.1)",
+  price: "#E879F9",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #50 "MOSAIC" premium seasonal — warm white bg, near-black accent, bento grid.
+const BENTO_DELUXE_PALETTE: MenuPalette = {
+  bg: "#FAFAFA",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F3F4F6",
+  text: "#0F172A",
+  textMuted: "#6B7280",
+  textFaint: "#9CA3AF",
+  border: "#E5E7EB",
+  accent: "#0F172A",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(15,23,42,.06)",
+  price: "#0F172A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(15,23,42,.45)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
   "store-sections": STORE_SECTIONS_PALETTE,
@@ -756,6 +807,9 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "blob-mask": BLOB_MASK_PALETTE,
   "horizontal-filmstrip": HORIZONTAL_FILMSTRIP_PALETTE,
   "diagonal-mosaic": DIAGONAL_MOSAIC_PALETTE,
+  "sticky-hero-sheet": STICKY_HERO_SHEET_PALETTE,
+  "top-arc-dial": TOP_ARC_DIAL_PALETTE,
+  "bento-deluxe": BENTO_DELUXE_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

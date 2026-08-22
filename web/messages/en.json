@@ -2111,7 +2111,13 @@
     "menuTemplateHorizontalFilmstrip": "Horizontal Filmstrip",
     "menuTemplateDescHorizontalFilmstrip": "Each category is a horizontal filmstrip shelf with sprocket-hole edges. Scroll each strip independently, cinema-themed aesthetic.",
     "menuTemplateDiagonalMosaic": "Diagonal Mosaic",
-    "menuTemplateDescDiagonalMosaic": "3-column grid with the middle column staggered down for an interlocking diagonal mosaic. Photos have a diagonal cut at the bottom edge."
+    "menuTemplateDescDiagonalMosaic": "3-column grid with the middle column staggered down for an interlocking diagonal mosaic. Photos have a diagonal cut at the bottom edge.",
+    "menuTemplateStickyHeroSheet": "Sticky Hero + Sheet",
+    "menuTemplateDescStickyHeroSheet": "A full-bleed hero photo stays fixed while an iOS-style rounded bottom sheet slides up with the menu items inside.",
+    "menuTemplateTopArcDial": "Top-Arc Dial",
+    "menuTemplateDescTopArcDial": "Category chips arranged on a concave arc across the top of the screen. Tap any chip to dial in that category below.",
+    "menuTemplateBentoDeluxe": "Bento Deluxe",
+    "menuTemplateDescBentoDeluxe": "Evolved bento grid alternating full-width heroes, 2-col pairs, and 3-col trios. Clean editorial type with Playfair Display names."
   },
   "superAdmin": {
     "shell": {

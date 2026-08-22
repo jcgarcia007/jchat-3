@@ -1578,6 +1578,7 @@ export default function MenuPageClient({
     "poster-wall", "double-page-spread", "curved-hero", "coverflow-3d",
     "full-bleed-swipe", "story-chapters", "duotone-spotlight",
     "radial-fan", "blob-mask", "horizontal-filmstrip", "diagonal-mosaic",
+    "sticky-hero-sheet", "top-arc-dial", "bento-deluxe",
   ].includes(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)
@@ -1981,7 +1982,8 @@ export default function MenuPageClient({
       {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized", "bottom-nav", "photo-spotlight", "arch-crop", "full-bleed-reel", "film-strip", "magazine-cover", "gallery-print", "organic-circles", "hexagon-honeycomb", "spotlight-stage", "framed-gallery",
         "poster-wall", "double-page-spread", "curved-hero", "coverflow-3d",
         "full-bleed-swipe", "story-chapters", "duotone-spotlight",
-        "radial-fan", "blob-mask", "horizontal-filmstrip", "diagonal-mosaic"].includes(business.menu_template_id) && (
+        "radial-fan", "blob-mask", "horizontal-filmstrip", "diagonal-mosaic",
+        "sticky-hero-sheet", "top-arc-dial", "bento-deluxe"].includes(business.menu_template_id) && (
         <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
       )}
 
