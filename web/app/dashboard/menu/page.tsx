@@ -272,6 +272,10 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "photo-spotlight", name: "Photo Spotlight",       desc: "Foto enorme + tarjeta flotante de cristal", emoji: "📷", hidden: true },
   { id: "arch-crop",       name: "Arch Crop",             desc: "Fotos en arco suave, estilo boutique", emoji: "🫚", hidden: true },
   { id: "peek-carousel",   name: "Peek Carousel",         desc: "Cards deslizables, el siguiente se asoma al borde", emoji: "👀", hidden: true },
+  { id: "full-bleed-reel", name: "Full-Bleed Reel",       desc: "Pantalla completa por plato, scroll vertical tipo reel", emoji: "🎬", hidden: true },
+  { id: "film-strip",      name: "Film Strip",            desc: "Marcos tipo película con raíles de sprocket", emoji: "🎞️", hidden: true },
+  { id: "magazine-cover",  name: "Magazine Cover",        desc: "Portada editorial: cabecera Playfair + issue number + hero a sangre", emoji: "📰", hidden: true },
+  { id: "gallery-print",   name: "Gallery Print",         desc: "Plato como print enmarcado con mat de oro y carril de miniaturas", emoji: "🖼️", hidden: true },
 ];
 
 /**
@@ -4366,6 +4370,10 @@ export default function MenuPage() {
     "photo-spotlight": t("menuTemplatePhotoSpotlight"),
     "arch-crop": t("menuTemplateArchCrop"),
     "peek-carousel": t("menuTemplatePeekCarousel"),
+    "full-bleed-reel": t("menuTemplateFullBleedReel"),
+    "film-strip": t("menuTemplateFilmStrip"),
+    "magazine-cover": t("menuTemplateMagazineCover"),
+    "gallery-print": t("menuTemplateGalleryPrint"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4397,6 +4405,10 @@ export default function MenuPage() {
     "photo-spotlight": t("menuTemplateDescPhotoSpotlight"),
     "arch-crop": t("menuTemplateDescArchCrop"),
     "peek-carousel": t("menuTemplateDescPeekCarousel"),
+    "full-bleed-reel": t("menuTemplateDescFullBleedReel"),
+    "film-strip": t("menuTemplateDescFilmStrip"),
+    "magazine-cover": t("menuTemplateDescMagazineCover"),
+    "gallery-print": t("menuTemplateDescGalleryPrint"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

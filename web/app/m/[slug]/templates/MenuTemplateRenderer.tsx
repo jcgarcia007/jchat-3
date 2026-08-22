@@ -29,6 +29,10 @@ import Catalog from "./Catalog";
 import PhotoSpotlight from "./PhotoSpotlight";
 import ArchCrop from "./ArchCrop";
 import PeekCarousel from "./PeekCarousel";
+import FullBleedReel from "./FullBleedReel";
+import FilmStrip from "./FilmStrip";
+import MagazineCover from "./MagazineCover";
+import GalleryPrint from "./GalleryPrint";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -98,6 +102,14 @@ export default function MenuTemplateRenderer({
       return <ArchCrop {...props} />;
     case "peek-carousel":
       return <PeekCarousel {...props} />;
+    case "full-bleed-reel":
+      return <FullBleedReel {...props} />;
+    case "film-strip":
+      return <FilmStrip {...props} />;
+    case "magazine-cover":
+      return <MagazineCover {...props} />;
+    case "gallery-print":
+      return <GalleryPrint {...props} />;
     default:
       return <Classic {...props} />;
   }

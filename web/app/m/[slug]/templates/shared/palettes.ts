@@ -355,6 +355,74 @@ const ARCH_CROP_PALETTE: MenuPalette = {
   overlay: "rgba(30,15,8,0.5)",
 };
 
+// #21 "REEL & ROLL" street food — pitch black, fiery orange accent.
+const FULL_BLEED_REEL_PALETTE: MenuPalette = {
+  bg: "#000000",
+  surface: "#141414",
+  surfaceElevated: "#1C1C1C",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.7)",
+  textFaint: "rgba(255,255,255,.45)",
+  border: "rgba(255,255,255,.14)",
+  accent: "#FF5A1F",
+  accentText: "#000000",
+  accentSoft: "rgba(255,90,31,.14)",
+  price: "#FFFFFF",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #34 "REEL & ROLL" film strip — near-black, yellow accent.
+const FILM_STRIP_PALETTE: MenuPalette = {
+  bg: "#0E0E10",
+  surface: "#1A1A1D",
+  surfaceElevated: "#232327",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.7)",
+  textFaint: "rgba(255,255,255,.45)",
+  border: "rgba(255,255,255,.14)",
+  accent: "#FFC93C",
+  accentText: "#0E0E10",
+  accentSoft: "rgba(255,201,60,.14)",
+  price: "#FFC93C",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #26 "THE LIST" nightcap cocktail bar — near-black, gold accent.
+const MAGAZINE_COVER_PALETTE: MenuPalette = {
+  bg: "#08070C",
+  surface: "#14111E",
+  surfaceElevated: "#1C182A",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.65)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(201,169,106,.25)",
+  accent: "#C9A96A",
+  accentText: "#08070C",
+  accentSoft: "rgba(201,169,106,.14)",
+  price: "#C9A96A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #30 "Atelier No. 7" fine dining — charcoal bg, gold mat & accent.
+const GALLERY_PRINT_PALETTE: MenuPalette = {
+  bg: "#0C0A09",
+  surface: "#151210",
+  surfaceElevated: "#1A1510",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.6)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(201,169,106,.3)",
+  accent: "#C9A96A",
+  accentText: "#0C0A09",
+  accentSoft: "rgba(201,169,106,.14)",
+  price: "#C9A96A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
 // #31 "SEAR" smash burgers — pitch black, fiery orange-red accent, white text.
 const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
   bg: "#0A0A0A",
@@ -396,6 +464,10 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "photo-spotlight": PHOTO_SPOTLIGHT_PALETTE,
   "arch-crop": ARCH_CROP_PALETTE,
   "peek-carousel": PEEK_CAROUSEL_PALETTE,
+  "full-bleed-reel": FULL_BLEED_REEL_PALETTE,
+  "film-strip": FILM_STRIP_PALETTE,
+  "magazine-cover": MAGAZINE_COVER_PALETTE,
+  "gallery-print": GALLERY_PRINT_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

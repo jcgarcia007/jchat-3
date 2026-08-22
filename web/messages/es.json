@@ -174,7 +174,10 @@
     "noItems": "Sin elementos disponibles",
     "unavailable": "No disponible",
     "item": "artículo",
-    "items": "artículos"
+    "items": "artículos",
+    "inBag": "en la bolsa",
+    "onTheTab": "en la cuenta",
+    "courses": "platos"
   },
   "dashboardCommon": {
     "navOverview": "Resumen",
@@ -2066,7 +2069,15 @@
     "menuTemplateArchCrop": "Arco Suave",
     "menuTemplateDescArchCrop": "Fotos coronadas con un arco suave — estilo boutique y panadería artesanal.",
     "menuTemplatePeekCarousel": "Carrusel Peek",
-    "menuTemplateDescPeekCarousel": "Cards de altura completa que deslizas; la siguiente asoma por el borde derecho."
+    "menuTemplateDescPeekCarousel": "Cards de altura completa que deslizas; la siguiente asoma por el borde derecho.",
+    "menuTemplateFullBleedReel": "Reel a Sangre",
+    "menuTemplateDescFullBleedReel": "Cada plato ocupa la pantalla completa; desliza hacia arriba como un reel de video.",
+    "menuTemplateFilmStrip": "Tira de Película",
+    "menuTemplateDescFilmStrip": "Los platos corren como fotogramas entre raíles de sprocket retro.",
+    "menuTemplateMagazineCover": "Portada de Revista",
+    "menuTemplateDescMagazineCover": "Cabecera editorial en Playfair Display, número de edición y foto hero a sangre.",
+    "menuTemplateGalleryPrint": "Print de Galería",
+    "menuTemplateDescGalleryPrint": "Un plato expuesto como print enmarcado con mat de oro desplazado."
   },
   "superAdmin": {
     "shell": {

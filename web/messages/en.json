@@ -174,7 +174,10 @@
     "noItems": "No items available",
     "unavailable": "Unavailable",
     "item": "item",
-    "items": "items"
+    "items": "items",
+    "inBag": "in bag",
+    "onTheTab": "on the tab",
+    "courses": "courses"
   },
   "dashboardCommon": {
     "navOverview": "Overview",
@@ -2066,7 +2069,15 @@
     "menuTemplateArchCrop": "Arch Crop",
     "menuTemplateDescArchCrop": "Photos crowned with an arch — soft, boutique-bakery style with curved tops.",
     "menuTemplatePeekCarousel": "Peek Carousel",
-    "menuTemplateDescPeekCarousel": "Full-height cards you swipe sideways; the next card peeks at the right edge."
+    "menuTemplateDescPeekCarousel": "Full-height cards you swipe sideways; the next card peeks at the right edge.",
+    "menuTemplateFullBleedReel": "Full-Bleed Reel",
+    "menuTemplateDescFullBleedReel": "Each dish fills the entire screen; swipe up to the next like a video reel.",
+    "menuTemplateFilmStrip": "Film Strip",
+    "menuTemplateDescFilmStrip": "Dishes run as film frames between retro sprocket rails — personality-forward.",
+    "menuTemplateMagazineCover": "Magazine Cover",
+    "menuTemplateDescMagazineCover": "An editorial masthead in Playfair Display, issue number, and full-bleed hero photo.",
+    "menuTemplateGalleryPrint": "Gallery Print",
+    "menuTemplateDescGalleryPrint": "One dish displayed as a framed gallery print with an offset gold mat."
   },
   "superAdmin": {
     "shell": {
