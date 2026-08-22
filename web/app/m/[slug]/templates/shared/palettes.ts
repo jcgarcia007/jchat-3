@@ -423,6 +423,74 @@ const GALLERY_PRINT_PALETTE: MenuPalette = {
   overlay: "rgba(0,0,0,.75)",
 };
 
+// #24 "Scoops & Co." gelato — blush pink bg, magenta accent.
+const ORGANIC_CIRCLES_PALETTE: MenuPalette = {
+  bg: "#FFF0F4",
+  surface: "#FFFFFF",
+  surfaceElevated: "#FFE0EC",
+  text: "#8A2B4A",
+  textMuted: "#B5526B",
+  textFaint: "#CC8FA0",
+  border: "#F4D3DF",
+  accent: "#E85D8A",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(232,93,138,.12)",
+  price: "#E85D8A",
+  danger: "var(--color-danger)",
+  overlay: "rgba(138,43,74,.5)",
+};
+
+// #29 "Grove" health bowls — light green bg, forest green accent.
+const HEXAGON_HONEYCOMB_PALETTE: MenuPalette = {
+  bg: "#F2F7F0",
+  surface: "#FFFFFF",
+  surfaceElevated: "#DCE8DC",
+  text: "#1D3524",
+  textMuted: "#3E6B4E",
+  textFaint: "#7CA888",
+  border: "#DCE8DC",
+  accent: "#2E9E5B",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(46,158,91,.12)",
+  price: "#2E9E5B",
+  danger: "var(--color-danger)",
+  overlay: "rgba(29,53,36,.45)",
+};
+
+// #33 "Menya" ramen bar — near-black warm bg, amber/gold accent.
+const SPOTLIGHT_STAGE_PALETTE: MenuPalette = {
+  bg: "#120D0A",
+  surface: "#211812",
+  surfaceElevated: "#2A1F18",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.72)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(232,162,61,.25)",
+  accent: "#E8A23D",
+  accentText: "#120D0A",
+  accentSoft: "rgba(232,162,61,.14)",
+  price: "#E8A23D",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
+// #32 "La Galerie Sucrée" patisserie — cream bg, dark brown text, warm gold accent.
+const FRAMED_GALLERY_PALETTE: MenuPalette = {
+  bg: "#F6F1EA",
+  surface: "#FFFFFF",
+  surfaceElevated: "#FCFAF6",
+  text: "#2B2118",
+  textMuted: "#6B5343",
+  textFaint: "#94836C",
+  border: "#E4DACB",
+  accent: "#8A6D3B",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(138,109,59,.12)",
+  price: "#8A6D3B",
+  danger: "var(--color-danger)",
+  overlay: "rgba(43,33,24,.45)",
+};
+
 // #31 "SEAR" smash burgers — pitch black, fiery orange-red accent, white text.
 const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
   bg: "#0A0A0A",
@@ -468,6 +536,10 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "film-strip": FILM_STRIP_PALETTE,
   "magazine-cover": MAGAZINE_COVER_PALETTE,
   "gallery-print": GALLERY_PRINT_PALETTE,
+  "organic-circles": ORGANIC_CIRCLES_PALETTE,
+  "hexagon-honeycomb": HEXAGON_HONEYCOMB_PALETTE,
+  "spotlight-stage": SPOTLIGHT_STAGE_PALETTE,
+  "framed-gallery": FRAMED_GALLERY_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

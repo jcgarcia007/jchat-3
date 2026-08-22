@@ -177,7 +177,9 @@
     "items": "items",
     "inBag": "in bag",
     "onTheTab": "on the tab",
-    "courses": "courses"
+    "courses": "courses",
+    "piece": "piece",
+    "pieces": "pieces"
   },
   "dashboardCommon": {
     "navOverview": "Overview",
@@ -2077,7 +2079,15 @@
     "menuTemplateMagazineCover": "Magazine Cover",
     "menuTemplateDescMagazineCover": "An editorial masthead in Playfair Display, issue number, and full-bleed hero photo.",
     "menuTemplateGalleryPrint": "Gallery Print",
-    "menuTemplateDescGalleryPrint": "One dish displayed as a framed gallery print with an offset gold mat."
+    "menuTemplateDescGalleryPrint": "One dish displayed as a framed gallery print with an offset gold mat.",
+    "menuTemplateOrganicCircles": "Organic Circles",
+    "menuTemplateDescOrganicCircles": "Round photo bubbles in a 2-column grid — playful, perfect for a gelato or bakery shop.",
+    "menuTemplateHexagonHoneycomb": "Hexagon Honeycomb",
+    "menuTemplateDescHexagonHoneycomb": "Photos clipped into hexagons — geometric and fresh for a health-food or bowl concept.",
+    "menuTemplateSpotlightStage": "Spotlight Stage",
+    "menuTemplateDescSpotlightStage": "One dish takes centre stage in a large hero frame, with the rest in a scrollable ticker rail below.",
+    "menuTemplateFramedGallery": "Framed Gallery",
+    "menuTemplateDescFramedGallery": "Every dish hung like art — matted, framed, with a museum caption plaque. Ideal for a patisserie or fine bakery."
   },
   "superAdmin": {
     "shell": {

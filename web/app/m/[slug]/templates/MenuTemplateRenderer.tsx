@@ -33,6 +33,10 @@ import FullBleedReel from "./FullBleedReel";
 import FilmStrip from "./FilmStrip";
 import MagazineCover from "./MagazineCover";
 import GalleryPrint from "./GalleryPrint";
+import OrganicCircles from "./OrganicCircles";
+import HexagonHoneycomb from "./HexagonHoneycomb";
+import SpotlightStage from "./SpotlightStage";
+import FramedGallery from "./FramedGallery";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -110,6 +114,14 @@ export default function MenuTemplateRenderer({
       return <MagazineCover {...props} />;
     case "gallery-print":
       return <GalleryPrint {...props} />;
+    case "organic-circles":
+      return <OrganicCircles {...props} />;
+    case "hexagon-honeycomb":
+      return <HexagonHoneycomb {...props} />;
+    case "spotlight-stage":
+      return <SpotlightStage {...props} />;
+    case "framed-gallery":
+      return <FramedGallery {...props} />;
     default:
       return <Classic {...props} />;
   }

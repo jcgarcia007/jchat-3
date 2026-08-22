@@ -177,7 +177,9 @@
     "items": "artículos",
     "inBag": "en la bolsa",
     "onTheTab": "en la cuenta",
-    "courses": "platos"
+    "courses": "platos",
+    "piece": "pieza",
+    "pieces": "piezas"
   },
   "dashboardCommon": {
     "navOverview": "Resumen",
@@ -2077,7 +2079,15 @@
     "menuTemplateMagazineCover": "Portada de Revista",
     "menuTemplateDescMagazineCover": "Cabecera editorial en Playfair Display, número de edición y foto hero a sangre.",
     "menuTemplateGalleryPrint": "Print de Galería",
-    "menuTemplateDescGalleryPrint": "Un plato expuesto como print enmarcado con mat de oro desplazado."
+    "menuTemplateDescGalleryPrint": "Un plato expuesto como print enmarcado con mat de oro desplazado.",
+    "menuTemplateOrganicCircles": "Círculos Orgánicos",
+    "menuTemplateDescOrganicCircles": "Fotos en burbujas redondas en rejilla 2 col — juguetón, ideal para heladerías o pastelerías.",
+    "menuTemplateHexagonHoneycomb": "Panal Hexagonal",
+    "menuTemplateDescHexagonHoneycomb": "Fotos recortadas en hexágonos — geométrico y fresco para conceptos de comida saludable.",
+    "menuTemplateSpotlightStage": "Escenario Spotlight",
+    "menuTemplateDescSpotlightStage": "Un plato toma el protagonismo en un gran hero, el resto en un ticker desplazable debajo.",
+    "menuTemplateFramedGallery": "Galería Enmarcada",
+    "menuTemplateDescFramedGallery": "Cada plato como obra de arte — mat, marco y placa de museo. Ideal para pastelería o panadería boutique."
   },
   "superAdmin": {
     "shell": {

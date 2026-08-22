@@ -1574,6 +1574,7 @@ export default function MenuPageClient({
     "card-stack", "gesture", "ai-personalized", "luxury", "fullscreen-type",
     "glass-chips", "immersive", "masonry-search", "photo-spotlight", "arch-crop",
     "peek-carousel", "full-bleed-reel", "film-strip", "magazine-cover", "gallery-print",
+    "organic-circles", "hexagon-honeycomb", "spotlight-stage", "framed-gallery",
   ].includes(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)
@@ -1974,7 +1975,7 @@ export default function MenuPageClient({
       </MenuPaletteContext.Provider>
 
       {/* Templates that render their own docked cart bar suppress the shared FAB. */}
-      {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized", "bottom-nav", "photo-spotlight", "arch-crop", "full-bleed-reel", "film-strip", "magazine-cover", "gallery-print"].includes(business.menu_template_id) && (
+      {!["icon-rail", "sticky-tabs", "category-sidebar", "store-sections", "glass-chips", "infinite-feed", "magazine", "streaming-rows", "masonry-search", "fullscreen-type", "timeline", "luxury", "carousel", "immersive", "stories", "card-stack", "gesture", "ai-personalized", "bottom-nav", "photo-spotlight", "arch-crop", "full-bleed-reel", "film-strip", "magazine-cover", "gallery-print", "organic-circles", "hexagon-honeycomb", "spotlight-stage", "framed-gallery"].includes(business.menu_template_id) && (
         <CartFAB count={cartCount} total={cartTotal} onClick={() => setStep("cart")} />
       )}
 

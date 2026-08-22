@@ -276,6 +276,10 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "film-strip",      name: "Film Strip",            desc: "Marcos tipo película con raíles de sprocket", emoji: "🎞️", hidden: true },
   { id: "magazine-cover",  name: "Magazine Cover",        desc: "Portada editorial: cabecera Playfair + issue number + hero a sangre", emoji: "📰", hidden: true },
   { id: "gallery-print",   name: "Gallery Print",         desc: "Plato como print enmarcado con mat de oro y carril de miniaturas", emoji: "🖼️", hidden: true },
+  { id: "organic-circles", name: "Organic Circles",      desc: "Fotos en círculos flotantes, estilo heladería", emoji: "⭕", hidden: true },
+  { id: "hexagon-honeycomb", name: "Hexagon Honeycomb",  desc: "Fotos recortadas en hexágonos, health-food", emoji: "⬡", hidden: true },
+  { id: "spotlight-stage", name: "Spotlight Stage",      desc: "Plato protagonista en hero grande + ticker de próximos", emoji: "🎭", hidden: true },
+  { id: "framed-gallery",  name: "Framed Gallery",       desc: "Cada plato como obra de arte enmarcada, estilo galería", emoji: "🖼", hidden: true },
 ];
 
 /**
@@ -4374,6 +4378,10 @@ export default function MenuPage() {
     "film-strip": t("menuTemplateFilmStrip"),
     "magazine-cover": t("menuTemplateMagazineCover"),
     "gallery-print": t("menuTemplateGalleryPrint"),
+    "organic-circles": t("menuTemplateOrganicCircles"),
+    "hexagon-honeycomb": t("menuTemplateHexagonHoneycomb"),
+    "spotlight-stage": t("menuTemplateSpotlightStage"),
+    "framed-gallery": t("menuTemplateFramedGallery"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4409,6 +4417,10 @@ export default function MenuPage() {
     "film-strip": t("menuTemplateDescFilmStrip"),
     "magazine-cover": t("menuTemplateDescMagazineCover"),
     "gallery-print": t("menuTemplateDescGalleryPrint"),
+    "organic-circles": t("menuTemplateDescOrganicCircles"),
+    "hexagon-honeycomb": t("menuTemplateDescHexagonHoneycomb"),
+    "spotlight-stage": t("menuTemplateDescSpotlightStage"),
+    "framed-gallery": t("menuTemplateDescFramedGallery"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),
