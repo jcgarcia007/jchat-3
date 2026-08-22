@@ -2064,7 +2064,9 @@
     "menuTemplatePhotoSpotlight": "Foto Destacada",
     "menuTemplateDescPhotoSpotlight": "Una foto enorme llena la pantalla; una tarjeta flotante de cristal muestra los detalles y el botón de agregar.",
     "menuTemplateArchCrop": "Arco Suave",
-    "menuTemplateDescArchCrop": "Fotos coronadas con un arco suave — estilo boutique y panadería artesanal."
+    "menuTemplateDescArchCrop": "Fotos coronadas con un arco suave — estilo boutique y panadería artesanal.",
+    "menuTemplatePeekCarousel": "Carrusel Peek",
+    "menuTemplateDescPeekCarousel": "Cards de altura completa que deslizas; la siguiente asoma por el borde derecho."
   },
   "superAdmin": {
     "shell": {

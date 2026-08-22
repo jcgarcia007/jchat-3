@@ -271,6 +271,7 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "catalog",         name: "Catálogo",              desc: "Rejilla tipo tienda con filtros", emoji: "🛍️", hidden: true },
   { id: "photo-spotlight", name: "Photo Spotlight",       desc: "Foto enorme + tarjeta flotante de cristal", emoji: "📷", hidden: true },
   { id: "arch-crop",       name: "Arch Crop",             desc: "Fotos en arco suave, estilo boutique", emoji: "🫚", hidden: true },
+  { id: "peek-carousel",   name: "Peek Carousel",         desc: "Cards deslizables, el siguiente se asoma al borde", emoji: "👀", hidden: true },
 ];
 
 /**
@@ -4364,6 +4365,7 @@ export default function MenuPage() {
     catalog: t("menuTemplateCatalog"),
     "photo-spotlight": t("menuTemplatePhotoSpotlight"),
     "arch-crop": t("menuTemplateArchCrop"),
+    "peek-carousel": t("menuTemplatePeekCarousel"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4394,6 +4396,7 @@ export default function MenuPage() {
     catalog: t("menuTemplateDescCatalog"),
     "photo-spotlight": t("menuTemplateDescPhotoSpotlight"),
     "arch-crop": t("menuTemplateDescArchCrop"),
+    "peek-carousel": t("menuTemplateDescPeekCarousel"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

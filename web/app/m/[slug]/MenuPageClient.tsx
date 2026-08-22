@@ -1573,6 +1573,7 @@ export default function MenuPageClient({
     "infinite-feed", "magazine", "streaming-rows", "timeline", "carousel", "stories",
     "card-stack", "gesture", "ai-personalized", "luxury", "fullscreen-type",
     "glass-chips", "immersive", "masonry-search", "photo-spotlight", "arch-crop",
+    "peek-carousel",
   ].includes(business.menu_template_id);
 
   // ── Hover state for card effects (lifted here for tilt/spotlight mouse tracking)

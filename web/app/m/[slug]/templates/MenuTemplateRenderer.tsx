@@ -28,6 +28,7 @@ import Polaroid from "./Polaroid";
 import Catalog from "./Catalog";
 import PhotoSpotlight from "./PhotoSpotlight";
 import ArchCrop from "./ArchCrop";
+import PeekCarousel from "./PeekCarousel";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -95,6 +96,8 @@ export default function MenuTemplateRenderer({
       return <PhotoSpotlight {...props} />;
     case "arch-crop":
       return <ArchCrop {...props} />;
+    case "peek-carousel":
+      return <PeekCarousel {...props} />;
     default:
       return <Classic {...props} />;
   }

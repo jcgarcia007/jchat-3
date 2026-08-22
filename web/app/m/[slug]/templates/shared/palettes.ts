@@ -321,6 +321,23 @@ const CATEGORY_SIDEBAR_PALETTE: MenuPalette = {
   danger: "var(--color-danger)", overlay: "rgba(58,46,31,0.4)",
 };
 
+// #27 "KAI" Japanese restaurant — deep navy, teal accent, gold prices.
+const PEEK_CAROUSEL_PALETTE: MenuPalette = {
+  bg: "#0B1020",
+  surface: "#141B33",
+  surfaceElevated: "#1B2542",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.55)",
+  textFaint: "rgba(255,255,255,.35)",
+  border: "rgba(255,255,255,.10)",
+  accent: "#4FD1C5",
+  accentText: "#0B1020",
+  accentSoft: "rgba(79,209,197,.14)",
+  price: "#4FD1C5",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
 // #35 "Maison Arche" boutique bakery — warm cream, brown text, amber accent.
 const ARCH_CROP_PALETTE: MenuPalette = {
   bg: "#FBF6EE",
@@ -378,6 +395,7 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "sticky-tabs": STICKY_TABS_PALETTE,
   "photo-spotlight": PHOTO_SPOTLIGHT_PALETTE,
   "arch-crop": ARCH_CROP_PALETTE,
+  "peek-carousel": PEEK_CAROUSEL_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

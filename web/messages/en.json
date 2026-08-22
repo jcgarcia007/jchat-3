@@ -2064,7 +2064,9 @@
     "menuTemplatePhotoSpotlight": "Photo Spotlight",
     "menuTemplateDescPhotoSpotlight": "One enormous photo fills the screen; a floating glass card holds the details and add button.",
     "menuTemplateArchCrop": "Arch Crop",
-    "menuTemplateDescArchCrop": "Photos crowned with an arch — soft, boutique-bakery style with curved tops."
+    "menuTemplateDescArchCrop": "Photos crowned with an arch — soft, boutique-bakery style with curved tops.",
+    "menuTemplatePeekCarousel": "Peek Carousel",
+    "menuTemplateDescPeekCarousel": "Full-height cards you swipe sideways; the next card peeks at the right edge."
   },
   "superAdmin": {
     "shell": {
