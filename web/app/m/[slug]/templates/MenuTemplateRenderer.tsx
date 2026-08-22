@@ -37,6 +37,10 @@ import OrganicCircles from "./OrganicCircles";
 import HexagonHoneycomb from "./HexagonHoneycomb";
 import SpotlightStage from "./SpotlightStage";
 import FramedGallery from "./FramedGallery";
+import PosterWall from "./PosterWall";
+import DoublePageSpread from "./DoublePageSpread";
+import CurvedHero from "./CurvedHero";
+import Coverflow3D from "./Coverflow3D";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -122,6 +126,14 @@ export default function MenuTemplateRenderer({
       return <SpotlightStage {...props} />;
     case "framed-gallery":
       return <FramedGallery {...props} />;
+    case "poster-wall":
+      return <PosterWall {...props} />;
+    case "double-page-spread":
+      return <DoublePageSpread {...props} />;
+    case "curved-hero":
+      return <CurvedHero {...props} />;
+    case "coverflow-3d":
+      return <Coverflow3D {...props} />;
     default:
       return <Classic {...props} />;
   }

@@ -491,6 +491,74 @@ const FRAMED_GALLERY_PALETTE: MenuPalette = {
   overlay: "rgba(43,33,24,.45)",
 };
 
+// #36 "GIGS" bar & live venue — near-black, red accent, concert poster feel.
+const POSTER_WALL_PALETTE: MenuPalette = {
+  bg: "#111111",
+  surface: "#1E1E1E",
+  surfaceElevated: "#2A2A2A",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.7)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(255,255,255,.12)",
+  accent: "#FF3B30",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(255,59,48,.12)",
+  price: "#FF3B30",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
+// #37 "Le Bistro Moderne" — cream newsprint bg, broadsheet navy, Playfair editorial.
+const DOUBLE_PAGE_SPREAD_PALETTE: MenuPalette = {
+  bg: "#F5F1E8",
+  surface: "#FFFFFF",
+  surfaceElevated: "#EEEAE0",
+  text: "#211D15",
+  textMuted: "#8A7A6A",
+  textFaint: "#B0A595",
+  border: "#D6CEBC",
+  accent: "#1A3668",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(26,54,104,.08)",
+  price: "#1A3668",
+  danger: "var(--color-danger)",
+  overlay: "rgba(33,29,21,.45)",
+};
+
+// #40 "BOTANICA" garden café — warm white bg, leaf green accent.
+const CURVED_HERO_PALETTE: MenuPalette = {
+  bg: "#FDFAF5",
+  surface: "#FFFFFF",
+  surfaceElevated: "#F0F5EC",
+  text: "#1A2B0F",
+  textMuted: "#6B7A62",
+  textFaint: "#9EAB94",
+  border: "#E4EAE0",
+  accent: "#4A7C3B",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(74,124,59,.08)",
+  price: "#4A7C3B",
+  danger: "var(--color-danger)",
+  overlay: "rgba(26,43,15,.4)",
+};
+
+// #41 "VINYL" cocktail bar — near-black indigo, purple accent, coverflow 3D.
+const COVERFLOW_3D_PALETTE: MenuPalette = {
+  bg: "#0C0C14",
+  surface: "#16162A",
+  surfaceElevated: "#1E1E36",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.65)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(139,92,246,.2)",
+  accent: "#8B5CF6",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(139,92,246,.12)",
+  price: "#8B5CF6",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.72)",
+};
+
 // #31 "SEAR" smash burgers — pitch black, fiery orange-red accent, white text.
 const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
   bg: "#0A0A0A",
@@ -540,6 +608,10 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "hexagon-honeycomb": HEXAGON_HONEYCOMB_PALETTE,
   "spotlight-stage": SPOTLIGHT_STAGE_PALETTE,
   "framed-gallery": FRAMED_GALLERY_PALETTE,
+  "poster-wall": POSTER_WALL_PALETTE,
+  "double-page-spread": DOUBLE_PAGE_SPREAD_PALETTE,
+  "curved-hero": CURVED_HERO_PALETTE,
+  "coverflow-3d": COVERFLOW_3D_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

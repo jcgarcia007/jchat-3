@@ -280,6 +280,10 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "hexagon-honeycomb", name: "Hexagon Honeycomb",  desc: "Fotos recortadas en hexágonos, health-food", emoji: "⬡", hidden: true },
   { id: "spotlight-stage", name: "Spotlight Stage",      desc: "Plato protagonista en hero grande + ticker de próximos", emoji: "🎭", hidden: true },
   { id: "framed-gallery",  name: "Framed Gallery",       desc: "Cada plato como obra de arte enmarcada, estilo galería", emoji: "🖼", hidden: true },
+  { id: "poster-wall",     name: "Poster Wall",          desc: "Cada plato como póster de concierto, grid oscuro", emoji: "🎸", hidden: true },
+  { id: "double-page-spread", name: "Double-Page Spread", desc: "Layout editorial de doble página, estilo revista impresa", emoji: "📰", hidden: true },
+  { id: "curved-hero",     name: "Curved Hero",          desc: "Hero con arco convexo que fluye hacia el contenido", emoji: "🌿", hidden: true },
+  { id: "coverflow-3d",    name: "Coverflow 3D",         desc: "Coverflow con perspectiva 3D tipo iTunes, bar de cocktails", emoji: "💿", hidden: true },
 ];
 
 /**
@@ -4382,6 +4386,10 @@ export default function MenuPage() {
     "hexagon-honeycomb": t("menuTemplateHexagonHoneycomb"),
     "spotlight-stage": t("menuTemplateSpotlightStage"),
     "framed-gallery": t("menuTemplateFramedGallery"),
+    "poster-wall": t("menuTemplatePosterWall"),
+    "double-page-spread": t("menuTemplateDoublePageSpread"),
+    "curved-hero": t("menuTemplateCurvedHero"),
+    "coverflow-3d": t("menuTemplateCoverflow3D"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4421,6 +4429,10 @@ export default function MenuPage() {
     "hexagon-honeycomb": t("menuTemplateDescHexagonHoneycomb"),
     "spotlight-stage": t("menuTemplateDescSpotlightStage"),
     "framed-gallery": t("menuTemplateDescFramedGallery"),
+    "poster-wall": t("menuTemplateDescPosterWall"),
+    "double-page-spread": t("menuTemplateDescDoublePageSpread"),
+    "curved-hero": t("menuTemplateDescCurvedHero"),
+    "coverflow-3d": t("menuTemplateDescCoverflow3D"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

@@ -2087,7 +2087,15 @@
     "menuTemplateSpotlightStage": "Escenario Spotlight",
     "menuTemplateDescSpotlightStage": "Un plato toma el protagonismo en un gran hero, el resto en un ticker desplazable debajo.",
     "menuTemplateFramedGallery": "Galería Enmarcada",
-    "menuTemplateDescFramedGallery": "Cada plato como obra de arte — mat, marco y placa de museo. Ideal para pastelería o panadería boutique."
+    "menuTemplateDescFramedGallery": "Cada plato como obra de arte — mat, marco y placa de museo. Ideal para pastelería o panadería boutique.",
+    "menuTemplatePosterWall": "Muro de Pósters",
+    "menuTemplateDescPosterWall": "Cada plato como póster de concierto — foto a sangre, tipografía en negrita, precio en esquina. Ideal para bares y venues.",
+    "menuTemplateDoublePageSpread": "Doble Página",
+    "menuTemplateDescDoublePageSpread": "Layout editorial tipo periódico: el primer plato ocupa una doble página, el resto se lee como artículos. Estilo bistró sofisticado.",
+    "menuTemplateCurvedHero": "Hero Curvado",
+    "menuTemplateDescCurvedHero": "Foto a ancho completo con arco convexo en la parte inferior que fluye hacia la lista de contenido. Look café jardín, fresco y abierto.",
+    "menuTemplateCoverflow3D": "Coverflow 3D",
+    "menuTemplateDescCoverflow3D": "Coverflow estilo iTunes: la tarjeta central de frente mientras las laterales giran en perspectiva 3D. Perfecto para bares de cócteles."
   },
   "superAdmin": {
     "shell": {

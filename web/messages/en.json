@@ -2087,7 +2087,15 @@
     "menuTemplateSpotlightStage": "Spotlight Stage",
     "menuTemplateDescSpotlightStage": "One dish takes centre stage in a large hero frame, with the rest in a scrollable ticker rail below.",
     "menuTemplateFramedGallery": "Framed Gallery",
-    "menuTemplateDescFramedGallery": "Every dish hung like art — matted, framed, with a museum caption plaque. Ideal for a patisserie or fine bakery."
+    "menuTemplateDescFramedGallery": "Every dish hung like art — matted, framed, with a museum caption plaque. Ideal for a patisserie or fine bakery.",
+    "menuTemplatePosterWall": "Poster Wall",
+    "menuTemplateDescPosterWall": "Every item is a concert poster — full-bleed photo, bold type, price badge in the corner. Built for a bar or live venue.",
+    "menuTemplateDoublePageSpread": "Double-Page Spread",
+    "menuTemplateDescDoublePageSpread": "Editorial broadsheet layout: first item gets a full spread, the rest scroll as typographic articles. Sophisticated bistro feel.",
+    "menuTemplateCurvedHero": "Curved Hero",
+    "menuTemplateDescCurvedHero": "A full-width photo with a convex arc at the bottom bleeds into the content list. Fresh, airy garden café look.",
+    "menuTemplateCoverflow3D": "Coverflow 3D",
+    "menuTemplateDescCoverflow3D": "iTunes-era coverflow: center card faces forward while flanking cards rotate in perspective. Perfect for a cocktail bar."
   },
   "superAdmin": {
     "shell": {
