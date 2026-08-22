@@ -25,7 +25,6 @@ import Bento from "./Bento";
 import HeroList from "./HeroList";
 import SplitDiagonal from "./SplitDiagonal";
 import Polaroid from "./Polaroid";
-import Catalog from "./Catalog";
 import PhotoSpotlight from "./PhotoSpotlight";
 import ArchCrop from "./ArchCrop";
 import PeekCarousel from "./PeekCarousel";
@@ -113,8 +112,6 @@ export default function MenuTemplateRenderer({
       return <SplitDiagonal {...props} />;
     case "polaroid":
       return <Polaroid {...props} />;
-    case "catalog":
-      return <Catalog {...props} />;
     case "photo-spotlight":
       return <PhotoSpotlight {...props} />;
     case "arch-crop":

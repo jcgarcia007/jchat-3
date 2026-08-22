@@ -1736,8 +1736,6 @@
     "menuTemplateDescSplitDiagonal": "Photo on a diagonal, info on the other side",
     "menuTemplatePolaroid": "Polaroid",
     "menuTemplateDescPolaroid": "Instant-photo cards with white frame",
-    "menuTemplateCatalog": "Catalog",
-    "menuTemplateDescCatalog": "Store-style grid with category filters",
     "menuEffectLift": "Lift + Zoom",
     "menuEffectDescLift": "Lifts and zooms in",
     "menuEffectReveal": "Reveal",
