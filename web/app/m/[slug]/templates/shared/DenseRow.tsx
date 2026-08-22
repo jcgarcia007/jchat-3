@@ -47,6 +47,9 @@ export function DenseRow({
   const soldOut = item.stock_count !== null && item.stock_count === 0;
   const hasOptions = item.groups.length > 0;
   const badge = item.badge ? getBadgeConfig(t)[item.badge] : null;
+  // gallery-first photo fix: prefer gallery over photo_url (same logic as ItemCard)
+  const galleryUrl = item.photos?.find((p) => p.url && p.url.trim() !== "")?.url;
+  const thumbSrc = galleryUrl ?? (item.photo_url?.trim() ? item.photo_url : null);
 
   const [faved, setFaved] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
@@ -76,10 +79,10 @@ export function DenseRow({
       }}
     >
       {/* Thumbnail */}
-      {item.photo_url ? (
+      {thumbSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={item.photo_url}
+          src={thumbSrc}
           alt={item.name}
           style={{
             width: 62,

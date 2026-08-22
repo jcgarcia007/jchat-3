@@ -321,6 +321,23 @@ const CATEGORY_SIDEBAR_PALETTE: MenuPalette = {
   danger: "var(--color-danger)", overlay: "rgba(58,46,31,0.4)",
 };
 
+// #31 "SEAR" smash burgers — pitch black, fiery orange-red accent, white text.
+const PHOTO_SPOTLIGHT_PALETTE: MenuPalette = {
+  bg: "#0A0A0A",
+  surface: "#151515",
+  surfaceElevated: "#1E1E1E",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,.6)",
+  textFaint: "rgba(255,255,255,.4)",
+  border: "rgba(255,255,255,.14)",
+  accent: "#FF4D2E",
+  accentText: "#FFFFFF",
+  accentSoft: "rgba(255,77,46,.14)",
+  price: "#FFFFFF",
+  danger: "var(--color-danger)",
+  overlay: "rgba(0,0,0,.75)",
+};
+
 export const MENU_PALETTES: Record<string, MenuPalette> = {
   classic: CLASSIC_PALETTE,
   "store-sections": STORE_SECTIONS_PALETTE,
@@ -342,6 +359,7 @@ export const MENU_PALETTES: Record<string, MenuPalette> = {
   "infinite-feed": INFINITE_FEED_PALETTE,
   "streaming-rows": STREAMING_ROWS_PALETTE,
   "sticky-tabs": STICKY_TABS_PALETTE,
+  "photo-spotlight": PHOTO_SPOTLIGHT_PALETTE,
 };
 
 /** Resolve a template's palette, falling back to the default dark tokens. */

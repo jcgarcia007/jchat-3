@@ -269,6 +269,7 @@ const MENU_TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "split-diagonal",  name: "Split Diagonal",        desc: "Foto en diagonal, info al lado", emoji: "◣", hidden: true },
   { id: "polaroid",        name: "Polaroid",              desc: "Fotos instantánea con marquito", emoji: "📸", hidden: true },
   { id: "catalog",         name: "Catálogo",              desc: "Rejilla tipo tienda con filtros", emoji: "🛍️", hidden: true },
+  { id: "photo-spotlight", name: "Photo Spotlight",       desc: "Foto enorme + tarjeta flotante de cristal", emoji: "📷", hidden: true },
 ];
 
 /**
@@ -4360,6 +4361,7 @@ export default function MenuPage() {
     "split-diagonal": t("menuTemplateSplitDiagonal"),
     polaroid: t("menuTemplatePolaroid"),
     catalog: t("menuTemplateCatalog"),
+    "photo-spotlight": t("menuTemplatePhotoSpotlight"),
   };
   const templateDescs: Record<string, string> = {
     classic: t("menuTemplateDescClassic"),
@@ -4388,6 +4390,7 @@ export default function MenuPage() {
     "split-diagonal": t("menuTemplateDescSplitDiagonal"),
     polaroid: t("menuTemplateDescPolaroid"),
     catalog: t("menuTemplateDescCatalog"),
+    "photo-spotlight": t("menuTemplateDescPhotoSpotlight"),
   };
   const effectLabels: Record<string, string> = {
     lift: t("menuEffectLift"),

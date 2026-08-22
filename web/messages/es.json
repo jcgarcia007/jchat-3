@@ -166,7 +166,13 @@
     "nextAria": "Siguiente",
     "storiesSwipeToAdd": "↑ Deslizar para agregar",
     "emptyMenuTitle": "{bizName} aún no tiene menú",
-    "emptyMenuBody": "Estamos preparando algo delicioso. Vuelve pronto."
+    "emptyMenuBody": "Estamos preparando algo delicioso. Vuelve pronto.",
+    "addToBag": "Agregar",
+    "prevItemAria": "Plato anterior",
+    "nextItemAria": "Siguiente plato",
+    "openCartAria": "Abrir carrito",
+    "noItems": "Sin elementos disponibles",
+    "unavailable": "No disponible"
   },
   "dashboardCommon": {
     "navOverview": "Resumen",
@@ -2052,7 +2058,9 @@
     "devicesCloseBtn": "Cerrar",
     "devicesRetryBtn": "Reintentar",
     "devicesRenameSuccess": "Lector renombrado.",
-    "devicesRemoveSuccess": "Lector quitado."
+    "devicesRemoveSuccess": "Lector quitado.",
+    "menuTemplatePhotoSpotlight": "Foto Destacada",
+    "menuTemplateDescPhotoSpotlight": "Una foto enorme llena la pantalla; una tarjeta flotante de cristal muestra los detalles y el botón de agregar."
   },
   "superAdmin": {
     "shell": {

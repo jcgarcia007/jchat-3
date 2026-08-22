@@ -26,6 +26,7 @@ import HeroList from "./HeroList";
 import SplitDiagonal from "./SplitDiagonal";
 import Polaroid from "./Polaroid";
 import Catalog from "./Catalog";
+import PhotoSpotlight from "./PhotoSpotlight";
 import type { MenuTemplateProps } from "./types";
 
 /**
@@ -89,6 +90,8 @@ export default function MenuTemplateRenderer({
       return <Polaroid {...props} />;
     case "catalog":
       return <Catalog {...props} />;
+    case "photo-spotlight":
+      return <PhotoSpotlight {...props} />;
     default:
       return <Classic {...props} />;
   }

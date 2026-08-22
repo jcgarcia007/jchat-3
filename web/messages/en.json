@@ -166,7 +166,13 @@
     "nextAria": "Next",
     "storiesSwipeToAdd": "↑ Swipe to add",
     "emptyMenuTitle": "{bizName} doesn't have a menu yet",
-    "emptyMenuBody": "We're preparing something delicious. Come back soon."
+    "emptyMenuBody": "We're preparing something delicious. Come back soon.",
+    "addToBag": "Add to bag",
+    "prevItemAria": "Previous item",
+    "nextItemAria": "Next item",
+    "openCartAria": "Open cart",
+    "noItems": "No items available",
+    "unavailable": "Unavailable"
   },
   "dashboardCommon": {
     "navOverview": "Overview",
@@ -2052,7 +2058,9 @@
     "devicesCloseBtn": "Close",
     "devicesRetryBtn": "Retry",
     "devicesRenameSuccess": "Reader renamed.",
-    "devicesRemoveSuccess": "Reader removed."
+    "devicesRemoveSuccess": "Reader removed.",
+    "menuTemplatePhotoSpotlight": "Photo Spotlight",
+    "menuTemplateDescPhotoSpotlight": "One enormous photo fills the screen; a floating glass card holds the details and add button."
   },
   "superAdmin": {
     "shell": {
