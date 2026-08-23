@@ -2466,6 +2466,47 @@ export type Database = {
           },
         ]
       }
+      purchase_order_settings: {
+        Row: {
+          business_id: string
+          legal_name: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          legal_name?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          legal_name?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       radius_increase_requests: {
         Row: {
           business_id: string | null

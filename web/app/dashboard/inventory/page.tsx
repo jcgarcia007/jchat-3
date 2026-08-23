@@ -44,12 +44,14 @@ import {
   IconBarcode,
   IconSelector,
   IconFileExport,
+  IconClipboardList,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import SuppliersTab from "./SuppliersTab";
 import LocationsTab from "./LocationsTab";
 import StockByLocationPanel from "./StockByLocationPanel";
+import PurchaseOrderModal from "./PurchaseOrderModal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -660,6 +662,9 @@ export default function InventoryPage() {
 
   // Export panel
   const [showExport, setShowExport] = useState(false);
+
+  // Purchase order PDF modal
+  const [showPurchaseOrder, setShowPurchaseOrder] = useState(false);
 
   // ── Resolve business id ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -2062,6 +2067,13 @@ export default function InventoryPage() {
                 {t("inventoryAssignSupplierButton")}
               </button>
             )}
+            <button
+              onClick={() => setShowPurchaseOrder(true)}
+              style={btnStyle("var(--db-bg-elevated)", "var(--db-text-primary)")}
+            >
+              <IconClipboardList size={13} />
+              {t("selectionBarPurchaseOrder")}
+            </button>
             <button onClick={() => setSelectedIds(new Set())} style={{ ...btnStyle("transparent", "var(--db-text-secondary)"), marginLeft: "auto" }}>
               <IconX size={13} />
             </button>
@@ -2128,6 +2140,18 @@ export default function InventoryPage() {
               </button>
             </div>
           </>
+        )}
+
+        {/* Purchase order PDF modal */}
+        {showPurchaseOrder && businessId && (
+          <PurchaseOrderModal
+            businessId={businessId}
+            selectedItems={items.filter((i) => selectedIds.has(i.id))}
+            suppliers={suppliers}
+            costMap={costMap}
+            locale={locale}
+            onClose={() => setShowPurchaseOrder(false)}
+          />
         )}
 
         {loadingItems ? (
