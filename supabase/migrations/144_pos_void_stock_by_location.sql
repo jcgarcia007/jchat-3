@@ -1,0 +1,6 @@
+-- 144_pos_void_stock_by_location.sql
+-- Versión intermedia de pos_void_order con bug de ambigüedad en "qty".
+-- Aplicada a producción por Planning vía MCP el 2026-08-22.
+-- NOTA: Esta versión fue reemplazada de inmediato por 145_pos_void_fix_ambiguous_qty.sql,
+-- que corrige la referencia ambigua al alias "qty" en el UPDATE de stock_by_location.
+-- No hay código aquí porque la migración final correcta es la 145.

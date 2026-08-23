@@ -313,6 +313,7 @@ export type Database = {
           phone: string | null
           plan: string
           radius_m: number
+          sales_location_id: string | null
           slug: string
           state: string | null
           status: string
@@ -372,6 +373,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           radius_m?: number
+          sales_location_id?: string | null
           slug: string
           state?: string | null
           status?: string
@@ -431,6 +433,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           radius_m?: number
+          sales_location_id?: string | null
           slug?: string
           state?: string | null
           status?: string
@@ -995,6 +998,47 @@ export type Database = {
             columns: ["to_user"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_locations: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_sales_location: boolean
+          name: string
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_sales_location?: boolean
+          name: string
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_sales_location?: boolean
+          name?: string
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_locations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -3121,6 +3165,64 @@ export type Database = {
           },
         ]
       }
+      stock_by_location: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          location_id: string
+          low_stock_threshold: number | null
+          menu_item_id: string
+          par_level: number | null
+          qty: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          location_id: string
+          low_stock_threshold?: number | null
+          menu_item_id: string
+          par_level?: number | null
+          qty?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          low_stock_threshold?: number | null
+          menu_item_id?: string
+          par_level?: number | null
+          qty?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_by_location_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_by_location_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_by_location_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           business_id: string | null
@@ -3841,6 +3943,15 @@ export type Database = {
         Returns: string
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
+      inv_can_manage: { Args: { p_business_id: string }; Returns: boolean }
+      inventory_archive_location: {
+        Args: { p_business_id: string; p_location_id: string }
+        Returns: undefined
+      }
+      inventory_create_location: {
+        Args: { p_business_id: string; p_name: string; p_is_sales?: boolean }
+        Returns: string
+      }
       inventory_kpis: {
         Args: { p_business_id: string; p_from: string; p_to: string }
         Returns: {
@@ -3854,6 +3965,10 @@ export type Database = {
           days_on_hand: number | null
         }[]
       }
+      inventory_rename_location: {
+        Args: { p_business_id: string; p_location_id: string; p_name: string }
+        Returns: undefined
+      }
       inventory_report: {
         Args: { p_business_id: string; p_from: string; p_to: string }
         Returns: {
@@ -3866,6 +3981,30 @@ export type Database = {
           voided: number
           waste: number
         }[]
+      }
+      inventory_set_location_qty: {
+        Args: {
+          p_business_id: string
+          p_menu_item_id: string
+          p_location_id: string
+          p_qty: number
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      inventory_set_sales_location: {
+        Args: { p_business_id: string; p_location_id: string }
+        Returns: undefined
+      }
+      inventory_transfer: {
+        Args: {
+          p_business_id: string
+          p_menu_item_id: string
+          p_from_location: string
+          p_to_location: string
+          p_qty: number
+        }
+        Returns: undefined
       }
       is_blocked: { Args: { a: string; b: string }; Returns: boolean }
       is_employee_of_business: {

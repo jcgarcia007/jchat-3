@@ -1,0 +1,168 @@
+-- 143_pos_stock_by_location.sql
+-- Modifica pos_create_order para descontar stock de la ubicación de venta cuando existe,
+-- con fallback al stock_count directo cuando el negocio no usa ubicaciones.
+-- Aplicada a producción por Planning vía MCP el 2026-08-22.
+
+CREATE OR REPLACE FUNCTION public.pos_create_order(p_business_id uuid, p_table_id uuid, p_items jsonb, p_notes text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_uid         uuid := auth.uid();
+  v_emp         public.employees;
+  v_has_pos     boolean;
+  v_order_id    uuid;
+  v_subtotal    bigint := 0;
+  v_item        jsonb;
+  v_mi_id       uuid;
+  v_qty         integer;
+  v_base        integer;
+  v_unit        integer;
+  v_upcharge    integer;
+  v_options     jsonb;
+  v_mod         jsonb;
+  v_group_id    uuid;
+  v_grp         record;
+  v_label       text;
+  v_choice      jsonb;
+  v_found       boolean;
+  v_cnt         integer;
+  v_table_label text;
+  v_sales_loc   uuid;   -- NUEVO: ubicación de venta del negocio (si la hay)
+  v_sbl_upd     integer; -- NUEVO: filas afectadas en stock_by_location
+begin
+  select e.* into v_emp
+  from public.employees e
+  where e.user_id = v_uid and e.business_id = p_business_id and e.status = 'accepted'
+  limit 1;
+  if not found then raise exception 'not an active employee of this business'; end if;
+
+  select coalesce((cr.permissions->>'pos_access')::boolean, false) into v_has_pos
+  from public.custom_roles cr where cr.id = v_emp.custom_role_id;
+  if not coalesce(v_has_pos, false) then raise exception 'no pos access'; end if;
+
+  if p_table_id is not null then
+    select t.label into v_table_label
+    from public.tables t
+    where t.id = p_table_id and t.business_id = p_business_id;
+    if not found then raise exception 'table not in this business'; end if;
+  end if;
+
+  -- NUEVO: leer la ubicación de venta del negocio (NULL si no usa ubicaciones)
+  select b.sales_location_id into v_sales_loc from public.businesses b where b.id = p_business_id;
+
+  insert into public.orders
+    (business_id, table_id, table_label, order_type, status, taken_by, notes)
+  values
+    (p_business_id, p_table_id, v_table_label, 'table', 'preparing', v_uid, p_notes)
+  returning id into v_order_id;
+
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_mi_id := (v_item->>'menu_item_id')::uuid;
+    v_qty   := greatest(coalesce((v_item->>'qty')::integer, 1), 1);
+
+    select mi.price_cents into v_base
+    from public.menu_items mi
+    where mi.id = v_mi_id and mi.business_id = p_business_id and mi.is_available = true;
+    if not found then raise exception 'menu item % not available', v_mi_id; end if;
+
+    v_upcharge := 0;
+    v_options  := coalesce(v_item->'options', '{}'::jsonb);
+
+    if v_options ? 'modifiers' then
+      for v_mod in select * from jsonb_array_elements(v_options->'modifiers')
+      loop
+        v_group_id := (v_mod->>'group_id')::uuid;
+        if not exists (
+          select 1 from public.menu_item_modifier_groups l
+          where l.menu_item_id = v_mi_id and l.modifier_group_id = v_group_id
+        ) then
+          raise exception 'modifier group % not linked to item', v_group_id;
+        end if;
+        select mg.type, mg.min_select, mg.max_select, mg.choices into v_grp
+        from public.modifier_groups mg
+        where mg.id = v_group_id and mg.business_id = p_business_id;
+        if not found then raise exception 'modifier group % not found', v_group_id; end if;
+        v_cnt := coalesce(jsonb_array_length(v_mod->'choice_labels'), 0);
+        if v_cnt < v_grp.min_select or v_cnt > v_grp.max_select then
+          raise exception 'invalid selection count for group %', v_group_id;
+        end if;
+        for v_label in select jsonb_array_elements_text(v_mod->'choice_labels')
+        loop
+          v_found := false;
+          for v_choice in select * from jsonb_array_elements(v_grp.choices)
+          loop
+            if (v_choice->>'label') = v_label then
+              v_upcharge := v_upcharge + coalesce((v_choice->>'price_cents')::integer, 0);
+              v_found := true;
+              exit;
+            end if;
+          end loop;
+          if not v_found then raise exception 'invalid choice % for group %', v_label, v_group_id; end if;
+        end loop;
+      end loop;
+    end if;
+
+    v_unit := v_base + v_upcharge;
+
+    insert into public.order_items
+      (order_id, menu_item_id, qty, price_cents, options, special_instructions, seat)
+    values
+      (v_order_id, v_mi_id, v_qty, v_unit, v_options,
+       nullif(v_item->>'special_instructions',''),
+       (v_item->>'seat')::integer);
+
+    -- ── INVENTARIO PERPETUO (con soporte de ubicación de venta) ──────────────
+    -- Camino NUEVO: si el negocio tiene ubicación de venta Y el producto tiene fila ahí,
+    -- descontar de esa ubicación (el trigger sbl_sync_total recalcula stock_count).
+    v_sbl_upd := 0;
+    if v_sales_loc is not null then
+      update public.stock_by_location
+         set qty = greatest(0, qty - v_qty), updated_at = now()
+       where menu_item_id = v_mi_id and location_id = v_sales_loc and business_id = p_business_id;
+      GET DIAGNOSTICS v_sbl_upd = ROW_COUNT;
+      if v_sbl_upd > 0 then
+        insert into public.stock_movements (menu_item_id, business_id, delta, reason, created_by)
+        values (v_mi_id, p_business_id, -v_qty, 'sale', v_uid);
+      end if;
+    end if;
+
+    -- Camino ACTUAL (fallback): sin ubicación de venta o el producto no tiene fila ahí →
+    -- descontar de stock_count directo, exactamente como antes.
+    if v_sbl_upd = 0 then
+      update public.menu_items
+         set stock_count = greatest(0, stock_count - v_qty)
+       where id = v_mi_id and business_id = p_business_id and stock_count is not null;
+      if found then
+        insert into public.stock_movements (menu_item_id, business_id, delta, reason, created_by)
+        values (v_mi_id, p_business_id, -v_qty, 'sale', v_uid);
+      end if;
+    end if;
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    v_subtotal := v_subtotal + (v_unit::bigint * v_qty);
+  end loop;
+
+  if v_subtotal = 0 then raise exception 'order has no valid items'; end if;
+
+  update public.orders
+  set subtotal_cents = v_subtotal, total_cents = v_subtotal
+  where id = v_order_id;
+
+  insert into public.notifications (user_id, type, payload)
+  select distinct e2.user_id, 'pos_order_assist',
+    jsonb_build_object(
+      'order_id', v_order_id, 'table_id', p_table_id,
+      'table_label', v_table_label, 'helper_user_id', v_uid, 'business_id', p_business_id
+    )
+  from public.table_waiters tw
+  join public.employees e2 on e2.id = tw.employee_id
+  where tw.table_id = p_table_id and tw.business_id = p_business_id
+    and e2.user_id <> v_uid;
+
+  return v_order_id;
+end;
+$function$;

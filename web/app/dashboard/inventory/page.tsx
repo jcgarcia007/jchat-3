@@ -48,6 +48,8 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import SuppliersTab from "./SuppliersTab";
+import LocationsTab from "./LocationsTab";
+import StockByLocationPanel from "./StockByLocationPanel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,6 +70,24 @@ interface MenuItem {
   par_level: number | null;
   is_published: boolean;
   supplier_id: string | null;
+}
+
+interface InventoryLocation {
+  id: string;
+  business_id: string;
+  name: string;
+  is_sales_location: boolean;
+  is_active: boolean;
+  sort: number;
+}
+
+interface SblRow {
+  id: string;
+  menu_item_id: string;
+  location_id: string;
+  qty: number;
+  low_stock_threshold: number | null;
+  par_level: number | null;
 }
 
 interface Supplier {
@@ -570,8 +590,8 @@ export default function InventoryPage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
 
-  // Tabs: "inventory" | "suppliers"
-  const [activeTab, setActiveTab] = useState<"inventory" | "suppliers">("inventory");
+  // Tabs: "inventory" | "suppliers" | "locations"
+  const [activeTab, setActiveTab] = useState<"inventory" | "suppliers" | "locations">("inventory");
 
   const [categories, setCategories]     = useState<MenuCategory[]>([]);
   const [items, setItems]               = useState<MenuItem[]>([]);
@@ -579,6 +599,12 @@ export default function InventoryPage() {
 
   // Suppliers list
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+  // Locations + stock by location (Fase 2)
+  const [locations, setLocations]               = useState<InventoryLocation[]>([]);
+  const [stockByLocation, setStockByLocation]   = useState<SblRow[]>([]);
+  const [filterLocation, setFilterLocation]     = useState<string>("all");
+  const [expandedItemId, setExpandedItemId]     = useState<string | null>(null);
 
   // Cost map: menu_item_id → cost_cents | null
   const [costMap, setCostMap] = useState<Record<string, number | null>>({});
@@ -709,6 +735,33 @@ export default function InventoryPage() {
     }
   }, []);
 
+  // ── Load locations (Fase 2) ──────────────────────────────────────────────────
+  const loadLocations = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("inventory_locations")
+        .select("id, business_id, name, is_sales_location, is_active, sort")
+        .eq("business_id", bizId)
+        .order("sort", { ascending: true });
+      setLocations((data as InventoryLocation[]) ?? []);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
+  // ── Load stock by location (Fase 2) ──────────────────────────────────────────
+  const loadStockByLocation = useCallback(async (bizId: string) => {
+    try {
+      const { data } = await supabase
+        .from("stock_by_location")
+        .select("id, menu_item_id, location_id, qty, low_stock_threshold, par_level")
+        .eq("business_id", bizId);
+      setStockByLocation((data as SblRow[]) ?? []);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
   // ── Load costs (menu_item_costs — owner-only, dashboard-only) ────────────────
   const loadCosts = useCallback(async (bizId: string) => {
     try {
@@ -758,8 +811,10 @@ export default function InventoryPage() {
       void loadCategories(businessId);
       void loadCosts(businessId);
       void loadSuppliers(businessId);
+      void loadLocations(businessId);
+      void loadStockByLocation(businessId);
     }
-  }, [businessId, loadItems, loadCategories, loadCosts, loadSuppliers]);
+  }, [businessId, loadItems, loadCategories, loadCosts, loadSuppliers, loadLocations, loadStockByLocation]);
 
   // ── Inline edit handlers ─────────────────────────────────────────────────────
   function startEdit(item: MenuItem) {
@@ -1246,14 +1301,29 @@ export default function InventoryPage() {
     return counts;
   }, [itemsMatchingSearchAndStatus]);
 
-  // Full filtered list (apply category + supplier filters).
+  // sblMap: item_id → { location_id → SblRow }
+  const sblMap = useMemo<Record<string, Record<string, SblRow>>>(() => {
+    const map: Record<string, Record<string, SblRow>> = {};
+    for (const row of stockByLocation) {
+      if (!map[row.menu_item_id]) map[row.menu_item_id] = {};
+      map[row.menu_item_id][row.location_id] = row;
+    }
+    return map;
+  }, [stockByLocation]);
+
+  // Full filtered list (apply category + supplier + location filters).
   const filteredItems = useMemo(() => {
     let list = itemsMatchingSearchAndStatus;
     if (filterCategory !== "all") list = list.filter((i) => i.category_id === filterCategory);
     if (filterSupplier === "__none__") list = list.filter((i) => i.supplier_id == null);
     else if (filterSupplier !== "all") list = list.filter((i) => i.supplier_id === filterSupplier);
+    // Location filter: only show items WITH a row in that location.
+    // Items without any SBL row only appear when filterLocation === "all".
+    if (filterLocation !== "all") {
+      list = list.filter((i) => !!sblMap[i.id]?.[filterLocation]);
+    }
     return list;
-  }, [itemsMatchingSearchAndStatus, filterCategory, filterSupplier]);
+  }, [itemsMatchingSearchAndStatus, filterCategory, filterSupplier, filterLocation, sblMap]);
 
   // Sorted flat list
   const sortedItems = useMemo(() => {
@@ -1500,9 +1570,16 @@ export default function InventoryPage() {
           marginBottom: "24px",
         }}
       >
-        {(["inventory", "suppliers"] as const).map((tab) => {
-          const label = tab === "inventory" ? t("inventoryTabInventory") : t("inventoryTabSuppliers");
+        {(["inventory", "suppliers", "locations"] as const).map((tab) => {
+          const label =
+            tab === "inventory" ? t("inventoryTabInventory") :
+            tab === "suppliers" ? t("inventoryTabSuppliers") :
+            t("inventoryTabLocations");
           const isActive = activeTab === tab;
+          const badge =
+            tab === "suppliers" ? (suppliers.length > 0 ? suppliers.length : null) :
+            tab === "locations" ? (locations.filter((l) => l.is_active).length > 0 ? locations.filter((l) => l.is_active).length : null) :
+            null;
           return (
             <button
               key={tab}
@@ -1521,7 +1598,7 @@ export default function InventoryPage() {
               }}
             >
               {label}
-              {tab === "suppliers" && suppliers.length > 0 && (
+              {badge !== null && (
                 <span
                   style={{
                     marginLeft: 6,
@@ -1533,7 +1610,7 @@ export default function InventoryPage() {
                     padding: "1px 6px",
                   }}
                 >
-                  {suppliers.length}
+                  {badge}
                 </span>
               )}
             </button>
@@ -1551,6 +1628,21 @@ export default function InventoryPage() {
             if (businessId) {
               void loadSuppliers(businessId);
               void loadItems(businessId);
+            }
+          }}
+        />
+      )}
+
+      {/* Locations tab content */}
+      {activeTab === "locations" && (
+        <LocationsTab
+          businessId={businessId ?? "demo-biz"}
+          locations={locations}
+          onRefresh={() => {
+            if (businessId) {
+              void loadLocations(businessId);
+              void loadItems(businessId);
+              void loadStockByLocation(businessId);
             }
           }}
         />
@@ -1911,7 +2003,7 @@ export default function InventoryPage() {
 
         {/* Supplier filter chips */}
         {suppliers.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
             <button onClick={() => setFilterSupplier("all")} style={chipStyle(filterSupplier === "all")}>
               {t("inventoryAllSuppliersOption")}
             </button>
@@ -1930,6 +2022,25 @@ export default function InventoryPage() {
             >
               {t("inventoryNoSupplierOption")}
             </button>
+          </div>
+        )}
+
+        {/* Location filter chips */}
+        {locations.filter((l) => l.is_active).length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+            <button onClick={() => setFilterLocation("all")} style={chipStyle(filterLocation === "all")}>
+              {t("locationsFilterAllLocations")}
+            </button>
+            {locations.filter((l) => l.is_active).map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => setFilterLocation(filterLocation === loc.id ? "all" : loc.id)}
+                style={chipStyle(filterLocation === loc.id)}
+              >
+                {loc.name}
+                {loc.is_sales_location && " 📍"}
+              </button>
+            ))}
           </div>
         )}
 
@@ -2089,7 +2200,8 @@ export default function InventoryPage() {
                   const valueVal = costVal != null ? item.stock_count * costVal : null;
 
                   return (
-                    <tr key={item.id} style={{ background: rowBg }}>
+                    <React.Fragment key={item.id}>
+                    <tr style={{ background: rowBg }}>
                       {/* Checkbox */}
                       <td style={{ ...tdStyle, textAlign: "center", width: "36px" }}>
                         <input
@@ -2173,42 +2285,74 @@ export default function InventoryPage() {
 
                       {/* Actions */}
                       <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
-                        {editing ? (
-                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
-                            {/* Reason input inline */}
-                            <input
-                              type="text"
-                              value={es.reasonInput}
-                              onChange={(e) => patchEdit(item.id, { reasonInput: e.target.value })}
-                              style={{ ...inputStyle, width: "130px" }}
-                              placeholder={t("inventoryReasonOptionalPlaceholder")}
-                            />
+                        <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end", alignItems: "center" }}>
+                          {/* Expand stock-by-location */}
+                          {locations.filter((l) => l.is_active).length > 0 && (
                             <button
-                              onClick={() => void saveEdit(item)}
-                              disabled={saving}
-                              style={{ ...btnStyle("var(--db-accent)", "var(--db-accent-text)"), minWidth: "32px" }}
-                            >
-                              {saving ? "…" : <IconCheck size={14} />}
-                            </button>
-                            <button
-                              onClick={() => cancelEdit(item.id)}
-                              disabled={saving}
+                              onClick={() => setExpandedItemId(expandedItemId === item.id ? null : item.id)}
                               style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                              title={t("sblPanelTitle")}
                             >
-                              <IconX size={14} />
+                              {expandedItemId === item.id
+                                ? <IconChevronUp size={14} />
+                                : <IconChevronDown size={14} />}
                             </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startEdit(item)}
-                            style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
-                            title={t("inventoryEditStockTitle")}
-                          >
-                            <IconEdit size={14} />
-                          </button>
-                        )}
+                          )}
+                          {editing ? (
+                            <>
+                              {/* Reason input inline */}
+                              <input
+                                type="text"
+                                value={es.reasonInput}
+                                onChange={(e) => patchEdit(item.id, { reasonInput: e.target.value })}
+                                style={{ ...inputStyle, width: "130px" }}
+                                placeholder={t("inventoryReasonOptionalPlaceholder")}
+                              />
+                              <button
+                                onClick={() => void saveEdit(item)}
+                                disabled={saving}
+                                style={{ ...btnStyle("var(--db-accent)", "var(--db-accent-text)"), minWidth: "32px" }}
+                              >
+                                {saving ? "…" : <IconCheck size={14} />}
+                              </button>
+                              <button
+                                onClick={() => cancelEdit(item.id)}
+                                disabled={saving}
+                                style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                              >
+                                <IconX size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(item)}
+                              style={btnStyle("var(--db-bg-elevated)", "var(--db-text-secondary)")}
+                              title={t("inventoryEditStockTitle")}
+                            >
+                              <IconEdit size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
+                    {/* Expandable stock-by-location sub-row */}
+                    {expandedItemId === item.id && (
+                      <tr key={`sbl-${item.id}`}>
+                        <StockByLocationPanel
+                          businessId={businessId ?? "demo-biz"}
+                          item={item}
+                          locations={locations}
+                          sblMap={sblMap}
+                          onRefresh={() => {
+                            if (businessId) {
+                              void loadItems(businessId);
+                              void loadStockByLocation(businessId);
+                            }
+                          }}
+                        />
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
