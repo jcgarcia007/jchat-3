@@ -861,8 +861,10 @@ async function handleMarkTabPaid(
       const charge =
         (pi as any).charges?.data?.[0] ?? null;
       const pmd = charge?.payment_method_details ?? null;
-      const cardBrand: string | null = pmd?.card?.brand ?? null;
-      const cardLast4: string | null = pmd?.card?.last4 ?? null;
+      // card_present first (M2 reader), card as fallback (other payment methods)
+      const cardInfo = pmd?.card_present ?? pmd?.card ?? null;
+      const cardBrand: string | null = cardInfo?.brand ?? null;
+      const cardLast4: string | null = cardInfo?.last4 ?? null;
 
       const { error: rcErr } = await db
         .from("pos_payments")
