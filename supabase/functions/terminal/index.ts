@@ -765,7 +765,7 @@ async function handleMarkTabPaid(
   // 1. Load the pos_payments row by payment_id (admin — bypasses RLS).
   const { data: paymentData, error: paymentErr } = await db
     .from("pos_payments")
-    .select("id, business_id, table_id, amount_cents, stripe_pi_id, status")
+    .select("id, business_id, table_id, amount_cents, stripe_pi_id, status, receipt_code")
     .eq("id", paymentId)
     .maybeSingle();
 
@@ -781,6 +781,7 @@ async function handleMarkTabPaid(
     amount_cents: number;
     stripe_pi_id: string | null;
     status: string;
+    receipt_code: string | null;
   } | null;
 
   if (!payment) return errorResponse("Payment record not found", 404);
@@ -805,7 +806,7 @@ async function handleMarkTabPaid(
   try {
     pi = await stripe.paymentIntents.retrieve(
       payment.stripe_pi_id,
-      undefined,
+      { expand: ["charges.data.payment_method_details"] },
       { stripeAccount },
     );
   } catch (err) {
@@ -843,7 +844,48 @@ async function handleMarkTabPaid(
   console.log(
     `[terminal] mark_tab_paid: applied payment=${paymentId} tip=${tipCents} tab_closed=${tabClosed}`,
   );
-  return jsonResponse({ ok: true, tab_closed: tabClosed });
+
+  // 7. Inject receipt_code + card details (non-fatal — never abort the payment).
+  let receiptCode: string | null = null;
+  if (!payment.receipt_code) {
+    try {
+      // Generate a 22-char URL-safe base64 code from 16 random bytes.
+      const raw = new Uint8Array(16);
+      crypto.getRandomValues(raw);
+      const code = btoa(String.fromCharCode(...raw))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
+
+      // Extract card details from the expanded PI.
+      const charge =
+        (pi as any).charges?.data?.[0] ?? null;
+      const pmd = charge?.payment_method_details ?? null;
+      const cardBrand: string | null = pmd?.card?.brand ?? null;
+      const cardLast4: string | null = pmd?.card?.last4 ?? null;
+
+      const { error: rcErr } = await db
+        .from("pos_payments")
+        .update({ receipt_code: code, card_brand: cardBrand, card_last4: cardLast4 })
+        .eq("id", paymentId)
+        .is("receipt_code", null); // idempotency guard
+
+      if (rcErr) {
+        console.error("[terminal] receipt_code update error:", rcErr.message);
+      } else {
+        receiptCode = code;
+      }
+    } catch (err) {
+      console.error(
+        "[terminal] receipt injection failed (non-fatal):",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  } else {
+    receiptCode = payment.receipt_code;
+  }
+
+  return jsonResponse({ ok: true, tab_closed: tabClosed, receipt_code: receiptCode });
 }
 
 // ── Action: charge_split_check ────────────────────────────────────────────────

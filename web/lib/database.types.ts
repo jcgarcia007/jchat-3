@@ -2225,6 +2225,75 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_payments: {
+        Row: {
+          id: string
+          business_id: string
+          table_id: string
+          amount_cents: number
+          tip_cents: number
+          kind: string
+          seat: number | null
+          order_item_ids: string[] | null
+          stripe_pi_id: string | null
+          status: string
+          created_at: string
+          updated_at: string
+          receipt_code: string | null
+          card_brand: string | null
+          card_last4: string | null
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          table_id: string
+          amount_cents: number
+          tip_cents?: number
+          kind?: string
+          seat?: number | null
+          order_item_ids?: string[] | null
+          stripe_pi_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          receipt_code?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          table_id?: string
+          amount_cents?: number
+          tip_cents?: number
+          kind?: string
+          seat?: number | null
+          order_item_ids?: string[] | null
+          stripe_pi_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          receipt_code?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_payments_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -3982,6 +4051,10 @@ export type Database = {
       generate_table_qr_token: {
         Args: { _business_id: string }
         Returns: string
+      }
+      get_public_receipt: {
+        Args: { p_code: string }
+        Returns: Json
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
       inv_can_manage: { Args: { p_business_id: string }; Returns: boolean }
