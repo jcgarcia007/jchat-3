@@ -30,6 +30,7 @@ export interface ReceiptBusiness {
   state: string | null;
   phone: string | null;
   slug: string | null;
+  receipt_brand_color: string | null;
 }
 
 export interface ReceiptPayment {

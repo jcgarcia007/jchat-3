@@ -123,6 +123,7 @@ export const NAV_MODULES: NavModule[] = [
       { labelKey: "railPagos", href: "/dashboard/payments", icon: IconCreditCard },
       { labelKey: "railDisputas", href: "/dashboard/disputes", icon: IconGavel },
       { labelKey: "railFacturacion", href: "/dashboard/billing", icon: IconReceipt },
+      { labelKey: "railRecibo", href: "/dashboard/receipt", icon: IconReceipt },
     ],
   },
 ];

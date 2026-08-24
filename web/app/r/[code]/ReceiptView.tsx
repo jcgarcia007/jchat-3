@@ -3,31 +3,35 @@
  * Renders the public digital receipt page for /r/[code].
  * No RLS: access is gated by the receipt_code itself.
  *
- * DESIGN RULE: This is a public page — never use theme tokens (var(--...)).
- * All colors are hardcoded hex so the receipt looks like paper regardless of
- * the device's light/dark mode setting. colorScheme: "light" on the root
- * container prevents the browser from applying its own dark-mode overrides.
+ * DESIGN RULE: This is a public page — NO theme tokens (var(--...)).
+ * All base colors are hardcoded hex (object C). Brand-color elements
+ * (header band, TOTAL, menu link, PDF button) use receiptColor helpers
+ * to guarantee WCAG-compliant contrast in any theme or dark mode setting.
+ * colorScheme: "light" on root prevents browser auto-dark-mode.
  */
 
 import { IconReceipt2 } from "@tabler/icons-react";
 import type { PublicReceipt, ReceiptItem } from "./page";
 import ReceiptPdfButton from "./ReceiptPdfButton";
+import {
+  brandColorOrDefault,
+  textOn,
+  accentOnWhite,
+} from "@/lib/receiptColor";
 
 // ---------------------------------------------------------------------------
-// Fixed palette — no theme tokens
+// Fixed palette — non-brand elements never change with dark mode
 // ---------------------------------------------------------------------------
 const C = {
-  pageBg:      "#e5e7eb", // outer page background (always light gray)
-  cardBg:      "#ffffff", // card background (always white)
-  text:        "#111827", // primary text
-  textSec:     "#6b7280", // secondary text (labels, modifiers, notes)
-  textTer:     "#9ca3af", // tertiary (footer)
-  border:      "#e5e7eb", // dividers and borders
-  metaBg:      "#f9fafb", // meta grid background
-  brand:       "#5C7CFA", // header band
-  brandText:   "#ffffff", // text on brand band
-  success:     "#1D9E75", // PAID badge bg
-  successText: "#ffffff", // text on PAID badge
+  pageBg:      "#e5e7eb",
+  cardBg:      "#ffffff",
+  text:        "#111827",
+  textSec:     "#6b7280",
+  textTer:     "#9ca3af",
+  border:      "#e5e7eb",
+  metaBg:      "#f9fafb",
+  successBg:   "#1D9E75", // PAID badge — always green, never brand color
+  successText: "#ffffff",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -61,12 +65,7 @@ function formatDate(iso: string): string {
 
 function ItemRow({ item }: { item: ReceiptItem }) {
   return (
-    <div
-      style={{
-        padding: "10px 0",
-        borderBottom: `1px solid ${C.border}`,
-      }}
-    >
+    <div style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
       <div
         style={{
           display: "flex",
@@ -80,24 +79,14 @@ function ItemRow({ item }: { item: ReceiptItem }) {
             {item.qty > 1 ? `${item.qty}×  ` : ""}
             {item.name}
           </span>
-          {/* Modifiers */}
           {item.options?.modifiers?.map((mod, i) => (
-            <div
-              key={i}
-              style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}
-            >
+            <div key={i} style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
               {mod.group_label}: {mod.choice_labels.join(", ")}
             </div>
           ))}
-          {/* Special instructions */}
           {item.special_instructions && (
             <div
-              style={{
-                fontSize: 12,
-                color: C.textSec,
-                fontStyle: "italic",
-                marginTop: 2,
-              }}
+              style={{ fontSize: 12, color: C.textSec, fontStyle: "italic", marginTop: 2 }}
             >
               {item.special_instructions}
             </div>
@@ -116,11 +105,13 @@ function TotalRow({
   value,
   bold = false,
   large = false,
+  accentColor,
 }: {
   label: string;
   value: string;
   bold?: boolean;
   large?: boolean;
+  accentColor?: string; // brand accent for the TOTAL row value
 }) {
   return (
     <div
@@ -134,7 +125,7 @@ function TotalRow({
       }}
     >
       <span>{label}</span>
-      <span>{value}</span>
+      <span style={accentColor ? { color: accentColor } : undefined}>{value}</span>
     </div>
   );
 }
@@ -184,10 +175,14 @@ export default function ReceiptView({ receipt, code }: Props) {
   const { business, payment, table_label, items } = receipt;
   const total = payment.amount_cents + payment.tip_cents;
 
+  // Brand color — resolved once, used in 4 places
+  const brandColor  = brandColorOrDefault(business.receipt_brand_color);
+  const brandText   = textOn(brandColor);   // "#fff" or "#111827" — always legible on brandColor
+  const accentColor = accentOnWhite(brandColor); // legible on white card background
+
   return (
     <div
       style={{
-        // Lock to light appearance — receipt looks like paper in any device mode.
         colorScheme: "light",
         minHeight: "100dvh",
         background: C.pageBg,
@@ -209,12 +204,12 @@ export default function ReceiptView({ receipt, code }: Props) {
           overflow: "hidden",
         }}
       >
-        {/* Brand header — blue band, always white text */}
+        {/* ① Brand header — background = brandColor, text = brandText (WCAG contrast) */}
         <div
           style={{
-            background: C.brand,
+            background: brandColor,
             padding: "28px 24px 24px",
-            color: C.brandText,
+            color: brandText,
             textAlign: "center",
           }}
         >
@@ -230,26 +225,34 @@ export default function ReceiptView({ receipt, code }: Props) {
                 objectFit: "cover",
                 margin: "0 auto 12px",
                 display: "block",
-                border: "3px solid rgba(255,255,255,0.4)",
+                border: `3px solid ${brandText === "#ffffff" ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.15)"}`,
               }}
             />
           )}
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: C.brandText }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: brandText }}>
             {business.name}
           </h1>
           {business.address && (
-            <p style={{ fontSize: 13, color: C.brandText, opacity: 0.85, marginTop: 4, marginBottom: 0 }}>
+            <p
+              style={{
+                fontSize: 13,
+                color: brandText,
+                opacity: 0.85,
+                marginTop: 4,
+                marginBottom: 0,
+              }}
+            >
               {[business.address, business.city, business.state].filter(Boolean).join(", ")}
             </p>
           )}
         </div>
 
-        {/* PAID badge */}
+        {/* PAID badge — always green, never brand color */}
         <div style={{ textAlign: "center", padding: "16px 24px 0" }}>
           <span
             style={{
               display: "inline-block",
-              background: C.success,
+              background: C.successBg,
               color: C.successText,
               fontWeight: 700,
               fontSize: 12,
@@ -278,17 +281,23 @@ export default function ReceiptView({ receipt, code }: Props) {
             {table_label && (
               <>
                 <span style={{ color: C.textSec }}>Mesa</span>
-                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{table_label}</span>
+                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>
+                  {table_label}
+                </span>
               </>
             )}
             {payment.kind === "seat" && payment.seat != null && (
               <>
                 <span style={{ color: C.textSec }}>Silla</span>
-                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{payment.seat}</span>
+                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>
+                  {payment.seat}
+                </span>
               </>
             )}
             <span style={{ color: C.textSec }}>Fecha</span>
-            <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{formatDate(payment.created_at)}</span>
+            <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>
+              {formatDate(payment.created_at)}
+            </span>
             <span style={{ color: C.textSec }}>Recibo #</span>
             <span
               style={{
@@ -339,8 +348,15 @@ export default function ReceiptView({ receipt, code }: Props) {
           {payment.tip_cents > 0 && (
             <TotalRow label="Propina" value={formatCents(payment.tip_cents)} />
           )}
+          {/* ② TOTAL — value in brand accent color (legible on white) */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
-            <TotalRow label="Total" value={formatCents(total)} bold large />
+            <TotalRow
+              label="Total"
+              value={formatCents(total)}
+              bold
+              large
+              accentColor={accentColor}
+            />
           </div>
         </div>
 
@@ -355,11 +371,31 @@ export default function ReceiptView({ receipt, code }: Props) {
           </div>
         )}
 
-        {/* PDF download */}
+        {/* ③ "Ver el menú" link — accent color on white */}
+        {business.slug && (
+          <div style={{ padding: "0 24px 12px", textAlign: "center" }}>
+            <a
+              href={`/m/${business.slug}`}
+              style={{
+                fontSize: 13,
+                color: accentColor,
+                fontWeight: 600,
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              Ver el menú →
+            </a>
+          </div>
+        )}
+
+        {/* ④ PDF button — background = brandColor, text = brandText */}
         <div style={{ padding: "8px 24px 28px", textAlign: "center" }}>
           <ReceiptPdfButton
             receipt={receipt}
             code={code}
+            brandColor={brandColor}
+            brandTextColor={brandText}
             label="Descargar PDF"
             generatingLabel="Generando PDF…"
           />

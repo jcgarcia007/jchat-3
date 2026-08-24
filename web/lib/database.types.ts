@@ -330,6 +330,7 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_by: string | null
+          receipt_brand_color: string | null
           website: string | null
         }
         Insert: {
@@ -390,6 +391,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          receipt_brand_color?: string | null
           website?: string | null
         }
         Update: {
@@ -449,6 +451,7 @@ export type Database = {
           tips_enabled?: boolean
           updated_at?: string
           verified_at?: string | null
+          receipt_brand_color?: string | null
           verified_by?: string | null
           website?: string | null
         }

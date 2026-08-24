@@ -21,7 +21,14 @@ import {
   IconMapPin,
   IconCircleCheck,
   IconPlus,
+  IconPalette,
+  IconCheck,
 } from "@tabler/icons-react";
+import { supabase } from "@/lib/supabase";
+import {
+  brandColorOrDefault,
+  RECEIPT_COLOR_SWATCHES,
+} from "@/lib/receiptColor";
 import {
   listUserBusinesses,
   listUserEvents,
@@ -92,6 +99,181 @@ const SECTION_TITLE: React.CSSProperties = {
   color: "var(--db-text-primary)",
   margin: "0 0 14px",
 };
+
+// ---------------------------------------------------------------------------
+// Receipt Brand Color Card — shows for the active business only
+// ---------------------------------------------------------------------------
+
+function ReceiptBrandColorCard({ businessId }: { businessId: string }) {
+  const t = useTranslations("dashboardCommon");
+  const [color, setColor] = useState("#5C7CFA");
+  const [customHex, setCustomHex] = useState("#5C7CFA");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void supabase
+      .from("businesses")
+      .select("receipt_brand_color")
+      .eq("id", businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        const c = brandColorOrDefault(data?.receipt_brand_color ?? null);
+        setColor(c);
+        setCustomHex(c);
+        setLoaded(true);
+      });
+    return () => { active = false; };
+  }, [businessId, supabase]);
+
+  const applyColor = (hex: string) => {
+    setColor(hex);
+    setCustomHex(hex);
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    const { error } = await supabase
+      .from("businesses")
+      .update({ receipt_brand_color: color })
+      .eq("id", businessId);
+    setSaving(false);
+    if (!error) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <section
+      style={{
+        ...CARD,
+        flexDirection: "column",
+        alignItems: "flex-start",
+        marginBottom: "12px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <IconPalette size={18} style={{ color: "var(--db-accent)" }} />
+        <h3 style={{ ...SECTION_TITLE, margin: 0 }}>{t("receiptBrandColorLabel")}</h3>
+      </div>
+      <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 14px" }}>
+        {t("receiptBrandColorHint")}
+      </p>
+
+      {/* Swatches */}
+      <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: 8 }}>
+        {t("receiptBrandColorSwatchesLabel")}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+        {RECEIPT_COLOR_SWATCHES.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            disabled={saving}
+            onClick={() => applyColor(hex)}
+            title={hex}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: hex,
+              border: color === hex ? "3px solid var(--db-text-primary)" : "2px solid transparent",
+              boxShadow:
+                color === hex
+                  ? "0 0 0 2px var(--db-bg-surface), 0 0 0 4px var(--db-text-primary)"
+                  : "0 1px 3px rgba(0,0,0,0.2)",
+              cursor: saving ? "not-allowed" : "pointer",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Custom input */}
+      <div style={{ fontSize: "12px", color: "var(--db-text-secondary)", marginBottom: 6 }}>
+        {t("receiptBrandColorCustom")}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <input
+          type="color"
+          value={customHex.length === 7 && customHex.startsWith("#") ? customHex : "#5C7CFA"}
+          disabled={saving}
+          onChange={(e) => applyColor(e.target.value)}
+          style={{
+            width: 40,
+            height: 34,
+            borderRadius: 8,
+            border: "1px solid var(--db-border)",
+            padding: 2,
+            cursor: saving ? "not-allowed" : "pointer",
+            background: "var(--db-bg-surface)",
+          }}
+        />
+        <input
+          type="text"
+          value={customHex}
+          disabled={saving}
+          placeholder="#5C7CFA"
+          maxLength={7}
+          onChange={(e) => {
+            setCustomHex(e.target.value);
+            if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setColor(e.target.value);
+          }}
+          style={{
+            flex: 1,
+            maxWidth: 140,
+            padding: "7px 10px",
+            borderRadius: 8,
+            border: "1px solid var(--db-border)",
+            background: "var(--db-bg-surface)",
+            color: "var(--db-text-primary)",
+            fontSize: "13px",
+            fontFamily: "monospace",
+            outline: "none",
+          }}
+        />
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 8,
+            background: color,
+            border: "1px solid var(--db-border)",
+            flexShrink: 0,
+          }}
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void handleSave()}
+        disabled={saving}
+        style={{
+          ...CTA,
+          cursor: saving ? "wait" : "pointer",
+          opacity: saving ? 0.7 : 1,
+          gap: 8,
+        }}
+      >
+        {saved ? <IconCheck size={16} /> : null}
+        {saving
+          ? t("receiptBrandColorSaving")
+          : saved
+          ? t("receiptBrandColorSaved")
+          : t("receiptBrandColorSave")}
+      </button>
+    </section>
+  );
+}
 
 function VerificationBadge({ isVerified }: { isVerified: boolean }) {
   const t = useTranslations("dashboardCommon");
@@ -313,6 +495,14 @@ export default function ConfigBusinessesPage() {
               </section>
             );
           })}
+        </>
+      )}
+
+      {/* ═══ Receipt Brand Color (active business only) ═══ */}
+      {!loading && activeId && (
+        <>
+          <h2 style={{ ...SECTION_TITLE, marginTop: "32px" }}>{t("receiptBrandColorLabel")}</h2>
+          <ReceiptBrandColorCard businessId={activeId} />
         </>
       )}
 
