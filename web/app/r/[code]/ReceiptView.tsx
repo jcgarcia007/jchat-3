@@ -3,7 +3,10 @@
  * Renders the public digital receipt page for /r/[code].
  * No RLS: access is gated by the receipt_code itself.
  *
- * Design: dark outer background, centered white card, tokens only (no hex).
+ * DESIGN RULE: This is a public page — never use theme tokens (var(--...)).
+ * All colors are hardcoded hex so the receipt looks like paper regardless of
+ * the device's light/dark mode setting. colorScheme: "light" on the root
+ * container prevents the browser from applying its own dark-mode overrides.
  */
 
 import { IconReceipt2 } from "@tabler/icons-react";
@@ -11,19 +14,36 @@ import type { PublicReceipt, ReceiptItem } from "./page";
 import ReceiptPdfButton from "./ReceiptPdfButton";
 
 // ---------------------------------------------------------------------------
+// Fixed palette — no theme tokens
+// ---------------------------------------------------------------------------
+const C = {
+  pageBg:      "#e5e7eb", // outer page background (always light gray)
+  cardBg:      "#ffffff", // card background (always white)
+  text:        "#111827", // primary text
+  textSec:     "#6b7280", // secondary text (labels, modifiers, notes)
+  textTer:     "#9ca3af", // tertiary (footer)
+  border:      "#e5e7eb", // dividers and borders
+  metaBg:      "#f9fafb", // meta grid background
+  brand:       "#5C7CFA", // header band
+  brandText:   "#ffffff", // text on brand band
+  success:     "#1D9E75", // PAID badge bg
+  successText: "#ffffff", // text on PAID badge
+} as const;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCents(cents: number, locale = "en-US"): string {
-  return new Intl.NumberFormat(locale, {
+function formatCents(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(cents / 100);
 }
 
-function formatDate(iso: string, locale = "en-US"): string {
+function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(locale, {
+    return new Date(iso).toLocaleString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -35,12 +55,16 @@ function formatDate(iso: string, locale = "en-US"): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
 function ItemRow({ item }: { item: ReceiptItem }) {
   return (
     <div
       style={{
         padding: "10px 0",
-        borderBottom: "1px solid var(--color-border, #e5e7eb)",
+        borderBottom: `1px solid ${C.border}`,
       }}
     >
       <div
@@ -52,7 +76,7 @@ function ItemRow({ item }: { item: ReceiptItem }) {
         }}
       >
         <div style={{ flex: 1 }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>
             {item.qty > 1 ? `${item.qty}×  ` : ""}
             {item.name}
           </span>
@@ -60,11 +84,7 @@ function ItemRow({ item }: { item: ReceiptItem }) {
           {item.options?.modifiers?.map((mod, i) => (
             <div
               key={i}
-              style={{
-                fontSize: 12,
-                color: "var(--color-text-secondary, #6b7280)",
-                marginTop: 2,
-              }}
+              style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}
             >
               {mod.group_label}: {mod.choice_labels.join(", ")}
             </div>
@@ -74,7 +94,7 @@ function ItemRow({ item }: { item: ReceiptItem }) {
             <div
               style={{
                 fontSize: 12,
-                color: "var(--color-text-secondary, #6b7280)",
+                color: C.textSec,
                 fontStyle: "italic",
                 marginTop: 2,
               }}
@@ -83,7 +103,7 @@ function ItemRow({ item }: { item: ReceiptItem }) {
             </div>
           )}
         </div>
-        <span style={{ fontWeight: 500, fontSize: 14, whiteSpace: "nowrap" }}>
+        <span style={{ fontWeight: 500, fontSize: 14, color: C.text, whiteSpace: "nowrap" }}>
           {formatCents(item.price_cents * item.qty)}
         </span>
       </div>
@@ -110,6 +130,7 @@ function TotalRow({
         padding: "4px 0",
         fontWeight: bold ? 700 : 400,
         fontSize: large ? 16 : 14,
+        color: C.text,
       }}
     >
       <span>{label}</span>
@@ -126,22 +147,23 @@ function ReceiptNotFound() {
   return (
     <div
       style={{
+        colorScheme: "light",
         minHeight: "100dvh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--color-surface, #f3f4f6)",
+        background: C.pageBg,
         padding: 24,
         textAlign: "center",
       }}
     >
-      <IconReceipt2 size={48} style={{ color: "var(--color-text-secondary, #9ca3af)", marginBottom: 16 }} />
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: "var(--color-text, #111827)" }}>
-        Receipt not found
+      <IconReceipt2 size={48} style={{ color: C.textSec, marginBottom: 16 }} />
+      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: C.text }}>
+        Recibo no encontrado
       </h1>
-      <p style={{ color: "var(--color-text-secondary, #6b7280)", maxWidth: 320 }}>
-        This receipt link is invalid or has expired.
+      <p style={{ color: C.textSec, maxWidth: 320 }}>
+        Este enlace de recibo no es válido o ha expirado.
       </p>
     </div>
   );
@@ -165,19 +187,21 @@ export default function ReceiptView({ receipt, code }: Props) {
   return (
     <div
       style={{
+        // Lock to light appearance — receipt looks like paper in any device mode.
+        colorScheme: "light",
         minHeight: "100dvh",
-        background: "var(--color-surface, #f3f4f6)",
+        background: C.pageBg,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         padding: "32px 16px 48px",
       }}
     >
-      {/* Card — explicit dark text so this public page is theme-independent */}
+      {/* Card */}
       <div
         style={{
-          background: "var(--color-surface-raised, #ffffff)",
-          color: "var(--color-text, #111827)",
+          background: C.cardBg,
+          color: C.text,
           borderRadius: 16,
           boxShadow: "0 2px 24px rgba(0,0,0,0.10)",
           maxWidth: 480,
@@ -185,12 +209,12 @@ export default function ReceiptView({ receipt, code }: Props) {
           overflow: "hidden",
         }}
       >
-        {/* Header */}
+        {/* Brand header — blue band, always white text */}
         <div
           style={{
-            background: "var(--color-brand, #5C7CFA)",
+            background: C.brand,
             padding: "28px 24px 24px",
-            color: "#fff",
+            color: C.brandText,
             textAlign: "center",
           }}
         >
@@ -210,9 +234,11 @@ export default function ReceiptView({ receipt, code }: Props) {
               }}
             />
           )}
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{business.name}</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: C.brandText }}>
+            {business.name}
+          </h1>
           {business.address && (
-            <p style={{ fontSize: 13, opacity: 0.85, marginTop: 4, marginBottom: 0 }}>
+            <p style={{ fontSize: 13, color: C.brandText, opacity: 0.85, marginTop: 4, marginBottom: 0 }}>
               {[business.address, business.city, business.state].filter(Boolean).join(", ")}
             </p>
           )}
@@ -223,8 +249,8 @@ export default function ReceiptView({ receipt, code }: Props) {
           <span
             style={{
               display: "inline-block",
-              background: "var(--color-success, #1D9E75)",
-              color: "#fff",
+              background: C.success,
+              color: C.successText,
               fontWeight: 700,
               fontSize: 12,
               letterSpacing: "0.12em",
@@ -236,11 +262,11 @@ export default function ReceiptView({ receipt, code }: Props) {
           </span>
         </div>
 
-        {/* Meta */}
+        {/* Meta grid */}
         <div style={{ padding: "16px 24px 0" }}>
           <div
             style={{
-              background: "var(--color-surface, #f9fafb)",
+              background: C.metaBg,
               borderRadius: 10,
               padding: "12px 16px",
               display: "grid",
@@ -251,22 +277,23 @@ export default function ReceiptView({ receipt, code }: Props) {
           >
             {table_label && (
               <>
-                <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>Mesa</span>
-                <span style={{ fontWeight: 600, textAlign: "right" }}>{table_label}</span>
+                <span style={{ color: C.textSec }}>Mesa</span>
+                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{table_label}</span>
               </>
             )}
             {payment.kind === "seat" && payment.seat != null && (
               <>
-                <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>Silla</span>
-                <span style={{ fontWeight: 600, textAlign: "right" }}>{payment.seat}</span>
+                <span style={{ color: C.textSec }}>Silla</span>
+                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{payment.seat}</span>
               </>
             )}
-            <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>Fecha</span>
-            <span style={{ fontWeight: 600, textAlign: "right" }}>{formatDate(payment.created_at)}</span>
-            <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>Recibo #</span>
+            <span style={{ color: C.textSec }}>Fecha</span>
+            <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{formatDate(payment.created_at)}</span>
+            <span style={{ color: C.textSec }}>Recibo #</span>
             <span
               style={{
                 fontWeight: 600,
+                color: C.text,
                 textAlign: "right",
                 fontFamily: "monospace",
                 fontSize: 11,
@@ -280,13 +307,20 @@ export default function ReceiptView({ receipt, code }: Props) {
 
         {/* Items */}
         <div style={{ padding: "16px 24px 0" }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4, color: "var(--color-text-secondary, #6b7280)" }}>
+          <h2
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: 4,
+              color: C.textSec,
+            }}
+          >
             Productos
           </h2>
           {items.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--color-text-secondary, #6b7280)", padding: "8px 0" }}>
-              —
-            </p>
+            <p style={{ fontSize: 13, color: C.textSec, padding: "8px 0" }}>—</p>
           ) : (
             items.map((item, i) => <ItemRow key={i} item={item} />)
           )}
@@ -296,7 +330,7 @@ export default function ReceiptView({ receipt, code }: Props) {
         <div
           style={{
             padding: "16px 24px",
-            borderTop: "1px solid var(--color-border, #e5e7eb)",
+            borderTop: `1px solid ${C.border}`,
             marginTop: 8,
           }}
         >
@@ -305,22 +339,16 @@ export default function ReceiptView({ receipt, code }: Props) {
           {payment.tip_cents > 0 && (
             <TotalRow label="Propina" value={formatCents(payment.tip_cents)} />
           )}
-          <div style={{ borderTop: "1px solid var(--color-border, #e5e7eb)", marginTop: 8, paddingTop: 8 }}>
+          <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
             <TotalRow label="Total" value={formatCents(total)} bold large />
           </div>
         </div>
 
         {/* Payment method */}
-        {(payment.card_brand && payment.card_last4) && (
-          <div
-            style={{
-              padding: "0 24px 16px",
-              fontSize: 13,
-              color: "var(--color-text-secondary, #6b7280)",
-            }}
-          >
+        {payment.card_brand && payment.card_last4 && (
+          <div style={{ padding: "0 24px 16px", fontSize: 13, color: C.textSec }}>
             Pago:{" "}
-            <strong>
+            <strong style={{ color: C.text }}>
               {payment.card_brand.charAt(0).toUpperCase() + payment.card_brand.slice(1)}{" "}
               ••••{payment.card_last4}
             </strong>
@@ -338,14 +366,8 @@ export default function ReceiptView({ receipt, code }: Props) {
         </div>
       </div>
 
-      {/* Footer branding */}
-      <p
-        style={{
-          marginTop: 24,
-          fontSize: 12,
-          color: "var(--color-text-tertiary, #9ca3af)",
-        }}
-      >
+      {/* Footer */}
+      <p style={{ marginTop: 24, fontSize: 12, color: C.textTer }}>
         Powered by JChat
       </p>
     </div>
