@@ -137,7 +137,7 @@ function ReceiptNotFound() {
       }}
     >
       <IconReceipt2 size={48} style={{ color: "var(--color-text-secondary, #9ca3af)", marginBottom: 16 }} />
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: "var(--color-text, #111827)" }}>
         Receipt not found
       </h1>
       <p style={{ color: "var(--color-text-secondary, #6b7280)", maxWidth: 320 }}>
@@ -173,10 +173,11 @@ export default function ReceiptView({ receipt, code }: Props) {
         padding: "32px 16px 48px",
       }}
     >
-      {/* Card */}
+      {/* Card — explicit dark text so this public page is theme-independent */}
       <div
         style={{
           background: "var(--color-surface-raised, #ffffff)",
+          color: "var(--color-text, #111827)",
           borderRadius: 16,
           boxShadow: "0 2px 24px rgba(0,0,0,0.10)",
           maxWidth: 480,
