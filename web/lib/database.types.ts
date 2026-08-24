@@ -331,6 +331,7 @@ export type Database = {
           verified_at: string | null
           verified_by: string | null
           receipt_brand_color: string | null
+          receipt_template_id: string
           website: string | null
         }
         Insert: {
@@ -392,6 +393,7 @@ export type Database = {
           verified_at?: string | null
           verified_by?: string | null
           receipt_brand_color?: string | null
+          receipt_template_id?: string
           website?: string | null
         }
         Update: {
@@ -452,6 +454,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           receipt_brand_color?: string | null
+          receipt_template_id?: string
           verified_by?: string | null
           website?: string | null
         }

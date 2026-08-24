@@ -31,6 +31,7 @@ export interface ReceiptBusiness {
   phone: string | null;
   slug: string | null;
   receipt_brand_color: string | null;
+  receipt_template_id: string | null; // "modern" | "ticket" | "minimal" | "elegant"
 }
 
 export interface ReceiptPayment {
