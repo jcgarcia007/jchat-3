@@ -41,6 +41,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
     "react-native-svg": "15.15.4",
+    "react-native-tcp-socket": "^6.4.2",
     "react-native-webview": "13.16.1",
     "rn-emoji-keyboard": "^1.7.0"
   },

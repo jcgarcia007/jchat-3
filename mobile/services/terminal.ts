@@ -72,7 +72,7 @@ export type CreateTabPaymentIntentResult =
   | { ok: false; reason: TerminalErrorReason; message?: string };
 
 export type MarkTabPaidResult =
-  | { ok: true; tabClosed: boolean }
+  | { ok: true; tabClosed: boolean; receiptCode?: string }
   /** pi.status !== 'succeeded' — piStatus is the raw Stripe status. */
   | { ok: false; reason: 'not_succeeded'; piStatus?: string }
   | { ok: false; reason: TerminalErrorReason; message?: string };
@@ -477,7 +477,11 @@ export async function markTabPaid(paymentId: string): Promise<MarkTabPaidResult>
   }
 
   if (data?.ok === true) {
-    return { ok: true, tabClosed: data.tab_closed ?? false };
+    return {
+      ok: true,
+      tabClosed: data.tab_closed ?? false,
+      receiptCode: (data as { tab_closed?: boolean; receipt_code?: string }).receipt_code ?? undefined,
+    };
   }
 
   // EF returned 200 with ok: false — PI is not succeeded yet.

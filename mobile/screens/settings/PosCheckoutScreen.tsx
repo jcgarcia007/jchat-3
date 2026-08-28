@@ -51,6 +51,7 @@ import {
   IconCheck,
   IconChevronLeft,
   IconCreditCard,
+  IconPrinter,
   IconRefresh,
   IconWifi,
   IconWifiOff,
@@ -67,6 +68,11 @@ import {
   markTabPaid,
 } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { supabase } from '../../services/supabase';
+import { buildReceiptEscPos } from '../../services/escpos';
+import type { PublicReceipt } from '../../services/escpos';
+import { fetchAnyPrinter, printToNetwork } from '../../services/printer';
+import type { NetworkPrinter } from '../../services/printer';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -85,6 +91,8 @@ type CheckoutPhase =
   | 'marking'     // calling markTabPaid EF
   | 'success'     // done
   | 'error';      // something went wrong
+
+type PrintStatus = 'idle' | 'printing' | 'success' | 'error';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,12 +129,24 @@ export default function PosCheckoutScreen() {
   // paymentId returned by createTabPaymentIntent and consumed by markTabPaid
   const paymentIdRef = useRef<string | null>(null);
 
+  // receipt_code returned by markTabPaid — used for QR printing
+  const receiptCodeRef = useRef<string | null>(null);
+
   // tabClosed returned by markTabPaid (for success banner)
   const [tabClosed, setTabClosed] = useState(false);
 
   // ── Checkout state ──────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // ── Printer state ───────────────────────────────────────────────────────────
+  // null = not yet looked up; 'none' = no printer configured
+  const [defaultPrinter, setDefaultPrinter] = useState<NetworkPrinter | 'none' | null>(null);
+  const [printStatus, setPrintStatus] = useState<PrintStatus>('idle');
+  const [printError, setPrintError] = useState<string | null>(null);
+  // Auto-navigate timer — cancelled when a printer is available so the employee
+  // can print before leaving the screen.
+  const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Tip picker state ────────────────────────────────────────────────────────
   // selectedTipOption: key of a preset ('15'|'18'|'20'), 'custom', or 'none'.
@@ -135,6 +155,13 @@ export default function PosCheckoutScreen() {
   const [customTipMode, setCustomTipMode] = useState<'pct' | 'amt'>('pct');
   // Raw text input for the custom option (parsed on confirm).
   const [customTipInput, setCustomTipInput] = useState<string>('');
+
+  // ── Cleanup: cancel auto-navigate timer on unmount ──────────────────────────
+  useEffect(() => {
+    return () => {
+      if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+    };
+  }, []);
 
   // ── Load tab total preview on mount (display only, not used for the charge) ──
   useEffect(() => {
@@ -256,12 +283,32 @@ export default function PosCheckoutScreen() {
     }
 
     // ── Success ──
+    receiptCodeRef.current = markResult.receiptCode ?? null;
     setTabClosed(markResult.tabClosed);
     setPhase('success');
-    // Navigate back after a short celebration pause so the employee sees the ✓
-    setTimeout(() => {
-      if (navigation.canGoBack()) navigation.goBack();
-    }, 2200);
+
+    // Check for a configured network printer.
+    // • If found  → cancel auto-navigate so the employee can print first;
+    //               they close manually with the "Close" button.
+    // • If absent → keep original 2.2s auto-navigate (no printer, no wait).
+    fetchAnyPrinter(businessId).then((printer) => {
+      if (printer) {
+        setDefaultPrinter(printer);
+        // No auto-navigate — employee controls when to leave.
+      } else {
+        setDefaultPrinter('none');
+        autoNavTimerRef.current = setTimeout(() => {
+          if (navigation.canGoBack()) navigation.goBack();
+        }, 2200);
+      }
+    }).catch(() => {
+      // If the lookup fails, fall back to auto-navigate so the screen doesn't
+      // get stuck — better UX than blocking on a non-critical print feature.
+      setDefaultPrinter('none');
+      autoNavTimerRef.current = setTimeout(() => {
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 2200);
+    });
   }, [
     connectedReader,
     businessId,
@@ -272,6 +319,44 @@ export default function PosCheckoutScreen() {
     navigation,
     t,
   ]);
+
+  // ─── Print handler ──────────────────────────────────────────────────────────
+
+  /**
+   * Fetch receipt data via RPC → build ESC/POS bytes → send to printer.
+   * The payment is already confirmed at this point — any print error is
+   * non-fatal. Always wrapped in try/catch so the cobro is unaffected.
+   */
+  const handlePrint = useCallback(async () => {
+    if (!defaultPrinter || defaultPrinter === 'none') return;
+    if (!receiptCodeRef.current) return;
+    if (printStatus === 'printing') return;
+
+    setPrintStatus('printing');
+    setPrintError(null);
+
+    try {
+      const { data: receipt, error: rpcError } = await supabase.rpc(
+        'get_public_receipt',
+        { p_code: receiptCodeRef.current },
+      );
+      if (rpcError || !receipt) throw new Error(t('pos.printError'));
+
+      const escposBytes = buildReceiptEscPos(
+        receipt as PublicReceipt,
+        receiptCodeRef.current,
+        defaultPrinter.width_mm,
+      );
+
+      await printToNetwork(defaultPrinter.host, defaultPrinter.port, escposBytes);
+      setPrintStatus('success');
+    } catch (err) {
+      setPrintStatus('error');
+      setPrintError(
+        err instanceof Error && err.message ? err.message : t('pos.printError'),
+      );
+    }
+  }, [defaultPrinter, printStatus, t]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
   const isProcessing =
@@ -612,6 +697,63 @@ export default function PosCheckoutScreen() {
           </Pressable>
         ) : null}
 
+        {/* Success phase: print + close */}
+        {phase === 'success' ? (
+          <View style={styles.successFooter}>
+            {defaultPrinter && defaultPrinter !== 'none' ? (
+              <>
+                <Pressable
+                  onPress={handlePrint}
+                  disabled={printStatus === 'printing'}
+                  style={({ pressed }) => [
+                    styles.printBtn,
+                    {
+                      backgroundColor:
+                        printStatus === 'success' ? c.success : c.brand,
+                      opacity: printStatus === 'printing' ? 0.6 : pressed ? 0.82 : 1,
+                    },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('pos.printBtn')}
+                >
+                  {printStatus === 'printing' ? (
+                    <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                  ) : (
+                    <IconPrinter size={20} color="#fff" strokeWidth={2} style={{ marginRight: 8 }} />
+                  )}
+                  <Text style={styles.printBtnText}>
+                    {printStatus === 'printing'
+                      ? t('pos.printingTitle')
+                      : printStatus === 'success'
+                      ? t('pos.printSuccess')
+                      : t('pos.printBtn')}
+                  </Text>
+                </Pressable>
+
+                {printStatus === 'error' && printError ? (
+                  <Text style={[styles.printErrorText, { color: c.danger }]}>
+                    {printError}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
+
+            <Pressable
+              onPress={() => {
+                if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+                if (navigation.canGoBack()) navigation.goBack();
+              }}
+              style={[styles.closeBtn, { borderColor: c.borderSubtle }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.printClose')}
+            >
+              <Text style={[styles.closeBtnText, { color: c.textSecondary }]}>
+                {t('pos.printClose')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Tip phase: back + confirm with total */}
         {phase === 'tip' ? (
           <View style={styles.tipFooterRow}>
@@ -829,4 +971,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+
+  // ── Success-phase print footer ────────────────────────────────────────────
+  successFooter: {
+    gap: 10,
+  },
+  printBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  printBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  printErrorText: {
+    fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  closeBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnText: { fontSize: 15, fontWeight: '600' },
 });

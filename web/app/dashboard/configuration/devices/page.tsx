@@ -22,6 +22,7 @@ import {
   IconDeviceMobile,
   IconDots,
   IconLoader2,
+  IconPrinter,
   IconRefresh,
   IconTerminal2,
   IconWifi,
@@ -122,6 +123,28 @@ export default function DevicesPage() {
     deviceType: string;
   } | null>(null);
 
+  // ── Printer state ────────────────────────────────────────────────────────────
+  type PrinterRow = {
+    id: string;
+    label: string;
+    host: string;
+    port: number;
+    width_mm: number;
+    is_default: boolean;
+  };
+  const [printers, setPrinters] = useState<PrinterRow[]>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+  const [printerLoadError, setPrinterLoadError] = useState<string | null>(null);
+  const [showPrinterForm, setShowPrinterForm] = useState(false);
+  const [printerFormLabel, setPrinterFormLabel] = useState("");
+  const [printerFormHost, setPrinterFormHost] = useState("");
+  const [printerFormPort, setPrinterFormPort] = useState("9100");
+  const [printerFormWidth, setPrinterFormWidth] = useState<"80" | "58">("80");
+  const [printerFormDefault, setPrinterFormDefault] = useState(false);
+  const [printerFormError, setPrinterFormError] = useState<string | null>(null);
+  const [printerFormLoading, setPrinterFormLoading] = useState(false);
+  const [deletingPrinterId, setDeletingPrinterId] = useState<string | null>(null);
+
   // ── Init ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     resolveActiveBusiness().then((res) => {
@@ -173,6 +196,123 @@ export default function DevicesPage() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   }, []);
+
+  // ── Load printers ────────────────────────────────────────────────────────────
+  const loadPrinters = useCallback(async () => {
+    if (!bizId) return;
+    setLoadingPrinters(true);
+    setPrinterLoadError(null);
+    const { data, error } = await supabase
+      .from("pos_printers")
+      .select("id, label, host, port, width_mm, is_default")
+      .eq("business_id", bizId)
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .order("created_at");
+    setLoadingPrinters(false);
+    if (error) { setPrinterLoadError("No se pudieron cargar las impresoras."); return; }
+    setPrinters(
+      (data ?? [])
+        .filter((p) => p.host)
+        .map((p) => ({
+          id: p.id,
+          label: p.label,
+          host: p.host!,
+          port: p.port,
+          width_mm: p.width_mm,
+          is_default: p.is_default,
+        })),
+    );
+  }, [bizId]);
+
+  useEffect(() => { if (bizId) loadPrinters(); }, [bizId, loadPrinters]);
+
+  // ── Add printer ──────────────────────────────────────────────────────────────
+  const handleAddPrinter = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bizId) return;
+
+    const label = printerFormLabel.trim();
+    const host  = printerFormHost.trim();
+    const port  = parseInt(printerFormPort, 10);
+
+    if (!label) { setPrinterFormError("El nombre no puede estar vacío."); return; }
+    if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
+      setPrinterFormError("IP inválida. Formato esperado: 192.168.1.100"); return;
+    }
+    if (isNaN(port) || port < 1 || port > 65535) {
+      setPrinterFormError("Puerto inválido (1–65535)."); return;
+    }
+
+    setPrinterFormLoading(true);
+    setPrinterFormError(null);
+
+    // If this is set as default, clear existing defaults first.
+    if (printerFormDefault) {
+      await supabase
+        .from("pos_printers")
+        .update({ is_default: false })
+        .eq("business_id", bizId);
+    }
+
+    const { error } = await supabase.from("pos_printers").insert({
+      business_id: bizId,
+      label,
+      host,
+      port,
+      width_mm: parseInt(printerFormWidth, 10),
+      is_default: printerFormDefault,
+      connection: "network",
+    });
+
+    setPrinterFormLoading(false);
+
+    if (error) {
+      setPrinterFormError("Error al guardar. Intenta de nuevo.");
+      return;
+    }
+
+    // Reset form
+    setPrinterFormLabel("");
+    setPrinterFormHost("");
+    setPrinterFormPort("9100");
+    setPrinterFormWidth("80");
+    setPrinterFormDefault(false);
+    setShowPrinterForm(false);
+    showToast("Impresora guardada");
+    loadPrinters();
+  }, [bizId, printerFormLabel, printerFormHost, printerFormPort, printerFormWidth, printerFormDefault, showToast, loadPrinters]);
+
+  // ── Delete printer ───────────────────────────────────────────────────────────
+  const handleDeletePrinter = useCallback(async (id: string) => {
+    if (!bizId) return;
+    setDeletingPrinterId(id);
+    await supabase
+      .from("pos_printers")
+      .update({ is_active: false })
+      .eq("id", id)
+      .eq("business_id", bizId);
+    setDeletingPrinterId(null);
+    showToast("Impresora eliminada");
+    loadPrinters();
+  }, [bizId, showToast, loadPrinters]);
+
+  // ── Set default printer ──────────────────────────────────────────────────────
+  const handleSetDefaultPrinter = useCallback(async (id: string) => {
+    if (!bizId) return;
+    // Clear all defaults, then set the new one.
+    await supabase
+      .from("pos_printers")
+      .update({ is_default: false })
+      .eq("business_id", bizId);
+    await supabase
+      .from("pos_printers")
+      .update({ is_default: true })
+      .eq("id", id)
+      .eq("business_id", bizId);
+    showToast("Impresora principal actualizada");
+    loadPrinters();
+  }, [bizId, showToast, loadPrinters]);
 
   // ── Close context menu on outside click ─────────────────────────────────────
   useEffect(() => {
@@ -474,6 +614,169 @@ export default function DevicesPage() {
           <IconBluetooth size={13} aria-hidden />
           {t("devicesBluetoothNote")}
         </p>
+      </section>
+
+      {/* ── Printers ────────────────────────────────────────────────────────── */}
+      <section className="dv-section">
+        <div className="dv-section-row">
+          <h2 className="dv-section-title">
+            <IconPrinter size={18} aria-hidden />
+            Impresoras de Recibo
+          </h2>
+          {!showPrinterForm && (
+            <button
+              className="dv-secondary-btn"
+              onClick={() => { setShowPrinterForm(true); setPrinterFormError(null); }}
+            >
+              + Agregar
+            </button>
+          )}
+        </div>
+
+        {loadingPrinters && (
+          <div className="dv-loading">
+            <IconLoader2 size={18} className="dv-spin" aria-hidden />
+            Cargando…
+          </div>
+        )}
+
+        {printerLoadError && (
+          <p className="dv-load-error">
+            <IconAlertCircle size={14} aria-hidden /> {printerLoadError}
+          </p>
+        )}
+
+        {!loadingPrinters && printers.length === 0 && !showPrinterForm && (
+          <p className="dv-empty-note">
+            No hay impresoras configuradas. Agrega la IP de tu impresora de red
+            (puerto 9100, ESC/POS) para imprimir recibos desde la app del mesero.
+          </p>
+        )}
+
+        {printers.map((p) => (
+          <div key={p.id} className="dv-printer-row">
+            <div className="dv-printer-icon">
+              <IconPrinter size={18} aria-hidden />
+            </div>
+            <div className="dv-printer-info">
+              <strong>{p.label}</strong>
+              <span className="dv-printer-addr">{p.host}:{p.port} · {p.width_mm}mm</span>
+              {p.is_default && (
+                <span className="dv-badge-default">Principal</span>
+              )}
+            </div>
+            <div className="dv-printer-actions">
+              {!p.is_default && (
+                <button
+                  className="dv-secondary-btn dv-btn-sm"
+                  onClick={() => handleSetDefaultPrinter(p.id)}
+                >
+                  <IconCheck size={13} /> Principal
+                </button>
+              )}
+              <button
+                className="dv-danger-btn dv-btn-sm"
+                disabled={deletingPrinterId === p.id}
+                onClick={() => handleDeletePrinter(p.id)}
+              >
+                {deletingPrinterId === p.id ? (
+                  <IconLoader2 size={13} className="dv-spin" />
+                ) : (
+                  <IconX size={13} />
+                )}
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {showPrinterForm && (
+          <form className="dv-printer-form" onSubmit={handleAddPrinter}>
+            <div className="dv-form-row">
+              <label className="dv-label">
+                Nombre
+                <input
+                  className="dv-input"
+                  placeholder="Ej. Caja principal"
+                  value={printerFormLabel}
+                  onChange={(e) => setPrinterFormLabel(e.target.value)}
+                  maxLength={60}
+                  required
+                />
+              </label>
+              <label className="dv-label">
+                IP de la impresora
+                <input
+                  className="dv-input"
+                  placeholder="192.168.1.100"
+                  value={printerFormHost}
+                  onChange={(e) => setPrinterFormHost(e.target.value)}
+                  pattern="(\d{1,3}\.){3}\d{1,3}"
+                  title="Dirección IPv4 válida"
+                  required
+                />
+              </label>
+            </div>
+            <div className="dv-form-row">
+              <label className="dv-label">
+                Puerto
+                <input
+                  className="dv-input"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={printerFormPort}
+                  onChange={(e) => setPrinterFormPort(e.target.value)}
+                />
+              </label>
+              <label className="dv-label">
+                Ancho de papel
+                <select
+                  className="dv-input"
+                  value={printerFormWidth}
+                  onChange={(e) => setPrinterFormWidth(e.target.value as "80" | "58")}
+                >
+                  <option value="80">80mm (estándar)</option>
+                  <option value="58">58mm (compacto)</option>
+                </select>
+              </label>
+            </div>
+            <label className="dv-checkbox-label">
+              <input
+                type="checkbox"
+                checked={printerFormDefault}
+                onChange={(e) => setPrinterFormDefault(e.target.checked)}
+              />
+              Usar como impresora principal
+            </label>
+
+            {printerFormError && (
+              <p className="dv-form-error">
+                <IconAlertCircle size={13} aria-hidden /> {printerFormError}
+              </p>
+            )}
+
+            <div className="dv-form-actions">
+              <button
+                type="button"
+                className="dv-secondary-btn"
+                onClick={() => { setShowPrinterForm(false); setPrinterFormError(null); }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="dv-primary-btn"
+                disabled={printerFormLoading}
+              >
+                {printerFormLoading ? (
+                  <IconLoader2 size={14} className="dv-spin" />
+                ) : null}
+                Guardar impresora
+              </button>
+            </div>
+          </form>
+        )}
       </section>
 
       {/* ── Device catalog ─────────────────────────────────────────────────── */}
@@ -1134,6 +1437,152 @@ export default function DevicesPage() {
         .dv-dropdown button.danger {
           color: var(--db-danger, #ef4444);
         }
+
+        /* ── Printer section ─────────────────────────────────────────────── */
+        .dv-section-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin-bottom: 0.75rem;
+        }
+        .dv-section-row .dv-section-title {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          margin-bottom: 0;
+        }
+        .dv-printer-row {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          background: var(--db-surface);
+          border: 1px solid var(--db-border);
+          border-radius: 10px;
+          margin-bottom: 0.5rem;
+        }
+        .dv-printer-icon {
+          color: var(--db-text-muted);
+          flex-shrink: 0;
+        }
+        .dv-printer-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
+        }
+        .dv-printer-info strong { font-size: 0.9rem; }
+        .dv-printer-addr { font-size: 0.78rem; color: var(--db-text-muted); }
+        .dv-badge-default {
+          display: inline-block;
+          font-size: 0.7rem;
+          font-weight: 600;
+          background: var(--db-accent, #5C7CFA);
+          color: #fff;
+          border-radius: 4px;
+          padding: 1px 6px;
+          width: fit-content;
+        }
+        .dv-printer-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          flex-shrink: 0;
+        }
+        .dv-btn-sm {
+          font-size: 0.78rem !important;
+          padding: 0.3rem 0.7rem !important;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        .dv-danger-btn {
+          border: 1px solid var(--db-border);
+          border-radius: 8px;
+          background: transparent;
+          color: #ef4444;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .dv-danger-btn:hover:not(:disabled) { background: rgba(239,68,68,0.08); }
+        .dv-danger-btn:disabled { opacity: 0.5; cursor: default; }
+        .dv-printer-form {
+          background: var(--db-surface);
+          border: 1px solid var(--db-border);
+          border-radius: 12px;
+          padding: 1.25rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.9rem;
+          margin-top: 0.25rem;
+        }
+        .dv-form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem;
+        }
+        @media (max-width: 480px) { .dv-form-row { grid-template-columns: 1fr; } }
+        .dv-label {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--db-text-muted);
+        }
+        .dv-input {
+          border: 1px solid var(--db-border);
+          border-radius: 8px;
+          padding: 0.5rem 0.7rem;
+          font-size: 0.875rem;
+          background: var(--db-bg);
+          color: var(--db-text);
+          outline: none;
+          transition: border-color 0.15s;
+        }
+        .dv-input:focus { border-color: var(--db-accent, #5C7CFA); }
+        .dv-checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          cursor: pointer;
+        }
+        .dv-form-error {
+          font-size: 0.82rem;
+          color: #ef4444;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        .dv-form-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.5rem;
+        }
+        .dv-empty-note {
+          font-size: 0.85rem;
+          color: var(--db-text-muted);
+          line-height: 1.6;
+          margin: 0.25rem 0 0.75rem;
+        }
+        .dv-loading {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.85rem;
+          color: var(--db-text-muted);
+          padding: 0.5rem 0;
+        }
+        .dv-load-error {
+          font-size: 0.82rem;
+          color: #ef4444;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        /* ── end printer section ──────────────────────────────────────── */
 
         /* Bluetooth note */
         .dv-bluetooth-note {

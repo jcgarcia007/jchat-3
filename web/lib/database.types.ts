@@ -2300,6 +2300,53 @@ export type Database = {
           },
         ]
       }
+      pos_printers: {
+        Row: {
+          id: string
+          business_id: string
+          label: string
+          connection: string
+          host: string | null
+          port: number
+          width_mm: number
+          is_default: boolean
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          label: string
+          connection?: string
+          host?: string | null
+          port?: number
+          width_mm?: number
+          is_default?: boolean
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          label?: string
+          connection?: string
+          host?: string | null
+          port?: number
+          width_mm?: number
+          is_default?: boolean
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_printers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string

@@ -241,7 +241,13 @@
     "tipTotalLabel": "Total to charge",
     "tipBack": "Back",
     "tipChargeBtn": "Charge {{total}}",
-    "tipTipLabel": "incl. {{tip}} tip"
+    "tipTipLabel": "incl. {{tip}} tip",
+    "printBtn": "Print receipt",
+    "printingTitle": "Printing…",
+    "printSuccess": "✓ Receipt printed",
+    "printError": "Print failed. Make sure the printer is on and connected to the same network.",
+    "printNoPrinter": "No printer configured. Set one up in the dashboard → Devices.",
+    "printClose": "Close"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

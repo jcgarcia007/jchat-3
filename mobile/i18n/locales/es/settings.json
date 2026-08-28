@@ -241,7 +241,13 @@
     "tipTotalLabel": "Total a cobrar",
     "tipBack": "Regresar",
     "tipChargeBtn": "Cobrar {{total}}",
-    "tipTipLabel": "incl. propina {{tip}}"
+    "tipTipLabel": "incl. propina {{tip}}",
+    "printBtn": "Imprimir recibo",
+    "printingTitle": "Imprimiendo…",
+    "printSuccess": "✓ Recibo impreso",
+    "printError": "Error al imprimir. Verifica que la impresora esté encendida y conectada a la misma red.",
+    "printNoPrinter": "Sin impresora configurada. Configura una en el dashboard → Dispositivos.",
+    "printClose": "Cerrar"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",
