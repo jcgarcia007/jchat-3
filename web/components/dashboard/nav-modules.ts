@@ -32,6 +32,7 @@ import {
   IconCreditCard,
   IconGavel,
   IconReceipt,
+  IconReceipt2,
   IconSettings,
   IconUsers,
   IconShieldLock,
@@ -124,6 +125,7 @@ export const NAV_MODULES: NavModule[] = [
       { labelKey: "railDisputas", href: "/dashboard/disputes", icon: IconGavel },
       { labelKey: "railFacturacion", href: "/dashboard/billing", icon: IconReceipt },
       { labelKey: "railRecibo", href: "/dashboard/receipt", icon: IconReceipt },
+      { labelKey: "railRecibosHoy", href: "/dashboard/receipts", icon: IconReceipt2 },
     ],
   },
 ];

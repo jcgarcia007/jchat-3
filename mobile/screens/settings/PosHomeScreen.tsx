@@ -41,6 +41,7 @@ import {
   IconClipboardList,
   IconLayoutGrid,
   IconPlugConnected,
+  IconReceipt,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -307,6 +308,16 @@ export default function PosHomeScreen() {
             <IconArchive size={22} color={c.brand} strokeWidth={2} />
           </Pressable>
         ) : null}
+
+        {/* ── Recibos de hoy (Fase 4B) ─────────────────────────────────── */}
+        <Pressable
+          onPress={() => navigation.navigate('PosReceipts', { businessId })}
+          style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('pos.receiptsTitle')}
+        >
+          <IconReceipt size={22} color={c.brand} strokeWidth={2} />
+        </Pressable>
 
         {/* ── Órdenes (pickup board) button ────────────────────────────── */}
         <Pressable

@@ -615,6 +615,7 @@ async function handleMarkPaid(
 async function handleCreateTabPaymentIntent(
   body: Record<string, unknown>,
   userClient: SupabaseClient,
+  authUserId: string,
 ): Promise<Response> {
   const businessId = typeof body.business_id === "string" ? body.business_id : null;
   const tableId = typeof body.table_id === "string" ? body.table_id : null;
@@ -708,6 +709,7 @@ async function handleCreateTabPaymentIntent(
       kind: "full",
       stripe_pi_id: pi.id,
       status: "pending",
+      paid_by: authUserId,               // server-side only — from JWT, never from client (Fase 4B)
     })
     .select("id")
     .single();
@@ -1360,7 +1362,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       // ── Tab payment actions (C7 / 3a) ──────────────────────────────────────
       case "create_tab_payment_intent":
-        return await handleCreateTabPaymentIntent(body, userClient);
+        return await handleCreateTabPaymentIntent(body, userClient, authUserId);
 
       case "mark_tab_paid":
         return await handleMarkTabPaid(body, userClient);

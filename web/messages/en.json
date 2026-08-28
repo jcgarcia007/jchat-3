@@ -225,6 +225,7 @@
     "railDisputas": "Disputes",
     "railFacturacion": "Billing",
     "railRecibo": "Receipt",
+    "railRecibosHoy": "Today's Receipts",
     "receiptDashboardTitle": "Digital Receipt",
     "receiptDashboardDesc": "Customize the brand color used on your digital receipts.",
     "receiptDashboardPreviewTitle": "Preview",

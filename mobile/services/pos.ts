@@ -891,6 +891,47 @@ export async function posCreateCheck(
   return { ok: true, payment_id: row.payment_id, amount_cents: row.amount_cents };
 }
 
+// ─── Receipt log (Fase 4B) ────────────────────────────────────────────────────
+
+export interface PosReceiptRow {
+  id: string;
+  receipt_code: string | null;
+  table_label: string | null;
+  amount_cents: number;
+  tip_cents: number;
+  status: string;
+  paid_by: string | null;
+  created_at: string;
+}
+
+export type PosReceiptsResult =
+  | { ok: true; rows: PosReceiptRow[] }
+  | { ok: false; reason: 'no_access' | 'db_error' | 'not_configured' };
+
+/**
+ * Returns today's succeeded payments for a business.
+ * Owner sees all; employee sees only their own (paid_by = auth.uid()).
+ * "Today" is anchored to America/New_York on the server (migration 156).
+ */
+export async function posReceiptsToday(
+  businessId: string,
+): Promise<PosReceiptsResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  // Cast through unknown: pos_receipts_today is not in the generated DB types yet.
+  const { data, error } = await (posRpc as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> })
+    .rpc('pos_receipts_today', { p_business_id: businessId });
+
+  if (error) {
+    if (error.message.toLowerCase().includes('no access')) {
+      return { ok: false, reason: 'no_access' };
+    }
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true, rows: ((data ?? []) as unknown) as PosReceiptRow[] };
+}
+
 // ─── Alert config types ───────────────────────────────────────────────────────
 
 export interface PosAlertConfig {

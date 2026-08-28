@@ -38,6 +38,7 @@ import PosCheckoutScreen from '../screens/settings/PosCheckoutScreen';
 import PosSplitScreen from '../screens/settings/PosSplitScreen';
 import PosPickupScreen from '../screens/settings/PosPickupScreen';
 import PosInventoryScreen from '../screens/settings/PosInventoryScreen';
+import PosReceiptsScreen from '../screens/settings/PosReceiptsScreen';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -48,6 +49,8 @@ import type { SettingsStackParamList } from './SettingsStack';
  */
 export type PosStackParamList = {
   PosHome: { businessId: string; businessName: string; employeeId: string; plan: string | null };
+  /** Today's receipts log — employee sees own; owner sees all (Fase 4B). */
+  PosReceipts: { businessId: string };
   /** Table hub — opened when tapping a table in PosHome (C7). */
   PosTableHub: {
     businessId: string;
@@ -187,6 +190,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosPickup" component={PosPickupScreen} />
           {/* PosInventory: stock management + barcode scanner (inventory_manage required) */}
           <PosStack.Screen name="PosInventory" component={PosInventoryScreen} />
+          {/* PosReceipts: today's receipts log + reprint (Fase 4B) */}
+          <PosStack.Screen name="PosReceipts" component={PosReceiptsScreen} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

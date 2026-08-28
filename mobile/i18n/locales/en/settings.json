@@ -247,7 +247,21 @@
     "printSuccess": "✓ Receipt printed",
     "printError": "Print failed. Make sure the printer is on and connected to the same network.",
     "printNoPrinter": "No printer configured. Set one up in the dashboard → Devices.",
-    "printClose": "Close"
+    "printClose": "Close",
+    "receiptsTitle": "Today's Receipts",
+    "receiptsLoading": "Loading receipts…",
+    "receiptsEmpty": "No receipts today",
+    "receiptsEmptySub": "Completed payments will appear here.",
+    "receiptsErrNoAccess": "Access denied.",
+    "receiptsErrDb": "Failed to load receipts.",
+    "receiptsTable": "Table",
+    "receiptsTime": "Time",
+    "receiptsAmount": "Total",
+    "receiptsTip": "Tip",
+    "receiptsReprint": "Reprint",
+    "receiptsReprintNoCode": "No receipt code",
+    "receiptsReprintNoPrinter": "No printer configured",
+    "receiptsNoCode": "No code"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

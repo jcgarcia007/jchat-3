@@ -247,7 +247,21 @@
     "printSuccess": "✓ Recibo impreso",
     "printError": "Error al imprimir. Verifica que la impresora esté encendida y conectada a la misma red.",
     "printNoPrinter": "Sin impresora configurada. Configura una en el dashboard → Dispositivos.",
-    "printClose": "Cerrar"
+    "printClose": "Cerrar",
+    "receiptsTitle": "Recibos de hoy",
+    "receiptsLoading": "Cargando recibos…",
+    "receiptsEmpty": "Sin recibos hoy",
+    "receiptsEmptySub": "Los cobros completados aparecerán aquí.",
+    "receiptsErrNoAccess": "Sin acceso.",
+    "receiptsErrDb": "Error al cargar recibos.",
+    "receiptsTable": "Mesa",
+    "receiptsTime": "Hora",
+    "receiptsAmount": "Total",
+    "receiptsTip": "Propina",
+    "receiptsReprint": "Reimprimir",
+    "receiptsReprintNoCode": "Sin código de recibo",
+    "receiptsReprintNoPrinter": "Sin impresora configurada",
+    "receiptsNoCode": "Sin código"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",
