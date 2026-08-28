@@ -239,24 +239,35 @@ export function buildReceiptEscPos(
   }
 
   // ── Totals ──────────────────────────────────────────────────────────────────
+  // Mirror the digital receipt (Modern.tsx) exactly:
+  //   Subtotal — always visible (same as digital)
+  //   Impuesto — always visible (same as digital)
+  //   Propina  — only when > 0 (digital hides it at 0 too)
+  //   TOTAL    = amount_cents (base) + tip_cents — matches what was charged
+  //
+  // NOTE: subtotal_cents from get_public_receipt may appear larger than
+  // amount_cents (e.g. 11100 vs 1800) in some real receipts — this is a
+  // data question in get_public_receipt, not fixed here. Both printed and
+  // digital receipts read the same source, so they will always match.
+  const grandTotal = pay.amount_cents + pay.tip_cents;
+
   const totals: Uint8Array[] = [
     enc(separator(cols)), lf(),
   ];
 
-  if (pay.subtotal_cents > 0) {
-    totals.push(enc(labelValue('Subtotal', fmtPriceRaw(pay.subtotal_cents), cols)), lf());
-  }
-  if (pay.tax_cents > 0) {
-    totals.push(enc(labelValue('Impuesto', fmtPriceRaw(pay.tax_cents), cols)), lf());
-  }
+  // Subtotal — always (mirrors digital)
+  totals.push(enc(labelValue('Subtotal', fmtPriceRaw(pay.subtotal_cents), cols)), lf());
+  // Impuesto — always (mirrors digital)
+  totals.push(enc(labelValue('Impuesto', fmtPriceRaw(pay.tax_cents), cols)), lf());
+  // Propina — only when charged (mirrors digital)
   if (pay.tip_cents > 0) {
     totals.push(enc(labelValue('Propina', fmtPriceRaw(pay.tip_cents), cols)), lf());
   }
 
-  // TOTAL in double size + bold
+  // TOTAL in double size + bold — grandTotal = base + propina
   totals.push(
     doubleSize(true), bold(true),
-    enc(labelValue('TOTAL', fmtPriceRaw(pay.amount_cents), cols)), lf(),
+    enc(labelValue('TOTAL', fmtPriceRaw(grandTotal), cols)), lf(),
     doubleSize(false), bold(false),
     enc(separator(cols)), lf(),
   );
