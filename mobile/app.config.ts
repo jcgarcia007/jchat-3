@@ -126,10 +126,6 @@ const config: ExpoConfig = {
           'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.',
       },
     ],
-    // Network printing: raw TCP socket to ESC/POS printers on port 9100.
-    // No extra permissions required — LAN TCP is unrestricted on both platforms.
-    // ⚠️ REQUIRES EAS REBUILD (native module — same as Stripe Terminal).
-    'react-native-tcp-socket',
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
     [
