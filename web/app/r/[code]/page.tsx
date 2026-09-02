@@ -60,6 +60,7 @@ export interface PublicReceipt {
   payment: ReceiptPayment;
   table_label: string | null;
   items: ReceiptItem[];
+  server_name: string | null; // "Atendido por" — from employees.receipt_display_name or users.display_name
 }
 
 // ---------------------------------------------------------------------------

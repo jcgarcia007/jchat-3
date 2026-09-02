@@ -216,6 +216,14 @@ export default function ElegantReceipt({
             >
               {code}
             </span>
+            {receipt.server_name && (
+              <>
+                <span style={{ ...SMALL_CAPS, color: C.textSec, fontSize: 12 }}>Atendido</span>
+                <span style={{ textAlign: "right", color: C.text, fontSize: 13 }}>
+                  {receipt.server_name}
+                </span>
+              </>
+            )}
           </div>
         </div>
 

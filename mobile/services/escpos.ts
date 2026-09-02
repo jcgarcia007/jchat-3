@@ -48,6 +48,7 @@ export interface PublicReceipt {
   };
   table_label?: string | null;
   items: PublicReceiptItem[];
+  server_name?: string | null; // "Atendido por" — from get_public_receipt, null if no paid_by
 }
 
 // ─── Low-level ESC/POS primitives ────────────────────────────────────────────
@@ -298,13 +299,18 @@ export function buildReceiptEscPos(
   ];
 
   // ── Footer ──────────────────────────────────────────────────────────────────
-  const footer: Uint8Array[] = [
+  const footer: Uint8Array[] = [];
+  if (receipt.server_name) {
+    // "Atendido por: [nombre]" — shown only when paid_by is set and resolves to a name
+    footer.push(enc(`Atendido: ${receipt.server_name}`.slice(0, cols)), lf());
+  }
+  footer.push(
     enc('Gracias por su visita'), lf(),
     enc('jchat.cloud'), lf(),
     lf(),
     feed(40),   // ~5mm blank space before cut
     cut(),
-  ];
+  );
 
   return concat(
     ...header,

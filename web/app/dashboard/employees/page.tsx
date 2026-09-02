@@ -32,6 +32,9 @@ import {
   IconBriefcase,
   IconCheck,
   IconClock,
+  IconDeviceFloppy,
+  IconPencil,
+  IconReceipt2,
   IconTrash,
   IconUserOff,
   IconUsers,
@@ -63,12 +66,14 @@ interface EmployeeRow {
   status: EmployeeStatus;
   last_active_at: string | null;
   created_at: string;
+  receipt_display_name: string | null;
 }
 
 interface EmployeeWithProfile extends EmployeeRow {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  // receipt_display_name inherited from EmployeeRow
 }
 
 interface CustomRole {
@@ -262,179 +267,325 @@ function EmployeeRow({
   employee,
   isRemoving,
   onRemove,
+  onUpdateReceiptName,
   t,
 }: {
   employee: EmployeeWithProfile;
   isRemoving: boolean;
   onRemove: (emp: EmployeeWithProfile) => void;
+  onUpdateReceiptName: (empId: string, name: string | null) => Promise<void>;
   t: TFn;
 }) {
   const initials = (employee.display_name ?? employee.username)
     .slice(0, 2)
     .toUpperCase();
 
+  const [editingName, setEditingName] = React.useState(false);
+  const [editValue, setEditValue] = React.useState(employee.receipt_display_name ?? "");
+  const [savingName, setSavingName] = React.useState(false);
+
+  const handleSaveName = async () => {
+    setSavingName(true);
+    try {
+      await onUpdateReceiptName(employee.id, editValue.trim() || null);
+      setEditingName(false);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditValue(employee.receipt_display_name ?? "");
+    setEditingName(false);
+  };
+
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        padding: "14px 18px",
         background: "var(--db-bg-elevated)",
         border: "1px solid var(--db-border)",
         borderRadius: "var(--db-radius-card)",
         opacity: isRemoving ? 0.5 : 1,
         transition: "opacity 0.2s",
+        overflow: "hidden",
       }}
     >
-      {/* Avatar */}
+      {/* Main row */}
       <div
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          background: "var(--db-accent-bg)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          overflow: "hidden",
+          gap: "14px",
+          padding: "14px 18px",
         }}
       >
-        {employee.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={employee.avatar_url}
-            alt={employee.username}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <span
-            style={{
-              fontSize: "14px",
-              fontWeight: 700,
-              color: "var(--db-accent)",
-            }}
-          >
-            {initials}
-          </span>
-        )}
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Avatar */}
         <div
           style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "var(--db-text-primary)",
-            marginBottom: "2px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {employee.display_name ?? employee.username}
-        </div>
-        <div
-          style={{
-            fontSize: "12px",
-            color: "var(--db-text-secondary)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          @{employee.username}
-        </div>
-      </div>
-
-      {/* Role badge */}
-      <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-        <div
-          style={{
-            padding: "3px 10px",
-            borderRadius: "999px",
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
             background: "var(--db-accent-bg)",
-            color: "var(--db-accent)",
-            fontSize: "12px",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            overflow: "hidden",
           }}
         >
-          {roleLabel(employee, t)}
+          {employee.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={employee.avatar_url}
+              alt={employee.username}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "var(--db-accent)",
+              }}
+            >
+              {initials}
+            </span>
+          )}
         </div>
-        {employee.custom_role_id && (
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              padding: "2px 6px",
-              borderRadius: "999px",
-              background: "rgba(124,58,237,0.12)",
-              color: "var(--color-brand-purple)",
-              fontSize: "10px",
-              fontWeight: 700,
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "var(--db-text-primary)",
+              marginBottom: "2px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
-            {t("customRoleBadge")}
+            {employee.display_name ?? employee.username}
           </div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "var(--db-text-secondary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            @{employee.username}
+          </div>
+        </div>
+
+        {/* Role badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+          <div
+            style={{
+              padding: "3px 10px",
+              borderRadius: "999px",
+              background: "var(--db-accent-bg)",
+              color: "var(--db-accent)",
+              fontSize: "12px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {roleLabel(employee, t)}
+          </div>
+          {employee.custom_role_id && (
+            <div
+              style={{
+                padding: "2px 6px",
+                borderRadius: "999px",
+                background: "rgba(124,58,237,0.12)",
+                color: "var(--color-brand-purple)",
+                fontSize: "10px",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("customRoleBadge")}
+            </div>
+          )}
+        </div>
+
+        {/* Status */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            color: statusColor(employee.status),
+            fontSize: "12px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            minWidth: 64,
+          }}
+        >
+          <StatusIcon status={employee.status} />
+          {statusLabel(employee.status, t)}
+        </div>
+
+        {/* Last active */}
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--db-text-tertiary)",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            minWidth: 90,
+            textAlign: "right",
+          }}
+        >
+          {employee.last_active_at
+            ? formatDate(employee.last_active_at)
+            : t("employeesNeverActive")}
+        </div>
+
+        {/* Remove */}
+        <button
+          onClick={() => onRemove(employee)}
+          disabled={isRemoving}
+          aria-label={t("employeesRemoveAria", { username: employee.username })}
+          title={t("employeesRemoveTitle")}
+          style={{
+            background: "none",
+            border: "none",
+            color: isRemoving ? "var(--db-text-tertiary)" : "var(--db-danger)",
+            cursor: isRemoving ? "not-allowed" : "pointer",
+            padding: "6px",
+            display: "flex",
+            alignItems: "center",
+            borderRadius: "var(--db-radius)",
+            flexShrink: 0,
+          }}
+        >
+          <IconTrash size={16} />
+        </button>
+      </div>
+
+      {/* Receipt name row — always visible, inline-editable */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 18px 10px",
+          borderTop: "1px solid var(--db-border)",
+          background: "var(--db-bg-surface)",
+        }}
+      >
+        <IconReceipt2 size={13} color="var(--db-text-tertiary)" style={{ flexShrink: 0 }} />
+        {editingName ? (
+          <>
+            <input
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSaveName();
+                if (e.key === "Escape") handleCancelEdit();
+              }}
+              placeholder={t("employeesReceiptNamePlaceholder")}
+              autoFocus
+              style={{
+                flex: 1,
+                fontSize: "12px",
+                padding: "3px 8px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-accent)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-text-primary)",
+                outline: "none",
+                minWidth: 0,
+              }}
+            />
+            <button
+              onClick={() => void handleSaveName()}
+              disabled={savingName}
+              title={t("employeesSaveReceiptName")}
+              style={{
+                background: "var(--db-accent)",
+                border: "none",
+                color: "var(--db-accent-text)",
+                cursor: savingName ? "wait" : "pointer",
+                padding: "3px 6px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "var(--db-radius)",
+                flexShrink: 0,
+                opacity: savingName ? 0.7 : 1,
+              }}
+            >
+              <IconDeviceFloppy size={14} />
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              disabled={savingName}
+              title={t("cancel")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--db-text-secondary)",
+                cursor: "pointer",
+                padding: "3px 4px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "var(--db-radius)",
+                flexShrink: 0,
+              }}
+            >
+              <IconX size={14} />
+            </button>
+          </>
+        ) : (
+          <>
+            <span
+              style={{
+                flex: 1,
+                fontSize: "12px",
+                color: employee.receipt_display_name
+                  ? "var(--db-text-secondary)"
+                  : "var(--db-text-tertiary)",
+                fontStyle: employee.receipt_display_name ? "normal" : "italic",
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {employee.receipt_display_name
+                ? `${t("employeesReceiptNameLabel")}: ${employee.receipt_display_name}`
+                : t("employeesReceiptNameEmpty")}
+            </span>
+            <button
+              onClick={() => {
+                setEditValue(employee.receipt_display_name ?? "");
+                setEditingName(true);
+              }}
+              title={t("employeesEditReceiptName")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--db-text-tertiary)",
+                cursor: "pointer",
+                padding: "2px 4px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "var(--db-radius)",
+                flexShrink: 0,
+              }}
+            >
+              <IconPencil size={13} />
+            </button>
+          </>
         )}
       </div>
-
-      {/* Status */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          color: statusColor(employee.status),
-          fontSize: "12px",
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-          minWidth: 64,
-        }}
-      >
-        <StatusIcon status={employee.status} />
-        {statusLabel(employee.status, t)}
-      </div>
-
-      {/* Last active */}
-      <div
-        style={{
-          fontSize: "12px",
-          color: "var(--db-text-tertiary)",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-          minWidth: 90,
-          textAlign: "right",
-        }}
-      >
-        {employee.last_active_at
-          ? formatDate(employee.last_active_at)
-          : t("employeesNeverActive")}
-      </div>
-
-      {/* Remove */}
-      <button
-        onClick={() => onRemove(employee)}
-        disabled={isRemoving}
-        aria-label={t("employeesRemoveAria", { username: employee.username })}
-        title={t("employeesRemoveTitle")}
-        style={{
-          background: "none",
-          border: "none",
-          color: isRemoving ? "var(--db-text-tertiary)" : "var(--db-danger)",
-          cursor: isRemoving ? "not-allowed" : "pointer",
-          padding: "6px",
-          display: "flex",
-          alignItems: "center",
-          borderRadius: "var(--db-radius)",
-          flexShrink: 0,
-        }}
-      >
-        <IconTrash size={16} />
-      </button>
     </div>
   );
 }
@@ -459,6 +610,7 @@ export default function EmployeesPage() {
   const [addUsername, setAddUsername] = useState("");
   const [addRole, setAddRole] = useState<string>("Cashier");
   const [addCustomRoleId, setAddCustomRoleId] = useState<string | null>(null);
+  const [addReceiptName, setAddReceiptName] = useState("");
   const [adding, setAdding] = useState(false);
 
   // Custom roles for this business
@@ -633,6 +785,10 @@ export default function EmployeesPage() {
         status: "accepted",
       };
       if (addCustomRoleId) insertPayload.custom_role_id = addCustomRoleId;
+      if (addReceiptName.trim()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (insertPayload as any).receipt_display_name = addReceiptName.trim();
+      }
       const { error: insErr } = await supabase.from("employees").insert(insertPayload);
       if (insErr) throw insErr;
       // addRole is either one of the 6 fixed names or a custom role's free-text
@@ -642,6 +798,7 @@ export default function EmployeesPage() {
       setAddUsername("");
       setAddCustomRoleId(null);
       setAddRole("Cashier");
+      setAddReceiptName("");
       setShowAdd(false);
       await loadEmployees(businessId);
     } catch (e: unknown) {
@@ -650,6 +807,28 @@ export default function EmployeesPage() {
       setAdding(false);
     }
   }, [businessId, addUsername, addRole, addCustomRoleId, loadEmployees, t]);
+
+  // ── Update receipt_display_name inline ───────────────────────────────────────
+
+  const handleUpdateReceiptName = useCallback(
+    async (empId: string, name: string | null) => {
+      setError(null);
+      try {
+        const { error: updErr } = await supabase
+          .from("employees")
+          .update({ receipt_display_name: name } as never)
+          .eq("id", empId);
+        if (updErr) throw updErr;
+        setEmployees((prev) =>
+          prev.map((e) => (e.id === empId ? { ...e, receipt_display_name: name } : e))
+        );
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(t("employeesUpdateError", { msg }));
+      }
+    },
+    [t]
+  );
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -807,6 +986,21 @@ export default function EmployeesPage() {
                   )}
                 </select>
               </div>
+              <div style={{ flex: 1, minWidth: "180px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--db-text-secondary)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {t("employeesReceiptNameLabel")}
+                  <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: "4px", color: "var(--db-text-tertiary)", fontSize: "10px" }}>
+                    ({t("employeesReceiptNameOptional")})
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={addReceiptName}
+                  onChange={(e) => setAddReceiptName(e.target.value)}
+                  placeholder={t("employeesReceiptNamePlaceholder")}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-surface)", color: "var(--db-text-primary)", fontSize: "14px", outline: "none" }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => void handleAdd()}
@@ -858,6 +1052,7 @@ export default function EmployeesPage() {
                   employee={emp}
                   isRemoving={removingId === emp.id}
                   onRemove={handleRemove}
+                  onUpdateReceiptName={handleUpdateReceiptName}
                   t={t}
                 />
               ))}

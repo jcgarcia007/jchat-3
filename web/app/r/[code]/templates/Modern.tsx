@@ -138,6 +138,14 @@ export default function ModernReceipt({
             >
               {code}
             </span>
+            {receipt.server_name && (
+              <>
+                <span style={{ color: C.textSec }}>Atendido por</span>
+                <span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>
+                  {receipt.server_name}
+                </span>
+              </>
+            )}
           </div>
         </div>
 

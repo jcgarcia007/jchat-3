@@ -193,6 +193,12 @@ export default function TicketReceipt({
               {code}
             </span>
           </div>
+          {receipt.server_name && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: T.textSec }}>ATENDIDO</span>
+              <span style={{ fontWeight: 700 }}>{receipt.server_name}</span>
+            </div>
+          )}
 
           <Dashes />
 

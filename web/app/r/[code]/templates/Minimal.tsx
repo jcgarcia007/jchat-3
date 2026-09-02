@@ -184,6 +184,16 @@ export default function MinimalReceipt({
               {code.slice(0, 12)}…
             </div>
           </div>
+          {receipt.server_name && (
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: "0.1em", color: C.textSec, fontWeight: 300, textTransform: "uppercase" }}>
+                Atendido
+              </div>
+              <div style={{ fontSize: 14, color: C.text, fontWeight: 400, marginTop: 2 }}>
+                {receipt.server_name}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Items */}
