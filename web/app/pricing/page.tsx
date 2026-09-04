@@ -23,6 +23,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
   IconBuildingStore,
@@ -289,33 +290,84 @@ export default function PricingPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _prefersReduced = useReducedMotion();
+
+  const EASE_P = [0.16, 1, 0.3, 1] as [number, number, number, number];
+  const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    show:   { opacity: 1, y: 0, transition: { duration: 0.68, ease: EASE_P } },
+  };
+  const stagger = {
+    hidden: {},
+    show:   { transition: { staggerChildren: 0.08 } },
+  };
+
   return (
     <>
     <style>{`
       /* Space Grotesk — display headings */
       .sg { font-family: 'Space Grotesk', system-ui, sans-serif; }
 
-      /* Featured / popular badge pulse */
+      /* Featured / popular badge glow */
       @keyframes badge-glow {
-        0%,100%{ box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 25%, transparent); }
-        50%    { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-brand) 8%, transparent); }
+        0%,100%{ box-shadow: 0 0 0 2px rgba(92,124,250,.25); }
+        50%    { box-shadow: 0 0 0 6px rgba(92,124,250,.08); }
       }
       .plan-badge-glow { animation: badge-glow 2.8s ease-in-out infinite; }
 
       /* Spinner */
       @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Aurora */
+      @keyframes pr-drift-a {
+        0%,100%{transform:translate(0,0) scale(1);}
+        50%{transform:translate(30px,-20px) scale(1.06);}
+      }
+      @keyframes pr-drift-b {
+        0%,100%{transform:translate(0,0) scale(1);}
+        50%{transform:translate(-25px,18px) scale(1.04);}
+      }
+
+      /* Responsive */
+      @media(max-width:700px){
+        .pr-grid { grid-template-columns:1fr !important; }
+        .pr-social-grid { grid-template-columns:1fr !important; }
+      }
     `}</style>
     <div
       style={{
         minHeight: "100vh",
         background: "var(--bg-base)",
         color: "var(--text-primary)",
-        padding: "48px 20px",
+        overflowX: "hidden",
+        position: "relative",
       }}
     >
-      <div style={{ maxWidth: "1040px", margin: "0 auto" }}>
-        {/* Language switcher — top right */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+      {/* Aurora blobs */}
+      <div aria-hidden="true" style={{ position:"fixed", inset:0, zIndex:0, overflow:"hidden", pointerEvents:"none" }}>
+        <div style={{
+          position:"absolute", width:"540px", height:"540px", borderRadius:"50%",
+          background:"radial-gradient(circle,rgba(92,124,250,.2) 0%,transparent 70%)",
+          filter:"blur(80px)", top:"-10%", left:"5%",
+          animation:"pr-drift-a 28s ease-in-out infinite",
+        }}/>
+        <div style={{
+          position:"absolute", width:"400px", height:"400px", borderRadius:"50%",
+          background:"radial-gradient(circle,rgba(124,58,237,.14) 0%,transparent 70%)",
+          filter:"blur(70px)", top:"30%", right:"-5%",
+          animation:"pr-drift-b 34s ease-in-out infinite",
+          animationDelay:"-12s",
+        }}/>
+      </div>
+
+      <div style={{ maxWidth: "1040px", margin: "0 auto", padding: "48px 24px", position:"relative", zIndex:1 }}>
+        {/* Nav row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems:"center", marginBottom: "48px" }}>
+          <a href="/" style={{ display:"flex", alignItems:"center", gap:"8px", textDecoration:"none", color:"var(--text-secondary)", fontSize:"13px", fontWeight:600 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            JChat
+          </a>
           <LanguageSwitcher />
         </div>
 
@@ -323,47 +375,59 @@ export default function PricingPage() {
             §1 — PLANES SOCIALES (Para ti)
             Checkout fase 2: free→registro, verified/pro→disabled.
             ══════════════════════════════════════════════════════ */}
-        <section id="social" style={{ marginBottom: "64px" }}>
-          <header style={{ textAlign: "center", marginBottom: "32px" }}>
-            <h1 className="sg" style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 8px" }}>
+        <motion.section
+          id="social"
+          style={{ marginBottom: "72px" }}
+          initial="hidden"
+          animate="show"
+          variants={stagger}
+        >
+          <motion.header variants={fadeUp} style={{ textAlign: "center", marginBottom: "36px" }}>
+            <p style={{
+              fontSize:"11px", fontWeight:700, textTransform:"uppercase",
+              letterSpacing:".1em", color:"var(--color-brand)",
+              marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
+            }}>
+              JChat Social
+            </p>
+            <h1 className="sg" style={{ fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 800, margin: "0 0 10px", letterSpacing:"-.03em" }}>
               {t("social.sectionTitle")}
             </h1>
-            <p
-              style={{
-                fontSize: "15px",
-                color: "var(--text-secondary)",
-                margin: 0,
-                lineHeight: 1.5,
-              }}
-            >
+            <p style={{ fontSize: "15px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
               {t("social.sectionSubtitle")}
             </p>
-          </header>
+          </motion.header>
 
           <div
+            className="pr-social-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap: "16px",
               maxWidth: "820px",
               margin: "0 auto",
             }}
           >
-            {SOCIAL_PLANS.map((plan) => {
+            {SOCIAL_PLANS.map((plan, idx) => {
               const content = socialContent[plan.id];
               const accent = SOCIAL_ACCENT[plan.id];
               const isFeatured = plan.id === "verified";
               return (
-                <div
+                <motion.div
                   key={plan.id}
                   className={isFeatured ? "plan-badge-glow" : undefined}
+                  variants={fadeUp}
+                  transition={{ delay: idx * 0.08 }}
+                  whileHover={!isFeatured ? { y:-4, boxShadow:"0 24px 56px rgba(0,0,0,.48)" } : { y:-5, boxShadow:"0 28px 64px rgba(92,124,250,.18)" }}
                   style={{
-                    background: "var(--bg-surface)",
+                    background: isFeatured ? "rgba(13,18,36,.85)" : "rgba(13,18,36,.6)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
                     border: isFeatured
-                      ? "1px solid rgba(92,124,250,0.42)"
-                      : "1px solid var(--border-subtle)",
-                    borderRadius: "12px",
-                    padding: isFeatured ? "22px" : "20px",
+                      ? "1px solid rgba(92,124,250,.38)"
+                      : "1px solid rgba(255,255,255,.09)",
+                    borderRadius: "16px",
+                    padding: isFeatured ? "24px" : "22px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "12px",
@@ -377,15 +441,16 @@ export default function PricingPage() {
                       top: "-11px",
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: "var(--color-brand)",
+                      background: "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
                       color: "#fff",
                       fontSize: "10px",
                       fontWeight: 800,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      padding: "3px 12px",
+                      padding: "3px 14px",
                       borderRadius: "99px",
                       whiteSpace: "nowrap",
+                      boxShadow: "0 0 16px rgba(92,124,250,.45)",
                     }}>
                       {t("social.featuredBadge")}
                     </div>
@@ -470,43 +535,33 @@ export default function PricingPage() {
                   >
                     {content.cta}
                   </button>
-                </div>
+                </motion.div>
               );
             })}
           </div>
-        </section>
+        </motion.section>
 
-        {/* ══════════════════════════════════════════════════════
-            Separador visual entre secciones
-            ══════════════════════════════════════════════════════ */}
-        <div
+        {/* Divider */}
+        <motion.div
+          initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }}
           style={{
             maxWidth: "820px",
-            margin: "0 auto 56px",
+            margin: "0 auto 64px",
             display: "flex",
             alignItems: "center",
             gap: "16px",
           }}
         >
-          <div
-            style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
-          />
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: "var(--text-tertiary)",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.07)" }}/>
+          <span style={{
+            fontSize:"10px", fontWeight:700, textTransform:"uppercase",
+            letterSpacing:".12em", color:"var(--text-tertiary)", whiteSpace:"nowrap",
+            fontFamily:"'Space Grotesk',sans-serif",
+          }}>
             Venue POS
           </span>
-          <div
-            style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
-          />
-        </div>
+          <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.07)" }}/>
+        </motion.div>
 
         {/* ══════════════════════════════════════════════════════
             §2 — PLANES DE NEGOCIO (Para tu negocio)
@@ -514,22 +569,31 @@ export default function PricingPage() {
             ══════════════════════════════════════════════════════ */}
         <section id="negocios">
           {/* Header */}
-          <header style={{ textAlign: "center", marginBottom: "40px" }}>
-            <h2 className="sg" style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 10px" }}>
+          <motion.header
+            initial="hidden" whileInView="show" viewport={{ once:true, margin:"-60px" }}
+            variants={stagger}
+            style={{ textAlign: "center", marginBottom: "40px" }}
+          >
+            <motion.p variants={fadeUp} style={{
+              fontSize:"11px", fontWeight:700, textTransform:"uppercase",
+              letterSpacing:".1em", color:"var(--color-gold)",
+              marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
+            }}>
+              Venue POS
+            </motion.p>
+            <motion.h2 variants={fadeUp} className="sg" style={{ fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 800, margin: "0 0 12px", letterSpacing:"-.03em" }}>
               {t("business.sectionTitle")}
-            </h2>
-            <p
-              style={{
-                fontSize: "15px",
-                color: "var(--text-secondary)",
-                maxWidth: "560px",
-                margin: "0 auto",
-                lineHeight: 1.5,
-              }}
-            >
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{
+              fontSize: "15px",
+              color: "var(--text-secondary)",
+              maxWidth: "560px",
+              margin: "0 auto",
+              lineHeight: 1.6,
+            }}>
               {t("business.sectionSubtitle")}
-            </p>
-          </header>
+            </motion.p>
+          </motion.header>
 
           {/* Error */}
           {error && (
@@ -560,9 +624,11 @@ export default function PricingPage() {
             style={{
               maxWidth: "820px",
               margin: "0 auto 20px",
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "12px",
+              background: "rgba(13,18,36,.65)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: "1px solid rgba(255,255,255,.09)",
+              borderRadius: "14px",
               padding: "18px 20px",
             }}
           >
@@ -611,31 +677,39 @@ export default function PricingPage() {
 
           {/* Plan grid */}
           <div
+            className="pr-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap: "16px",
               maxWidth: "820px",
               margin: "0 auto",
             }}
           >
-            {OFFERED_PLANS.map((plan) => {
+            {OFFERED_PLANS.map((plan, idx) => {
               const busy = loadingPlan === plan.id;
               // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
               // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
               const needsConsent = plan.cta === "checkout" && !consentAccepted;
               const isPopular = plan.id === "pro";
               return (
-                <div
+                <motion.div
                   key={plan.id}
                   className={isPopular ? "plan-badge-glow" : undefined}
+                  initial={{ opacity:0, y:24 }}
+                  whileInView={{ opacity:1, y:0 }}
+                  viewport={{ once:true, margin:"-40px" }}
+                  transition={{ delay: idx * 0.09, duration:.68, ease:[0.16,1,0.3,1] }}
+                  whileHover={isPopular ? { y:-5, boxShadow:"0 28px 64px rgba(92,124,250,.2)" } : { y:-4, boxShadow:"0 24px 56px rgba(0,0,0,.5)" }}
                   style={{
-                    background: "var(--bg-surface)",
+                    background: isPopular ? "rgba(13,18,36,.88)" : "rgba(13,18,36,.62)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
                     border: isPopular
-                      ? "1px solid rgba(92,124,250,0.42)"
-                      : "1px solid var(--border-subtle)",
-                    borderRadius: "12px",
-                    padding: isPopular ? "22px" : "20px",
+                      ? "1px solid rgba(92,124,250,.38)"
+                      : "1px solid rgba(255,255,255,.09)",
+                    borderRadius: "16px",
+                    padding: isPopular ? "24px" : "22px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "12px",
@@ -649,15 +723,16 @@ export default function PricingPage() {
                       top: "-11px",
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: "var(--color-brand)",
+                      background: "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
                       color: "#fff",
                       fontSize: "10px",
                       fontWeight: 800,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      padding: "3px 12px",
+                      padding: "3px 14px",
                       borderRadius: "99px",
                       whiteSpace: "nowrap",
+                      boxShadow: "0 0 16px rgba(92,124,250,.45)",
                     }}>
                       {t("business.popularBadge")}
                     </div>
@@ -765,20 +840,26 @@ export default function PricingPage() {
                       t("business.btnContact")
                     )}
                   </button>
-                </div>
+                </motion.div>
               );
             })}
           </div>
 
           {/* Promo code */}
-          <div
+          <motion.div
+            initial={{ opacity:0, y:20 }}
+            whileInView={{ opacity:1, y:0 }}
+            viewport={{ once:true, margin:"-30px" }}
+            transition={{ duration:.6, ease:[0.16,1,0.3,1] }}
             style={{
               maxWidth: "560px",
               margin: "32px auto 0",
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "12px",
-              padding: "20px",
+              background: "rgba(13,18,36,.7)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,.09)",
+              borderRadius: "14px",
+              padding: "22px",
             }}
           >
             <div
@@ -910,7 +991,7 @@ export default function PricingPage() {
                 <span>{promoError}</span>
               </div>
             )}
-          </div>
+          </motion.div>
         </section>
       </div>
     </div>

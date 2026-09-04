@@ -2881,7 +2881,10 @@
       "subtitle": "Discover businesses, join nearby chats, and create your own group.",
       "createAccount": "Create account",
       "downloadApp": "Download the app",
-      "live": "Live"
+      "live": "Live",
+      "eyebrow": "City in real time",
+      "titleLine1": "Your city,",
+      "titleLine2": "alive and connected"
     },
     "features": {
       "title": "Everything in one place",
@@ -2912,6 +2915,51 @@
       "business": "Have a business?",
       "businessLink": "Explore Venue POS",
       "copyright": "© 2026 JChat"
+    },
+    "howItWorks": {
+      "label": "How it works",
+      "title": "From the map to the conversation",
+      "subtitle": "No mutual friends needed. Just openness and location.",
+      "step1": {
+        "tag": "Discover",
+        "title": "Open the map",
+        "desc": "Active venues and groups visible in your radius"
+      },
+      "step2": {
+        "tag": "Connect",
+        "title": "Join the radius",
+        "desc": "Every venue has its own radius chat. No invitation needed"
+      },
+      "step3": {
+        "tag": "Chat",
+        "title": "The live chat",
+        "desc": "Messages, reactions, venue offers in one channel"
+      }
+    },
+    "groups": {
+      "badge": "⚡ Pro Social",
+      "title": "Create your space, lead your community",
+      "body": "With the Pro plan you create themed groups, pin key messages and send announcements to your entire local community.",
+      "f1": {
+        "title": "Pinned messages",
+        "body": "Key info always visible for everyone in the group."
+      },
+      "f2": {
+        "title": "Mass announcements",
+        "body": "Notifications that reach all your members simultaneously."
+      },
+      "f3": {
+        "title": "Themed & incognito",
+        "body": "Groups by interest or neighborhood. Anonymous mode if needed."
+      },
+      "cta": "See Pro plans"
+    },
+    "cta": {
+      "title": "Enter your city.",
+      "titleGradient": "Start tonight.",
+      "sub": "Free forever on the basic plan. No card. No invitation.",
+      "btnPrimary": "Create free account",
+      "btnSec": "See business plans"
     }
   },
   "pricing": {

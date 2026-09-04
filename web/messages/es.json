@@ -2881,7 +2881,10 @@
       "subtitle": "Descubre negocios, únete a chats cercanos y crea tu propio grupo.",
       "createAccount": "Crear cuenta",
       "downloadApp": "Descargar la app",
-      "live": "En vivo"
+      "live": "En vivo",
+      "eyebrow": "Ciudad en tiempo real",
+      "titleLine1": "Tu ciudad,",
+      "titleLine2": "viva y conectada"
     },
     "features": {
       "title": "Todo en un solo lugar",
@@ -2912,6 +2915,51 @@
       "business": "¿Tienes un negocio?",
       "businessLink": "Conoce Venue POS",
       "copyright": "© 2026 JChat"
+    },
+    "howItWorks": {
+      "label": "¿Cómo funciona?",
+      "title": "Del mapa a la conversación",
+      "subtitle": "Sin amigos mutuos, sin importar a quién conoces. Solo apertura y ubicación.",
+      "step1": {
+        "tag": "Descubrir",
+        "title": "Abre el mapa",
+        "desc": "Venues y grupos activos visibles en tu radio"
+      },
+      "step2": {
+        "tag": "Conectar",
+        "title": "Únete al radio",
+        "desc": "Cada venue tiene su chat de radio. Sin invitación"
+      },
+      "step3": {
+        "tag": "Conversar",
+        "title": "El chat vivo",
+        "desc": "Mensajes, reacciones, ofertas del venue en un canal"
+      }
+    },
+    "groups": {
+      "badge": "⚡ Pro Social",
+      "title": "Crea tu espacio, lidera tu comunidad",
+      "body": "Con el plan Pro creas grupos temáticos, fijas mensajes clave y mandas anuncios a toda tu comunidad local.",
+      "f1": {
+        "title": "Mensajes fijados",
+        "body": "Info importante siempre visible para todos en el grupo."
+      },
+      "f2": {
+        "title": "Anuncios masivos",
+        "body": "Notificaciones que llegan a todos tus miembros simultáneamente."
+      },
+      "f3": {
+        "title": "Temática e incógnito",
+        "body": "Grupos por interés o barrio. Modo anónimo si lo necesitas."
+      },
+      "cta": "Ver planes Pro"
+    },
+    "cta": {
+      "title": "Entra a tu ciudad.",
+      "titleGradient": "Empieza esta noche.",
+      "sub": "Gratis para siempre en el plan básico. Sin tarjeta. Sin invitación.",
+      "btnPrimary": "Crear cuenta gratis",
+      "btnSec": "Ver planes para negocios"
     }
   },
   "pricing": {
