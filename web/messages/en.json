@@ -2870,5 +2870,96 @@
     "itemStyleHintPlaceholder": "e.g. dark moody, warm tones, minimalist…",
     "uploading": "Uploading…",
     "uploadFormatError": "Unsupported format — use JPG, PNG or WEBP"
+  },
+  "landing": {
+    "nav": {
+      "signIn": "Sign in"
+    },
+    "hero": {
+      "pill": "Real Places · Real People · Real Moments",
+      "title": "Connect with the people and places around you",
+      "subtitle": "Discover businesses, join nearby chats, and create your own group.",
+      "createAccount": "Create account",
+      "downloadApp": "Download the app"
+    },
+    "features": {
+      "title": "Everything in one place",
+      "map": {
+        "title": "The map",
+        "description": "Discover businesses and groups in real time near you"
+      },
+      "chat": {
+        "title": "Location chat",
+        "description": "Chat with whoever is within a venue's radius. The golden rule."
+      },
+      "groups": {
+        "title": "Create your group",
+        "description": "Build your own group for a beach, an event, a place. (Pro plan)"
+      }
+    },
+    "social": {
+      "title": "Your social space",
+      "body": "Profile, follow people, share moments."
+    },
+    "pricing": {
+      "cta": "View plans"
+    },
+    "footer": {
+      "business": "Have a business?",
+      "businessLink": "Explore Venue POS",
+      "copyright": "© 2026 JChat"
+    }
+  },
+  "pricing": {
+    "social": {
+      "sectionTitle": "Plans for you",
+      "sectionSubtitle": "Connect, discover, and create. Free to start.",
+      "free": {
+        "label": "Free",
+        "priceLabel": "$0",
+        "description": "Connect with your surroundings for free.",
+        "f1": "Join any public chat room",
+        "f2": "Discover businesses on the map",
+        "f3": "Basic profile",
+        "cta": "Create account"
+      },
+      "verified": {
+        "label": "Verified",
+        "priceLabel": "$0.99 / mo",
+        "description": "Stand out with a verified badge and premium features.",
+        "f1": "Verified badge on your profile",
+        "f2": "Priority in searches",
+        "f3": "Exclusive profile themes",
+        "cta": "Coming soon"
+      },
+      "pro": {
+        "label": "Pro",
+        "priceLabel": "$4.99 / mo",
+        "description": "Create and manage your own groups, anywhere.",
+        "f1": "Everything in Verified",
+        "f2": "Create your own groups",
+        "f3": "Up to 500 members per group",
+        "f4": "Custom group themes",
+        "cta": "Coming soon"
+      }
+    },
+    "business": {
+      "sectionTitle": "Venue POS — For your business",
+      "sectionSubtitle": "Choose the plan that fits your business. One subscription covers all your venues. Change or cancel anytime.",
+      "consentTitle": "Before you continue",
+      "consentBody": "Your subscription renews automatically each month until you cancel. If you have free trial days, you won't be charged until they end; once they do, your plan price is charged to your card and then monthly. You can cancel anytime from your dashboard, and if you cancel during the trial you won't be charged anything.",
+      "consentCheck": "I understand I will be charged automatically after the trial ends, and that I can cancel before without any charge.",
+      "promoTitle": "Have a promo code?",
+      "promoBody": "Enter it and we'll tell you how many trial days you get. It's applied when you choose your plan.",
+      "promoPlaceholder": "Enter your code",
+      "promoCheck": "Check",
+      "promoChecking": "Checking…",
+      "promoValidText": "Valid code: {days} trial days on the {plan} plan. Choose that plan below to apply it.",
+      "errorAutoRenew": "Check the auto-renewal box before continuing.",
+      "errorUnavailable": "Subscription is not available in this environment.",
+      "btnSubscribe": "Subscribe",
+      "btnRedirecting": "Redirecting…",
+      "btnContact": "Contact"
+    }
   }
 }

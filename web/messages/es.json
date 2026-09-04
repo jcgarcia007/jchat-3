@@ -2870,5 +2870,96 @@
     "itemStyleHintPlaceholder": "Ej.: oscuro y dramático, tonos cálidos, minimalista…",
     "uploading": "Subiendo…",
     "uploadFormatError": "Formato no soportado — usa JPG, PNG o WEBP"
+  },
+  "landing": {
+    "nav": {
+      "signIn": "Iniciar sesión"
+    },
+    "hero": {
+      "pill": "Real Places · Real People · Real Moments",
+      "title": "Conecta con la gente y los lugares a tu alrededor",
+      "subtitle": "Descubre negocios, únete a chats cercanos y crea tu propio grupo.",
+      "createAccount": "Crear cuenta",
+      "downloadApp": "Descargar la app"
+    },
+    "features": {
+      "title": "Todo en un solo lugar",
+      "map": {
+        "title": "El mapa",
+        "description": "Descubre negocios y grupos en tiempo real cerca de ti"
+      },
+      "chat": {
+        "title": "Chat por ubicación",
+        "description": "Chateas con quien está dentro del radio del lugar. La regla de oro."
+      },
+      "groups": {
+        "title": "Crea tu grupo",
+        "description": "Arma tu propio grupo para una playa, un evento, un lugar. (Plan Pro)"
+      }
+    },
+    "social": {
+      "title": "Tu espacio social",
+      "body": "Perfil, seguir gente, compartir momentos."
+    },
+    "pricing": {
+      "cta": "Ver planes"
+    },
+    "footer": {
+      "business": "¿Tienes un negocio?",
+      "businessLink": "Conoce Venue POS",
+      "copyright": "© 2026 JChat"
+    }
+  },
+  "pricing": {
+    "social": {
+      "sectionTitle": "Planes para ti",
+      "sectionSubtitle": "Conecta, descubre y crea. Gratis para empezar.",
+      "free": {
+        "label": "Gratis",
+        "priceLabel": "$0",
+        "description": "Conéctate con tu entorno sin costo.",
+        "f1": "Únete a cualquier sala pública",
+        "f2": "Descubre negocios en el mapa",
+        "f3": "Perfil básico",
+        "cta": "Crear cuenta"
+      },
+      "verified": {
+        "label": "Verificado",
+        "priceLabel": "$0.99 / mes",
+        "description": "Destaca con un badge verificado y funciones premium.",
+        "f1": "Badge verificado en tu perfil",
+        "f2": "Prioridad en búsquedas",
+        "f3": "Temas de perfil exclusivos",
+        "cta": "Próximamente"
+      },
+      "pro": {
+        "label": "Pro",
+        "priceLabel": "$4.99 / mes",
+        "description": "Crea y gestiona tus propios grupos, donde quieras.",
+        "f1": "Todo lo de Verificado",
+        "f2": "Crea tus propios grupos",
+        "f3": "Hasta 500 miembros por grupo",
+        "f4": "Temas de grupo personalizados",
+        "cta": "Próximamente"
+      }
+    },
+    "business": {
+      "sectionTitle": "Venue POS — Para tu negocio",
+      "sectionSubtitle": "Elige el plan que se ajusta a tu negocio. Una sola suscripción cubre todos tus negocios. Cambia o cancela cuando quieras.",
+      "consentTitle": "Antes de continuar",
+      "consentBody": "Tu suscripción se renueva automáticamente cada mes hasta que la canceles. Si tienes días de prueba gratis, no se te cobra nada hasta que terminen; al terminar, se cobra el precio del plan a tu tarjeta y luego cada mes. Puedes cancelar cuando quieras desde tu panel, y si cancelas durante la prueba no se te cobra nada.",
+      "consentCheck": "Entiendo que se me cobrará automáticamente al terminar la prueba, y que puedo cancelar antes sin ningún cargo.",
+      "promoTitle": "¿Tienes un código promocional?",
+      "promoBody": "Escríbelo y te dirá cuántos días de prueba te da. Se aplica al elegir tu plan.",
+      "promoPlaceholder": "Escribe tu código",
+      "promoCheck": "Comprobar",
+      "promoChecking": "Comprobando…",
+      "promoValidText": "Código válido: {days} días de prueba en el plan {plan}. Elige ese plan abajo para aplicarlo.",
+      "errorAutoRenew": "Marca la casilla de renovación automática antes de continuar.",
+      "errorUnavailable": "La suscripción no está disponible en este entorno.",
+      "btnSubscribe": "Suscribirme",
+      "btnRedirecting": "Redirigiendo…",
+      "btnContact": "Contactar"
+    }
   }
 }

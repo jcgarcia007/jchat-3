@@ -72,3 +72,23 @@ export const OFFERED_PLANS: OfferedPlan[] = [
     cta: "contact",
   },
 ];
+
+// ── Planes sociales (usuarios personales) ─────────────────────────────────────
+// Checkout social es fase 2. Esta constante es solo para display en /pricing.
+// NO confundir con OFFERED_PLANS (planes de negocio). Los tipos no se superponen.
+
+export type SocialPlanId = "free" | "verified" | "pro_social";
+
+export interface SocialPlan {
+  id: SocialPlanId;
+  /** Precio display — no pasa por Stripe en esta fase. */
+  priceLabel: string;
+  /** "register" → lleva a /auth/register. "soon" → deshabilitado. */
+  cta: "register" | "soon";
+}
+
+export const SOCIAL_PLANS: SocialPlan[] = [
+  { id: "free",       priceLabel: "$0",          cta: "register" },
+  { id: "verified",   priceLabel: "$0.99 / mes",  cta: "soon" },
+  { id: "pro_social", priceLabel: "$4.99 / mes",  cta: "soon" },
+];
