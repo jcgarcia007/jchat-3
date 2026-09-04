@@ -21,7 +21,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -121,6 +121,18 @@ async function readFunctionError(error: unknown): Promise<string> {
 export default function PricingPage() {
   const router = useRouter();
   const t = useTranslations("pricing");
+
+  // ── Space Grotesk para los encabezados de sección ────────────────────────
+  useEffect(() => {
+    if (!document.querySelector('[data-font="space-grotesk"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.dataset["font"] = "space-grotesk";
+      link.href =
+        "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&display=swap";
+      document.head.appendChild(link);
+    }
+  }, []);
 
   const [loadingPlan, setLoadingPlan] = useState<CheckoutPlanId | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -278,6 +290,21 @@ export default function PricingPage() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
+    <>
+    <style>{`
+      /* Space Grotesk — display headings */
+      .sg { font-family: 'Space Grotesk', system-ui, sans-serif; }
+
+      /* Featured / popular badge pulse */
+      @keyframes badge-glow {
+        0%,100%{ box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 25%, transparent); }
+        50%    { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-brand) 8%, transparent); }
+      }
+      .plan-badge-glow { animation: badge-glow 2.8s ease-in-out infinite; }
+
+      /* Spinner */
+      @keyframes spin { to { transform: rotate(360deg); } }
+    `}</style>
     <div
       style={{
         minHeight: "100vh",
@@ -298,7 +325,7 @@ export default function PricingPage() {
             ══════════════════════════════════════════════════════ */}
         <section id="social" style={{ marginBottom: "64px" }}>
           <header style={{ textAlign: "center", marginBottom: "32px" }}>
-            <h1 style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 8px" }}>
+            <h1 className="sg" style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 8px" }}>
               {t("social.sectionTitle")}
             </h1>
             <p
@@ -325,19 +352,44 @@ export default function PricingPage() {
             {SOCIAL_PLANS.map((plan) => {
               const content = socialContent[plan.id];
               const accent = SOCIAL_ACCENT[plan.id];
+              const isFeatured = plan.id === "verified";
               return (
                 <div
                   key={plan.id}
+                  className={isFeatured ? "plan-badge-glow" : undefined}
                   style={{
                     background: "var(--bg-surface)",
-                    border: "1px solid var(--border-subtle)",
+                    border: isFeatured
+                      ? "1px solid rgba(92,124,250,0.42)"
+                      : "1px solid var(--border-subtle)",
                     borderRadius: "12px",
-                    padding: "20px",
+                    padding: isFeatured ? "22px" : "20px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "12px",
+                    position: "relative",
                   }}
                 >
+                  {/* Featured badge */}
+                  {isFeatured && (
+                    <div style={{
+                      position: "absolute",
+                      top: "-11px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "var(--color-brand)",
+                      color: "#fff",
+                      fontSize: "10px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      padding: "3px 12px",
+                      borderRadius: "99px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {t("social.featuredBadge")}
+                    </div>
+                  )}
                   {/* Header */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ color: accent }}>{SOCIAL_ICONS[plan.id]}</span>
@@ -463,7 +515,7 @@ export default function PricingPage() {
         <section id="negocios">
           {/* Header */}
           <header style={{ textAlign: "center", marginBottom: "40px" }}>
-            <h2 style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 10px" }}>
+            <h2 className="sg" style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 10px" }}>
               {t("business.sectionTitle")}
             </h2>
             <p
@@ -572,19 +624,44 @@ export default function PricingPage() {
               // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
               // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
               const needsConsent = plan.cta === "checkout" && !consentAccepted;
+              const isPopular = plan.id === "pro";
               return (
                 <div
                   key={plan.id}
+                  className={isPopular ? "plan-badge-glow" : undefined}
                   style={{
                     background: "var(--bg-surface)",
-                    border: "1px solid var(--border-subtle)",
+                    border: isPopular
+                      ? "1px solid rgba(92,124,250,0.42)"
+                      : "1px solid var(--border-subtle)",
                     borderRadius: "12px",
-                    padding: "20px",
+                    padding: isPopular ? "22px" : "20px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "12px",
+                    position: "relative",
                   }}
                 >
+                  {/* Most popular badge */}
+                  {isPopular && (
+                    <div style={{
+                      position: "absolute",
+                      top: "-11px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "var(--color-brand)",
+                      color: "#fff",
+                      fontSize: "10px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      padding: "3px 12px",
+                      borderRadius: "99px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {t("business.popularBadge")}
+                    </div>
+                  )}
                   {/* Header */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ color: ACCENT[plan.id] }}>{ICONS[plan.id]}</span>
@@ -837,5 +914,6 @@ export default function PricingPage() {
         </section>
       </div>
     </div>
+    </>
   );
 }

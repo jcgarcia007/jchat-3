@@ -2880,7 +2880,8 @@
       "title": "Connect with the people and places around you",
       "subtitle": "Discover businesses, join nearby chats, and create your own group.",
       "createAccount": "Create account",
-      "downloadApp": "Download the app"
+      "downloadApp": "Download the app",
+      "live": "Live"
     },
     "features": {
       "title": "Everything in one place",
@@ -2900,6 +2901,9 @@
     "social": {
       "title": "Your social space",
       "body": "Profile, follow people, share moments."
+    },
+    "map": {
+      "youAreHere": "You are here"
     },
     "pricing": {
       "cta": "View plans"
@@ -2941,7 +2945,8 @@
         "f3": "Up to 500 members per group",
         "f4": "Custom group themes",
         "cta": "Coming soon"
-      }
+      },
+      "featuredBadge": "Featured"
     },
     "business": {
       "sectionTitle": "Venue POS — For your business",
@@ -2959,7 +2964,8 @@
       "errorUnavailable": "Subscription is not available in this environment.",
       "btnSubscribe": "Subscribe",
       "btnRedirecting": "Redirecting…",
-      "btnContact": "Contact"
+      "btnContact": "Contact",
+      "popularBadge": "Most popular"
     }
   }
 }
