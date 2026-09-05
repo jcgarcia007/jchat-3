@@ -69,6 +69,10 @@ const config: ExpoConfig = {
     },
   },
   plugins: [
+    // Writes android.minSdkVersion=26 to gradle.properties during expo prebuild.
+    // Stripe Terminal requires API 26+; the RN default catalog value is 24.
+    // This plugin runs first so all subsequent plugins see the correct SDK floor.
+    './config-plugins/withAndroidMinSdkVersion',
     [
       'react-native-maps',
       {
