@@ -306,69 +306,86 @@ export default function PricingPage() {
   return (
     <>
     <style>{`
-      /* Space Grotesk — display headings */
-      .sg { font-family: 'Space Grotesk', system-ui, sans-serif; }
-
-      /* Featured / popular badge glow */
-      @keyframes badge-glow {
-        0%,100%{ box-shadow: 0 0 0 2px rgba(92,124,250,.25); }
-        50%    { box-shadow: 0 0 0 6px rgba(92,124,250,.08); }
+      /* ── Pricing: paleta CLARA / durazno — mismos tokens que la landing ── */
+      :root {
+        --land-peach:       #FF8A65;
+        --land-peach-2:     #FFAB91;
+        --land-peach-glow:  rgba(255,138,101,.20);
+        --land-mint:        #5EEAD4;
+        --land-mint-glow:   rgba(94,234,212,.18);
+        --land-sky:         #93C5FD;
+        --land-sky-glow:    rgba(147,197,253,.22);
+        --land-bg:          #FAFAFA;
+        --land-text:        #111827;
+        --land-sub:         #4B5563;
+        --land-muted:       #9CA3AF;
+        --land-glass:       rgba(255,255,255,.80);
+        --land-shadow:      0 8px 40px rgba(0,0,0,.09);
       }
-      .plan-badge-glow { animation: badge-glow 2.8s ease-in-out infinite; }
+
+      /* Display font */
+      .sg { font-family:'Space Grotesk', system-ui, sans-serif; }
+
+      /* Featured badge pulse (peach) */
+      @keyframes pr-badge-glow {
+        0%,100%{ box-shadow:0 0 0 2px rgba(255,138,101,.28); }
+        50%    { box-shadow:0 0 0 6px rgba(255,138,101,.09); }
+      }
+      .pr-badge-pulse { animation:pr-badge-glow 2.8s ease-in-out infinite; }
+
+      /* Popular badge pulse (brand) */
+      @keyframes pr-pop-glow {
+        0%,100%{ box-shadow:0 0 0 2px rgba(92,124,250,.22); }
+        50%    { box-shadow:0 0 0 6px rgba(92,124,250,.07); }
+      }
+      .pr-pop-pulse { animation:pr-pop-glow 2.8s ease-in-out infinite; }
 
       /* Spinner */
-      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes spin { to { transform:rotate(360deg); } }
 
-      /* Aurora */
-      @keyframes pr-drift-a {
-        0%,100%{transform:translate(0,0) scale(1);}
-        50%{transform:translate(30px,-20px) scale(1.06);}
-      }
-      @keyframes pr-drift-b {
-        0%,100%{transform:translate(0,0) scale(1);}
-        50%{transform:translate(-25px,18px) scale(1.04);}
-      }
+      /* Aurora pastel */
+      @keyframes pr-da { 0%,100%{transform:translate(0,0)scale(1);} 50%{transform:translate(28px,-16px)scale(1.05);} }
+      @keyframes pr-db { 0%,100%{transform:translate(0,0)scale(1);} 50%{transform:translate(-22px,18px)scale(1.04);} }
 
       /* Responsive */
       @media(max-width:700px){
-        .pr-grid { grid-template-columns:1fr !important; }
-        .pr-social-grid { grid-template-columns:1fr !important; }
+        .pr-grid        { grid-template-columns:1fr!important; }
+        .pr-social-grid { grid-template-columns:1fr!important; }
       }
     `}</style>
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-        color: "var(--text-primary)",
-        overflowX: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* Aurora blobs */}
+
+    <div style={{ minHeight:"100vh", background:"var(--land-bg)", color:"var(--land-text)", overflowX:"hidden", position:"relative" }}>
+
+      {/* Aurora blobs (pastel, suaves) */}
       <div aria-hidden="true" style={{ position:"fixed", inset:0, zIndex:0, overflow:"hidden", pointerEvents:"none" }}>
         <div style={{
-          position:"absolute", width:"540px", height:"540px", borderRadius:"50%",
-          background:"radial-gradient(circle,rgba(92,124,250,.2) 0%,transparent 70%)",
-          filter:"blur(80px)", top:"-10%", left:"5%",
-          animation:"pr-drift-a 28s ease-in-out infinite",
+          position:"absolute", borderRadius:"50%", width:"500px", height:"500px",
+          background:"radial-gradient(circle,rgba(255,171,145,.36) 0%,transparent 70%)",
+          filter:"blur(90px)", top:"-8%", right:"0",
+          animation:"pr-da 30s ease-in-out infinite",
         }}/>
         <div style={{
-          position:"absolute", width:"400px", height:"400px", borderRadius:"50%",
-          background:"radial-gradient(circle,rgba(124,58,237,.14) 0%,transparent 70%)",
-          filter:"blur(70px)", top:"30%", right:"-5%",
-          animation:"pr-drift-b 34s ease-in-out infinite",
-          animationDelay:"-12s",
+          position:"absolute", borderRadius:"50%", width:"420px", height:"420px",
+          background:"radial-gradient(circle,rgba(94,234,212,.24) 0%,transparent 70%)",
+          filter:"blur(100px)", bottom:"5%", left:"-5%",
+          animation:"pr-db 38s ease-in-out infinite", animationDelay:"-14s",
         }}/>
       </div>
 
-      <div style={{ maxWidth: "1040px", margin: "0 auto", padding: "48px 24px", position:"relative", zIndex:1 }}>
+      <div style={{ maxWidth:"1040px", margin:"0 auto", padding:"48px 24px", position:"relative", zIndex:1 }}>
+
         {/* Nav row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems:"center", marginBottom: "48px" }}>
-          <a href="/" style={{ display:"flex", alignItems:"center", gap:"8px", textDecoration:"none", color:"var(--text-secondary)", fontSize:"13px", fontWeight:600 }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"48px" }}>
+          <a href="/" style={{
+            display:"flex", alignItems:"center", gap:"8px",
+            textDecoration:"none", color:"var(--land-sub)", fontSize:"13px", fontWeight:600,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             JChat
           </a>
-          <LanguageSwitcher />
+          <LanguageSwitcher/>
         </div>
 
         {/* ══════════════════════════════════════════════════════
@@ -377,158 +394,99 @@ export default function PricingPage() {
             ══════════════════════════════════════════════════════ */}
         <motion.section
           id="social"
-          style={{ marginBottom: "72px" }}
-          initial="hidden"
-          animate="show"
-          variants={stagger}
+          style={{ marginBottom:"72px" }}
+          initial="hidden" animate="show" variants={stagger}
         >
-          <motion.header variants={fadeUp} style={{ textAlign: "center", marginBottom: "36px" }}>
+          <motion.header variants={fadeUp} style={{ textAlign:"center", marginBottom:"36px" }}>
             <p style={{
               fontSize:"11px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:".1em", color:"var(--color-brand)",
+              letterSpacing:".1em", color:"var(--land-peach)",
               marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
             }}>
               JChat Social
             </p>
-            <h1 className="sg" style={{ fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 800, margin: "0 0 10px", letterSpacing:"-.03em" }}>
+            <h1 className="sg" style={{ fontSize:"clamp(26px,3.2vw,38px)", fontWeight:800, margin:"0 0 10px", letterSpacing:"-.03em", color:"var(--land-text)" }}>
               {t("social.sectionTitle")}
             </h1>
-            <p style={{ fontSize: "15px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize:"15px", color:"var(--land-sub)", margin:0, lineHeight:1.6 }}>
               {t("social.sectionSubtitle")}
             </p>
           </motion.header>
 
-          <div
-            className="pr-social-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "16px",
-              maxWidth: "820px",
-              margin: "0 auto",
-            }}
-          >
+          <div className="pr-social-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"820px", margin:"0 auto" }}>
             {SOCIAL_PLANS.map((plan, idx) => {
               const content = socialContent[plan.id];
-              const accent = SOCIAL_ACCENT[plan.id];
+              const accent  = SOCIAL_ACCENT[plan.id];
               const isFeatured = plan.id === "verified";
               return (
                 <motion.div
                   key={plan.id}
-                  className={isFeatured ? "plan-badge-glow" : undefined}
+                  className={isFeatured ? "pr-badge-pulse" : undefined}
                   variants={fadeUp}
                   transition={{ delay: idx * 0.08 }}
-                  whileHover={!isFeatured ? { y:-4, boxShadow:"0 24px 56px rgba(0,0,0,.48)" } : { y:-5, boxShadow:"0 28px 64px rgba(92,124,250,.18)" }}
+                  whileHover={isFeatured
+                    ? { y:-5, boxShadow:"0 24px 56px rgba(255,138,101,.16)" }
+                    : { y:-4, boxShadow:"0 18px 48px rgba(0,0,0,.10)" }
+                  }
                   style={{
-                    background: isFeatured ? "rgba(13,18,36,.85)" : "rgba(13,18,36,.6)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
+                    background: isFeatured ? "rgba(255,255,255,.92)" : "var(--land-glass)",
+                    backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
                     border: isFeatured
-                      ? "1px solid rgba(92,124,250,.38)"
-                      : "1px solid rgba(255,255,255,.09)",
-                    borderRadius: "16px",
+                      ? "1px solid rgba(255,138,101,.35)"
+                      : "1px solid rgba(0,0,0,.07)",
+                    borderRadius:"16px",
                     padding: isFeatured ? "24px" : "22px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                    position: "relative",
+                    display:"flex", flexDirection:"column", gap:"12px", position:"relative",
+                    boxShadow:"0 4px 20px rgba(0,0,0,.06)",
                   }}
                 >
                   {/* Featured badge */}
                   {isFeatured && (
                     <div style={{
-                      position: "absolute",
-                      top: "-11px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
-                      color: "#fff",
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      padding: "3px 14px",
-                      borderRadius: "99px",
-                      whiteSpace: "nowrap",
-                      boxShadow: "0 0 16px rgba(92,124,250,.45)",
+                      position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
+                      background:"linear-gradient(135deg,var(--land-peach),#FF7043)",
+                      color:"#fff", fontSize:"10px", fontWeight:800,
+                      letterSpacing:".08em", textTransform:"uppercase",
+                      padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
+                      boxShadow:"0 4px 14px rgba(255,112,67,.35)",
                     }}>
                       {t("social.featuredBadge")}
                     </div>
                   )}
                   {/* Header */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
                     <span style={{ color: accent }}>{SOCIAL_ICONS[plan.id]}</span>
-                    <span style={{ fontSize: "17px", fontWeight: 700 }}>{content.label}</span>
+                    <span style={{ fontSize:"17px", fontWeight:700, color:"var(--land-text)" }}>{content.label}</span>
                   </div>
-
                   {/* Price */}
-                  <div style={{ fontSize: "22px", fontWeight: 800 }}>{content.priceLabel}</div>
-
+                  <div style={{ fontSize:"22px", fontWeight:800, color:"var(--land-text)" }}>{content.priceLabel}</div>
                   {/* Description */}
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "var(--text-secondary)",
-                      margin: 0,
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:0, lineHeight:1.5 }}>
                     {content.description}
                   </p>
-
                   {/* Features */}
-                  <ul
-                    style={{
-                      listStyle: "none",
-                      padding: 0,
-                      margin: "4px 0 0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "6px",
-                    }}
-                  >
+                  <ul style={{ listStyle:"none", padding:0, margin:"4px 0 0", display:"flex", flexDirection:"column", gap:"6px" }}>
                     {content.features.map((f) => (
-                      <li
-                        key={f}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "6px",
-                          fontSize: "12px",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        <IconCheck
-                          size={13}
-                          style={{ color: accent, flexShrink: 0, marginTop: "1px" }}
-                        />
+                      <li key={f} style={{ display:"flex", alignItems:"flex-start", gap:"6px", fontSize:"12px", color:"var(--land-sub)" }}>
+                        <IconCheck size={13} style={{ color: accent, flexShrink:0, marginTop:"1px" }}/>
                         {f}
                       </li>
                     ))}
                   </ul>
-
                   {/* CTA */}
                   <button
-                    onClick={
-                      plan.cta === "register"
-                        ? () => router.push("/auth/register")
-                        : undefined
-                    }
+                    onClick={plan.cta === "register" ? () => router.push("/auth/register") : undefined}
                     disabled={plan.cta === "soon"}
                     style={{
-                      marginTop: "auto",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border: plan.cta === "register" ? "none" : "1px solid var(--border-subtle)",
-                      background:
-                        plan.cta === "register" ? "var(--color-brand)" : "var(--bg-elevated)",
-                      color: plan.cta === "register" ? "#fff" : "var(--text-secondary)",
-                      fontSize: "13px",
-                      fontWeight: 600,
+                      marginTop:"auto", display:"flex", alignItems:"center",
+                      justifyContent:"center", gap:"6px", padding:"10px 16px",
+                      borderRadius:"8px",
+                      border: plan.cta === "register" ? "none" : "1px solid rgba(0,0,0,.12)",
+                      background: plan.cta === "register"
+                        ? "linear-gradient(135deg,var(--land-peach),#FF7043)"
+                        : "rgba(0,0,0,.04)",
+                      color: plan.cta === "register" ? "#fff" : "var(--land-sub)",
+                      fontSize:"13px", fontWeight:600,
                       cursor: plan.cta === "soon" ? "not-allowed" : "pointer",
                       opacity: plan.cta === "soon" ? 0.45 : 1,
                     }}
@@ -544,23 +502,17 @@ export default function PricingPage() {
         {/* Divider */}
         <motion.div
           initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }}
-          style={{
-            maxWidth: "820px",
-            margin: "0 auto 64px",
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-          }}
+          style={{ maxWidth:"820px", margin:"0 auto 64px", display:"flex", alignItems:"center", gap:"16px" }}
         >
-          <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.07)" }}/>
+          <div style={{ flex:1, height:"1px", background:"rgba(0,0,0,.08)" }}/>
           <span style={{
             fontSize:"10px", fontWeight:700, textTransform:"uppercase",
-            letterSpacing:".12em", color:"var(--text-tertiary)", whiteSpace:"nowrap",
+            letterSpacing:".12em", color:"var(--land-muted)", whiteSpace:"nowrap",
             fontFamily:"'Space Grotesk',sans-serif",
           }}>
             Venue POS
           </span>
-          <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.07)" }}/>
+          <div style={{ flex:1, height:"1px", background:"rgba(0,0,0,.08)" }}/>
         </motion.div>
 
         {/* ══════════════════════════════════════════════════════
@@ -572,269 +524,164 @@ export default function PricingPage() {
           <motion.header
             initial="hidden" whileInView="show" viewport={{ once:true, margin:"-60px" }}
             variants={stagger}
-            style={{ textAlign: "center", marginBottom: "40px" }}
+            style={{ textAlign:"center", marginBottom:"40px" }}
           >
             <motion.p variants={fadeUp} style={{
               fontSize:"11px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:".1em", color:"var(--color-gold)",
+              letterSpacing:".1em", color:"#0EA5A0",
               marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
             }}>
               Venue POS
             </motion.p>
-            <motion.h2 variants={fadeUp} className="sg" style={{ fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 800, margin: "0 0 12px", letterSpacing:"-.03em" }}>
+            <motion.h2 variants={fadeUp} className="sg" style={{ fontSize:"clamp(26px,3.2vw,38px)", fontWeight:800, margin:"0 0 12px", letterSpacing:"-.03em", color:"var(--land-text)" }}>
               {t("business.sectionTitle")}
             </motion.h2>
-            <motion.p variants={fadeUp} style={{
-              fontSize: "15px",
-              color: "var(--text-secondary)",
-              maxWidth: "560px",
-              margin: "0 auto",
-              lineHeight: 1.6,
-            }}>
+            <motion.p variants={fadeUp} style={{ fontSize:"15px", color:"var(--land-sub)", maxWidth:"560px", margin:"0 auto", lineHeight:1.6 }}>
               {t("business.sectionSubtitle")}
             </motion.p>
           </motion.header>
 
           {/* Error */}
           {error && (
-            <div
-              role="alert"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                maxWidth: "560px",
-                margin: "0 auto 24px",
-                padding: "12px 16px",
-                borderRadius: "10px",
-                background: "color-mix(in srgb, var(--color-danger) 10%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
-                color: "var(--color-danger)",
-                fontSize: "13px",
-              }}
-            >
-              <IconAlertCircle size={16} />
+            <div role="alert" style={{
+              display:"flex", alignItems:"center", gap:"10px",
+              maxWidth:"560px", margin:"0 auto 24px",
+              padding:"12px 16px", borderRadius:"10px",
+              background:"color-mix(in srgb, var(--color-danger) 10%, transparent)",
+              border:"1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
+              color:"var(--color-danger)", fontSize:"13px",
+            }}>
+              <IconAlertCircle size={16}/>
               <span>{error}</span>
             </div>
           )}
 
           {/* Consentimiento de renovación automática. Va ANTES de la grilla porque la ley
               exige divulgar los términos de forma clara ANTES de recoger datos de pago. */}
-          <div
-            style={{
-              maxWidth: "820px",
-              margin: "0 auto 20px",
-              background: "rgba(13,18,36,.65)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              border: "1px solid rgba(255,255,255,.09)",
-              borderRadius: "14px",
-              padding: "18px 20px",
-            }}
-          >
-            <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>
+          <div style={{
+            maxWidth:"820px", margin:"0 auto 20px",
+            background:"var(--land-glass)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+            border:"1px solid rgba(0,0,0,.08)", borderRadius:"14px", padding:"18px 20px",
+            boxShadow:"0 4px 20px rgba(0,0,0,.06)",
+          }}>
+            <div style={{ fontSize:"14px", fontWeight:700, marginBottom:"8px", color:"var(--land-text)" }}>
               {t("business.consentTitle")}
             </div>
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                margin: "0 0 14px",
-                lineHeight: 1.6,
-              }}
-            >
+            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.6 }}>
               {t("business.consentBody")}
             </p>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "10px",
-                cursor: "pointer",
-                fontSize: "13px",
-                color: "var(--text-primary)",
-                lineHeight: 1.5,
-              }}
-            >
+            <label style={{ display:"flex", alignItems:"flex-start", gap:"10px", cursor:"pointer", fontSize:"13px", color:"var(--land-text)", lineHeight:1.5 }}>
               <input
                 type="checkbox"
                 checked={consentAccepted}
-                onChange={(e) => {
-                  setConsentAccepted(e.target.checked);
-                  setError(null);
-                }}
-                style={{
-                  marginTop: "2px",
-                  width: "16px",
-                  height: "16px",
-                  flexShrink: 0,
-                  cursor: "pointer",
-                }}
+                onChange={(e) => { setConsentAccepted(e.target.checked); setError(null); }}
+                style={{ marginTop:"2px", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
               />
               <span>{t("business.consentCheck")}</span>
             </label>
           </div>
 
           {/* Plan grid */}
-          <div
-            className="pr-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "16px",
-              maxWidth: "820px",
-              margin: "0 auto",
-            }}
-          >
+          <div className="pr-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"820px", margin:"0 auto" }}>
             {OFFERED_PLANS.map((plan, idx) => {
               const busy = loadingPlan === plan.id;
               // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
               // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
               const needsConsent = plan.cta === "checkout" && !consentAccepted;
-              const isPopular = plan.id === "pro";
+              const isPopular   = plan.id === "pro";
               return (
                 <motion.div
                   key={plan.id}
-                  className={isPopular ? "plan-badge-glow" : undefined}
+                  className={isPopular ? "pr-pop-pulse" : undefined}
                   initial={{ opacity:0, y:24 }}
                   whileInView={{ opacity:1, y:0 }}
                   viewport={{ once:true, margin:"-40px" }}
-                  transition={{ delay: idx * 0.09, duration:.68, ease:[0.16,1,0.3,1] }}
-                  whileHover={isPopular ? { y:-5, boxShadow:"0 28px 64px rgba(92,124,250,.2)" } : { y:-4, boxShadow:"0 24px 56px rgba(0,0,0,.5)" }}
+                  transition={{ delay: idx * 0.09, duration:.68, ease:[0.16,1,0.3,1] as [number,number,number,number] }}
+                  whileHover={isPopular
+                    ? { y:-5, boxShadow:"0 24px 56px rgba(92,124,250,.14)" }
+                    : { y:-4, boxShadow:"0 18px 48px rgba(0,0,0,.10)" }
+                  }
                   style={{
-                    background: isPopular ? "rgba(13,18,36,.88)" : "rgba(13,18,36,.62)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
+                    background: isPopular ? "rgba(255,255,255,.96)" : "var(--land-glass)",
+                    backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
                     border: isPopular
-                      ? "1px solid rgba(92,124,250,.38)"
-                      : "1px solid rgba(255,255,255,.09)",
-                    borderRadius: "16px",
+                      ? "1px solid rgba(92,124,250,.32)"
+                      : "1px solid rgba(0,0,0,.07)",
+                    borderRadius:"16px",
                     padding: isPopular ? "24px" : "22px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                    position: "relative",
+                    display:"flex", flexDirection:"column", gap:"12px", position:"relative",
+                    boxShadow:"0 4px 20px rgba(0,0,0,.06)",
                   }}
                 >
                   {/* Most popular badge */}
                   {isPopular && (
                     <div style={{
-                      position: "absolute",
-                      top: "-11px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
-                      color: "#fff",
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      padding: "3px 14px",
-                      borderRadius: "99px",
-                      whiteSpace: "nowrap",
-                      boxShadow: "0 0 16px rgba(92,124,250,.45)",
+                      position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
+                      background:"linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
+                      color:"#fff", fontSize:"10px", fontWeight:800,
+                      letterSpacing:".08em", textTransform:"uppercase",
+                      padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
+                      boxShadow:"0 4px 16px rgba(92,124,250,.38)",
                     }}>
                       {t("business.popularBadge")}
                     </div>
                   )}
                   {/* Header */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
                     <span style={{ color: ACCENT[plan.id] }}>{ICONS[plan.id]}</span>
-                    <span style={{ fontSize: "17px", fontWeight: 700 }}>{plan.label}</span>
+                    <span style={{ fontSize:"17px", fontWeight:700, color:"var(--land-text)" }}>{plan.label}</span>
                   </div>
-
                   {/* Price */}
-                  <div style={{ fontSize: "22px", fontWeight: 800 }}>{plan.priceLabel}</div>
-
+                  <div style={{ fontSize:"22px", fontWeight:800, color:"var(--land-text)" }}>{plan.priceLabel}</div>
                   {/* Description */}
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "var(--text-secondary)",
-                      margin: 0,
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:0, lineHeight:1.5 }}>
                     {plan.description}
                   </p>
-
                   {/* Features */}
-                  <ul
-                    style={{
-                      listStyle: "none",
-                      padding: 0,
-                      margin: "4px 0 0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "6px",
-                    }}
-                  >
+                  <ul style={{ listStyle:"none", padding:0, margin:"4px 0 0", display:"flex", flexDirection:"column", gap:"6px" }}>
                     {plan.features.map((f) => (
-                      <li
-                        key={f}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "6px",
-                          fontSize: "12px",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        <IconCheck
-                          size={13}
-                          style={{ color: ACCENT[plan.id], flexShrink: 0, marginTop: "1px" }}
-                        />
+                      <li key={f} style={{ display:"flex", alignItems:"flex-start", gap:"6px", fontSize:"12px", color:"var(--land-sub)" }}>
+                        <IconCheck size={13} style={{ color: ACCENT[plan.id], flexShrink:0, marginTop:"1px" }}/>
                         {f}
                       </li>
                     ))}
                   </ul>
-
                   {/* CTA */}
                   <button
                     onClick={() => {
                       if (plan.cta === "contact") {
-                        window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
-                          "Plan Custom JChat",
-                        )}`;
+                        window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("Plan Custom JChat")}`;
                       } else {
                         void handleSubscribe(plan.id as CheckoutPlanId);
                       }
                     }}
                     disabled={busy || needsConsent}
-                    title={
-                      needsConsent ? "Marca la casilla de arriba para continuar" : undefined
-                    }
+                    title={needsConsent ? "Marca la casilla de arriba para continuar" : undefined}
                     style={{
-                      marginTop: "auto",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border:
-                        plan.cta === "checkout" ? "none" : "1px solid var(--border-subtle)",
-                      background:
-                        plan.cta === "checkout" ? "var(--color-brand)" : "var(--bg-elevated)",
-                      color: plan.cta === "checkout" ? "#fff" : "var(--text-secondary)",
-                      fontSize: "13px",
-                      fontWeight: 600,
+                      marginTop:"auto", display:"flex", alignItems:"center",
+                      justifyContent:"center", gap:"6px", padding:"10px 16px",
+                      borderRadius:"8px",
+                      border: plan.cta === "checkout" ? "none" : "1px solid rgba(0,0,0,.12)",
+                      background: plan.cta === "checkout"
+                        ? isPopular
+                          ? "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))"
+                          : "linear-gradient(135deg,var(--land-peach),#FF7043)"
+                        : "rgba(0,0,0,.04)",
+                      color: plan.cta === "checkout" ? "#fff" : "var(--land-sub)",
+                      fontSize:"13px", fontWeight:600,
                       cursor: busy ? "wait" : needsConsent ? "not-allowed" : "pointer",
                       opacity: busy ? 0.7 : needsConsent ? 0.45 : 1,
                     }}
                   >
                     {busy ? (
                       <>
-                        <IconLoader2
-                          size={14}
-                          style={{ animation: "spin 1s linear infinite" }}
-                        />
+                        <IconLoader2 size={14} style={{ animation:"spin 1s linear infinite" }}/>
                         {t("business.btnRedirecting")}
                       </>
                     ) : plan.cta === "checkout" ? (
                       <>
                         {t("business.btnSubscribe")}
-                        <IconExternalLink size={12} style={{ opacity: 0.7 }} />
+                        <IconExternalLink size={12} style={{ opacity:0.7 }}/>
                       </>
                     ) : (
                       t("business.btnContact")
@@ -850,144 +697,79 @@ export default function PricingPage() {
             initial={{ opacity:0, y:20 }}
             whileInView={{ opacity:1, y:0 }}
             viewport={{ once:true, margin:"-30px" }}
-            transition={{ duration:.6, ease:[0.16,1,0.3,1] }}
+            transition={{ duration:.6, ease:[0.16,1,0.3,1] as [number,number,number,number] }}
             style={{
-              maxWidth: "560px",
-              margin: "32px auto 0",
-              background: "rgba(13,18,36,.7)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,.09)",
-              borderRadius: "14px",
-              padding: "22px",
+              maxWidth:"560px", margin:"32px auto 0",
+              background:"var(--land-glass)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
+              border:"1px solid rgba(0,0,0,.08)", borderRadius:"14px", padding:"22px",
+              boxShadow:"0 4px 24px rgba(0,0,0,.07)",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "6px",
-              }}
-            >
-              <IconTicket size={18} style={{ color: "var(--color-brand)" }} />
-              <span style={{ fontSize: "15px", fontWeight: 700 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"6px" }}>
+              <IconTicket size={18} style={{ color:"var(--land-peach)" }}/>
+              <span style={{ fontSize:"15px", fontWeight:700, color:"var(--land-text)" }}>
                 {t("business.promoTitle")}
               </span>
             </div>
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                margin: "0 0 14px",
-                lineHeight: 1.5,
-              }}
-            >
+            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.5 }}>
               {t("business.promoBody")}
             </p>
 
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
               <input
                 value={promoCode}
                 onChange={(e) => {
-                  const v = e.target.value
-                    .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, "")
-                    .slice(0, 12);
-                  setPromoCode(v);
-                  setPromoInfo(null);
-                  setPromoError(null);
+                  const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
+                  setPromoCode(v); setPromoInfo(null); setPromoError(null);
                 }}
                 placeholder={t("business.promoPlaceholder")}
                 maxLength={12}
                 style={{
-                  flex: "1 1 200px",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border-subtle)",
-                  background: "var(--bg-base)",
-                  color: "var(--text-primary)",
-                  fontSize: "14px",
-                  fontFamily: "var(--font-mono, monospace)",
-                  letterSpacing: "1px",
+                  flex:"1 1 200px", padding:"10px 12px", borderRadius:"8px",
+                  border:"1px solid rgba(0,0,0,.12)", background:"#fff",
+                  color:"var(--land-text)", fontSize:"14px",
+                  fontFamily:"var(--font-mono, monospace)", letterSpacing:"1px",
                 }}
               />
               <button
                 onClick={() => void checkPromo(promoCode.trim())}
                 disabled={promoChecking || promoCode.trim().length === 0}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  padding: "10px 18px",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "var(--color-brand)",
-                  color: "#fff",
-                  fontSize: "13px",
-                  fontWeight: 600,
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
+                  padding:"10px 18px", borderRadius:"8px", border:"none",
+                  background:"linear-gradient(135deg,var(--land-peach),#FF7043)",
+                  color:"#fff", fontSize:"13px", fontWeight:600,
                   cursor: promoChecking ? "wait" : "pointer",
-                  opacity:
-                    promoChecking || promoCode.trim().length === 0 ? 0.6 : 1,
+                  opacity: promoChecking || promoCode.trim().length === 0 ? 0.6 : 1,
                 }}
               >
-                {promoChecking ? (
-                  <IconLoader2
-                    size={14}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : null}
+                {promoChecking ? <IconLoader2 size={14} style={{ animation:"spin 1s linear infinite" }}/> : null}
                 {promoChecking ? t("business.promoChecking") : t("business.promoCheck")}
               </button>
             </div>
 
             {promoInfo && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginTop: "12px",
-                  padding: "10px 14px",
-                  borderRadius: "8px",
-                  background:
-                    "color-mix(in srgb, var(--color-success) 10%, transparent)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--color-success) 25%, transparent)",
-                  color: "var(--color-success)",
-                  fontSize: "13px",
-                }}
-              >
-                <IconCheck size={15} />
-                <span>
-                  {t("business.promoValidText", {
-                    days: promoInfo.trial_days,
-                    plan: promoInfo.plan,
-                  })}
-                </span>
+              <div style={{
+                display:"flex", alignItems:"center", gap:"8px",
+                marginTop:"12px", padding:"10px 14px", borderRadius:"8px",
+                background:"color-mix(in srgb, var(--color-success) 10%, transparent)",
+                border:"1px solid color-mix(in srgb, var(--color-success) 25%, transparent)",
+                color:"var(--color-success)", fontSize:"13px",
+              }}>
+                <IconCheck size={15}/>
+                <span>{t("business.promoValidText", { days: promoInfo.trial_days, plan: promoInfo.plan })}</span>
               </div>
             )}
 
             {promoError && (
-              <div
-                role="alert"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginTop: "12px",
-                  padding: "10px 14px",
-                  borderRadius: "8px",
-                  background:
-                    "color-mix(in srgb, var(--color-danger) 10%, transparent)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
-                  color: "var(--color-danger)",
-                  fontSize: "13px",
-                }}
-              >
-                <IconAlertCircle size={15} />
+              <div role="alert" style={{
+                display:"flex", alignItems:"center", gap:"8px",
+                marginTop:"12px", padding:"10px 14px", borderRadius:"8px",
+                background:"color-mix(in srgb, var(--color-danger) 10%, transparent)",
+                border:"1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
+                color:"var(--color-danger)", fontSize:"13px",
+              }}>
+                <IconAlertCircle size={15}/>
                 <span>{promoError}</span>
               </div>
             )}
