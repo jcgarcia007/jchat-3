@@ -50,6 +50,7 @@ import {
   IconChevronLeft,
   IconMinus,
   IconPlus,
+  IconPrinter,
   IconRefresh,
   IconWifi,
   IconWifiOff,
@@ -64,6 +65,11 @@ import { posTableItems, posCreateSplit, posCreateCheck } from '../../services/po
 import type { PosSplitCheckRow, PosTableItemRow, PosCheckItem } from '../../services/pos';
 import { chargeSplitCheck, markTabPaid } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { supabase } from '../../services/supabase';
+import { buildReceiptEscPos } from '../../services/escpos';
+import type { PublicReceipt } from '../../services/escpos';
+import { fetchAnyPrinter, printToNetwork } from '../../services/printer';
+import type { NetworkPrinter } from '../../services/printer';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -188,6 +194,14 @@ export default function PosSplitScreen(): React.ReactElement {
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // ── Print state ─────────────────────────────────────────────────────────────
+  /** payment_id (even split) or account.id (items split) → receipt_code */
+  const [receiptCodes, setReceiptCodes] = useState<Record<string, string>>({});
+  /** Network printer found after first successful charge; null=not looked up yet */
+  const [splitPrinter, setSplitPrinter] = useState<NetworkPrinter | 'none' | null>(null);
+  /** Print status per key (payment_id or account.id) */
+  const [printStatus, setPrintStatus] = useState<Record<string, 'idle' | 'printing' | 'success' | 'error'>>({});
 
   // ── Tip picker state ────────────────────────────────────────────────────────
   // When tipPickerCtx is non-null the tip "screen" is shown (early return below).
@@ -519,6 +533,17 @@ export default function PosSplitScreen(): React.ReactElement {
       setActiveAccountId(null);
       setCheckoutError(null);
 
+      // Store receipt code for the print button (keyed by account.id for items split)
+      if (markResult.receiptCode) {
+        setReceiptCodes(prev => ({ ...prev, [account.id]: markResult.receiptCode! }));
+      }
+      // Look up printer once on first successful charge
+      if (splitPrinter === null) {
+        fetchAnyPrinter(businessId)
+          .then(p => setSplitPrinter(p ?? 'none'))
+          .catch(() => setSplitPrinter('none'));
+      }
+
       try {
         const freshItems = await posTableItems(businessId, tableId);
         const validIds = new Set(freshItems.map((i) => i.order_item_id));
@@ -551,6 +576,7 @@ export default function PosSplitScreen(): React.ReactElement {
       collectPaymentMethod,
       confirmPaymentIntent,
       navigation,
+      splitPrinter,
       t,
     ],
   );
@@ -642,6 +668,17 @@ export default function PosSplitScreen(): React.ReactElement {
       setActivePaymentId(null);
       setCheckoutError(null);
 
+      // Store receipt code for the print button (keyed by payment_id for even split)
+      if (markResult.receiptCode) {
+        setReceiptCodes(prev => ({ ...prev, [paymentId]: markResult.receiptCode! }));
+      }
+      // Look up printer once on first successful charge
+      if (splitPrinter === null) {
+        fetchAnyPrinter(businessId)
+          .then(p => setSplitPrinter(p ?? 'none'))
+          .catch(() => setSplitPrinter('none'));
+      }
+
       if (markResult.tabClosed) {
         Alert.alert(
           t('pos.splitAllPaid'),
@@ -653,10 +690,12 @@ export default function PosSplitScreen(): React.ReactElement {
     [
       connectedReader,
       activePaymentId,
+      businessId,
       retrievePaymentIntent,
       collectPaymentMethod,
       confirmPaymentIntent,
       navigation,
+      splitPrinter,
       t,
     ],
   );
@@ -715,6 +754,37 @@ export default function PosSplitScreen(): React.ReactElement {
       void doPayAccount(ctx.account, tip);
     }
   }, [tipPickerCtx, computedSplitTipCents, doChargeCheck, doPayAccount]);
+
+  // ── Print a split receipt ─────────────────────────────────────────────────────
+  /**
+   * Fetch receipt data → build ESC/POS bytes → send to network printer.
+   * Payment is already confirmed — any print error is non-fatal (try/catch).
+   * `key` is account.id (items split) or payment_id (even split).
+   */
+  const handlePrintSplit = useCallback(async (key: string) => {
+    const code = receiptCodes[key];
+    if (!code || !splitPrinter || splitPrinter === 'none') return;
+    if (printStatus[key] === 'printing') return;
+
+    setPrintStatus(prev => ({ ...prev, [key]: 'printing' }));
+    try {
+      const { data: receipt, error: rpcError } = await supabase.rpc(
+        'get_public_receipt',
+        { p_code: code },
+      );
+      if (rpcError || !receipt) throw new Error(t('pos.printError'));
+
+      const escposBytes = buildReceiptEscPos(
+        receipt as PublicReceipt,
+        code,
+        splitPrinter.width_mm,
+      );
+      await printToNetwork(splitPrinter.host, splitPrinter.port, escposBytes);
+      setPrintStatus(prev => ({ ...prev, [key]: 'success' }));
+    } catch {
+      setPrintStatus(prev => ({ ...prev, [key]: 'error' }));
+    }
+  }, [receiptCodes, splitPrinter, printStatus, t]);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const isProcessing =
@@ -1283,6 +1353,28 @@ export default function PosSplitScreen(): React.ReactElement {
                       </View>
                     ))
                   )}
+                  {/* Print button — shown after successful charge of this account */}
+                  {receiptCodes[account.id] && splitPrinter && splitPrinter !== 'none' ? (
+                    <Pressable
+                      onPress={() => handlePrintSplit(account.id)}
+                      disabled={printStatus[account.id] === 'printing'}
+                      style={[
+                        styles.splitPrintBtn,
+                        { borderColor: c.borderSubtle, marginHorizontal: 14, marginBottom: 10 },
+                        printStatus[account.id] === 'printing' && { opacity: 0.6 },
+                      ]}
+                      accessibilityRole="button"
+                    >
+                      <IconPrinter size={14} color={c.textSecondary} strokeWidth={2} />
+                      <Text style={[styles.splitPrintBtnText, { color: c.textSecondary }]}>
+                        {printStatus[account.id] === 'printing'
+                          ? t('pos.printingTitle')
+                          : printStatus[account.id] === 'success'
+                          ? t('pos.printSuccess')
+                          : t('pos.printBtn')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               );
             })}
@@ -1397,16 +1489,39 @@ export default function PosSplitScreen(): React.ReactElement {
                       </View>
 
                       {isPaid ? (
-                        <View
-                          style={[
-                            styles.paidBadge,
-                            { backgroundColor: c.success + '22' },
-                          ]}
-                        >
-                          <IconCheck size={12} color={c.success} strokeWidth={2.5} />
-                          <Text style={[styles.paidBadgeText, { color: c.success }]}>
-                            {t('pos.splitPaid')}
-                          </Text>
+                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                          <View
+                            style={[
+                              styles.paidBadge,
+                              { backgroundColor: c.success + '22' },
+                            ]}
+                          >
+                            <IconCheck size={12} color={c.success} strokeWidth={2.5} />
+                            <Text style={[styles.paidBadgeText, { color: c.success }]}>
+                              {t('pos.splitPaid')}
+                            </Text>
+                          </View>
+                          {splitPrinter && splitPrinter !== 'none' && receiptCodes[check.payment_id] ? (
+                            <Pressable
+                              onPress={() => handlePrintSplit(check.payment_id)}
+                              disabled={printStatus[check.payment_id] === 'printing'}
+                              style={[
+                                styles.splitPrintBtn,
+                                { borderColor: c.borderSubtle },
+                                printStatus[check.payment_id] === 'printing' && { opacity: 0.6 },
+                              ]}
+                              accessibilityRole="button"
+                            >
+                              <IconPrinter size={14} color={c.textSecondary} strokeWidth={2} />
+                              <Text style={[styles.splitPrintBtnText, { color: c.textSecondary }]}>
+                                {printStatus[check.payment_id] === 'printing'
+                                  ? t('pos.printingTitle')
+                                  : printStatus[check.payment_id] === 'success'
+                                  ? t('pos.printSuccess')
+                                  : t('pos.printBtn')}
+                              </Text>
+                            </Pressable>
+                          ) : null}
                         </View>
                       ) : (
                         <View style={styles.checkActions}>
@@ -1728,6 +1843,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: { fontSize: 14 },
+
+  // ── Split print button ────────────────────────────────────────────────────────
+  splitPrintBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  splitPrintBtnText: {
+    fontSize: 11,
+  },
 
   // ── Tip picker footer (shared with the tip view early return) ─────────────────
   tipFooter: {
