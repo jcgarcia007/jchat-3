@@ -50,6 +50,9 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.juangarciacruz.jchatapp',
+    // Stripe Terminal requires minSdkVersion >= 26 (Android 8.0 Oreo).
+    // Expo SDK 56 defaults to 24; bumping to 26 is safe (>99% of active devices).
+    minSdkVersion: 26,
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/android-icon-foreground.png',
