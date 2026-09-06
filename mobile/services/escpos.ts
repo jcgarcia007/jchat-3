@@ -198,6 +198,7 @@ export function buildKitchenTicketEscPos(opts: {
 
   const parts: Uint8Array[] = [
     reset(),
+    lf(),  // top margin — prevents title from being clipped on init feed
     // ── Station header (centered, double-size bold) ──────────────────────────
     align('center'),
     doubleSize(true), bold(true),
@@ -295,7 +296,7 @@ export function buildKitchenTicketEscPos(opts: {
   // ── Final separator + feed + cut ──────────────────────────────────────────
   parts.push(
     enc(separator(48)), lf(),
-    feed(3),
+    feed(5),
     cut(),
   );
 
