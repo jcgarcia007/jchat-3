@@ -208,7 +208,7 @@ export function buildKitchenTicketEscPos(opts: {
     align('left'),
     enc(separator(48)), lf(),
     // ── Table label (bold) ───────────────────────────────────────────────────
-    bold(true), enc(tableLabel), lf(), bold(false),
+    bold(true), enc(`Mesa: ${tableLabel}`), lf(), bold(false),
   ];
 
   // Server name (optional)

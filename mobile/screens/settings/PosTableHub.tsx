@@ -559,7 +559,6 @@ export default function PosTableHub(): React.ReactElement {
         .then((rows) => setSentItems(rows))
         .catch(() => {});
       // Print kitchen/bar commandas — aislado, no afecta el envio
-      const tableLabel = `Mesa ${tableId}`;
       // Get server name (best-effort)
       (async () => {
         try {
