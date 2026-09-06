@@ -17,6 +17,7 @@
 
 import TcpSocket from 'react-native-tcp-socket';
 import { supabase } from './supabase';
+import { buildKitchenTicketEscPos } from './escpos';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,127 @@ export async function fetchAnyPrinter(businessId: string): Promise<NetworkPrinte
     port:     data.port ?? 9100,
     width_mm: data.width_mm ?? 80,
   };
+}
+
+// ─── Station printer helpers ──────────────────────────────────────────────────
+
+/**
+ * Fetches the active printer for a given station role.
+ * Returns null if no printer is configured or is_active = false.
+ */
+export async function fetchPrinterByRole(
+  businessId: string,
+  role: 'kitchen' | 'bar',
+): Promise<{ host: string; port: number; widthMm: number } | null> {
+  const { data, error } = await supabase
+    .from('pos_printers')
+    .select('host, port, width_mm')
+    .eq('business_id', businessId)
+    .eq('role', role)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error || !data || !data.host) return null;
+
+  return {
+    host:    data.host,
+    port:    data.port ?? 9100,
+    widthMm: data.width_mm ?? 80,
+  };
+}
+
+// ─── Internal type for order_items query ─────────────────────────────────────
+
+interface KitchenOrderItem {
+  qty: number;
+  seat: number | null;
+  special_instructions: string | null;
+  options: string | null;
+  menu_items: {
+    name: string;
+    station: string | null;
+  };
+}
+
+/**
+ * Prints kitchen and/or bar commandas for a given order.
+ * Always isolated in try/catch — NEVER throws or blocks the caller.
+ */
+export async function printKitchenTickets(opts: {
+  businessId: string;
+  orderId: string;
+  tableLabel: string;
+  serverName: string | null;
+}): Promise<void> {
+  try {
+    const { businessId, orderId, tableLabel, serverName } = opts;
+
+    // 1. Fetch order items with station info
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('qty, seat, special_instructions, options, menu_items!inner(name, station)')
+      .eq('order_id', orderId);
+
+    if (error || !data) {
+      console.warn('[printKitchenTickets] could not fetch order items:', error?.message);
+      return;
+    }
+
+    const rows = data as unknown as KitchenOrderItem[];
+
+    // 2. Group by station — items with null/unknown station are ignored
+    const groups: Record<'kitchen' | 'bar', KitchenOrderItem[]> = {
+      kitchen: [],
+      bar:     [],
+    };
+    for (const row of rows) {
+      const st = row.menu_items?.station;
+      if (st === 'kitchen' || st === 'bar') {
+        groups[st].push(row);
+      }
+    }
+
+    // 3. Print per station, each in its own try/catch
+    const stationMeta: Array<{ role: 'kitchen' | 'bar'; label: string }> = [
+      { role: 'kitchen', label: 'COCINA' },
+      { role: 'bar',     label: 'BAR'    },
+    ];
+
+    for (const { role, label } of stationMeta) {
+      const stationItems = groups[role];
+      if (stationItems.length === 0) continue;
+
+      try {
+        const printer = await fetchPrinterByRole(businessId, role);
+        if (!printer) continue; // station not configured — skip silently
+
+        const escposBuffer = buildKitchenTicketEscPos({
+          stationLabel: label,
+          tableLabel,
+          serverName,
+          items: stationItems.map((r) => ({
+            qty:                  r.qty,
+            name:                 r.menu_items.name,
+            options:              typeof r.options === 'string'
+                                    ? r.options
+                                    : r.options != null
+                                      ? JSON.stringify(r.options)
+                                      : null,
+            special_instructions: r.special_instructions,
+            seat:                 r.seat,
+          })),
+        });
+
+        await printToNetwork(printer.host, printer.port, escposBuffer);
+      } catch (stationErr) {
+        console.warn(`[printKitchenTickets] ${role} print failed:`, stationErr);
+        // continue to next station
+      }
+    }
+  } catch (e) {
+    console.warn('[printKitchenTickets] error:', e);
+    // never throws
+  }
 }
 
 // ─── TCP send ─────────────────────────────────────────────────────────────────

@@ -70,6 +70,7 @@ import type {
 import { usePosDraft } from '../../contexts/PosDraftContext';
 import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { printKitchenTickets } from '../../services/printer';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -557,6 +558,25 @@ export default function PosTableHub(): React.ReactElement {
       posTableItems(businessId, tableId)
         .then((rows) => setSentItems(rows))
         .catch(() => {});
+      // Print kitchen/bar commandas — aislado, no afecta el envio
+      const tableLabel = `Mesa ${tableId}`;
+      // Get server name (best-effort)
+      (async () => {
+        try {
+          const uid = (await supabase.auth.getUser()).data.user?.id;
+          if (!uid) return null;
+          const { data } = await supabase
+            .from('employees')
+            .select('receipt_display_name, users!inner(display_name)')
+            .eq('user_id', uid)
+            .eq('business_id', businessId)
+            .maybeSingle();
+          return data?.receipt_display_name ?? (data?.users as { display_name?: string } | null)?.display_name ?? null;
+        } catch { return null; }
+      })().then((serverName) => {
+        printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
+      });
+      // fire-and-forget — impresion no bloquea el flujo
       Alert.alert(t('pos.hubKitchenSent'), t('pos.hubKitchenSentMsg'), [
         { text: t('pos.submitOk') },
       ]);

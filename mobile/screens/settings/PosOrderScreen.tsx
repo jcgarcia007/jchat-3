@@ -41,6 +41,7 @@ import {
   IconX,
 } from '@tabler/icons-react-native';
 
+import { supabase } from '../../services/supabase';
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import {
@@ -50,6 +51,7 @@ import {
 import type { MenuItem, MenuCategory, ModifierGroup } from '../../services/menu';
 import { posCreateOrder } from '../../services/pos';
 import type { PosOrderItem } from '../../services/pos';
+import { printKitchenTickets } from '../../services/printer';
 import { usePosDraft } from '../../contexts/PosDraftContext';
 import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -740,6 +742,23 @@ export default function PosOrderScreen() {
     setSubmitting(false);
 
     if (result.ok) {
+      // Print kitchen/bar commandas — aislado, no afecta el flujo
+      (async () => {
+        try {
+          const uid = (await supabase.auth.getUser()).data.user?.id;
+          if (!uid) return null;
+          const { data } = await supabase
+            .from('employees')
+            .select('receipt_display_name, users!inner(display_name)')
+            .eq('user_id', uid)
+            .eq('business_id', businessId)
+            .maybeSingle();
+          return data?.receipt_display_name ?? (data?.users as { display_name?: string } | null)?.display_name ?? null;
+        } catch { return null; }
+      })().then((serverName) => {
+        printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName: serverName ?? null });
+      });
+      // fire-and-forget — impresion no bloquea el flujo
       Alert.alert(
         t('pos.submitSuccess'),
         t('pos.submitSuccessMsg'),

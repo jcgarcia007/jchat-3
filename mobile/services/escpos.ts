@@ -157,6 +157,123 @@ function buildQR(url: string): Uint8Array {
   );
 }
 
+// ─── Kitchen / Bar commanda ───────────────────────────────────────────────────
+
+/**
+ * Builds an ESC/POS byte buffer for a kitchen/bar commanda ticket.
+ * No prices — just items routed to this station.
+ */
+export function buildKitchenTicketEscPos(opts: {
+  stationLabel: string;   // 'COCINA' | 'BAR'
+  tableLabel: string;     // e.g. 'Mesa 4' or 'Mesa 4 · Silla 2'
+  serverName: string | null;
+  items: Array<{
+    qty: number;
+    name: string;
+    options?: string | null;        // JSONB — serialize if object
+    special_instructions?: string | null;
+    seat?: number | null;
+  }>;
+  widthMm?: number;  // default 80
+}): Uint8Array {
+  const { stationLabel, tableLabel, serverName, items } = opts;
+  const time = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+
+  const parts: Uint8Array[] = [
+    reset(),
+    // ── Station header (centered, double-size bold) ──────────────────────────
+    align('center'),
+    doubleSize(true), bold(true),
+    enc(stationLabel), lf(),
+    doubleSize(false), bold(false),
+    // ── Separator ────────────────────────────────────────────────────────────
+    align('left'),
+    enc(separator(48)), lf(),
+    // ── Table label (bold) ───────────────────────────────────────────────────
+    bold(true), enc(tableLabel), lf(), bold(false),
+  ];
+
+  // Server name (optional)
+  if (serverName) {
+    parts.push(enc(`Mesero: ${serverName}`.slice(0, 48)), lf());
+  }
+
+  // Timestamp
+  parts.push(enc(time), lf());
+
+  // Separator before items
+  parts.push(enc(separator(48)), lf());
+
+  // ── Items ─────────────────────────────────────────────────────────────────
+  for (const item of items) {
+    // Main line: bold + double-size quantity x name
+    parts.push(
+      bold(true), doubleSize(true),
+      enc(`${item.qty}x ${item.name}`.slice(0, 24)), lf(),
+      doubleSize(false), bold(false),
+    );
+
+    // Options — may be a JSON string or null
+    if (item.options) {
+      try {
+        const parsed: unknown = typeof item.options === 'string'
+          ? JSON.parse(item.options)
+          : item.options;
+        if (Array.isArray(parsed)) {
+          for (const opt of parsed as unknown[]) {
+            const optText = typeof opt === 'string'
+              ? opt
+              : [
+                  (opt as Record<string, unknown>).name,
+                  (opt as Record<string, unknown>).value,
+                ].filter(Boolean).join(': ');
+            if (optText) {
+              parts.push(enc(`  ${optText}`.slice(0, 48)), lf());
+            }
+          }
+        } else if (parsed && typeof parsed === 'object') {
+          // { modifiers: [...] } shape
+          const asObj = parsed as Record<string, unknown>;
+          const mods: unknown[] = Array.isArray(asObj.modifiers) ? asObj.modifiers as unknown[] : [];
+          for (const m of mods) {
+            const modText = typeof m === 'string'
+              ? m
+              : [
+                  (m as Record<string, unknown>).name,
+                  (m as Record<string, unknown>).value,
+                ].filter(Boolean).join(': ');
+            if (modText) {
+              parts.push(enc(`  ${modText}`.slice(0, 48)), lf());
+            }
+          }
+        }
+      } catch {
+        // Non-JSON string — print as-is
+        parts.push(enc(`  ${String(item.options)}`.slice(0, 48)), lf());
+      }
+    }
+
+    // Special instructions
+    if (item.special_instructions) {
+      parts.push(enc(`* ${item.special_instructions}`.slice(0, 48)), lf());
+    }
+
+    // Seat
+    if (item.seat != null && item.seat > 0) {
+      parts.push(enc(`  . Silla ${item.seat}`), lf());
+    }
+  }
+
+  // ── Final separator + feed + cut ──────────────────────────────────────────
+  parts.push(
+    enc(separator(48)), lf(),
+    feed(3),
+    cut(),
+  );
+
+  return concat(...parts);
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
