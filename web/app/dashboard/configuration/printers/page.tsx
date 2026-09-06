@@ -177,23 +177,60 @@ export default function PrintersPage() {
       setForm((f) => ({ ...f, loading: true, error: null }));
 
       const label = role === "kitchen" ? "Kitchen Station" : "Bar Station";
-      const { error } = await supabase.from("pos_printers").upsert(
-        {
-          business_id: bizId,
-          role,
-          label,
-          connection: "network",
-          host: form.host.trim(),
-          port: parseInt(form.port, 10),
-          width_mm: parseInt(form.width, 10),
-          is_default: false,
-          is_active: true,
-        },
-        { onConflict: "business_id,role" },
-      );
+      const host = form.host.trim();
+      const port = parseInt(form.port, 10);
+      const width_mm = parseInt(form.width, 10);
+
+      // ON CONFLICT no funciona con índices UNIQUE parciales (WHERE role IN …).
+      // Usamos SELECT → update / insert en su lugar.
+      const { data: existing, error: selectError } = await supabase
+        .from("pos_printers")
+        .select("id")
+        .eq("business_id", bizId)
+        .eq("role", role)
+        .maybeSingle();
+
+      if (selectError) {
+        setForm((f) => ({ ...f, loading: false, error: "Error al guardar. Intenta de nuevo." }));
+        return;
+      }
+
+      let saveError: { message: string; code?: string } | null = null;
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("pos_printers")
+          .update({ host, port, width_mm, label, is_active: true })
+          .eq("id", existing.id);
+        saveError = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("pos_printers")
+          .insert({
+            business_id: bizId,
+            label,
+            role,
+            connection: "network",
+            host,
+            port,
+            width_mm,
+            is_default: false,
+            is_active: true,
+          });
+        // Race condition muy rara: violación de unique (23505) → mensaje amable.
+        if (insertError?.code === "23505") {
+          setForm((f) => ({
+            ...f,
+            loading: false,
+            error: "Ya existe una impresora de este tipo. Recarga e intenta de nuevo.",
+          }));
+          return;
+        }
+        saveError = insertError;
+      }
 
       setForm((f) => ({ ...f, loading: false }));
-      if (error) {
+      if (saveError) {
         setForm((f) => ({ ...f, error: "Error al guardar. Intenta de nuevo." }));
         return;
       }
