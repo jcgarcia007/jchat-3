@@ -38,6 +38,7 @@ import {
   IconShieldLock,
   IconBuildingStore,
   IconTerminal2,
+  IconPrinter,
 } from "@tabler/icons-react";
 
 export type NavIcon = React.ComponentType<{ size?: number; stroke?: number }>;
@@ -141,6 +142,7 @@ export const CONFIG_MODULE: NavModule = {
     { labelKey: "railEmpleados", href: "/dashboard/employees", icon: IconUsers },
     { labelKey: "railRoles", href: "/dashboard/roles", icon: IconShieldLock },
     { labelKey: "railDispositivos", href: "/dashboard/configuration/devices", icon: IconTerminal2 },
+    { labelKey: "railImpresoras", href: "/dashboard/configuration/printers", icon: IconPrinter },
   ],
 };
 

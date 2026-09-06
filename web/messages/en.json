@@ -2160,6 +2160,7 @@
     "summaryDiffNew": "new",
     "summaryOrderCount": "{count, plural, one {# order} other {# orders}}",
     "railDispositivos": "Devices",
+    "railImpresoras": "Printers",
     "devicesPageTitle": "Payment Devices",
     "devicesPageSubtitle": "Accept in-person payments with Stripe Terminal-compatible readers.",
     "devicesMyReadersTitle": "My Readers",

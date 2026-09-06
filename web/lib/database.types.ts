@@ -2311,6 +2311,7 @@ export type Database = {
           width_mm: number
           is_default: boolean
           is_active: boolean
+          role: string    // 'kitchen' | 'bar' | 'receipt'
           created_at: string
         }
         Insert: {
@@ -2323,6 +2324,7 @@ export type Database = {
           width_mm?: number
           is_default?: boolean
           is_active?: boolean
+          role?: string   // default 'receipt' en la BD
           created_at?: string
         }
         Update: {
@@ -2335,6 +2337,7 @@ export type Database = {
           width_mm?: number
           is_default?: boolean
           is_active?: boolean
+          role?: string | null
           created_at?: string
         }
         Relationships: [
