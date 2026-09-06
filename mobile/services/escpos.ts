@@ -62,6 +62,10 @@ function lf(): Uint8Array { return bytes(LF); }
 function reset(): Uint8Array { return bytes(ESC, 0x40); }
 function cut(): Uint8Array { return bytes(GS, 0x56, 0x00); }
 function feed(dots: number): Uint8Array { return bytes(ESC, 0x4A, dots & 0xFF); }
+// ESC d n — print and feed n *text lines* (≈3.75 mm each at default spacing).
+// Use this before cut(): the cutter sits 10–15 mm above the print head, so
+// anything printed in the last few lines stays inside unless we feed past it.
+function feedLines(n: number): Uint8Array { return bytes(ESC, 0x64, n & 0xFF); }
 function align(a: 'left' | 'center' | 'right'): Uint8Array {
   return bytes(ESC, 0x61, a === 'left' ? 0 : a === 'center' ? 1 : 2);
 }
@@ -194,7 +198,9 @@ export function buildKitchenTicketEscPos(opts: {
   widthMm?: number;  // default 80
 }): Uint8Array {
   const { stationLabel, tableLabel, serverName, items } = opts;
-  const time = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+  // Manual HH:MM — Hermes' Intl may render "1:32" instead of "01:32".
+  const now  = new Date();
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const parts: Uint8Array[] = [
     reset(),
@@ -282,7 +288,8 @@ export function buildKitchenTicketEscPos(opts: {
 
     // Special instructions
     if (item.special_instructions) {
-      for (const segment of wrapText(`★ ${item.special_instructions}`, 48)) {
+      // '*' not '★' — PC437 has no star glyph; enc() would print '?'.
+      for (const segment of wrapText(`* ${item.special_instructions}`, 48)) {
         parts.push(enc(segment), lf());
       }
     }
@@ -294,9 +301,12 @@ export function buildKitchenTicketEscPos(opts: {
   }
 
   // ── Final separator + feed + cut ──────────────────────────────────────────
+  // feedLines(5) ≈ 19 mm — clears the cutter offset so the last lines are
+  // never left inside the printer (they'd show up on top of the next ticket).
+  // NOTE: feed(n) is ESC J = n DOTS (feed(5) was 0.6 mm), not lines.
   parts.push(
     enc(separator(48)), lf(),
-    feed(5),
+    feedLines(5),
     cut(),
   );
 

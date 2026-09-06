@@ -109,6 +109,37 @@ export async function fetchPrinterByRole(
   };
 }
 
+/**
+ * Resolves the name to print as "Mesero:" on a commanda for the current user.
+ * Same precedence as the receipt RPC (migration 157):
+ *   employees.receipt_display_name → users.display_name → null
+ * The second step covers business owners, who may not have an employees row.
+ * Best-effort: never throws.
+ */
+export async function resolveServerName(businessId: string): Promise<string | null> {
+  try {
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) return null;
+
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('receipt_display_name')
+      .eq('user_id', uid)
+      .eq('business_id', businessId)
+      .maybeSingle();
+    if (emp?.receipt_display_name) return emp.receipt_display_name;
+
+    const { data: usr } = await supabase
+      .from('users')
+      .select('display_name')
+      .eq('id', uid)
+      .maybeSingle();
+    return usr?.display_name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Internal type for order_items query ─────────────────────────────────────
 
 interface KitchenOrderItem {
