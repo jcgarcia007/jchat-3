@@ -159,6 +159,23 @@ function buildQR(url: string): Uint8Array {
 
 // ─── Kitchen / Bar commanda ───────────────────────────────────────────────────
 
+/** Wraps text to lines of maxCols characters (word-aware when possible). */
+function wrapText(text: string, maxCols: number): string[] {
+  if (text.length <= maxCols) return [text];
+  const lines: string[] = [];
+  let remaining = text;
+  while (remaining.length > maxCols) {
+    let cut = maxCols;
+    // try to break at a space
+    const space = remaining.lastIndexOf(' ', maxCols);
+    if (space > 0) cut = space;
+    lines.push(remaining.slice(0, cut));
+    remaining = remaining.slice(cut).replace(/^ /, '');
+  }
+  if (remaining) lines.push(remaining);
+  return lines;
+}
+
 /**
  * Builds an ESC/POS byte buffer for a kitchen/bar commanda ticket.
  * No prices — just items routed to this station.
@@ -207,11 +224,14 @@ export function buildKitchenTicketEscPos(opts: {
   // ── Items ─────────────────────────────────────────────────────────────────
   for (const item of items) {
     // Main line: bold + double-size quantity x name
-    parts.push(
-      bold(true), doubleSize(true),
-      enc(`${item.qty}x ${item.name}`.slice(0, 24)), lf(),
-      doubleSize(false), bold(false),
-    );
+    const itemLine = `${item.qty}x ${item.name}`;
+    for (const segment of wrapText(itemLine, 24)) {  // 24 cols because double-width
+      parts.push(
+        bold(true), doubleSize(true),
+        enc(segment), lf(),
+        doubleSize(false), bold(false),
+      );
+    }
 
     // Options — may be a JSON string or null
     if (item.options) {
@@ -228,22 +248,28 @@ export function buildKitchenTicketEscPos(opts: {
                   (opt as Record<string, unknown>).value,
                 ].filter(Boolean).join(': ');
             if (optText) {
-              parts.push(enc(`  ${optText}`.slice(0, 48)), lf());
+              for (const segment of wrapText(optText, 46)) {
+                parts.push(enc(`  ${segment}`), lf());
+              }
             }
           }
         } else if (parsed && typeof parsed === 'object') {
-          // { modifiers: [...] } shape
+          // { modifiers: [...] } shape — fields: group_label (string) + choice_labels (string[])
           const asObj = parsed as Record<string, unknown>;
           const mods: unknown[] = Array.isArray(asObj.modifiers) ? asObj.modifiers as unknown[] : [];
           for (const m of mods) {
-            const modText = typeof m === 'string'
-              ? m
-              : [
-                  (m as Record<string, unknown>).name,
-                  (m as Record<string, unknown>).value,
-                ].filter(Boolean).join(': ');
-            if (modText) {
-              parts.push(enc(`  ${modText}`.slice(0, 48)), lf());
+            const mod = m as Record<string, unknown>;
+            const groupLabel = typeof mod.group_label === 'string' ? mod.group_label : '';
+            const choiceLabels = Array.isArray(mod.choice_labels)
+              ? (mod.choice_labels as unknown[]).filter((c): c is string => typeof c === 'string')
+              : [];
+            if (choiceLabels.length === 0) continue;
+
+            const choices = choiceLabels.join(', ');
+            const line = groupLabel ? `${groupLabel}: ${choices}` : choices;
+            // Word-wrap at 46 cols (leaving 2 for indent)
+            for (const segment of wrapText(line, 46)) {
+              parts.push(enc(`  ${segment}`), lf());
             }
           }
         }
@@ -255,7 +281,9 @@ export function buildKitchenTicketEscPos(opts: {
 
     // Special instructions
     if (item.special_instructions) {
-      parts.push(enc(`* ${item.special_instructions}`.slice(0, 48)), lf());
+      for (const segment of wrapText(`★ ${item.special_instructions}`, 48)) {
+        parts.push(enc(segment), lf());
+      }
     }
 
     // Seat
