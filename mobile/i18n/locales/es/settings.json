@@ -248,6 +248,7 @@
     "printError": "Error al imprimir. Verifica que la impresora esté encendida y conectada a la misma red.",
     "printNoPrinter": "Sin impresora configurada. Configura una en el dashboard → Dispositivos.",
     "printClose": "Cerrar",
+    "splitContinue": "Continuar",
     "receiptsTitle": "Recibos de hoy",
     "receiptsLoading": "Cargando recibos…",
     "receiptsEmpty": "Sin recibos hoy",

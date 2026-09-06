@@ -101,7 +101,8 @@ type CheckoutPhase =
   | 'collecting' // collectPaymentMethod on reader
   | 'confirming' // confirmPaymentIntent
   | 'marking'    // calling markTabPaid EF
-  | 'error';     // something went wrong — employee can retry
+  | 'error'      // something went wrong — employee can retry
+  | 'success';   // part paid — show print button before navigating
 
 /** A sub-account in the items-split builder. */
 interface SubAccount {
@@ -203,6 +204,21 @@ export default function PosSplitScreen(): React.ReactElement {
   /** Print status per key (payment_id or account.id) */
   const [printStatus, setPrintStatus] = useState<Record<string, 'idle' | 'printing' | 'success' | 'error'>>({});
 
+  // ── Success phase state ─────────────────────────────────────────────────────
+  /** Key of the last successfully charged part (account.id or payment_id). */
+  const [lastSuccessKey, setLastSuccessKey] = useState<string | null>(null);
+  /** Displayed amount for the success overlay. */
+  const [lastSuccessAmount, setLastSuccessAmount] = useState<number>(0);
+  /** Whether the whole tab was closed on the last successful charge. */
+  const [lastTabClosed, setLastTabClosed] = useState<boolean>(false);
+  /** Auto-nav timer — cancelled if the employee taps "Continue" or "Print". */
+  const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount.
+  useEffect(() => () => {
+    if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+  }, []);
+
   // ── Tip picker state ────────────────────────────────────────────────────────
   // When tipPickerCtx is non-null the tip "screen" is shown (early return below).
   // All tip-picker state is reset when tipPickerCtx is set.
@@ -225,6 +241,16 @@ export default function PosSplitScreen(): React.ReactElement {
       .finally(() => { if (mounted) setTabLoading(false); });
     return () => { mounted = false; };
   }, [businessId, tableId]);
+
+  // ── Preload printer on mount ──────────────────────────────────────────────
+  // Resolved before any charge completes so the print button renders immediately.
+  useEffect(() => {
+    let mounted = true;
+    fetchAnyPrinter(businessId)
+      .then(p => { if (mounted) setSplitPrinter(p ?? 'none'); })
+      .catch(() => { if (mounted) setSplitPrinter('none'); });
+    return () => { mounted = false; };
+  }, [businessId]);
 
   // ── Even method — N stepper ───────────────────────────────────────────────
   const handleDecrement = useCallback(
@@ -528,20 +554,36 @@ export default function PosSplitScreen(): React.ReactElement {
       }
 
       // ── Step 7: refresh items — paid items disappear ──────────────────────
-      setCheckoutPhase('idle');
-      setActivePaymentId(null);
-      setActiveAccountId(null);
-      setCheckoutError(null);
-
       // Store receipt code for the print button (keyed by account.id for items split)
       if (markResult.receiptCode) {
         setReceiptCodes(prev => ({ ...prev, [account.id]: markResult.receiptCode! }));
       }
-      // Look up printer once on first successful charge
-      if (splitPrinter === null) {
-        fetchAnyPrinter(businessId)
-          .then(p => setSplitPrinter(p ?? 'none'))
-          .catch(() => setSplitPrinter('none'));
+
+      // Enter success phase — show print button before navigating.
+      // splitPrinter is already preloaded on mount.
+      const accountAmountCents = account.items.reduce(
+        (sum, i) => sum + i.price_cents * i.qty, 0,
+      );
+      setLastSuccessKey(account.id);
+      setLastSuccessAmount(accountAmountCents);
+      setLastTabClosed(markResult.tabClosed);
+      setCheckoutPhase('success');
+      setActiveAccountId(null);
+      setCheckoutError(null);
+
+      // Auto-nav only when no printer configured (mirrors PosCheckoutScreen).
+      if (splitPrinter === 'none') {
+        autoNavTimerRef.current = setTimeout(() => {
+          if (markResult.tabClosed) {
+            navigation.goBack();
+          } else {
+            setCheckoutPhase('idle');
+            setActivePaymentId(null);
+          }
+        }, 2200);
+      } else {
+        // Printer exists — let the employee print first, then tap Continue.
+        setActivePaymentId(null);
       }
 
       try {
@@ -557,14 +599,6 @@ export default function PosSplitScreen(): React.ReactElement {
         );
       } catch {
         // Non-fatal: items may be stale but the payment went through
-      }
-
-      if (markResult.tabClosed) {
-        Alert.alert(
-          t('pos.splitAllPaid'),
-          t('pos.splitAllPaidMsg'),
-          [{ text: t('pos.submitOk'), onPress: () => navigation.goBack() }],
-        );
       }
     },
     [
@@ -664,33 +698,39 @@ export default function PosSplitScreen(): React.ReactElement {
         next.add(paymentId);
         return next;
       });
-      setCheckoutPhase('idle');
-      setActivePaymentId(null);
-      setCheckoutError(null);
 
       // Store receipt code for the print button (keyed by payment_id for even split)
       if (markResult.receiptCode) {
         setReceiptCodes(prev => ({ ...prev, [paymentId]: markResult.receiptCode! }));
       }
-      // Look up printer once on first successful charge
-      if (splitPrinter === null) {
-        fetchAnyPrinter(businessId)
-          .then(p => setSplitPrinter(p ?? 'none'))
-          .catch(() => setSplitPrinter('none'));
-      }
 
-      if (markResult.tabClosed) {
-        Alert.alert(
-          t('pos.splitAllPaid'),
-          t('pos.splitAllPaidMsg'),
-          [{ text: t('pos.submitOk'), onPress: () => navigation.goBack() }],
-        );
+      // Enter success phase — show print button before navigating.
+      // splitPrinter is already preloaded on mount.
+      const matchingCheck = checks.find(c => c.payment_id === paymentId);
+      setLastSuccessKey(paymentId);
+      setLastSuccessAmount(matchingCheck?.amount_cents ?? 0);
+      setLastTabClosed(markResult.tabClosed);
+      setCheckoutPhase('success');
+      setActivePaymentId(null);
+      setCheckoutError(null);
+
+      // Auto-nav only when no printer configured (mirrors PosCheckoutScreen).
+      if (splitPrinter === 'none') {
+        autoNavTimerRef.current = setTimeout(() => {
+          if (markResult.tabClosed) {
+            navigation.goBack();
+          } else {
+            setCheckoutPhase('idle');
+          }
+        }, 2200);
       }
+      // If printer exists, employee controls when to leave via Continue button.
     },
     [
       connectedReader,
       activePaymentId,
       businessId,
+      checks,
       retrievePaymentIntent,
       collectPaymentMethod,
       confirmPaymentIntent,
@@ -860,6 +900,93 @@ export default function PosSplitScreen(): React.ReactElement {
             accessibilityRole="button"
           >
             <Text style={styles.unavailableBackText}>{t('workMode.pinCancel')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Success phase overlay — shown after each successful charge ──────────────
+  // Lets the employee print the receipt before navigating away.
+  if (checkoutPhase === 'success') {
+    return (
+      <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
+        <StatusBar
+          barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'}
+        />
+        <View style={styles.successOverlay}>
+          {/* Checkmark + amount */}
+          <View style={[styles.successIconWrap, { backgroundColor: '#1D9E7522' }]}>
+            <IconCheck size={36} color={c.success} strokeWidth={2.5} />
+          </View>
+          <Text style={[styles.successTitle, { color: c.textPrimary }]}>
+            {t('pos.paymentSuccess')}
+          </Text>
+          <Text style={[styles.successAmount, { color: c.textSecondary }]}>
+            {formatCents(lastSuccessAmount)}
+          </Text>
+
+          {/* Print button — only when a printer is configured */}
+          {splitPrinter && splitPrinter !== 'none' && lastSuccessKey ? (
+            <>
+              <Pressable
+                onPress={() => handlePrintSplit(lastSuccessKey)}
+                disabled={printStatus[lastSuccessKey] === 'printing'}
+                style={({ pressed }) => [
+                  styles.printBtn,
+                  {
+                    backgroundColor:
+                      printStatus[lastSuccessKey] === 'success'
+                        ? c.success
+                        : c.brand,
+                    opacity:
+                      printStatus[lastSuccessKey] === 'printing'
+                        ? 0.6
+                        : pressed ? 0.82 : 1,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('pos.printBtn')}
+              >
+                {printStatus[lastSuccessKey] === 'printing' ? (
+                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                ) : (
+                  <IconPrinter size={20} color="#fff" strokeWidth={2} style={{ marginRight: 8 }} />
+                )}
+                <Text style={styles.printBtnText}>
+                  {printStatus[lastSuccessKey] === 'printing'
+                    ? t('pos.printingTitle')
+                    : printStatus[lastSuccessKey] === 'success'
+                    ? t('pos.printSuccess')
+                    : t('pos.printBtn')}
+                </Text>
+              </Pressable>
+              {printStatus[lastSuccessKey] === 'error' ? (
+                <Text style={[styles.printErrorText, { color: c.danger }]}>
+                  {t('pos.printError')}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+
+          {/* Continue / Close button */}
+          <Pressable
+            onPress={() => {
+              if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+              if (lastTabClosed) {
+                navigation.goBack();
+              } else {
+                setCheckoutPhase('idle');
+                setActivePaymentId(null);
+              }
+            }}
+            style={[styles.closeBtn, { borderColor: c.borderSubtle }]}
+            accessibilityRole="button"
+            accessibilityLabel={lastTabClosed ? t('pos.printClose') : t('pos.splitContinue')}
+          >
+            <Text style={[styles.closeBtnText, { color: c.textSecondary }]}>
+              {lastTabClosed ? t('pos.printClose') : t('pos.splitContinue')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -1843,6 +1970,65 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: { fontSize: 14 },
+
+  // ── Success overlay ───────────────────────────────────────────────────────────
+  successOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 12,
+  },
+  successIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  successAmount: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+
+  // ── Success print footer ──────────────────────────────────────────────────────
+  printBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    minWidth: 220,
+  },
+  printBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  printErrorText: {
+    fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  closeBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 160,
+  },
+  closeBtnText: { fontSize: 15, fontWeight: '600' },
 
   // ── Split print button ────────────────────────────────────────────────────────
   splitPrintBtn: {

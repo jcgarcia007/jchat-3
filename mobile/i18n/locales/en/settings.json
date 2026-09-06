@@ -248,6 +248,7 @@
     "printError": "Print failed. Make sure the printer is on and connected to the same network.",
     "printNoPrinter": "No printer configured. Set one up in the dashboard → Devices.",
     "printClose": "Close",
+    "splitContinue": "Continue",
     "receiptsTitle": "Today's Receipts",
     "receiptsLoading": "Loading receipts…",
     "receiptsEmpty": "No receipts today",
