@@ -238,6 +238,11 @@ export async function printKitchenTickets(opts: {
 
 const CONNECT_TIMEOUT_MS = 5_000;
 const WRITE_TIMEOUT_MS   = 8_000;
+// Grace period between the write callback and end(). The callback only means
+// the bytes reached the kernel send buffer; the printer may still be consuming
+// them. Closing at once can make a printer that emits status bytes (ASB) get
+// an RST and discard unprocessed input — the tail (feed + cut) goes first.
+const CLOSE_GRACE_MS     = 400;
 
 /**
  * Open a TCP socket to host:port, write `bytes`, then close.
@@ -258,6 +263,7 @@ export function printToNetwork(
   return new Promise<void>((resolve, reject) => {
     let connectTimer: ReturnType<typeof setTimeout> | null = null;
     let writeTimer:   ReturnType<typeof setTimeout> | null = null;
+    let graceTimer:   ReturnType<typeof setTimeout> | null = null;
     let settled = false;
 
     function settle(err?: Error) {
@@ -265,6 +271,7 @@ export function printToNetwork(
       settled = true;
       if (connectTimer) clearTimeout(connectTimer);
       if (writeTimer)   clearTimeout(writeTimer);
+      if (graceTimer)   clearTimeout(graceTimer);
       // Destroy the socket regardless of outcome to free the port handle.
       try { client.destroy(); } catch { /* ignore */ }
       err ? reject(err) : resolve();
@@ -282,9 +289,13 @@ export function printToNetwork(
 
         client.write(bytes as unknown as string, 'binary', (err) => {
           if (err) { settle(err); return; }
-          // Data written — close gracefully.
-          client.end();
-          settle();
+          // Data written — let the printer drain before closing. The write
+          // timer still caps the whole operation; 'error'/'close' still settle.
+          graceTimer = setTimeout(() => {
+            if (settled) return; // 'close'/'error'/timeout already handled it
+            client.end();
+            settle();
+          }, CLOSE_GRACE_MS);
         });
       },
     );
