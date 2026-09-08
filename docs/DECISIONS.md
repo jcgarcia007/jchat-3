@@ -813,6 +813,37 @@ Archivos clave: `web/app/m/[slug]/MenuPageClient.tsx` (detección `?app=1`, post
 Commits: `ae8affa` (Chunk A — web) · `55910fd` (Chunk B — nativo) · `e18d27a` (Chunk C — enrutamiento
 por menu_mode). Merge a producción: `e18d27a` (2026-07-30).
 
+### D-82 — Tab POS entra por dashboard.tabpos.cloud (JChat web con skin), no por el portal Otunity
+
+**Fecha:** 2026-09-08. Sustituye la decisión de la madrugada del mismo día ("Tab POS solo
+marketing, botones al portal Otunity").
+
+**Decisión:** el sitio de Tab POS sigue siendo solo marketing, pero sus botones Sign in / Sign up
+apuntan a `https://dashboard.tabpos.cloud/auth/login` y `/auth/register`, que son las pantallas de
+auth de JChat web servidas bajo ese host. La identidad sigue siendo única (misma Supabase Auth
+que JChat y el portal); lo que cambia es la puerta de entrada de Tab POS: JChat web, no el portal.
+
+**Cómo:** `web/lib/brand.ts` resuelve la marca por `headers().get("host")` en el root layout y
+estampa `data-brand="tabpos"` en `<html>` (server-side → sin `window`, sin mismatch de
+hidratación). `web/styles/brands/tabpos.css` cuelga de ese atributo y remapea los tokens del
+Design System en `.auth-col` / `.auth-brand-panel` con los valores REALES de
+`tab-pos-website/app/globals.css` (ink #17191c, paper, fog, mist, peach #fbe1d1, sienna #5d2a1a,
+hairline #ececec, r-card 24, r-small 16, `.pill` = botón ink, `.pill-ghost` = borde). Fraunces +
+Inter van por `next/font/google` (self-hosted, compatible con el CSP `font-src 'self'`), sin preload.
+Ambas variantes de copy/logo están siempre en el DOM (`.brand-jchat` / `.brand-tabpos`); el CSS
+decide cuál se ve. La lógica de auth (handlers, redirects, captcha) no se tocó: solo `className`.
+
+**Alcance aceptado:** solo login y registro. Tras el login, el usuario cae en el dashboard de JChat
+con marca JChat aunque el host sea dashboard.tabpos.cloud. El rebrand del dashboard es fase futura.
+
+**Limpieza:** el portal pierde `/auth/confirm` y el resaltado `?from=tab-pos` (residuo de `dba2b63`).
+
+**Pendientes fuera del código (no bloquean el merge, sí el uso en vivo):**
+- Asignar `dashboard.tabpos.cloud` al proyecto Vercel `jchat-3` (a 2026-09-08 NO está en ningún
+  proyecto; el DNS ya apunta a Vercel).
+- Supabase Auth → Redirect URLs: `https://dashboard.tabpos.cloud/auth/callback` y
+  `https://dashboard.tabpos.cloud/**` (sin esto, Google OAuth no vuelve a ese host).
+
 ## Permanent deviations from the original spec
 1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
 2. --color-warning = #f59e0b (not #D97706).

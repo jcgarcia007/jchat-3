@@ -3,6 +3,9 @@
 @import "../styles/tokens.css";
 /* Dashboard theme tokens (Task 0.3 — Design System Section 5). */
 @import "../styles/themes/dashboard.css";
+/* Tab POS brand skin for /auth/* when served from dashboard.tabpos.cloud
+   (root layout stamps data-brand="tabpos" on <html> by request host). */
+@import "../styles/brands/tabpos.css";
 
 /* Map token CSS vars to Tailwind theme keys so utilities like
    `bg-surface` / `text-secondary` / `text-brand` work. These reference the

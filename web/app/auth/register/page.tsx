@@ -24,6 +24,7 @@ import {
   IconAlertCircle,
   IconLoader2,
   IconMessageCircle2,
+  IconReceipt2,
   IconBrandGoogle,
   IconBrandFacebook,
   IconBrandApple,
@@ -152,9 +153,11 @@ function ErrorAlert({ message }: { message: string }) {
 }
 
 function CardHeader() {
+  // Both brand marks rendered; styles/brands/tabpos.css picks one by data-brand.
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
       <span
+        className="auth-brand-icon"
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -166,12 +169,17 @@ function CardHeader() {
           color: "#fff",
         }}
       >
-        <IconMessageCircle2 size={20} />
+        <IconMessageCircle2 className="brand-jchat" size={20} />
+        <IconReceipt2 className="brand-tabpos" size={20} />
       </span>
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>JChat</div>
+        <div className="auth-brand-name" style={{ fontSize: 16, fontWeight: 700 }}>
+          <span className="brand-jchat">JChat</span>
+          <span className="brand-tabpos">Tab POS</span>
+        </div>
         <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-          Business dashboard
+          <span className="brand-jchat">Business dashboard</span>
+          <span className="brand-tabpos">Punto de venta</span>
         </div>
       </div>
     </div>
@@ -222,12 +230,13 @@ function RegisterStep1Form({
 
   return (
     <>
-      <div style={stepLabelStyle}>Step 1 of 2</div>
+      <div className="auth-step" style={stepLabelStyle}>Step 1 of 2</div>
       <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>
         Create your account
       </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
-        Join JChat to manage your venue and connect with customers.
+        <span className="brand-jchat">Join JChat to manage your venue and connect with customers.</span>
+        <span className="brand-tabpos">Join Tab POS to run your bar or restaurant from one place.</span>
       </p>
 
       {error && <ErrorAlert message={error} />}
@@ -348,6 +357,7 @@ function RegisterStep1Form({
 
         <button
           type="submit"
+          className="auth-primary"
           disabled={!canContinue}
           style={{
             ...primaryBtn,
@@ -378,6 +388,7 @@ function RegisterStep1Form({
       {/* Google */}
       <button
         type="button"
+        className="auth-oauth"
         onClick={onGoogle}
         disabled={googleLoading}
         style={{
@@ -397,6 +408,7 @@ function RegisterStep1Form({
       {/* Facebook — coming soon (provider not configured in Supabase yet) */}
       <button
         type="button"
+        className="auth-oauth"
         disabled
         title="Coming soon — Facebook login próximamente"
         style={disabledOauthBtn}
@@ -408,6 +420,7 @@ function RegisterStep1Form({
       {/* Apple — coming soon (provider not configured in Supabase yet) */}
       <button
         type="button"
+        className="auth-oauth"
         disabled
         title="Coming soon — Apple login próximamente"
         style={disabledOauthBtn}
@@ -471,7 +484,7 @@ function RegisterStep2Form({
 
   return (
     <>
-      <div style={stepLabelStyle}>Step 2 of 2</div>
+      <div className="auth-step" style={stepLabelStyle}>Step 2 of 2</div>
       <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>Almost there!</h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
         Just a few more details to finish setting up your profile.
@@ -614,6 +627,7 @@ function RegisterStep2Form({
 
         <button
           type="submit"
+          className="auth-primary"
           disabled={!canCreate}
           style={{
             ...primaryBtn,
@@ -808,6 +822,7 @@ export default function RegisterPage() {
   return (
     <AuthSplitLayout>
     <div
+      className="auth-card"
       style={{
         width: "100%",
         maxWidth: 380,

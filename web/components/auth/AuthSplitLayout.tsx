@@ -1,4 +1,4 @@
-import { IconMessageCircle2, IconMapPin } from "@tabler/icons-react";
+import { IconMessageCircle2, IconMapPin, IconReceipt2 } from "@tabler/icons-react";
 
 /**
  * Split-screen shell for auth pages.
@@ -8,6 +8,10 @@ import { IconMessageCircle2, IconMapPin } from "@tabler/icons-react";
  *   --bg-overlay are additionally overridden here for the auth context.
  * Login / register pages are NOT modified — all visual changes come from
  * the token overrides cascading through the CSS custom property system.
+ * Brand skin: under data-brand="tabpos" (root layout, by request host)
+ *   styles/brands/tabpos.css restyles the `.auth-brand-panel` / `.auth-col`
+ *   hooks and swaps the `.brand-jchat` / `.brand-tabpos` copy. Both copies
+ *   are always in the DOM so SSR and hydration never branch on the host.
  */
 
 export default function AuthSplitLayout({
@@ -70,7 +74,7 @@ export default function AuthSplitLayout({
       >
         {/* ── Brand panel (desktop only) ────────────────────────────────── */}
         <aside
-          className="hidden md:flex"
+          className="auth-brand-panel hidden md:flex"
           style={{
             width: "42%",
             flexShrink: 0,
@@ -87,6 +91,7 @@ export default function AuthSplitLayout({
         >
           {/* Pastel blob — peach (top-right) */}
           <div
+            className="auth-blob"
             style={{
               position: "absolute",
               top: -60,
@@ -103,6 +108,7 @@ export default function AuthSplitLayout({
           />
           {/* Pastel blob — mint (bottom-left) */}
           <div
+            className="auth-blob"
             style={{
               position: "absolute",
               bottom: -80,
@@ -119,6 +125,7 @@ export default function AuthSplitLayout({
           />
           {/* Pastel blob — sky (bottom-right accent) */}
           <div
+            className="auth-blob"
             style={{
               position: "absolute",
               bottom: 100,
@@ -144,6 +151,7 @@ export default function AuthSplitLayout({
             }}
           >
             <span
+              className="auth-logo-icon"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -156,9 +164,11 @@ export default function AuthSplitLayout({
                 flexShrink: 0,
               }}
             >
-              <IconMessageCircle2 size={24} color="#fff" />
+              <IconMessageCircle2 className="brand-jchat" size={24} color="#fff" />
+              <IconReceipt2 className="brand-tabpos" size={24} />
             </span>
             <span
+              className="auth-logo-name"
               style={{
                 fontSize: 22,
                 fontWeight: 800,
@@ -166,7 +176,8 @@ export default function AuthSplitLayout({
                 color: "#111827",
               }}
             >
-              JChat
+              <span className="brand-jchat">JChat</span>
+              <span className="brand-tabpos">Tab POS</span>
             </span>
           </div>
 
@@ -182,11 +193,18 @@ export default function AuthSplitLayout({
                 color: "#111827",
               }}
             >
-              Tu venue,
-              <br />
-              en el bolsillo
-              <br />
-              de cada cliente
+              <span className="brand-jchat">
+                Tu venue,
+                <br />
+                en el bolsillo
+                <br />
+                de cada cliente
+              </span>
+              <span className="brand-tabpos">
+                Que cada cliente
+                <br />
+                se sienta <em>atendido</em>
+              </span>
             </h2>
             <p
               style={{
@@ -197,14 +215,22 @@ export default function AuthSplitLayout({
                 maxWidth: 300,
               }}
             >
-              Chats por ubicación, pedidos y pagos,
-              <br />
-              en un solo lugar.
+              <span className="brand-jchat">
+                Chats por ubicación, pedidos y pagos,
+                <br />
+                en un solo lugar.
+              </span>
+              <span className="brand-tabpos">
+                Pedidos en la mesa, cocina al instante
+                <br />
+                y cuenta sin esperas.
+              </span>
             </p>
           </div>
 
           {/* Footer tagline */}
           <div
+            className="auth-panel-foot"
             style={{
               display: "flex",
               alignItems: "center",
@@ -215,8 +241,9 @@ export default function AuthSplitLayout({
               zIndex: 1,
             }}
           >
-            <IconMapPin size={15} />
-            <span>Social por ubicación</span>
+            <IconMapPin className="brand-jchat" size={15} />
+            <span className="brand-jchat">Social por ubicación</span>
+            <span className="brand-tabpos">Una solución de Otunity Labs</span>
           </div>
         </aside>
 

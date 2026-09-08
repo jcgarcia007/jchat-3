@@ -21,6 +21,7 @@ import {
   IconAlertCircle,
   IconLoader2,
   IconMessageCircle2,
+  IconReceipt2,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -126,6 +127,7 @@ function LoginForm() {
 
   return (
     <div
+      className="auth-card"
       style={{
         width: "100%",
         maxWidth: 380,
@@ -136,9 +138,10 @@ function LoginForm() {
         boxShadow: "0 10px 30px var(--bg-overlay)",
       }}
     >
-      {/* Brand */}
+      {/* Brand — both marks rendered; styles/brands/tabpos.css picks one by data-brand */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
         <span
+          className="auth-brand-icon"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -150,12 +153,17 @@ function LoginForm() {
             color: "#fff",
           }}
         >
-          <IconMessageCircle2 size={20} />
+          <IconMessageCircle2 className="brand-jchat" size={20} />
+          <IconReceipt2 className="brand-tabpos" size={20} />
         </span>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>JChat</div>
+          <div className="auth-brand-name" style={{ fontSize: 16, fontWeight: 700 }}>
+            <span className="brand-jchat">JChat</span>
+            <span className="brand-tabpos">Tab POS</span>
+          </div>
           <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            Business dashboard
+            <span className="brand-jchat">Business dashboard</span>
+            <span className="brand-tabpos">Punto de venta</span>
           </div>
         </div>
       </div>
@@ -240,6 +248,7 @@ function LoginForm() {
 
         <button
           type="submit"
+          className="auth-primary"
           disabled={loading}
           style={{
             width: "100%",
@@ -284,6 +293,7 @@ function LoginForm() {
 
       <button
         type="button"
+        className="auth-oauth"
         onClick={handleGoogleLogin}
         disabled={googleLoading}
         style={{
@@ -314,6 +324,7 @@ function LoginForm() {
       {/* Facebook — coming soon (provider not configured in Supabase yet) */}
       <button
         type="button"
+        className="auth-oauth"
         disabled
         title="Coming soon — Facebook login próximamente"
         style={{
@@ -341,6 +352,7 @@ function LoginForm() {
       {/* Apple — coming soon (provider not configured in Supabase yet) */}
       <button
         type="button"
+        className="auth-oauth"
         disabled
         title="Coming soon — Apple login próximamente"
         style={{

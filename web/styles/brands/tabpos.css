@@ -1,0 +1,179 @@
+/* ============================================================
+   Tab POS brand skin for the auth screens (login / register).
+   Activated by `data-brand="tabpos"` on <html>, which the root
+   layout stamps when the request host is dashboard.tabpos.cloud.
+
+   Token values are copied VERBATIM from tab-pos-website/app/globals.css
+   (ink, paper, mist, fog, slate, ash, smoke, peach, sienna, hairline,
+   r-card 24, r-small 16, .pill = ink button, .pill-ghost = outlined).
+   This is the ONLY place those hex values may live in this repo.
+
+   Scope: everything hangs off `.auth-col` / `.auth-brand-panel`, so the
+   dashboard and the public pages under the same host stay untouched
+   (the dashboard rebrand is a future phase).
+
+   `!important` is used deliberately: the auth pages style their card,
+   inputs and buttons with inline `style={{}}` literals (radius 10/16,
+   weight 700, color #fff) that cannot be reached through tokens alone.
+   Auth LOGIC (handlers, redirects, captcha) is not touched.
+   ============================================================ */
+
+[data-brand="tabpos"] {
+  --tp-ink:        #17191c;
+  --tp-ink-hover:  #2b2e33;
+  --tp-paper:      #ffffff;
+  --tp-mist:       #f2f2f3;
+  --tp-fog:        #fafafb;
+  --tp-slate:      #777b86;
+  --tp-ash:        #979799;
+  --tp-smoke:      #a3a6af;
+  --tp-peach:      #fbe1d1;
+  --tp-peach-soft: rgba(251, 225, 209, 0.55);
+  --tp-sienna:     #5d2a1a;
+  --tp-hairline:   #ececec;
+  --tp-r-card:     24px;
+  --tp-r-small:    16px;
+  --tp-font-display: var(--font-fraunces), Georgia, serif;
+  --tp-font-body:    var(--font-inter), system-ui, sans-serif;
+}
+
+/* ── Form column: remap the Design System tokens the pages already use ──
+   Specificity (0,3,0) beats `.auth-col[data-theme="light"]` (0,2,0) in
+   AuthSplitLayout, so brand indigo/peach → ink, light surfaces → paper. */
+[data-brand="tabpos"] .auth-col[data-theme="light"] {
+  --color-brand:      var(--tp-ink);
+  --color-brand-dark: var(--tp-ink-hover);
+  --bg-base:          var(--tp-paper);
+  --bg-surface:       var(--tp-paper);
+  --bg-elevated:      var(--tp-paper);
+  --bg-overlay:       rgba(23, 25, 28, 0.06);
+  --border-subtle:    var(--tp-hairline);
+  --text-primary:     var(--tp-ink);
+  --text-secondary:   var(--tp-slate);
+  --text-tertiary:    var(--tp-ash);
+  font-family: var(--tp-font-body);
+}
+
+/* Card: r-card 24, hairline border, soft shadow */
+[data-brand="tabpos"] .auth-col .auth-card {
+  border-radius: var(--tp-r-card) !important;
+  border-color: var(--tp-hairline) !important;
+  box-shadow: 0 12px 40px rgba(23, 25, 28, 0.06) !important;
+}
+
+/* Headline: Fraunces 400 (Steep signature — weight never goes up) */
+[data-brand="tabpos"] .auth-col h1 {
+  font-family: var(--tp-font-display);
+  font-weight: 400 !important;
+  font-size: 26px !important;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+/* Inputs: r-small 16, fog ground, ink text, peach-soft focus */
+[data-brand="tabpos"] .auth-col input:not([type="checkbox"]),
+[data-brand="tabpos"] .auth-col select {
+  border-radius: var(--tp-r-small) !important;
+  background: var(--tp-fog) !important;
+  border-color: var(--tp-hairline) !important;
+  font-family: var(--tp-font-body);
+}
+[data-brand="tabpos"] .auth-col input:focus,
+[data-brand="tabpos"] .auth-col select:focus {
+  border-color: var(--tp-ink) !important;
+  box-shadow: 0 0 0 3px var(--tp-peach-soft) !important;
+}
+[data-brand="tabpos"] .auth-col input[type="checkbox"] {
+  accent-color: var(--tp-ink);
+}
+
+/* Primary action = .pill (ink ground, paper text, full round, 44px) */
+[data-brand="tabpos"] .auth-col .auth-primary {
+  background: var(--tp-ink) !important;
+  color: var(--tp-paper) !important;
+  border: 1px solid var(--tp-ink) !important;
+  border-radius: 9999px !important;
+  height: 44px;
+  font-family: var(--tp-font-body);
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+[data-brand="tabpos"] .auth-col .auth-primary:hover:not(:disabled) {
+  background: var(--tp-ink-hover) !important;
+  border-color: var(--tp-ink-hover) !important;
+}
+
+/* Secondary actions (Google / Facebook / Apple) = .pill-ghost */
+[data-brand="tabpos"] .auth-col .auth-oauth {
+  background: transparent !important;
+  color: var(--tp-ink) !important;
+  border: 1px solid var(--tp-ink) !important;
+  border-radius: 9999px !important;
+  height: 44px;
+  font-family: var(--tp-font-body);
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  transition: background 0.15s ease;
+}
+[data-brand="tabpos"] .auth-col .auth-oauth:hover:not(:disabled) {
+  background: var(--tp-mist) !important;
+}
+
+/* Card brand mark: peach square, sienna wordmark */
+[data-brand="tabpos"] .auth-col .auth-brand-icon {
+  background: var(--tp-peach) !important;
+  color: var(--tp-sienna) !important;
+  border-radius: 12px !important;
+}
+[data-brand="tabpos"] .auth-col .auth-brand-name {
+  font-family: var(--tp-font-display);
+  font-weight: 400 !important;
+  font-size: 18px !important;
+}
+
+/* Step label / links: sienna instead of brand indigo */
+[data-brand="tabpos"] .auth-col .auth-step,
+[data-brand="tabpos"] .auth-col a {
+  color: var(--tp-sienna) !important;
+}
+
+/* ── Brand panel (left, md+): flat fog, no pastel blobs, Fraunces copy ── */
+[data-brand="tabpos"] .auth-brand-panel {
+  background: var(--tp-fog) !important;
+  color: var(--tp-ink) !important;
+  border-right: 1px solid var(--tp-hairline);
+}
+[data-brand="tabpos"] .auth-brand-panel .auth-blob {
+  display: none;
+}
+[data-brand="tabpos"] .auth-brand-panel .auth-logo-icon {
+  background: var(--tp-peach) !important;
+  color: var(--tp-sienna) !important;
+  box-shadow: none !important;
+}
+[data-brand="tabpos"] .auth-brand-panel .auth-logo-name {
+  font-family: var(--tp-font-display);
+  font-weight: 400 !important;
+  color: var(--tp-ink) !important;
+}
+[data-brand="tabpos"] .auth-brand-panel h2 {
+  font-family: var(--tp-font-display);
+  font-weight: 400 !important;
+  color: var(--tp-ink) !important;
+}
+[data-brand="tabpos"] .auth-brand-panel h2 em {
+  font-style: italic;
+  color: var(--tp-sienna);
+}
+[data-brand="tabpos"] .auth-brand-panel p,
+[data-brand="tabpos"] .auth-brand-panel .auth-panel-foot {
+  font-family: var(--tp-font-body);
+  color: var(--tp-slate) !important;
+}
+
+/* ── Brand-specific copy: both variants are in the DOM (SSR-safe, no
+   hydration branching); CSS decides which one shows. ── */
+.brand-tabpos { display: none; }
+[data-brand="tabpos"] .brand-tabpos { display: revert; }
+[data-brand="tabpos"] .brand-jchat { display: none; }
