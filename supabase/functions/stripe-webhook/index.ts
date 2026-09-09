@@ -240,6 +240,7 @@ async function handlePaymentSucceeded(
       contact_phone: contactPhone,
       contact_name: contactName,
       stripe_pi_id: paymentIntent.id,
+      source: "customer_stripe", // F3 D-24: identifica órdenes de cliente para el puente de comandas
       status_updated_at: new Date().toISOString(),
       // An order born from a payment IS paid — stamp paid_at (078). The waiter
       // path will create orders WITHOUT this and stamp it later at checkout.

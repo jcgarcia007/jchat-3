@@ -198,5 +198,6 @@
     "sheetBody": "Se avisará a un miembro del personal y acudirá a tu mesa.",
     "confirmServiceA11y": "Confirmar llamada",
     "notifyStaff": "Avisar al personal"
-  }
+  },
+  "comandaCustomer": "Cliente"
 }

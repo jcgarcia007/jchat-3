@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { fmtPrice } from "./templates/shared/format";
 import MenuTemplateRenderer from "./templates/MenuTemplateRenderer";
 import { resolvePalette, type MenuPalette } from "./templates/shared/palettes";
@@ -13,6 +13,11 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
+// F3: sesión de invitado + sheet de elección de cobro
+import CheckoutChoiceSheet from "./CheckoutChoiceSheet";
+import TabCodeSheet from "./TabCodeSheet";
+import TabOrderConfirmation from "./TabOrderConfirmation";
+import { readGuestSession, saveGuestSession, clearGuestSession, guestTab } from "@/lib/guestTabSession";
 import { buildOrderOptions } from "@/lib/orderOptions";
 import type {
   PublicBusiness,
@@ -52,7 +57,7 @@ interface CartItem {
   notes?: string;
 }
 
-type AppStep = "menu" | "cart" | "pickup" | "pay";
+type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "tabConfirm" | "pay";
 type PickupType = "counter" | "table";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1557,6 +1562,7 @@ export default function MenuPageClient({
   appRoomId?: string | null;
 }) {
   const t = useTranslations("menu");
+  const locale = useLocale();
   const cardEffect = business.menu_card_effect ?? "lift";
   // Resolve the active palette: a business-chosen custom palette (from the
   // 40-palette catalog) overrides the template's original board palette;
@@ -1634,6 +1640,15 @@ export default function MenuPageClient({
   // table via its token (resolved server-side in the payments EF).
   const [tableCtx, setTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
 
+  // F3: sesión de invitado (en sessionStorage vía guestTabSession.ts)
+  const [guestSession, setGuestSession] = useState<import("@/lib/guestTabSession").GuestTabSession | null>(null);
+  // Resultado del último add_order exitoso (para mostrar TabOrderConfirmation)
+  const [tabOrderResult, setTabOrderResult] = useState<{
+    subtotalCents: number;
+    items: Array<{ name: string; qty: number }>;
+    tableLabel: string;
+  } | null>(null);
+
   // ── Order status: gate the button on the owner's kds_settings toggle ─────────
   const [orderStatusAvailable, setOrderStatusAvailable] = useState(false);
   const [showOrderStatus, setShowOrderStatus] = useState(false);
@@ -1675,6 +1690,29 @@ export default function MenuPageClient({
       }
     })();
   }, [tableCtx, isAppMode]);
+
+  // F3: cargar sesión de invitado al montar y validar token contra la EF
+  useEffect(() => {
+    if (isAppMode) return;
+    const saved = readGuestSession(business.slug);
+    if (!saved) return;
+    setGuestSession(saved);
+    // Validar que la sesión sigue activa en el servidor
+    void (async () => {
+      try {
+        await guestTab.sessionStatus(saved.token);
+        // OK — sesión sigue activa, nada que hacer
+      } catch (err: unknown) {
+        const e = err as { code?: string };
+        if (e.code === "SESSION_INVALID" || e.code === "SESSION_EXPIRED") {
+          clearGuestSession();
+          setGuestSession(null);
+        }
+        // Otros errores (red) → conservar sesión en UI para no bloquear al usuario
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business.slug, isAppMode]);
 
   function clearTableContext() {
     setTableCtx(null);
@@ -1955,6 +1993,48 @@ export default function MenuPageClient({
         </div>
       )}
 
+      {/* F3: banda de sesión de invitado activa — solo cuando NO hay tableCtx (QR) */}
+      {guestSession && !tableCtx && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            padding: "10px 14px",
+            background: "var(--color-success, #1D9E75)",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          <span>{t("tableBandTabActive", { tableLabel: guestSession.tableLabel })}</span>
+          <button
+            type="button"
+            onClick={() => {
+              clearGuestSession();
+              setGuestSession(null);
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.7)",
+              color: "#fff",
+              borderRadius: 999,
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t("tableBandTabExit")}
+          </button>
+        </div>
+      )}
+
       {showBusinessHeader && <BusinessHeader biz={business} />}
 
       <MenuPaletteContext.Provider value={palette}>
@@ -2018,8 +2098,119 @@ export default function MenuPageClient({
             setPickupType(type);
             setPickupTable(table);
             setPickupName(name);
-            setStep("pay");
+            // F3: ir a selección de método de pago (Stripe vs cuenta de mesa)
+            setStep("choice");
           }}
+        />
+      )}
+
+      {/* F3: selección de método de pago — Stripe vs cuenta de mesa */}
+      {step === "choice" && (
+        <CheckoutChoiceSheet
+          palette={palette as unknown as Record<string, string>}
+          posPaymentMode={business.pos_payment_mode}
+          hasTableCtx={!!tableCtx}
+          hasGuestSession={!!guestSession}
+          onPayNow={() => setStep("pay")}
+          onAddToTab={() => {
+            if (guestSession) {
+              // Ya tiene sesión: add_order directo
+              void (async () => {
+                const idempotencyKey = crypto.randomUUID();
+                try {
+                  const result = await guestTab.addOrder({
+                    session_token: guestSession.token,
+                    idempotency_key: idempotencyKey,
+                    items: cartItems.map((ci) => ({
+                      menu_item_id: ci.itemId,
+                      qty: ci.quantity,
+                      options: buildOrderOptions(ci),
+                      special_instructions: ci.notes ?? undefined,
+                    })),
+                  });
+                  setTabOrderResult({
+                    subtotalCents: result.subtotal_cents,
+                    items: cartItems.map((ci) => ({ name: ci.name, qty: ci.quantity })),
+                    tableLabel: guestSession.tableLabel,
+                  });
+                  setCartItems([]);
+                  setStep("tabConfirm");
+                } catch (err: unknown) {
+                  const e = err as { code?: string };
+                  if (e.code === "SESSION_INVALID" || e.code === "SESSION_EXPIRED") {
+                    clearGuestSession();
+                    setGuestSession(null);
+                  }
+                  setStep("tabCode");
+                }
+              })();
+            } else {
+              // Sin sesión: ir a ingresar código
+              setStep("tabCode");
+            }
+          }}
+          onClose={() => setStep("pickup")}
+        />
+      )}
+
+      {/* F3: ingreso del código de 6 dígitos de la mesa */}
+      {step === "tabCode" && tableCtx && (
+        <TabCodeSheet
+          tableQrToken={tableCtx.token}
+          palette={palette as unknown as Record<string, string>}
+          onSuccess={(sessionToken, expiresAt, tableLabel, posPaymentMode) => {
+            const session = {
+              token: sessionToken,
+              expiresAt,
+              tableLabel,
+              businessSlug: business.slug,
+              posPaymentMode,
+            };
+            saveGuestSession(session);
+            setGuestSession(session);
+            // Con sesión en mano → ir directo a add_order
+            void (async () => {
+              const idempotencyKey = crypto.randomUUID();
+              try {
+                const result = await guestTab.addOrder({
+                  session_token: sessionToken,
+                  idempotency_key: idempotencyKey,
+                  items: cartItems.map((ci) => ({
+                    menu_item_id: ci.itemId,
+                    qty: ci.quantity,
+                    options: buildOrderOptions(ci),
+                    special_instructions: ci.notes ?? undefined,
+                  })),
+                });
+                setTabOrderResult({
+                  subtotalCents: result.subtotal_cents,
+                  items: cartItems.map((ci) => ({ name: ci.name, qty: ci.quantity })),
+                  tableLabel,
+                });
+                setCartItems([]);
+                setStep("tabConfirm");
+              } catch {
+                setStep("choice");
+              }
+            })();
+          }}
+          onClose={() => setStep("choice")}
+        />
+      )}
+
+      {/* F3: confirmación tras agregar a la cuenta */}
+      {step === "tabConfirm" && tabOrderResult && (
+        <TabOrderConfirmation
+          palette={palette as unknown as Record<string, string>}
+          locale={locale}
+          tableLabel={tabOrderResult.tableLabel}
+          subtotalCents={tabOrderResult.subtotalCents}
+          items={tabOrderResult.items}
+          onViewStatus={() => {
+            setShowOrderStatus(true);
+            setStep("menu");
+          }}
+          onKeepOrdering={() => setStep("menu")}
         />
       )}
 
@@ -2031,7 +2222,7 @@ export default function MenuPageClient({
           tableLabel={tableCtx ? tableCtx.tableLabel : pickupTable}
           tableQrToken={tableCtx?.token ?? null}
           presetName={pickupName}
-          onBack={() => setStep("pickup")}
+          onBack={() => setStep("choice")}
           onDone={() => {
             setCartItems([]);
             setStep("menu");

@@ -294,10 +294,10 @@ export default function PosTableHub(): React.ReactElement {
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
         refresh,
       )
-      // Order-level updates (order_status: kitchen marks 'preparing' for the whole order)
+      // Order-level updates (order_status) + INSERT (pedidos del cliente vía EF, F3)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        { event: '*', schema: 'public', table: 'orders' },
         refresh,
       )
       .subscribe();

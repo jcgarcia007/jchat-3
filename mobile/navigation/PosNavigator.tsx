@@ -31,6 +31,7 @@ import {
 import { getConnectionTokenSecret } from '../services/terminal';
 import { PosDraftProvider } from '../contexts/PosDraftContext';
 import { usePosAlerts } from '../hooks/usePosAlerts';
+import { useComandaPrintBridge } from '../hooks/useComandaPrintBridge';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
@@ -116,6 +117,12 @@ function PosAlertsInit({ businessId }: { businessId: string }): null {
   return null;
 }
 
+/** Puente de impresión de comandas de cliente (D-24, F3). */
+function PosComandaBridgeInit({ businessId }: { businessId: string }): null {
+  useComandaPrintBridge(businessId);
+  return null;
+}
+
 /**
  * Rendered inside StripeTerminalProvider. Calls initialize() once on mount so
  * the SDK is ready to discover and connect readers. Must be a child of the
@@ -171,6 +178,8 @@ export default function PosNavigator(): React.ReactElement {
       <PosDraftProvider>
         {/* In-app alert subscriptions — active exactly while Work Mode is mounted. */}
         <PosAlertsInit businessId={businessId} />
+        {/* Comanda print bridge — imprime órdenes de cliente a cocina/bar (D-24, F3). */}
+        <PosComandaBridgeInit businessId={businessId} />
         <PosStack.Navigator screenOptions={screenOptions}>
           {/* Pass params down to the first screen so it can read them from useRoute(). */}
           <PosStack.Screen

@@ -3026,5 +3026,28 @@
       "btnContact": "Contactar",
       "popularBadge": "Más popular"
     }
-  }
+  },
+  "tabCodeTitle": "Código de mesa",
+  "tabCodeSubtitle": "Ingresa el código de 6 dígitos que te dio el mesero",
+  "tabCodeEnter": "Entrar",
+  "tabCodeInvalid": "Código no válido. Revisa el código de tu mesa o pide ayuda a tu mesero.",
+  "tabCodeRateLimited": "Demasiados intentos. Espera {{seconds}} segundos.",
+  "tabCodeBlocked": "No puedes pedir desde este dispositivo. Pide ayuda a tu mesero.",
+  "tabCodeTableNotFound": "Mesa no encontrada.",
+  "tabCodeCaptchaFailed": "Error de verificación. Inténtalo de nuevo.",
+  "checkoutChoiceTitle": "¿Cómo quieres pagar?",
+  "checkoutChoicePayNow": "Pagar ahora",
+  "checkoutChoiceAddToTab": "Agregar a la cuenta de la mesa",
+  "checkoutChoiceSendToTab": "Enviar a la cuenta",
+  "checkoutChoiceHaveCode": "¿Tienes el código de tu mesa?",
+  "checkoutChoiceYes": "Sí, tengo el código",
+  "checkoutChoiceNo": "No",
+  "checkoutChoiceNoCodeSoon": "Pedidos sin código: disponible en breve",
+  "checkoutChoiceScanQrToOrder": "Escanea el QR de tu mesa para agregar a la cuenta",
+  "tabOrderAddedTitle": "Pedido agregado a la cuenta",
+  "tabOrderAddedSubtitle": "Mesa {{label}}",
+  "tabOrderViewStatus": "Ver estado de mis órdenes",
+  "tabOrderKeepOrdering": "Seguir pidiendo",
+  "tableBandTabActive": "Cuenta de la mesa activa",
+  "tableBandLeaveTab": "Salir"
 }

@@ -37,3 +37,8 @@ verify_jwt = false
 # see D-39). Does NOT lower payments'.
 [functions.guest-pay]
 verify_jwt = false
+
+# Public guest-tab session EF: called from the menu with no Supabase JWT.
+# Handles create_session / session_status / add_order for Tab POS F3.
+[functions.guest-tab]
+verify_jwt = false

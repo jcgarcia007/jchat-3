@@ -198,5 +198,6 @@
     "sheetBody": "A staff member will be notified and will come to your table.",
     "confirmServiceA11y": "Confirm service call",
     "notifyStaff": "Notify Staff"
-  }
+  },
+  "comandaCustomer": "Customer"
 }

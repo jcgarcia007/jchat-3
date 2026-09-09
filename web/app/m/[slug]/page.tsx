@@ -92,6 +92,8 @@ export interface PublicBusiness {
   menu_card_effect: string;
   menu_template_id: string;
   menu_palette_id: string | null;
+  /** F3: modo de cobro del negocio — disponible públicamente para el menú. */
+  pos_payment_mode: "stripe" | "external";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,7 +129,7 @@ async function getMenuData(slug: string): Promise<{
 
   const { data: biz, error: bizErr } = await supabase
     .from("businesses")
-    .select("id, slug, name, category, description, cover_url, icon_emoji, menu_card_effect, menu_template_id, menu_palette_id")
+    .select("id, slug, name, category, description, cover_url, icon_emoji, menu_card_effect, menu_template_id, menu_palette_id, pos_payment_mode")
     .eq("slug", slug)
     .single();
 
@@ -143,7 +145,8 @@ async function getMenuData(slug: string): Promise<{
     icon_emoji: biz.icon_emoji ?? null,
     menu_card_effect: biz.menu_card_effect ?? "lift",
     menu_template_id: (biz.menu_template_id as string) ?? "classic",
-    menu_palette_id: (biz.menu_palette_id as string | null) ?? null,
+    menu_palette_id:  (biz.menu_palette_id as string | null) ?? null,
+    pos_payment_mode: ((biz.pos_payment_mode as string | null) === "external" ? "external" : "stripe") as "stripe" | "external",
   };
 
   // Published categories ordered by sort

@@ -3461,6 +3461,7 @@ export default function MenuPage() {
       menu_card_effect: cardEffect,
       menu_template_id: menuTemplate,
       menu_palette_id: menuPalette,
+      pos_payment_mode: "stripe" as const,
     };
     const previewCategories: PublicMenuCategory[] = categories.map((cat) => ({
       id: cat.id,

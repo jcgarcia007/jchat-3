@@ -3026,5 +3026,28 @@
       "btnContact": "Contact",
       "popularBadge": "Most popular"
     }
-  }
+  },
+  "tabCodeTitle": "Table code",
+  "tabCodeSubtitle": "Enter the 6-digit code your server gave you",
+  "tabCodeEnter": "Enter",
+  "tabCodeInvalid": "Invalid code. Check the code on your table or ask your server for help.",
+  "tabCodeRateLimited": "Too many attempts. Wait {{seconds}} seconds.",
+  "tabCodeBlocked": "You can't order from this device. Ask your server for help.",
+  "tabCodeTableNotFound": "Table not found.",
+  "tabCodeCaptchaFailed": "Verification error. Please try again.",
+  "checkoutChoiceTitle": "How would you like to pay?",
+  "checkoutChoicePayNow": "Pay now",
+  "checkoutChoiceAddToTab": "Add to table tab",
+  "checkoutChoiceSendToTab": "Send to tab",
+  "checkoutChoiceHaveCode": "Do you have your table code?",
+  "checkoutChoiceYes": "Yes, I have the code",
+  "checkoutChoiceNo": "No",
+  "checkoutChoiceNoCodeSoon": "Orders without code: coming soon",
+  "checkoutChoiceScanQrToOrder": "Scan your table's QR code to add to the tab",
+  "tabOrderAddedTitle": "Order added to the tab",
+  "tabOrderAddedSubtitle": "Table {{label}}",
+  "tabOrderViewStatus": "View my order status",
+  "tabOrderKeepOrdering": "Keep ordering",
+  "tableBandTabActive": "Table tab active",
+  "tableBandLeaveTab": "Leave tab"
 }
