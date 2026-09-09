@@ -39,6 +39,7 @@ import {
   IconCopy,
   IconEye,
   IconBell,
+  IconCreditCard,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -73,7 +74,13 @@ interface BusinessRow {
   dashboard_palette_id?: number | null;
   table_subchats_enabled: boolean;
   kds_settings: Record<string, unknown> | null;
+  /** D-01 (Tab POS F1): stripe = cobros por Stripe · external = cobro propio del dueño. */
+  pos_payment_mode: PosPaymentMode;
 }
+
+/** Valores lógicos estables (no se traducen); solo la etiqueta va por i18n. */
+type PosPaymentMode = "stripe" | "external";
+const POS_PAYMENT_MODES: readonly PosPaymentMode[] = ["stripe", "external"];
 
 /** Shape stored in businesses.hours (JSONB) */
 interface DayHours {
@@ -607,6 +614,8 @@ export default function ConfigurationPage() {
   const [kdsSettings, setKdsSettings] = useState<Record<string, unknown>>({});
   const [customerStatusEnabled, setCustomerStatusEnabled] = useState(false);
   const [savingCustomerStatus, setSavingCustomerStatus] = useState(false);
+  const [posPaymentMode, setPosPaymentMode] = useState<PosPaymentMode>("stripe");
+  const [savingPaymentMode, setSavingPaymentMode] = useState(false);
 
   // ── Section 9c: Waiter alerts ─────────────────────────────────────────────
   const [alertsReady, setAlertsReady] = useState<AlertConfig>(DEFAULT_READY_ALERT);
@@ -649,7 +658,7 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled, kds_settings"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled, kds_settings, pos_payment_mode"
         )
         .eq("id", res.business.id)
         .maybeSingle();
@@ -674,6 +683,7 @@ export default function ConfigurationPage() {
       setTipPercentages(b.tip_percentages ?? [15, 18, 20]);
       setPayoutFrequency(b.payout_frequency ?? "weekly");
       setTableSubchatsEnabled(b.table_subchats_enabled ?? false);
+      setPosPaymentMode(b.pos_payment_mode === "external" ? "external" : "stripe");
       const rawKds = (b.kds_settings as Record<string, unknown> | null) ?? {};
       setKdsSettings(rawKds);
       setCustomerStatusEnabled((rawKds.customer_status_enabled as boolean) ?? false);
@@ -918,6 +928,25 @@ export default function ConfigurationPage() {
         ? t("configurationCustomerStatusEnabledSuccess")
         : t("configurationCustomerStatusDisabledSuccess")
     );
+  };
+
+  // D-01: guardado optimista con rollback al valor previo si la BD rechaza.
+  const handlePaymentModeChange = async (v: PosPaymentMode) => {
+    if (v === posPaymentMode || savingPaymentMode) return;
+    const prev = posPaymentMode;
+    setPosPaymentMode(v);
+    setError(null);
+    setSuccess(null);
+    setSavingPaymentMode(true);
+    try {
+      await patch({ pos_payment_mode: v });
+      setSuccess(t("configurationPaymentModeSavedSuccess"));
+    } catch (e: unknown) {
+      setPosPaymentMode(prev);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingPaymentMode(false);
+    }
   };
 
   const handleSaveAlerts = async () => {
@@ -1661,13 +1690,95 @@ export default function ConfigurationPage() {
         </div>
       </Section>
 
-      {/* ── 5c. Customer Order Visibility ───────────────────────────────────── */}
+      {/* ── 5c. Cobro y pedidos del cliente (Tab POS F1 · D-01 + D-12) ─────── */}
       <Section
-        icon={<IconEye size={18} color="var(--db-accent)" />}
-        title={t("configurationCustomerStatusSectionTitle")}
-        subtitle={t("configurationCustomerStatusSectionSubtitle")}
+        icon={<IconCreditCard size={18} color="var(--db-accent)" />}
+        title={t("configurationPaymentSectionTitle")}
+        subtitle={t("configurationPaymentSectionSubtitle")}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {/* Modo de cobro: radio de 2 opciones. Valor lógico estable, etiqueta i18n. */}
+        <div
+          role="radiogroup"
+          aria-label={t("configurationPaymentModeLabel")}
+          style={{ display: "grid", gap: "10px", marginBottom: "20px" }}
+        >
+          {POS_PAYMENT_MODES.map((mode) => {
+            const isActive = posPaymentMode === mode;
+            const disabled = noSupabase || noBiz || savingPaymentMode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                disabled={disabled}
+                onClick={() => void handlePaymentModeChange(mode)}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  textAlign: "left",
+                  padding: "12px 14px",
+                  borderRadius: "var(--db-radius)",
+                  border: isActive
+                    ? "2px solid var(--db-accent)"
+                    : "1px solid var(--db-border)",
+                  background: isActive ? "var(--db-accent-bg)" : "transparent",
+                  cursor: disabled ? "default" : "pointer",
+                  opacity: disabled && !isActive ? 0.6 : 1,
+                  transition: "all 0.15s",
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    marginTop: "3px",
+                    width: "14px",
+                    height: "14px",
+                    borderRadius: "50%",
+                    border: isActive
+                      ? "5px solid var(--db-accent)"
+                      : "2px solid var(--db-border)",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? "var(--db-accent)" : "var(--db-text-primary)",
+                    }}
+                  >
+                    {mode === "stripe"
+                      ? t("configurationPaymentModeStripeLabel")
+                      : t("configurationPaymentModeExternalLabel")}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "var(--db-text-secondary)", lineHeight: 1.45 }}>
+                    {mode === "stripe"
+                      ? t("configurationPaymentModeStripeDesc")
+                      : t("configurationPaymentModeExternalDesc")}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          {savingPaymentMode && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
+
+        {/* Estado de pedidos al cliente (D-12): misma fuente de verdad kds_settings.customer_status_enabled */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            paddingTop: "16px",
+            borderTop: "1px solid var(--db-border)",
+          }}
+        >
           <Toggle
             checked={customerStatusEnabled}
             onChange={(v) => void handleToggleCustomerStatus(v)}
@@ -1678,6 +1789,9 @@ export default function ConfigurationPage() {
             <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
           )}
         </div>
+        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
+          {t("configurationCustomerStatusSectionSubtitle")}
+        </p>
       </Section>
 
       {/* ── 5d. Waiter Alerts ──────────────────────────────────────────────────── */}

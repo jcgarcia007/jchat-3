@@ -2272,7 +2272,15 @@
     "menuTemplateTopArcDial": "Top-Arc Dial",
     "menuTemplateDescTopArcDial": "Category chips arranged on a concave arc across the top of the screen. Tap any chip to dial in that category below.",
     "menuTemplateBentoDeluxe": "Bento Deluxe",
-    "menuTemplateDescBentoDeluxe": "Evolved bento grid alternating full-width heroes, 2-col pairs, and 3-col trios. Clean editorial type with Playfair Display names."
+    "menuTemplateDescBentoDeluxe": "Evolved bento grid alternating full-width heroes, 2-col pairs, and 3-col trios. Clean editorial type with Playfair Display names.",
+    "configurationPaymentSectionTitle": "Payments & customer orders",
+    "configurationPaymentSectionSubtitle": "Choose how your business gets paid. It applies to the whole business.",
+    "configurationPaymentModeLabel": "Payment mode",
+    "configurationPaymentModeStripeLabel": "Card payments with Stripe (JChat / Tab POS)",
+    "configurationPaymentModeStripeDesc": "Customers can pay from their phone and servers charge with the card reader.",
+    "configurationPaymentModeExternalLabel": "Your own payment system (cash / external card)",
+    "configurationPaymentModeExternalDesc": "Customers never pay by phone. Servers collect cash or use your own terminal and record it when closing the tab.",
+    "configurationPaymentModeSavedSuccess": "Payment mode saved."
   },
   "superAdmin": {
     "shell": {

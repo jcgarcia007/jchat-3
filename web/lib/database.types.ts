@@ -323,6 +323,7 @@ export type Database = {
           stripe_payouts_enabled: boolean
           tax_rate: number | null
           kds_settings: Json | null
+          pos_payment_mode: string
           table_subchat_base_name: string | null
           table_subchats_enabled: boolean
           tip_percentages: number[]
@@ -385,6 +386,7 @@ export type Database = {
           stripe_payouts_enabled?: boolean
           tax_rate?: number | null
           kds_settings?: Json | null
+          pos_payment_mode?: string
           table_subchat_base_name?: string | null
           table_subchats_enabled?: boolean
           tip_percentages?: number[]
@@ -447,6 +449,7 @@ export type Database = {
           stripe_payouts_enabled?: boolean
           tax_rate?: number | null
           kds_settings?: Json | null
+          pos_payment_mode?: string
           table_subchat_base_name?: string | null
           table_subchats_enabled?: boolean
           tip_percentages?: number[]

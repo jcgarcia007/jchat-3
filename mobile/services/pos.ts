@@ -348,6 +348,10 @@ type PosRpc = {
     fn: 'pos_kds_settings',
     params: { p_business_id: string },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_business_settings',
+    params: { p_business_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -1219,5 +1223,43 @@ export async function posKdsSettings(businessId: string): Promise<PosAlertsConfi
       vibration: raw.alerts?.service_call?.vibration ?? DEFAULT_ALERTS.service_call.vibration,
       tone:      raw.alerts?.service_call?.tone      ?? DEFAULT_ALERTS.service_call.tone,
     },
+  };
+}
+
+// ─── posBusinessSettings (Tab POS F1 · D-01) ─────────────────────────────────
+
+/** Modo de cobro del negocio (valor lógico estable; la etiqueta va por i18n). */
+export type PosPaymentMode = 'stripe' | 'external';
+
+export interface PosBusinessSettings {
+  /** stripe = cobros por Stripe (cliente puede pagar por QR) · external = cobro propio del dueño. */
+  posPaymentMode: PosPaymentMode;
+  /** businesses.kds_settings tal cual (alerts, sla, customer_status_enabled…). */
+  kdsSettings: Record<string, unknown>;
+}
+
+/**
+ * Fetch the business-level POS settings via the `pos_business_settings` RPC
+ * (SECURITY DEFINER; staff with pos_access or the owner). Returns null when the
+ * caller has no access or the RPC fails — callers decide their own fallback.
+ * No consumers yet: F4 (approval) and F6 (external close) wire it up.
+ */
+export async function posBusinessSettings(
+  businessId: string,
+): Promise<PosBusinessSettings | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const { data, error } = await posRpc.rpc('pos_business_settings', {
+    p_business_id: businessId,
+  });
+  if (error || data == null) return null;
+
+  const raw = data as { pos_payment_mode?: unknown; kds_settings?: unknown };
+  return {
+    posPaymentMode: raw.pos_payment_mode === 'external' ? 'external' : 'stripe',
+    kdsSettings:
+      raw.kds_settings && typeof raw.kds_settings === 'object'
+        ? (raw.kds_settings as Record<string, unknown>)
+        : {},
   };
 }

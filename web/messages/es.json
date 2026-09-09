@@ -2272,7 +2272,15 @@
     "menuTemplateTopArcDial": "Dial de Arco",
     "menuTemplateDescTopArcDial": "Chips de categoría posicionados en un arco cóncavo en la parte superior. Toca uno para mostrar su menú debajo.",
     "menuTemplateBentoDeluxe": "Bento Deluxe",
-    "menuTemplateDescBentoDeluxe": "Grid bento evolucionado con hero full-width, pares 2-col y tríos 3-col. Tipografía editorial con Playfair Display."
+    "menuTemplateDescBentoDeluxe": "Grid bento evolucionado con hero full-width, pares 2-col y tríos 3-col. Tipografía editorial con Playfair Display.",
+    "configurationPaymentSectionTitle": "Cobro y pedidos del cliente",
+    "configurationPaymentSectionSubtitle": "Elige cómo cobra tu negocio. Aplica a todo el negocio.",
+    "configurationPaymentModeLabel": "Modo de cobro",
+    "configurationPaymentModeStripeLabel": "Cobro con Stripe (JChat / Tab POS)",
+    "configurationPaymentModeStripeDesc": "Los clientes pueden pagar desde su teléfono y el mesero cobra con el lector.",
+    "configurationPaymentModeExternalLabel": "Sistema de cobro propio (efectivo / tarjeta externa)",
+    "configurationPaymentModeExternalDesc": "Los clientes nunca pagan por teléfono. El mesero cobra en efectivo o con tu terminal y lo registra al cerrar la cuenta.",
+    "configurationPaymentModeSavedSuccess": "Modo de cobro guardado."
   },
   "superAdmin": {
     "shell": {
