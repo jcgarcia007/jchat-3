@@ -58,9 +58,15 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── tryPrint ─────────────────────────────────────────────────────────────────
 
   async function tryPrint(orderId: string, tableLabel: string | null): Promise<void> {
-    if (processedRef.current.has(orderId)) return; // ya procesado esta sesión
+    console.log('[ComandaBridge] tryPrint orderId=', orderId, 'tableLabel=', tableLabel);
+
+    if (processedRef.current.has(orderId)) {
+      console.log('[ComandaBridge] tryPrint skip — ya procesado en sesión:', orderId);
+      return;
+    }
 
     const won = await claimPrint(orderId);
+    console.log('[ComandaBridge] claimPrint result — won=', won, 'orderId=', orderId);
     if (!won) return; // otro handheld lo tiene
 
     processedRef.current.add(orderId);
@@ -71,6 +77,7 @@ export function useComandaPrintBridge(businessId: string): void {
     try {
       await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
       printOk = true;
+      console.log('[ComandaBridge] impresión OK — orderId=', orderId);
     } catch (printErr) {
       console.warn('[ComandaBridge] fallo de impresión (1.º intento):', printErr);
     }
@@ -85,6 +92,7 @@ export function useComandaPrintBridge(businessId: string): void {
       try {
         await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
         await markPrinted(orderId);
+        console.log('[ComandaBridge] impresión OK (2.º intento) — orderId=', orderId);
       } catch (retryErr) {
         console.warn('[ComandaBridge] fallo de impresión (2.º intento) — liberando reclamo:', retryErr);
         await releasePrint(orderId);
@@ -96,55 +104,75 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── Catch-up: órdenes pendientes de los últimas 12 h ──────────────────────
 
   async function catchUp(): Promise<void> {
-    const { data, error } = await (supabase as unknown as {
-      rpc(fn: 'pos_pending_comandas', params: { p_business_id: string }):
-        Promise<{ data: PendingComanda[] | null; error: { message: string } | null }>;
-    }).rpc('pos_pending_comandas', { p_business_id: businessId });
+    try {
+      const { data, error } = await (supabase as unknown as {
+        rpc(fn: 'pos_pending_comandas', params: { p_business_id: string }):
+          Promise<{ data: PendingComanda[] | null; error: { message: string } | null }>;
+      }).rpc('pos_pending_comandas', { p_business_id: businessId });
 
-    if (error) {
-      console.warn('[ComandaBridge] catch-up error:', error.message);
-      return;
-    }
+      if (error) {
+        console.warn('[ComandaBridge] catchUp error RPC:', error.message);
+        return;
+      }
 
-    for (const row of data ?? []) {
-      await tryPrint(row.order_id, row.table_label);
+      console.log('[ComandaBridge] catchUp:', data?.length ?? 0, 'pendientes');
+
+      for (const row of data ?? []) {
+        await tryPrint(row.order_id, row.table_label);
+      }
+    } catch (err) {
+      console.error('[ComandaBridge] catchUp excepción inesperada:', err);
     }
   }
 
   // ── Realtime subscription ────────────────────────────────────────────────────
 
   function subscribe(): void {
-    if (channelRef.current) return; // ya suscrito
+    if (channelRef.current) {
+      console.log('[ComandaBridge] subscribe skip — canal ya activo');
+      return;
+    }
 
-    const channel = supabase
-      .channel(`pos-comanda-bridge-${businessId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'orders',
-          filter: `business_id=eq.${businessId}`,
-        },
-        (payload: { new: Record<string, unknown> }) => {
-          const row = payload.new;
-          const src = row['source'] as string | undefined;
-          const apr = row['approval_status'] as string | null | undefined;
+    try {
+      const channel = supabase
+        .channel(`pos-comanda-bridge-${businessId}`)
+        .on(
+          'postgres_changes',
+          {
+            event:  'INSERT',
+            schema: 'public',
+            table:  'orders',
+            filter: `business_id=eq.${businessId}`,
+          },
+          (payload: { new: Record<string, unknown> }) => {
+            const row = payload.new;
+            const src = row['source'] as string | undefined;
+            const apr = row['approval_status'] as string | null | undefined;
 
-          // Solo órdenes de cliente sin aprobación pendiente
-          if (
-            (src === 'customer_stripe' || src === 'customer_tab') &&
-            (apr === null || apr === undefined || apr === 'approved')
-          ) {
-            const orderId    = row['id'] as string;
-            const tableLabel = (row['table_label'] as string | null) ?? null;
-            void tryPrint(orderId, tableLabel);
-          }
-        },
-      )
-      .subscribe();
+            console.log(
+              '[ComandaBridge] realtime INSERT recibido:',
+              row['id'], 'source=', src, 'approval_status=', apr,
+            );
 
-    channelRef.current = channel;
+            // Solo órdenes de cliente sin aprobación pendiente
+            if (
+              (src === 'customer_stripe' || src === 'customer_tab') &&
+              (apr === null || apr === undefined || apr === 'approved')
+            ) {
+              const orderId    = row['id'] as string;
+              const tableLabel = (row['table_label'] as string | null) ?? null;
+              void tryPrint(orderId, tableLabel);
+            }
+          },
+        )
+        .subscribe((status: string) => {
+          console.log('[ComandaBridge] channel status:', status);
+        });
+
+      channelRef.current = channel;
+    } catch (err) {
+      console.error('[ComandaBridge] subscribe excepción inesperada:', err);
+    }
   }
 
   function unsubscribe(): void {
@@ -170,8 +198,14 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── Mount / unmount ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    subscribe();
-    void catchUp(); // catch-up inicial al abrir el POS
+    console.log('[ComandaBridge] mount, businessId=', businessId);
+
+    try {
+      subscribe();
+      void catchUp(); // catch-up inicial al abrir el POS
+    } catch (err) {
+      console.error('[ComandaBridge] mount error:', err);
+    }
 
     return () => {
       unsubscribe();
