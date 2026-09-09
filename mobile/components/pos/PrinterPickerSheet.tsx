@@ -67,7 +67,7 @@ interface PrinterPickerSheetProps {
 
 const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetProps>(
   function PrinterPickerSheet({ onNoPrinter, onError }, ref) {
-    const { t }   = useTranslation('pos');
+    const { t }   = useTranslation('settings');
     const colors  = useThemeColors();
 
     // Picker state
@@ -186,7 +186,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
 
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>
-              {t('tableCode.pickPrinter')}
+              {t('pos.tableCode.pickPrinter')}
             </Text>
 
             <FlatList

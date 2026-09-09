@@ -262,7 +262,25 @@
     "receiptsReprint": "Reimprimir",
     "receiptsReprintNoCode": "Sin código de recibo",
     "receiptsReprintNoPrinter": "Sin impresora configurada",
-    "receiptsNoCode": "Sin código"
+    "receiptsNoCode": "Sin código",
+    "tableCode": {
+      "title": "Codigo de mesa",
+      "empty": "Sin codigo — la mesa esta libre",
+      "openAndGenerate": "Abrir mesa y generar codigo",
+      "since": "Abierta desde las {{time}}",
+      "print": "Imprimir",
+      "instructions": "Instrucciones de uso",
+      "release": "Liberar mesa",
+      "releaseConfirm": "Se cerrara la sesion y el codigo quedara invalido. ¿Continuar?",
+      "releaseBlocked": "No puedes liberar una mesa con pedidos abiertos.",
+      "noPrinter": "Configura una impresora de recibos o mesero en Ajustes.",
+      "pickPrinter": "Elige la impresora",
+      "ticketLine1": "Muestra este codigo al mesero",
+      "ticketLine2": "Es valido mientras la mesa este abierta",
+      "ticketLine3": "No lo compartas con nadie mas",
+      "printFailed": "No se pudo imprimir. Verifica la conexion a la impresora.",
+      "retry": "Reintentar"
+    }
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",
