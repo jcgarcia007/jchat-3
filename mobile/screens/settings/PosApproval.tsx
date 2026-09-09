@@ -339,7 +339,7 @@ export default function PosApprovalScreen(): React.ReactElement {
           style={styles.backBtn}
           accessibilityLabel={t('workMode.pinCancel')}
         >
-          <IconArrowLeft size={22} color="var(--color-text, #111)" />
+          <IconArrowLeft size={22} color="#111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
