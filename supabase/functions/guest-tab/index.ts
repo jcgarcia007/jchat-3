@@ -64,7 +64,7 @@ async function verifyCaptcha(token: string, remoteip: string | null): Promise<bo
   }
   const body = new URLSearchParams({ secret, response: token });
   if (remoteip) body.set("remoteip", remoteip);
-  const res  = await fetch("https://hcaptcha.com/siteverify", { method: "POST", body });
+  const res  = await fetch("https://api.hcaptcha.com/siteverify", { method: "POST", body });
   const json = await res.json() as { success: boolean };
   return json.success === true;
 }
@@ -197,7 +197,8 @@ async function handleCreateSession(body: Record<string, unknown>, req: Request):
   const userAgent  = (req.headers.get("user-agent") ?? "").slice(0, 200);
   const fpHash     = await sha256Hex(fingerprint);
 
-  await db.from("guest_tab_sessions").insert({
+  // Paso 7a: insertar sesión — capturar error; no devolver token si falla
+  const { error: sessInsertErr } = await db.from("guest_tab_sessions").insert({
     business_id:            businessId,
     table_id:               tableId,
     table_session_opened_at: table.session_opened_at,
@@ -209,6 +210,12 @@ async function handleCreateSession(body: Record<string, unknown>, req: Request):
     expires_at:             expiresAt,
   });
 
+  if (sessInsertErr) {
+    console.error("[guest-tab] Error insertando guest_tab_sessions:", sessInsertErr.message);
+    return errResponse("INTERNAL", "No se pudo crear la sesión", 500);
+  }
+
+  // Paso 7b: marcar intento exitoso (guard: attempt puede ser null si el insert falló)
   if (attempt?.id) {
     await db.from("guest_code_attempts").update({ success: true }).eq("id", attempt.id);
   }
@@ -359,15 +366,17 @@ async function handleAddOrder(body: Record<string, unknown>): Promise<Response> 
       approval_status: null,
       subtotal_cents:  existingOrder?.subtotal_cents,
       total_cents:     existingOrder?.total_cents,
-      items: (existingItems ?? []).map((r: { qty: number; menu_items: { name: string } }) => ({
-        name: r.menu_items.name,
-        qty:  r.qty,
+      // deno-lint-ignore no-explicit-any
+      items: (existingItems ?? []).map((r: any) => ({
+        name: (r.menu_items as { name: string }).name,
+        qty:  r.qty as number,
       })),
     });
   }
 
   // 4. Calcular precios en servidor (nunca del cliente)
-  const priced = await priceLinesFromDb(db, sess.business_id, items.map((it) => ({
+  // deno-lint-ignore no-explicit-any
+  const priced = await priceLinesFromDb(db as any, sess.business_id, items.map((it) => ({
     menu_item_id: it.menu_item_id,
     qty:          it.qty,
     options:      it.options,
@@ -436,12 +445,55 @@ async function handleAddOrder(body: Record<string, unknown>): Promise<Response> 
     return errResponse("INTERNAL", "Error al insertar ítems de la orden", 500);
   }
 
-  // 7. Registrar idempotencia
-  await db.from("guest_order_idempotency").insert({
+  // 7. Registrar idempotencia — capturar errores de forma robusta
+  const { error: idemInsertErr } = await db.from("guest_order_idempotency").insert({
     idempotency_key,
     business_id: sess.business_id,
     order_id:    order.id,
   });
+
+  if (idemInsertErr) {
+    // Código 23505 = violación de PK/UNIQUE: otra petición con la misma key ganó la carrera.
+    // Recargamos esa orden y la devolvemos (mismo shape que el paso 3) para mantener
+    // exactamente-una-vez semántica sin dejar dos órdenes huérfanas.
+    if ((idemInsertErr as { code?: string }).code === "23505") {
+      const { data: raceIdem } = await db
+        .from("guest_order_idempotency")
+        .select("order_id")
+        .eq("idempotency_key", idempotency_key)
+        .maybeSingle();
+
+      if (raceIdem?.order_id) {
+        // Borrar la orden que acabamos de crear (la otra ganó)
+        await db.from("orders").delete().eq("id", order.id);
+
+        const { data: raceOrder } = await db
+          .from("orders")
+          .select("id, subtotal_cents, total_cents")
+          .eq("id", raceIdem.order_id)
+          .single();
+
+        const { data: raceItems } = await db
+          .from("order_items")
+          .select("qty, menu_items!inner(name)")
+          .eq("order_id", raceIdem.order_id);
+
+        return jsonResponse({
+          order_id:        raceOrder?.id,
+          approval_status: null,
+          subtotal_cents:  raceOrder?.subtotal_cents,
+          total_cents:     raceOrder?.total_cents,
+          // deno-lint-ignore no-explicit-any
+          items: (raceItems ?? []).map((r: any) => ({
+            name: (r.menu_items as { name: string }).name,
+            qty:  r.qty as number,
+          })),
+        });
+      }
+    }
+    // Otros errores: la orden ya está creada y los ítems también — no bloquear al cliente.
+    console.error("[guest-tab] Error insertando guest_order_idempotency (no crítico):", idemInsertErr.message);
+  }
 
   // D-27 (deuda técnica): guest-tab no descuenta inventario — paridad con stripe-webhook.
   // Se resolverá en la fase de inventario junto con customer_stripe.
@@ -457,9 +509,10 @@ async function handleAddOrder(body: Record<string, unknown>): Promise<Response> 
     approval_status: null,
     subtotal_cents:  subtotalCents,
     total_cents:     subtotalCents,
-    items: (createdItems ?? []).map((r: { qty: number; menu_items: { name: string } }) => ({
-      name: r.menu_items.name,
-      qty:  r.qty,
+    // deno-lint-ignore no-explicit-any
+    items: (createdItems ?? []).map((r: any) => ({
+      name: (r.menu_items as { name: string }).name,
+      qty:  r.qty as number,
     })),
   });
 }
