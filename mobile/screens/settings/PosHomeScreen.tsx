@@ -37,6 +37,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconArchive,
+  IconBell,
   IconChevronLeft,
   IconClipboardList,
   IconKey,
@@ -50,6 +51,7 @@ import { useThemeColors } from '../../theme/colors';
 import {
   posPickupBoard,
   posTablesOverview,
+  sumAwaitingCount,
   type PosTablesOverviewRow,
 } from '../../services/pos';
 import { getChatPermissions } from '../../services/permissions';
@@ -75,6 +77,9 @@ export default function PosHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [readyCount, setReadyCount] = useState(0);
   const [canInventory, setCanInventory] = useState(false);
+
+  // F4: total de órdenes sin código esperando aprobación en todas las mesas
+  const awaitingCount = sumAwaitingCount(tables);
 
   // One-time permission check for the Inventory button
   useEffect(() => {
@@ -262,6 +267,16 @@ export default function PosHomeScreen() {
               <IconKey size={10} color={c.brand} strokeWidth={2} />
             </View>
           ) : null}
+
+          {/* F4 — awaiting approval badge */}
+          {(item.awaiting_count ?? 0) > 0 ? (
+            <View style={[styles.assignBadge, { backgroundColor: c.warning + '22', flexDirection: 'row', gap: 2, alignItems: 'center' }]}>
+              <IconBell size={10} color={c.warning} strokeWidth={2} />
+              <Text style={[styles.assignText, { color: c.warning }]}>
+                {item.awaiting_count}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* ── Table label ─────────────────────────────────────────────────── */}
@@ -325,6 +340,21 @@ export default function PosHomeScreen() {
           accessibilityLabel={t('pos.receiptsTitle')}
         >
           <IconReceipt size={22} color={c.brand} strokeWidth={2} />
+        </Pressable>
+
+        {/* ── F4: Aprobaciones pendientes ─────────────────────────────────── */}
+        <Pressable
+          onPress={() => navigation.navigate('PosApproval', { businessId })}
+          style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('pos.approval.badge', { defaultValue: 'Por aprobar' })}
+        >
+          <IconBell size={22} color={awaitingCount > 0 ? c.warning : c.brand} strokeWidth={2} />
+          {awaitingCount > 0 && (
+            <View style={[styles.ordersBadge, { backgroundColor: c.warning }]}>
+              <Text style={styles.ordersBadgeText}>{awaitingCount}</Text>
+            </View>
+          )}
         </Pressable>
 
         {/* ── Órdenes (pickup board) button ────────────────────────────── */}

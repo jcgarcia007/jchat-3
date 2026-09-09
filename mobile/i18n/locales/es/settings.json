@@ -280,6 +280,31 @@
       "ticketLine3": "No lo compartas con nadie mas",
       "printFailed": "No se pudo imprimir. Verifica la conexion a la impresora.",
       "retry": "Reintentar"
+    },
+    "approval": {
+      "title": "Pedidos por aprobar",
+      "titleTable": "Por aprobar — {{table}}",
+      "empty": "No hay pedidos esperando aprobación",
+      "badge": "Por aprobar",
+      "approve": "Aprobar",
+      "edit": "Editar",
+      "reject": "Rechazar",
+      "cancel": "Cancelar",
+      "editConfirm": "El pedido se rechazará para que puedas editarlo. El cliente verá 'pedido ajustado'. ¿Continuar?",
+      "editDone": "Pedido listo para editar en el hub de mesa.",
+      "editError": "No se pudo rechazar para editar. Intenta de nuevo.",
+      "rejectTitle": "Rechazar pedido",
+      "rejectSubtitle": "Selecciona el motivo del rechazo:",
+      "rejectError": "No se pudo rechazar el pedido.",
+      "reasonNoStock": "Sin stock",
+      "reasonSuspicious": "Pedido sospechoso",
+      "reasonOther": "Otro motivo",
+      "strikeWarning": "Atención: este será el strike {{count}} del dispositivo. Al 2.º strike queda bloqueado.",
+      "blockedUntil": "Bloqueado hasta {{date}}",
+      "alreadyProcessed": "Este pedido ya fue procesado por otro mesero.",
+      "sentToKitchen": "Pedido aprobado y enviado a cocina.",
+      "approveError": "No se pudo aprobar el pedido.",
+      "deviceStrikes": "{{count}} strike(s)"
     }
   },
   "privacy": {

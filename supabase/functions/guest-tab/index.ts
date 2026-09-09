@@ -1,14 +1,18 @@
 /**
- * guest-tab — Tab POS F3
+ * guest-tab — Tab POS F3 + F4
  *
  * PUBLIC endpoint (verify_jwt = false en config.toml): un cliente con el QR de la
- * mesa y el código de 6 dígitos crea una sesión de invitado y puede agregar órdenes
- * a la cuenta de la mesa sin pagar ahora.
+ * mesa puede crear sesión de invitado (con código), agregar órdenes con código,
+ * enviar pedidos sin código (esperan aprobación del mesero, F4), y ver el estado
+ * de sus propios pedidos.
  *
  * Acciones:
- *   create_session  { table_qr_token, access_code, device_id, fingerprint, captcha_token }
- *   session_status  { session_token }
- *   add_order       { session_token, idempotency_key, items[], contact_name?, notes? }
+ *   create_session     { table_qr_token, access_code, device_id, fingerprint, captcha_token }
+ *   session_status     { session_token }
+ *   add_order          { session_token, idempotency_key, items[], contact_name?, notes? }
+ *   add_order_no_code  { table_qr_token, device_id, fingerprint, captcha_token,
+ *                        idempotency_key, items[], contact_name?, notes? }   — F4
+ *   order_status       { session_token } | { table_qr_token, device_id }    — F4
  *
  * Errores: { error: { code, message, retry_after_s?, blocked_until? } } con HTTP 4xx.
  * El campo `code` es estable en mayúsculas — el cliente traduce por code.
@@ -517,6 +521,387 @@ async function handleAddOrder(body: Record<string, unknown>): Promise<Response> 
   });
 }
 
+// ─── F4: add_order_no_code ────────────────────────────────────────────────────
+// Cliente sin código → orden en approval_status='awaiting' (espera aprobación del mesero).
+// D-31: rate limit 3 pedidos/dispositivo/mesa cada 10 min para disuadir spam.
+
+async function handleAddOrderNoCode(body: Record<string, unknown>, req: Request): Promise<Response> {
+  const {
+    table_qr_token, device_id, fingerprint, captcha_token,
+    idempotency_key, items, contact_name, notes,
+  } = body as {
+    table_qr_token?:  string;
+    device_id?:       string;
+    fingerprint?:     string;
+    captcha_token?:   string;
+    idempotency_key?: string;
+    items?:           Array<{ menu_item_id: string; qty: number; options?: object; special_instructions?: string }>;
+    contact_name?:    string;
+    notes?:           string;
+  };
+
+  // 1. Validar shape
+  if (!table_qr_token || typeof table_qr_token !== "string")
+    return errResponse("VALIDATION", "table_qr_token requerido", 400);
+  if (!device_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(device_id))
+    return errResponse("VALIDATION", "device_id debe ser UUID v4", 400);
+  if (!fingerprint || typeof fingerprint !== "string" || fingerprint.length < 8 || fingerprint.length > 128)
+    return errResponse("VALIDATION", "fingerprint inválido", 400);
+  if (!captcha_token || typeof captcha_token !== "string")
+    return errResponse("VALIDATION", "captcha_token requerido", 400);
+  if (!idempotency_key || typeof idempotency_key !== "string")
+    return errResponse("VALIDATION", "idempotency_key requerido", 400);
+  if (!Array.isArray(items) || items.length === 0)
+    return errResponse("EMPTY_CART", "El carrito está vacío", 400);
+  for (const item of items) {
+    if (!item.menu_item_id || typeof item.menu_item_id !== "string")
+      return errResponse("VALIDATION", "Cada ítem requiere menu_item_id", 400);
+    if (!Number.isInteger(item.qty) || item.qty < 1)
+      return errResponse("VALIDATION", "qty debe ser entero ≥ 1", 400);
+  }
+  if (contact_name && contact_name.length > 60)
+    return errResponse("VALIDATION", "contact_name demasiado largo (máx. 60 chars)", 400);
+  if (notes && notes.length > 200)
+    return errResponse("VALIDATION", "notes demasiado largo (máx. 200 chars)", 400);
+
+  // 2. hCaptcha obligatorio (sin sesión = mayor riesgo de abuso)
+  const ip = getClientIp(req);
+  if (!(await verifyCaptcha(captcha_token, ip)))
+    return errResponse("CAPTCHA_FAILED", "Verificación de seguridad fallida", 403);
+
+  const db = getAdminClient();
+
+  // 3. Resolver mesa por qr_token
+  const { data: table } = await db
+    .from("tables")
+    .select("id, business_id, label, is_active")
+    .eq("qr_token", table_qr_token)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!table) return errResponse("TABLE_NOT_FOUND", "Mesa no encontrada", 404);
+
+  const { id: tableId, business_id: businessId, label: tableLabel } = table;
+
+  // 4. Gate: solo modo external (D-05)
+  const { data: biz } = await db
+    .from("businesses")
+    .select("pos_payment_mode, kds_settings")
+    .eq("id", businessId)
+    .single();
+
+  if (!biz || biz.pos_payment_mode !== "external")
+    return errResponse("MODE_NOT_ALLOWED", "Pedidos sin código solo disponibles en modo externo", 403);
+
+  // 5. Bloqueo de dispositivo (D-08)
+  const now = new Date().toISOString();
+  const { data: block } = await db
+    .from("guest_device_blocks")
+    .select("blocked_until")
+    .eq("business_id", businessId)
+    .eq("device_id", device_id)
+    .is("unblocked_at", null)
+    .gt("blocked_until", now)
+    .maybeSingle();
+
+  if (block) {
+    return errResponse("DEVICE_BLOCKED",
+      "No puedes pedir desde este dispositivo. Pide ayuda a tu mesero.", 403,
+      { blocked_until: block.blocked_until });
+  }
+
+  // 6. Rate limit: D-31 — máx. 3 pedidos sin código / dispositivo / mesa / 10 min
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { count: recentCount } = await db
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .eq("table_id", tableId)
+    .eq("guest_device_id", device_id)
+    .is("guest_session_id", null)
+    .gte("created_at", tenMinAgo);
+
+  if ((recentCount ?? 0) >= 3) {
+    return errResponse("RATE_LIMITED",
+      "Demasiados pedidos en poco tiempo. Espera unos minutos.", 429,
+      { retry_after_s: 600 });
+  }
+
+  // 7. Idempotencia
+  const { data: existingIdem } = await db
+    .from("guest_order_idempotency")
+    .select("order_id, business_id")
+    .eq("idempotency_key", idempotency_key)
+    .maybeSingle();
+
+  if (existingIdem) {
+    if (existingIdem.business_id !== businessId)
+      return errResponse("VALIDATION", "idempotency_key inválida para este negocio", 400);
+
+    const { data: existingOrder } = await db
+      .from("orders")
+      .select("id, approval_status, subtotal_cents, total_cents")
+      .eq("id", existingIdem.order_id)
+      .single();
+
+    const { data: existingItems } = await db
+      .from("order_items")
+      .select("qty, menu_items!inner(name)")
+      .eq("order_id", existingIdem.order_id);
+
+    return jsonResponse({
+      order_id:        existingOrder?.id,
+      approval_status: existingOrder?.approval_status ?? "awaiting",
+      subtotal_cents:  existingOrder?.subtotal_cents,
+      total_cents:     existingOrder?.total_cents,
+      // deno-lint-ignore no-explicit-any
+      items: (existingItems ?? []).map((r: any) => ({
+        name: (r.menu_items as { name: string }).name,
+        qty:  r.qty as number,
+      })),
+    });
+  }
+
+  // 8. Calcular precios en servidor (nunca del cliente)
+  // deno-lint-ignore no-explicit-any
+  const priced = await priceLinesFromDb(db as any, businessId, items.map((it) => ({
+    menu_item_id: it.menu_item_id,
+    qty:          it.qty,
+    options:      it.options,
+  })));
+
+  if ("error" in priced)
+    return errResponse("MENU_ITEM_UNAVAILABLE", (priced as { error: string }).error,
+      (priced as { status?: number }).status ?? 409);
+
+  const { lineUnitCents, resolvedOptions, subtotalCents } = priced as {
+    lineUnitCents:   number[];
+    resolvedOptions: Array<Record<string, unknown>>;
+    subtotalCents:   number;
+  };
+
+  // 9. Insertar orden con approval_status='awaiting' y status='confirmed'
+  //    (Punto 1/8-a: insertamos directamente 'confirmed' para evitar el double-write del trigger)
+  const { data: order, error: orderErr } = await db
+    .from("orders")
+    .insert({
+      business_id:       businessId,
+      table_id:          tableId,
+      table_label:       tableLabel,
+      order_type:        "table",
+      status:            "confirmed",      // D/8-a: directo, el trigger no necesita corregirlo
+      source:            "customer_tab",
+      approval_status:   "awaiting",       // F4: espera aprobación del mesero
+      guest_device_id:   device_id,
+      guest_session_id:  null,             // sin sesión de invitado
+      contact_name:      contact_name ?? null,
+      notes:             notes ?? null,
+      subtotal_cents:    subtotalCents,
+      tax_cents:         0,
+      tip_cents:         0,
+      discount_cents:    0,
+      total_cents:       subtotalCents,
+      paid_at:           null,
+      taken_by:          null,             // lo fija pos_approve_order (D-14)
+      status_updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (orderErr || !order)
+    return errResponse("INTERNAL", "Error al crear la orden", 500);
+
+  const orderItemsPayload = items.map((it, i) => ({
+    order_id:             order.id,
+    menu_item_id:         it.menu_item_id,
+    qty:                  it.qty,
+    price_cents:          lineUnitCents[i],
+    options:              resolvedOptions[i] ?? null,
+    special_instructions: it.special_instructions ?? null,
+    item_status:          "pending",
+  }));
+
+  const { error: itemsErr } = await db.from("order_items").insert(orderItemsPayload);
+
+  if (itemsErr) {
+    await db.from("orders").delete().eq("id", order.id);
+    return errResponse("INTERNAL", "Error al insertar ítems de la orden", 500);
+  }
+
+  // 10. Registrar idempotencia con manejo de carrera
+  const { error: idemInsertErr } = await db.from("guest_order_idempotency").insert({
+    idempotency_key,
+    business_id: businessId,
+    order_id:    order.id,
+  });
+
+  if (idemInsertErr) {
+    if ((idemInsertErr as { code?: string }).code === "23505") {
+      const { data: raceIdem } = await db
+        .from("guest_order_idempotency")
+        .select("order_id")
+        .eq("idempotency_key", idempotency_key)
+        .maybeSingle();
+
+      if (raceIdem?.order_id) {
+        await db.from("orders").delete().eq("id", order.id);
+        const { data: raceOrder } = await db
+          .from("orders")
+          .select("id, approval_status, subtotal_cents, total_cents")
+          .eq("id", raceIdem.order_id).single();
+        const { data: raceItems } = await db
+          .from("order_items").select("qty, menu_items!inner(name)")
+          .eq("order_id", raceIdem.order_id);
+        return jsonResponse({
+          order_id:        raceOrder?.id,
+          approval_status: raceOrder?.approval_status ?? "awaiting",
+          subtotal_cents:  raceOrder?.subtotal_cents,
+          total_cents:     raceOrder?.total_cents,
+          // deno-lint-ignore no-explicit-any
+          items: (raceItems ?? []).map((r: any) => ({
+            name: (r.menu_items as { name: string }).name,
+            qty:  r.qty as number,
+          })),
+        });
+      }
+    }
+    console.error("[guest-tab] Error insertando idempotency para no_code (no crítico):", idemInsertErr.message);
+  }
+
+  const { data: createdItems } = await db
+    .from("order_items").select("qty, menu_items!inner(name)").eq("order_id", order.id);
+
+  return jsonResponse({
+    order_id:        order.id,
+    approval_status: "awaiting",
+    subtotal_cents:  subtotalCents,
+    total_cents:     subtotalCents,
+    // deno-lint-ignore no-explicit-any
+    items: (createdItems ?? []).map((r: any) => ({
+      name: (r.menu_items as { name: string }).name,
+      qty:  r.qty as number,
+    })),
+  });
+}
+
+// ─── F4: order_status ─────────────────────────────────────────────────────────
+// Muestra el estado de los pedidos del cliente (sus propios, no los de la mesa completa).
+// Por sesión O por table_qr_token + device_id (pedidos sin código, últimas 12 h).
+
+async function handleOrderStatus(body: Record<string, unknown>): Promise<Response> {
+  const { session_token, table_qr_token, device_id } = body as {
+    session_token?:  string;
+    table_qr_token?: string;
+    device_id?:      string;
+  };
+
+  if (!session_token && (!table_qr_token || !device_id))
+    return errResponse("VALIDATION", "Se requiere session_token O (table_qr_token + device_id)", 400);
+
+  const db = getAdminClient();
+  let businessId: string;
+  let tableId: string | null = null;
+  let queryBySession = false;
+  let sessionId: string | null = null;
+
+  if (session_token) {
+    // Con sesión de invitado
+    const tokenHash = await sha256Hex(session_token);
+    const { data: sess } = await db
+      .from("guest_tab_sessions")
+      .select("id, business_id, table_id")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+    if (!sess) return errResponse("SESSION_INVALID", "Sesión inválida o expirada", 401);
+    businessId   = sess.business_id;
+    tableId      = sess.table_id;
+    sessionId    = sess.id;
+    queryBySession = true;
+  } else {
+    // Sin sesión: por table_qr_token + device_id
+    const { data: tbl } = await db
+      .from("tables")
+      .select("id, business_id")
+      .eq("qr_token", table_qr_token!)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!tbl) return errResponse("TABLE_NOT_FOUND", "Mesa no encontrada", 404);
+    businessId = tbl.business_id;
+    tableId    = tbl.id;
+  }
+
+  // Verificar customer_status_enabled (D-12)
+  const { data: bizCfg } = await db
+    .from("businesses")
+    .select("kds_settings")
+    .eq("id", businessId)
+    .single();
+
+  const enabled = (bizCfg?.kds_settings as Record<string, unknown>)?.customer_status_enabled === true;
+  if (!enabled) return jsonResponse({ enabled: false, orders: [] });
+
+  // Cargar pedidos del cliente (por session_id O por device_id + table + 12h)
+  let ordersQuery = db
+    .from("orders")
+    .select("id, created_at, approval_status, rejected_reason")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false });
+
+  if (queryBySession) {
+    ordersQuery = ordersQuery.eq("guest_session_id", sessionId!);
+  } else {
+    const twelveHAgo = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    ordersQuery = ordersQuery
+      .eq("table_id", tableId!)
+      .eq("guest_device_id", device_id!)
+      .is("guest_session_id", null)
+      .gte("created_at", twelveHAgo);
+  }
+
+  const { data: orders } = await ordersQuery;
+
+  if (!orders || orders.length === 0) return jsonResponse({ enabled: true, orders: [] });
+
+  const orderIds = orders.map((o: { id: string }) => o.id);
+
+  const { data: allItems } = await db
+    .from("order_items")
+    .select("order_id, qty, item_status, menu_items!inner(name)")
+    .in("order_id", orderIds);
+
+  // Mapear por order_id
+  const itemsByOrder = new Map<string, Array<{ name: string; qty: number; item_status: string }>>();
+  for (const it of (allItems ?? []) as Array<{ order_id: string; qty: number; item_status: string; menu_items: { name: string } }>) {
+    const bucket = itemsByOrder.get(it.order_id) ?? [];
+    bucket.push({ name: it.menu_items.name, qty: it.qty, item_status: it.item_status });
+    itemsByOrder.set(it.order_id, bucket);
+  }
+
+  const result = (orders as Array<{
+    id: string; created_at: string;
+    approval_status: string | null; rejected_reason: string | null;
+  }>).map((o) => {
+    // rejected_reason_kind: protege el motivo literal del cliente (D-spec § 5)
+    let rejectedReasonKind: "edited" | "rejected" | null = null;
+    if (o.approval_status === "rejected") {
+      rejectedReasonKind = o.rejected_reason === "edited_by_waiter" ? "edited" : "rejected";
+    }
+    return {
+      order_id:             o.id,
+      created_at:           o.created_at,
+      approval_status:      o.approval_status,        // null | 'awaiting' | 'approved' | 'rejected'
+      rejected_reason_kind: rejectedReasonKind,
+      items:                (itemsByOrder.get(o.id) ?? []).map((it) => ({
+        name:        it.name,
+        qty:         it.qty,
+        item_status: it.item_status,
+      })),
+    };
+  });
+
+  return jsonResponse({ enabled: true, orders: result });
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -533,9 +918,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const action = body.action as string | undefined;
 
   switch (action) {
-    case "create_session":  return handleCreateSession(body, req);
-    case "session_status":  return handleSessionStatus(body);
-    case "add_order":       return handleAddOrder(body);
+    case "create_session":    return handleCreateSession(body, req);
+    case "session_status":    return handleSessionStatus(body);
+    case "add_order":         return handleAddOrder(body);
+    case "add_order_no_code": return handleAddOrderNoCode(body, req);  // F4
+    case "order_status":      return handleOrderStatus(body);           // F4
     default:
       return errResponse("UNKNOWN_ACTION", `Acción desconocida: ${action ?? "(vacía)"}`, 400);
   }

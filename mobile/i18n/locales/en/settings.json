@@ -280,6 +280,31 @@
       "ticketLine3": "Do not share with anyone else",
       "printFailed": "Could not print. Check printer connection.",
       "retry": "Retry"
+    },
+    "approval": {
+      "title": "Pending approval",
+      "titleTable": "Pending — {{table}}",
+      "empty": "No orders waiting for approval",
+      "badge": "To approve",
+      "approve": "Approve",
+      "edit": "Edit",
+      "reject": "Reject",
+      "cancel": "Cancel",
+      "editConfirm": "The order will be rejected so you can edit it. The customer will see 'order adjusted'. Continue?",
+      "editDone": "Order ready to edit in the table hub.",
+      "editError": "Could not reject for editing. Try again.",
+      "rejectTitle": "Reject order",
+      "rejectSubtitle": "Select the reason for rejection:",
+      "rejectError": "Could not reject the order.",
+      "reasonNoStock": "Out of stock",
+      "reasonSuspicious": "Suspicious order",
+      "reasonOther": "Other reason",
+      "strikeWarning": "Warning: this will be strike {{count}} for this device. After 2 strikes it will be blocked.",
+      "blockedUntil": "Blocked until {{date}}",
+      "alreadyProcessed": "This order was already processed by another waiter.",
+      "sentToKitchen": "Order approved and sent to kitchen.",
+      "approveError": "Could not approve the order.",
+      "deviceStrikes": "{{count}} strike(s)"
     }
   },
   "privacy": {

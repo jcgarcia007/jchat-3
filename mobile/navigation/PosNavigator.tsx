@@ -40,6 +40,7 @@ import PosSplitScreen from '../screens/settings/PosSplitScreen';
 import PosPickupScreen from '../screens/settings/PosPickupScreen';
 import PosInventoryScreen from '../screens/settings/PosInventoryScreen';
 import PosReceiptsScreen from '../screens/settings/PosReceiptsScreen';
+import PosApprovalScreen from '../screens/settings/PosApproval';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -101,6 +102,15 @@ export type PosStackParamList = {
   PosInventory: {
     businessId: string;
     businessName: string;
+  };
+  /**
+   * F4 — Approval screen: list of awaiting orders; waiter can approve / edit / reject.
+   * tableId + tableLabel are optional — when present, pre-filters to that table.
+   */
+  PosApproval: {
+    businessId:   string;
+    tableId?:     string;
+    tableLabel?:  string;
   };
 };
 
@@ -201,6 +211,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosInventory" component={PosInventoryScreen} />
           {/* PosReceipts: today's receipts log + reprint (Fase 4B) */}
           <PosStack.Screen name="PosReceipts" component={PosReceiptsScreen} />
+          {/* PosApproval: F4 — approve / edit / reject awaiting customer orders */}
+          <PosStack.Screen name="PosApproval" component={PosApprovalScreen} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

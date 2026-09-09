@@ -85,4 +85,38 @@ export const guestTab = {
   }) => callGuestTab<{ order_id: string; approval_status: null; subtotal_cents: number; total_cents: number; items: Array<{ name: string; qty: number }> }>(
     { action: 'add_order', ...params }
   ),
+
+  /** F4 — Orden sin código; espera aprobación del mesero. */
+  addOrderNoCode: (params: {
+    table_qr_token:  string;
+    device_id:       string;
+    fingerprint:     string;
+    captcha_token:   string;
+    idempotency_key: string;
+    items:           Array<{ menu_item_id: string; qty: number; options?: object; special_instructions?: string }>;
+    contact_name?:   string;
+    notes?:          string;
+  }) => callGuestTab<{ order_id: string; approval_status: 'awaiting'; subtotal_cents: number; total_cents: number; items: Array<{ name: string; qty: number }> }>(
+    { action: 'add_order_no_code', ...params }
+  ),
+
+  /**
+   * F4 — Estado de los pedidos del cliente.
+   * Se puede consultar con sesión O con qr_token + device_id (sin código).
+   */
+  orderStatus: (params:
+    | { session_token: string }
+    | { table_qr_token: string; device_id: string }
+  ) => callGuestTab<{
+    enabled: boolean;
+    orders: Array<{
+      order_id:             string;
+      created_at:           string;
+      approval_status:      string | null;
+      rejected_reason_kind: 'edited' | 'rejected' | null;
+      items: Array<{ name: string; qty: number; item_status: string }>;
+    }>;
+  }>(
+    { action: 'order_status', ...params }
+  ),
 };

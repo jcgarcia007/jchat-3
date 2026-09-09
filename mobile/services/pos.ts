@@ -95,6 +95,11 @@ export interface PosTablesOverviewRow {
    * F2.
    */
   has_access_code: boolean;
+  /**
+   * F4: Number of customer orders at this table with approval_status='awaiting'.
+   * 0 when none pending.
+   */
+  awaiting_count: number;
 }
 
 export interface PosOrderItem {
@@ -963,13 +968,16 @@ export interface PosAlertConfig {
 }
 
 export interface PosAlertsConfig {
-  ready: PosAlertConfig;
+  ready:        PosAlertConfig;
   service_call: PosAlertConfig;
+  /** F4 — alerta cuando llega una orden sin código esperando aprobación. */
+  approval:     PosAlertConfig;
 }
 
 const DEFAULT_ALERTS: PosAlertsConfig = {
   ready:        { sound: true, vibration: true, tone: 'ding' },
   service_call: { sound: true, vibration: true, tone: 'bell' },
+  approval:     { sound: true, vibration: true, tone: 'alert' },
 };
 
 // ─── posPickupBoard ───────────────────────────────────────────────────────────
@@ -1226,8 +1234,9 @@ export async function posKdsSettings(businessId: string): Promise<PosAlertsConfi
   if (error || data == null) return DEFAULT_ALERTS;
 
   const raw = data as { alerts?: Partial<{
-    ready: Partial<PosAlertConfig>;
+    ready:        Partial<PosAlertConfig>;
     service_call: Partial<PosAlertConfig>;
+    approval:     Partial<PosAlertConfig>;
   }> };
 
   return {
@@ -1240,6 +1249,11 @@ export async function posKdsSettings(businessId: string): Promise<PosAlertsConfi
       sound:     raw.alerts?.service_call?.sound     ?? DEFAULT_ALERTS.service_call.sound,
       vibration: raw.alerts?.service_call?.vibration ?? DEFAULT_ALERTS.service_call.vibration,
       tone:      raw.alerts?.service_call?.tone      ?? DEFAULT_ALERTS.service_call.tone,
+    },
+    approval: {
+      sound:     raw.alerts?.approval?.sound     ?? DEFAULT_ALERTS.approval.sound,
+      vibration: raw.alerts?.approval?.vibration ?? DEFAULT_ALERTS.approval.vibration,
+      tone:      raw.alerts?.approval?.tone      ?? DEFAULT_ALERTS.approval.tone,
     },
   };
 }
@@ -1363,4 +1377,189 @@ export async function posTableSession(
     open_total_cents: raw.open_total_cents ?? 0,
     open_orders_count: raw.open_orders_count ?? 0,
   };
+}
+
+// ─── F4: Approval, Strikes & Block types ──────────────────────────────────────
+
+/** One awaiting order returned by pos_awaiting_orders. */
+export interface PosAwaitingOrder {
+  order_id:      string;
+  table_id:      string;
+  table_label:   string;
+  created_at:    string;
+  contact_name:  string | null;
+  subtotal_cents: number;
+  items: Array<{
+    order_item_id: string;
+    name:          string;
+    qty:           number;
+    seat:          number | null;
+    special_instructions: string | null;
+    modifiers:     Array<{ group_label: string; choice_labels: string[] }>;
+  }>;
+  device_strikes: number;   // strikes acumulados por el dispositivo en 30 días
+}
+
+/** One blocked device returned by pos_list_blocked_devices. */
+export interface PosBlockedDevice {
+  id:            string;
+  device_id:     string;
+  blocked_at:    string;
+  blocked_until: string;
+  reason:        string | null;
+  strikes:       number;
+}
+
+export type PosApproveOrderError =
+  | 'order_not_found'
+  | 'already_processed'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosApproveOrderResult =
+  | { ok: true }
+  | { ok: false; reason: PosApproveOrderError };
+
+export type PosRejectOrderError =
+  | 'order_not_found'
+  | 'already_processed'
+  | 'no_access'
+  | 'db_error'
+  | 'not_configured';
+
+export type PosRejectOrderResult =
+  | { ok: true }
+  | { ok: false; reason: PosRejectOrderError };
+
+// ─── posAwaitingOrders ────────────────────────────────────────────────────────
+
+/**
+ * Returns all orders with approval_status='awaiting' for a business.
+ * F4: used by PosApprovalScreen to list pending customer orders.
+ * The employee must have pos_access at the business.
+ */
+export async function posAwaitingOrders(businessId: string): Promise<PosAwaitingOrder[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await (posRpc as unknown as { rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> }).rpc('pos_awaiting_orders', {
+    p_business_id: businessId,
+  });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PosAwaitingOrder[];
+}
+
+// ─── posApproveOrder ──────────────────────────────────────────────────────────
+
+/**
+ * Approve a customer order that is awaiting review.
+ * Sets approval_status='approved', taken_by = resolve_table_waiter_for_attribution(…).
+ * F4.
+ */
+export async function posApproveOrder(
+  businessId: string,
+  orderId: string,
+): Promise<PosApproveOrderResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await (posRpc as unknown as { rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> }).rpc('pos_approve_order', {
+    p_business_id: businessId,
+    p_order_id:    orderId,
+  });
+
+  if (error) {
+    const msg = error.message.toUpperCase();
+    if (msg.includes('ORDER_NOT_FOUND'))     return { ok: false, reason: 'order_not_found' };
+    if (msg.includes('ALREADY_PROCESSED'))   return { ok: false, reason: 'already_processed' };
+    if (msg.includes('NOT_AUTHENTICATED') || msg.includes('NOT_EMPLOYEE')) return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
+}
+
+// ─── posRejectOrder ───────────────────────────────────────────────────────────
+
+/**
+ * Reject a customer order that is awaiting review.
+ * mode='reject'  → marks as rejected, records reason, increments strike (if applicable).
+ * mode='edit'    → marks as rejected with reason='edited_by_waiter' (no strike).
+ * F4.
+ */
+export async function posRejectOrder(
+  businessId: string,
+  orderId: string,
+  mode: 'reject' | 'edit',
+  reason?: string,
+): Promise<PosRejectOrderResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await (posRpc as unknown as { rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> }).rpc('pos_reject_order', {
+    p_business_id: businessId,
+    p_order_id:    orderId,
+    p_mode:        mode,
+    p_reason:      reason ?? null,
+  });
+
+  if (error) {
+    const msg = error.message.toUpperCase();
+    if (msg.includes('ORDER_NOT_FOUND'))     return { ok: false, reason: 'order_not_found' };
+    if (msg.includes('ALREADY_PROCESSED'))   return { ok: false, reason: 'already_processed' };
+    if (msg.includes('NOT_AUTHENTICATED') || msg.includes('NOT_EMPLOYEE')) return { ok: false, reason: 'no_access' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true };
+}
+
+// ─── posListBlockedDevices ────────────────────────────────────────────────────
+
+/**
+ * Returns all currently active device blocks for a business.
+ * F4: used by the Blocked Devices settings section.
+ */
+export async function posListBlockedDevices(businessId: string): Promise<PosBlockedDevice[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const { data, error } = await (posRpc as unknown as { rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> }).rpc('pos_list_blocked_devices', {
+    p_business_id: businessId,
+  });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PosBlockedDevice[];
+}
+
+// ─── posUnblockDevice ─────────────────────────────────────────────────────────
+
+/**
+ * Manually unblock a device before its blocked_until timestamp.
+ * Only the business owner can call this.
+ * F4.
+ */
+export async function posUnblockDevice(
+  businessId: string,
+  blockId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { error } = await (posRpc as unknown as { rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> }).rpc('pos_unblock_device', {
+    p_business_id: businessId,
+    p_block_id:    blockId,
+  });
+
+  if (error) return { ok: false, reason: error.message };
+  return { ok: true };
+}
+
+// ─── useAwaitingCount ─────────────────────────────────────────────────────────
+
+/**
+ * Returns the total number of awaiting orders across all tables for the business.
+ * Computed from pos_tables_overview (already loaded by PosHome) — this is a pure
+ * selector function, NOT a hook. PosHomeScreen derives the count from the overview
+ * rows it already has; PosNavigator passes it down as a prop.
+ */
+export function sumAwaitingCount(overviewRows: Array<{ awaiting_count?: number }>): number {
+  return overviewRows.reduce((acc, row) => acc + (row.awaiting_count ?? 0), 0);
 }

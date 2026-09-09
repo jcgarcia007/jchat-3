@@ -62,6 +62,7 @@ import {
   posSetPartySize,
   posCreateOrder,
   posVoidOrder,
+  posRejectOrder,
   posCombineTables,
   posUncombineTable,
   posOpenTableSession,
@@ -687,6 +688,41 @@ export default function PosTableHub(): React.ReactElement {
 
   // ── Void / edit order ─────────────────────────────────────────────────────
   /**
+   * Rebuild the per-seat draft from a list of served items (extracted from
+   * handleVoidOrder so it can be reused by the awaiting-order edit flow).
+   *
+   * Known behavior: modifiers are NOT reconstructed (group_id not stored in
+   * order_items). special_instructions and seat are preserved.
+   */
+  const rebuildDraftFromItems = useCallback(
+    (orderId: string, itemRows: PosTableItemRow[]) => {
+      const orderItems = itemRows.filter((i) => i.order_id === orderId);
+      const bySeat = new Map<number | null, PosTableItemRow[]>();
+      for (const item of orderItems) {
+        const bucket = bySeat.get(item.seat);
+        if (bucket) bucket.push(item);
+        else bySeat.set(item.seat, [item]);
+      }
+      bySeat.forEach((items, seat) => {
+        const existing = getSeatDraft(tableId, seat);
+        const newItems: DraftItem[] = items.map((item) => ({
+          cartKey:            item.order_item_id,
+          menuItemId:         item.menu_item_id,
+          name:               item.item_name,
+          basePriceCents:     item.price_cents,
+          modifierExtraCents: 0,
+          qty:                item.qty,
+          seat:               item.seat,
+          modifiers:          [],
+          note:               item.special_instructions ?? '',
+        }));
+        setSeatDraft(tableId, seat, [...existing, ...newItems]);
+      });
+    },
+    [tableId, getSeatDraft, setSeatDraft],
+  );
+
+  /**
    * Void the given order on the server, then either discard it (mode='cancel')
    * or reload its items into the draft for editing (mode='edit').
    *
@@ -717,31 +753,8 @@ export default function PosTableHub(): React.ReactElement {
 
       if (mode === 'edit') {
         // Rebuild the draft per-seat so the employee can adjust and re-send.
-        // menu_item_id comes from PosTableItemRow (returned by pos_table_items).
-        // Modifiers are not reconstructed (group_id not in stored data);
-        // special_instructions are preserved as the item note.
-        const orderItems = sentItems.filter((i) => i.order_id === orderId);
-        const bySeat = new Map<number | null, PosTableItemRow[]>();
-        for (const item of orderItems) {
-          const bucket = bySeat.get(item.seat);
-          if (bucket) bucket.push(item);
-          else bySeat.set(item.seat, [item]);
-        }
-        bySeat.forEach((items, seat) => {
-          const existing = getSeatDraft(tableId, seat);
-          const newItems: DraftItem[] = items.map((item) => ({
-            cartKey: item.order_item_id,
-            menuItemId: item.menu_item_id,
-            name: item.item_name,
-            basePriceCents: item.price_cents,
-            modifierExtraCents: 0,
-            qty: item.qty,
-            seat: item.seat,
-            modifiers: [],
-            note: item.special_instructions ?? '',
-          }));
-          setSeatDraft(tableId, seat, [...existing, ...newItems]);
-        });
+        // Modifiers are NOT reconstructed (known behavior — group_id not stored).
+        rebuildDraftFromItems(orderId, sentItems);
       }
 
       // Refresh sent items and reset filter to "All"
@@ -752,7 +765,7 @@ export default function PosTableHub(): React.ReactElement {
     },
     // posVoidOrder + posTableItems are stable module imports — no need in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [voidingOrderId, businessId, tableId, sentItems, getSeatDraft, setSeatDraft, t],
+    [voidingOrderId, businessId, tableId, sentItems, rebuildDraftFromItems, t],
   );
 
   /** Show confirmation Alert, then call handleVoidOrder in cancel mode. */

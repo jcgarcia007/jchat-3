@@ -38,10 +38,13 @@ const BEEP_ASSET = require('../assets/alert-beep.wav') as number;
 //          Multiple calls with a short delay simulate a multi-pulse feel on iOS.
 
 /** Two quick pulses → signals one item is ready. */
-const VIBRATE_READY        = [0, 200, 120, 200];           // ~520 ms total
+const VIBRATE_READY        = [0, 200, 120, 200];              // ~520 ms total
 
 /** Three distinct pulses → more urgent service call. */
-const VIBRATE_SERVICE_CALL = [0, 300, 100, 300, 100, 300]; // ~1 100 ms total
+const VIBRATE_SERVICE_CALL = [0, 300, 100, 300, 100, 300];   // ~1 100 ms total
+
+/** Four short pulses → customer order awaiting approval (F4). */
+const VIBRATE_APPROVAL     = [0, 150, 80, 150, 80, 150, 80, 150]; // ~860 ms total
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -85,16 +88,18 @@ export function usePosAlerts(businessId: string): void {
   // Stable alert trigger — reads from refs so it doesn't need to be in the
   // dependency array of the Realtime useEffect.
   const triggerAlert = useCallback(
-    (type: 'ready' | 'service_call') => {
+    (type: 'ready' | 'service_call' | 'approval') => {
       const cfg = alertsRef.current?.[type];
       // Fall back to both vibration and sound if config hasn't loaded yet.
       const shouldVibrate = cfg ? cfg.vibration : true;
       const shouldSound   = cfg ? cfg.sound     : true;
 
       if (shouldVibrate) {
-        Vibration.vibrate(
-          type === 'ready' ? VIBRATE_READY : VIBRATE_SERVICE_CALL,
-        );
+        const pattern =
+          type === 'ready'    ? VIBRATE_READY :
+          type === 'approval' ? VIBRATE_APPROVAL :
+          VIBRATE_SERVICE_CALL;
+        Vibration.vibrate(pattern);
       }
 
       // ── Sound ─────────────────────────────────────────────────────────────
@@ -155,9 +160,32 @@ export function usePosAlerts(businessId: string): void {
       )
       .subscribe();
 
+    // ── Channel 3: orders INSERT — F4 approval alert ──────────────────────
+    // Fires when a customer places an order without a code (approval_status='awaiting').
+    // Filter by business_id server-side; check approval_status in the callback.
+    const approvalCh = supabase
+      .channel(`pos-alerts-approval-${businessId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `business_id=eq.${businessId}`,
+        },
+        (payload) => {
+          const newRow = payload.new as { approval_status?: string };
+          if (newRow.approval_status === 'awaiting') {
+            triggerAlert('approval');
+          }
+        },
+      )
+      .subscribe();
+
     return () => {
       void supabase.removeChannel(readyCh);
       void supabase.removeChannel(scCh);
+      void supabase.removeChannel(approvalCh);
     };
   }, [businessId, triggerAlert]);
 }

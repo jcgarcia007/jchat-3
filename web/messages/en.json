@@ -3049,5 +3049,13 @@
   "tabOrderViewStatus": "View my order status",
   "tabOrderKeepOrdering": "Keep ordering",
   "tableBandTabActive": "Table tab active",
-  "tableBandLeaveTab": "Leave tab"
+  "tableBandLeaveTab": "Leave tab",
+  "noCodeTitle": "Send order without code",
+  "noCodeSubtitle": "Your order will be pending approval. The waiter will review it and notify you when ready.",
+  "noCodeSend": "Send for approval",
+  "noCodeRateLimited": "Too many orders. Wait {seconds} seconds.",
+  "noCodeBlocked": "This device is temporarily blocked. Ask the waiter for help.",
+  "noCodeCaptchaFailed": "Security check failed. Please try again.",
+  "noCodeError": "An error occurred. Please try again.",
+  "noCodeModeNotAllowed": "This feature is not available at this business."
 }

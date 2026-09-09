@@ -165,6 +165,31 @@ export function useComandaPrintBridge(businessId: string): void {
             }
           },
         )
+        // F4: también escuchar UPDATE — imprime cuando el mesero aprueba una orden
+        // que estaba en awaiting. El claim impide la doble impresión.
+        .on(
+          'postgres_changes',
+          {
+            event:  'UPDATE',
+            schema: 'public',
+            table:  'orders',
+            filter: `business_id=eq.${businessId}`,
+          },
+          (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
+            const newRow = payload.new;
+            const oldRow = payload.old;
+            const aprNew = newRow['approval_status'] as string | null | undefined;
+            const aprOld = oldRow['approval_status'] as string | null | undefined;
+
+            // Solo cuando transiciona awaiting → approved
+            if (aprOld === 'awaiting' && aprNew === 'approved') {
+              const orderId    = newRow['id'] as string;
+              const tableLabel = (newRow['table_label'] as string | null) ?? null;
+              console.log('[ComandaBridge] awaiting→approved, imprimiendo comanda:', orderId);
+              void tryPrint(orderId, tableLabel);
+            }
+          },
+        )
         .subscribe((status: string) => {
           console.log('[ComandaBridge] channel status:', status);
         });

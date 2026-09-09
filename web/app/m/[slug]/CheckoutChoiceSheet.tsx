@@ -18,6 +18,7 @@ interface CheckoutChoiceSheetProps {
   palette:         Record<string, string>;
   onPayNow:        () => void;              // → setStep("pay")
   onAddToTab:      () => void;              // → mostrar TabCodeSheet o add_order directo
+  onNoCode?:       () => void;             // F4 → abrir NoCodeSheet (sin código de mesa)
   onClose:         () => void;
 }
 
@@ -28,6 +29,7 @@ export default function CheckoutChoiceSheet({
   palette,
   onPayNow,
   onAddToTab,
+  onNoCode,
   onClose,
 }: CheckoutChoiceSheetProps) {
   const t      = useTranslations();
@@ -124,21 +126,20 @@ export default function CheckoutChoiceSheet({
                         {t("checkoutChoiceYes")}
                       </button>
                       <button
-                        disabled
+                        onClick={onNoCode}
+                        disabled={!onNoCode}
                         style={{
                           flex: 1, padding: "13px 0",
                           background: "var(--menu-surface, #f3f4f6)", color: "var(--menu-text, #111)",
                           border: "none", borderRadius: 10,
-                          fontSize: 15, fontWeight: 600, cursor: "not-allowed", opacity: 0.6,
+                          fontSize: 15, fontWeight: 600,
+                          cursor: onNoCode ? "pointer" : "not-allowed",
+                          opacity: onNoCode ? 1 : 0.5,
                         }}
-                        title={t("checkoutChoiceNoCodeSoon")}
                       >
                         {t("checkoutChoiceNo")}
                       </button>
                     </div>
-                    <p style={{ textAlign: "center", fontSize: 12, opacity: 0.45, marginTop: 8 }}>
-                      {t("checkoutChoiceNoCodeSoon")}
-                    </p>
                   </div>
                 )}
               </>

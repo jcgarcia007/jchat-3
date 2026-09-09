@@ -248,7 +248,10 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         .select("id, table_label")
         .eq("business_id", bid)
         .is("paid_at", null)
-        .is("canceled_at", null);
+        .is("canceled_at", null)
+        // F4: excluir órdenes pendientes de aprobación del mesero
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .neq("approval_status" as any, "awaiting");
       if (ordErr) throw ordErr;
 
       const orderMap = new Map<string, string | null>(
