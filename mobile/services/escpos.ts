@@ -478,3 +478,125 @@ export function buildReceiptEscPos(
     ...footer,
   );
 }
+
+// ─── Table session code ticket (F2) ──────────────────────────────────────────
+
+export interface TableCodeTicketOpts {
+  businessName: string;
+  tableLabel: string;
+  accessCode: string;   // 6 digits, e.g. "123456"
+  serverName: string | null;
+  /** Paper width in mm. Only 58 and 80 are tested. Default 80. */
+  widthMm?: number;
+  /** Printer role — guard rejects 'kitchen' | 'bar'. */
+  printerRole?: string;
+}
+
+/**
+ * Build an ESC/POS buffer for a 6-digit table session code ticket.
+ *
+ * Layout (80mm = 48 cols, 58mm = 32 cols):
+ *   [business name, bold+center]
+ *   [separator]
+ *   Mesa: {label}  (center)
+ *   [separator]
+ *   CODIGO DE MESA  (bold+center)
+ *   [blank line]
+ *   {123 456}  (doubleSize, center)
+ *   [separator]
+ *   Muestra este codigo al mesero
+ *   Es valido mientras la mesa este abierta
+ *   No lo compartas con nadie mas
+ *   Mesero: {name}  {HH:MM}
+ *   [5 blank lines]
+ *   [cut]
+ *
+ * Guard: throws Error('PRINTER_ROLE_FORBIDDEN') if printerRole is
+ * 'kitchen' or 'bar' — defensive measure; those printers are never
+ * returned by fetchStaffPrinters but may be passed by mistake.
+ *
+ * No diacritics / tilde on the ticket — NFD enc() strips them;
+ * i18n keys in this builder use ASCII-safe Spanish.
+ */
+export function buildTableCodeTicketEscPos(opts: TableCodeTicketOpts): Uint8Array {
+  const {
+    businessName,
+    tableLabel,
+    accessCode,
+    serverName,
+    widthMm = 80,
+    printerRole,
+  } = opts;
+
+  // ── Guard ────────────────────────────────────────────────────────────────────
+  if (printerRole === 'kitchen' || printerRole === 'bar') {
+    throw new Error('PRINTER_ROLE_FORBIDDEN');
+  }
+
+  const cols = widthMm <= 58 ? 32 : 48;
+
+  // Format code as "123 456" for readability.
+  const code6 = accessCode.replace(/\D/g, '').slice(0, 6);
+  const codeFormatted = code6.length === 6
+    ? `${code6.slice(0, 3)} ${code6.slice(3)}`
+    : code6;
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  // ── Sections ─────────────────────────────────────────────────────────────────
+
+  const header: Uint8Array[] = [
+    reset(),
+    align('center'),
+    bold(true),
+    enc(businessName.slice(0, cols)), lf(),
+    bold(false),
+    enc(separator(cols)), lf(),
+    enc(`Mesa: ${tableLabel}`.slice(0, cols)), lf(),
+    enc(separator(cols)), lf(),
+  ];
+
+  const title: Uint8Array[] = [
+    bold(true),
+    enc('CODIGO DE MESA'), lf(),
+    bold(false),
+    lf(),
+  ];
+
+  const codeBlock: Uint8Array[] = [
+    doubleSize(true),
+    bold(true),
+    enc(codeFormatted), lf(),
+    bold(false),
+    doubleSize(false),
+  ];
+
+  const divider: Uint8Array[] = [
+    enc(separator(cols)), lf(),
+  ];
+
+  const instructions: Uint8Array[] = [
+    align('left'),
+    // ASCII-safe — NFD strips tildes anyway
+    enc('Muestra este codigo al mesero'.slice(0, cols)), lf(),
+    enc('Es valido mientras la mesa este abierta'.slice(0, cols)), lf(),
+    enc('No lo compartas con nadie mas'.slice(0, cols)), lf(),
+  ];
+
+  const footer: Uint8Array[] = [];
+  const serverLine = serverName
+    ? `Mesero: ${serverName}  ${timeStr}`
+    : timeStr;
+  footer.push(enc(serverLine.slice(0, cols)), lf());
+  footer.push(feedLines(5), cut());
+
+  return concat(
+    ...header,
+    ...title,
+    ...codeBlock,
+    ...divider,
+    ...instructions,
+    ...footer,
+  );
+}

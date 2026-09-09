@@ -3806,6 +3806,12 @@ export type Database = {
           seats: number
           sort: number
           updated_at: string
+          /** F2 — table session code (6 digits). Null when no active session. */
+          access_code: string | null
+          /** F2 — when the current session was opened. */
+          session_opened_at: string | null
+          /** F2 — which user opened the current session (auth.uid of the waiter). */
+          session_opened_by: string | null
         }
         Insert: {
           business_id: string
@@ -3824,6 +3830,9 @@ export type Database = {
           seats?: number
           sort?: number
           updated_at?: string
+          access_code?: string | null
+          session_opened_at?: string | null
+          session_opened_by?: string | null
         }
         Update: {
           business_id?: string
@@ -3842,6 +3851,9 @@ export type Database = {
           seats?: number
           sort?: number
           updated_at?: string
+          access_code?: string | null
+          session_opened_at?: string | null
+          session_opened_by?: string | null
         }
         Relationships: [
           {

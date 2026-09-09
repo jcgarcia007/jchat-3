@@ -89,6 +89,12 @@ export interface PosTablesOverviewRow {
    * A table can be 'libre' (free) but still not combinable (e.g. has guests but no order).
    */
   combinable: boolean;
+  /**
+   * True when the table has an open session (access_code generated).
+   * The code itself is never returned in the grid — only in pos_table_session.
+   * F2.
+   */
+  has_access_code: boolean;
 }
 
 export interface PosOrderItem {
@@ -352,6 +358,18 @@ type PosRpc = {
     fn: 'pos_business_settings',
     params: { p_business_id: string },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_open_table_session',
+    params: { p_business_id: string; p_table_id: string },
+  ): Promise<{ data: PosTableSessionOpenResult | null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_close_table_session',
+    params: { p_business_id: string; p_table_id: string },
+  ): Promise<{ data: null; error: { message: string } | null }>;
+  rpc(
+    fn: 'pos_table_session',
+    params: { p_business_id: string; p_table_id: string },
+  ): Promise<{ data: PosTableSessionDetail | null; error: { message: string } | null }>;
 };
 
 const posRpc = supabase as unknown as PosRpc;
@@ -1261,5 +1279,88 @@ export async function posBusinessSettings(
       raw.kds_settings && typeof raw.kds_settings === 'object'
         ? (raw.kds_settings as Record<string, unknown>)
         : {},
+  };
+}
+
+// ─── F2: Table session (código de mesa) ──────────────────────────────────────
+
+/** Result of pos_open_table_session RPC. */
+export interface PosTableSessionOpenResult {
+  table_id: string;
+  access_code: string;
+  session_opened_at: string;
+  /** true when the session was just created; false when already open. */
+  created: boolean;
+}
+
+/** Result of pos_table_session RPC (detail view). */
+export interface PosTableSessionDetail {
+  /** 6-digit code, or null if no session. */
+  access_code: string | null;
+  /** ISO timestamp when the session was opened, or null. */
+  session_opened_at: string | null;
+  /** user_id of the waiter who opened the session, or null. */
+  session_opened_by: string | null;
+  /** Sum of all unpaid order items (cents). 0 when no open orders. */
+  open_total_cents: number;
+  /** Number of open orders in this session. */
+  open_orders_count: number;
+}
+
+/**
+ * Open (or re-open) the table session and get its access code.
+ * Idempotent: if a session is already open, returns the existing code.
+ * Used by the "Código de mesa" button in PosTableHub.
+ */
+export async function posOpenTableSession(
+  businessId: string,
+  tableId: string,
+): Promise<PosTableSessionOpenResult> {
+  const { data, error } = await posRpc.rpc('pos_open_table_session', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('pos_open_table_session returned null');
+  return data;
+}
+
+/**
+ * Close the table session manually when there are no open orders
+ * (the group left without consuming). Throws TABLE_HAS_OPEN_ORDERS if
+ * there are still open orders.
+ */
+export async function posCloseTableSession(
+  businessId: string,
+  tableId: string,
+): Promise<void> {
+  const { error } = await posRpc.rpc('pos_close_table_session', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Fetch the current table session detail (access code, totals).
+ * Returns null when the caller has no access or pos_table_session returns null.
+ * This is the ONLY place the access code is returned to the client.
+ */
+export async function posTableSession(
+  businessId: string,
+  tableId: string,
+): Promise<PosTableSessionDetail | null> {
+  const { data, error } = await posRpc.rpc('pos_table_session', {
+    p_business_id: businessId,
+    p_table_id: tableId,
+  });
+  if (error || data == null) return null;
+  const raw = data as PosTableSessionDetail;
+  return {
+    access_code: raw.access_code ?? null,
+    session_opened_at: raw.session_opened_at ?? null,
+    session_opened_by: raw.session_opened_by ?? null,
+    open_total_cents: raw.open_total_cents ?? 0,
+    open_orders_count: raw.open_orders_count ?? 0,
   };
 }

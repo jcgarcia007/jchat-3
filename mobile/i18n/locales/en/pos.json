@@ -198,5 +198,23 @@
     "sheetBody": "A staff member will be notified and will come to your table.",
     "confirmServiceA11y": "Confirm service call",
     "notifyStaff": "Notify Staff"
+  },
+  "tableCode": {
+    "title": "Table Code",
+    "empty": "No code — table is free",
+    "openAndGenerate": "Open table & generate code",
+    "since": "Open since {{time}}",
+    "print": "Print",
+    "instructions": "Instructions",
+    "release": "Release table",
+    "releaseConfirm": "This will close the session and invalidate the code. Continue?",
+    "releaseBlocked": "Cannot release a table with open orders.",
+    "noPrinter": "Configure a receipt or waiter printer in Settings.",
+    "pickPrinter": "Choose printer",
+    "ticketLine1": "Show this code to your server",
+    "ticketLine2": "Valid while the table is open",
+    "ticketLine3": "Do not share with anyone else",
+    "printFailed": "Could not print. Check printer connection.",
+    "retry": "Retry"
   }
 }

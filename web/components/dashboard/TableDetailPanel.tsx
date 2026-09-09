@@ -141,6 +141,9 @@ export function TableDetailPanel({
 
   const [attachSel, setAttachSel] = useState<Record<string, string>>({}); // orderId -> tabId
 
+  // F2 — Table session code (read-only in dashboard)
+  const [sessionCode, setSessionCode] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setLoading(false);
@@ -235,6 +238,21 @@ export function TableDetailPanel({
       setUnassigned((unassignedRes.data ?? []) as OrderLite[]);
       setAllWaiters(allWaitersBuilt);
       setAssignedIds(assignedSet);
+
+      // F2 — fetch session code (best-effort; null if no session or RPC error)
+      // Cast via unknown because pos_table_session is added by migration 160
+      // (not yet reflected in the generated types; Planning applies MIG).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sessionRes = await (supabase.rpc as any)("pos_table_session", {
+          p_business_id: businessId,
+          p_table_id: table.id,
+        });
+        const code = (sessionRes.data as { access_code?: string | null } | null)?.access_code ?? null;
+        setSessionCode(code);
+      } catch {
+        setSessionCode(null);
+      }
     } catch {
       setLoadError(true);
     } finally {
@@ -420,6 +438,18 @@ export function TableDetailPanel({
             <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)", marginTop: "2px" }}>
               {waiterNames.length === 0 ? t("tablesDetailNoWaiterAssigned") : t("tablesDetailWaitersList", { names: waiterNames.join(", ") })}
             </div>
+            {/* F2 — Session code (read-only) */}
+            {!loading && (
+              <div style={{ fontSize: "12px", marginTop: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ color: "var(--db-text-secondary)" }}>{t("tablesAccessCodeLabel")}:</span>
+                {sessionCode
+                  ? <span style={{ fontFamily: "monospace", fontWeight: 700, letterSpacing: "2px", color: "var(--db-text-primary)" }}>
+                      {`${sessionCode.slice(0, 3)} ${sessionCode.slice(3)}`}
+                    </span>
+                  : <span style={{ color: "var(--db-text-tertiary)" }}>{t("tablesAccessCodeNone")}</span>
+                }
+              </div>
+            )}
           </div>
           <button type="button" onClick={onClose} aria-label={t("tablesDetailCloseAria")} style={iconBtn}>
             <IconX size={18} />

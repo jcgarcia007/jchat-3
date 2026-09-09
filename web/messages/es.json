@@ -451,6 +451,8 @@
     "tablesWaiterAlreadyAssigned": "Ese mesero ya estaba asignado.",
     "tablesNoPermissionAssign": "No tienes permiso para asignar meseros a esta mesa.",
     "tablesAssignUpdateError": "No se pudo actualizar la asignación. Inténtalo de nuevo.",
+    "tablesAccessCodeLabel": "Codigo de sesion",
+    "tablesAccessCodeNone": "Sin sesion abierta",
     "tablesQrModalTitle": "Mesa {label}",
     "tablesQrModalCloseAria": "Cerrar",
     "tablesQrModalCodeAria": "Código QR",

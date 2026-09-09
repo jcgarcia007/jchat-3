@@ -451,6 +451,8 @@
     "tablesWaiterAlreadyAssigned": "That waiter was already assigned.",
     "tablesNoPermissionAssign": "You don't have permission to assign waiters to this table.",
     "tablesAssignUpdateError": "Couldn't update the assignment. Please try again.",
+    "tablesAccessCodeLabel": "Session code",
+    "tablesAccessCodeNone": "No open session",
     "tablesQrModalTitle": "Table {label}",
     "tablesQrModalCloseAria": "Close",
     "tablesQrModalCodeAria": "QR code",

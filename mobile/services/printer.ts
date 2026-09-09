@@ -27,6 +27,8 @@ export interface NetworkPrinter {
   host: string;
   port: number;
   width_mm: number;
+  /** Printer role — present when fetched via fetchStaffPrinters or fetchPrinterByRole context. */
+  role?: string;
 }
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
@@ -80,6 +82,38 @@ export async function fetchAnyPrinter(businessId: string): Promise<NetworkPrinte
     port:     data.port ?? 9100,
     width_mm: data.width_mm ?? 80,
   };
+}
+
+/**
+ * Fetch all active network printers with role 'receipt' or 'waiter' for a
+ * business, ordered by is_default DESC, label ASC.
+ *
+ * Used by PrinterPickerSheet to let the waiter choose where to print the
+ * table session code. Kitchen/bar printers are intentionally excluded.
+ */
+export async function fetchStaffPrinters(businessId: string): Promise<NetworkPrinter[]> {
+  const { data, error } = await supabase
+    .from('pos_printers')
+    .select('id, label, host, port, width_mm, role')
+    .eq('business_id', businessId)
+    .eq('connection', 'network')
+    .eq('is_active', true)
+    .in('role', ['receipt', 'waiter'])
+    .order('is_default', { ascending: false })
+    .order('label', { ascending: true });
+
+  if (error || !data) return [];
+
+  return data
+    .filter((r) => !!r.host)
+    .map((r) => ({
+      id:       r.id,
+      label:    r.label,
+      host:     r.host,
+      port:     r.port ?? 9100,
+      width_mm: r.width_mm ?? 80,
+      role:     r.role ?? 'receipt',
+    }));
 }
 
 // ─── Station printer helpers ──────────────────────────────────────────────────

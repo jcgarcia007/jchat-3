@@ -39,6 +39,7 @@ import {
   IconArchive,
   IconChevronLeft,
   IconClipboardList,
+  IconKey,
   IconLayoutGrid,
   IconPlugConnected,
   IconReceipt,
@@ -252,6 +253,13 @@ export default function PosHomeScreen() {
           {isPrimary ? (
             <View style={[styles.assignBadge, { backgroundColor: c.brand + '18' }]}>
               <IconPlugConnected size={10} color={c.brand} strokeWidth={2} />
+            </View>
+          ) : null}
+
+          {/* F2 — session code active indicator */}
+          {item.has_access_code ? (
+            <View style={[styles.assignBadge, { backgroundColor: c.brand + '18' }]}>
+              <IconKey size={10} color={c.brand} strokeWidth={2} />
             </View>
           ) : null}
         </View>

@@ -42,10 +42,13 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconChevronLeft,
+  IconKey,
+  IconLock,
   IconMinus,
   IconPlus,
   IconPlugConnected,
   IconPlugOff,
+  IconPrinter,
   IconTrash,
   IconUsers,
 } from '@tabler/icons-react-native';
@@ -61,16 +64,23 @@ import {
   posVoidOrder,
   posCombineTables,
   posUncombineTable,
+  posOpenTableSession,
+  posCloseTableSession,
+  posTableSession,
 } from '../../services/pos';
 import type {
   PosTablesOverviewRow,
   PosTableItemRow,
   PosOrderItem,
+  PosTableSessionDetail,
 } from '../../services/pos';
 import { usePosDraft } from '../../contexts/PosDraftContext';
 import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { printKitchenTickets, resolveServerName } from '../../services/printer';
+import { buildTableCodeTicketEscPos } from '../../services/escpos';
+import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
+import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -257,6 +267,12 @@ export default function PosTableHub(): React.ReactElement {
   // ~300 ms when partySize has reached maxSeats.
   const plusLastTapRef = useRef<number>(0);
 
+  // ── F2 Table session code ────────────────────────────────────────────────────
+  const [sessionDetail, setSessionDetail] = useState<PosTableSessionDetail | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [releaseLoading, setReleaseLoading] = useState(false);
+  const printerPickerRef = useRef<PrinterPickerSheetRef>(null);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -309,8 +325,9 @@ export default function PosTableHub(): React.ReactElement {
       Promise.all([
         posTablesOverview(businessId),
         posTableItems(businessId, tableId),
+        posTableSession(businessId, tableId),
       ])
-        .then(([overviewRows, itemRows]) => {
+        .then(([overviewRows, itemRows, sessionData]) => {
           if (!mounted) return;
           const row = overviewRows.find((r) => r.table_id === tableId) ?? null;
           setAllTables(overviewRows);
@@ -331,6 +348,7 @@ export default function PosTableHub(): React.ReactElement {
           setTableData(row);
           if (row) setPartySize(row.party_size ?? 1);
           setSentItems(itemRows);
+          setSessionDetail(sessionData);
         })
         .catch(() => {})
         .finally(() => {
@@ -490,6 +508,69 @@ export default function PosTableHub(): React.ReactElement {
     },
     [partySize, maxSeats, businessId, tableId],
   );
+
+  // ── F2 Table session handlers ─────────────────────────────────────────────
+
+  /** Open session (or re-fetch existing) and refresh session detail. */
+  const handleOpenSession = useCallback(async () => {
+    setSessionLoading(true);
+    try {
+      await posOpenTableSession(businessId, tableId);
+      const detail = await posTableSession(businessId, tableId);
+      setSessionDetail(detail);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert(t('pos.tableCode.title'), msg);
+    } finally {
+      setSessionLoading(false);
+    }
+  }, [businessId, tableId, t]);
+
+  /** Close the session (only allowed when open_orders_count === 0). */
+  const handleReleaseSession = useCallback(async () => {
+    if ((sessionDetail?.open_orders_count ?? 0) > 0) {
+      Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.releaseBlocked'));
+      return;
+    }
+    Alert.alert(
+      t('pos.tableCode.title'),
+      t('pos.tableCode.releaseConfirm'),
+      [
+        { text: t('pos.tableCode.release'), style: 'destructive', onPress: async () => {
+          setReleaseLoading(true);
+          try {
+            await posCloseTableSession(businessId, tableId);
+            setSessionDetail(null);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            Alert.alert(t('pos.tableCode.title'), msg);
+          } finally {
+            setReleaseLoading(false);
+          }
+        } },
+        { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+      ],
+    );
+  }, [businessId, tableId, sessionDetail, t]);
+
+  /** Build and send the table code ticket to the chosen staff printer. */
+  const handlePrintCode = useCallback(async () => {
+    if (!sessionDetail?.access_code) return;
+    const serverName = await resolveServerName(businessId);
+    let bytes: Uint8Array;
+    try {
+      bytes = buildTableCodeTicketEscPos({
+        businessName,
+        tableLabel,
+        accessCode: sessionDetail.access_code,
+        serverName,
+      });
+    } catch {
+      Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'));
+      return;
+    }
+    printerPickerRef.current?.print(businessId, bytes);
+  }, [businessId, businessName, tableLabel, sessionDetail, t]);
 
   // ── Draft item controls ───────────────────────────────────────────────────
   const handleIncrease = useCallback(
@@ -972,6 +1053,92 @@ export default function PosTableHub(): React.ReactElement {
             </View>
           </View>
 
+          {/* ── F2 Código de mesa ────────────────────────────────────────── */}
+          <View style={[styles.codeCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+            <View style={styles.codeCardHeader}>
+              <IconKey size={16} color={c.brand} strokeWidth={1.5} />
+              <Text style={[styles.codeCardTitle, { color: c.textPrimary }]}>
+                {t('pos.tableCode.title')}
+              </Text>
+            </View>
+
+            {sessionDetail?.access_code ? (
+              /* ── Session active ── */
+              <>
+                {/* Big monospaced code */}
+                <Text style={[styles.codeDisplay, { color: c.textPrimary }]}>
+                  {`${sessionDetail.access_code.slice(0, 3)} ${sessionDetail.access_code.slice(3)}`}
+                </Text>
+
+                {/* Time since open */}
+                {sessionDetail.session_opened_at ? (
+                  <Text style={[styles.codeSince, { color: c.textSecondary }]}>
+                    {t('pos.tableCode.since', {
+                      time: new Date(sessionDetail.session_opened_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }),
+                    })}
+                  </Text>
+                ) : null}
+
+                {/* Action buttons row */}
+                <View style={styles.codeActions}>
+                  {/* Print */}
+                  <Pressable
+                    style={[styles.codeActionBtn, { backgroundColor: c.brand }]}
+                    onPress={() => void handlePrintCode()}
+                    accessibilityRole="button"
+                  >
+                    <IconPrinter size={14} color="#fff" strokeWidth={1.8} />
+                    <Text style={styles.codeActionLabel}>
+                      {t('pos.tableCode.print')}
+                    </Text>
+                  </Pressable>
+
+                  {/* Release (only when 0 open orders) */}
+                  {sessionDetail.open_orders_count === 0 && (
+                    <Pressable
+                      style={[styles.codeActionBtn, { backgroundColor: c.bgBase, borderColor: c.borderSubtle, borderWidth: 1 }]}
+                      onPress={() => void handleReleaseSession()}
+                      disabled={releaseLoading}
+                      accessibilityRole="button"
+                    >
+                      {releaseLoading
+                        ? <ActivityIndicator size="small" color={c.danger} />
+                        : <IconLock size={14} color={c.danger} strokeWidth={1.8} />
+                      }
+                      <Text style={[styles.codeActionLabel, { color: c.danger }]}>
+                        {t('pos.tableCode.release')}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
+            ) : (
+              /* ── No session ── */
+              <>
+                <Text style={[styles.codeEmpty, { color: c.textSecondary }]}>
+                  {t('pos.tableCode.empty')}
+                </Text>
+                <Pressable
+                  style={[styles.codeOpenBtn, { backgroundColor: c.brand }]}
+                  onPress={() => void handleOpenSession()}
+                  disabled={sessionLoading}
+                  accessibilityRole="button"
+                >
+                  {sessionLoading
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <IconKey size={14} color="#fff" strokeWidth={1.8} />
+                  }
+                  <Text style={styles.codeOpenLabel}>
+                    {t('pos.tableCode.openAndGenerate')}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+
           {/* ── Table diagram ──────────────────────────────────────────────── */}
           <View style={styles.diagramOuter}>
             <View style={styles.diagramCanvas}>
@@ -1394,6 +1561,13 @@ export default function PosTableHub(): React.ReactElement {
           </Text>
         </Pressable>
       </View>
+
+      {/* F2 — Printer picker (no-UI helper; mounts once per screen) */}
+      <PrinterPickerSheet
+        ref={printerPickerRef}
+        onNoPrinter={() => Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.noPrinter'))}
+        onError={(err) => Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'))}
+      />
     </View>
   );
 }
@@ -1683,4 +1857,75 @@ const styles = StyleSheet.create({
   },
   modalTableLabel: { flex: 1, fontSize: 15, fontWeight: '600' },
   modalTableSeats: { fontSize: 12 },
+
+  // ── F2 Table session code block ──────────────────────────────────────────────
+  codeCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: H_PAD,
+    marginTop: 12,
+    padding: 14,
+    gap: 8,
+  },
+  codeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  codeCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  codeDisplay: {
+    fontFamily: 'Courier',
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: 4,
+    alignSelf: 'center',
+    paddingVertical: 4,
+  },
+  codeSince: {
+    fontSize: 12,
+    alignSelf: 'center',
+  },
+  codeActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  codeActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  codeActionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  codeEmpty: {
+    fontSize: 13,
+    alignSelf: 'center',
+    paddingVertical: 2,
+  },
+  codeOpenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  codeOpenLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });
