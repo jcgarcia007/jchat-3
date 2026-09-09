@@ -16,6 +16,7 @@ import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
 // F3: sesión de invitado + sheet de elección de cobro
 import CheckoutChoiceSheet from "./CheckoutChoiceSheet";
 import TabCodeSheet from "./TabCodeSheet";
+import NoCodeSheet from "./NoCodeSheet";
 import TabOrderConfirmation from "./TabOrderConfirmation";
 import { readGuestSession, saveGuestSession, clearGuestSession, guestTab } from "@/lib/guestTabSession";
 import { buildOrderOptions } from "@/lib/orderOptions";
@@ -57,7 +58,7 @@ interface CartItem {
   notes?: string;
 }
 
-type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "tabConfirm" | "pay";
+type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "noCode" | "tabConfirm" | "pay";
 type PickupType = "counter" | "table";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1647,6 +1648,7 @@ export default function MenuPageClient({
     subtotalCents: number;
     items: Array<{ name: string; qty: number }>;
     tableLabel: string;
+    variant?: "added" | "awaiting";
   } | null>(null);
 
   // ── Order status: gate the button on the owner's kds_settings toggle ─────────
@@ -2111,6 +2113,7 @@ export default function MenuPageClient({
           posPaymentMode={business.pos_payment_mode}
           hasTableCtx={!!tableCtx}
           hasGuestSession={!!guestSession}
+          onNoCode={tableCtx ? () => setStep("noCode") : undefined}
           onPayNow={() => setStep("pay")}
           onAddToTab={() => {
             if (guestSession) {
@@ -2198,6 +2201,32 @@ export default function MenuPageClient({
         />
       )}
 
+      {/* F4: envío sin código de mesa — esperando aprobación del mesero */}
+      {step === "noCode" && tableCtx && (
+        <NoCodeSheet
+          tableQrToken={tableCtx.token}
+          palette={palette as unknown as Record<string, string>}
+          items={cartItems.map((ci) => ({
+            menu_item_id: ci.itemId,
+            name:         ci.name,
+            qty:          ci.quantity,
+            options:      buildOrderOptions(ci),
+            special_instructions: ci.notes ?? undefined,
+          }))}
+          onSuccess={() => {
+            setTabOrderResult({
+              subtotalCents: cartItems.reduce((s, ci) => s + ci.lineTotalCents, 0),
+              items:         cartItems.map((ci) => ({ name: ci.name, qty: ci.quantity })),
+              tableLabel:    tableCtx.tableLabel,
+              variant:       "awaiting",
+            });
+            setCartItems([]);
+            setStep("tabConfirm");
+          }}
+          onClose={() => setStep("choice")}
+        />
+      )}
+
       {/* F3: confirmación tras agregar a la cuenta */}
       {step === "tabConfirm" && tabOrderResult && (
         <TabOrderConfirmation
@@ -2206,6 +2235,7 @@ export default function MenuPageClient({
           tableLabel={tabOrderResult.tableLabel}
           subtotalCents={tabOrderResult.subtotalCents}
           items={tabOrderResult.items}
+          variant={tabOrderResult.variant ?? "added"}
           onViewStatus={() => {
             setShowOrderStatus(true);
             setStep("menu");

@@ -26,9 +26,10 @@ import { getDeviceId, getFingerprint } from "@/lib/guestDevice";
 import { guestTab } from "@/lib/guestTabSession";
 
 interface CartItem {
-  menu_item_id:         string;
-  qty:                  number;
-  options?:             object;
+  menu_item_id:          string;
+  name?:                 string;   // display only — not sent to EF
+  qty:                   number;
+  options?:              object;
   special_instructions?: string;
 }
 
@@ -37,7 +38,7 @@ interface NoCodeSheetProps {
   items:        CartItem[];
   palette:      Record<string, string>;
   /** Called when the order is successfully placed in awaiting state. */
-  onSuccess:    (orderId: string) => void;
+  onSuccess:    () => void;
   onClose:      () => void;
 }
 
@@ -100,7 +101,7 @@ export default function NoCodeSheet({
         items,
       });
 
-      onSuccess(result.order_id);
+      onSuccess();
 
     } catch (err: unknown) {
       const e = err as { code?: string; retry_after_s?: number; blocked_until?: string; message?: string };
@@ -160,7 +161,7 @@ export default function NoCodeSheet({
         }}>
           {items.map((item, idx) => (
             <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, paddingBottom: 4 }}>
-              <span style={{ opacity: 0.8 }}>{item.menu_item_id}</span>
+              <span style={{ opacity: 0.8 }}>{item.name ?? item.menu_item_id}</span>
               <span style={{ fontWeight: 600 }}>×{item.qty}</span>
             </div>
           ))}

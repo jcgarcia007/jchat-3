@@ -3057,5 +3057,7 @@
   "noCodeBlocked": "This device is temporarily blocked. Ask the waiter for help.",
   "noCodeCaptchaFailed": "Security check failed. Please try again.",
   "noCodeError": "An error occurred. Please try again.",
-  "noCodeModeNotAllowed": "This feature is not available at this business."
+  "noCodeModeNotAllowed": "This feature is not available at this business.",
+  "tabOrderAwaitingTitle": "Order pending approval",
+  "tabOrderAwaitingSubtitle": "The waiter will review your order for table {{label}} and approve it shortly."
 }

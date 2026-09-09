@@ -3057,5 +3057,7 @@
   "noCodeBlocked": "Este dispositivo está bloqueado temporalmente. Pide ayuda al mesero.",
   "noCodeCaptchaFailed": "Verificación de seguridad fallida. Intenta de nuevo.",
   "noCodeError": "Ocurrió un error. Intenta de nuevo.",
-  "noCodeModeNotAllowed": "Esta función no está disponible en este negocio."
+  "noCodeModeNotAllowed": "Esta función no está disponible en este negocio.",
+  "tabOrderAwaitingTitle": "Pedido pendiente de aprobación",
+  "tabOrderAwaitingSubtitle": "El mesero revisará tu pedido en la mesa {{label}} y lo aprobará en breve."
 }

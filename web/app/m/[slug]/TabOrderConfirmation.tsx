@@ -8,12 +8,14 @@
 import { useTranslations } from "next-intl";
 
 interface TabOrderConfirmationProps {
-  tableLabel:    string;
-  subtotalCents: number;
-  items:         Array<{ name: string; qty: number }>;
-  locale:        string;
-  palette:       Record<string, string>;
-  onViewStatus:  () => void;
+  tableLabel:     string;
+  subtotalCents:  number;
+  items:          Array<{ name: string; qty: number }>;
+  locale:         string;
+  palette:        Record<string, string>;
+  /** "added" = normal F3 flow; "awaiting" = sin código, espera aprobación del mesero (F4) */
+  variant?:       "added" | "awaiting";
+  onViewStatus:   () => void;
   onKeepOrdering: () => void;
 }
 
@@ -22,10 +24,11 @@ function fmtCents(cents: number, locale: string): string {
 }
 
 export default function TabOrderConfirmation({
-  tableLabel, subtotalCents, items, locale, palette, onViewStatus, onKeepOrdering,
+  tableLabel, subtotalCents, items, locale, palette, variant = "added", onViewStatus, onKeepOrdering,
 }: TabOrderConfirmationProps) {
-  const t      = useTranslations();
-  const accent = palette.accent ?? "#5C7CFA";
+  const t        = useTranslations();
+  const accent   = palette.accent ?? "#5C7CFA";
+  const isAwaiting = variant === "awaiting";
 
   return (
     <div
@@ -41,12 +44,14 @@ export default function TabOrderConfirmation({
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 36 }}>✅</div>
+          <div style={{ fontSize: 36 }}>{isAwaiting ? "⏳" : "✅"}</div>
           <h2 style={{ margin: "8px 0 4px", fontSize: 18, fontWeight: 700 }}>
-            {t("tabOrderAddedTitle")}
+            {isAwaiting ? t("tabOrderAwaitingTitle") : t("tabOrderAddedTitle")}
           </h2>
           <p style={{ margin: 0, fontSize: 14, opacity: 0.6 }}>
-            {t("tabOrderAddedSubtitle", { label: tableLabel })}
+            {isAwaiting
+              ? t("tabOrderAwaitingSubtitle", { label: tableLabel })
+              : t("tabOrderAddedSubtitle", { label: tableLabel })}
           </p>
         </div>
 
