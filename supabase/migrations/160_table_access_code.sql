@@ -575,7 +575,9 @@ $$;
 --    primera orden).
 -- c) has_access_code = (t.access_code is not null) añadido al SELECT final.
 -- Ninguna otra línea fue modificada.
-create or replace function public.pos_tables_overview(p_business_id uuid)
+-- pos_tables_overview: DROP + CREATE (cambia el tipo de retorno; no se puede REPLACE)
+drop function if exists public.pos_tables_overview(uuid);
+create function public.pos_tables_overview(p_business_id uuid)
 returns table(
   table_id         uuid,
   label            text,
