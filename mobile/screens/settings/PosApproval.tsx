@@ -172,8 +172,9 @@ export default function PosApprovalScreen(): React.ReactElement {
   }, [businessId, loadOrders, navigation, t]);
 
   const handleReject = useCallback((order: PosAwaitingOrder) => {
-    const strikeWarning = order.device_strikes >= 1
-      ? `\n\n${t('pos.approval.strikeWarning', { count: order.device_strikes + 1 })}`
+    const strikes       = order.device_strikes ?? 0;
+    const strikeWarning = strikes >= 1
+      ? `\n\n${t('pos.approval.strikeWarning', { count: strikes + 1 })}`
       : '';
 
     Alert.alert(
@@ -219,7 +220,9 @@ export default function PosApprovalScreen(): React.ReactElement {
 
   const renderItem = useCallback(({ item }: { item: PosAwaitingOrder }) => {
     const isProcessing = processing?.orderId === item.order_id;
-    const strikeColor  = item.device_strikes > 0 ? '#f59e0b' : '#6b7280';
+    const strikes      = item.device_strikes ?? 0;
+    const strikeColor  = strikes > 0 ? '#f59e0b' : '#6b7280';
+    const subtotal     = item.subtotal_cents ?? 0;
 
     return (
       <View style={styles.card}>
@@ -232,11 +235,11 @@ export default function PosApprovalScreen(): React.ReactElement {
             ) : null}
           </View>
           <View style={styles.strikesBadge}>
-            {item.device_strikes > 0 && (
+            {strikes > 0 && (
               <>
                 <IconAlertTriangle size={14} color={strikeColor} />
                 <Text style={[styles.strikesText, { color: strikeColor }]}>
-                  {t('pos.approval.deviceStrikes', { count: item.device_strikes })}
+                  {t('pos.approval.deviceStrikes', { count: strikes })}
                 </Text>
               </>
             )}
@@ -245,27 +248,37 @@ export default function PosApprovalScreen(): React.ReactElement {
 
         {/* Items list */}
         <View style={styles.itemsList}>
-          {item.items.map((it) => (
-            <View key={it.order_item_id} style={styles.itemRow}>
-              <Text style={styles.itemQty}>×{it.qty}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{it.name}</Text>
-                {it.modifiers.map((mod, i) => (
-                  <Text key={i} style={styles.modifierText}>
-                    {mod.group_label}: {mod.choice_labels.join(', ')}
-                  </Text>
-                ))}
-                {it.special_instructions ? (
-                  <Text style={styles.noteText}>{it.special_instructions}</Text>
-                ) : null}
+          {(item.items ?? []).map((it) => {
+            // options shape: { modifiers: [{group_label, choice_labels}] } | null
+            const mods = it.options?.modifiers ?? [];
+            return (
+              <View key={it.order_item_id} style={styles.itemRow}>
+                <Text style={styles.itemQty}>×{it.qty}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemName}>{it.name}</Text>
+                  {mods.map((mod, i) => {
+                    const choices = Array.isArray(mod.choice_labels)
+                      ? mod.choice_labels.join(', ')
+                      : '';
+                    if (!choices) return null;
+                    return (
+                      <Text key={i} style={styles.modifierText}>
+                        {mod.group_label ? `${mod.group_label}: ${choices}` : choices}
+                      </Text>
+                    );
+                  })}
+                  {it.special_instructions ? (
+                    <Text style={styles.noteText}>{it.special_instructions}</Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Total */}
         <Text style={styles.total}>
-          ${(item.subtotal_cents / 100).toFixed(2)}
+          ${(subtotal / 100).toFixed(2)}
         </Text>
 
         {/* Action buttons */}

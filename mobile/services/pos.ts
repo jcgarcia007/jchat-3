@@ -1383,19 +1383,23 @@ export async function posTableSession(
 
 /** One awaiting order returned by pos_awaiting_orders. */
 export interface PosAwaitingOrder {
-  order_id:      string;
-  table_id:      string;
-  table_label:   string;
-  created_at:    string;
-  contact_name:  string | null;
+  order_id:       string;
+  table_id:       string;
+  table_label:    string;
+  created_at:     string;
+  contact_name:   string | null;
   subtotal_cents: number;
   items: Array<{
-    order_item_id: string;
-    name:          string;
-    qty:           number;
-    seat:          number | null;
+    order_item_id:        string;
+    menu_item_id:         string;
+    name:                 string;
+    qty:                  number;
+    price_cents:          number;
+    seat:                 number | null;
     special_instructions: string | null;
-    modifiers:     Array<{ group_label: string; choice_labels: string[] }>;
+    /** Same jsonb shape as other POS order items: { modifiers: [...] } | null */
+    options: { modifiers: Array<{ group_label: string; choice_labels: string[] }> } | null;
+    station:              string | null;
   }>;
   device_strikes: number;   // strikes acumulados por el dispositivo en 30 días
 }
