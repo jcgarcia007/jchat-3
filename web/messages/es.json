@@ -3108,7 +3108,9 @@
     "baseAmount": "Monto",
     "tip": "Propina",
     "total": "Total",
-    "confirm": "Pagar {total}"
+    "confirm": "Pagar {total}",
+    "methodLockedAmount": "Esta mesa ya se está dividiendo por monto. El pago por platos no está disponible.",
+    "methodLockedItems": "Esta mesa ya se está dividiendo por platos. El pago por partes iguales no está disponible."
   },
   "tabReceipt": {
     "title": "Pago confirmado",

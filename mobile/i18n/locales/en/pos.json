@@ -199,5 +199,9 @@
     "confirmServiceA11y": "Confirm service call",
     "notifyStaff": "Notify Staff"
   },
-  "comandaCustomer": "Customer"
+  "comandaCustomer": "Customer",
+  "errors": {
+    "methodLockedAmount": "This table is splitting by amount. Cannot switch to per-item payment.",
+    "methodLockedItems": "This table is splitting by items. Cannot switch to equal shares."
+  }
 }

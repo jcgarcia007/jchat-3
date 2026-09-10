@@ -1088,6 +1088,23 @@ async function handleCreatePayment(body: Record<string, unknown>): Promise<Respo
     return errResponse("NOTHING_DUE", "No hay saldo pendiente en esta mesa", 409);
   }
 
+  // ── D-33 bidireccional: verificar método fijado para la sesión ────────────
+  {
+    const { data: sessionMethod } = await db.rpc("pos_session_split_method", {
+      p_business_id: sess.businessId,
+      p_table_id:    sess.tableId,
+    });
+    // 'full' always allowed (covers entire balance regardless of prior method)
+    if (split_kind !== "full" && sessionMethod !== null) {
+      if (sessionMethod === "amount" && split_kind === "items") {
+        return errResponse("METHOD_LOCKED", "Esta mesa ya se está dividiendo por monto", 409);
+      }
+      if (sessionMethod === "items" && (split_kind === "even" || split_kind === "amount")) {
+        return errResponse("METHOD_LOCKED", "Esta mesa ya se está dividiendo por platos", 409);
+      }
+    }
+  }
+
   let baseCents = 0;
   let posPaymentId: string | null = null;
 

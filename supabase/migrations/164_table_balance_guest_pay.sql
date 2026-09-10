@@ -138,11 +138,52 @@ end $$;
 revoke all on function public.pos_apply_payment(uuid, integer) from public, anon, authenticated;
 -- La EF la llama con service role; NO se expone a clientes autenticados.
 
+-- ── 3b. pos_session_split_method — helper D-33 candado bidireccional ─────────
+-- Devuelve el método que ya fijó la sesión ('items' | 'amount' | null).
+-- 'items'  → ya hay un pago succeeded con order_item_ids IS NOT NULL
+-- 'amount' → ya hay un pago succeeded de reparto (kind even/custom/guest_*)
+--            sin order_item_ids (pago de monto libre o partes iguales)
+
+create or replace function public.pos_session_split_method(p_business_id uuid, p_table_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path to ''
+as $$
+  with s as (
+    select t.session_opened_at as o
+      from public.tables t
+     where t.id          = p_table_id
+       and t.business_id = p_business_id
+  )
+  select case
+    when exists (
+      select 1 from public.pos_payments pp, s
+       where pp.table_id          = p_table_id
+         and pp.status            = 'succeeded'
+         and pp.session_opened_at = s.o
+         and pp.order_item_ids    is not null
+    ) then 'items'
+    when exists (
+      select 1 from public.pos_payments pp, s
+       where pp.table_id          = p_table_id
+         and pp.status            = 'succeeded'
+         and pp.session_opened_at = s.o
+         and pp.order_item_ids    is null
+         and pp.kind in ('even','guest_even','guest_amount','custom')
+    ) then 'amount'
+    else null
+  end;
+$$;
+revoke all on function public.pos_session_split_method(uuid, uuid) from public, anon, authenticated;
+
 -- ── 4. pos_create_split reescrito: sesión + reparto del PENDIENTE (D-33) ────
 -- Cambios vs. cuerpo real:
 --   a) Sin guard 'split already in progress'
 --   b) usa pos_table_balance.due_cents en vez de pos_tab_total
---   c) D-33: 'items' bloqueado si hay pagos por monto en la sesión
+--   c) D-33 bidireccional: el primer pago con éxito fija el método para toda la sesión;
+--      'items' bloqueado si método='amount', 'even' bloqueado si método='items'
 --   d) INSERT añade session_opened_at + source='pos'
 --   e) DELETE sólo borra 'pending' de source='pos' (no toca partes reservadas por invitados)
 
@@ -170,6 +211,7 @@ declare
   v_amount            bigint;
   v_vseat             integer;
   v_pid               uuid;
+  v_method            text;       -- D-33: método ya fijado para la sesión
 begin
   if not public.pos_can_access(p_business_id) then
     raise exception 'no pos access';
@@ -182,9 +224,13 @@ begin
     raise exception 'nothing to split';
   end if;
 
-  -- D-33: split por ítems bloqueado si hay pagos por monto en la sesión
-  if p_method = 'items' and (v_bal->>'paid_unallocated_cents')::bigint > 0 then
-    raise exception 'UNALLOCATED_PAYMENTS';
+  -- D-33 bidireccional: el primer pago exitoso fija el método para la sesión completa
+  v_method := public.pos_session_split_method(p_business_id, p_table_id);
+  if v_method = 'amount' and p_method = 'items' then
+    raise exception 'METHOD_LOCKED_AMOUNT';
+  end if;
+  if v_method = 'items' and p_method = 'even' then
+    raise exception 'METHOD_LOCKED_ITEMS';
   end if;
 
   select t.session_opened_at into v_session_opened_at
@@ -272,8 +318,8 @@ end $$;
 
 -- ── 5. pos_create_check reescrito: sesión + D-33 ─────────────────────────────
 -- Cambios vs. migration 155:
---   a) Verificación UNALLOCATED_PAYMENTS (D-33): si hay pagos por monto en esta sesión,
---      el split por ítems del mesero también queda bloqueado.
+--   a) D-33 bidireccional: bloquea si el método de la sesión ya es 'amount'
+--      (un pago por monto ya se cerró → no se puede volver a pagar por ítems).
 --   b) INSERT añade session_opened_at + source='pos'.
 
 create or replace function public.pos_create_check(
@@ -291,7 +337,6 @@ declare
   v_seat   integer;
   v_kind   text;
   v_pid    uuid;
-  v_bal    jsonb;
 begin
   if not public.pos_can_access(p_business_id) then
     raise exception 'no pos access';
@@ -300,10 +345,9 @@ begin
     raise exception 'no items';
   end if;
 
-  -- D-33: items split bloqueado si hay pagos por monto vivos en esta sesión
-  v_bal := public.pos_table_balance(p_business_id, p_table_id);
-  if (v_bal->>'paid_unallocated_cents')::bigint > 0 then
-    raise exception 'UNALLOCATED_PAYMENTS';
+  -- D-33 bidireccional: si la sesión ya tiene pagos de monto, bloquear ítems
+  if public.pos_session_split_method(p_business_id, p_table_id) = 'amount' then
+    raise exception 'METHOD_LOCKED_AMOUNT';
   end if;
 
   -- Todos los items deben ser del tab: de esta mesa, orden no cancelada/no cerrada, y NO pagados.

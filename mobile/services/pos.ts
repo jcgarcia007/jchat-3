@@ -197,9 +197,10 @@ export type PosUncombineTableResult =
   | { ok: false; reason: PosUncombineTableError };
 
 export type PosCreateCheckError =
-  | 'invalid_item'   // 'invalid or already-paid item'
-  | 'no_items'       // 'no items'
-  | 'no_access'      // 'no pos access'
+  | 'invalid_item'        // 'invalid or already-paid item'
+  | 'no_items'            // 'no items'
+  | 'no_access'           // 'no pos access'
+  | 'method_locked_amount' // D-33: mesa ya dividida por monto — no se puede pagar por ítems
   | 'db_error'
   | 'not_configured';
 
@@ -247,6 +248,8 @@ export type PosVoidOrderResult =
 export type PosCreateSplitError =
   | 'no_access'
   | 'empty_tab'
+  | 'method_locked_amount' // D-33: mesa ya dividida por monto — no se puede dividir por ítems
+  | 'method_locked_items'  // D-33: mesa ya dividida por ítems — no se puede dividir por partes iguales
   | 'db_error'
   | 'not_configured';
 
@@ -752,6 +755,8 @@ export async function posCreateSplit(
     if (msg.includes('empty tab') || msg.includes('nothing to split')) {
       return { ok: false, reason: 'empty_tab' };
     }
+    if (msg.includes('method_locked_amount')) return { ok: false, reason: 'method_locked_amount' };
+    if (msg.includes('method_locked_items'))  return { ok: false, reason: 'method_locked_items' };
     return { ok: false, reason: 'db_error' };
   }
 
@@ -910,6 +915,7 @@ export async function posCreateCheck(
     if (msg.includes('invalid or already-paid item')) return { ok: false, reason: 'invalid_item' };
     if (msg.includes('no items'))                     return { ok: false, reason: 'no_items' };
     if (msg.includes('no pos access'))                return { ok: false, reason: 'no_access' };
+    if (msg.includes('method_locked_amount'))          return { ok: false, reason: 'method_locked_amount' };
     return { ok: false, reason: 'db_error' };
   }
 

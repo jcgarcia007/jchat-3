@@ -3108,7 +3108,9 @@
     "baseAmount": "Amount",
     "tip": "Tip",
     "total": "Total",
-    "confirm": "Pay {total}"
+    "confirm": "Pay {total}",
+    "methodLockedAmount": "This table is already splitting by amount. Per-item payment is not available.",
+    "methodLockedItems": "This table is already splitting by items. Equal-share payment is not available."
   },
   "tabReceipt": {
     "title": "Payment confirmed",

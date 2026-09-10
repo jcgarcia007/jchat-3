@@ -199,5 +199,9 @@
     "confirmServiceA11y": "Confirmar llamada",
     "notifyStaff": "Avisar al personal"
   },
-  "comandaCustomer": "Cliente"
+  "comandaCustomer": "Cliente",
+  "errors": {
+    "methodLockedAmount": "Esta mesa ya se está dividiendo por monto. No se puede cambiar a pago por platos.",
+    "methodLockedItems": "Esta mesa ya se está dividiendo por platos. No se puede cambiar a partes iguales."
+  }
 }

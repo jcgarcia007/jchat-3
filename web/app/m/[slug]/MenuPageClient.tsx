@@ -2339,7 +2339,8 @@ export default function MenuPageClient({
               });
               setStep("stripeQr");
             } catch (err: unknown) {
-              const e = err as { message?: string };
+              const e = err as { code?: string; message?: string };
+              // EF already returns human-readable messages for METHOD_LOCKED and other errors
               alert(e.message ?? "Error al crear el pago");
             }
           }}
