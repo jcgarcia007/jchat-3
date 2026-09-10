@@ -928,7 +928,49 @@ export interface PosReceiptRow {
   tip_cents: number;
   status: string;
   paid_by: string | null;
+  /** F5: 'pos' (mesero M2) | 'guest' (cliente QR) */
+  source: string;
+  /** F5: card brand from Stripe (visa, mastercard, …) */
+  card_brand: string | null;
+  /** F5: last 4 digits */
+  card_last4: string | null;
   created_at: string;
+}
+
+// ─── F5: pos_table_balance ────────────────────────────────────────────────────
+
+/** Saldo canónico de la sesión actual de una mesa. */
+export interface PosTableBalance {
+  session_opened_at:      string | null;
+  items_unpaid_cents:     number;
+  paid_unallocated_cents: number;
+  due_cents:              number;
+  guest_processing_cents: number;
+}
+
+export type PosTableBalanceResult =
+  | { ok: true; balance: PosTableBalance }
+  | { ok: false; reason: 'no_access' | 'db_error' | 'not_configured' };
+
+/**
+ * F5: Saldo canónico de la mesa (sesión actual).
+ * `due_cents` = ítems sin pagar − pagos por monto ya exitosos.
+ * Incluye `guest_processing_cents` (partes reservadas por clientes QR).
+ */
+export async function posTableBalance(
+  businessId: string,
+  tableId: string,
+): Promise<PosTableBalanceResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await (posRpc as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> })
+    .rpc('pos_table_balance', { p_business_id: businessId, p_table_id: tableId });
+
+  if (error) {
+    return { ok: false, reason: 'db_error' };
+  }
+
+  return { ok: true, balance: (data ?? {}) as PosTableBalance };
 }
 
 export type PosReceiptsResult =

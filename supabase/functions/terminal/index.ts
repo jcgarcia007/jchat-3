@@ -628,16 +628,18 @@ async function handleCreateTabPaymentIntent(
 
   const db = getAdminClient();
 
-  // 2. Compute tab total server-side — base amount never comes from the client.
-  const { data: tabTotalData, error: tabErr } = await db.rpc("pos_tab_total", {
+  // 2. Compute tab balance server-side — base amount never comes from the client.
+  //    F5: usa pos_table_balance.due_cents (sesión actual, descuenta pagos de cliente)
+  const { data: balData, error: tabErr } = await db.rpc("pos_table_balance", {
     p_business_id: businessId,
     p_table_id: tableId,
   });
   if (tabErr) {
-    console.error("[terminal] pos_tab_total error:", tabErr.message);
+    console.error("[terminal] pos_table_balance error:", tabErr.message);
     return errorResponse("Internal server error", 500);
   }
-  const baseCents = typeof tabTotalData === "number" ? tabTotalData : 0;
+  const bal = balData as { due_cents?: number; session_opened_at?: string | null } | null;
+  const baseCents = bal?.due_cents ?? 0;
   if (baseCents <= 0) {
     return errorResponse("Nothing to charge: tab total is zero", 409);
   }
@@ -703,13 +705,15 @@ async function handleCreateTabPaymentIntent(
   const { data: insertData, error: insertErr } = await db
     .from("pos_payments")
     .insert({
-      business_id: businessId,
-      table_id: tableId,
-      amount_cents: baseCents,            // base only — tip is NOT stored here
-      kind: "full",
-      stripe_pi_id: pi.id,
-      status: "pending",
-      paid_by: authUserId,               // server-side only — from JWT, never from client (Fase 4B)
+      business_id:       businessId,
+      table_id:          tableId,
+      amount_cents:      baseCents,            // base only — tip is NOT stored here
+      kind:              "full",
+      stripe_pi_id:      pi.id,
+      status:            "pending",
+      paid_by:           authUserId,           // server-side only — from JWT, never from client (Fase 4B)
+      session_opened_at: bal?.session_opened_at ?? null,  // F5: scope payment to current session
+      source:            "pos",                            // F5: mesero
     })
     .select("id")
     .single();

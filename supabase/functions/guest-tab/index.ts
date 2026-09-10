@@ -22,7 +22,9 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "npm:stripe@16.2.0";
 import { priceLinesFromDb } from "../_shared/pricing.ts";
+import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 import {
   sha256Hex,
   hashIp,
@@ -667,7 +669,7 @@ async function handleAddOrderNoCode(body: Record<string, unknown>, req: Request)
   const priced = await priceLinesFromDb(db as any, businessId, items.map((it) => ({
     menu_item_id: it.menu_item_id,
     qty:          it.qty,
-    options:      it.options,
+    options:      it.options as Record<string, unknown> | undefined,
   })));
 
   if ("error" in priced)
@@ -871,7 +873,7 @@ async function handleOrderStatus(body: Record<string, unknown>): Promise<Respons
 
   // Mapear por order_id
   const itemsByOrder = new Map<string, Array<{ name: string; qty: number; item_status: string }>>();
-  for (const it of (allItems ?? []) as Array<{ order_id: string; qty: number; item_status: string; menu_items: { name: string } }>) {
+  for (const it of ((allItems ?? []) as unknown) as Array<{ order_id: string; qty: number; item_status: string; menu_items: { name: string } }>) {
     const bucket = itemsByOrder.get(it.order_id) ?? [];
     bucket.push({ name: it.menu_items.name, qty: it.qty, item_status: it.item_status });
     itemsByOrder.set(it.order_id, bucket);
@@ -902,6 +904,562 @@ async function handleOrderStatus(body: Record<string, unknown>): Promise<Respons
   return jsonResponse({ enabled: true, orders: result });
 }
 
+// ─── F5: Stripe helper ────────────────────────────────────────────────────────
+
+function getStripe(): Stripe {
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
+  return new Stripe(key, { apiVersion: "2024-06-20" });
+}
+
+// ─── F5: Session validation helper ────────────────────────────────────────────
+
+async function validateGuestSession(sessionToken: string): Promise<{
+  sessionId: string;
+  businessId: string;
+  tableId: string;
+  tableLabel: string;
+  stripeAccountId: string | null;
+  stripeChargesEnabled: boolean | null;
+  bizStatus: string | null;
+  posPaymentMode: string;
+} | null> {
+  const db = getAdminClient();
+  const tokenHash = await sha256Hex(sessionToken);
+
+  const { data: rows } = await db.rpc("guest_tab_session_validate", { p_token_hash: tokenHash });
+  if (!rows || rows.length === 0) return null;
+
+  const sess = rows[0] as { business_id: string };
+
+  const { data: sessionRow } = await db
+    .from("guest_tab_sessions")
+    .select("id, table_id, expires_at")
+    .eq("token_hash", tokenHash)
+    .single();
+
+  if (!sessionRow) return null;
+
+  const { data: tbl } = await db
+    .from("tables")
+    .select("label")
+    .eq("id", sessionRow.table_id)
+    .single();
+
+  const { data: biz } = await db
+    .from("businesses")
+    .select("stripe_account_id, stripe_charges_enabled, status, pos_payment_mode")
+    .eq("id", sess.business_id)
+    .single();
+
+  return {
+    sessionId:           (sessionRow as { id: string }).id,
+    businessId:          sess.business_id,
+    tableId:             (sessionRow as { table_id: string }).table_id,
+    tableLabel:          (tbl as { label?: string })?.label ?? "",
+    stripeAccountId:     (biz as { stripe_account_id?: string | null })?.stripe_account_id ?? null,
+    stripeChargesEnabled: (biz as { stripe_charges_enabled?: boolean | null })?.stripe_charges_enabled ?? null,
+    bizStatus:           (biz as { status?: string | null })?.status ?? null,
+    posPaymentMode:      (biz as { pos_payment_mode?: string })?.pos_payment_mode ?? "stripe",
+  };
+}
+
+// ─── F5: Generate receipt code (22-char base64url) ────────────────────────────
+
+function generateReceiptCode(): string {
+  const raw = new Uint8Array(16);
+  crypto.getRandomValues(raw);
+  return btoa(String.fromCharCode(...raw))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+// ─── F5: handleSummary ────────────────────────────────────────────────────────
+
+async function handleSummary(body: Record<string, unknown>): Promise<Response> {
+  const { session_token } = body as { session_token?: string };
+  if (!session_token) return errResponse("VALIDATION", "session_token requerido", 400);
+
+  const sess = await validateGuestSession(session_token);
+  if (!sess) return errResponse("SESSION_INVALID", "La sesión ha expirado o no es válida.", 401);
+
+  const db = getAdminClient();
+
+  const { data: summary, error: sumErr } = await db.rpc("pos_guest_table_summary", {
+    p_business_id: sess.businessId,
+    p_table_id:    sess.tableId,
+  });
+
+  if (sumErr) {
+    console.error("[guest-tab] pos_guest_table_summary error:", sumErr.message);
+    return errResponse("DB_ERROR", "Error al cargar el resumen", 500);
+  }
+
+  const data = summary as {
+    balance: {
+      session_opened_at:     string | null;
+      items_unpaid_cents:    number;
+      paid_unallocated_cents: number;
+      due_cents:             number;
+      guest_processing_cents: number;
+    };
+    items:    unknown[];
+    payments: unknown[];
+  };
+
+  const canPay = sess.posPaymentMode === "stripe";
+
+  // If can_pay and there's an even plan in progress, include it
+  let evenPlan: unknown[] | undefined;
+  if (canPay) {
+    try {
+      const { data: plan } = await db.rpc("pos_guest_even_plan", {
+        p_business_id: sess.businessId,
+        p_table_id:    sess.tableId,
+        p_ways:        null as unknown as number, // null = only return existing plan, don't create
+      });
+      if (Array.isArray(plan) && plan.length > 0) {
+        evenPlan = plan;
+      }
+    } catch {
+      // ignore — no plan exists
+    }
+  }
+
+  return jsonResponse({
+    pos_payment_mode: sess.posPaymentMode,
+    can_pay:          canPay,
+    table_label:      sess.tableLabel,
+    balance:          data.balance,
+    items:            data.items ?? [],
+    payments:         data.payments ?? [],
+    ...(evenPlan ? { even_plan: evenPlan } : {}),
+  });
+}
+
+// ─── F5: handleCreatePayment ──────────────────────────────────────────────────
+
+async function handleCreatePayment(body: Record<string, unknown>): Promise<Response> {
+  const { session_token, split_kind, ways, payment_id: evenPaymentId,
+          order_item_ids, amount_cents: amountInput, tip_cents: tipInput } = body as {
+    session_token?:   string;
+    split_kind?:      string;
+    ways?:            number;
+    payment_id?:      string;
+    order_item_ids?:  string[];
+    amount_cents?:    number;
+    tip_cents?:       number;
+  };
+
+  if (!session_token) return errResponse("VALIDATION", "session_token requerido", 400);
+  if (!split_kind)    return errResponse("VALIDATION", "split_kind requerido", 400);
+
+  const sess = await validateGuestSession(session_token);
+  if (!sess) return errResponse("SESSION_INVALID", "La sesión ha expirado o no es válida.", 401);
+
+  if (sess.posPaymentMode !== "stripe") {
+    return errResponse("MODE_NOT_ALLOWED", "El negocio no acepta pagos en línea", 403);
+  }
+
+  const gate = businessChargeGate({
+    stripe_account_id:     sess.stripeAccountId,
+    status:                sess.bizStatus,
+    stripe_charges_enabled: sess.stripeChargesEnabled,
+  });
+  if (gate) return errResponse("STRIPE_ERROR", gate.error, gate.status);
+
+  const db = getAdminClient();
+
+  // Load balance
+  const { data: balData, error: balErr } = await db.rpc("pos_table_balance", {
+    p_business_id: sess.businessId,
+    p_table_id:    sess.tableId,
+  });
+  if (balErr) return errResponse("DB_ERROR", "Error al cargar saldo", 500);
+
+  const bal = balData as {
+    due_cents:              number;
+    paid_unallocated_cents: number;
+    session_opened_at:      string | null;
+  };
+
+  if (!bal || bal.due_cents <= 0) {
+    return errResponse("NOTHING_DUE", "No hay saldo pendiente en esta mesa", 409);
+  }
+
+  let baseCents = 0;
+  let posPaymentId: string | null = null;
+
+  if (split_kind === "full") {
+    // Insert processing row for the full amount
+    baseCents = bal.due_cents;
+    const { data: ins, error: insErr } = await db
+      .from("pos_payments")
+      .insert({
+        business_id:        sess.businessId,
+        table_id:           sess.tableId,
+        amount_cents:       baseCents,
+        kind:               "guest_full",
+        status:             "processing",
+        source:             "guest",
+        claimed_at:         new Date().toISOString(),
+        guest_session_id:   sess.sessionId,
+        session_opened_at:  bal.session_opened_at,
+      })
+      .select("id")
+      .single();
+    if (insErr || !ins) return errResponse("DB_ERROR", "No se pudo crear el pago", 500);
+    posPaymentId = (ins as { id: string }).id;
+
+  } else if (split_kind === "even") {
+    // Claim an existing share or create the plan
+    if (evenPaymentId) {
+      // Claim a specific share
+      const { data: claimed } = await db.rpc("pos_guest_claim_share", {
+        p_payment_id:       evenPaymentId,
+        p_guest_session_id: sess.sessionId,
+      });
+      if (!claimed) return errResponse("SHARE_TAKEN", "Esta parte ya fue tomada por otro cliente", 409);
+      posPaymentId = evenPaymentId;
+      // Load amount from the row
+      const { data: row } = await db.from("pos_payments").select("amount_cents").eq("id", evenPaymentId).single();
+      baseCents = (row as { amount_cents: number })?.amount_cents ?? 0;
+    } else {
+      // Create plan or get existing, then claim first claimable
+      if (!ways || ways < 2 || ways > 20) {
+        return errResponse("INVALID_WAYS", "ways debe estar entre 2 y 20", 422);
+      }
+      const { data: plan, error: planErr } = await db.rpc("pos_guest_even_plan", {
+        p_business_id: sess.businessId,
+        p_table_id:    sess.tableId,
+        p_ways:        ways,
+      });
+      if (planErr) {
+        const msg = planErr.message;
+        if (msg.includes("NOTHING_DUE")) return errResponse("NOTHING_DUE", "No hay saldo pendiente", 409);
+        if (msg.includes("INVALID_WAYS")) return errResponse("INVALID_WAYS", "Número de partes inválido", 422);
+        return errResponse("DB_ERROR", "Error al crear plan", 500);
+      }
+      const claimable = (plan as { payment_id: string; amount_cents: number; claimable: boolean }[])
+        .find(r => r.claimable);
+      if (!claimable) return errResponse("SHARE_TAKEN", "No hay partes disponibles", 409);
+
+      const { data: claimed } = await db.rpc("pos_guest_claim_share", {
+        p_payment_id:       claimable.payment_id,
+        p_guest_session_id: sess.sessionId,
+      });
+      if (!claimed) return errResponse("SHARE_TAKEN", "La parte fue tomada por otro cliente", 409);
+      posPaymentId = claimable.payment_id;
+      baseCents    = claimable.amount_cents;
+    }
+
+  } else if (split_kind === "items") {
+    if (bal.paid_unallocated_cents > 0) {
+      return errResponse("ITEMS_SPLIT_UNAVAILABLE", "Ya hay pagos por monto; usa partes iguales o monto libre", 409);
+    }
+    if (!order_item_ids || order_item_ids.length === 0) {
+      return errResponse("VALIDATION", "order_item_ids requerido para split por ítems", 400);
+    }
+    // Validate items and compute amount
+    const { data: rows, error: itemsErr } = await db
+      .from("order_items")
+      .select("id, price_cents, qty, paid_at, order_id, orders!inner(table_id, canceled_at, paid_at)")
+      .in("id", order_item_ids);
+    if (itemsErr) return errResponse("DB_ERROR", "Error al validar ítems", 500);
+    const items = (rows as unknown) as {
+      id: string; price_cents: number; qty: number; paid_at: string | null;
+      orders: { table_id: string; canceled_at: string | null; paid_at: string | null };
+    }[];
+    for (const it of items) {
+      if (it.paid_at) return errResponse("ITEM_ALREADY_PAID", `Ítem ${it.id} ya fue pagado`, 409);
+      if (it.orders.table_id !== sess.tableId) return errResponse("ITEM_RESERVED", "Ítem no pertenece a esta mesa", 409);
+      if (it.orders.canceled_at || it.orders.paid_at) return errResponse("ITEM_ALREADY_PAID", "Orden ya cerrada", 409);
+    }
+    // Check none are reserved
+    const { data: reserved } = await db
+      .from("pos_payments")
+      .select("order_item_ids")
+      .eq("status", "processing")
+      .gt("claimed_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+    const reservedIds = new Set<string>();
+    for (const r of (reserved ?? []) as { order_item_ids: string[] | null }[]) {
+      (r.order_item_ids ?? []).forEach(id => reservedIds.add(id));
+    }
+    for (const id of order_item_ids) {
+      if (reservedIds.has(id)) return errResponse("ITEM_RESERVED", `Ítem ${id} ya está reservado`, 409);
+    }
+    baseCents = items.reduce((s, it) => s + it.price_cents * it.qty, 0);
+    const { data: ins, error: insErr } = await db
+      .from("pos_payments")
+      .insert({
+        business_id:        sess.businessId,
+        table_id:           sess.tableId,
+        amount_cents:       baseCents,
+        kind:               "guest_items",
+        order_item_ids:     order_item_ids,
+        status:             "processing",
+        source:             "guest",
+        claimed_at:         new Date().toISOString(),
+        guest_session_id:   sess.sessionId,
+        session_opened_at:  bal.session_opened_at,
+      })
+      .select("id")
+      .single();
+    if (insErr || !ins) return errResponse("DB_ERROR", "No se pudo crear el pago", 500);
+    posPaymentId = (ins as { id: string }).id;
+
+  } else if (split_kind === "amount") {
+    const aCents = typeof amountInput === "number" ? Math.floor(amountInput) : 0;
+    if (aCents < 50 || aCents > bal.due_cents) {
+      return errResponse("AMOUNT_OUT_OF_RANGE", `amount_cents debe estar entre 50 y ${bal.due_cents}`, 422);
+    }
+    baseCents = aCents;
+    const { data: ins, error: insErr } = await db
+      .from("pos_payments")
+      .insert({
+        business_id:        sess.businessId,
+        table_id:           sess.tableId,
+        amount_cents:       baseCents,
+        kind:               "guest_amount",
+        status:             "processing",
+        source:             "guest",
+        claimed_at:         new Date().toISOString(),
+        guest_session_id:   sess.sessionId,
+        session_opened_at:  bal.session_opened_at,
+      })
+      .select("id")
+      .single();
+    if (insErr || !ins) return errResponse("DB_ERROR", "No se pudo crear el pago", 500);
+    posPaymentId = (ins as { id: string }).id;
+
+  } else {
+    return errResponse("VALIDATION", `split_kind desconocido: ${split_kind}`, 400);
+  }
+
+  // Validate tip
+  const tipCents = typeof tipInput === "number" && tipInput >= 0
+    ? Math.min(Math.floor(tipInput), baseCents)
+    : 0;
+  if (typeof tipInput === "number" && tipInput > baseCents) {
+    return errResponse("TIP_OUT_OF_RANGE", "tip_cents no puede superar el monto base", 422);
+  }
+  const totalCents = baseCents + tipCents;
+
+  // Create Stripe PaymentIntent (destination charges — same model as guest-pay)
+  const stripe = getStripe();
+  let pi: Stripe.PaymentIntent;
+  try {
+    const piParams = buildConnectPiParams({
+      amountCents:     totalCents,
+      currency:        "usd",
+      metadata: {
+        payment_kind:   "pos_guest",
+        pos_payment_id: posPaymentId!,
+        business_id:    sess.businessId,
+        table_id:       sess.tableId,
+        base_cents:     String(baseCents),
+        tip_cents:      String(tipCents),
+      },
+      stripeAccountId: sess.stripeAccountId!,
+    });
+    pi = await stripe.paymentIntents.create(piParams);
+  } catch (err) {
+    // Roll back the processing row
+    await db.from("pos_payments").update({ status: "failed" }).eq("id", posPaymentId!);
+    const msg = err instanceof Error ? err.message : "Stripe error";
+    console.error("[guest-tab] PI create error:", msg);
+    return errResponse("STRIPE_ERROR", msg, 502);
+  }
+
+  // Save stripe_pi_id on the row
+  await db.from("pos_payments").update({ stripe_pi_id: pi.id }).eq("id", posPaymentId!);
+
+  const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
+
+  return jsonResponse({
+    pos_payment_id:  posPaymentId,
+    client_secret:   pi.client_secret,
+    publishable_key: publishableKey,
+    stripe_account_id: sess.stripeAccountId,
+    base_cents:      baseCents,
+    tip_cents:       tipCents,
+    total_cents:     totalCents,
+  });
+}
+
+// ─── F5: handleConfirmPayment ─────────────────────────────────────────────────
+
+async function handleConfirmPayment(body: Record<string, unknown>): Promise<Response> {
+  const { session_token, pos_payment_id } = body as {
+    session_token?:   string;
+    pos_payment_id?:  string;
+  };
+  if (!session_token)   return errResponse("VALIDATION", "session_token requerido", 400);
+  if (!pos_payment_id)  return errResponse("VALIDATION", "pos_payment_id requerido", 400);
+
+  const sess = await validateGuestSession(session_token);
+  if (!sess) return errResponse("SESSION_INVALID", "La sesión ha expirado o no es válida.", 401);
+
+  const db = getAdminClient();
+
+  // Load the payment row
+  const { data: payRow, error: payErr } = await db
+    .from("pos_payments")
+    .select("id, business_id, table_id, amount_cents, stripe_pi_id, status, receipt_code, kind, source, session_opened_at")
+    .eq("id", pos_payment_id)
+    .maybeSingle();
+
+  if (payErr || !payRow) return errResponse("PAYMENT_NOT_FOUND", "Pago no encontrado", 404);
+
+  const pay = payRow as {
+    id: string; business_id: string; table_id: string; amount_cents: number;
+    stripe_pi_id: string | null; status: string; receipt_code: string | null;
+    kind: string; source: string; session_opened_at: string | null;
+  };
+
+  if (pay.source !== "guest") return errResponse("PAYMENT_NOT_FOUND", "Pago no encontrado", 404);
+  if (pay.table_id !== sess.tableId) return errResponse("PAYMENT_NOT_FOUND", "Pago no pertenece a esta mesa", 404);
+
+  // Idempotent: already succeeded
+  if (pay.status === "succeeded") {
+    const { data: balNow } = await db.rpc("pos_table_balance", {
+      p_business_id: sess.businessId, p_table_id: sess.tableId,
+    });
+    return jsonResponse({
+      ok: true, status: "succeeded", tab_closed: (balNow as { due_cents: number })?.due_cents === 0,
+      receipt_code: pay.receipt_code,
+      remaining_due_cents: (balNow as { due_cents: number })?.due_cents ?? 0,
+    });
+  }
+
+  if (!pay.stripe_pi_id) return errResponse("PAYMENT_NOT_FOUND", "Sin PaymentIntent asociado", 422);
+
+  // Retrieve PI from Stripe
+  const stripe = getStripe();
+  const gate = businessChargeGate({
+    stripe_account_id: sess.stripeAccountId, status: sess.bizStatus,
+    stripe_charges_enabled: sess.stripeChargesEnabled,
+  });
+  if (gate) return errResponse("STRIPE_ERROR", gate.error, gate.status);
+
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.retrieve(
+      pay.stripe_pi_id,
+      { expand: ["charges.data.payment_method_details"] },
+    );
+  } catch (err) {
+    return errResponse("STRIPE_ERROR", err instanceof Error ? err.message : "Stripe error", 502);
+  }
+
+  if (pi.status === "requires_payment_method" || pi.status === "canceled") {
+    // Release the reservation
+    const releaseStatus = pay.kind === "guest_even" ? "pending" : "failed";
+    await db.from("pos_payments").update({
+      status: releaseStatus,
+      claimed_at: releaseStatus === "pending" ? null : undefined,
+    }).eq("id", pos_payment_id);
+    return errResponse("NOT_SUCCEEDED", `El pago no fue completado (${pi.status})`, 402);
+  }
+
+  if (pi.status !== "succeeded") {
+    return jsonResponse({ ok: false, status: pi.status });
+  }
+
+  // Apply payment
+  const tipCents = Math.max(0, pi.amount - pay.amount_cents);
+  const { error: applyErr } = await db.rpc("pos_apply_payment", {
+    p_payment_id: pos_payment_id,
+    p_tip_cents:  tipCents,
+  });
+  if (applyErr) {
+    console.error("[guest-tab] pos_apply_payment error:", applyErr.message);
+    return errResponse("DB_ERROR", "Error al aplicar pago", 500);
+  }
+
+  // Write receipt_code + card details
+  let receiptCode = pay.receipt_code;
+  if (!receiptCode) {
+    try {
+      const code = generateReceiptCode();
+      const charge = (pi as unknown as { charges?: { data: unknown[] } }).charges?.data?.[0] as
+        { payment_method_details?: { card?: { brand?: string; last4?: string } } } | null ?? null;
+      const cardInfo = charge?.payment_method_details?.card ?? null;
+      const { error: rcErr } = await db
+        .from("pos_payments")
+        .update({ receipt_code: code, card_brand: cardInfo?.brand ?? null, card_last4: cardInfo?.last4 ?? null })
+        .eq("id", pos_payment_id)
+        .is("receipt_code", null);
+      if (!rcErr) receiptCode = code;
+    } catch (e) {
+      console.error("[guest-tab] receipt injection failed:", e);
+    }
+  }
+
+  const { data: balFinal } = await db.rpc("pos_table_balance", {
+    p_business_id: sess.businessId, p_table_id: sess.tableId,
+  });
+  const remainingDue = (balFinal as { due_cents: number })?.due_cents ?? 0;
+
+  return jsonResponse({
+    ok: true, status: "succeeded", tab_closed: remainingDue === 0,
+    receipt_code: receiptCode, remaining_due_cents: remainingDue,
+  });
+}
+
+// ─── F5: handleCancelPayment ──────────────────────────────────────────────────
+
+async function handleCancelPayment(body: Record<string, unknown>): Promise<Response> {
+  const { session_token, pos_payment_id } = body as {
+    session_token?:  string;
+    pos_payment_id?: string;
+  };
+  if (!session_token)  return errResponse("VALIDATION", "session_token requerido", 400);
+  if (!pos_payment_id) return errResponse("VALIDATION", "pos_payment_id requerido", 400);
+
+  const sess = await validateGuestSession(session_token);
+  if (!sess) return errResponse("SESSION_INVALID", "La sesión ha expirado o no es válida.", 401);
+
+  const db = getAdminClient();
+
+  const { data: row } = await db
+    .from("pos_payments")
+    .select("id, kind, status, stripe_pi_id, guest_session_id, source")
+    .eq("id", pos_payment_id)
+    .maybeSingle();
+
+  if (!row) return jsonResponse({ ok: true });  // idempotent
+
+  const pay = row as {
+    id: string; kind: string; status: string;
+    stripe_pi_id: string | null; guest_session_id: string | null; source: string;
+  };
+
+  if (pay.source !== "guest") return jsonResponse({ ok: true });
+
+  if (pay.status === "processing") {
+    const releaseStatus = pay.kind === "guest_even" ? "pending" : "failed";
+    await db.from("pos_payments").update({
+      status: releaseStatus,
+      claimed_at: releaseStatus === "pending" ? null : undefined,
+      guest_session_id: releaseStatus === "pending" ? null : undefined,
+    }).eq("id", pos_payment_id).eq("status", "processing");
+
+    // Cancel the PI if it exists
+    if (pay.stripe_pi_id) {
+      try {
+        const stripe = getStripe();
+        await stripe.paymentIntents.cancel(pay.stripe_pi_id);
+      } catch (e) {
+        console.error("[guest-tab] cancel PI non-fatal:", e instanceof Error ? e.message : e);
+      }
+    }
+  }
+
+  return jsonResponse({ ok: true });
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -923,6 +1481,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     case "add_order":         return handleAddOrder(body);
     case "add_order_no_code": return handleAddOrderNoCode(body, req);  // F4
     case "order_status":      return handleOrderStatus(body);           // F4
+    case "summary":           return handleSummary(body);               // F5
+    case "create_payment":    return handleCreatePayment(body);         // F5
+    case "confirm_payment":   return handleConfirmPayment(body);        // F5
+    case "cancel_payment":    return handleCancelPayment(body);         // F5
     default:
       return errResponse("UNKNOWN_ACTION", `Acción desconocida: ${action ?? "(vacía)"}`, 400);
   }

@@ -142,6 +142,72 @@ async function recordOrphanPayment(
   console.warn(`[stripe-webhook] ORPHAN payment recorded: pi=${paymentIntent.id} reason="${reason}"`);
 }
 
+// ── Handler: pos_guest payment succeeded (F5 respaldo — D-34) ────────────────
+// Idempotente: si pos_apply_payment ya corrió (confirm_payment llegó primero),
+// el status ya es 'succeeded' y la función termina sin doble conteo.
+async function handlePosGuestSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<void> {
+  const posPaymentId = paymentIntent.metadata?.pos_payment_id;
+  if (!posPaymentId) {
+    console.error(`[stripe-webhook] pos_guest missing pos_payment_id on PI ${paymentIntent.id}`);
+    return;
+  }
+
+  const db = getAdminClient();
+
+  // Cargar la fila de pos_payments
+  const { data: payRow } = await db
+    .from("pos_payments")
+    .select("id, amount_cents, status, receipt_code")
+    .eq("id", posPaymentId)
+    .maybeSingle();
+
+  if (!payRow) {
+    console.error(`[stripe-webhook] pos_guest: payment ${posPaymentId} not found`);
+    return;
+  }
+
+  const pay = payRow as { id: string; amount_cents: number; status: string; receipt_code: string | null };
+
+  if (pay.status === "succeeded") {
+    console.log(`[stripe-webhook] pos_guest: payment ${posPaymentId} already succeeded — skipping`);
+    return;
+  }
+
+  // Aplicar el pago
+  const tipCents = Math.max(0, paymentIntent.amount - pay.amount_cents);
+  const { error: applyErr } = await db.rpc("pos_apply_payment", {
+    p_payment_id: posPaymentId,
+    p_tip_cents:  tipCents,
+  });
+  if (applyErr) {
+    console.error(`[stripe-webhook] pos_guest pos_apply_payment error for ${posPaymentId}:`, applyErr);
+    throw applyErr;
+  }
+
+  // Receipt code + card details (non-fatal)
+  if (!pay.receipt_code) {
+    try {
+      const raw = new Uint8Array(16);
+      crypto.getRandomValues(raw);
+      const code = btoa(String.fromCharCode(...raw))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+      const charge = (paymentIntent as unknown as { charges?: { data: unknown[] } }).charges?.data?.[0] as
+        { payment_method_details?: { card?: { brand?: string; last4?: string } } } | null ?? null;
+      const cardInfo = charge?.payment_method_details?.card ?? null;
+      await db.from("pos_payments")
+        .update({ receipt_code: code, card_brand: cardInfo?.brand ?? null, card_last4: cardInfo?.last4 ?? null })
+        .eq("id", posPaymentId)
+        .is("receipt_code", null);
+    } catch (e) {
+      console.error("[stripe-webhook] pos_guest receipt injection failed (non-fatal):", e);
+    }
+  }
+
+  console.log(`[stripe-webhook] pos_guest: applied payment=${posPaymentId} pi=${paymentIntent.id} tip=${tipCents}`);
+}
+
 async function handlePaymentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
@@ -152,6 +218,12 @@ async function handlePaymentSucceeded(
   // phantom paid order with no items and double-count the money.
   if (meta.payment_kind === "tab_settlement") {
     await handleTabSettlementSucceeded(paymentIntent);
+    return;
+  }
+
+  // F5: QR guest payment — respaldo si confirm_payment no llegó a tiempo (D-34)
+  if (meta.payment_kind === "pos_guest") {
+    await handlePosGuestSucceeded(paymentIntent);
     return;
   }
 

@@ -3059,5 +3059,74 @@
   "noCodeError": "Ocurrió un error. Intenta de nuevo.",
   "noCodeModeNotAllowed": "Esta función no está disponible en este negocio.",
   "tabOrderAwaitingTitle": "Pedido pendiente de aprobación",
-  "tabOrderAwaitingSubtitle": "El mesero revisará tu pedido en la mesa {{label}} y lo aprobará en breve."
+  "tabOrderAwaitingSubtitle": "El mesero revisará tu pedido en la mesa {{label}} y lo aprobará en breve.",
+  "tableBandTabExit": "Salir",
+  "tabBalance": {
+    "fab": "Cuenta · {amount}",
+    "fabClosed": "✓ Cuenta cerrada",
+    "title": "Tu cuenta",
+    "paid": "Pagado",
+    "reserved": "Reservado",
+    "mine": "Mío",
+    "subtotal": "Subtotal",
+    "paidByGuests": "Pagado por clientes",
+    "processing": "Procesando",
+    "due": "Total pendiente",
+    "paymentsReceived": "Pagos recibidos",
+    "paymentGuest": "Pago de cliente",
+    "paymentWaiter": "Pago de mesero",
+    "payButton": "Pagar {amount}",
+    "externalInfo": "El pago se gestiona con el mesero en este negocio.",
+    "closed": "¡Cuenta cerrada!"
+  },
+  "split": {
+    "title": "¿Cómo quieres pagar?",
+    "kind": {
+      "full": "Monto completo",
+      "even": "Dividir en partes iguales",
+      "items": "Pagar por artículos",
+      "amount": "Monto personalizado"
+    },
+    "kindDesc": {
+      "full": "Paga el total pendiente ({amount})",
+      "even": "Divide la cuenta entre todos",
+      "items": "Selecciona los artículos que quieres pagar",
+      "amount": "Ingresa un monto personalizado"
+    },
+    "itemsUnavailable": "La división por artículos no está disponible cuando ya se han hecho pagos de monto.",
+    "choosePart": "Elige tu parte",
+    "partFree": "Disponible",
+    "partReserved": "Reservada",
+    "partPaid": "Pagada",
+    "ways": "Personas",
+    "perPerson": "{amount} por persona",
+    "noItemsAvailable": "No hay artículos disponibles.",
+    "amountHint": "Ingresa el monto (máx {max})",
+    "tipLabel": "Agregar propina",
+    "tipNone": "Sin propina",
+    "tipCustom": "Otra",
+    "baseAmount": "Monto",
+    "tip": "Propina",
+    "total": "Total",
+    "confirm": "Pagar {total}"
+  },
+  "tabReceipt": {
+    "title": "Pago confirmado",
+    "subtitle": "¡Gracias!",
+    "amount": "Monto",
+    "tip": "Propina",
+    "total": "Total pagado",
+    "closed": "¡Cuenta cerrada!",
+    "remaining": "Pendiente en la mesa: {amount}",
+    "keepOrdering": "Seguir pidiendo",
+    "close": "Cerrar"
+  },
+  "stripeForm": {
+    "total": "Total",
+    "processing": "Procesando…",
+    "pay": "Pagar {amount}",
+    "cancel": "Cancelar",
+    "error": "Error de pago. Intenta de nuevo.",
+    "confirmError": "No se pudo confirmar el pago. Intenta de nuevo."
+  }
 }

@@ -3059,5 +3059,74 @@
   "noCodeError": "An error occurred. Please try again.",
   "noCodeModeNotAllowed": "This feature is not available at this business.",
   "tabOrderAwaitingTitle": "Order pending approval",
-  "tabOrderAwaitingSubtitle": "The waiter will review your order for table {{label}} and approve it shortly."
+  "tabOrderAwaitingSubtitle": "The waiter will review your order for table {{label}} and approve it shortly.",
+  "tableBandTabExit": "Leave",
+  "tabBalance": {
+    "fab": "Account · {amount}",
+    "fabClosed": "✓ Account closed",
+    "title": "Your account",
+    "paid": "Paid",
+    "reserved": "Reserved",
+    "mine": "Mine",
+    "subtotal": "Subtotal",
+    "paidByGuests": "Paid by guests",
+    "processing": "Processing",
+    "due": "Total due",
+    "paymentsReceived": "Payments received",
+    "paymentGuest": "Guest payment",
+    "paymentWaiter": "Waiter payment",
+    "payButton": "Pay {amount}",
+    "externalInfo": "Payment is handled by the waiter at this business.",
+    "closed": "Account closed"
+  },
+  "split": {
+    "title": "How would you like to pay?",
+    "kind": {
+      "full": "Full amount",
+      "even": "Split evenly",
+      "items": "Pay for items",
+      "amount": "Custom amount"
+    },
+    "kindDesc": {
+      "full": "Pay the full pending amount ({amount})",
+      "even": "Divide the bill equally among the table",
+      "items": "Select the items you want to pay for",
+      "amount": "Enter a custom amount to pay"
+    },
+    "itemsUnavailable": "Items split is unavailable when amount payments have been made.",
+    "choosePart": "Choose your share",
+    "partFree": "Available",
+    "partReserved": "Reserved",
+    "partPaid": "Paid",
+    "ways": "People",
+    "perPerson": "{amount} per person",
+    "noItemsAvailable": "No items available to select.",
+    "amountHint": "Enter amount (max {max})",
+    "tipLabel": "Add a tip",
+    "tipNone": "No tip",
+    "tipCustom": "Other",
+    "baseAmount": "Amount",
+    "tip": "Tip",
+    "total": "Total",
+    "confirm": "Pay {total}"
+  },
+  "tabReceipt": {
+    "title": "Payment confirmed",
+    "subtitle": "Thank you!",
+    "amount": "Amount",
+    "tip": "Tip",
+    "total": "Total paid",
+    "closed": "Account closed!",
+    "remaining": "Remaining on the table: {amount}",
+    "keepOrdering": "Keep ordering",
+    "close": "Close"
+  },
+  "stripeForm": {
+    "total": "Total",
+    "processing": "Processing…",
+    "pay": "Pay {amount}",
+    "cancel": "Cancel",
+    "error": "Payment error. Please try again.",
+    "confirmError": "Could not confirm payment. Please try again."
+  }
 }

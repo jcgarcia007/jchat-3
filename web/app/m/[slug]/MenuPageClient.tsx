@@ -18,6 +18,11 @@ import CheckoutChoiceSheet from "./CheckoutChoiceSheet";
 import TabCodeSheet from "./TabCodeSheet";
 import NoCodeSheet from "./NoCodeSheet";
 import TabOrderConfirmation from "./TabOrderConfirmation";
+import TabBalanceFab, { type TabSummary } from "./TabBalanceFab";
+import TabBalanceSheet from "./TabBalanceSheet";
+import SplitMethodSheet from "./SplitMethodSheet";
+import StripePaymentFormQr from "./StripePaymentFormQr";
+import TabPaymentReceipt from "./TabPaymentReceipt";
 import { readGuestSession, saveGuestSession, clearGuestSession, guestTab } from "@/lib/guestTabSession";
 import { buildOrderOptions } from "@/lib/orderOptions";
 import type {
@@ -58,7 +63,8 @@ interface CartItem {
   notes?: string;
 }
 
-type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "noCode" | "tabConfirm" | "pay";
+type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "noCode" | "tabConfirm" | "pay"
+            | "tabBalance" | "splitMethod" | "stripeQr" | "tabReceipt";
 type PickupType = "counter" | "table";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1651,6 +1657,21 @@ export default function MenuPageClient({
     variant?: "added" | "awaiting";
   } | null>(null);
 
+  // ── F5: balance + payment state ─────────────────────────────────────────────
+  const [tabSummary, setTabSummary]   = useState<TabSummary | null>(null);
+  const [qrPayState, setQrPayState]   = useState<{
+    posPaymentId:  string;
+    clientSecret:  string;
+    publishableKey: string;
+    baseCents:     number;
+    tipCents:      number;
+  } | null>(null);
+  const [qrReceipt, setQrReceipt]     = useState<{
+    baseCents: number; tipCents: number;
+    receiptCode: string | null;
+    remainingDue: number; tabClosed: boolean;
+  } | null>(null);
+
   // ── Order status: gate the button on the owner's kds_settings toggle ─────────
   const [orderStatusAvailable, setOrderStatusAvailable] = useState(false);
   const [showOrderStatus, setShowOrderStatus] = useState(false);
@@ -2267,6 +2288,115 @@ export default function MenuPageClient({
           onClose={() => setShowOrderStatus(false)}
         />
       )}
+
+      {/* ── F5: TabBalanceFab ─ floating when QR guest session is active ──── */}
+      {guestSession && !tableCtx && (
+        <TabBalanceFab
+          sessionToken={guestSession.token}
+          palette={palette as unknown as Record<string, string>}
+          locale={locale}
+          onOpenSheet={(summary) => {
+            setTabSummary(summary);
+            setStep("tabBalance");
+          }}
+          onSessionExpired={() => {
+            clearGuestSession();
+            setGuestSession(null);
+          }}
+        />
+      )}
+
+      {/* ── F5: TabBalanceSheet ──────────────────────────────────────────── */}
+      {step === "tabBalance" && tabSummary && guestSession && (
+        <TabBalanceSheet
+          summary={tabSummary}
+          sessionToken={guestSession.token}
+          palette={palette as unknown as Record<string, string>}
+          locale={locale}
+          onPay={() => setStep("splitMethod")}
+          onClose={() => setStep("menu")}
+        />
+      )}
+
+      {/* ── F5: SplitMethodSheet ────────────────────────────────────────── */}
+      {step === "splitMethod" && tabSummary && guestSession && (
+        <SplitMethodSheet
+          summary={tabSummary}
+          palette={palette as unknown as Record<string, string>}
+          locale={locale}
+          onConfirm={async (params) => {
+            try {
+              const result = await guestTab.createPayment({
+                session_token: guestSession.token,
+                ...params,
+              });
+              setQrPayState({
+                posPaymentId:   result.pos_payment_id,
+                clientSecret:   result.client_secret,
+                publishableKey: result.publishable_key,
+                baseCents:      result.base_cents,
+                tipCents:       result.tip_cents,
+              });
+              setStep("stripeQr");
+            } catch (err: unknown) {
+              const e = err as { message?: string };
+              alert(e.message ?? "Error al crear el pago");
+            }
+          }}
+          onClose={() => setStep("tabBalance")}
+        />
+      )}
+
+      {/* ── F5: StripePaymentFormQr ─────────────────────────────────────── */}
+      {step === "stripeQr" && qrPayState && guestSession && (
+        <StripePaymentFormQr
+          clientSecret={qrPayState.clientSecret}
+          publishableKey={qrPayState.publishableKey}
+          posPaymentId={qrPayState.posPaymentId}
+          sessionToken={guestSession.token}
+          baseCents={qrPayState.baseCents}
+          tipCents={qrPayState.tipCents}
+          palette={palette as unknown as Record<string, string>}
+          locale={locale}
+          onSuccess={(result) => {
+            setQrReceipt({
+              baseCents:    qrPayState.baseCents,
+              tipCents:     qrPayState.tipCents,
+              receiptCode:  result.receipt_code,
+              remainingDue: result.remaining_due_cents,
+              tabClosed:    result.tab_closed,
+            });
+            setQrPayState(null);
+            setStep("tabReceipt");
+          }}
+          onCancel={() => {
+            setQrPayState(null);
+            setStep("splitMethod");
+          }}
+        />
+      )}
+
+      {/* ── F5: TabPaymentReceipt ───────────────────────────────────────── */}
+      {step === "tabReceipt" && qrReceipt && (
+        <TabPaymentReceipt
+          baseCents={qrReceipt.baseCents}
+          tipCents={qrReceipt.tipCents}
+          receiptCode={qrReceipt.receiptCode}
+          remainingDue={qrReceipt.remainingDue}
+          tabClosed={qrReceipt.tabClosed}
+          locale={locale}
+          palette={palette as unknown as Record<string, string>}
+          onKeepOrdering={() => {
+            setQrReceipt(null);
+            setStep("menu");
+          }}
+          onClose={() => {
+            setQrReceipt(null);
+            setStep("menu");
+          }}
+        />
+      )}
+
       </main>
     </div>
   );

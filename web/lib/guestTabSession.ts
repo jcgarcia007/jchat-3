@@ -119,4 +119,82 @@ export const guestTab = {
   }>(
     { action: 'order_status', ...params }
   ),
+
+  // ── F5: balance + pagos ─────────────────────────────────────────────────────
+
+  /** Resumen del saldo y ítems de la mesa (polling cada 6 s desde TabBalanceFab). */
+  summary: (session_token: string) => callGuestTab<{
+    pos_payment_mode:  'stripe' | 'external';
+    can_pay:           boolean;
+    table_label:       string;
+    balance: {
+      session_opened_at:      string | null;
+      items_unpaid_cents:     number;
+      paid_unallocated_cents: number;
+      due_cents:              number;
+      guest_processing_cents: number;
+    };
+    items: Array<{
+      order_item_id:    string;
+      order_id:         string;
+      name:             string;
+      qty:              number;
+      line_cents:       number;
+      paid:             boolean;
+      reserved:         boolean;
+      guest_session_id: string | null;
+    }>;
+    payments: Array<{
+      amount_cents: number;
+      tip_cents:    number | null;
+      source:       string;
+      kind:         string;
+      at:           string;
+    }>;
+    even_plan?: Array<{
+      payment_id:   string;
+      amount_cents: number;
+      status:       string;
+      claimable:    boolean;
+    }>;
+  }>({ action: 'summary', session_token }),
+
+  /** Inicia el pago de la cuenta. Devuelve client_secret para Stripe.js. */
+  createPayment: (params: {
+    session_token: string;
+    split_kind:    'full' | 'even' | 'items' | 'amount';
+    ways?:         number;
+    payment_id?:   string;
+    order_item_ids?: string[];
+    amount_cents?: number;
+    tip_cents?:    number;
+  }) => callGuestTab<{
+    pos_payment_id:   string;
+    client_secret:    string;
+    publishable_key:  string;
+    stripe_account_id: string | null;
+    base_cents:       number;
+    tip_cents:        number;
+    total_cents:      number;
+  }>({ action: 'create_payment', ...params }),
+
+  /** Confirma el pago recuperando el PI de Stripe (camino primario, D-34). */
+  confirmPayment: (params: {
+    session_token:   string;
+    pos_payment_id:  string;
+  }) => callGuestTab<{
+    ok:                 boolean;
+    status:             string;
+    tab_closed:         boolean;
+    receipt_code:       string | null;
+    remaining_due_cents: number;
+  }>({ action: 'confirm_payment', ...params }),
+
+  /** Cancela y libera la reserva (libera parte `even` o falla otros). */
+  cancelPayment: (params: {
+    session_token:   string;
+    pos_payment_id:  string;
+  }) => callGuestTab<{ ok: boolean }>(
+    { action: 'cancel_payment', ...params }
+  ),
 };
