@@ -1292,7 +1292,15 @@ async function handleCreatePayment(body: Record<string, unknown>): Promise<Respo
   // Save stripe_pi_id on the row
   await db.from("pos_payments").update({ stripe_pi_id: pi.id }).eq("id", posPaymentId!);
 
+  // Same variable as guest-pay/index.ts and payments/index.ts — must be set as
+  // a Supabase Edge Function secret (not an Expo env var; the name is coincidental).
   const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
+  if (!publishableKey) {
+    // Roll back the processing row so the guest can retry
+    await db.from("pos_payments").update({ status: "failed" }).eq("id", posPaymentId!);
+    console.error("[guest-tab] EXPO_PUBLIC_STRIPE_PK secret is not set");
+    return errResponse("CONFIGURATION", "Stripe no configurado en el servidor", 503);
+  }
 
   return jsonResponse({
     pos_payment_id:  posPaymentId,
@@ -1352,7 +1360,10 @@ async function handleConfirmPayment(body: Record<string, unknown>): Promise<Resp
 
   if (!pay.stripe_pi_id) return errResponse("PAYMENT_NOT_FOUND", "Sin PaymentIntent asociado", 422);
 
-  // Retrieve PI from Stripe
+  // Retrieve PI from Stripe.
+  // INTENTIONALLY without { stripeAccount }: destination-charge PIs live on the
+  // platform account, not the connected account, so no stripeAccount header is
+  // needed (unlike terminal's direct-charge PIs on the connected account).
   const stripe = getStripe();
   const gate = businessChargeGate({
     stripe_account_id: sess.stripeAccountId, status: sess.bizStatus,
@@ -1362,20 +1373,23 @@ async function handleConfirmPayment(body: Record<string, unknown>): Promise<Resp
 
   let pi: Stripe.PaymentIntent;
   try {
+    // Expand latest_charge (modern Stripe approach; more reliable than charges.data
+    // for destination charges where payment_method_details sits on the charge object)
     pi = await stripe.paymentIntents.retrieve(
       pay.stripe_pi_id,
-      { expand: ["charges.data.payment_method_details"] },
+      { expand: ["latest_charge"] },
     );
   } catch (err) {
     return errResponse("STRIPE_ERROR", err instanceof Error ? err.message : "Stripe error", 502);
   }
 
   if (pi.status === "requires_payment_method" || pi.status === "canceled") {
-    // Release the reservation
+    // Release the reservation; always set null (not undefined — supabase-js ignores undefined)
     const releaseStatus = pay.kind === "guest_even" ? "pending" : "failed";
     await db.from("pos_payments").update({
-      status: releaseStatus,
-      claimed_at: releaseStatus === "pending" ? null : undefined,
+      status:           releaseStatus,
+      claimed_at:       null,
+      guest_session_id: null,
     }).eq("id", pos_payment_id);
     return errResponse("NOT_SUCCEEDED", `El pago no fue completado (${pi.status})`, 402);
   }
@@ -1395,14 +1409,13 @@ async function handleConfirmPayment(body: Record<string, unknown>): Promise<Resp
     return errResponse("DB_ERROR", "Error al aplicar pago", 500);
   }
 
-  // Write receipt_code + card details
+  // Write receipt_code + card details using latest_charge (expanded above)
   let receiptCode = pay.receipt_code;
   if (!receiptCode) {
     try {
       const code = generateReceiptCode();
-      const charge = (pi as unknown as { charges?: { data: unknown[] } }).charges?.data?.[0] as
-        { payment_method_details?: { card?: { brand?: string; last4?: string } } } | null ?? null;
-      const cardInfo = charge?.payment_method_details?.card ?? null;
+      const latestCharge = pi.latest_charge as Stripe.Charge | null;
+      const cardInfo = latestCharge?.payment_method_details?.card ?? null;
       const { error: rcErr } = await db
         .from("pos_payments")
         .update({ receipt_code: code, card_brand: cardInfo?.brand ?? null, card_last4: cardInfo?.last4 ?? null })
@@ -1457,10 +1470,12 @@ async function handleCancelPayment(body: Record<string, unknown>): Promise<Respo
 
   if (pay.status === "processing") {
     const releaseStatus = pay.kind === "guest_even" ? "pending" : "failed";
+    // Always set null explicitly — supabase-js ignores `undefined` and would
+    // leave claimed_at/guest_session_id untouched for non-even kinds.
     await db.from("pos_payments").update({
-      status: releaseStatus,
-      claimed_at: releaseStatus === "pending" ? null : undefined,
-      guest_session_id: releaseStatus === "pending" ? null : undefined,
+      status:           releaseStatus,
+      claimed_at:       null,
+      guest_session_id: null,
     }).eq("id", pos_payment_id).eq("status", "processing");
 
     // Cancel the PI if it exists
