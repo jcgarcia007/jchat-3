@@ -56,3 +56,10 @@ web/Template/
 *.p8
 *.plist
 generar-jwt.mjs
+
+# ── Artefactos locales (D-44) ───────────────────────────
+# Nunca versionar; se quedan en disco pero fuera del repo.
+.playwright-mcp/
+.mcp.json
+gallery/
+scripts/test-*.ts
