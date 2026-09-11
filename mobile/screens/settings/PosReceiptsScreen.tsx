@@ -115,7 +115,7 @@ function ReceiptRowItem({ row, printer, colors, t }: RowProps) {
         </Text>
       </View>
 
-      {/* Center: amount + tip */}
+      {/* Center: amount + tip + origin label */}
       <View style={styles.rowCenter}>
         <Text style={[styles.rowAmount, { color: colors.textPrimary }]}>
           {formatCents(row.amount_cents)}
@@ -125,6 +125,17 @@ function ReceiptRowItem({ row, printer, colors, t }: RowProps) {
             +{formatCents(row.tip_cents)} tip
           </Text>
         )}
+        <Text style={[styles.rowTip, { color: colors.textTertiary ?? colors.textSecondary }]}>
+          {row.source === 'guest'
+            ? t('settings:pos.receiptSourceGuest')
+            : row.payment_method === 'stripe_terminal'
+            ? t('settings:pos.receiptSourceTerminal')
+            : row.payment_method === 'cash'
+            ? t('settings:pos.receiptSourceCash')
+            : row.payment_method === 'card_external'
+            ? t('settings:pos.receiptSourceCardExt')
+            : t('settings:pos.receiptSourcePos')}
+        </Text>
       </View>
 
       {/* Right: reprint button */}

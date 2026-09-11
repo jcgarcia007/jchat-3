@@ -628,6 +628,12 @@ async function handleCreateTabPaymentIntent(
 
   const db = getAdminClient();
 
+  // 1b. F6: M2 not available in external mode — check before creating any PI.
+  const { data: bizMode } = await db.from("businesses").select("pos_payment_mode").eq("id", businessId).single();
+  if ((bizMode as { pos_payment_mode?: string } | null)?.pos_payment_mode === "external") {
+    return errorResponse("MODE_NOT_ALLOWED: business is in external payment mode", 409);
+  }
+
   // 2. Compute tab balance server-side — base amount never comes from the client.
   //    F5: usa pos_table_balance.due_cents (sesión actual, descuenta pagos de cliente)
   const { data: balData, error: tabErr } = await db.rpc("pos_table_balance", {
@@ -714,6 +720,7 @@ async function handleCreateTabPaymentIntent(
       paid_by:           authUserId,           // server-side only — from JWT, never from client (Fase 4B)
       session_opened_at: bal?.session_opened_at ?? null,  // F5: scope payment to current session
       source:            "pos",                            // F5: mesero
+      payment_method:    "stripe_terminal",               // F6: always M2 for terminal charges
     })
     .select("id")
     .single();
@@ -958,6 +965,12 @@ async function handleChargeSplitCheck(
   const accessErr = await checkPosAccess(userClient, payment.business_id);
   if (accessErr) return accessErr;
 
+  // 2b. F6: M2 not available in external mode.
+  const { data: bizMode2 } = await db.from("businesses").select("pos_payment_mode").eq("id", payment.business_id).single();
+  if ((bizMode2 as { pos_payment_mode?: string } | null)?.pos_payment_mode === "external") {
+    return errorResponse("MODE_NOT_ALLOWED: business is in external payment mode", 409);
+  }
+
   // 3. Guards — amounts come from the DB row, never from the client.
   if (payment.status !== "pending") {
     return errorResponse("payment not pending", 409);
@@ -1016,7 +1029,7 @@ async function handleChargeSplitCheck(
   //    pos_payments.amount_cents stays = base (tip derived from pi.amount − base).
   const { error: updateErr } = await db
     .from("pos_payments")
-    .update({ stripe_pi_id: pi.id })
+    .update({ stripe_pi_id: pi.id, payment_method: "stripe_terminal" })  // F6
     .eq("id", paymentId);
 
   if (updateErr) {

@@ -61,7 +61,7 @@ import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posTableItems, posCreateSplit, posCreateCheck } from '../../services/pos';
+import { posTableItems, posCreateSplit, posCreateCheck, posTableBalance, posSessionSplitMethod } from '../../services/pos';
 import type { PosSplitCheckRow, PosTableItemRow, PosCheckItem } from '../../services/pos';
 import { chargeSplitCheck, markTabPaid } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -165,6 +165,8 @@ export default function PosSplitScreen(): React.ReactElement {
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
   const [tabItems, setTabItems] = useState<PosTableItemRow[]>([]);
   const [tabLoading, setTabLoading] = useState(true);
+  /** F6: D-33 bidirectional lock — 'items' | 'amount' | null */
+  const [sessionSplitMethod, setSessionSplitMethod] = useState<'items' | 'amount' | null>(null);
 
   // ── Method + outer phase ────────────────────────────────────────────────────
   const [splitPhase, setSplitPhase] = useState<SplitPhase>('method_select');
@@ -230,14 +232,28 @@ export default function PosSplitScreen(): React.ReactElement {
   // ── Load tab items + total preview on mount ─────────────────────────────────
   useEffect(() => {
     let mounted = true;
-    posTableItems(businessId, tableId)
-      .then((rows) => {
+    // F6: load items + due_cents (canonical pending) + D-33 lock in parallel
+    Promise.all([
+      posTableItems(businessId, tableId),
+      posTableBalance(businessId, tableId),
+      posSessionSplitMethod(businessId, tableId),
+    ])
+      .then(([rows, balanceRes, splitMethod]) => {
         if (!mounted) return;
         setTabItems(rows);
-        const total = rows.reduce((sum, r) => sum + r.price_cents * r.qty, 0);
-        setTabAmountCents(total > 0 ? total : null);
+        if (balanceRes.ok) {
+          const due = balanceRes.balance.due_cents;
+          setTabAmountCents(due > 0 ? due : null);
+        } else {
+          // Fallback to client-sum if balance RPC fails
+          const total = rows.reduce((sum, r) => sum + r.price_cents * r.qty, 0);
+          setTabAmountCents(total > 0 ? total : null);
+        }
+        setSessionSplitMethod(splitMethod);
       })
-      .catch(() => { if (mounted) { setTabItems([]); setTabAmountCents(null); } })
+      .catch(() => {
+        if (mounted) { setTabItems([]); setTabAmountCents(null); }
+      })
       .finally(() => { if (mounted) setTabLoading(false); });
     return () => { mounted = false; };
   }, [businessId, tableId]);
@@ -1230,13 +1246,15 @@ export default function PosSplitScreen(): React.ReactElement {
               {t('pos.splitMethodTitle')}
             </Text>
 
-            {/* Even method card */}
+            {/* Even method card — disabled when D-33 locked to 'items' */}
             <Pressable
-              onPress={() => setSplitPhase('setup')}
+              onPress={() => { if (sessionSplitMethod !== 'items') setSplitPhase('setup'); }}
+              disabled={sessionSplitMethod === 'items'}
               style={({ pressed }) => [
                 styles.methodCard,
                 { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-                pressed && { opacity: 0.8 },
+                sessionSplitMethod === 'items' && { opacity: 0.4 },
+                pressed && sessionSplitMethod !== 'items' && { opacity: 0.8 },
               ]}
               accessibilityRole="button"
             >
@@ -1244,22 +1262,26 @@ export default function PosSplitScreen(): React.ReactElement {
                 {t('pos.splitMethodEven')}
               </Text>
               <Text style={[styles.methodCardSub, { color: c.textSecondary }]}>
-                {t('pos.splitMethodEvenSub')}
+                {sessionSplitMethod === 'items'
+                  ? t('pos.splitLockedAmount')
+                  : t('pos.splitMethodEvenSub')}
               </Text>
             </Pressable>
 
-            {/* Items method card */}
+            {/* Items method card — disabled when D-33 locked to 'amount' */}
             <Pressable
-              onPress={() => { if (!tabLoading && tabItems.length > 0) initBuilder(); }}
-              disabled={tabLoading || tabItems.length === 0}
+              onPress={() => {
+                if (!tabLoading && tabItems.length > 0 && sessionSplitMethod !== 'amount') initBuilder();
+              }}
+              disabled={tabLoading || tabItems.length === 0 || sessionSplitMethod === 'amount'}
               style={({ pressed }) => [
                 styles.methodCard,
                 {
                   backgroundColor: c.bgSurface,
                   borderColor: c.borderSubtle,
-                  opacity: tabLoading || tabItems.length === 0 ? 0.45 : 1,
+                  opacity: tabLoading || tabItems.length === 0 || sessionSplitMethod === 'amount' ? 0.4 : 1,
                 },
-                pressed && !tabLoading && tabItems.length > 0 && { opacity: 0.8 },
+                pressed && !tabLoading && tabItems.length > 0 && sessionSplitMethod !== 'amount' && { opacity: 0.8 },
               ]}
               accessibilityRole="button"
             >
@@ -1267,7 +1289,9 @@ export default function PosSplitScreen(): React.ReactElement {
                 {t('pos.splitMethodItems')}
               </Text>
               <Text style={[styles.methodCardSub, { color: c.textSecondary }]}>
-                {t('pos.splitMethodItemsSub')}
+                {sessionSplitMethod === 'amount'
+                  ? t('pos.splitLockedItems')
+                  : t('pos.splitMethodItemsSub')}
               </Text>
             </Pressable>
           </>

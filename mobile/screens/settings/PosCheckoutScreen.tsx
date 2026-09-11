@@ -62,7 +62,7 @@ import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posTableItems } from '../../services/pos';
+import { posTableBalance } from '../../services/pos';
 import {
   createTabPaymentIntent,
   markTabPaid,
@@ -163,14 +163,19 @@ export default function PosCheckoutScreen() {
     };
   }, []);
 
-  // ── Load tab total preview on mount (display only, not used for the charge) ──
+  // ── Load due_cents from posTableBalance (canonical pending amount) ──────────
+  // F6: use due_cents (items_unpaid − already paid) instead of client-sum.
   useEffect(() => {
     let mounted = true;
-    posTableItems(businessId, tableId)
-      .then((rows) => {
+    posTableBalance(businessId, tableId)
+      .then((res) => {
         if (!mounted) return;
-        const total = rows.reduce((sum, r) => sum + r.price_cents * r.qty, 0);
-        setTabAmountCents(total > 0 ? total : null);
+        if (res.ok) {
+          const due = res.balance.due_cents;
+          setTabAmountCents(due > 0 ? due : null);
+        } else {
+          setTabAmountCents(null);
+        }
       })
       .catch(() => {
         if (mounted) setTabAmountCents(null);
@@ -568,7 +573,7 @@ export default function PosCheckoutScreen() {
         ) : !hasTab ? (
           <View style={[styles.emptyOrders, { borderColor: c.borderSubtle }]}>
             <Text style={[styles.emptyOrdersText, { color: c.textTertiary }]}>
-              {t('pos.noOpenOrders')}
+              {t('pos.nadaQueCobrar')}
             </Text>
           </View>
         ) : (
@@ -579,7 +584,7 @@ export default function PosCheckoutScreen() {
             ]}
           >
             <Text style={[styles.tabAmountLabel, { color: c.textSecondary }]}>
-              {t('pos.openTab')} — {tableLabel}
+              {t('pos.pendienteLabel')} — {tableLabel}
             </Text>
             <Text style={[styles.tabAmountValue, { color: c.textPrimary }]}>
               {formatCents(tabAmountCents!)}

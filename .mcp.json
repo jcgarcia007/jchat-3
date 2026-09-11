@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "expo": {
+      "command": "npx",
+      "args": ["expo-mcp"],
+      "cwd": "/Users/jcgarcia/Projects/JchatVer3.0/mobile"
+    }
+  }
+}

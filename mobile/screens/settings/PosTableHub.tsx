@@ -59,6 +59,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import {
   posTablesOverview,
   posTableItems,
+  posTableBalance,
   posSetPartySize,
   posCreateOrder,
   posVoidOrder,
@@ -72,6 +73,7 @@ import {
 import type {
   PosTablesOverviewRow,
   PosTableItemRow,
+  PosTableBalance,
   PosOrderItem,
   PosTableSessionDetail,
 } from '../../services/pos';
@@ -268,6 +270,9 @@ export default function PosTableHub(): React.ReactElement {
   // ~300 ms when partySize has reached maxSeats.
   const plusLastTapRef = useRef<number>(0);
 
+  // ── F6: Tab balance (due_cents desglose) ─────────────────────────────────────
+  const [tableBalance, setTableBalance] = useState<PosTableBalance | null>(null);
+
   // ── F2 Table session code ────────────────────────────────────────────────────
   const [sessionDetail, setSessionDetail] = useState<PosTableSessionDetail | null>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -327,8 +332,9 @@ export default function PosTableHub(): React.ReactElement {
         posTablesOverview(businessId),
         posTableItems(businessId, tableId),
         posTableSession(businessId, tableId),
+        posTableBalance(businessId, tableId),
       ])
-        .then(([overviewRows, itemRows, sessionData]) => {
+        .then(([overviewRows, itemRows, sessionData, balanceRes]) => {
           if (!mounted) return;
           const row = overviewRows.find((r) => r.table_id === tableId) ?? null;
           setAllTables(overviewRows);
@@ -350,6 +356,7 @@ export default function PosTableHub(): React.ReactElement {
           if (row) setPartySize(row.party_size ?? 1);
           setSentItems(itemRows);
           setSessionDetail(sessionData);
+          if (balanceRes.ok) setTableBalance(balanceRes.balance);
         })
         .catch(() => {})
         .finally(() => {
@@ -1410,17 +1417,40 @@ export default function PosTableHub(): React.ReactElement {
           {/* ── Totals ─────────────────────────────────────────────────────── */}
           {(hasSent || hasDraft) && (
             <View style={[styles.totalsRow, { borderTopColor: c.borderSubtle }]}>
-              {hasSent && (
+              {/* F6: Desglose "Consumo · Pagado por clientes · Pendiente" */}
+              {hasSent && tableBalance ? (
+                <>
+                  <Text style={[styles.totalItem, { color: c.textSecondary }]}>
+                    {t('pos.tabConsumo')}{' '}
+                    <Text style={{ color: c.textPrimary, fontWeight: '600' }}>
+                      {formatPrice(tableBalance.items_unpaid_cents + tableBalance.paid_unallocated_cents)}
+                    </Text>
+                  </Text>
+                  {tableBalance.paid_unallocated_cents > 0 && (
+                    <Text style={[styles.totalItem, { color: c.success }]}>
+                      {t('pos.tabPagadoClientes')}{' '}
+                      <Text style={{ fontWeight: '600' }}>
+                        −{formatPrice(tableBalance.paid_unallocated_cents)}
+                      </Text>
+                    </Text>
+                  )}
+                  <Text style={[styles.totalItem, { color: c.textPrimary }]}>
+                    {t('pos.tabPendiente')}{' '}
+                    <Text style={{ fontWeight: '700' }}>
+                      {formatPrice(tableBalance.due_cents)}
+                    </Text>
+                  </Text>
+                </>
+              ) : hasSent ? (
                 <Text style={[styles.totalItem, { color: c.textSecondary }]}>
                   {t('pos.openTab')}{' '}
                   <Text style={{ color: c.textPrimary, fontWeight: '600' }}>
                     {formatPrice(sentTotal)}
                   </Text>
                 </Text>
-              )}
+              ) : null}
               {hasDraft && (
                 <Text style={[styles.totalItem, { color: c.warning }]}>
-                  {/* "Por enviar" label reused from cartSubtotal context */}
                   {t('pos.cartSubtotal')}{' '}
                   <Text style={{ fontWeight: '600' }}>
                     {formatPrice(draftTotal)}

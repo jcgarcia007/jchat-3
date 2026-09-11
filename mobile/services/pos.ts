@@ -934,12 +934,10 @@ export interface PosReceiptRow {
   tip_cents: number;
   status: string;
   paid_by: string | null;
-  /** F5: 'pos' (mesero M2) | 'guest' (cliente QR) */
+  /** 'pos' (mesero) | 'guest' (cliente QR) */
   source: string;
-  /** F5: card brand from Stripe (visa, mastercard, …) */
-  card_brand: string | null;
-  /** F5: last 4 digits */
-  card_last4: string | null;
+  /** F6: stripe_terminal | stripe_web | cash | card_external | null */
+  payment_method: string | null;
   created_at: string;
 }
 
@@ -1614,4 +1612,98 @@ export async function posUnblockDevice(
  */
 export function sumAwaitingCount(overviewRows: Array<{ awaiting_count?: number }>): number {
   return overviewRows.reduce((acc, row) => acc + (row.awaiting_count ?? 0), 0);
+}
+
+// ─── F6: pos_session_split_method ────────────────────────────────────────────
+
+/**
+ * Returns the D-33 bidirectional lock for the current session:
+ * 'items' | 'amount' | null (no payments yet).
+ * Null when session not found or caller has no access.
+ */
+export async function posSessionSplitMethod(
+  businessId: string,
+  tableId: string,
+): Promise<'items' | 'amount' | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const { data, error } = await (posRpc as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> })
+    .rpc('pos_session_split_method', { p_business_id: businessId, p_table_id: tableId });
+
+  if (error || data == null) return null;
+  if (data === 'items') return 'items';
+  if (data === 'amount') return 'amount';
+  return null;
+}
+
+// ─── F6: pos_apply_external_payment ──────────────────────────────────────────
+
+export type PosApplyExternalPaymentResult =
+  | {
+      ok: true;
+      paymentId: string;
+      receiptCode: string;
+      tabClosed: boolean;
+      remainingDueCents: number;
+    }
+  | {
+      ok: false;
+      reason:
+        | 'mode_not_allowed'
+        | 'nothing_due'
+        | 'not_assigned'
+        | 'payment_not_pending'
+        | 'bad_method'
+        | 'not_allowed'
+        | 'db_error'
+        | 'not_configured';
+    };
+
+/**
+ * F6: Registers a cash or card-external payment in the system (external mode only).
+ * p_payment_id: an existing pending split row to charge; null = full remaining balance.
+ */
+export async function posApplyExternalPayment(
+  businessId: string,
+  tableId: string,
+  method: 'cash' | 'card_external',
+  tipCents = 0,
+  paymentId: string | null = null,
+): Promise<PosApplyExternalPaymentResult> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+
+  const { data, error } = await (posRpc as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> })
+    .rpc('pos_apply_external_payment', {
+      p_business_id: businessId,
+      p_table_id:    tableId,
+      p_method:      method,
+      p_tip_cents:   tipCents,
+      p_payment_id:  paymentId,
+    });
+
+  if (error) {
+    const msg = error.message ?? '';
+    if (msg.includes('MODE_NOT_ALLOWED'))     return { ok: false, reason: 'mode_not_allowed' };
+    if (msg.includes('NOTHING_DUE'))          return { ok: false, reason: 'nothing_due' };
+    if (msg.includes('NOT_ASSIGNED'))         return { ok: false, reason: 'not_assigned' };
+    if (msg.includes('PAYMENT_NOT_PENDING'))  return { ok: false, reason: 'payment_not_pending' };
+    if (msg.includes('BAD_METHOD'))           return { ok: false, reason: 'bad_method' };
+    if (msg.includes('NOT_ALLOWED'))          return { ok: false, reason: 'not_allowed' };
+    return { ok: false, reason: 'db_error' };
+  }
+
+  const row = data as {
+    payment_id: string;
+    receipt_code: string;
+    tab_closed: boolean;
+    remaining_due_cents: number;
+  };
+
+  return {
+    ok: true,
+    paymentId:         row.payment_id,
+    receiptCode:       row.receipt_code,
+    tabClosed:         row.tab_closed,
+    remainingDueCents: row.remaining_due_cents,
+  };
 }

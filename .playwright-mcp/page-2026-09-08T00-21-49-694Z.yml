@@ -1,0 +1,343 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Tab POS" [ref=e4] [cursor=pointer]:
+        - /url: "#top"
+      - navigation "Main" [ref=e5]:
+        - link "How it works" [ref=e398] [cursor=pointer]:
+          - /url: "#journey"
+        - link "Who it's for" [ref=e399] [cursor=pointer]:
+          - /url: "#for-who"
+        - link "For owners" [ref=e400] [cursor=pointer]:
+          - /url: "#owner"
+        - link "Contact" [ref=e401] [cursor=pointer]:
+          - /url: "#footer"
+      - generic [ref=e10]:
+        - group "Language" [ref=e11]:
+          - button "es" [ref=e12] [cursor=pointer]
+          - button "en" [active] [pressed] [ref=e13] [cursor=pointer]
+        - link "Sign in" [ref=e402] [cursor=pointer]:
+          - /url: "#"
+        - link "Get started" [ref=e403] [cursor=pointer]:
+          - /url: "#"
+  - main [ref=e16]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - paragraph [ref=e20]: POS for bars & restaurants
+        - heading [level=1] [ref=e404]:
+          - text: Every guest,
+          - emphasis [ref=e22]: looked after
+          - text: .
+        - paragraph [ref=e23]: Orders at the table, kitchen in real time, and a check with no waiting. Tab POS removes the friction between your team and your guests.
+        - generic [ref=e24]:
+          - link "Get started" [ref=e405] [cursor=pointer]:
+            - /url: "#"
+          - link "See how it works" [ref=e406] [cursor=pointer]:
+            - /url: "#journey"
+            - text: See how it works
+            - generic [aria-hidden] [ref=e27]: →
+      - generic [ref=e28]:
+        - generic [aria-hidden] [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: Kitchen · Table 4
+            - generic [ref=e33]: 4:52
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: 2× Classic Burger
+              - generic [ref=e37]: • No pickles • Extra sauce
+            - generic [ref=e38]: 2× Fries
+          - generic [ref=e39]: Start
+        - generic [aria-hidden] [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: Table 7
+            - generic [ref=e44]: Occupied
+          - generic [ref=e45]:
+            - generic [ref=e46]: AR
+            - generic [ref=e50]:
+              - generic [ref=e51]: Ana R.
+              - generic [ref=e52]: 2 guests
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: seated
+              - generic [ref=e56]: 5:50
+            - generic [ref=e57]:
+              - generic [ref=e58]: Check
+              - generic [ref=e59]: Due
+        - generic [aria-hidden] [ref=e61]:
+          - generic [ref=e62]:
+            - generic [ref=e63]: Check · Table 4
+            - generic [ref=e64]: Even split
+          - generic [ref=e65]:
+            - generic [ref=e66]: Part 1
+            - generic [ref=e67]:
+              - generic [ref=e68]: $25.67
+              - generic [ref=e69]: Paid
+          - generic [ref=e70]:
+            - generic [ref=e71]: Part 2
+            - generic [ref=e72]:
+              - generic [ref=e73]: $25.66
+              - generic [ref=e74]: Charge
+          - generic [ref=e76]:
+            - generic [ref=e77]: TOTAL
+            - generic [ref=e78]: $51.33
+        - generic [aria-hidden] [ref=e80]:
+          - generic [ref=e81]: Today's reservations
+          - generic [ref=e83]:
+            - generic [ref=e84]: 20:30
+            - generic [ref=e85]: Ana R.
+            - generic [ref=e86]: 4 guests
+            - generic [ref=e87]: Birthday
+            - generic [ref=e88]: Table 12
+            - generic [ref=e89]: Check-in
+    - generic [ref=e91]:
+      - generic [ref=e93]:
+        - paragraph [ref=e94]: The guest's journey
+        - heading [level=2] [ref=e407]:
+          - text: Five moments where
+          - emphasis [ref=e96]: service
+          - text: is decided.
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - paragraph [ref=e100]: 01 — Arrives
+            - heading "The table is ready before they walk in." [level=3] [ref=e408]
+            - paragraph [ref=e102]: Reservations with time, party size and occasion. The floor shows which table is free, reserved or occupied, and check-in is one tap.
+          - generic [aria-hidden] [ref=e104]:
+            - generic [ref=e105]: Today's reservations
+            - generic [ref=e107]:
+              - generic [ref=e108]: 20:30
+              - generic [ref=e109]: Ana R.
+              - generic [ref=e110]: 4 guests
+              - generic [ref=e111]: Birthday
+              - generic [ref=e112]: Table 12
+              - generic [ref=e113]: Check-in
+            - generic [ref=e114]:
+              - generic [ref=e115]: 3 occupied · 2 free · 1 reserved
+              - generic [ref=e116]:
+                - generic [ref=e117]: "2"
+                - generic [ref=e118]: "4"
+                - generic [ref=e119]: "7"
+                - generic [ref=e120]: "9"
+                - generic [ref=e121]: "12"
+                - generic [ref=e122]: "14"
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: 02 — Orders
+            - heading "Every order knows who it belongs to." [level=3] [ref=e409]
+            - paragraph [ref=e127]: "The server takes the order by seat from their phone: modifiers, kitchen notes, and never again \"whose was this?\"."
+          - generic [aria-hidden] [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]: Table 4
+              - generic [ref=e132]: 4 guests
+            - generic [ref=e133]:
+              - generic [ref=e134]: Table
+              - generic [ref=e135]: "1"
+              - generic [ref=e136]: "2"
+              - generic [ref=e137]: "3"
+              - generic [ref=e138]: "4"
+            - generic [ref=e139]:
+              - generic [ref=e140]:
+                - generic [ref=e141]:
+                  - generic [ref=e142]: Seat 1 ·
+                  - text: Classic Burger
+                - generic [ref=e143]: No pickles
+              - generic [ref=e145]:
+                - generic [ref=e146]: Seat 2 ·
+                - text: Caesar Salad
+            - generic [ref=e147]: Send to kitchen
+        - generic [ref=e149]:
+          - generic [ref=e150]:
+            - paragraph [ref=e151]: 03 — Kitchen
+            - heading "The kitchen sees it instantly." [level=3] [ref=e410]
+            - paragraph [ref=e153]: The order lands on the kitchen display the moment it's sent. Pending, preparing, ready — with each dish's time in plain view.
+          - generic [ref=e156]:
+            - generic [ref=e157]:
+              - generic [ref=e158]:
+                - generic [ref=e159]: Pending
+                - generic [ref=e160]: "1"
+              - generic [ref=e161]:
+                - generic [ref=e162]:
+                  - generic [ref=e163]: Table 7
+                  - generic [ref=e164]: 2:45
+                - generic [ref=e165]:
+                  - generic [ref=e166]: 1×
+                  - text: Caesar Salad
+                - generic [ref=e167]: Start
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: Preparing
+                - generic [ref=e172]: "1"
+              - generic [ref=e173]:
+                - generic [ref=e174]:
+                  - generic [ref=e175]: Table 4
+                  - generic [ref=e176]: 4:52
+                - generic [ref=e177]:
+                  - generic [ref=e178]: 2×
+                  - text: Classic Burger
+                - generic [ref=e179]: Mark ready
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - generic [ref=e183]: Ready
+                - generic [ref=e184]: "1"
+              - generic [ref=e185]:
+                - generic [ref=e186]:
+                  - generic [ref=e187]: Table 2
+                  - generic [ref=e188]: 8:30
+                - generic [ref=e189]:
+                  - generic [ref=e190]: 2×
+                  - text: Margarita
+                - generic [ref=e191]: Ready to pick up
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - paragraph [ref=e195]: 04 — Pays
+            - heading "The check keeps no one waiting." [level=3] [ref=e411]
+            - paragraph [ref=e197]: Pay at the table with a reader. Split evenly or by seat. Tip 15, 18 or 20, or whatever the guest decides.
+          - generic [aria-hidden] [ref=e199]:
+            - generic [ref=e200]: Add a tip?
+            - generic [ref=e201]:
+              - generic [ref=e202]: Check total
+              - generic [ref=e203]: $43.50
+            - generic [ref=e204]:
+              - generic [ref=e205]: 15%
+              - generic [ref=e206]: 18%
+              - generic [ref=e207]: 20%
+              - generic [ref=e412]: Custom
+            - generic [ref=e209]:
+              - generic [ref=e210]:
+                - generic [ref=e211]: Total to charge
+                - generic [ref=e212]: $51.33
+              - generic [ref=e213]: incl. tip $7.83
+            - generic [ref=e214]: Charge $51.33
+            - generic [ref=e215]:
+              - generic [ref=e216]: "Split:"
+              - generic [ref=e217]: Even split
+              - generic [ref=e218]: By seat
+        - generic [ref=e219]:
+          - generic [ref=e220]:
+            - paragraph [ref=e221]: 05 — Returns
+            - heading "Service continues after payment." [level=3] [ref=e413]
+            - paragraph [ref=e223]: "A digital receipt right away, loyalty points that add up on their own, and one simple question: how was it?"
+          - generic [ref=e225]:
+            - generic [aria-hidden] [ref=e226]:
+              - generic [ref=e227]:
+                - generic [ref=e228]: LA TERRAZA
+                - generic [ref=e229]: RECEIPT · Table 4
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - generic [ref=e233]: 2× Classic Burger
+                  - generic [ref=e234]: "24.00"
+                - generic [ref=e235]:
+                  - generic [ref=e236]: 1× Caesar Salad
+                  - generic [ref=e237]: "11.00"
+                - generic [ref=e238]:
+                  - generic [ref=e239]: 2× Agua
+                  - generic [ref=e240]: "5.00"
+              - generic [ref=e242]:
+                - generic [ref=e243]:
+                  - generic [ref=e244]: SUBTOTAL
+                  - generic [ref=e245]: "40.00"
+                - generic [ref=e246]:
+                  - generic [ref=e247]: TAX
+                  - generic [ref=e248]: "3.50"
+                - generic [ref=e249]:
+                  - generic [ref=e250]: TIP
+                  - generic [ref=e251]: "7.83"
+                - generic [ref=e252]:
+                  - generic [ref=e253]: TOTAL
+                  - generic [ref=e254]: "51.33"
+              - generic [ref=e256]:
+                - generic [ref=e257]: "Server: Ana"
+                - generic [ref=e258]: PAID
+              - generic [ref=e288]: R-4F2A…
+            - generic [aria-hidden] [ref=e290]:
+              - generic [ref=e291]:
+                - generic [ref=e292]: La Terraza
+                - generic [ref=e293]: 340 points
+              - generic [ref=e296]: 160 pts to Gold
+              - generic [ref=e297]:
+                - generic [ref=e298]: How was it?
+                - generic [ref=e310]: Send
+    - generic [ref=e313]:
+      - paragraph [ref=e314]: “Good service isn't the server running faster. It's the guest never having to wait.”
+      - paragraph [ref=e315]: — A Tab POS design principle
+    - generic [ref=e317]:
+      - generic [ref=e318]:
+        - paragraph [ref=e319]: Who it's for
+        - heading [level=2] [ref=e414]:
+          - text: Wherever someone is
+          - emphasis [ref=e321]: waiting
+          - text: to be served.
+      - generic [ref=e322]:
+        - generic [ref=e415]:
+          - paragraph [ref=e416]: Bars
+          - paragraph [ref=e417]: Fast rounds and separate checks without the argument.
+        - generic [ref=e418]:
+          - paragraph [ref=e419]: Restaurants
+          - paragraph [ref=e420]: Table, kitchen and payment in one coordinated flow.
+        - generic [ref=e421]:
+          - paragraph [ref=e422]: Cafés
+          - paragraph [ref=e423]: Counter or table orders, ready before they ask.
+        - generic [ref=e332]:
+          - paragraph [ref=e333]: Food trucks
+          - paragraph [ref=e334]: "Short line: order, pay, and a heads-up when it's ready."
+    - generic [ref=e336]:
+      - generic [ref=e337]:
+        - paragraph [ref=e338]: For owners
+        - heading [level=2] [ref=e424]:
+          - text: Serving well also means looking after
+          - emphasis [ref=e340]: the people who serve
+          - text: .
+      - generic [ref=e341]:
+        - generic [ref=e342]:
+          - generic [ref=e425]:
+            - paragraph [ref=e426]: One account
+            - paragraph [ref=e427]: "Tab POS uses Otunity identity: a single sign-in for every solution in the ecosystem."
+          - generic [ref=e428]:
+            - paragraph [ref=e429]: Help getting started
+            - paragraph [ref=e430]: Tables, menu and printers are set up with you. And when something doesn't add up, there's a person on the other end of the email.
+          - generic [ref=e431]:
+            - paragraph [ref=e432]: Your brand on every receipt
+            - paragraph [ref=e433]: Brand colour and template for the digital receipt, plus ten themes for your business dashboard.
+        - generic [aria-hidden] [ref=e353]:
+          - generic [ref=e354]: Avg. guest wait
+          - generic [ref=e355]:
+            - generic [ref=e356]: 6:20
+            - generic [ref=e357]: ↓ 1:05 vs. last week
+          - generic [ref=e361]:
+            - generic [ref=e434]:
+              - generic [ref=e435]: Queued
+              - generic [ref=e436]: 1:40
+            - generic [ref=e437]:
+              - generic [ref=e438]: Prep
+              - generic [ref=e439]: 4:10
+            - generic [ref=e440]:
+              - generic [ref=e441]: Pickup
+              - generic [ref=e442]: 0:30
+    - generic [ref=e373]:
+      - paragraph [ref=e374]: Start today
+      - heading [level=2] [ref=e443]:
+        - text: Start serving
+        - emphasis [ref=e376]: better
+        - text: today.
+      - paragraph [ref=e377]: Your Otunity account works for Tab POS from day one.
+      - generic [ref=e378]:
+        - link "Get started" [ref=e444] [cursor=pointer]:
+          - /url: "#"
+        - link "Sign in" [ref=e445] [cursor=pointer]:
+          - /url: "#"
+  - contentinfo [ref=e381]:
+    - generic [ref=e382]:
+      - paragraph [ref=e383]:
+        - text: A solution by
+        - link "Otunity Labs" [ref=e384] [cursor=pointer]:
+          - /url: https://otunitylabs.com
+        - text: · © 2026 · All rights reserved.
+      - navigation "Footer" [ref=e385]:
+        - link "How it works" [ref=e446] [cursor=pointer]:
+          - /url: "#journey"
+        - link "Contact" [ref=e447] [cursor=pointer]:
+          - /url: mailto:contact@otunitylabs.com
+        - link "Sign in" [ref=e448] [cursor=pointer]:
+          - /url: "#"
+  - button "Open Next.js Dev Tools" [ref=e394] [cursor=pointer]
+  - alert [ref=e449]

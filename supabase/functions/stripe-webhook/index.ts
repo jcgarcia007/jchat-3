@@ -308,6 +308,8 @@ async function handlePaymentSucceeded(
       special_instructions: specialInstructions,
       table_label: tableLabel,
       table_id: tableId,
+      // F6 D-14: attribute Stripe orders to the assigned waiter when there is a table.
+      taken_by: tableId ? ((await db.rpc("resolve_table_waiter_for_attribution", { p_table_id: tableId })).data as string | null) : null,
       contact_email: contactEmail,
       contact_phone: contactPhone,
       contact_name: contactName,

@@ -45,6 +45,8 @@ interface OrderRow {
   status: string;
   table_label: string | null;
   paid_at: string | null;
+  /** F6: 'customer_tab' | 'customer_stripe' | 'pos' | … */
+  source: string | null;
 }
 
 interface ItemRow {
@@ -81,6 +83,8 @@ interface OrderDetail {
   tax_cents: number | null;
   discount_cents: number | null;
   status: string;
+  /** F6: 'customer_tab' | 'customer_stripe' = cliente desde su teléfono → muestra '*' */
+  source: string | null;
   items: { name: string; qty: number; price_cents: number }[];
 }
 
@@ -423,6 +427,10 @@ function OrderDetailRow({ order, locale, t }: {
         <span style={{ fontSize: "12px", color: "var(--db-text-secondary)", flex: 1 }}>
           {order.table_label ?? "—"}
           {order.order_type ? ` · ${orderTypeLabel(order.order_type, t)}` : ""}
+          {/* F6: '*' marks orders placed by the customer from their phone */}
+          {(order.source === "customer_tab" || order.source === "customer_stripe") && (
+            <span style={{ color: "var(--db-brand)", marginLeft: "4px" }} title={t("salesOrderSourceCustomer")}>*</span>
+          )}
         </span>
         <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-text-primary)", fontVariantNumeric: "tabular-nums" }}>
           {formatCents(order.total_cents, locale)}
@@ -508,8 +516,16 @@ function SellerDetail({ seller, locale, t }: {
       {/* Lista de pedidos individuales */}
       {seller.orders.length > 0 && (
         <div style={{ padding: "12px 16px 4px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--db-text-tertiary)", marginBottom: "8px" }}>
-            {t("salesDetailOrdersList")}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--db-text-tertiary)" }}>
+              {t("salesDetailOrdersList")}
+            </div>
+            {/* F6: legend for '*' (orders placed by customer from their phone) */}
+            {seller.orders.some((o) => o.source === "customer_tab" || o.source === "customer_stripe") && (
+              <div style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
+                <span style={{ color: "var(--db-brand)" }}>*</span>{" "}{t("salesOrderSourceCustomer")}
+              </div>
+            )}
           </div>
           <div style={{ border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", overflow: "hidden", marginBottom: "12px" }}>
             {seller.orders.map((order) => (
@@ -581,7 +597,7 @@ function SalesPageInner() {
 
       supabase
         .from("orders")
-        .select("id, taken_by, tip_cents, subtotal_cents, tax_cents, discount_cents, total_cents, order_type, status, table_label, paid_at")
+        .select("id, taken_by, tip_cents, subtotal_cents, tax_cents, discount_cents, total_cents, order_type, status, table_label, paid_at, source")
         .eq("business_id", bid)
         .not("paid_at", "is", null)
         .gte("paid_at", start.toISOString())
@@ -600,7 +616,7 @@ function SalesPageInner() {
     }
 
     const employees = (empRes.data ?? []) as EmployeeRow[];
-    const orders    = (ordersRes.data ?? []) as OrderRow[];
+    const orders    = (ordersRes.data ?? []) as unknown as OrderRow[];
     const waiters   = (waitersRes.data ?? []) as WaiterRow[];
 
     // Fetch order_items (chunked by 100 to avoid large IN clauses)
@@ -690,6 +706,7 @@ function SalesPageInner() {
         tax_cents: order.tax_cents,
         discount_cents: order.discount_cents,
         status: order.status,
+        source: order.source ?? null,
         items: orderItems,
       });
     }
@@ -789,7 +806,7 @@ function SalesPageInner() {
     const headers = [
       t("csvColDate"), t("csvColTime"), t("csvColSeller"), t("csvColTable"),
       t("csvColType"), t("csvColStatus"), t("csvColSubtotal"), t("csvColTax"),
-      t("csvColDiscount"), t("csvColTip"), t("csvColTotal"),
+      t("csvColDiscount"), t("csvColTip"), t("csvColTotal"), t("csvColOrigin"),
     ];
 
     const rows: string[][] = [];
@@ -810,6 +827,7 @@ function SalesPageInner() {
           ((o.discount_cents ?? 0) / 100).toFixed(2),
           ((o.tip_cents ?? 0) / 100).toFixed(2),
           (o.total_cents / 100).toFixed(2),
+          (o.source === "customer_tab" || o.source === "customer_stripe") ? t("csvOriginCustomer") : t("csvOriginStaff"),
         ]);
       }
     }
