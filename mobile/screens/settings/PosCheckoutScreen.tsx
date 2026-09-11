@@ -1,35 +1,35 @@
 /**
  * JChat 3.0 — POS Checkout Screen (C8)
  *
- * In-person card payment via Stripe Terminal (physical M2 reader) for the
- * full tab of a table (all open orders in one shot). Rendered inside
- * PosNavigator → inside StripeTerminalProvider.
+ * Supports two payment modes controlled by businesses.pos_payment_mode:
  *
- * ── Flow ──────────────────────────────────────────────────────────────────────
- * 1. Load tab total preview from posTableItems() — display only.
- * 2. On mount:
- *    a. getOrCreateTerminalLocation(businessId) — EF returns a Stripe Terminal
- *       Location id (required by ConnectBluetoothReaderParams). Lists first to
- *       avoid duplicates; creates once if none exist on the connected account.
- *    b. discoverReaders({ bluetoothScan, simulated: false }) — real BT scan.
- *    c. Auto-connect first discovered reader with the server locationId.
- *    d. If the M2 has a pending firmware update the SDK installs it automatically
- *       (required) or announces it via callback (optional). Progress is shown in
- *       the reader banner. connectReader resolves only after the update completes.
- * 3. Tap "Cobrar $X.XX":
- *    a. createTabPaymentIntent(businessId, tableId) — amount server-side via
- *       pos_tab_total, never sent from the client
- *    b. retrievePaymentIntent(secret)  — SDK needs the full PI object
- *    c. collectPaymentMethod(pi)       — waits for physical card tap/insert/swipe
- *    d. confirmPaymentIntent(pi)       — confirms the payment
- *    e. markTabPaid(paymentId)         — server verifies PI at Stripe, marks
- *       all orders as paid and returns tabClosed
- * 4. Success banner (tabClosed shown) → auto-navigate back to hub.
+ *   'stripe'   — M2 Bluetooth reader (default). Full Stripe Terminal flow.
+ *   'external' — Cash or card on an external terminal. Single RPC call to
+ *                pos_apply_external_payment; no M2 lifecycle.
+ *
+ * ── Stripe flow ───────────────────────────────────────────────────────────────
+ * 1. Load due_cents preview from posTableBalance().
+ * 2. On mount: getOrCreateTerminalLocation → discoverReaders → connectReader.
+ * 3. Tap "Cobrar $X.XX" → tip picker → confirm →
+ *    createTabPaymentIntent → retrievePI → collectPaymentMethod →
+ *    confirmPaymentIntent → markTabPaid.
+ * 4. Success → print (fetchAnyPrinter) → auto-navigate.
+ *
+ * ── External flow ─────────────────────────────────────────────────────────────
+ * 1. Load due_cents preview from posTableBalance().
+ * 2. No reader lifecycle (usePosReader enabled:false).
+ * 3. Tap "Cobrar $X.XX" → tip picker → pick Efectivo or Tarjeta externa →
+ *    posApplyExternalPayment(method, tipCents, null).
+ * 4. Success → print (fetchStaffPrinters — mesero printer only) → auto-navigate.
  *
  * ── Security ──────────────────────────────────────────────────────────────────
- * • Amount comes exclusively from the server (pos_tab_total RPC).
+ * • Amount comes exclusively from the server (pos_table_balance RPC).
  * • No Stripe API keys on the client — connection token via Edge Function.
  * • markTabPaid() retrieves the PI directly from Stripe before updating the DB.
+ *
+ * ── Note (F6 v1) ──────────────────────────────────────────────────────────────
+ * get_public_receipt currently does not return payment_method in its result set.
+ * External receipts print without the method label for now. Tracked for v2.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -48,6 +48,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  IconCash,
   IconCheck,
   IconChevronLeft,
   IconCreditCard,
@@ -58,11 +59,12 @@ import {
 } from '@tabler/icons-react-native';
 import { isTerminalAvailable } from '../../services/terminalSdk';
 import { usePosReader } from '../../hooks/usePosReader';
+import { usePosBusinessSettings } from '../../hooks/usePosBusinessSettings';
 import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { posTableBalance } from '../../services/pos';
+import { posTableBalance, posApplyExternalPayment } from '../../services/pos';
 import {
   createTabPaymentIntent,
   markTabPaid,
@@ -71,7 +73,7 @@ import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { supabase } from '../../services/supabase';
 import { buildReceiptEscPos } from '../../services/escpos';
 import type { PublicReceipt } from '../../services/escpos';
-import { fetchAnyPrinter, printToNetwork } from '../../services/printer';
+import { fetchAnyPrinter, fetchStaffPrinters, printToNetwork } from '../../services/printer';
 import type { NetworkPrinter } from '../../services/printer';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
@@ -83,12 +85,12 @@ type PosCheckoutRoute = RouteProp<PosStackParamList, 'PosCheckout'>;
 
 type CheckoutPhase =
   | 'idle'        // waiting for employee to tap "Cobrar"
-  | 'tip'         // tip picker is open
-  | 'creating'    // calling createTabPaymentIntent EF
-  | 'retrieving'  // calling SDK retrievePaymentIntent
-  | 'collecting'  // collectPaymentMethod on reader
-  | 'confirming'  // confirmPaymentIntent
-  | 'marking'     // calling markTabPaid EF
+  | 'tip'         // tip picker is open (+ method selection in external mode)
+  | 'creating'    // calling createTabPaymentIntent EF  OR  posApplyExternalPayment
+  | 'retrieving'  // calling SDK retrievePaymentIntent (stripe only)
+  | 'collecting'  // collectPaymentMethod on reader (stripe only)
+  | 'confirming'  // confirmPaymentIntent (stripe only)
+  | 'marking'     // calling markTabPaid EF (stripe only)
   | 'success'     // done
   | 'error';      // something went wrong
 
@@ -110,7 +112,14 @@ export default function PosCheckoutScreen() {
   const route = useRoute<PosCheckoutRoute>();
   const { businessId, tableId, tableLabel } = route.params;
 
+  // ── Payment mode (F6) ────────────────────────────────────────────────────────
+  // usePosBusinessSettings caches at module scope — nearly always a cache hit
+  // by the time the employee navigates here (PosTableHub loads it first).
+  const { settings } = usePosBusinessSettings(businessId);
+  const isExternal = settings?.posPaymentMode === 'external';
+
   // ── Reader state + lifecycle (managed by usePosReader) ─────────────────────
+  // enabled:false in external mode — no BT scan, no location fetch, no disconnect.
   const {
     readerStatus,
     readerError,
@@ -120,7 +129,7 @@ export default function PosCheckoutScreen() {
     collectPaymentMethod,
     confirmPaymentIntent,
     handleRetryReader,
-  } = usePosReader({ businessId });
+  } = usePosReader({ businessId, enabled: !isExternal });
 
   // ── Tab data (preview, display only — authoritative amount comes from EF) ──
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
@@ -129,10 +138,10 @@ export default function PosCheckoutScreen() {
   // paymentId returned by createTabPaymentIntent and consumed by markTabPaid
   const paymentIdRef = useRef<string | null>(null);
 
-  // receipt_code returned by markTabPaid — used for QR printing
+  // receipt_code returned by markTabPaid / posApplyExternalPayment
   const receiptCodeRef = useRef<string | null>(null);
 
-  // tabClosed returned by markTabPaid (for success banner)
+  // tabClosed returned by the server (for success banner)
   const [tabClosed, setTabClosed] = useState(false);
 
   // ── Checkout state ──────────────────────────────────────────────────────────
@@ -149,11 +158,8 @@ export default function PosCheckoutScreen() {
   const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Tip picker state ────────────────────────────────────────────────────────
-  // selectedTipOption: key of a preset ('15'|'18'|'20'), 'custom', or 'none'.
   const [selectedTipOption, setSelectedTipOption] = useState<string>('none');
-  // For custom: whether the user is entering a % or a fixed $ amount.
   const [customTipMode, setCustomTipMode] = useState<'pct' | 'amt'>('pct');
-  // Raw text input for the custom option (parsed on confirm).
   const [customTipInput, setCustomTipInput] = useState<string>('');
 
   // ── Cleanup: cancel auto-navigate timer on unmount ──────────────────────────
@@ -164,7 +170,9 @@ export default function PosCheckoutScreen() {
   }, []);
 
   // ── Load due_cents from posTableBalance (canonical pending amount) ──────────
-  // F6: use due_cents (items_unpaid − already paid) instead of client-sum.
+  // due_cents = items_unpaid_cents − paid_unallocated_cents (items actually sent
+  // to kitchen with "Send"). Draft items (not sent) are NOT counted — if the
+  // screen shows $0 / "Nada que cobrar", send the round first.
   useEffect(() => {
     let mounted = true;
     posTableBalance(businessId, tableId)
@@ -187,9 +195,6 @@ export default function PosCheckoutScreen() {
   }, [businessId, tableId]);
 
   // ── Computed tip in cents ────────────────────────────────────────────────────
-  // Derived from the tip picker selection at the moment the employee taps
-  // "Charge". The base used for % presets is the display value from posTableItems
-  // — the EF will validate against the real server total and cap if needed.
   const computedTipCents = useMemo((): number => {
     const base = tabAmountCents ?? 0;
     if (selectedTipOption === 'none' || base === 0) return 0;
@@ -199,17 +204,31 @@ export default function PosCheckoutScreen() {
       const raw = parseFloat(customTipInput.replace(',', '.'));
       if (!isFinite(raw) || raw <= 0) return 0;
       if (customTipMode === 'pct') return Math.round((base * raw) / 100);
-      return Math.round(raw * 100); // fixed dollar amount → cents
+      return Math.round(raw * 100);
     }
     return 0;
   }, [tabAmountCents, selectedTipOption, customTipMode, customTipInput]);
 
-  // ── Charge ─────────────────────────────────────────────────────────────────
-  const handleCharge = useCallback(async (tipCents: number) => {
+  // ── Helper: resolve printer after success ────────────────────────────────────
+  // External mode uses fetchStaffPrinters (mesero printer only, never kitchen).
+  // Stripe mode uses fetchAnyPrinter (legacy — first available role).
+  const resolveAndSetPrinter = useCallback((printer: NetworkPrinter | null) => {
+    if (printer) {
+      setDefaultPrinter(printer);
+      // No auto-navigate — employee controls when to leave.
+    } else {
+      setDefaultPrinter('none');
+      autoNavTimerRef.current = setTimeout(() => {
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 2200);
+    }
+  }, [navigation]);
+
+  // ── Stripe charge ─────────────────────────────────────────────────────────
+  const handleStripeCharge = useCallback(async (tipCents: number) => {
     if (!connectedReader) return;
     setCheckoutError(null);
 
-    // ── Step 1: Create PaymentIntent for the full tab (amount from server) ──
     setPhase('creating');
     const piResult = await createTabPaymentIntent(businessId, tableId, tipCents);
     if (!piResult.ok) {
@@ -227,16 +246,9 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // Store the DB record id — needed by markTabPaid in step 5.
-    // paymentId can be null if the pos_payments INSERT failed server-side
-    // (PI is still valid; operator reconciles via Stripe dashboard).
     paymentIdRef.current = piResult.paymentId;
-
-    // Update display amount to server-confirmed base (without tip) so the
-    // tab card stays consistent. Total (with tip) is piResult.totalCents.
     setTabAmountCents(piResult.baseCents);
 
-    // ── Step 2: Retrieve PaymentIntent (SDK needs the full object) ──
     setPhase('retrieving');
     const retrieveResult = await retrievePaymentIntent(piResult.clientSecret);
     if (retrieveResult.error) {
@@ -245,7 +257,6 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Step 3: Present the reader to the customer — waits for card tap/insert/swipe ──
     setPhase('collecting');
     const collectResult = await collectPaymentMethod({
       paymentIntent: retrieveResult.paymentIntent,
@@ -256,7 +267,6 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Step 4: Confirm payment ──
     setPhase('confirming');
     const confirmResult = await confirmPaymentIntent({
       paymentIntent: collectResult.paymentIntent,
@@ -267,10 +277,7 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Step 5: markTabPaid — server verifies PI at Stripe, marks orders paid ──
     if (!paymentIdRef.current) {
-      // PI was created + confirmed at Stripe but the pos_payments record was
-      // not saved server-side. Card was charged; operator must reconcile.
       setPhase('error');
       setCheckoutError(t('pos.errorMarkPaid'));
       return;
@@ -287,51 +294,61 @@ export default function PosCheckoutScreen() {
       return;
     }
 
-    // ── Success ──
     receiptCodeRef.current = markResult.receiptCode ?? null;
     setTabClosed(markResult.tabClosed);
     setPhase('success');
 
-    // Check for a configured network printer.
-    // • If found  → cancel auto-navigate so the employee can print first;
-    //               they close manually with the "Close" button.
-    // • If absent → keep original 2.2s auto-navigate (no printer, no wait).
-    fetchAnyPrinter(businessId).then((printer) => {
-      if (printer) {
-        setDefaultPrinter(printer);
-        // No auto-navigate — employee controls when to leave.
-      } else {
-        setDefaultPrinter('none');
-        autoNavTimerRef.current = setTimeout(() => {
-          if (navigation.canGoBack()) navigation.goBack();
-        }, 2200);
-      }
-    }).catch(() => {
-      // If the lookup fails, fall back to auto-navigate so the screen doesn't
-      // get stuck — better UX than blocking on a non-critical print feature.
-      setDefaultPrinter('none');
-      autoNavTimerRef.current = setTimeout(() => {
-        if (navigation.canGoBack()) navigation.goBack();
-      }, 2200);
-    });
+    fetchAnyPrinter(businessId)
+      .then((printer) => resolveAndSetPrinter(printer))
+      .catch(() => resolveAndSetPrinter(null));
   }, [
-    connectedReader,
-    businessId,
-    tableId,
-    retrievePaymentIntent,
-    collectPaymentMethod,
-    confirmPaymentIntent,
-    navigation,
-    t,
+    connectedReader, businessId, tableId,
+    retrievePaymentIntent, collectPaymentMethod, confirmPaymentIntent,
+    resolveAndSetPrinter, t,
   ]);
 
-  // ─── Print handler ──────────────────────────────────────────────────────────
+  // ── External charge (F6) ──────────────────────────────────────────────────
+  // p_payment_id = null → "everything due in this session".
+  const handleExternalCharge = useCallback(async (
+    method: 'cash' | 'card_external',
+    tipCents: number,
+  ) => {
+    setCheckoutError(null);
+    setPhase('creating');
 
-  /**
-   * Fetch receipt data via RPC → build ESC/POS bytes → send to printer.
-   * The payment is already confirmed at this point — any print error is
-   * non-fatal. Always wrapped in try/catch so the cobro is unaffected.
-   */
+    const result = await posApplyExternalPayment(businessId, tableId, method, tipCents, null);
+    if (!result.ok) {
+      setPhase('error');
+      switch (result.reason) {
+        case 'mode_not_allowed':
+          setCheckoutError(t('pos.externalPayModeNotAllowed'));
+          break;
+        case 'nothing_due':
+          setCheckoutError(t('pos.externalPayNothingDue'));
+          break;
+        case 'not_assigned':
+          setCheckoutError(t('pos.externalPayNotAssigned'));
+          break;
+        case 'bad_method':
+          setCheckoutError(t('pos.externalPayBadMethod'));
+          break;
+        default:
+          setCheckoutError(t('pos.externalPayDbError'));
+      }
+      return;
+    }
+
+    receiptCodeRef.current = result.receiptCode;
+    setTabClosed(result.tabClosed);
+    setPhase('success');
+
+    // External mode: use staff printers only (mesero role, never kitchen/bar).
+    fetchStaffPrinters(businessId)
+      .then((printers) => resolveAndSetPrinter(printers[0] ?? null))
+      .catch(() => resolveAndSetPrinter(null));
+  }, [businessId, tableId, resolveAndSetPrinter, t]);
+
+  // ─── Print handler ──────────────────────────────────────────────────────────
   const handlePrint = useCallback(async () => {
     if (!defaultPrinter || defaultPrinter === 'none') return;
     if (!receiptCodeRef.current) return;
@@ -373,22 +390,17 @@ export default function PosCheckoutScreen() {
 
   const hasTab = tabAmountCents !== null && tabAmountCents > 0;
 
-  // canCharge: reader ready + tab loaded + not processing + not in tip picker
-  // (when in tip phase the footer shows back/confirm, not the charge button)
-  const canCharge =
-    readerStatus === 'ready' &&
-    hasTab &&
-    !isProcessing &&
-    phase !== 'success' &&
-    phase !== 'error' &&
-    phase !== 'tip';
+  // canCharge: external mode doesn't need readerStatus === 'ready'
+  const canCharge = isExternal
+    ? hasTab && !isProcessing && phase !== 'success' && phase !== 'error' && phase !== 'tip'
+    : readerStatus === 'ready' && hasTab && !isProcessing && phase !== 'success' && phase !== 'error' && phase !== 'tip';
 
-  // ── Phase label for the progress indicator ──────────────────────────────────
+  // ── Phase label ──────────────────────────────────────────────────────────────
   const phaseLabel = (() => {
     switch (phase) {
       case 'creating':
       case 'retrieving':
-        return t('pos.collecting'); // "Recolectando pago…" while creating
+        return isExternal ? t('pos.externalPayProcessing') : t('pos.collecting');
       case 'collecting':
         return t('pos.collecting');
       case 'confirming':
@@ -403,11 +415,8 @@ export default function PosCheckoutScreen() {
   })();
 
   // ── Terminal unavailable (simulator / Expo Go — no native build) ──────────
-  // All hooks above run unconditionally (rules of hooks). Stub values are safe:
-  //   discoveredReaders=[] → auto-connect never fires
-  //   disconnectReader / cancelDiscovering → no-ops
-  // We only need to block the real payment UI from rendering.
-  if (!isTerminalAvailable) {
+  // External mode bypasses this check — no reader needed.
+  if (!isExternal && !isTerminalAvailable) {
     return (
       <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
         <View
@@ -509,61 +518,63 @@ export default function PosCheckoutScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Reader status banner ── */}
-        <View
-          style={[
-            styles.readerBanner,
-            {
-              backgroundColor: c.brandLight,
-              borderColor:
-                readerStatus === 'ready' ? c.success :
-                readerStatus === 'error' ? c.danger :
-                c.brand,
-            },
-          ]}
-        >
-          <View style={styles.readerBannerIcon}>
-            {readerStatus === 'ready' ? (
-              <IconWifi size={18} color={c.success} strokeWidth={2} />
-            ) : readerStatus === 'error' ? (
-              <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
-            ) : (
-              <ActivityIndicator size="small" color={c.brand} />
-            )}
-          </View>
-          <Text
+        {/* ── Reader status banner (stripe mode only) ── */}
+        {!isExternal ? (
+          <View
             style={[
-              styles.readerBannerText,
+              styles.readerBanner,
               {
-                color:
+                backgroundColor: c.brandLight,
+                borderColor:
                   readerStatus === 'ready' ? c.success :
                   readerStatus === 'error' ? c.danger :
                   c.brand,
               },
             ]}
           >
-            {readerStatus === 'ready'
-              ? t('pos.readerReady')
-              : readerStatus === 'error'
-              ? (readerError ?? t('pos.readerError'))
-              : readerStatus === 'updating'
-              ? t('pos.readerUpdating', { pct: updateProgress ?? 0 })
-              : readerStatus === 'locating'
-              ? t('pos.readerLocating')
-              : t('pos.readerConnecting')}
-          </Text>
-
-          {readerStatus === 'error' ? (
-            <Pressable
-              onPress={handleRetryReader}
-              style={styles.retryBtn}
-              accessibilityRole="button"
-              accessibilityLabel={t('pos.readerRetry')}
+            <View style={styles.readerBannerIcon}>
+              {readerStatus === 'ready' ? (
+                <IconWifi size={18} color={c.success} strokeWidth={2} />
+              ) : readerStatus === 'error' ? (
+                <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
+              ) : (
+                <ActivityIndicator size="small" color={c.brand} />
+              )}
+            </View>
+            <Text
+              style={[
+                styles.readerBannerText,
+                {
+                  color:
+                    readerStatus === 'ready' ? c.success :
+                    readerStatus === 'error' ? c.danger :
+                    c.brand,
+                },
+              ]}
             >
-              <IconRefresh size={16} color={c.danger} strokeWidth={2} />
-            </Pressable>
-          ) : null}
-        </View>
+              {readerStatus === 'ready'
+                ? t('pos.readerReady')
+                : readerStatus === 'error'
+                ? (readerError ?? t('pos.readerError'))
+                : readerStatus === 'updating'
+                ? t('pos.readerUpdating', { pct: updateProgress ?? 0 })
+                : readerStatus === 'locating'
+                ? t('pos.readerLocating')
+                : t('pos.readerConnecting')}
+            </Text>
+
+            {readerStatus === 'error' ? (
+              <Pressable
+                onPress={handleRetryReader}
+                style={styles.retryBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t('pos.readerRetry')}
+              >
+                <IconRefresh size={16} color={c.danger} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* ── Tab total preview ── */}
         {tabLoading ? (
@@ -668,12 +679,11 @@ export default function PosCheckoutScreen() {
           { paddingBottom: insets.bottom + 16, borderTopColor: c.borderSubtle, backgroundColor: c.bgBase },
         ]}
       >
-        {/* Normal state: "Cobrar $X.XX" opens the tip picker */}
+        {/* Normal state: "Cobrar $X.XX" opens the tip picker (both modes) */}
         {phase !== 'tip' && phase !== 'success' ? (
           <Pressable
             onPress={() => {
               if (canCharge) {
-                // Reset tip picker to default every time it opens
                 setSelectedTipOption('none');
                 setCustomTipInput('');
                 setCustomTipMode('pct');
@@ -702,7 +712,7 @@ export default function PosCheckoutScreen() {
           </Pressable>
         ) : null}
 
-        {/* Success phase: print + close */}
+        {/* Success phase: print + close (both modes) */}
         {phase === 'success' ? (
           <View style={styles.successFooter}>
             {defaultPrinter && defaultPrinter !== 'none' ? (
@@ -759,8 +769,70 @@ export default function PosCheckoutScreen() {
           </View>
         ) : null}
 
-        {/* Tip phase: back + confirm with total */}
-        {phase === 'tip' ? (
+        {/* ── Tip phase footer ─────────────────────────────────────────────── */}
+
+        {/* External mode: back + Efectivo + Tarjeta externa (stacked) */}
+        {phase === 'tip' && isExternal ? (
+          <View style={styles.extTipFooter}>
+            <Pressable
+              onPress={() => void handleExternalCharge('cash', computedTipCents)}
+              style={({ pressed }) => [
+                styles.extMethodBtn,
+                { backgroundColor: c.success },
+                pressed && { opacity: 0.82 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.externalPayCash')}
+            >
+              <IconCash size={20} color="#fff" strokeWidth={2} />
+              <View style={styles.extMethodBtnLabels}>
+                <Text style={styles.extMethodBtnText}>{t('pos.externalPayCash')}</Text>
+                <Text style={styles.extMethodBtnSub}>
+                  {formatCents((tabAmountCents ?? 0) + computedTipCents)}
+                  {computedTipCents > 0
+                    ? `  (+${formatCents(computedTipCents)} tip)`
+                    : ''}
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => void handleExternalCharge('card_external', computedTipCents)}
+              style={({ pressed }) => [
+                styles.extMethodBtn,
+                { backgroundColor: c.brand },
+                pressed && { opacity: 0.82 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.externalPayCard')}
+            >
+              <IconCreditCard size={20} color="#fff" strokeWidth={2} />
+              <View style={styles.extMethodBtnLabels}>
+                <Text style={styles.extMethodBtnText}>{t('pos.externalPayCard')}</Text>
+                <Text style={styles.extMethodBtnSub}>
+                  {formatCents((tabAmountCents ?? 0) + computedTipCents)}
+                  {computedTipCents > 0
+                    ? `  (+${formatCents(computedTipCents)} tip)`
+                    : ''}
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setPhase('idle')}
+              style={[styles.tipBackBtn, { borderColor: c.borderSubtle }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('pos.tipBack')}
+            >
+              <Text style={[styles.tipBackBtnText, { color: c.textSecondary }]}>
+                {t('pos.tipBack')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Stripe mode: back + M2 confirm button */}
+        {phase === 'tip' && !isExternal ? (
           <View style={styles.tipFooterRow}>
             <Pressable
               onPress={() => setPhase('idle')}
@@ -774,7 +846,7 @@ export default function PosCheckoutScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => handleCharge(computedTipCents)}
+              onPress={() => void handleStripeCharge(computedTipCents)}
               style={({ pressed }) => [
                 styles.tipConfirmBtn,
                 { backgroundColor: c.brand },
@@ -943,7 +1015,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
 
-  // Tip footer: back + confirm
+  // Stripe tip footer: back + confirm
   tipFooterRow: {
     flexDirection: 'row',
     gap: 10,
@@ -975,6 +1047,32 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     fontSize: 12,
     fontWeight: '500',
+  },
+
+  // External mode tip footer: stacked method buttons + back
+  extTipFooter: {
+    gap: 10,
+  },
+  extMethodBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    gap: 12,
+  },
+  extMethodBtnLabels: { flex: 1 },
+  extMethodBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  extMethodBtnSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 1,
   },
 
   // ── Success-phase print footer ────────────────────────────────────────────

@@ -52,6 +52,13 @@ export type ReaderStatus =
 export interface UsePosReaderOptions {
   /** Business whose Stripe Terminal Location will be fetched/created. */
   businessId: string;
+  /**
+   * When false, skips BT discovery entirely — no location fetch, no scan, no
+   * disconnect on unmount. Pass `!isExternal` from PosCheckoutScreen so the M2
+   * lifecycle never starts in external-payment mode.
+   * Default: true (Stripe Terminal mode).
+   */
+  enabled?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,8 +93,12 @@ export interface UsePosReaderReturn {
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
-export function usePosReader({ businessId }: UsePosReaderOptions): UsePosReaderReturn {
+export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions): UsePosReaderReturn {
   const { t } = useTranslation('settings');
+
+  // Capture enabled at mount time — the [] discovery effect reads this ref so
+  // it doesn't need enabled in its dependency array (value won't flip mid-session).
+  const enabledRef = useRef(enabled);
 
   // ── Reader state ─────────────────────────────────────────────────────────────
   const [readerStatus, setReaderStatus] = useState<ReaderStatus>('locating');
@@ -145,6 +156,9 @@ export function usePosReader({ businessId }: UsePosReaderOptions): UsePosReaderR
   // Step 1: fetch a Terminal Location from the server (needed for connect).
   // Step 2: start a real Bluetooth scan (simulated: false).
   useEffect(() => {
+    // F6: external mode — do not start BT discovery, no reader involved.
+    if (!enabledRef.current) return;
+
     let cancelled = false;
 
     async function startDiscovery() {
@@ -244,7 +258,8 @@ export function usePosReader({ businessId }: UsePosReaderOptions): UsePosReaderR
   // ── Disconnect reader when the host screen unmounts ───────────────────────────
   useEffect(() => {
     return () => {
-      disconnectReader().catch(() => {});
+      // Only disconnect if we ever started — external mode never connects a reader.
+      if (enabledRef.current) disconnectReader().catch(() => {});
     };
   }, [disconnectReader]);
 
