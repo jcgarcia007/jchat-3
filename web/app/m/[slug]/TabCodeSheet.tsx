@@ -147,8 +147,8 @@ export default function TabCodeSheet({ tableQrToken, palette, onSuccess, onClose
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700 }}>{t("tabCodeTitle")}</h2>
-        <p style={{ margin: "0 0 20px", fontSize: 14, opacity: 0.6 }}>{t("tabCodeSubtitle")}</p>
+        <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "var(--menu-text, #111827)" }}>{t("tabCodeTitle")}</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#6b7280" }}>{t("tabCodeSubtitle")}</p>
 
         {/* 6 casillas numéricas */}
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
@@ -168,6 +168,7 @@ export default function TabCodeSheet({ tableQrToken, palette, onSuccess, onClose
                 width: 44, height: 54, textAlign: "center", fontSize: 24, fontWeight: 700,
                 border: `2px solid ${d ? accent : "var(--menu-border, #e5e7eb)"}`,
                 borderRadius: 8, outline: "none", background: "var(--menu-surface, #f9fafb)",
+                color: "var(--menu-text, #111827)",
               }}
             />
           ))}
