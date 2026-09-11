@@ -21,11 +21,14 @@ import { guestTab } from "@/lib/guestTabSession";
 export type TabSummary = Awaited<ReturnType<typeof guestTab.summary>>;
 
 interface TabBalanceFabProps {
-  sessionToken: string;
-  palette:      Record<string, string>;
-  locale:       string;
-  onOpenSheet:  (summary: TabSummary) => void;
+  sessionToken:  string;
+  palette:       Record<string, string>;
+  locale:        string;
+  onOpenSheet:   (summary: TabSummary) => void;
   onSessionExpired?: () => void;
+  /** Cuando la hoja está abierta el polling baja a 4 s para reflejar
+   *  antes los pagos de otros comensales. */
+  isSheetOpen?:  boolean;
 }
 
 function fmtCents(cents: number, locale: string): string {
@@ -38,6 +41,7 @@ export default function TabBalanceFab({
   locale,
   onOpenSheet,
   onSessionExpired,
+  isSheetOpen = false,
 }: TabBalanceFabProps) {
   const t = useTranslations();
   const [summary, setSummary] = useState<TabSummary | null>(null);
@@ -66,9 +70,12 @@ export default function TabBalanceFab({
 
   useEffect(() => {
     void fetchSummary();
-    timerRef.current = setInterval(() => void fetchSummary(), 6000);
+    // Cuando la hoja está visible queremos reaccionar más rápido a pagos de
+    // otros comensales (4 s); en reposo basta con 6 s.
+    const intervalMs = isSheetOpen ? 4000 : 6000;
+    timerRef.current = setInterval(() => void fetchSummary(), intervalMs);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [fetchSummary]);
+  }, [fetchSummary, isSheetOpen]);
 
   if (!summary) return null;
 

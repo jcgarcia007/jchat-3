@@ -2295,6 +2295,7 @@ export default function MenuPageClient({
           sessionToken={guestSession.token}
           palette={palette as unknown as Record<string, string>}
           locale={locale}
+          isSheetOpen={step === "tabBalance"}
           onOpenSheet={(summary) => {
             setTabSummary(summary);
             setStep("tabBalance");
@@ -2388,12 +2389,41 @@ export default function MenuPageClient({
           locale={locale}
           palette={palette as unknown as Record<string, string>}
           onKeepOrdering={() => {
+            // Navegar al menú de inmediato; refrescar tabSummary en background
+            // para que el FAB muestre el saldo actualizado cuando el usuario lo toque.
+            const token = guestSession?.token;
             setQrReceipt(null);
             setStep("menu");
+            if (token) {
+              void guestTab.summary(token)
+                .then((fresh) => setTabSummary(fresh))
+                .catch(() => { /* red caída — la EF lo reintentará en el próximo tick */ });
+            }
           }}
           onClose={() => {
-            setQrReceipt(null);
-            setStep("menu");
+            // Esperar el resumen fresco antes de navegar para que la hoja
+            // muestre los ítems como Pagado y el pendiente actualizado.
+            const tabClosed = qrReceipt.tabClosed;
+            const token = guestSession?.token;
+            if (token) {
+              void (async () => {
+                try {
+                  const fresh = await guestTab.summary(token);
+                  setTabSummary(fresh);
+                } catch {
+                  /* sin red — se muestra el resumen que ya teníamos */
+                } finally {
+                  setQrReceipt(null);
+                  // Si la cuenta ya quedó cerrada, volver al menú (el FAB
+                  // mostrará el banner "Cuenta cerrada ✓"). Si no, abrir la
+                  // hoja con el saldo actualizado.
+                  setStep(tabClosed ? "menu" : "tabBalance");
+                }
+              })();
+            } else {
+              setQrReceipt(null);
+              setStep("menu");
+            }
           }}
         />
       )}

@@ -7,8 +7,10 @@
  * totales, historial de pagos y botón Pagar (solo mode=stripe).
  */
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { TabSummary } from "./TabBalanceFab";
+import { guestTab } from "@/lib/guestTabSession";
 
 interface TabBalanceSheetProps {
   summary:        TabSummary;
@@ -26,6 +28,7 @@ function fmtCents(cents: number, locale: string): string {
 
 export default function TabBalanceSheet({
   summary,
+  sessionToken,
   guestSessionId,
   palette,
   locale,
@@ -34,7 +37,27 @@ export default function TabBalanceSheet({
 }: TabBalanceSheetProps) {
   const t      = useTranslations();
   const accent = palette.accent ?? "#5C7CFA";
-  const { balance, items, payments, can_pay } = summary;
+
+  // Robustez: re-consultar el resumen al montar para asegurarnos de que
+  // nunca mostramos datos anteriores al último pago, independientemente de
+  // quién abrió la hoja o cómo llegó el summary prop.
+  const [liveSummary, setLiveSummary] = useState<TabSummary>(summary);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    void (async () => {
+      try {
+        const fresh = await guestTab.summary(sessionToken);
+        setLiveSummary(fresh);
+      } catch {
+        // Sin red — mantener el summary prop que ya tenemos.
+      }
+    })();
+  // Ejecutar solo al montar (sessionToken no cambia mientras la hoja está abierta).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { balance, items, payments, can_pay } = liveSummary;
 
   return (
     <div
