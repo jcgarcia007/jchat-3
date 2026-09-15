@@ -41,6 +41,8 @@ import PosPickupScreen from '../screens/settings/PosPickupScreen';
 import PosInventoryScreen from '../screens/settings/PosInventoryScreen';
 import PosReceiptsScreen from '../screens/settings/PosReceiptsScreen';
 import PosApprovalScreen from '../screens/settings/PosApproval';
+// F7 smoke-test only — removed once "Mis impresoras" is implemented
+import BtPrinterSmokeTest from '../screens/settings/BtPrinterSmokeTest';
 import type { SettingsStackParamList } from './SettingsStack';
 
 // ─── Param list ───────────────────────────────────────────────────────────────
@@ -112,6 +114,8 @@ export type PosStackParamList = {
     tableId?:     string;
     tableLabel?:  string;
   };
+  /** F7 smoke test — temporary, removed after New Arch validation */
+  BtPrinterSmokeTest: undefined;
 };
 
 // ─── SDK initializer ──────────────────────────────────────────────────────────
@@ -213,6 +217,8 @@ export default function PosNavigator(): React.ReactElement {
           <PosStack.Screen name="PosReceipts" component={PosReceiptsScreen} />
           {/* PosApproval: F4 — approve / edit / reject awaiting customer orders */}
           <PosStack.Screen name="PosApproval" component={PosApprovalScreen} />
+          {/* F7 smoke test — validates react-native-bluetooth-classic under New Arch */}
+          <PosStack.Screen name="BtPrinterSmokeTest" component={BtPrinterSmokeTest} />
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

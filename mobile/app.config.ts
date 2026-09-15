@@ -73,6 +73,11 @@ const config: ExpoConfig = {
     // Stripe Terminal requires API 26+; the RN default catalog value is 24.
     // This plugin runs first so all subsequent plugins see the correct SDK floor.
     './config-plugins/withAndroidMinSdkVersion',
+    // Bluetooth Classic (SPP) permissions for Tab POS thermal printers (F7).
+    // Adds BLUETOOTH_SCAN (neverForLocation) + BLUETOOTH_CONNECT for Android 12+
+    // and legacy BLUETOOTH/BLUETOOTH_ADMIN (maxSdkVersion=30) for Android ≤ 11.
+    // Does NOT add ACCESS_FINE_LOCATION — SPP printers do not derive location.
+    './config-plugins/withBluetoothClassicPermissions',
     [
       'react-native-maps',
       {
