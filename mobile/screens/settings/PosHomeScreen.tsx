@@ -373,17 +373,15 @@ export default function PosHomeScreen() {
           )}
         </Pressable>
 
-        {/* ── F7 smoke test (DEV only) ─────────────────────────────────── */}
-        {__DEV__ && (
-          <Pressable
-            onPress={() => navigation.navigate('BtPrinterSmokeTest')}
-            style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel="BT Smoke Test"
-          >
-            <IconPrinter size={22} color="#7C3AED" strokeWidth={2} />
-          </Pressable>
-        )}
+        {/* F7 smoke test — visible en preview para probar BT (se elimina al terminar F7) */}
+        <Pressable
+          onPress={() => navigation.navigate('BtPrinterSmokeTest')}
+          style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="BT Smoke Test"
+        >
+          <IconPrinter size={22} color="#7C3AED" strokeWidth={2} />
+        </Pressable>
       </View>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
