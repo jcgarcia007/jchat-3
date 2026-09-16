@@ -10,7 +10,7 @@
  * Reprint reuses the Fase 4A flow: get_public_receipt → buildReceiptEscPos → printToNetwork.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -32,14 +32,13 @@ import { useThemeColors } from '../../theme/colors';
 import { supabase } from '../../services/supabase';
 import { posReceiptsToday, type PosReceiptRow } from '../../services/pos';
 import {
-  fetchAnyPrinter,
-  printToNetwork,
-  type NetworkPrinter,
-} from '../../services/printer';
-import {
   buildReceiptEscPos,
+  buildPaymentVoucherEscPos,
   type PublicReceipt,
+  type PaymentVoucher,
 } from '../../services/escpos';
+import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
+import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +47,10 @@ type PosReceiptsNav   = NativeStackNavigationProp<PosStackParamList, 'PosReceipt
 type PosReceiptsRoute = RouteProp<PosStackParamList, 'PosReceipts'>;
 
 type PrintState = 'idle' | 'printing' | 'done' | 'error';
+
+function isVoucherRow(row: PosReceiptRow): boolean {
+  return row.payment_method === 'cash' || row.payment_method === 'card_external';
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,44 +67,51 @@ function formatTime(iso: string): string {
 
 interface RowProps {
   row: PosReceiptRow;
-  printer: NetworkPrinter | 'none' | null;
+  businessId: string;
+  pickerRef: React.RefObject<PrinterPickerSheetRef | null>;
   colors: ReturnType<typeof useThemeColors>;
   t: ReturnType<typeof useTranslation>['t'];
 }
 
-function ReceiptRowItem({ row, printer, colors, t }: RowProps) {
+function ReceiptRowItem({ row, businessId, pickerRef, colors, t }: RowProps) {
   const [printState, setPrintState] = useState<PrintState>('idle');
 
   const handleReprint = useCallback(async () => {
-    if (!row.receipt_code) return;
-    if (!printer || printer === 'none') return;
     if (printState === 'printing') return;
-
     setPrintState('printing');
     try {
-      const { data, error } = await supabase.rpc('get_public_receipt', {
-        p_code: row.receipt_code,
-      });
-      if (error || !data) throw new Error('receipt not found');
-      const bytes = buildReceiptEscPos(
-        data as PublicReceipt,
-        row.receipt_code,
-        printer.width_mm,
-      );
-      await printToNetwork(printer.host, printer.port, bytes);
+      if (isVoucherRow(row)) {
+        // cash / card_external → reprint voucher
+        const { data } = await supabase.rpc('pos_payment_voucher', { p_payment_id: row.id });
+        if (!data) throw new Error('voucher not found');
+        const bytes = buildPaymentVoucherEscPos(data as PaymentVoucher, 80);
+        await pickerRef.current?.print(businessId, bytes, 'voucher');
+      } else {
+        // stripe / QR → reprint receipt
+        if (!row.receipt_code) throw new Error('no code');
+        const { data, error } = await supabase.rpc('get_public_receipt', { p_code: row.receipt_code });
+        if (error || !data) throw new Error('receipt not found');
+        const bytes = buildReceiptEscPos(data as PublicReceipt, row.receipt_code, 80);
+        await pickerRef.current?.print(businessId, bytes, 'receipt');
+      }
       setPrintState('done');
       setTimeout(() => setPrintState('idle'), 3000);
     } catch {
       setPrintState('error');
       setTimeout(() => setPrintState('idle'), 4000);
     }
-  }, [row.receipt_code, printer, printState]);
+  }, [row, businessId, pickerRef, printState]);
 
-  const canReprint = !!row.receipt_code && !!printer && printer !== 'none';
+  const canReprint = isVoucherRow(row)
+    ? true  // voucher rows don't need receipt_code
+    : !!row.receipt_code;
   const printBtnColor =
     printState === 'done'  ? colors.success :
     printState === 'error' ? colors.danger  :
     colors.brand;
+  const reprintLabel = isVoucherRow(row)
+    ? t('settings:pos.voucher.reprint')
+    : t('settings:pos.receiptsReprint');
 
   return (
     <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
@@ -147,7 +157,7 @@ function ReceiptRowItem({ row, printer, colors, t }: RowProps) {
         ]}
         onPress={handleReprint}
         disabled={!canReprint || printState === 'printing'}
-        accessibilityLabel={t('settings:pos.receiptsReprint')}
+        accessibilityLabel={reprintLabel}
       >
         {printState === 'printing' ? (
           <ActivityIndicator size="small" color={printBtnColor} />
@@ -169,10 +179,10 @@ export default function PosReceiptsScreen(): React.ReactElement {
   const { params } = useRoute<PosReceiptsRoute>();
   const { businessId } = params;
 
+  const pickerRef = useRef<PrinterPickerSheetRef>(null);
   const [rows, setRows]       = useState<PosReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errKey, setErrKey]   = useState<string | null>(null);
-  const [printer, setPrinter] = useState<NetworkPrinter | 'none' | null>(null);
 
   // Load receipts on every focus (new payments may have come in).
   useFocusEffect(
@@ -182,15 +192,8 @@ export default function PosReceiptsScreen(): React.ReactElement {
       async function load() {
         setLoading(true);
         setErrKey(null);
-
-        const [printerResult, receiptsResult] = await Promise.all([
-          fetchAnyPrinter(businessId).catch(() => null),
-          posReceiptsToday(businessId),
-        ]);
-
+        const receiptsResult = await posReceiptsToday(businessId);
         if (cancelled) return;
-        setPrinter(printerResult ?? 'none');
-
         if (!receiptsResult.ok) {
           setErrKey(
             receiptsResult.reason === 'no_access'
@@ -211,9 +214,9 @@ export default function PosReceiptsScreen(): React.ReactElement {
 
   const renderRow = useCallback(
     ({ item }: { item: PosReceiptRow }) => (
-      <ReceiptRowItem row={item} printer={printer} colors={colors} t={t} />
+      <ReceiptRowItem row={item} businessId={businessId} pickerRef={pickerRef} colors={colors} t={t} />
     ),
-    [printer, colors, t],
+    [businessId, colors, t],
   );
 
   const isDark = colors.bgBase === palette.bgBase;
@@ -290,6 +293,9 @@ export default function PosReceiptsScreen(): React.ReactElement {
           />
         </>
       )}
+
+      {/* Unified BT+network printer picker (F7) */}
+      <PrinterPickerSheet ref={pickerRef} />
     </View>
   );
 }

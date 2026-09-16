@@ -71,10 +71,10 @@ import {
 } from '../../services/terminal';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { supabase } from '../../services/supabase';
-import { buildReceiptEscPos } from '../../services/escpos';
-import type { PublicReceipt } from '../../services/escpos';
-import { fetchAnyPrinter, fetchStaffPrinters, printToNetwork } from '../../services/printer';
-import type { NetworkPrinter } from '../../services/printer';
+import { buildReceiptEscPos, buildPaymentVoucherEscPos } from '../../services/escpos';
+import type { PublicReceipt, PaymentVoucher } from '../../services/escpos';
+import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
+import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -149,12 +149,13 @@ export default function PosCheckoutScreen() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // ── Printer state ───────────────────────────────────────────────────────────
-  // null = not yet looked up; 'none' = no printer configured
-  const [defaultPrinter, setDefaultPrinter] = useState<NetworkPrinter | 'none' | null>(null);
+  const printerPickerRef = useRef<PrinterPickerSheetRef>(null);
   const [printStatus, setPrintStatus] = useState<PrintStatus>('idle');
   const [printError, setPrintError] = useState<string | null>(null);
-  // Auto-navigate timer — cancelled when a printer is available so the employee
-  // can print before leaving the screen.
+  // payment_id for external mode — used to fetch pos_payment_voucher
+  const externalPaymentIdRef = useRef<string | null>(null);
+  // true when success + print button should be shown (always in success phase)
+  const [printReady, setPrintReady] = useState(false);
   const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Tip picker state ────────────────────────────────────────────────────────
@@ -209,20 +210,10 @@ export default function PosCheckoutScreen() {
     return 0;
   }, [tabAmountCents, selectedTipOption, customTipMode, customTipInput]);
 
-  // ── Helper: resolve printer after success ────────────────────────────────────
-  // External mode uses fetchStaffPrinters (mesero printer only, never kitchen).
-  // Stripe mode uses fetchAnyPrinter (legacy — first available role).
-  const resolveAndSetPrinter = useCallback((printer: NetworkPrinter | null) => {
-    if (printer) {
-      setDefaultPrinter(printer);
-      // No auto-navigate — employee controls when to leave.
-    } else {
-      setDefaultPrinter('none');
-      autoNavTimerRef.current = setTimeout(() => {
-        if (navigation.canGoBack()) navigation.goBack();
-      }, 2200);
-    }
-  }, [navigation]);
+  // ── Helper: mark print-ready (printer picker handles discovery internally) ────
+  const markPrintReady = useCallback(() => {
+    setPrintReady(true);
+  }, []);
 
   // ── Stripe charge ─────────────────────────────────────────────────────────
   const handleStripeCharge = useCallback(async (tipCents: number) => {
@@ -297,14 +288,24 @@ export default function PosCheckoutScreen() {
     receiptCodeRef.current = markResult.receiptCode ?? null;
     setTabClosed(markResult.tabClosed);
     setPhase('success');
+    markPrintReady();
 
-    fetchAnyPrinter(businessId)
-      .then((printer) => resolveAndSetPrinter(printer))
-      .catch(() => resolveAndSetPrinter(null));
+    // Auto-print receipt via unified picker (fires async, never blocks cobro)
+    if (receiptCodeRef.current) {
+      const code = receiptCodeRef.current;
+      void (async () => {
+        try {
+          const { data } = await supabase.rpc('get_public_receipt', { p_code: code });
+          if (!data) return;
+          const bytes = buildReceiptEscPos(data as PublicReceipt, code, 80);
+          await printerPickerRef.current?.print(businessId, bytes, 'receipt');
+        } catch { /* auto-print failure is non-blocking */ }
+      })();
+    }
   }, [
     connectedReader, businessId, tableId,
     retrievePaymentIntent, collectPaymentMethod, confirmPaymentIntent,
-    resolveAndSetPrinter, t,
+    markPrintReady, t,
   ]);
 
   // ── External charge (F6) ──────────────────────────────────────────────────
@@ -339,46 +340,60 @@ export default function PosCheckoutScreen() {
     }
 
     receiptCodeRef.current = result.receiptCode;
+    externalPaymentIdRef.current = result.paymentId;
     setTabClosed(result.tabClosed);
     setPhase('success');
+    markPrintReady();
 
-    // External mode: use staff printers only (mesero role, never kitchen/bar).
-    fetchStaffPrinters(businessId)
-      .then((printers) => resolveAndSetPrinter(printers[0] ?? null))
-      .catch(() => resolveAndSetPrinter(null));
-  }, [businessId, tableId, resolveAndSetPrinter, t]);
+    // Auto-print voucher via unified picker (never blocks cobro).
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('pos_payment_voucher', { p_payment_id: result.paymentId });
+        if (!data) return;
+        const voucher = data as PaymentVoucher;
+        const bytes = buildPaymentVoucherEscPos(voucher, 80);
+        await printerPickerRef.current?.print(businessId, bytes, 'voucher');
+      } catch { /* auto-print failure is non-blocking */ }
+    })();
+  }, [businessId, tableId, markPrintReady, t]);
 
-  // ─── Print handler ──────────────────────────────────────────────────────────
+  // ─── Print / Reprint handler ─────────────────────────────────────────────────
   const handlePrint = useCallback(async () => {
-    if (!defaultPrinter || defaultPrinter === 'none') return;
-    if (!receiptCodeRef.current) return;
     if (printStatus === 'printing') return;
-
     setPrintStatus('printing');
     setPrintError(null);
-
     try {
-      const { data: receipt, error: rpcError } = await supabase.rpc(
-        'get_public_receipt',
-        { p_code: receiptCodeRef.current },
-      );
-      if (rpcError || !receipt) throw new Error(t('pos.printError'));
-
-      const escposBytes = buildReceiptEscPos(
-        receipt as PublicReceipt,
-        receiptCodeRef.current,
-        defaultPrinter.width_mm,
-      );
-
-      await printToNetwork(defaultPrinter.host, defaultPrinter.port, escposBytes);
+      if (isExternal && externalPaymentIdRef.current) {
+        // Reprint voucher
+        const { data } = await supabase.rpc('pos_payment_voucher', {
+          p_payment_id: externalPaymentIdRef.current,
+        });
+        if (!data) throw new Error(t('pos.printError'));
+        const bytes = buildPaymentVoucherEscPos(data as PaymentVoucher, 80);
+        await new Promise<void>((resolve, reject) => {
+          printerPickerRef.current?.print(businessId, bytes, 'voucher')
+            .then(resolve).catch(reject);
+          if (!printerPickerRef.current) resolve();
+        });
+      } else if (!isExternal && receiptCodeRef.current) {
+        // Reprint receipt (stripe mode)
+        const { data, error: rpcError } = await supabase.rpc('get_public_receipt', {
+          p_code: receiptCodeRef.current,
+        });
+        if (rpcError || !data) throw new Error(t('pos.printError'));
+        const bytes = buildReceiptEscPos(data as PublicReceipt, receiptCodeRef.current, 80);
+        await new Promise<void>((resolve, reject) => {
+          printerPickerRef.current?.print(businessId, bytes, 'receipt')
+            .then(resolve).catch(reject);
+          if (!printerPickerRef.current) resolve();
+        });
+      }
       setPrintStatus('success');
     } catch (err) {
       setPrintStatus('error');
-      setPrintError(
-        err instanceof Error && err.message ? err.message : t('pos.printError'),
-      );
+      setPrintError(err instanceof Error ? err.message : t('pos.printError'));
     }
-  }, [defaultPrinter, printStatus, t]);
+  }, [isExternal, printStatus, businessId, t]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
   const isProcessing =
@@ -715,7 +730,7 @@ export default function PosCheckoutScreen() {
         {/* Success phase: print + close (both modes) */}
         {phase === 'success' ? (
           <View style={styles.successFooter}>
-            {defaultPrinter && defaultPrinter !== 'none' ? (
+            {printReady ? (
               <>
                 <Pressable
                   onPress={handlePrint}
@@ -729,7 +744,7 @@ export default function PosCheckoutScreen() {
                     },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={t('pos.printBtn')}
+                  accessibilityLabel={isExternal ? t('pos.voucher.reprint') : t('pos.printBtn')}
                 >
                   {printStatus === 'printing' ? (
                     <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
@@ -741,6 +756,8 @@ export default function PosCheckoutScreen() {
                       ? t('pos.printingTitle')
                       : printStatus === 'success'
                       ? t('pos.printSuccess')
+                      : isExternal
+                      ? t('pos.voucher.reprint')
                       : t('pos.printBtn')}
                   </Text>
                 </Pressable>
@@ -873,6 +890,19 @@ export default function PosCheckoutScreen() {
           </View>
         ) : null}
       </View>
+
+      {/* Unified BT+network printer picker (F7) */}
+      <PrinterPickerSheet
+        ref={printerPickerRef}
+        onNoPrinter={() => {
+          setPrintStatus('error');
+          setPrintError(t('pos.voucher.noPrinter'));
+        }}
+        onError={(err) => {
+          setPrintStatus('error');
+          setPrintError(err instanceof Error ? err.message : t('pos.printError'));
+        }}
+      />
     </View>
   );
 }

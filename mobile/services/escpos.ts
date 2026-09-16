@@ -479,6 +479,135 @@ export function buildReceiptEscPos(
   );
 }
 
+// ─── Payment voucher (F7 · D-41) ────────────────────────────────────────────
+
+/**
+ * JSON returned by the pos_payment_voucher(p_payment_id) RPC.
+ * Used to build the reconciliation slip for cash / card_external payments.
+ */
+export interface PaymentVoucher {
+  payment_id:        string;
+  business_name:     string;
+  table_label:       string;
+  payment_method:    'cash' | 'card_external';
+  source:            string;
+  kind:              string;
+  amount_cents:      number;
+  tip_cents:         number;
+  total_cents:       number;
+  status:            string;
+  receipt_code:      string;
+  paid_at:           string;        // ISO-8601
+  session_opened_at: string;
+  waiter_name:       string;
+  split_index:       number;        // 1-based position of this part
+  split_total:       number;        // total parts in the session
+  items:             Array<{ name: string; qty: number; line_cents: number }>;
+}
+
+/**
+ * Build an ESC/POS reconciliation slip (vale de conciliación) from a
+ * pos_payment_voucher() response.
+ *
+ * Layout:
+ *   {BUSINESS NAME}  (bold, center)
+ *   VALE DE CAJA     (center)
+ *   ----
+ *   *** EFECTIVO *** / *** TARJETA EXTERNA ***  (double size, center)
+ *   ----
+ *   Mesa: {label}   {HH:MM}
+ *   Mesero: {name}
+ *   {DD/MM/YYYY}
+ *   ----
+ *   Venta:     $XX.XX
+ *   Propina:   $X.XX   ← always present, even when $0.00
+ *   ----
+ *   TOTAL:     $XX.XX  (bold)
+ *   ----
+ *   Parte N de M       (only when split_total > 1)
+ *   [items]
+ *   ----
+ *   Ref: {receipt_code}
+ *   Conservar para cierre de caja
+ */
+export function buildPaymentVoucherEscPos(
+  voucher: PaymentVoucher,
+  widthMm: number = 80,
+): Uint8Array {
+  const cols = widthMm <= 58 ? 32 : 48;
+
+  const methodLabel = voucher.payment_method === 'cash'
+    ? '*** EFECTIVO ***'
+    : '*** TARJETA EXTERNA ***';
+
+  const paidAt   = new Date(voucher.paid_at);
+  const timeStr  = `${String(paidAt.getHours()).padStart(2, '0')}:${String(paidAt.getMinutes()).padStart(2, '0')}`;
+  const dateStr  = `${String(paidAt.getDate()).padStart(2, '0')}/${String(paidAt.getMonth() + 1).padStart(2, '0')}/${paidAt.getFullYear()}`;
+
+  const parts: Uint8Array[] = [
+    reset(),
+    // Business name (bold, center)
+    align('center'), bold(true),
+    enc(voucher.business_name.slice(0, cols)), lf(),
+    bold(false),
+    // Title
+    enc('VALE DE CAJA'), lf(),
+    // Separator
+    align('left'), enc(separator(cols)), lf(),
+    // Payment method (double size, center)
+    align('center'), doubleSize(true), bold(true),
+    enc(methodLabel.slice(0, cols / 2)), lf(),  // double-width = half cols
+    bold(false), doubleSize(false),
+    // Separator
+    align('left'), enc(separator(cols)), lf(),
+    // Table + time
+    enc(twoCol(`Mesa: ${voucher.table_label}`, timeStr, cols)), lf(),
+    // Waiter
+    enc(`Mesero: ${voucher.waiter_name}`.slice(0, cols)), lf(),
+    // Date
+    enc(dateStr), lf(),
+    // Separator
+    enc(separator(cols)), lf(),
+    // Venta (base amount)
+    enc(labelValue('Venta:', `$${(voucher.amount_cents / 100).toFixed(2)}`, cols)), lf(),
+    // Propina — always printed (even $0.00)
+    enc(labelValue('Propina:', `$${(voucher.tip_cents / 100).toFixed(2)}`, cols)), lf(),
+    // Separator
+    enc(separator(cols)), lf(),
+    // TOTAL (bold)
+    bold(true),
+    enc(labelValue('TOTAL:', `$${(voucher.total_cents / 100).toFixed(2)}`, cols)), lf(),
+    bold(false),
+    // Separator
+    enc(separator(cols)), lf(),
+  ];
+
+  // Split index (only when there are multiple parts)
+  if (voucher.split_total > 1) {
+    parts.push(enc(`Parte ${voucher.split_index} de ${voucher.split_total}`), lf());
+  }
+
+  // Items covered (if any)
+  if (voucher.items.length > 0) {
+    for (const item of voucher.items) {
+      const namePart = `${item.qty}x ${item.name}`;
+      const lineFmt  = `$${(item.line_cents / 100).toFixed(2)}`;
+      parts.push(enc(twoCol(namePart, lineFmt, cols)), lf());
+    }
+    parts.push(enc(separator(cols)), lf());
+  }
+
+  // Receipt code reference
+  parts.push(
+    enc(`Ref: ${voucher.receipt_code}`.slice(0, cols)), lf(),
+    enc('Conservar para cierre de caja'.slice(0, cols)), lf(),
+    feedLines(5),
+    cut(),
+  );
+
+  return concat(...parts);
+}
+
 // ─── Table session code ticket (F2) ──────────────────────────────────────────
 
 export interface TableCodeTicketOpts {

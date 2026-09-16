@@ -853,11 +853,11 @@ export default function PrintersPage() {
               Impresoras Bluetooth / Bluetooth Printers
             </strong>
             <p className="pr-bluetooth-desc">
-              Compatibilidad con impresoras Bluetooth próximamente desde la app
-              móvil. Bluetooth printer support coming soon via the mobile app.
+              Las impresoras Bluetooth del mesero se agregan desde el handheld
+              (⚙️ → Mis impresoras). / Waiter Bluetooth printers are added from
+              the handheld app (⚙️ → My Printers).
             </p>
           </div>
-          <span className="pr-coming-soon">Próximamente / Coming soon</span>
         </div>
       </section>
 

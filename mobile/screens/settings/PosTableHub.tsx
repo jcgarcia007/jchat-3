@@ -41,7 +41,9 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  IconCheck,
   IconChevronLeft,
+  IconCopy,
   IconKey,
   IconLock,
   IconMinus,
@@ -82,6 +84,7 @@ import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { printKitchenTickets, resolveServerName } from '../../services/printer';
 import { buildTableCodeTicketEscPos } from '../../services/escpos';
+import * as Clipboard from 'expo-clipboard';
 import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
 import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
 
@@ -277,6 +280,7 @@ export default function PosTableHub(): React.ReactElement {
   const [sessionDetail, setSessionDetail] = useState<PosTableSessionDetail | null>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [releaseLoading, setReleaseLoading] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const printerPickerRef = useRef<PrinterPickerSheetRef>(null);
 
   useEffect(() => {
@@ -560,6 +564,13 @@ export default function PosTableHub(): React.ReactElement {
       ],
     );
   }, [businessId, tableId, sessionDetail, t]);
+
+  const handleCopyCode = useCallback(async () => {
+    if (!sessionDetail?.access_code) return;
+    await Clipboard.setStringAsync(sessionDetail.access_code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2500);
+  }, [sessionDetail]);
 
   /** Build and send the table code ticket to the chosen staff printer. */
   const handlePrintCode = useCallback(async () => {
@@ -1113,6 +1124,21 @@ export default function PosTableHub(): React.ReactElement {
                     <IconPrinter size={14} color="#fff" strokeWidth={1.8} />
                     <Text style={styles.codeActionLabel}>
                       {t('pos.tableCode.print')}
+                    </Text>
+                  </Pressable>
+
+                  {/* Copy */}
+                  <Pressable
+                    style={[styles.codeActionBtn, { backgroundColor: codeCopied ? c.success : c.bgBase, borderColor: codeCopied ? c.success : c.borderSubtle, borderWidth: 1 }]}
+                    onPress={() => void handleCopyCode()}
+                    accessibilityRole="button"
+                  >
+                    {codeCopied
+                      ? <IconCheck size={14} color={c.success} strokeWidth={1.8} />
+                      : <IconCopy size={14} color={c.textSecondary} strokeWidth={1.8} />
+                    }
+                    <Text style={[styles.codeActionLabel, { color: codeCopied ? c.success : c.textSecondary }]}>
+                      {codeCopied ? t('pos.tableCode.copied') : t('pos.tableCode.copy')}
                     </Text>
                   </Pressable>
 
