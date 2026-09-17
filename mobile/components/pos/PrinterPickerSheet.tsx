@@ -72,6 +72,10 @@ export async function listStaffPrinters(businessId: string): Promise<StaffPrinte
 // ─── Print dispatcher ─────────────────────────────────────────────────────────
 
 async function printEscPos(printer: StaffPrinter, bytes: Uint8Array): Promise<void> {
+  // Defensive guard — kitchen/bar printers must never reach staff printing paths.
+  if (printer.type === 'network' && (printer.role === 'kitchen' || printer.role === 'bar')) {
+    throw new Error('PRINTER_ROLE_FORBIDDEN');
+  }
   if (printer.type === 'bluetooth') {
     await printToBluetooth(printer.address, bytes);
   } else {

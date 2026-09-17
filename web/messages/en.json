@@ -2286,7 +2286,18 @@
     "configurationPaymentModeStripeDesc": "Customers can pay from their phone and servers charge with the card reader.",
     "configurationPaymentModeExternalLabel": "Your own payment system (cash / external card)",
     "configurationPaymentModeExternalDesc": "Customers never pay by phone. Servers collect cash or use your own terminal and record it when closing the tab.",
-    "configurationPaymentModeSavedSuccess": "Payment mode saved."
+    "configurationPaymentModeSavedSuccess": "Payment mode saved.",
+    "salesCashupTitle": "Daily Cash-Up",
+    "salesCashupMethod": "Method",
+    "salesCashupSales": "Sales",
+    "salesCashupTips": "Tips",
+    "salesCashupTotal": "Total",
+    "salesCashupDayTotal": "Day total",
+    "methodCash": "Cash",
+    "methodCardExternal": "External card",
+    "methodStripeM2": "Card (M2)",
+    "methodStripeQr": "Customer (QR)",
+    "methodUnknown": "Other"
   },
   "superAdmin": {
     "shell": {

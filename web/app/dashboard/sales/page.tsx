@@ -72,6 +72,22 @@ interface ProductStat {
   qty: number;
 }
 
+// Z-report types (F8)
+interface CashupMethodRow {
+  payment_method: string;
+  count: number;
+  sales_cents: number;
+  tips_cents: number;
+  total_cents: number;
+}
+
+interface CashupData {
+  day: string;
+  timezone: string;
+  by_method: CashupMethodRow[];
+  totals: { count: number; sales_cents: number; tips_cents: number; total_cents: number };
+}
+
 interface OrderDetail {
   id: string;
   paid_at: string;
@@ -149,6 +165,14 @@ function fmtTime(iso: string, locale: string): string {
 function fmtPct(num: number, den: number): string {
   if (den <= 0) return "—";
   return `${((num / den) * 100).toFixed(1)}%`;
+}
+
+function methodLabel(method: string, t: ReturnType<typeof useTranslations>): string {
+  if (method === "cash")             return t("methodCash");
+  if (method === "card_external")    return t("methodCardExternal");
+  if (method === "stripe_terminal")  return t("methodStripeM2");
+  if (method === "stripe_web")       return t("methodStripeQr");
+  return t("methodUnknown");
 }
 
 function initSeller(id: string | null, display: string, username: string | null, avatar: string | null, empId: string | null): SellerStats {
@@ -585,6 +609,12 @@ function SalesPageInner() {
   const [sellers, setSellers]       = useState<SellerStats[]>([]);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
+  // Z-report (Cierre de caja)
+  const [cashup, setCashup]           = useState<CashupData | null>(null);
+  const [cashupDay, setCashupDay]     = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [cashupOpen, setCashupOpen]   = useState(false);
+  const [cashupLoading, setCashupLoading] = useState(false);
+
   const bizIdRef = useRef<string | null>(null);
 
   async function fetchData(bid: string, start: Date, end: Date) {
@@ -780,6 +810,7 @@ function SalesPageInner() {
 
         const bid = res.business.id;
         bizIdRef.current = bid;
+        if (cashupOpen) void fetchCashup(bid, cashupDay);
 
         const { start, end } = getRange(preset, customStart, customEnd);
         setLoading(true);
@@ -852,6 +883,29 @@ function SalesPageInner() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+
+  // ── Z-report fetch ─────────────────────────────────────────────────────────
+
+  async function fetchCashup(bid: string, day: string) {
+    setCashupLoading(true);
+    try {
+      const { data } = await supabase.rpc("pos_daily_payment_summary", {
+        p_business_id: bid,
+        p_day: day,
+      });
+      setCashup(data as CashupData | null);
+    } catch {
+      setCashup(null);
+    } finally {
+      setCashupLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!bizIdRef.current || !cashupOpen) return;
+    void fetchCashup(bizIdRef.current, cashupDay);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cashupDay, cashupOpen]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -955,6 +1009,133 @@ function SalesPageInner() {
       {!loading && !error && sellers.length === 0 && (
         <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--db-text-secondary)", fontSize: "13px" }}>
           {t("salesEmpty")}
+        </div>
+      )}
+
+      {/* ── Z-report: Cierre de caja ──────────────────────────────────────────── */}
+      {bizIdRef.current && (
+        <div style={{ marginBottom: "16px", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", overflow: "hidden" }}>
+          {/* Header / toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !cashupOpen;
+              setCashupOpen(next);
+              if (next && bizIdRef.current && !cashup) void fetchCashup(bizIdRef.current, cashupDay);
+            }}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 20px", background: "var(--db-bg-surface)",
+              border: "none", cursor: "pointer", textAlign: "left",
+            }}
+          >
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+              {t("salesCashupTitle")}
+            </span>
+            {cashupOpen
+              ? <IconChevronUp size={16} color="var(--db-text-secondary)" />
+              : <IconChevronDown size={16} color="var(--db-text-secondary)" />}
+          </button>
+
+          {cashupOpen && (
+            <div style={{ padding: "0 20px 16px", background: "var(--db-bg-surface)", borderTop: "1px solid var(--db-border)" }}>
+              {/* Date selector */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 0 8px" }}>
+                <label style={{ fontSize: "12px", color: "var(--db-text-secondary)", fontWeight: 600 }}>
+                  {t("salesRangeFrom")}
+                </label>
+                <input
+                  type="date"
+                  value={cashupDay}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => { setCashupDay(e.target.value); setCashup(null); }}
+                  style={{
+                    fontSize: "13px", padding: "4px 8px", borderRadius: "6px",
+                    border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)",
+                    color: "var(--db-text-primary)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { if (bizIdRef.current) void fetchCashup(bizIdRef.current, cashupDay); }}
+                  style={{
+                    fontSize: "12px", padding: "4px 12px", borderRadius: "6px",
+                    border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)",
+                    color: "var(--db-text-secondary)", cursor: "pointer",
+                  }}
+                >
+                  ↺
+                </button>
+              </div>
+
+              {cashupLoading && (
+                <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", padding: "8px 0" }}>
+                  {t("salesLoadingData")}
+                </p>
+              )}
+
+              {!cashupLoading && cashup && (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--db-border)" }}>
+                      <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--db-text-secondary)", fontWeight: 600, fontSize: "11px" }}>
+                        {t("salesCashupMethod")}
+                      </th>
+                      <th style={{ textAlign: "right", padding: "6px 8px", color: "var(--db-text-secondary)", fontWeight: 600, fontSize: "11px" }}>
+                        {t("salesCashupSales")}
+                      </th>
+                      <th style={{ textAlign: "right", padding: "6px 8px", color: "var(--db-text-secondary)", fontWeight: 600, fontSize: "11px" }}>
+                        {t("salesCashupTips")}
+                      </th>
+                      <th style={{ textAlign: "right", padding: "6px 8px", color: "var(--db-text-secondary)", fontWeight: 600, fontSize: "11px" }}>
+                        {t("salesCashupTotal")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(cashup.by_method as CashupMethodRow[]).map((row) => (
+                      <tr key={row.payment_method} style={{ borderBottom: "1px solid var(--db-border-subtle, var(--db-border))" }}>
+                        <td style={{ padding: "8px 8px", color: "var(--db-text-primary)" }}>
+                          {methodLabel(row.payment_method, t)} <span style={{ color: "var(--db-text-secondary)", fontSize: "11px" }}>×{row.count}</span>
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-text-primary)" }}>
+                          {formatCents(row.sales_cents, locale)}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-text-secondary)" }}>
+                          {formatCents(row.tips_cents, locale)}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-text-primary)", fontWeight: 600 }}>
+                          {formatCents(row.total_cents, locale)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: "2px solid var(--db-border)" }}>
+                      <td style={{ padding: "8px 8px", color: "var(--db-text-primary)", fontWeight: 700 }}>
+                        {t("salesCashupDayTotal")} <span style={{ color: "var(--db-text-secondary)", fontSize: "11px" }}>×{cashup.totals.count}</span>
+                      </td>
+                      <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-text-primary)", fontWeight: 700 }}>
+                        {formatCents(cashup.totals.sales_cents, locale)}
+                      </td>
+                      <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-text-secondary)", fontWeight: 700 }}>
+                        {formatCents(cashup.totals.tips_cents, locale)}
+                      </td>
+                      <td style={{ textAlign: "right", padding: "8px 8px", color: "var(--db-accent, var(--db-text-primary))", fontWeight: 700, fontSize: "15px" }}>
+                        {formatCents(cashup.totals.total_cents, locale)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+
+              {!cashupLoading && !cashup && (
+                <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", padding: "8px 0" }}>
+                  {t("salesEmpty")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

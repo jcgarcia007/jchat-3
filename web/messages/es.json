@@ -2286,7 +2286,18 @@
     "configurationPaymentModeStripeDesc": "Los clientes pueden pagar desde su teléfono y el mesero cobra con el lector.",
     "configurationPaymentModeExternalLabel": "Sistema de cobro propio (efectivo / tarjeta externa)",
     "configurationPaymentModeExternalDesc": "Los clientes nunca pagan por teléfono. El mesero cobra en efectivo o con tu terminal y lo registra al cerrar la cuenta.",
-    "configurationPaymentModeSavedSuccess": "Modo de cobro guardado."
+    "configurationPaymentModeSavedSuccess": "Modo de cobro guardado.",
+    "salesCashupTitle": "Cierre de caja",
+    "salesCashupMethod": "Método",
+    "salesCashupSales": "Ventas",
+    "salesCashupTips": "Propina",
+    "salesCashupTotal": "Total",
+    "salesCashupDayTotal": "Total del día",
+    "methodCash": "Efectivo",
+    "methodCardExternal": "Tarjeta externa",
+    "methodStripeM2": "Tarjeta (M2)",
+    "methodStripeQr": "Cliente (QR)",
+    "methodUnknown": "Otros"
   },
   "superAdmin": {
     "shell": {

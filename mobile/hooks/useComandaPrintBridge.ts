@@ -58,15 +58,15 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── tryPrint ─────────────────────────────────────────────────────────────────
 
   async function tryPrint(orderId: string, tableLabel: string | null): Promise<void> {
-    console.log('[ComandaBridge] tryPrint orderId=', orderId, 'tableLabel=', tableLabel);
+    if (__DEV__) console.log('[ComandaBridge] tryPrint orderId=', orderId, 'tableLabel=', tableLabel);
 
     if (processedRef.current.has(orderId)) {
-      console.log('[ComandaBridge] tryPrint skip — ya procesado en sesión:', orderId);
+      if (__DEV__) console.log('[ComandaBridge] tryPrint skip — ya procesado en sesión:', orderId);
       return;
     }
 
     const won = await claimPrint(orderId);
-    console.log('[ComandaBridge] claimPrint result — won=', won, 'orderId=', orderId);
+    if (__DEV__) console.log('[ComandaBridge] claimPrint result — won=', won, 'orderId=', orderId);
     if (!won) return; // otro handheld lo tiene
 
     processedRef.current.add(orderId);
@@ -77,7 +77,7 @@ export function useComandaPrintBridge(businessId: string): void {
     try {
       await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
       printOk = true;
-      console.log('[ComandaBridge] impresión OK — orderId=', orderId);
+      if (__DEV__) console.log('[ComandaBridge] impresión OK — orderId=', orderId);
     } catch (printErr) {
       console.warn('[ComandaBridge] fallo de impresión (1.º intento):', printErr);
     }
@@ -92,7 +92,7 @@ export function useComandaPrintBridge(businessId: string): void {
       try {
         await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
         await markPrinted(orderId);
-        console.log('[ComandaBridge] impresión OK (2.º intento) — orderId=', orderId);
+        if (__DEV__) console.log('[ComandaBridge] impresión OK (2.º intento) — orderId=', orderId);
       } catch (retryErr) {
         console.warn('[ComandaBridge] fallo de impresión (2.º intento) — liberando reclamo:', retryErr);
         await releasePrint(orderId);
@@ -115,7 +115,7 @@ export function useComandaPrintBridge(businessId: string): void {
         return;
       }
 
-      console.log('[ComandaBridge] catchUp:', data?.length ?? 0, 'pendientes');
+      if (__DEV__) console.log('[ComandaBridge] catchUp:', data?.length ?? 0, 'pendientes');
 
       for (const row of data ?? []) {
         await tryPrint(row.order_id, row.table_label);
@@ -129,7 +129,7 @@ export function useComandaPrintBridge(businessId: string): void {
 
   function subscribe(): void {
     if (channelRef.current) {
-      console.log('[ComandaBridge] subscribe skip — canal ya activo');
+      if (__DEV__) console.log('[ComandaBridge] subscribe skip — canal ya activo');
       return;
     }
 
@@ -149,7 +149,7 @@ export function useComandaPrintBridge(businessId: string): void {
             const src = row['source'] as string | undefined;
             const apr = row['approval_status'] as string | null | undefined;
 
-            console.log(
+            if (__DEV__) console.log(
               '[ComandaBridge] realtime INSERT recibido:',
               row['id'], 'source=', src, 'approval_status=', apr,
             );
@@ -185,13 +185,13 @@ export function useComandaPrintBridge(businessId: string): void {
             if (aprOld === 'awaiting' && aprNew === 'approved') {
               const orderId    = newRow['id'] as string;
               const tableLabel = (newRow['table_label'] as string | null) ?? null;
-              console.log('[ComandaBridge] awaiting→approved, imprimiendo comanda:', orderId);
+              if (__DEV__) console.log('[ComandaBridge] awaiting→approved, imprimiendo comanda:', orderId);
               void tryPrint(orderId, tableLabel);
             }
           },
         )
         .subscribe((status: string) => {
-          console.log('[ComandaBridge] channel status:', status);
+          if (__DEV__) console.log('[ComandaBridge] channel status:', status);
         });
 
       channelRef.current = channel;
@@ -223,7 +223,7 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── Mount / unmount ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    console.log('[ComandaBridge] mount, businessId=', businessId);
+    if (__DEV__) console.log('[ComandaBridge] mount, businessId=', businessId);
 
     try {
       subscribe();

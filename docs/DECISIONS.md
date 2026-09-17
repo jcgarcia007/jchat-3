@@ -1,854 +1,96 @@
-# JChat 3.0 — Decision Journal
-
-Why we did what we did. Read before reversing a choice.
-
-Last updated: 2026-07-30
-
-## Maps
-
-### D-01 — Keep Google Maps on mobile (not native Apple/Google split)
-Decision: Use Google Maps (PROVIDER_GOOGLE) on both iOS and Android.
-Why: The custom pastel and dark map styles (customMapStyle) are Google-Maps-only — Apple Maps doesn't support custom styling. We nearly switched to native maps to escape the iOS blank-map bug, but once the real root cause was fixed (D-02) Google Maps worked, so we kept it and preserved the brand styling.
-Consequence: Heat-map gradient overlays remain possible later (Google-only feature).
-> ⚠️ ACTUALIZADO 2026-07-10 (D-20): esta decisión se revirtió para iOS — iOS ahora usa Apple Maps (sin estilo custom). Android mantiene Google Maps con customMapStyle. Ver D-20.
-
-### D-02 — react-native-maps plugin MUST use the array form
-Decision: Always declare ['react-native-maps', { iosGoogleMapsApiKey }], never the bare string 'react-native-maps'.
-Why: The bare string makes the config plugin run Apple-Maps-only — it omits the Google Maps pod and strips GMSServices.provideAPIKey() from AppDelegate, causing a silent blank map on iOS. This cost a multi-hour debugging session; the key was never the problem.
-> ⚠️ ACTUALIZADO 2026-07-10 (D-20): la premisa (forzar Google Maps en iOS vía array-form) ya no aplica en iOS — iOS usa Apple Maps. El array-form del plugin sigue siendo relevante solo para la key de Android. Ver D-20.
-
-### D-03 — Platform-specific Maps API keys
-Decision: Split into GOOGLE_MAPS_KEY_IOS and GOOGLE_MAPS_KEY_ANDROID (separate GCP-restricted keys), set in EAS as sensitive for prod+dev.
-Why: Correct security posture (each key restricted to its platform/bundle/SHA). Also create EAS env vars BEFORE building — a build run before the vars existed picked up empty keys.
-
-### D-04 — Heat zones deferred; if ever needed, circles not gradient
-Decision: No heat zones for now; the Nearby tab already surfaces activity. If added later, prefer colored Circle overlays over a true Heatmap.
-Why: Heatmap (gradient) is Google-Maps-only and buggy on iOS even via Google (AIRMapHeatmap not found errors). Circle/Polygon work on both providers, are tappable (enter chat), and map cleanly to each venue's geofence (point + radius) — discrete circles represent bounded geofences better than a diffuse gradient.
-
-### D-20 — iOS usa Apple Maps (revierte la premisa de D-01/D-02 para iOS)
-Decision: En iOS el mapa es **Apple Maps** (provider nativo por defecto de react-native-maps en iOS), NO Google Maps. Android sigue con Google Maps (PROVIDER_GOOGLE) y su customMapStyle pastel/dark. Decisión de producto 2026-07-10 (M3).
-Why: Apple Maps es nativo, no requiere key adicional ni el pod de Google Maps en iOS, y evita la fricción de mantener GMSServices/keys iOS. El costo aceptado es que el estilo custom pastel/dark (customMapStyle) NO aplica en iOS — Apple Maps no soporta estilos custom. Se prioriza simplicidad e integración nativa sobre consistencia visual cross-platform del mapa.
-Consequence: El mapa en iOS se ve con el estilo nativo de Apple (sin la paleta de marca); Android conserva el estilo custom. Esto REVIERTE para iOS la premisa de D-01 (que mantenía Google en ambos por el estilo) y hace que el problema que motivó D-02 (array-form del plugin para forzar Google en iOS) ya NO aplique en iOS — el config actual usa Apple Maps en iOS intencionalmente. D-03 (keys por plataforma) sigue vigente solo para la key de Android. D-04 (heat zones diferidas) sin cambios.
-
-## Web map editor
-
-### D-05 — Native google.maps drawing, not terra-draw / AdvancedMarker
-Decision: Use native google.maps.Marker/Circle/Polygon via useMap(); removed terra-draw + adapter + AdvancedMarker.
-Why: terra-draw's adapter cleanup and AdvancedMarker (invalid mapId) threw "Cannot read properties of undefined (reading remove)" under React StrictMode double-effect.
-
-### D-06 — Uncontrolled map center for drag/pan
-Decision: Use defaultCenter + imperative recenter (panTo/setZoom on load/search only), not a controlled center prop.
-Why: A controlled center without an onCenterChanged handler snaps the map back and blocks panning.
-
-### D-13 — Radio de geofence de negocio = 50 m (canónico), enforced server-side
-Decision: El radio máximo de geofence de un negocio es 50 m. Radios mayores solo con radius_increase_requests aprobado por un platform admin.
-Why: Decisión de producto de la sesión de diseño 2026-06-24. El código tenía 100 m (UI) y default 200 m (columna). Se unificó a 50 m. Para honrar la regla de oro de geo ("el servidor decide, nunca el cliente"), el cap se hace cumplir con un trigger en la BD (migración 021), no solo en la UI: permite >50 m únicamente si existe un request aprobado que cubra el valor, o si lo escribe un platform admin.
-Consequence: businesses.geofence_radius_m default pasó de 200 a 50. LocationEditor BUSINESS_RADIUS_CAP pasó de 100 a 50. EVENT_RADIUS_CAP (1609 m) sin cambios.
-
-## Chat
-
-### D-07 — Presence = Supabase Realtime Presence (not check_ins)
-Decision: The chat "who's here now" bar uses Supabase Realtime Presence, not the check_ins table.
-Why: Presence reflects who has the room open right now (live join/leave) — the right semantic for a proximity chat. No new table. Critical impl detail: track() must run inside the .subscribe() callback gated on status==='SUBSCRIBED', else it fails silently; use config.presence.key=user.id for per-user dedup.
-
-### D-08 — Menu icon gated by owner approval (businesses.menu_enabled)
-Decision: The in-chat menu icon shows only when the business owner enables it via a dashboard toggle; default false.
-Why: Owners control whether their venue exposes a menu/ordering surface in chat. The mobile menu reuses the existing Menu route (full POS flow, Task 3.2) — no separate read-only screen.
-
-### D-09 — Chat work split into small tandas
-Decision: Implement chat fixes in small, independently-testable batches (Tanda 1 quick wins -> Tanda 2 DM -> Tanda 3 profile/extras) rather than one big change.
-Why: Easier to verify each piece; avoids a Claude Code rewrite touching everything at once. Mirrors the diagnose->fix->verify loop that resolved the maps issue.
-
-### D-10 — TODO(schema) comments are obsolete; verify DB before building
-Decision: Trust the live DB over code comments. Tables blocks, reports, follows, dm_conversations, dm_messages already exist with RLS.
-Why: Audit (from code comments) claimed these were missing; direct Supabase MCP queries proved them present with policies. Always verify schema via MCP before assuming a table is missing.
-
-### D-13 — Social system (Stage 1) — Instagram model (confirmed 2026-07-08)
-Decision: Follow is UNIDIRECTIONAL; accounts are PUBLIC by default (18+). Private accounts use the existing `follow_requests` table (pending → accept/reject); `follows` stays = accepted edges only (no `status` column, preserves existing data). DM is gated by the receiver's `whoCanDMMe` setting (Everyone / Followers only = "my followers can DM me" / Nobody). Unfollow does NOT delete DMs; blocking is SOFT-HIDE (hides but keeps history, reappears on unblock). Posts get a separate permanent bucket `profile-media` (chat stays ephemeral on `post-media`, 24h TTL); DM photos go to a private `dm-media` bucket. No per-post `visibility` in v1 (global `whoSeesMyPosts` only). Follower/following counts via count-queries in v1 (denormalization deferred). Profile tabs v1: Posts / Places / Gifts / Saved (Stories/Reels hidden until their phase).
-Why: The social layer was ~70% scaffolded but unenforced — the work is applying privacy in RLS + wiring the pending/DM/block flows, not rebuilding. Reuses `follow_requests`/`blocks`/`posts`/`comments` that already exist. Full audit + 4-module plan + phased order in `docs/PLAN_MAESTRO_SOCIAL.md`.
-
-### D-14 — Chat TTL purge = pure pg_cron; photo GC deferred (confirmed 2026-07-08)
-Decision: Room messages are purged 24h after their own created_at by a pure-SQL `pg_cron` job (`purge_expired_messages()` every 15 min) — NOT an Edge Function / pg_net. Pinned messages (`pinned_messages`) are EXCLUDED and survive; `reply_to` is ON DELETE SET NULL so replies survive. Photo binaries are NOT deleted for now (Option C): Supabase blocks direct `DELETE FROM storage.objects` (the `storage.protect_delete` trigger → "Use the Storage API instead"), so the function wraps that delete in an EXCEPTION block (logs + continues) and only purges message rows. Orphaned `post-media` binaries (unreferenced, unguessable path, bucket exclusive to ephemeral chat) remain until a future Storage-API GC.
-Why: pg_cron keeps it server-side and dependency-free per the design. Bypassing the protect_delete guard (e.g. `session_replication_role='replica'`) works but deliberately circumvents a Supabase safety mechanism — not worth it for orphaned binaries that pose no privacy/correctness issue. The core value (messages disappear at 24h) ships now; photo GC is a storage-cost cleanup to revisit. Migration 043; design in `docs/DIAGNOSTICO_TTL_CHAT.md`.
-
-## Process
-
-### D-11 — Documentation set for cross-session continuity
-Decision: Maintain this /docs/ set; resume new chats by reading docs/CONTINUITY.md.
-Why: Chats fill with images (100-image cap) and must restart. The docs preserve state, decisions, origin, and design references so a fresh session continues seamlessly.
-
-### D-12 — Prefer text/MCP over screenshots
-Decision: Paste text/errors; let Claude read code via GitHub MCP. Screenshots only for genuine visual UI matters.
-Why: Screenshots consume the image budget fast and shorten chat lifespan; MCP gives Claude direct, current source access.
-
-## Security & Store-review (Sesión 2026-07-10)
-
-### D-15 — public_profiles se mantiene SECURITY DEFINER (no invoker)
-Decision: La vista `public_profiles` sigue siendo SECURITY DEFINER; NO se aplica `security_invoker=on` (contra la sugerencia del linter S3).
-Why: La RLS de `users` es own-row + admin. La vista existe PARA exponer un subset público de columnas saltándose esa RLS — es el mecanismo de exposición pública controlada, no un bug. `security_invoker` rompería ver perfiles ajenos en toda la app. Se mantiene DEFINER, expone solo columnas públicas (nunca `city`/`privacy_settings`/`push_token`/`stripe`/`role`/`plan`) y se añadió `is_private` para el gate de privacidad del cliente.
-Consequence: El warning `security_definer_view` del linter queda ACEPTADO intencionalmente. Commit `af43587`.
-
-### D-16 — Borrado de cuenta = hard delete vía Edge Function (M6)
-Decision: Borrado in-app con **hard delete** (no soft-delete ni anonimización), vía Edge Function `delete-account`.
-Why: Apple 5.1.1(v) + Google exigen borrado in-app. La función extrae `user_id` del JWT (nunca del body — patrón P0-3), limpia `radius_increase_requests` (FKs NO ACTION que bloquearían el cascade) y llama `admin.deleteUser` → cascade de `auth.users` → `public.users` + todo el contenido personal. Las columnas SET NULL se anonimizan solas.
-Consequence: Se eliminó el stub falso previo de "24h grace period". Commit `55eaa2d`.
-
-### D-17 — Biometría = gate de lock en cold start, opt-in (M2)
-Decision: La biometría es un GATE de bloqueo, no un mecanismo de restauración de sesión. Opt-in vía toggle en Settings.
-Why: La sesión de Supabase ya persiste (AsyncStorage). La biometría NO restaura sesión; bloquea la entrada aunque la sesión sea válida (patrón banca). Se activa solo en **cold start** (nunca en `onAuthStateChange` ni al volver de background — un login fresco no queda bloqueado), con guard de `canUseBiometrics`. Sin passcode fallback propio: si Face ID falla, retry o signOut.
-Consequence: `LockScreen` renderizado por `AppNavigator` cuando `isAuthenticated && locked`. Commit `c746796`.
-
-### D-18 — OAuth deep-link con jchat:// scheme (M1)
-Decision: OAuth móvil vía `signInWithOAuth({ redirectTo: Linking.createURL('auth/callback'), skipBrowserRedirect: true })` + `openAuthSessionAsync` para capturar el retorno.
-Why: Sin handler del redirect el usuario nunca volvía autenticado. Se maneja implicit flow (fragment → `setSession`) y PKCE (`?code` → `exchangeCodeForSession`). Se usa `Linking.parse` para el scheme custom (`new URL` no es fiable en RN). `detectSessionInUrl:false` ya estaba.
-Consequence: Requiere build EAS dev-client para probar (no funciona en Expo Go, que usa `exp://`). Commits `34303ce` (+`f4ba64a`).
-
-### D-19 — CSP arranca en Report-Only (W1)
-Decision: `next.config.ts` pasó de `{}` a `headers` con CSP calibrada; arranca en `Content-Security-Policy-Report-Only`.
-Why: Report-Only permite calibrar (Supabase/Stripe/Maps allowlist) sin romper la app. Google Fonts se omitió del allowlist porque `next/font` auto-hospeda. Stripe pre-provisionado para W5.
-Consequence: Flip a enforce (1 línea) tras verificar la consola sin violaciones legítimas. Commit `1af2168`.
-
-## Device testing (Sesión 2026-07-11)
-
-### D-21 — Username OAuth derivado del email/nombre
-Al registrarse por OAuth, el trigger 048 deriva el username del email local-part (o nombre de Google), sanitizado a [a-z0-9_], 3-30 chars, dedupe con sufijo. Editable después. (Ref: migración 048, 3eef6e2.)
-
-### D-22 — Botón Face ID del login: opt-in
-El botón "Use Face ID / Touch ID" en LoginScreen solo aparece si el usuario activó el lock biométrico (flag @jchat/biometric_enabled). Sin sesión guardada, biometría no puede crear sesión → se ocultaba el callejón sin salida. (Ref: 2b31f27.)
-
-### D-23 — Prompt de enrolamiento biométrico post-login
-Tras el primer login exitoso (cualquier método), si hay hardware y no está activado ni preguntado, se ofrece activar el lock (una sola vez). Combina con el toggle de Ajustes. Sigue mejores prácticas (ofrecer post-login, opt-in de un toque, texto adaptativo). (Ref: 2b31f27.)
-
-### D-24 — Quick card de usuario por tap
-Tap (no long-press) en avatar/nombre —tanto en mensajes como en la fila de presencia— abre una tarjeta compacta anclada, fondo opaco. Reemplaza el long-press. El UserActionSheet grande se conserva como destino de "Silenciar" (duración de mute) y moderación de dueño, vía onOpenFull. (Ref: f807355, c73844f, d93f164.)
-
-### D-25 — Fuente de avatar por superficie
-Perfil y chat-mensajes leen avatar de `public.users`/`public_profiles`. La fila de presencia lee de `user_metadata.avatar_url`. Por eso EditProfileScreen sincroniza AMBOS al guardar (tabla users + auth.updateUser). (Ref: 3aa9e38, 7bcc661.)
-
-### D-26 — Native sign-in DIFERIDO
-Apple/Google nativos (expo-apple-authentication + @react-native-google-signin) eliminarían el diálogo "supabase.co", pero requieren build nativo y reabren el código de auth recién estabilizado. Diferido a una tanda dedicada.
-
-### D-27 — Plantillas de menú en móvil: PENDIENTE (se implementará)
-`businesses.menu_template_id` (ej. 'icon-rail') hoy solo lo respeta la web; el móvil tiene un layout fijo (MenuScreen ignora el campo). DECISIÓN: el móvil DEBE respetar la misma plantilla que la web. Es la próxima tanda grande — requiere mapear las plantillas web y replicarlas como layouts nativos. Diagnóstico hecho; implementación pendiente.
-
-### D-28 — Tipo de pedido: 'table' por defecto, 'gift' oculto
-El carrito abre con Mesa seleccionada. La card de Regalo se oculta (coherente con diferir features de regalo hasta cerrar los temas de pago). El type 'gift' y el gift picker se conservan inertes. (Ref: 88a8589.)
-
-### D-29 — `table_label` OBLIGATORIO en pedidos a mesa
-En la web el campo "Mesa" es opcional (pero eso vive en el sheet de LLAMAR AL MESERO → `service_calls.table_label`, no en el pedido). Para un PEDIDO, la mesa es obligatoria: sin ella el pedido no se puede entregar. Texto libre (máx 40): "5", "barra", "terraza". (Ref: 1eee04d, migración 049.)
-
-### D-30 — Topics de realtime
-Los canales de `postgres_changes` usan topic ÚNICO por suscripción (el `filter` hace el scoping). Los canales de PRESENCIA deben mantener el topic COMPARTIDO (`presence:${roomId}`) o los usuarios dejan de verse → ahí el fix es purgar+AWAITar el canal stale antes de resuscribir. (Ref: c8e0836, 0b593ad.)
-
-### D-31 — Clave de idempotencia por INTENTO, no por carrito
-La clave la genera el cliente en cada intento de pago; el servidor la valida y la namespacea con el usuario del JWT. Una clave derivada del carrito bloquea pedidos idénticos repetidos. (Ref: e1e02aa.)
-
-### D-32 — El carrito de un PaymentIntent vive en la BD, no en la metadata de Stripe
-La metadata de Stripe capa los valores a 500 chars; con modificadores el carrito desborda y el webhook no puede parsearlo (orden sin ítems, en silencio). El carrito RESUELTO POR EL SERVIDOR (precios de BD + etiquetas verificadas) se guarda en `pending_order_carts` (service_role only) y el webhook lo lee de ahí. La metadata se sigue escribiendo como fallback para PIs viejos y para depurar. (Ref: 4ea3d00, migración 050.)
-
-### D-33 — Los precios de modificadores SIEMPRE se resuelven en el servidor
-El cliente solo envía ids de grupo + etiquetas de choice. La EF los precia desde `modifier_groups.choices` en la BD y rechaza grupos no vinculados al ítem o etiquetas inexistentes. Ningún precio del cliente se usa jamás. (Ref: 4ea3d00.)
-
-### D-34 — El cliente NUNCA escribe en orders ni order_items
-Ambas tablas las escribe solo el `stripe-webhook` con service_role (salta RLS). `orders` ya no tenía política de INSERT (033); `order_items` la tenía y se eliminó (051) porque permitía a un cliente añadir ítems no pagados a su propia orden. El cliente solo LEE. (Ref: migraciones 033, 051.)
-
-### D-35 — MODELO DE INGRESOS: suscripción, NO comisión
-`PLATFORM_FEE_PERCENT = 2.9` + `FIXED_CENTS = 30` — que es EXACTAMENTE lo que cobra Stripe → el procesamiento es NEUTRO (Juan no gana ni pierde en los pagos). Los ingresos vienen de las suscripciones ($49 Business / $99 Pro).
-JUSTIFICACIÓN DE MERCADO (investigado): JChat NO es delivery (DoorDash/Uber Eats: 15-30%). Es pedidos EN EL LOCAL (QR/mesa), donde el estándar es SUSCRIPCIÓN + 0% comisión: Choice QR (40€/mes, 0%), Jamezz (50-300€/mes), UpMenu ($49), Menu Tiger ($17-119), Sunday ($49-299), ChowNow (suscripción + 0%, procesamiento estándar). Los restaurantes tienen márgenes netos del 3-5% → una comisión les duele mucho. VENTAJA COMPETITIVA: poder vender **"0% de comisión"** con verdad. Si algún día se quiere ingreso por volumen: subir a 4-5%, o crear un plan sin suscripción con comisión para negocios pequeños.
-
-### D-36 — Cada negocio/evento tiene SU PROPIA cuenta de Stripe
-`stripe_account_id` vive en `businesses` → web y móvil comparten automáticamente la cuenta del mismo negocio. Los eventos hoy se modelan COMO negocios (Juan ya tiene "caminata" y "Correr 5K" en `businesses`). Cuando exista la tabla `events`, necesitará su propio `stripe_account_id`.
-
-### D-37 — Checkout de invitado en el menú web (PENDIENTE DE IMPLEMENTAR)
-Decisión de producto tomada: el invitado paga SIN registrarse (Supabase anonymous sign-in), y se le piden email O teléfono (OPCIONALES) para enviarle el recibo y poder gestionar reembolsos. Si los deja en blanco, se le avisa amablemente de que no podrá recibir recibo ni solicitar reembolso, y se procede igual. El contacto va en la ORDEN (no en la cuenta).
-
-### D-38 — CAPTCHA: hCaptcha (NO Turnstile)
-Turnstile NO tiene SDK oficial de React Native (el paquete comunitario `react-native-turnstile` enruta por un dominio de un TERCERO, `turnstile.1337707.xyz` → inaceptable en una app de pagos). hCaptcha SÍ tiene SDK oficial: `@hcaptcha/react-native-hcaptcha` (hCaptcha Team, MIT, iOS+Android, por defecto en modo INVISIBLE) y `@hcaptcha/react-hcaptcha` para web. Supabase soporta ambos.
-
-### D-39 — NO usar rate limiting como defensa principal
-El límite de Supabase para registros anónimos es de **30/hora POR IP**. En un bar, TODOS los clientes comparten el WiFi = MISMA IP → con más de 30 clientes nuevos/hora, el cliente 31 NO PODRÍA PEDIR. El rate limiting ROMPERÍA el negocio en hora punta. Subirlo alto (300/h) solo como tope de emergencia. La defensa real es el CAPTCHA (distingue humano/robot, no cuenta peticiones).
-
-## Seguridad y operación (Sesión 2026-07-12)
-
-### D-40 — La verificación de un negocio NO la controla el negocio
-Solo un super_admin verifica negocios (/super-admin/verification), vía el RPC único
-`admin_set_business_status(uuid,text)` gateado con `is_platform_admin()`, con
-trazabilidad en `businesses.verified_by` / `verified_at`. `/api/verify` ya no toca
-`businesses.status`.
-
-### D-41 — RLS: negar EXPLÍCITAMENTE (deny_all), no por ausencia de políticas
-Una tabla sin políticas "funciona" como denegada hoy, pero una política añadida
-después abre acceso sin que nadie lo note. Toda tabla service_role-only lleva una
-política deny_all explícita (patrón aplicado en pending_order_carts).
-
-### D-42 — Los límites de plan se aplican en el SERVIDOR
-Cualquier límite (empleados, negocios/eventos por plan) validado solo en el cliente
-es decorativo. La validación autoritativa vive en BD/Edge Functions.
-
-### D-43 — Los cambios de riesgo van por RAMA con preview
-`main` auto-despliega a PRODUCCIÓN en Vercel — un push ES un deploy. CSP, headers,
-auth y pagos se prueban en branch preview antes de merge. (Aprendido con la CSP.)
-
-### D-44 — La secret key de hCaptcha vive SOLO en Supabase
-Attack Protection guarda el secret; el sitekey (público) va en los clientes. Nunca
-en el repo ni en Vercel env.
-
-### D-45 — `tsc --noEmit` en 0 NO garantiza que el bundle corra
-El type-check no cubre errores de runtime del bundler (bug de prop-types). Todo
-cambio de UI requiere smoke test en el entorno real además del tsc.
-
-### D-46 — Un kill-switch silencioso necesita una prueba que lo haga visible
-Todo gate que degrada en silencio (p. ej. el de Twilio en /api/verify) debe tener
-una verificación que demuestre en qué estado está, o se pudre sin que nadie lo vea.
-
-### D-47 — Las Edge Functions corren en Deno y NO pasan por el tsc de la web
-Nadie comprobó que las columnas que escribe el webhook existieran → el bug de
-contact_email costó "dinero cobrado sin pedido" (migración 059 lo cerró). Toda EF
-que escriba en la BD se verifica columna por columna contra el esquema REAL
-(information_schema), no contra los types generados.
-
-## Stripe — auditoría de mejores prácticas (2026-07-12)
-
-### D-48 — Connect se queda en Accounts v1 (Express) con TECHO de migración
-Decision: se lanza con cuentas v1 `type: "express"` (flujo verificado end-to-end con
-dinero en test). La guía actual de Stripe pide Accounts v2 (`/v2/core/accounts`)
-para plataformas nuevas; migrar requiere subir el SDK (stripe@16.2.0 no tiene el
-namespace v2), reescribir create_connect_account y el manejo de account.updated.
-TECHO: revisar y ejecutar la migración a Accounts v2 ANTES de superar ~10 negocios
-conectados reales — con 1 cuenta de test es trivial, con 50 negocios es un proyecto.
-Why: no se reabre un flujo de dinero verificado justo antes de lanzar; v1/Express
-sigue soportado indefinidamente para plataformas existentes.
-Riesgo aceptado conscientemente (ligado a D-35): con destination charges +
-on_behalf_of, la PLATAFORMA responde por reembolsos y contracargos, y el fee de
-plataforma es neutro (= costo de Stripe) → cada disputa perdida cuesta el monto +
-~$15 sin margen de procesamiento que lo amortigüe. Las suscripciones ($49/$99)
-actúan como prima de ese riesgo. Vigilar la tasa de disputas en super-admin; las
-palancas si duele: subir el fee a 4-5% o evaluar direct charges.
-
-### D-49 — El upgrade de versión de API de Stripe es tanda propia, NUNCA junto al pase a live
-Decision: se lanza a live con la versión pinneada actual (`2024-06-20`, verificada).
-El upgrade a la última (`2026-06-24.dahlia` hoy) se hace DESPUÉS, como tanda
-dedicada: subir stripe@16.2.0 → SDK actual, cambiar apiVersion en las EF, revisar el
-changelog entre versiones (webhooks y Connect especialmente), probar en test y
-redesplegar las 4 EF. ACOPLE ESCONDIDO: el apiVersion de ephemeralKeys.create debe
-seguir siendo compatible con lo que exija @stripe/stripe-react-native — ese pin y la
-versión del SDK móvil se actualizan JUNTOS.
-Why: pase a live y upgrade de API son dos variables de riesgo que no se mueven a la
-vez; pinnear la versión fue lo que mantuvo todo estable dos años.
-
-## Storage hardening (Sesión 2026-07-13)
-
-### D-50 — El purge de media en Storage NO se puede hacer con pg_cron de SQL puro
-Constraint técnico, no decisión de producto. Supabase BLOQUEA
-`DELETE FROM storage.objects` (trigger `storage.protect_delete` → "Use the Storage
-API instead"), como ya documentó D-14 con el purge de fotos de chat. Un pg_cron de SQL
-borraría (si acaso) la fila y dejaría el binario huérfano. Cualquier purga/TTL de media
-(chat, voice-notes, lo que venga) exige Storage API desde una Edge Function con
-service_role, con su verificación propia (D-47).
-PENDIENTE DE DECISIÓN (no decidido por nadie todavía): si las notas de voz de DMs
-tienen TTL, cuál es, y desde cuándo cuenta. La feature no existe aún (0 refs en el
-código, bucket vacío), así que no hay nada que purgar hoy.
-Contexto: migración 061 dejó voice-notes privado (public=false), 5 MB, MIME allow-list
-de audio, upload/read con path por owner.
-
-## Linter de seguridad (Sesión 2026-07-13)
-
-### D-51 — `public_profiles` es SECURITY DEFINER A PROPÓSITO; el ERROR del linter se acepta
-Decision: la vista `public.public_profiles` se queda con SECURITY DEFINER. El linter de
-seguridad de Supabase la marca como ERROR ("Security Definer View": bypassa la RLS de
-`users`), y ese ERROR queda ACEPTADO conscientemente, no arreglado.
-Why: la vista ES la capa de descubrimiento público de perfiles. `users` solo tiene dos
-políticas de SELECT — `users: select own` (auth.uid()=id) y `users: select platform admin`
-(is_platform_admin()) — o sea, ninguna política pública. Pasar la vista a SECURITY INVOKER
-haría que devolviera SOLO la fila del propio caller, rompiendo a TODOS sus consumidores,
-que leen perfiles de OTROS usuarios: móvil (ChatRoomScreen, services/employees, /dms,
-/follows, /blocks, /users) y web (dashboard/orders, dashboard/employees, c/[token]/room,
-LiveChat). Es el diseño ya registrado en D-15 / migración 046.
-La alternativa (dar SELECT público a `users` y restringir por column grants) es un cambio
-de superficie mucho mayor, con riesgo de romper el descubrimiento en producción, y con
-beneficio marginal: la vista expone 9 columnas curadas y ninguna es sensible (id, username,
-display_name, avatar_url, bio, profile_theme_id, is_verified, is_private, created_at).
-REGLA DE PROCESO (esto es lo que de verdad contiene el riesgo): **cualquier columna nueva
-que se añada a `public_profiles` requiere revisión de seguridad explícita**, porque la vista
-BYPASSA la RLS de `users` — lo que entra en la vista queda expuesto sin red. El riesgo no es
-el diseño de hoy; es un ALTER despistado de mañana.
-Contexto: el otro hallazgo del linter de la misma pasada (WARN, `profile-media` permitía
-LISTAR archivos) SÍ se arregló, en la migración 063.
-
-## React Native (Sesión 2026-07-13)
-
-### D-52 — En React Native, `instanceof` contra clases globales del navegador NO es fiable
-Constraint aprendido en device, no teoría. El fix del 409 (e8bd767) usaba
-`ctx instanceof Response` para leer el body del error de `supabase.functions.invoke`.
-`tsc --noEmit` daba 0, el código parecía correcto — y en el iPhone el `instanceof` daba
-SIEMPRE false: el status llegaba `null` y el usuario seguía viendo el genérico "Edge
-Function returned a non-2xx status code". Causa: RN polyfillea `fetch` (whatwg-fetch), así
-que la respuesta que construye supabase-js NO es instancia de la `Response` global aunque
-sea una respuesta HTTP perfectamente válida con `.status` y `.json()`.
-REGLA: en código de `mobile/`, para objetos que vienen de librerías (Response, Headers,
-Blob, FormData…), usar DUCK-TYPING (`typeof x.json === 'function'`, `typeof x.status ===
-'number'`) en vez de `instanceof`. Arreglado en c3b81a3.
-Corolario (refuerza D-45): el type-check en 0 no dice nada del runtime del bundle. Un fix
-de RN no está verificado hasta que se ve en el device. Este bug pasó la revisión de código,
-pasó tsc, se commiteó, se desplegó — y no funcionaba.
-
-## Reembolsos (Sesión 2026-07-13)
-
-### D-53 — El reembolso sale del balance del NEGOCIO, y lo aprueba el DUEÑO
-Decision (Juan): el dueño del negocio aprueba los reembolsos solo (sin super_admin), y el
-dinero sale del balance de la cuenta conectada, NO del de la plataforma → la EF
-`stripe-refund` llama a Stripe con `reverse_transfer: true` + `refund_application_fee: true`.
-Why: con destination charges + on_behalf_of, un `refunds.create` SIN esos dos flags saca el
-dinero del balance de la PLATAFORMA. Cada reembolso que aprobara un dueño lo pagaría JChat
-de su bolsillo — y con el fee de plataforma neutro (D-35) no hay margen que lo amortigüe.
-Implementación: EF `stripe-refund` v1 (178e1e5). Defensa anti-doble-reembolso EN DOS CAPAS:
-el guard `dispute.refund_id !== null` (409) y la `idempotencyKey: refund:<dispute_id>` de
-Stripe. El estado real lo confirma Stripe: la EF pone 'approved', y el webhook pone
-'refunded' solo cuando llega un refund con status='succeeded'.
-
-### D-54 — Los column grants por defecto son un agujero recurrente: revisarlos SIEMPRE
-Constraint aprendido a base de encontrarlo tres veces. Postgres/Supabase conceden por defecto
-UPDATE de TABLA COMPLETA a `authenticated` Y a `anon`. Encontrado en `orders` (migr 060),
-`reviews` (migr 064) y `disputes` (migr 065).
-El caso de `disputes` fue GRAVE y merece recordarse: `refund_id` era escribible por el
-cliente → el dueño podía hacer `UPDATE disputes SET refund_id = null, status = 'open'` vía
-PostgREST y volver a pedir el reembolso. La idempotencyKey de Stripe EXPIRA A LAS 24 HORAS,
-así que al día siguiente emitía un refund NUEVO: mismo pedido, reembolsado en bucle. Con
-`reverse_transfer` eso drena el balance de la cuenta conectada, y con destination charges el
-balance negativo lo cubre la PLATAFORMA.
-La Edge Function estaba PERFECTAMENTE escrita. El agujero estaba una capa más abajo, en unos
-grants que nadie había mirado.
-REGLA: toda tabla que el cliente pueda escribir necesita su allow-list de columnas explícita
-(la RLS decide QUÉ FILAS; los column grants deciden QUÉ COLUMNAS). Y toda EF que dependa de
-un guard sobre una columna (`if (x.foo !== null)`) exige verificar que esa columna NO sea
-escribible por el cliente — o el guard es decorativo.
-HECHO en D-75 (migraciones 089–102, 2026-07-25): barrido completo de las ~44 tablas. Solo queda `room_access_attempts` como fix de arquitectura (no de grants).
-
-### D-55 — Mesas y Taps: modelo de cuentas por persona en la mesa
-
-Mesas y Taps: taps por persona, prepago cliente / postpago mesero, identidad por login anónimo
-de Supabase, visibilidad limitada a participantes de la mesa. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
-
-### D-56 — Limpieza diaria de usuarios anónimos por pg_cron
-
-Job diario `cleanup-anon-users` (`0 5 * * *` UTC, migración 074) borra usuarios `is_anonymous`
-inactivos > 24h y SIN tap abierto. Los pedidos, taps y mensajes sobreviven (FK `ON DELETE SET
-NULL`). La función `cleanup_anonymous_users()` es SECURITY DEFINER y solo la ejecuta el cron
-(EXECUTE revocado a public/anon/authenticated). Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
-
-### D-57 — Flujo del cliente en mesa: plan C (híbrido web + salto a app)
-
-Flujo del cliente en mesa: plan C (híbrido web + salto a app). La superficie web de pedido era
-una demo; se construye el checkout web real (C1) como base. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
-
-### D-58 — Caja de efectivo: cierre de tap justificado, turnos con arqueo, revisión del propietario
-
-Caja de efectivo: cierre de tap justificado (código de caja o razón), turnos con arqueo, y
-revisión del propietario. Depende de B6. Ver [docs/CAJA.md](CAJA.md).
-
-### D-59 — Rediseño del flujo del cliente: el cliente que paga NO crea tap
-
-Rediseño del flujo del cliente: el cliente que paga NO crea tap (los taps son solo del mesero);
-se le pide nombre solo si no tiene cuenta, y ve un recibo informativo. Cobro del mesero por
-tarjeta/efectivo/contactless con división de cuenta. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md) y
-[docs/CAJA.md](CAJA.md).
-
-### D-60 — Terminal del mesero (B6): tablet compartida, PIN, permisos propios, pedidos sin pago
-
-Terminal del mesero (B6): tablet compartida del negocio, vinculada por QR del negocio, acceso
-por PIN de 6 dígitos con fichaje obligatorio; permisos propios por mesero; pedidos sin pago que
-no cuentan como venta hasta cobrarse; división de cuenta por partes/artículo/asiento. Offline,
-impresión y Tap to Pay quedan fuera de la v1. Ver [docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
-
-### D-61 — Abrir cuenta en una mesa sin asignar te la asigna (revierte D-60 "sin asignación implícita")
-
-Cambio de Juan (2026-07-20): el **primer empleado que abre una cuenta en una mesa SIN asignar se
-la queda** — la mesa pasa a estar asignada a él. Revierte la regla inicial de que atender una
-mesa sin asignar no implicaba asignación. Motivo: sin esto nadie podía abrir cuenta en una mesa
-sin asignar (la política INSERT de `table_tabs` exige `is_waiter_of_table`, y un mesero no puede
-escribir en `table_waiters`, que es owner-only). Se implementa con la RPC `open_tab_on_table`
-(migración 079, SECURITY DEFINER, con advisory lock por mesa para atomicidad ante dos meseros a
-la vez): valida empleado aceptado, si la mesa no tiene mesero lo asigna, si lo tiene y no es él
-devuelve `NOT_ASSIGNED`, y crea el tap. **La política INSERT de `table_tabs` NO se afloja** — la
-RPC es el camino previsto, igual que con los taps de cliente. Ver
-[docs/TERMINAL_MESERO.md](TERMINAL_MESERO.md).
-
-### D-62 — Cocina: tres estados POR PLATO, estado del pedido derivado, y terminal propia del cocinero
-
-Cocina: tres estados **POR PLATO** (pendiente/preparando/listo), **estado del pedido derivado de
-sus platos**, y **terminal propia para el cocinero empleado**. Detectado y a corregir: el badge
-del móvil miente ("Cocinando" para siempre). Ver [docs/COCINA.md](COCINA.md).
-
-Contexto del reconocimiento que motivó la decisión: `order_items.item_status` es hoy una columna
-muerta (nadie escribe otro valor que el default `'cooking'`), `order_items` solo tiene políticas
-de SELECT —así que ningún cliente puede escribirla—, y `orders.status` solo lo puede cambiar el
-DUEÑO, con el KDS viviendo dentro del gate de plan del dashboard: hoy la cocina únicamente
-funciona si el dueño en persona toca el tablero.
-
-### D-63 — Un pedido se puede editar hasta que la cocina lo empieza, y el bloqueo es por PEDIDO
-
-Un pedido es editable (cantidad, quitar plato, cambiar modificadores) **mientras ningún plato
-suyo haya entrado en "preparando"**. El bloqueo es **a nivel de PEDIDO, no de plato**: en cuanto
-un solo plato pasa a preparando, **el ticket entero se bloquea**, incluidos los platos que sigan
-pendientes. Motivo: si la cocina ya está trabajando ese ticket, cambiarlo por debajo genera
-errores. Consecuencia asumida y aceptada: si empiezan el entrante, ya no se puede quitar el
-postre de ese pedido. Pueden editar cualquier mesero con acceso a esa mesa, y el dueño siempre.
-
-Corolario de diseño que condiciona el modelo: **un plato recién enviado nace en 'pending'**, no
-en 'preparing' — si naciera preparando no existiría ninguna ventana de edición. Los importes se
-recalculan SIEMPRE en el servidor al modificar, igual que al crear. Ver
-[docs/COCINA.md](COCINA.md).
-
-### D-64 — Pago de invitado: EF pública + hCaptcha, NO login anónimo
-
-Un cliente sin cuenta paga por una **Edge Function pública** (`guest-pay`, `verify_jwt=false`),
-protegida con **hCaptcha verificado del lado servidor**, en lugar de por una sesión anónima de
-Supabase (se revierte el TODO C4 de CheckoutStep). Motivo: Supabase limita los registros anónimos
-**por IP** (30/h por defecto) y en un bar todos comparten el WiFi = una sola IP → el cliente 31 de
-la hora no podría pedir (choca con D-39). La EF pública evita ese límite; el captcha es la defensa
-real contra bots (D-38). El pedido SIEMPRE se guarda con `orders.user_id = NULL` (nullable desde
-la 080); lo efímero es el vínculo con el cliente. El correo es opcional, solo para el recibo de
-Stripe. Un token de hCaptcha es de **un solo uso** (G2 debe pedir uno nuevo por reintento).
-
-Redes de seguridad que trae G1: (1) el webhook deja de descartar en silencio un pago sin `user_id`
-— un `guest_order` crea el pedido, y un pago que no se puede convertir queda en `orphan_payments`
-en vez de perderse en un log; (2) `pending_order_carts.user_id` pasa a nullable; (3) purga diaria
-de carritos abandonados (los invitados que no completan el pago). El cálculo de precios y el bloque
-Connect NO se duplican: viven en `supabase/functions/_shared/` (`pricing.ts`, `connect.ts`) y los
-importan `payments`, `tab-pay` y `guest-pay`. Ver [docs/MESAS_Y_TAPS.md](MESAS_Y_TAPS.md).
-
-### D-65 — El secreto de hCaptcha vive en DOS sitios independientes de Supabase
-
-Constraint aprendido depurando en producción, no teoría. El mismo secreto de hCaptcha
-(account-level, `ES_563..`) debe estar pegado en DOS lugares SEPARADOS de Supabase, y son
-independientes:
-1. **Edge Functions → Secrets → `HCAPTCHA_SECRET`** — lo usa `guest-pay` para validar el
-   token del pago de invitado (`/siteverify` server-side).
-2. **Authentication → Attack Protection → CAPTCHA → Captcha secret** — lo usa Supabase Auth
-   para validar el token del **login con contraseña** (y registro/reset).
-El pago de invitado NO pasa por Supabase Auth (es una EF pública), y el login NO pasa por la
-EF — cada uno valida el captcha en su propio sitio con su propia copia del secreto. Cambiar
-uno NO cambia el otro. Síntoma cuando se desincronizan: `guest-pay` devuelve 403 (pago) y/o
-Auth devuelve `400 captcha protection: request disallowed (sitekey-secret-mismatch)` en
-`POST /token grant_type=password` (login). Matiz: los logins por OTP/magic-link NO exigen
-captcha → siguen dando 200 aunque el de contraseña esté roto, lo que despista.
-Corolario (refuerza D-44 y el aprendizaje ya anotado de "REDESPLEGAR tras secrets set"): tras
-cambiar `HCAPTCHA_SECRET` en Edge Functions hay que REDESPLEGAR la función (`supabase functions
-deploy guest-pay`) para que la instancia caliente tome el valor nuevo; el de Authentication, en
-cambio, aplica al Guardar (no requiere deploy). Verificado el 2026-07-22: guest-pay v3→v5 200,
-login password 200 tras el reload de la config de Auth (visible en los logs de Auth como
-"reloading api with new configuration").
-
-### D-66 — El pago de invitado se dispara al entrar y el captcha invisible debe esperar a onLoad
-
-El checkout de invitado (B2b) dispara `getToken()` automáticamente al montar la pantalla de
-pago (no tras un click). El widget invisible de hCaptcha carga su iframe/script de forma
-asíncrona, así que en el PRIMER intento `execute()` corría antes de que el widget estuviera
-listo → fallo espurio "No pudimos verificar que eres una persona"; "Reintentar" funcionaba solo
-porque para entonces ya había cargado. Fix: `InvisibleCaptcha` espera al evento `onLoad` del
-widget (gate `waitForReady`, con timeout fail-open de 4s) ANTES de ejecutar. Componente
-compartido con el login, retrocompatible: el login pide el token tras un click (el widget ya
-lleva rato cargado) → para él la espera se resuelve al instante. Ref `0c97d3d`.
-
-### D-67 — Códigos promocionales: un código por usuario, un solo uso, otorga plan de prueba
-
-Decisión de producto (Juan, 2026-07-22). Un código promocional es un string de 12 caracteres,
-autogenerado server-side evitando caracteres confusos (O/0/I/1). El super_admin lo crea eligiendo
-plan (`business`|`pro`) + días de prueba (+ vencimiento opcional). Es de UN SOLO USO: al canjearlo,
-OTORGA ese plan en modo prueba (`plan_status='trialing'`, `plan_trial_end = now()+días`) y amarra el
-código al usuario (`redeemed_by`/`redeemed_at`). Solo un usuario `regular` puede canjear
-(`ALREADY_ON_PLAN` si ya tiene plan). Como canjear te SACA de 'regular', cada usuario canjea a lo
-sumo UN código en su vida → `redeemed_by` es 1:1 y la misma tabla `promo_codes` ES el registro de
-seguimiento (no hace falta tabla aparte).
-Why: dar pruebas gratis controladas por la plataforma, con trazabilidad (quién usó qué código y
-cuántos días le quedan). Best-practice de la investigación: códigos 12 chars memorables sin
-caracteres confusos, con tope de uso y expiración para evitar mal uso; en SaaS, crédito/prueba en
-vez de reembolso en efectivo.
-Consequence: RLS de `promo_codes` = solo super_admin (`is_platform_admin`). Creación por RPC
-`create_promo_code` (gateado), canje por RPC `redeem_promo_code` (usuario autenticado, SECURITY
-DEFINER). Pantalla `/super-admin/promo-codes`: genera+lista (2a) + seguimiento con nombre del
-canjeador + días restantes (2b). Verificado end-to-end (create → redeem real con cuenta regular →
-seguimiento muestra nombre + "quedan 30 días"). Migración 086 (aplicada vía MCP). El "mes gratis"
-(crédito en factura Stripe, D-35) y el sistema de afiliados quedan como tandas FUTURAS. PENDIENTE:
-la pantalla donde el USUARIO escribe el código para canjear (móvil/web) — el RPC existe, falta la UI.
-
-### D-68 — Regenerar `database.types.ts` es parte de CADA migración de schema; y los tipos pueden ser MÁS estrictos que la BD
-
-Constraint aprendido construyendo la página de promo codes. Dos caras:
-(1) Los tipos del cliente Supabase (`web/lib/database.types.ts`) NO se regeneran solos. Tras una
-migración que añade tabla/columna/RPC, el cliente fuertemente tipado RECHAZA `.from("tabla_nueva")`
-/ `.rpc("rpc_nuevo")` y `tsc` falla. Los tipos llevaban 4+ migraciones sin regenerar (074/083/084/
-085) → regenerar trajo un diff grande y legítimo (tab_payments, orphan_payments, promo_codes + varios
-RPCs). REGLA: regenerar (`npx supabase gen types typescript --linked > lib/database.types.ts`) es
-parte del ritual de TODA migración que toque el schema, y el diff se AUDITA (no debe borrar tablas;
-solo sumar).
-(2) Los tipos generados pueden ser MÁS ESTRICTOS que la BD real, porque no ven: (a) triggers que
-llenan columnas → marcan una columna requerida en Insert aunque la ponga un trigger (ej.
-`tables.qr_token`, lo asigna `trg_assign_table_qr_token`, migr 073, y el cliente tiene PROHIBIDO
-escribirla por el allow-list 069); (b) la nulabilidad de los args de un RPC → los marca no-nullable
-aunque el RPC acepte null (ej. `attach_order_to_tab(p_tab_id)` acepta null para DESVINCULAR, migr
-072). Cuando `tsc` se queja tras regenerar, hay que LEER la migración antes de "arreglar" el runtime:
-el fix correcto suele ser SOLO de tipo (`@ts-expect-error` con nota, o `as Tipo`), NUNCA cambiar el
-valor de runtime — un `?? ""` o añadir la columna al insert habría METIDO un bug real. Refuerza
-D-45/D-47: el tsc verde no es la verdad; la migración sí. Refs migr 086, commits 537e5a5 / b9ec839.
-
-### D-69 — Un estado que nadie hace caducar, NO caduca: todo plazo necesita un ejecutor
-
-Constraint aprendido encontrando un bug de dinero horas después de crearlo. La migración 086 escribía
-`plan_trial_end = now() + N días` y todos asumimos que "la prueba dura N días". No duraba nada: el gate
-del dashboard solo leía `plan_status IN ('active','trialing')`, y NO existe ningún cron que caduque
-pruebas (`cron.job` tiene 3 entradas: cleanup-anon-users, purge-expired-messages,
-purge-stale-pending-carts). Como una prueba dada por código promocional no tiene suscripción de Stripe
-detrás, NADIE movía nunca `plan_status` → **acceso Pro permanente y gratis**.
-REGLA: escribir una fecha de caducidad NO caduca nada. Todo plazo necesita un EJECUTOR explícito, y hay
-que nombrarlo al diseñarlo: o lo lee el gate en cada petición, o lo aplica un job, o lo gobierna un
-tercero (Stripe). Si nadie lo lee, la fecha es decorativa.
-Corolario de arquitectura (motiva el cambio de modelo): un plazo con dinero detrás **debe gobernarlo
-Stripe**, no una columna nuestra. Nuestra columna no sabe cobrar, ni reintentar, ni avisar, ni cancelar;
-Stripe sí, vía `trial_period_days` + el evento `customer.subscription.trial_will_end`.
-Corolario de defensa: parchear el GATE tapa la puerta principal, no todas — `enforce_business_limit()`
-lee `users.plan` directo, así que el arreglo completo es DEGRADAR el plan al vencer, no solo denegar la
-vista. Refuerza D-42 (los límites se aplican en el servidor) y D-46 (un kill-switch silencioso necesita
-una prueba que lo haga visible). Ref `6bc2bb3`.
-
-### D-70 — Todo gate necesita un destino para los que rechaza (si no, es un bucle)
-
-Bug encontrado en producción el 2026-07-23. El registro terminaba en `router.push("/dashboard")`,
-pero el gate del dashboard exige plan `business|pro` → un usuario recién creado es `regular`, así que
-el gate lo rebotaba a `/auth/register?upgrade=1`. Resultado: **el usuario se registraba y aparecía de
-nuevo en la pantalla de registro**, sin felicitación ni explicación. El registro nunca "falló" — cada
-pieza hacía lo suyo bien; nadie definió dónde aterriza quien NO pasa el gate.
-REGLA: al añadir un gate hay que nombrar las DOS salidas — a dónde va quien pasa y a dónde va quien no.
-Si el destino del rechazado es una pantalla que vuelve a empujarlo al gate, se cierra el bucle. Vale la
-pena recorrer el camino del usuario nuevo (el que aún no tiene nada) además del que ya tiene todo.
-Solución: pantalla `/auth/welcome` (felicita, ofrece Business/Pro, y si YA tiene plan vigente se salta
-sola al panel). El registro y el OAuth de Google apuntan ahí. Ref `3f55cd3`.
-Deuda conocida: la regla de "prueba vencida" quedó DUPLICADA (gate del dashboard + welcome). En welcome
-es solo comodidad de navegación, no seguridad; consolidar en la tanda de Stripe.
-
-### D-71 — El código promocional alimenta la prueba de Stripe; NUNCA otorga el plan
-
-Corrección del modelo de D-67, decidida por Juan el 2026-07-22 e implementada el 2026-07-23.
-El diseño original (`redeem_promo_code`) escribía `users.plan` + `plan_trial_end` directamente.
-Dos fallos graves: (a) SEGURIDAD — cualquier autenticado con un código se daba Pro gratis, sin
-tarjeta, sin suscripción y sin nada que lo caducara salvo el gate (D-69); (b) INCOHERENCIA — el
-Checkout decide si hay prueba mirando `plan_trial_end is null`, así que el código le QUITABA al
-usuario la prueba real de Stripe.
-NUEVO MODELO: el código solo aporta un NÚMERO DE DÍAS. El cliente mete tarjeta en Stripe Checkout,
-el código define `subscription_data.trial_period_days`, y al vencer la prueba Stripe cobra solo;
-si cancela antes, cero cargo. Quien gobierna el plazo es Stripe, no una columna nuestra (D-69).
-Implementación: migr 087 elimina `redeem_promo_code` y la sustituye por `validate_promo_code`
-(solo lee, no consume, para que la UI muestre qué otorgaría). Migr 088 revoca EXECUTE a `anon`.
-La Edge Function `subscriptions` revalida SIEMPRE server-side al crear el Checkout — el navegador
-solo manda el texto del código, nunca los días. Reglas: un código inválido devuelve error explícito
-(`CODE_NOT_FOUND` / `CODE_INACTIVE` / `CODE_ALREADY_USED` / `CODE_EXPIRED` / `CODE_PLAN_MISMATCH`),
-NUNCA pasa en silencio como checkout normal — el usuario creería que se aplicó; el `plan` del código
-debe COINCIDIR con el plan comprado; y el código se consume en el WEBHOOK al completarse el checkout,
-no al crear la sesión, para que un checkout abandonado no lo queme (`.is("redeemed_by", null)` lo
-hace idempotente ante reenvíos de Stripe).
-VERIFICADO end-to-end en producción (Stripe en modo prueba): código de 60 días → `pruebagate` quedó
-pro/trialing con prueba de 60 días (no los 30 por defecto, que es lo que lo demuestra), con
-stripe_customer_id y stripe_subscription_id reales, y el código marcado canjeado por él.
-Refs migr 087/088, commits `e576634` (EF), `b1908cf` (UI), `991e00c`.
-PENDIENTE legal: el aviso previo al cobro (`customer.subscription.trial_will_end` sigue siendo un
-TODO que solo escribe en el log) y la casilla de consentimiento separada antes de pedir la tarjeta.
-
-### D-72 — Una capa de permisos que corta antes deja muerto el mensaje de error de tu función
-
-Encontrado probando la UI de códigos. `validate_promo_code` empieza con
-`if auth.uid() is null → NOT_AUTHENTICATED`, pero la migración 088 revocó EXECUTE a `anon`: Postgres
-corta con `permission denied for function (42501)` ANTES de entrar en el cuerpo, así que esa rama es
-código muerto para un visitante sin sesión. Consecuencia real: en `/pricing` (página PÚBLICA) alguien
-deslogueado con un código perfectamente válido leía "No se pudo aplicar el código" — una pantalla que
-miente sobre la causa.
-REGLA: cuando protejas algo en DOS capas (permisos + lógica interna), recuerda que solo la EXTERNA
-llega a hablar. El mensaje que ve el usuario lo dicta la capa que corta primero, no la que escribiste
-pensando en él. Al añadir una revocación, comprueba qué error acaba viendo la persona.
-Solución aplicada: preguntar por la sesión en el cliente ANTES de llamar a la RPC (así ni se lanza la
-petición condenada) + mapear `permission denied` como red de seguridad. La rama interna se CONSERVA a
-propósito: sigue siendo correcta para otros roles y es la segunda puerta (misma lógica que 088).
-Ref `991e00c`.
-
-### D-73 — Consentimiento de renovación automática: casilla separada, sin marcar, y DOS puertas
-
-Requisito legal implementado el 2026-07-23. Cobrar automáticamente al terminar una prueba exige
-divulgar los términos de forma clara ANTES de recoger datos de pago, y obtener consentimiento
-afirmativo EXPRESO en una casilla SEPARADA y sin marcar por defecto — no vale enterrarlo en los
-términos generales ni pre-marcarla.
-Implementación en `/pricing`, encima de la grilla de planes: bloque "Antes de continuar" con el
-texto de renovación + casilla `consentAccepted` (inicial FALSE a propósito). Los botones de
-checkout quedan deshabilitados hasta marcarla.
-DOS PUERTAS: (1) el botón `disabled` — apariencia, saltable desde el navegador; (2) una comprobación
-al principio de `handleSubscribe` que corta y muestra el motivo. La (2) es la que realmente impide
-llegar a Stripe sin aceptar. Un botón deshabilitado NO es un control de acceso.
-EXENCIÓN deliberada: el plan Custom usa el mismo `<button>` para abrir un `mailto:`, no un checkout
-(`plan.cta === "contact"`), así que NO exige consentimiento — pedir aceptar términos de cobro para
-mandar un correo sería absurdo. De ahí `needsConsent = plan.cta === "checkout" && !consentAccepted`.
-Segunda capa natural: la pantalla de Stripe muestra además la fecha exacta del primer cobro y el
-importe. Nuestra página da los términos, Stripe da los números.
-LIMITACIÓN CONOCIDA: el consentimiento vive SOLO en el navegador; no queda registro. Para una
-disputa real haría falta guardar en BD quién aceptó, qué texto y cuándo, y verificarlo en la Edge
-Function antes de crear el checkout. Cumple el requisito de divulgación + consentimiento; NO da
-prueba auditable. Pendiente si alguna vez hace falta demostrarlo.
-El texto debe revisarlo un abogado antes de lanzar (EE.UU. + RD). Ref `af6b7b3`.
-
-### D-74 — Analytics y Disputas: solo datos reales, y enlazadas en el nav
-
-Decisión (2026-07-24/25): (a) Analytics muestra SOLO pestañas con datos reales de la BD — Revenue,
-Products, Loyalty (solo puntos) + la banda "Overview — live"; se quitaron las inventadas (Forecast,
-Customers, Chat, API) y el ROI falso de Loyalty (commits `dbde566`, `9b9afa6`), y se limpió el PDF.
-(b) "Approve Refund" en Disputas reembolsa de verdad: `handleApprove()` invoca la Edge Function
-`stripe-refund` y NO escribe `status='approved'` a mano — la EF y el webhook son autoritativos
-(verificado leyendo el código en `main`; la nota 🔴 previa era stale). (c) Ambas páginas existían
-pero estaban HUÉRFANAS (no aparecían en el sidebar); se enlazaron (`ffe204a`, NAV_ITEMS 15→17:
-Disputes tras Payments, Analytics tras Reports).
-Why: el patrón recurrente del proyecto es "pantallas que mienten" (D-46/D-69/D-70/D-72). Analytics con
-datos inventados y una nav que esconde features que SÍ funcionan son dos caras de lo mismo: la UI no
-refleja la verdad. Se prioriza mostrar solo lo real (aunque sea menos) y exponer lo que ya funciona.
-Pendiente: verificación VISUAL en vivo de las 3 pestañas de Analytics y los 2 iconos nuevos del nav
-(requiere sesión de dueño con negocio).
-
-### D-75 — Barrido completo de column-grants D-54 (migraciones 089–102): cierra el PENDIENTE de D-54
-
-Decisión (2026-07-25): se completó el barrido que D-54 dejó pendiente ("barrer TODAS las tablas"). Unas
-44 tablas de `public` tenían grant de UPDATE (y a veces INSERT/DELETE) de TABLA COMPLETA a `authenticated`
-y/o `anon`; se redujeron a allow-lists de columnas verificados contra el código real, tabla por tabla.
-14 migraciones (089–102) + 2 cambios de código (`d61fd96`, `cfaa63d`).
-Método: recon por Supabase MCP (esquema+políticas+grants) + rutas de escritura reales por grep global del
-checkout → spec de allow-list → apply por MCP `apply_migration` (nunca `db push`) → auditoría del diff
-full_patch → verificación por `has_column_privilege`. Hitos: **089** revoca escritura de `anon` en las
-tablas base; **090** cierra un HUECO CRÍTICO en la vista `public_profiles` (auto-actualizable, dueño
-`postgres`/bypassrls → una escritura de `anon` a través de la vista saltaba la RLS de `users` y corría como
-postgres: poner `is_verified`, reescribir `username`/`bio`, DELETE arbitrarios); **091–096, 100–101**
-allow-lists de columnas (custom_roles, promo_codes, loyalty, subscriptions/trials, menú, offers, y el
-bloque social); **097** revoca UPDATE en 15 tablas SIN política de UPDATE (no-breaking); **098–099, 102**
-las tablas con `.upsert()`.
-Lecciones (para futuras tandas): (1) un `.upsert(onConflict)` es un UPDATE ENCUBIERTO, y su
-`ON CONFLICT DO UPDATE SET` incluye TODAS las columnas del payload, INCLUIDAS las claves de conflicto —
-Postgres exige privilegio UPDATE sobre cada una aunque su valor no cambie (probado empíricamente con tabla
-temporal + ROLLBACK). Por eso un allow-list estricto exige CAMBIAR esos upserts a `UPDATE...WHERE(claves)
-+ INSERT` (se hizo en `banUser`/`muteInRoom` y en `PinMessageSheet`) en vez de ensanchar el grant a las
-claves. (2) revisar SIEMPRE `.upsert(` además de `.update(` al derivar un allow-list. (3) verificar las
-políticas por MCP antes de afirmar que algo se rompió — una supuesta "regresión" de `story_views` resultó
-ser un flujo que ya estaba bloqueado por RLS desde antes (solo cambió el texto del error interno).
-Verificación global tras 102: escritura de `anon` en TODO `public` = 0; la ÚNICA tabla que conserva UPDATE
-de tabla completa a `authenticated` es `room_access_attempts`, dejada a propósito. `main` = `8bbb6df`.
-Consecuencia / pendientes derivados: (a) `room_access_attempts` — el lockout anti-fuerza-bruta de las
-contraseñas de sala es AUTO-RESETEABLE por el propio cliente (escribe sus `fail_count`/`locked_until`); fix
-= mover el incremento/chequeo a una RPC `SECURITY DEFINER`/EF (no es de grants). (b) El barrido destapó
-tres flujos ROTOS por falta de política RLS de UPDATE (preexistentes, no causados por la tanda): aceptar/
-rechazar invitación de empleado (el invitado no puede aceptar), "dismiss report" (la UI dice "dismissed"
-pero no cambia nada), y el propio room_access; su arreglo necesita AÑADIR la política RLS de UPDATE **y**
-re-otorgar el grant de columna (la tanda revocó el grant). En arreglo en tandas aparte. (c) Bugs de
-producto preexistentes hallados en la auditoría de upserts: `redeemReward`/`addPoints` (móvil) nunca
-pudieron escribir `loyalty_points` desde el cliente (la tabla solo permite `service_role`); `followUser`
-(follow directo) es código muerto (la app usa follow-requests + `unfollowUser`).
-
-### D-76 — Tres features super-admin/Stage-3 a medio construir: DIFERIDAS, con la receta de cómo construirlas (no parchear)
-
-Decisión (2026-07-25/26): durante el barrido de "pantallas que mienten" (D-75) aparecieron tres pantallas
-cuyo backend nunca se terminó — se construyó la UI por delante. Ninguna es un bug ACTIVO hoy (están inertes o
-ya neutralizadas), pero las tres son FEATURES A TERMINAR, no parches. Se DIFIEREN a Stage 3. Se registra aquí
-la forma CORRECTA de construir cada una, porque el arreglo ingenuo reintroduce un agujero.
-
-1. Lealtad (puntos). Hoy: el "ganar puntos" está muerto (awardPoints es un stub sin llamadores; el award al
-   completar pedido es un TODO nunca cableado) y el "canjear" es inalcanzable (el botón se deshabilita a 0
-   puntos, y nadie tiene puntos). loyalty_points y loyalty_rules con 0 filas; ningún writer server-side.
-   CÓMO construirla: (a) award SERVER-SIDE en el flujo de completar pedido (EF/webhook con service_role:
-   points = floor(total_cents/100 * loyalty_rules.points_per_dollar)); (b) canje por RPC SECURITY DEFINER que
-   valide el saldo y lo descuente de forma atómica; (c) UI para que el dueño configure loyalty_rules. NUNCA
-   re-otorgar loyalty_points a authenticated: es dinero, el saldo lo escribe SOLO el servidor (la RLS
-   service_role-only actual es CORRECTA; el bug era el código cliente que hacía upsert directo).
-
-2. Force-refund de super-admin (Task 3.6). Hoy: NEUTRALIZADO (commit 6eb4381) — escribía status='refunded' +
-   un refund_id falso ('sa_refund_'+Date.now()) sin llamar a Stripe, lo que habría disparado el guard de D-53
-   (refund_id !== null → 409) y BLOQUEADO el reembolso real de esa disputa. CÓMO construirla: invocar la EF
-   stripe-refund de verdad con soporte de OVERRIDE de super-admin (la EF hoy es owner-scoped, D-53) — el
-   super-admin fuerza el reembolso sobre la cuenta conectada del negocio. Reactivar el botón SOLO cuando esté
-   cableado.
-
-3. Gestión de equipo de admins (Task 3.13). Hoy: inerte — añadir da error de RLS (admin_roles no tiene política
-   de INSERT), y "quitar" solo se muestra para roles != super_admin (no hay ninguno; solo existe el super_admin).
-   CÓMO construirla: RPC SECURITY DEFINER gateada a super_admin ESPECÍFICO (users.role='super_admin', NO
-   is_platform_admin()). FOOTGUN a evitar: is_platform_admin() es TRUE para CUALQUIER fila de admin_roles, así
-   que darle a admin_roles una política simple de INSERT/DELETE gateada a is_platform_admin() dejaría que un
-   futuro sub-admin (p. ej. ops_admin) se auto-ascendiera a super_admin (por PostgREST crudo, saltándose el
-   desplegable de la UI) o borrara al super_admin. Guardas de la RPC: no acuñar super_admins a la ligera, no
-   borrar al último super_admin, no auto-borrarse. Los grants directos de admin_roles siguen revocados (la
-   definer no los necesita).
-
-Regla transversal (la lección del clúster): toda mutación privilegiada o de dinero va por RPC SECURITY DEFINER
-o Edge Function, con el caller verificado server-side y guardas explícitas — nunca por escritura directa del
-cliente ni re-otorgando grants a authenticated. Es la misma regla de D-40 (verificación de negocio por RPC) y
-D-53 (reembolso por EF). Antes de lanzar: construir estas tres, o dejar sus pantallas gateadas/ocultas para no
-enseñar features que no funcionan (coherente con D-74). CHIP de seguimiento por cada una (loyalty award+redeem,
-Task 3.6, Task 3.13).
-
-### D-77 — República Dominicana se difiere al ÚLTIMO paso: se lanza USA primero
-
-Decisión (Juan, 2026-07-26): todo lo relacionado con RD queda para una fase FINAL, después del resto del
-trabajo. El lanzamiento va **USA primero, con pagos**. Esto cierra la decisión que estaba pendiente desde
-2026-07-13 (el bloqueante RD de ESTADO.md).
-Why: Stripe Connect no opera en RD → un negocio dominicano no puede cobrar hoy. En vez de dejar que eso
-bloquee el plan entero, se separa: USA (con pagos) sale primero; RD se aborda AL FINAL, por una de dos vías —
-(a) RD solo-social (sin pagos), o (b) un procesador local (Azul/CardNet) como su propio proyecto. Así un
-problema de disponibilidad de pagos en un mercado no detiene el lanzamiento del otro.
-Consecuencia: RD sale de la ruta crítica de lanzamiento; ya NO es un 🔴 bloqueante. El trabajo de RD
-(procesador local, o gating social-only) se planifica como el último paso. ESTADO.md actualizado acorde.
-
-## Menú público — iOS / layout
-
-### D-78 — 100vh es trampa en iOS WebKit: usar visualViewport + --menu-vh (nunca 100vh crudo)
-
-Decisión (2026-07-30): todo contenedor fullscreen del menú público usa `var(--menu-vh, 100vh)` (o dvh),
-nunca `100vh` crudo. La variable `--menu-vh` la publica el hook `visualViewport` de `MenuPageClient`.
-
-Why: en iOS (Chrome y Safari), las barras del navegador se deslizan al scrollear y cambian la altura
-visible. `100vh` es la altura GRANDE (barras ocultas) — cuando las barras están visibles, el contenido
-inferior queda fuera de pantalla; el usuario tiene que hacer scroll/refresh para verlo. `100dvh` mejora
-esto pero dentro de un contenedor con `transform:translateZ(0)` sigue desalineándose hasta el siguiente
-evento. El hook `visualViewport` resuelve el problema real:
-
-```tsx
-useEffect(() => {
-  const vv = typeof window !== "undefined" ? window.visualViewport : null;
-  const setVh = () => {
-    const h = vv?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty("--menu-vh", `${h}px`);
-  };
-  setVh();
-  vv?.addEventListener("resize", setVh);
-  vv?.addEventListener("scroll", setVh);
-  window.addEventListener("resize", setVh);
-  window.addEventListener("orientationchange", setVh);
-  return () => { /* cleanup todas */ };
-}, []);
-```
-
-El fallback `100vh` en el var() cubre SSR y el primer render antes de que el hook dispare.
-Consecuencia: TODA plantilla nueva del menú debe usar `var(--menu-vh, 100vh)` en su contenedor raíz.
-Adicionalmente, los botones de acción fijos en la parte inferior deben añadir `env(safe-area-inset-bottom)`
-para no quedar bajo el indicador de home del iPhone. Patrón: `calc(NNpx + env(safe-area-inset-bottom))`.
-Commit: `3a097db` (hook) · `dae7fe1` (18 plantillas) · merge `b157025` a main (2026-07-30).
-
-### D-79 — position:fixed dentro del shell del menú se ancla al transform, no al viewport: usar createPortal
-
-Decisión (2026-07-30): todo overlay/sheet/modal en el menú público usa `createPortal(..., document.body)`
-+ scroll-lock (`document.body.style.overflow = "hidden"`), NUNCA `position:fixed` sin portal dentro del
-shell transformado.
-
-Why: el shell del menú (`<main>`) lleva `transform:translateZ(0)` para crear un stacking context limpio
-(z-index, composición GPU). Cualquier descendiente con `position:fixed` se ancla al `<main>` transformado,
-NO al viewport. Cuando el menú está scrolleado, ese hijo "fixed" aparece desplazado (arriba o fuera de
-pantalla). El fix es el mismo patrón que ya usa el componente `Backdrop` de `MenuPageClient`:
-
-```tsx
-function Sheet({ children }) {
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, ... }}>
-      {children}
-    </div>,
-    document.body
-  );
-}
-```
-
-El portal renderiza el overlay directamente en `document.body`, escapando el stacking context del
-transform y anclándose al viewport real sin importar el scroll del menú.
-Historial: bug encontrado en `CheckoutStep.Sheet` (el único sheet sin portal). Los componentes
-`LeftDrawer` y `CategorySidebar` ya usaban portal. El PRINT_CSS (`position:fixed !important` en
-`.co-print-area`) NO es un overlay — es una regla `@media print` intencional, no se toca.
-Regla para código nuevo: cualquier sheet/modal en el menú → `createPortal` es obligatorio.
-Commit: `fda3ff2` · merge `b157025` a main (2026-07-30).
-
-## Menú en app (WebView bridge)
-
-### D-80 — Menú en la app = WebView del menú web, NO reimplementación nativa
-
-Decisión (2026-07-30): la app carga el menú del negocio abriendo `/m/[slug]` en un `WebView`
-(react-native-webview), no portando las 20 plantillas de menú a React Native.
-
-Why: el menú web ya tiene 20 plantillas con efectos vidrio/blur y lógica de carrito. Portarlas a nativo
-significaría semanas de trabajo más doble mantenimiento cada vez que cambia una plantilla. Con WebView,
-hay una única fuente de verdad: el mismo código que el usuario ve en el browser es el que ve en la app.
-Trade-off aceptado: la experiencia no es 100% nativa (sin gestos/animaciones nativas en el menú), a
-cambio de cero duplicación y coherencia visual perfecta entre web y app.
-
-Descartado: portar plantillas a nativo (semanas + doble mantenimiento + efectos vidrio difíciles en RN).
-
-Archivos clave: `mobile/screens/menu/MenuWebPreviewScreen.tsx` (WebView + bridge de pago),
-`mobile/screens/chat/ChatRoomScreen.tsx` (enrutamiento por `menu_mode`).
-Commits: `c92fc07` (prototipo Fase 1) · `ae8affa` (Chunk A) · `55910fd` (Chunk B) · `e18d27a` (Chunk C
-— enrutamiento definitivo). Merge a producción: `e18d27a` (2026-07-30).
-
-### D-81 — Pago del menú-en-WebView: "elegir en web, pagar en nativo" vía postMessage
-
-Decisión (2026-07-30): cuando el menú web corre dentro del WebView (`?app=1`), al continuar al pago
-NO ejecuta el flujo web (`guest-pay`). En su lugar envía el carrito por
-`window.ReactNativeWebView.postMessage(JSON.stringify({ type: "CHECKOUT", businessId, roomId, items }))`.
-El nativo recibe el mensaje, verifica `msg.businessId === route.businessId` (R4 — sin esto un WebView
-malicioso podría apuntar a otro negocio), toma `userId` de `useAuth()` (NUNCA del mensaje), y llama
-`initAndPresentPaymentSheet` con el `roomId`. La EF `payments` recalcula todos los precios server-side.
-
-Why: si el pago ocurriera dentro del WebView (flujo `guest-pay`), la EF recibiría solo cookies web —
-sin `user_id` de la sesión nativa → el pedido no queda en el historial del usuario; sin `room_id` →
-la cocina no ve la mesa. Además, `guest-pay` usa hCaptcha e identidad de invitado, incompatible con la
-sesión nativa. El bridge postMessage resuelve ambos: el web elige los ítems, el nativo ejecuta el pago
-con sus credenciales.
-
-Reglas permanentes del patrón:
-- NUNCA inyectar JWT en el WebView (`userId` siempre desde `useAuth()` nativo).
-- NUNCA confiar en `msg.businessId` sin verificarlo contra los params de la ruta (R4).
-- El servidor recalcula precios; los `priceCents` del mensaje son hints, nunca autoritativos.
-- `?room=<roomId>` se pasa en la URL del WebView; el `roomId` del mensaje va al `OrderPayload` → cocina ve la sala.
-
-Archivos clave: `web/app/m/[slug]/MenuPageClient.tsx` (detección `?app=1`, postMessage al continuar),
-`web/app/m/[slug]/page.tsx` (lee `?app=1` y `?room=` server-side, los pasa como props al client),
-`mobile/screens/menu/MenuWebPreviewScreen.tsx` (onMessage → handleCheckout → initAndPresentPaymentSheet).
-Commits: `ae8affa` (Chunk A — web) · `55910fd` (Chunk B — nativo) · `e18d27a` (Chunk C — enrutamiento
-por menu_mode). Merge a producción: `e18d27a` (2026-07-30).
-
-### D-82 — Tab POS entra por dashboard.tabpos.cloud (JChat web con skin), no por el portal Otunity
-
-**Fecha:** 2026-09-08. Sustituye la decisión de la madrugada del mismo día ("Tab POS solo
-marketing, botones al portal Otunity").
-
-**Decisión:** el sitio de Tab POS sigue siendo solo marketing, pero sus botones Sign in / Sign up
-apuntan a `https://dashboard.tabpos.cloud/auth/login` y `/auth/register`, que son las pantallas de
-auth de JChat web servidas bajo ese host. La identidad sigue siendo única (misma Supabase Auth
-que JChat y el portal); lo que cambia es la puerta de entrada de Tab POS: JChat web, no el portal.
-
-**Cómo:** `web/lib/brand.ts` resuelve la marca por `headers().get("host")` en el root layout y
-estampa `data-brand="tabpos"` en `<html>` (server-side → sin `window`, sin mismatch de
-hidratación). `web/styles/brands/tabpos.css` cuelga de ese atributo y remapea los tokens del
-Design System en `.auth-col` / `.auth-brand-panel` con los valores REALES de
-`tab-pos-website/app/globals.css` (ink #17191c, paper, fog, mist, peach #fbe1d1, sienna #5d2a1a,
-hairline #ececec, r-card 24, r-small 16, `.pill` = botón ink, `.pill-ghost` = borde). Fraunces +
-Inter van por `next/font/google` (self-hosted, compatible con el CSP `font-src 'self'`), sin preload.
-Ambas variantes de copy/logo están siempre en el DOM (`.brand-jchat` / `.brand-tabpos`); el CSS
-decide cuál se ve. La lógica de auth (handlers, redirects, captcha) no se tocó: solo `className`.
-
-**Alcance aceptado:** solo login y registro. Tras el login, el usuario cae en el dashboard de JChat
-con marca JChat aunque el host sea dashboard.tabpos.cloud. El rebrand del dashboard es fase futura.
-
-**Limpieza:** el portal pierde `/auth/confirm` y el resaltado `?from=tab-pos` (residuo de `dba2b63`).
-
-**Pendientes fuera del código (no bloquean el merge, sí el uso en vivo):**
-- Asignar `dashboard.tabpos.cloud` al proyecto Vercel `jchat-3` (a 2026-09-08 NO está en ningún
-  proyecto; el DNS ya apunta a Vercel).
-- Supabase Auth → Redirect URLs: `https://dashboard.tabpos.cloud/auth/callback` y
-  `https://dashboard.tabpos.cloud/**` (sin esto, Google OAuth no vuelve a ese host).
-
-## Permanent deviations from the original spec
-1. React Navigation v7 (not v6) — Expo SDK 56 / React 19.
-2. --color-warning = #f59e0b (not #D97706).
-3. Push token stored in users.push_token (spec said fcm_token).
-4. Extra migrations 002-017 beyond the original plan.
-5. Bundle id com.juangarciacruz.jchatapp.
-6. Web auth implemented (outside original spec — approved).
-7. terra-draw / AdvancedMarker removed; geofence drawing uses native google.maps primitives.
+# TAB POS — Decisiones técnicas y de producto (D-01…D-47)
+
+Fuente de verdad: specs `TABPOS_F1`…`TABPOS_F8` en `docs/`. Generado en F8 (2026-09-16).
+
+---
+
+## Arquitectura y fundaciones
+
+| # | Decisión |
+|---|----------|
+| D-01 | `pos_payments` es la fuente de verdad de cobros; `orders` es inventario de ítems. Nunca mezclar. |
+| D-02 | La primera orden de una mesa abre la sesión (acceso + código). No hay un "abrir sesión" manual. |
+| D-03 | ESC/POS raw sobre TCP para impresoras de red; sin dependencias de driver. Puerto 9100 por defecto. |
+| D-04 | Un solo cliente Supabase compartido (`mobile/services/supabase.ts`, `web/lib/supabase.ts`). |
+| D-05 | RLS en todas las tablas. Nunca select sin filtro de `business_id` o `auth.uid()`. |
+| D-06 | Edge Functions solo para pagos y webhooks de Stripe. Nada más pasa por EF. |
+| D-07 | Expo SDK 56 / RN 0.85 / New Architecture. Cualquier nativo requiere build EAS (no expo go). |
+| D-08 | React Navigation v6 (no Expo Router) en móvil. |
+| D-09 | Tokens de color en `mobile/theme/tokens.ts` y `web/styles/tokens.css`. Nunca hex inline. |
+| D-10 | Tabler Icons únicamente (móvil: `@tabler/icons-react-native`; web: `@tabler/icons-react`). |
+
+## POS — Pedidos y cocina
+
+| # | Decisión |
+|---|----------|
+| D-11 | `pos_create_order` → RPC SECURITY DEFINER que valida membresía de empleado. Nunca INSERT directo. |
+| D-12 | Comanda bridge (`useComandaPrintBridge`): reclamo atómico via `pos_claim_comanda_print` para evitar doble-impresión entre handhelds. |
+| D-13 | Stock se descuenta al crear orden (`pos_create_order`), no al cobrar. |
+| D-14 | `approval_status awaiting → approved` dispara impresión vía UPDATE listener en el bridge (mismo flujo que INSERT). |
+| D-15 | KDS (web) solo muestra `source='pos'`. Órdenes de cliente (`customer_stripe`, `customer_tab`) no aparecen en KDS. |
+| D-16 | Voided orders: `canceled_at` + todos los items a qty=0. No se borra la fila. |
+
+## Acceso y códigos de mesa
+
+| # | Decisión |
+|---|----------|
+| D-17 | Código de acceso = 6 dígitos, caduca con la sesión. Se genera en `pos_open_table_session`. |
+| D-18 | El código se imprime vía `buildTableCodeTicketEscPos` (ESC/POS). El ticket viaja a la impresora del mesero, no a cocina/bar. |
+| D-19 | `pos_guest_tab_join`: el cliente escanea el QR y entra; máx. 8 clientes por mesa para prevenir abuso. |
+| D-20 | `is_employee_of_business` es la única fuente de verdad de membresía de empleados en RPCs SECURITY DEFINER. |
+
+## Pagos y cobros
+
+| # | Decisión |
+|---|----------|
+| D-21 | Cobro Stripe: `createPaymentIntent` solo en Edge Function; el cliente nunca toca la secret key. |
+| D-22 | Stripe Terminal (M2): flow completo en móvil con `@stripe/stripe-react-native`; nunca simular en producción. |
+| D-23 | Propina se fija en el cliente antes del intento de cobro y se guarda en `pos_payments.tip_cents`. |
+| D-24 | Split bill: `pos_payments.kind in ('full','seat','even','custom')`. Un pago por parte; `split_index` + `split_total` en recibo/vale. |
+| D-25 | Cloud print (web → impresora del mesero) — deuda futura, no parte de F1–F8. |
+| D-26 | Inventario en Edge Function (webhook de pago) — deuda futura. |
+| D-27 | Plantillas de menú en móvil — deuda futura. |
+| D-28 | Hardening anon `businesses` (lookup por slug sin auth) — deuda futura. |
+| D-29 | Editar orden pendiente: la orden se marca `rechazada-por-edición` y sus ítems se cargan en el borrador del mesero. |
+| D-30 | `posApplyExternalPayment` (cash / card_external) no pasa por Stripe; se registra directo en `pos_payments`. |
+
+## Impresión de recibos y vales
+
+| # | Decisión |
+|---|----------|
+| D-31 | `get_public_receipt` devuelve `jsonb`; accesible a `anon` + `authenticated` (recibo público QR). |
+| D-32 | `pos_payment_voucher` es solo para `authenticated`; nunca `anon`. Vale físico de F7. |
+| D-33 | Receipt template se elige por negocio (`receipt_template_id`); fallback a template 1. |
+| D-34 | `confirm_payment` (webhook Stripe) es el camino primario para marcar `succeeded`; el cliente no puede hacerlo directamente. |
+| D-35 | `buildPaymentVoucherEscPos` genera ticket ESC/POS para cash/card_external. Nunca para pagos stripe. |
+| D-36 | El selector de impresoras (`PrinterPickerSheet`) nunca enruta a impresoras de cocina/bar. Guard defensivo `PRINTER_ROLE_FORBIDDEN` añadido en F8. |
+
+## Bluetooth (F7)
+
+| # | Decisión |
+|---|----------|
+| D-37 | Bluetooth Classic / SPP (no BLE) para impresoras térmicas de POS. |
+| D-38 | Librería: `react-native-bluetooth-classic@1.73.0-rc.17` (única compatible con New Architecture en Expo 56 verificada con smoke test). |
+| D-39 | Escritura en chunks ≤512 bytes, 30 ms entre chunks, 300 ms de drain. Un reintento en `CONNECT_FAILED`. |
+| D-40 | Permisos BT Android: `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` (API 31+). |
+| D-41 | `BtPrinterRecord` se guarda en `AsyncStorage` del dispositivo del mesero, key `tabpos.btPrinters`. No en la BD. |
+| D-42 | Las impresoras Bluetooth viven en el dispositivo del mesero (AsyncStorage), no en la BD (`pos_printers`). |
+| D-43 | La librería Bluetooth fue confirmada por smoke test (APK de preview, impresora real, New Arch). |
+
+## Repo y proceso
+
+| # | Decisión |
+|---|----------|
+| D-44 | Política de repo: `.gitignore` estricto + `git add` siempre con rutas explícitas; nunca `git add .` ni `git add -A`. |
+| D-45 | `npx tsc --noEmit` desde `mobile/` antes de cada commit. El único error tolerable es `app.config.ts:55` (`minSdkVersion` pre-existente). |
+
+## F8 — Cierre
+
+| # | Decisión |
+|---|----------|
+| D-46 | El Z-report ("Cierre de caja") agrega `pos_payments succeeded` del día en la zona del negocio (`America/New_York` hasta que exista `businesses.timezone`), con propina separada por método. Vive en el dashboard de Ventas. |
+| D-47 | Cierre del proyecto — tras F8, las deudas D-25…D-28 quedan como fases futuras independientes, fuera del alcance de "cuentas con código". |
+
+---
+
+*Fin del registro de decisiones F1–F8.*
