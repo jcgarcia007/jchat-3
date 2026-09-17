@@ -889,7 +889,7 @@ function SalesPageInner() {
   async function fetchCashup(bid: string, day: string) {
     setCashupLoading(true);
     try {
-      const { data } = await supabase.rpc("pos_daily_payment_summary", {
+      const { data } = await (supabase.rpc as any)("pos_daily_payment_summary", {
         p_business_id: bid,
         p_day: day,
       });
