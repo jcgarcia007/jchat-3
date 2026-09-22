@@ -2940,7 +2940,10 @@
     "footer": {
       "business": "¿Tienes un negocio?",
       "businessLink": "Conoce Venue POS",
-      "copyright": "© 2026 JChat"
+      "copyright": "© 2026 JChat",
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "support": "Soporte"
     },
     "howItWorks": {
       "label": "¿Cómo funciona?",
@@ -3040,6 +3043,11 @@
       "btnRedirecting": "Redirigiendo…",
       "btnContact": "Contactar",
       "popularBadge": "Más popular"
+    },
+    "footer": {
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "support": "Soporte"
     }
   },
   "tabCodeTitle": "Código de mesa",

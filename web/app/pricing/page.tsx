@@ -776,6 +776,13 @@ export default function PricingPage() {
           </motion.div>
         </section>
       </div>
+
+      {/* Legal footer */}
+      <footer style={{ borderTop:"1px solid var(--border-subtle)", marginTop:"48px", padding:"20px 24px", display:"flex", justifyContent:"center", gap:"24px", fontSize:"13px", color:"var(--text-secondary)", flexWrap:"wrap" }}>
+        <a href="/privacy" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.privacy")}</a>
+        <a href="/terms" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.terms")}</a>
+        <a href="/support" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.support")}</a>
+      </footer>
     </div>
     </>
   );

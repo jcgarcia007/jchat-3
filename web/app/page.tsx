@@ -867,6 +867,11 @@ export default function LandingPage() {
                 {t("footer.businessLink")}
               </a>
             </span>
+            <span style={{ display:"flex", gap:"16px", flexWrap:"wrap", justifyContent:"center" }}>
+              <a href="/privacy" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.privacy")}</a>
+              <a href="/terms" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.terms")}</a>
+              <a href="/support" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.support")}</a>
+            </span>
             <span>{t("footer.copyright")}</span>
           </div>
         </footer>

@@ -21,6 +21,8 @@
     "theme": "Theme",
     "themeSub": "Follows OS until ThemeContext is wired",
     "privacySettings": "Privacy Settings",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
     "plans": "Plans",
     "plansSub": "Regular, Verified and more",
     "signOut": "Sign Out",

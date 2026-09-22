@@ -2940,7 +2940,10 @@
     "footer": {
       "business": "Have a business?",
       "businessLink": "Explore Venue POS",
-      "copyright": "© 2026 JChat"
+      "copyright": "© 2026 JChat",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "support": "Support"
     },
     "howItWorks": {
       "label": "How it works",
@@ -3040,6 +3043,11 @@
       "btnRedirecting": "Redirecting…",
       "btnContact": "Contact",
       "popularBadge": "Most popular"
+    },
+    "footer": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "support": "Support"
     }
   },
   "tabCodeTitle": "Table code",

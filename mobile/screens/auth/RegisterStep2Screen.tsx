@@ -84,8 +84,8 @@ const LANGUAGE_OPTIONS: { value: Language; label: string; flag: string }[] = [
 // ---------------------------------------------------------------------------
 // Legal URL stubs
 // ---------------------------------------------------------------------------
-const TERMS_URL = 'https://jchat.app/terms';       // TODO
-const PRIVACY_URL = 'https://jchat.app/privacy';   // TODO
+const TERMS_URL = 'https://jchat.cloud/terms';
+const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
 // ---------------------------------------------------------------------------
 // Helpers

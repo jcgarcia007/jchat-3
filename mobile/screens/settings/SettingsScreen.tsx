@@ -24,6 +24,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import {
   Alert,
   Platform,
@@ -466,6 +467,14 @@ export default function SettingsScreen() {
     navigation.navigate('Privacy');
   }, [navigation]);
 
+  const openPrivacyPolicy = useCallback(async () => {
+    await WebBrowser.openBrowserAsync('https://jchat.cloud/privacy');
+  }, []);
+
+  const openTerms = useCallback(async () => {
+    await WebBrowser.openBrowserAsync('https://jchat.cloud/terms');
+  }, []);
+
   // ── Proximity mode options ─────────────────────────────────────────────────
   const PROXIMITY_OPTIONS: ProximityMode[] = ['all', 'favorites', 'visited', 'off'];
   const PROXIMITY_LABELS: Record<ProximityMode, string> = {
@@ -712,6 +721,24 @@ export default function SettingsScreen() {
           icon={<IconShield size={20} color={c.brand} strokeWidth={2} />}
           label={t('main.privacySettings')}
           onPress={handlePrivacy}
+          right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          icon={<IconLock size={20} color={c.textSecondary} strokeWidth={2} />}
+          label={t('main.privacyPolicy')}
+          onPress={() => { void openPrivacyPolicy(); }}
+          right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          icon={<IconLock size={20} color={c.textSecondary} strokeWidth={2} />}
+          label={t('main.termsOfService')}
+          onPress={() => { void openTerms(); }}
           right={<ChevronRight />}
         />
 

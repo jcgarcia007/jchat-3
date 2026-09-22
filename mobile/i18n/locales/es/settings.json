@@ -21,6 +21,8 @@
     "theme": "Tema",
     "themeSub": "Sigue al sistema hasta conectar ThemeContext",
     "privacySettings": "Ajustes de privacidad",
+    "privacyPolicy": "Política de privacidad",
+    "termsOfService": "Términos de servicio",
     "plans": "Planes",
     "plansSub": "Regular, Verified y más",
     "signOut": "Cerrar sesión",
