@@ -260,9 +260,7 @@ export default function LoginScreen() {
 
   // ── Forgot password ───────────────────────────────────────────────────────
   function handleForgotPassword() {
-    // TODO: password reset flow — navigate to a ForgotPasswordScreen that calls
-    // supabase.auth.resetPasswordForEmail(email, { redirectTo: 'jchat://reset' })
-    Alert.alert(t('login.alerts.comingSoonTitle'), t('login.alerts.passwordResetMessage'));
+    navigation.navigate('ForgotPassword');
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

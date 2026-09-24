@@ -25,12 +25,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import {
   IconEye,
   IconEyeOff,
@@ -41,6 +43,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
@@ -135,20 +138,60 @@ export default function RegisterStep1Screen() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Social OAuth stubs
+  // Social OAuth
   // ---------------------------------------------------------------------------
-  const handleGoogleSignUp = useCallback(async () => {
-    // TODO(deep-link): wire up real Google OAuth via Supabase
-    await WebBrowser.openBrowserAsync('https://jchat.app/auth/google');
-  }, []);
+  const handleOAuth = useCallback(async (provider: 'google' | 'apple') => {
+    if (!isSupabaseConfigured) {
+      Alert.alert(t('register.alerts.demoModeTitle'), t('register.alerts.demoModeMessage'));
+      return;
+    }
+    const redirectTo = Linking.createURL('auth/callback');
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      Alert.alert(t('register.alerts.signUpFailedTitle'), error.message);
+      return;
+    }
+    if (!data?.url) return;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success' || !result.url) return;
+    const returnedUrl = result.url;
+    // implicit flow
+    const hash = returnedUrl.includes('#') ? returnedUrl.slice(returnedUrl.indexOf('#') + 1) : '';
+    const fragment: Record<string, string> = {};
+    for (const pair of hash.split('&')) {
+      if (!pair) continue;
+      const eq = pair.indexOf('=');
+      const k = eq >= 0 ? pair.slice(0, eq) : pair;
+      const v = eq >= 0 ? pair.slice(eq + 1) : '';
+      fragment[decodeURIComponent(k)] = decodeURIComponent(v);
+    }
+    if (fragment.access_token && fragment.refresh_token) {
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: fragment.access_token,
+        refresh_token: fragment.refresh_token,
+      });
+      if (sessionError) Alert.alert(t('register.alerts.signUpFailedTitle'), sessionError.message);
+      return;
+    }
+    // PKCE flow
+    const code = Linking.parse(returnedUrl).queryParams?.code;
+    if (typeof code === 'string' && code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) Alert.alert(t('register.alerts.signUpFailedTitle'), exchangeError.message);
+      return;
+    }
+    const errMsg = fragment.error_description ?? fragment.error ?? t('register.alerts.unexpectedError');
+    Alert.alert(t('register.alerts.signUpFailedTitle'), decodeURIComponent(errMsg));
+  }, [t]);
 
-  const handleAppleSignUp = useCallback(async () => {
-    // TODO(deep-link): wire up real Apple OAuth via Supabase
-    await WebBrowser.openBrowserAsync('https://jchat.app/auth/apple');
-  }, []);
+  const handleGoogleSignUp = useCallback(() => handleOAuth('google'), [handleOAuth]);
+  const handleAppleSignUp  = useCallback(() => handleOAuth('apple'),  [handleOAuth]);
 
   const handleFacebookSignUp = useCallback(async () => {
-    // TODO(deep-link): wire up real Facebook OAuth via Supabase
+    // Facebook OAuth not yet configured — stub
     await WebBrowser.openBrowserAsync('https://jchat.app/auth/facebook');
   }, []);
 

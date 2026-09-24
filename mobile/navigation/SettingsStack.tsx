@@ -14,6 +14,7 @@ import SettingsScreen from '../screens/settings/SettingsScreen';
 import PrivacyScreen from '../screens/settings/PrivacyScreen';
 import PricingScreen from '../screens/settings/PricingScreen';
 import WorkModeScreen from '../screens/settings/WorkModeScreen';
+import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import PosNavigator from './PosNavigator';
 
 export type SettingsStackParamList = {
@@ -21,6 +22,7 @@ export type SettingsStackParamList = {
   Privacy: undefined;
   Pricing: undefined;
   WorkMode: undefined;
+  ChangePassword: undefined;
   /** Entry point for the entire POS flow. Renders PosNavigator (nested stack + StripeTerminalProvider). */
   PosRoot: { businessId: string; businessName: string; employeeId: string; plan: string | null };
 };
@@ -36,6 +38,7 @@ export default function SettingsStack() {
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen name="WorkMode" component={WorkModeScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="PosRoot" component={PosNavigator} />
     </Stack.Navigator>
   );

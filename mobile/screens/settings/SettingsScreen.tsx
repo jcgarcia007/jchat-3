@@ -456,11 +456,8 @@ export default function SettingsScreen() {
 
   // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = useCallback(() => {
-    // TODO: implement change-password flow
-    // Option A: supabase.auth.updateUser({ password: newPassword }) for logged-in users
-    // Option B: supabase.auth.resetPasswordForEmail(user.email, { redirectTo: 'jchat://reset' })
-    Alert.alert(t('alerts.comingSoonTitle'), t('alerts.changePasswordSoon'));
-  }, [t]);
+    navigation.navigate('ChangePassword');
+  }, [navigation]);
 
   // ── Privacy navigation ─────────────────────────────────────────────────────
   const handlePrivacy = useCallback(() => {

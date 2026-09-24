@@ -38,6 +38,26 @@
     "appearanceLight": "Claro",
     "appearanceSystem": "Sistema"
   },
+  "changePassword": {
+    "title": "Cambiar contraseña",
+    "subtitle": "Elige una nueva contraseña para tu cuenta.",
+    "newLabel": "Nueva contraseña",
+    "newPlaceholder": "Mínimo 8 caracteres",
+    "newA11y": "Nueva contraseña",
+    "confirmLabel": "Confirmar nueva contraseña",
+    "confirmPlaceholder": "Repite la nueva contraseña",
+    "confirmA11y": "Confirmar nueva contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "showPassword": "Mostrar contraseña",
+    "saveButton": "Guardar contraseña",
+    "saveA11y": "Guardar nueva contraseña",
+    "backA11y": "Volver",
+    "errorTitle": "Error",
+    "errorTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "errorMismatch": "Las contraseñas no coinciden.",
+    "successTitle": "Contraseña actualizada",
+    "successMessage": "Tu contraseña se cambió exitosamente."
+  },
   "alerts": {
     "signOutTitle": "Cerrar sesión",
     "signOutMessage": "¿Seguro que quieres cerrar sesión?",

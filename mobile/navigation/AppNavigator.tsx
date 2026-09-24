@@ -27,6 +27,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 import LockScreen from '../screens/auth/LockScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import BiometricEnrollGate from '../components/auth/BiometricEnrollGate';
 
 // Non-tab screens that live inside the main (authenticated) stack
@@ -49,6 +50,7 @@ export type AuthStackParamList = {
   Login: undefined;
   RegisterStep1: undefined;
   RegisterStep2: { name?: string; email?: string; password?: string };
+  ForgotPassword: undefined;
 };
 
 /** Tabs are nested under BottomTabs — only ChatRoom is a "push" screen here */
@@ -107,6 +109,10 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
+// jchat://reset is handled by Supabase's onAuthStateChange (PASSWORD_RECOVERY event).
+// The AuthStackParamList does NOT need a 'reset' screen because Supabase fires the
+// auth state event before the navigator resolves the URL.
+
 export default function AppNavigator() {
   const { isAuthenticated, locked } = useAuth();
 
@@ -120,6 +126,7 @@ export default function AppNavigator() {
           <AuthStack.Screen name="Login" component={LoginScreen} />
           <AuthStack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
           <AuthStack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
+          <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         </AuthStack.Navigator>
       ) : locked ? (
         // Biometric gate — a restored session must pass Face ID before the app.

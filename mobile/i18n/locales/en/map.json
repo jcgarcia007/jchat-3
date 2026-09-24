@@ -23,7 +23,9 @@
     "viewMenuA11y": "View menu",
     "viewMenuButton": "View Menu",
     "navigateA11y": "Navigate to business",
-    "shareA11y": "Share this business"
+    "shareA11y": "Share this business",
+    "shareTitle": "Check out {{name}} on JChat",
+    "shareMessage": "{{name}} — {{url}}"
   },
   "filterPanel": {
     "categoryAll": "All",

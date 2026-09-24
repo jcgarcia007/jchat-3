@@ -21,6 +21,7 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -71,6 +72,7 @@ interface MapBusiness {
   hours: HoursMap | null;
   rating?: number;
   review_count?: number;
+  slug?: string | null;
 }
 
 const FALLBACK_REGION: Region = {
@@ -183,7 +185,7 @@ export default function MapScreen() {
       if (!isSupabaseConfigured) { setBusinesses(DEMO_BUSINESSES); return; }
       const { data } = await supabase
         .from('businesses')
-        .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours')
+        .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours, slug')
         .in('status', ['pending', 'verified']);
       if (!active) return;
       const rows = (data ?? []) as Array<Partial<MapBusiness>>;
@@ -195,6 +197,7 @@ export default function MapScreen() {
             icon_emoji: r.icon_emoji ?? '📍', lat: r.lat!, lng: r.lng!,
             status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
             address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
+            slug: r.slug ?? null,
           })),
       );
     })();
@@ -364,7 +367,11 @@ export default function MapScreen() {
                 }}
                 onViewMenu={(id) => { setSelected(null); navigation.navigate('Menu', { businessId: id, businessName: selected.name }); }}
                 onNavigate={handleNavigate}
-                onShare={() => { /* TODO: share */ }}
+                onShare={() => {
+                  const handle = selected.slug ?? selected.id;
+                  const url = `https://jchat.cloud/b/${handle}`;
+                  void Share.share({ message: `${selected.name} — ${url}`, url });
+                }}
               />
             )}
           </View>
