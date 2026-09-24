@@ -16,6 +16,7 @@ import React, {
   useState,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
 import { changeAppLanguage } from '../i18n';
@@ -40,6 +41,13 @@ interface AuthContextValue {
   justSignedIn: boolean;
   /** Clear the fresh-sign-in signal (called once the enrollment prompt has been handled). */
   clearJustSignedIn: () => void;
+  /**
+   * True when the app opened via a jchat://reset deep link (password recovery flow).
+   * AppNavigator shows ResetPasswordScreen instead of the normal stack while this is true.
+   */
+  isRecovering: boolean;
+  /** Clear the recovery state after a successful password update. */
+  clearRecovery: () => void;
   /** Dev-only: enter the app without a real session (placeholder buttons). */
   devBypass: () => void;
   signOut: () => Promise<void>;
@@ -53,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bypass, setBypass] = useState(false);
   const [locked, setLocked] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
   // True once the initial getSession has resolved. Guards justSignedIn so that
   // startup events ('INITIAL_SESSION' or a restore that fires 'SIGNED_IN' in some
   // versions) don't look like a fresh login.
@@ -60,6 +69,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    // Intercepts jchat://reset deep links (PKCE or implicit token fragment).
+    // Exchanges the code/tokens with Supabase, which then fires PASSWORD_RECOVERY.
+    async function handleResetUrl(url: string) {
+      if (!url.includes('://reset')) return;
+      const parsed = Linking.parse(url);
+      const code = typeof parsed.queryParams?.code === 'string' ? parsed.queryParams.code : null;
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+        return;
+      }
+      // Implicit flow: tokens in fragment (#access_token=...&refresh_token=...&type=recovery)
+      const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
+      const frag: Record<string, string> = {};
+      for (const pair of hash.split('&')) {
+        if (!pair) continue;
+        const eq = pair.indexOf('=');
+        const k = decodeURIComponent(eq >= 0 ? pair.slice(0, eq) : pair);
+        const v = decodeURIComponent(eq >= 0 ? pair.slice(eq + 1) : '');
+        frag[k] = v;
+      }
+      if (frag.access_token && frag.refresh_token) {
+        await supabase.auth.setSession({ access_token: frag.access_token, refresh_token: frag.refresh_token });
+      }
+    }
+
     // Cold start: restore the session AND decide the biometric gate here — this is
     // the ONLY place `locked` is ever set to true, so a fresh login (handled by
     // onAuthStateChange below) or a background return never triggers the lock.
@@ -73,7 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted) setLoading(false);
       // Initialization complete — any SIGNED_IN after this point is a fresh login.
       initializedRef.current = true;
+      // Check if the app was cold-started via a password reset deep link.
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl && mounted) await handleResetUrl(initialUrl);
     })();
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       // Never touch `locked` here — a fresh sign-in must enter the app directly.
       setSession(next);
@@ -81,10 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (_event === 'SIGNED_IN' && initializedRef.current) {
         setJustSignedIn(true);
       }
+      // Password recovery deep link — show ResetPasswordScreen.
+      if (_event === 'PASSWORD_RECOVERY') {
+        setIsRecovering(true);
+      }
     });
+
+    // Warm start: app already open when user taps the reset link.
+    const linkSub = Linking.addEventListener('url', ({ url }) => { void handleResetUrl(url); });
+
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      linkSub.remove();
     };
   }, []);
 
@@ -109,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const unlock = useCallback(() => setLocked(false), []);
   const clearJustSignedIn = useCallback(() => setJustSignedIn(false), []);
+  const clearRecovery = useCallback(() => setIsRecovering(false), []);
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {
     setBypass(false);
@@ -127,10 +176,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unlock,
       justSignedIn,
       clearJustSignedIn,
+      isRecovering,
+      clearRecovery,
       devBypass,
       signOut,
     }),
-    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, devBypass, signOut],
+    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, isRecovering, clearRecovery, devBypass, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

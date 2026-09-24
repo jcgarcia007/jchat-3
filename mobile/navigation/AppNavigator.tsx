@@ -28,6 +28,7 @@ import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 import LockScreen from '../screens/auth/LockScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import BiometricEnrollGate from '../components/auth/BiometricEnrollGate';
 
 // Non-tab screens that live inside the main (authenticated) stack
@@ -92,9 +93,12 @@ export type MainStackParamList = {
   OrderTracking: { orderId: string; roomId?: string };
 };
 
-const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const MainStack = createNativeStackNavigator<MainStackParamList>();
-const LockStack = createNativeStackNavigator<{ Lock: undefined }>();
+type RecoveryStackParamList = { ResetPassword: undefined };
+
+const AuthStack     = createNativeStackNavigator<AuthStackParamList>();
+const MainStack     = createNativeStackNavigator<MainStackParamList>();
+const LockStack     = createNativeStackNavigator<{ Lock: undefined }>();
+const RecoveryStack = createNativeStackNavigator<RecoveryStackParamList>();
 
 const defaultScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
@@ -109,17 +113,24 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
-// jchat://reset is handled by Supabase's onAuthStateChange (PASSWORD_RECOVERY event).
-// The AuthStackParamList does NOT need a 'reset' screen because Supabase fires the
-// auth state event before the navigator resolves the URL.
+// jchat://reset deep links are NOT routed via React Navigation's linking config —
+// the link arrives when the user is unauthenticated, so the MainStackParamList
+// config cannot reach it. Instead, AuthContext listens to Linking events,
+// exchanges the code/tokens, and sets isRecovering=true via PASSWORD_RECOVERY.
 
 export default function AppNavigator() {
-  const { isAuthenticated, locked } = useAuth();
+  const { isAuthenticated, locked, isRecovering } = useAuth();
 
   return (
     <>
     <NavigationContainer linking={linking}>
-      {!isAuthenticated ? (
+      {isAuthenticated && isRecovering ? (
+        // Password-recovery flow: session is active (Supabase recovery type) but the
+        // user must set a new password before entering the app.
+        <RecoveryStack.Navigator screenOptions={defaultScreenOptions}>
+          <RecoveryStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        </RecoveryStack.Navigator>
+      ) : !isAuthenticated ? (
         <AuthStack.Navigator screenOptions={defaultScreenOptions}>
           <AuthStack.Screen name="Splash" component={SplashScreen} />
           <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
@@ -150,9 +161,9 @@ export default function AppNavigator() {
         </MainStack.Navigator>
       )}
     </NavigationContainer>
-    {/* Post-login biometric enrollment prompt — mounted only while authenticated
-        and in-app (not during the cold-start lock gate). Persists across navigation. */}
-    {isAuthenticated && !locked && <BiometricEnrollGate />}
+    {/* Post-login biometric enrollment prompt — mounted only while authenticated,
+        unlocked, and NOT in the password-recovery flow. */}
+    {isAuthenticated && !locked && !isRecovering && <BiometricEnrollGate />}
     </>
   );
 }
