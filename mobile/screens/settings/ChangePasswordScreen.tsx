@@ -27,6 +27,7 @@ import { IconEye, IconEyeOff, IconChevronLeft } from '@tabler/icons-react-native
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
@@ -35,6 +36,10 @@ export default function ChangePasswordScreen() {
   const c = useThemeColors();
   const navigation = useNavigation();
   const { t } = useTranslation('settings');
+  // Captcha strings live in the `auth` namespace (shared with Login/Register).
+  const { t: tAuth } = useTranslation('auth');
+  // hCaptcha (D-38): the re-auth signInWithPassword needs a token too.
+  const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -71,9 +76,27 @@ export default function ChangePasswordScreen() {
       Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
       return;
     }
+    let captchaToken: string | null = null;
+    if (captchaEnabled) {
+      try {
+        captchaToken = await getCaptchaToken();
+      } catch (err) {
+        setLoading(false);
+        const { titleKey, messageKey } = captchaErrorI18nKeys(err);
+        Alert.alert(tAuth(titleKey), tAuth(messageKey));
+        return;
+      }
+      if (captchaToken === null) {
+        // User cancelled: don't call Supabase without a token.
+        setLoading(false);
+        Alert.alert(tAuth('captcha.cancelledTitle'), tAuth('captcha.cancelledMessage'));
+        return;
+      }
+    }
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email,
       password: currentPassword,
+      options: { captchaToken: captchaToken ?? undefined },
     });
     if (reauthError) {
       setLoading(false);
@@ -89,10 +112,12 @@ export default function ChangePasswordScreen() {
     Alert.alert(t('changePassword.successTitle'), t('changePassword.successMessage'), [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
-  }, [currentPassword, newPassword, confirmPassword, t, navigation]);
+  }, [currentPassword, newPassword, confirmPassword, t, tAuth, navigation, captchaEnabled, getCaptchaToken]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
+      {/* hCaptcha (D-38): invisible; renders null unless a challenge is active. */}
+      {CaptchaGate}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

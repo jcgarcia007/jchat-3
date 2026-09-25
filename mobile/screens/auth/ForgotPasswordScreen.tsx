@@ -25,6 +25,7 @@ import { IconChevronLeft, IconMail } from '@tabler/icons-react-native';
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
@@ -37,6 +38,8 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  // hCaptcha (D-38): Supabase exige token también en /recover; `CaptchaGate` se monta abajo.
+  const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
 
   const handleSend = useCallback(async () => {
     const trimmed = email.trim().toLowerCase();
@@ -49,8 +52,30 @@ export default function ForgotPasswordScreen() {
       return;
     }
     setLoading(true);
+
+    // hCaptcha (D-38): obtener token JUSTO antes del intento (uso único, expira).
+    // Kill-switch (sin sitekey): captchaEnabled=false → se procede sin token.
+    let captchaToken: string | null = null;
+    if (captchaEnabled) {
+      try {
+        captchaToken = await getCaptchaToken();
+      } catch (err) {
+        setLoading(false);
+        const { titleKey, messageKey } = captchaErrorI18nKeys(err);
+        Alert.alert(t(titleKey), t(messageKey));
+        return;
+      }
+      if (captchaToken === null) {
+        // Usuario canceló: no llamar a Supabase sin token.
+        setLoading(false);
+        Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       redirectTo: 'jchat://reset',
+      captchaToken: captchaToken ?? undefined,
     });
     setLoading(false);
     if (error) {
@@ -58,10 +83,12 @@ export default function ForgotPasswordScreen() {
       return;
     }
     setSent(true);
-  }, [email, t]);
+  }, [email, t, captchaEnabled, getCaptchaToken]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
+      {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
+      {CaptchaGate}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

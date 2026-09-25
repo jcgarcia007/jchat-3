@@ -56,6 +56,12 @@ const ONBOARDING_COLORS = {
    * step from Brand (#5C7CFA) and Success (#1D9E75). No token equivalent.
    */
   accent3: '#D85A30',
+  /**
+   * Text on the fixed dark canvas — fixed light values, never theme tokens
+   * (a token that resolves dark in light mode would be invisible here).
+   */
+  textOnDark: '#F5F5F7',
+  textSecondaryOnDark: 'rgba(255,255,255,0.72)',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -330,8 +336,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 15,
     fontWeight: '500',
-    color: palette.textSecondary,
-    // Matches palette.textSecondary (#aeaeb2 in dark mode)
+    color: ONBOARDING_COLORS.textSecondaryOnDark,
   },
 
   content: {
@@ -356,20 +361,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: palette.textPrimary,
+    color: ONBOARDING_COLORS.textOnDark,
     textAlign: 'center',
     letterSpacing: -0.3,
     marginBottom: 16,
-    // palette.textPrimary = #f5f5f7
   },
 
   description: {
     fontSize: 16,
     fontWeight: '400',
-    color: palette.textSecondary,
+    color: ONBOARDING_COLORS.textSecondaryOnDark,
     textAlign: 'center',
     lineHeight: 24,
-    // palette.textSecondary = #aeaeb2
   },
 
   bottomControls: {

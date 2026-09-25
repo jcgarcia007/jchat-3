@@ -20,19 +20,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconBrandPagekit } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
-import { useThemeColors } from '../../theme/colors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
 // Design-System gradient / border hexes specific to this screen.
-// All other colors come from palette / useThemeColors().
+// Fixed dark background → text colors are fixed light values, NOT theme tokens
+// (useThemeColors() resolves dark text in light mode → invisible here).
 // ---------------------------------------------------------------------------
 const WELCOME_COLORS = {
   gradientStart: '#060810',   // splash gradient top
   gradientEnd:   '#0d1030',   // splash gradient bottom
-  ghostBorder:   '#2a2a3e',   // ghost button border
+  ghostBorder:   'rgba(255,255,255,0.28)', // ghost button border — visible on the dark gradient
   dotInactive:   '#2a2d4a',   // inactive nav dot
-  textOnDark:    '#f5f5f7',   // title — always light on the fixed dark gradient
+  textOnDark:    '#f5f5f7',   // title + ghost label — always light on the fixed dark gradient
+  textSecondaryOnDark: 'rgba(255,255,255,0.72)', // subtitle — fixed light, never a theme token
   onBrand:       '#ffffff',   // text on the brand-fill primary button
 } as const;
 
@@ -43,7 +44,6 @@ const BUTTON_RADIUS = 14;
 const BUTTON_HEIGHT = 44;
 
 export default function WelcomeScreen() {
-  const c = useThemeColors();
   const navigation = useNavigation<WelcomeNav>();
   const { t } = useTranslation('auth');
 
@@ -71,7 +71,7 @@ export default function WelcomeScreen() {
         <Text style={styles.title}>{t('welcome.title')}</Text>
 
         {/* Subtitle */}
-        <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+        <Text style={styles.subtitle}>
           {t('welcome.subtitle')}
         </Text>
       </View>
@@ -112,7 +112,7 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('welcome.login')}
         >
-          <Text style={[styles.ghostButtonText, { color: c.textPrimary }]}>
+          <Text style={styles.ghostButtonText}>
             {t('welcome.login')}
           </Text>
         </TouchableOpacity>
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 8,
+    color: WELCOME_COLORS.textSecondaryOnDark,
   },
 
   // ── Nav dots ──────────────────────────────────────────────────────────────
@@ -206,6 +207,7 @@ const styles = StyleSheet.create({
   ghostButtonText: {
     fontSize: 16,
     fontWeight: '500',
+    color: WELCOME_COLORS.textOnDark,
     letterSpacing: 0.1,
   },
 });
