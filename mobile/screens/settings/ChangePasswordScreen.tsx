@@ -1,7 +1,9 @@
 /**
  * JChat 3.0 — Change Password Screen
  * Authenticated users can change their password here.
- * Uses supabase.auth.updateUser({ password }) — no re-auth required for active sessions.
+ * Re-authenticates with the current password (signInWithPassword) before
+ * calling supabase.auth.updateUser({ password }), so an open session alone
+ * can't change the password.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -34,13 +36,19 @@ export default function ChangePasswordScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation('settings');
 
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSave = useCallback(async () => {
+    if (!currentPassword) {
+      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentRequired'));
+      return;
+    }
     if (newPassword.length < 8) {
       Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorTooShort'));
       return;
@@ -55,6 +63,23 @@ export default function ChangePasswordScreen() {
       return;
     }
     setLoading(true);
+    // Re-authenticate: verify the current password before allowing the change.
+    const { data: { session } } = await supabase.auth.getSession();
+    const email = session?.user?.email;
+    if (!email) {
+      setLoading(false);
+      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
+      return;
+    }
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+    if (reauthError) {
+      setLoading(false);
+      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
     if (error) {
@@ -64,7 +89,7 @@ export default function ChangePasswordScreen() {
     Alert.alert(t('changePassword.successTitle'), t('changePassword.successMessage'), [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
-  }, [newPassword, confirmPassword, t, navigation]);
+  }, [currentPassword, newPassword, confirmPassword, t, navigation]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -96,6 +121,38 @@ export default function ChangePasswordScreen() {
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>
             {t('changePassword.subtitle')}
           </Text>
+
+          {/* Current password */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: c.textSecondary }]}>
+              {t('changePassword.currentPassword')}
+            </Text>
+            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+              <TextInput
+                style={[styles.input, { color: c.textPrimary }]}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder={t('changePassword.currentPasswordPlaceholder')}
+                placeholderTextColor={c.textTertiary}
+                secureTextEntry={!showCurrent}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="current-password"
+                accessibilityLabel={t('changePassword.currentPassword')}
+              />
+              <TouchableOpacity
+                onPress={() => setShowCurrent((v) => !v)}
+                accessibilityLabel={showCurrent ? t('changePassword.hidePassword') : t('changePassword.showPassword')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {showCurrent
+                  ? <IconEyeOff size={20} color={c.textSecondary} strokeWidth={1.8} />
+                  : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* New password */}
           <View style={styles.fieldGroup}>

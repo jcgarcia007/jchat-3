@@ -39,6 +39,10 @@
     "appearanceSystem": "System"
   },
   "changePassword": {
+    "currentPassword": "Current password",
+    "currentPasswordPlaceholder": "Enter your current password",
+    "errorCurrentRequired": "Enter your current password.",
+    "errorCurrentWrong": "The current password is incorrect.",
     "title": "Change Password",
     "subtitle": "Choose a new password for your account.",
     "newLabel": "New password",
