@@ -46,6 +46,10 @@ const config: ExpoConfig = {
     googleServicesFile: IOS_GOOGLE_SERVICES,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      // react-native-bluetooth-classic force-unwraps this key in its iOS init
+      // (RNBluetoothClassic.swift) → launch crash if absent. Empty = no MFi
+      // accessory protocols (BT Classic printing is Android-only).
+      UISupportedExternalAccessoryProtocols: [],
     },
   },
   android: {
