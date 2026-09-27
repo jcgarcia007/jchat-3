@@ -79,6 +79,10 @@ const config: ExpoConfig = {
     // and legacy BLUETOOTH/BLUETOOTH_ADMIN (maxSdkVersion=30) for Android ≤ 11.
     // Does NOT add ACCESS_FINE_LOCATION — SPP printers do not derive location.
     './config-plugins/withBluetoothClassicPermissions',
+    // iOS only: raises Pods targets below iOS 15.1 up to 15.1 in the Podfile's
+    // post_install (Xcode 27 rejects deployment targets < 15.0). Pods already at
+    // 15.1+ (e.g. 16.4) are untouched.
+    './config-plugins/withMinPodsDeploymentTarget',
     [
       'react-native-maps',
       {
