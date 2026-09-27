@@ -80,7 +80,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isConfirm = url.includes('://confirm');
       if (!isReset && !isConfirm) return;
       const ok = await exchangeAuthUrl(url);
-      if (isConfirm && mounted) {
+      if (!mounted) return;
+      if (isReset) {
+        if (ok) {
+          // The real recovery email uses the IMPLICIT flow (no `pkce_` prefix),
+          // which resolves via setSession() → fires SIGNED_IN, not
+          // PASSWORD_RECOVERY. Set isRecovering explicitly here so both flows
+          // (PKCE and implicit) show ResetPasswordScreen; the PASSWORD_RECOVERY
+          // listener below stays as a second path for whichever flow does emit it.
+          setIsRecovering(true);
+        } else {
+          // Link expired or already used (#error_code=otp_expired, single-use token).
+          Alert.alert(i18n.t('auth:resetPassword.expiredLinkTitle'), i18n.t('auth:resetPassword.expiredLinkMessage'));
+        }
+        return;
+      }
+      if (isConfirm) {
         if (ok) {
           Alert.alert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
         } else {
