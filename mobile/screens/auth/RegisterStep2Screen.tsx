@@ -338,10 +338,23 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       }
 
       // ── 1. Create auth user ───────────────────────────────────────────────
+      // The profile choices also travel as user_metadata (`pending_profile`): when
+      // email confirmation is ON, signUp returns no session, so the UPDATE below
+      // can't run yet (RLS: authenticated only). AuthContext applies the pending
+      // profile on the first authenticated session (after jchat://confirm).
+      const pendingProfile = {
+        username: username.trim().toLowerCase(),
+        display_name: name.trim() || null,
+        language,
+      };
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
-        options: { captchaToken: captchaToken ?? undefined },
+        options: {
+          captchaToken: captchaToken ?? undefined,
+          emailRedirectTo: 'jchat://confirm',
+          data: { full_name: name.trim() || undefined, pending_profile: pendingProfile },
+        },
       });
 
       if (signUpError) {
@@ -360,6 +373,18 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         return;
       }
 
+      // Email confirmation ON → no session yet. The profile is applied after the
+      // user taps the link in the email (AuthContext, pending_profile).
+      if (!authData.session) {
+        setSubmitting(false);
+        Alert.alert(
+          t('register.alerts.checkEmailTitle'),
+          t('register.alerts.checkEmailMessage', { email: email.trim().toLowerCase() }),
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+        );
+        return;
+      }
+
       // ── 2. Insert profile into `users` table ──────────────────────────────
       // The handle_new_auth_user trigger already created the row, with a username
       // DERIVED from the email — not the one the user chose in this form. Apply the
@@ -368,9 +393,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       const { error: profileError } = await supabase
         .from('users')
         .update({
-          username: username.trim().toLowerCase(),
-          display_name: name.trim() || null,
-          language,
+          ...pendingProfile,
           profile_theme_id: 1, // default theme
         })
         .eq('id', userId);
@@ -383,6 +406,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         setSubmitting(false);
         return;
       }
+      // Applied here directly (session present) — drop the pending copy.
+      void supabase.auth.updateUser({ data: { pending_profile: null } });
 
       // TODO(Task 1.6): navigate to Onboarding before main tabs.
       // For now, the AuthContext session listener (supabase.auth.onAuthStateChange)
@@ -393,7 +418,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       Alert.alert(t('register.alerts.errorTitle'), message);
       setSubmitting(false);
     }
-  }, [dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t]);
+  }, [dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t, navigation]);
 
   // ---------------------------------------------------------------------------
   // Computed values for rendering

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Te invitaron a JChat</title>
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .bg-outer { background-color: #0b0d14 !important; } .bg-card { background-color: #161a26 !important; }
+    .t-title { color: #f5f5f7 !important; } .t-body { color: #d1d5db !important; } .t-muted { color: #9ca3af !important; }
+    .t-brand { color: #8fa4ff !important; } .box-note { background-color: #1f2740 !important; }
+    .btn-cell { background-color: #5C7CFA !important; } .btn-link { color: #ffffff !important; } .hr { border-color: #2a3042 !important; }
+  }
+  @media only screen and (max-width: 600px) { .container { width: 100% !important; } .pad { padding: 24px 20px !important; } }
+</style>
+</head>
+<body class="bg-outer" style="margin:0;padding:0;background-color:#f5f5f7;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Acepta tu invitación y crea tu cuenta de JChat. · Accept your invitation and create your JChat account.</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="bg-outer" style="background-color:#f5f5f7;">
+<tr><td align="center" style="padding:32px 16px;">
+  <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" class="container bg-card" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:16px;">
+  <tr><td class="pad" style="padding:32px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+    <p class="t-brand" style="margin:0 0 20px;font-size:22px;font-weight:700;color:#5C7CFA;letter-spacing:-0.3px;">JChat</p>
+
+    <h1 class="t-title" style="margin:0 0 12px;font-size:22px;line-height:28px;font-weight:700;color:#1d1d1f;">Te invitaron a JChat</h1>
+    <p class="t-body" style="margin:0 0 16px;font-size:16px;line-height:24px;color:#3a3a3c;">Alguien te invitó a unirte a JChat con el correo <strong>{{ .Email }}</strong>. Toca el botón para aceptar la invitación y crear tu cuenta.</p>
+
+    {{ if eq .RedirectTo "jchat://confirm" }}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+      <td class="box-note" style="background-color:#eef2ff;border-radius:12px;padding:12px 14px;font-size:14px;line-height:20px;color:#3a3a3c;">
+        📱 Si ya tienes JChat instalado, abre este correo en ese teléfono y toca el botón.
+      </td>
+    </tr></table>
+    {{ end }}
+
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;"><tr>
+      <td class="btn-cell" align="center" style="background-color:#5C7CFA;border-radius:12px;">
+        <a class="btn-link" href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:12px;">Aceptar invitación</a>
+      </td>
+    </tr></table>
+
+    <p class="t-muted" style="margin:0 0 24px;font-size:13px;line-height:20px;color:#6e6e73;">Si no esperabas esta invitación, ignora este correo.</p>
+
+    <hr class="hr" style="border:none;border-top:1px solid #e5e5ea;margin:0 0 24px;">
+
+    <h2 class="t-title" style="margin:0 0 8px;font-size:17px;line-height:24px;font-weight:700;color:#1d1d1f;">You've been invited to JChat</h2>
+    <p class="t-body" style="margin:0 0 12px;font-size:14px;line-height:20px;color:#3a3a3c;">Someone invited <strong>{{ .Email }}</strong> to join JChat. Tap to accept: <a href="{{ .ConfirmationURL }}" style="color:#5C7CFA;font-weight:600;">Accept invitation</a></p>
+    <p class="t-muted" style="margin:0 0 24px;font-size:13px;line-height:20px;color:#6e6e73;">If you weren't expecting this, you can ignore this email.</p>
+
+    <hr class="hr" style="border:none;border-top:1px solid #e5e5ea;margin:0 0 16px;">
+    <p class="t-muted" style="margin:0;font-size:12px;line-height:18px;color:#8e8e93;">Otunity Labs LLC · <a href="https://jchat.cloud/privacy" style="color:#8e8e93;">Privacidad / Privacy</a> · <a href="https://jchat.cloud/support" style="color:#8e8e93;">Ayuda / Support</a></p>
+
+  </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

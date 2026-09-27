@@ -42,3 +42,33 @@ verify_jwt = false
 # Handles create_session / session_status / add_order for Tab POS F3.
 [functions.guest-tab]
 verify_jwt = false
+
+# ── Auth email templates (bilingual ES/EN) ─────────────────────────────────
+# Source of truth: supabase/templates/*.html (see docs/JCHAT_PLANTILLAS_CORREO_SUPABASE.md).
+# Applies to local dev only; in production they are pasted manually into
+# Dashboard → Authentication → Emails → Templates from these same files.
+# The "📱 open on your phone" notice is conditional on {{ .RedirectTo }}, so
+# it only shows when the link opens the app (jchat://…), never for web flows.
+[auth.email.template.recovery]
+subject = "JChat — Restablece tu contraseña · Reset your password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.confirmation]
+subject = "JChat — Confirma tu correo · Confirm your email"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.email_change]
+subject = "JChat — Confirma tu nuevo correo · Confirm your new email"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.magic_link]
+subject = "JChat — Tu enlace para entrar · Your sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.invite]
+subject = "Te invitaron a JChat · You've been invited to JChat"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.reauthentication]
+subject = "JChat — Tu código de verificación · Your verification code"
+content_path = "./supabase/templates/reauthentication.html"

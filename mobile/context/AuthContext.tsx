@@ -17,9 +17,10 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
+import { Alert } from 'react-native';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
-import { changeAppLanguage } from '../i18n';
+import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
 
 interface AuthContextValue {
@@ -70,17 +71,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Intercepts jchat://reset deep links (PKCE or implicit token fragment).
-    // Exchanges the code/tokens with Supabase, which then fires PASSWORD_RECOVERY.
-    async function handleResetUrl(url: string) {
-      if (!url.includes('://reset')) return;
+    // Intercepts auth email deep links (PKCE `?code=` or implicit token fragment):
+    //   jchat://reset   → password recovery; Supabase then fires PASSWORD_RECOVERY.
+    //   jchat://confirm → sign-up / email-change confirmation; the user ends up
+    //                     signed in and sees a "Email confirmed" message.
+    async function handleAuthUrl(url: string) {
+      const isReset = url.includes('://reset');
+      const isConfirm = url.includes('://confirm');
+      if (!isReset && !isConfirm) return;
+      const ok = await exchangeAuthUrl(url);
+      if (isConfirm && mounted) {
+        if (ok) {
+          Alert.alert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
+        } else {
+          Alert.alert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
+        }
+      }
+    }
+
+    /** Establishes the session carried by an auth deep link. Returns true on success. */
+    async function exchangeAuthUrl(url: string): Promise<boolean> {
       const parsed = Linking.parse(url);
       const code = typeof parsed.queryParams?.code === 'string' ? parsed.queryParams.code : null;
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
-        return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        return !error;
       }
-      // Implicit flow: tokens in fragment (#access_token=...&refresh_token=...&type=recovery)
+      // Implicit flow: tokens in fragment (#access_token=...&refresh_token=...&type=recovery|signup)
       const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
       const frag: Record<string, string> = {};
       for (const pair of hash.split('&')) {
@@ -91,8 +108,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         frag[k] = v;
       }
       if (frag.access_token && frag.refresh_token) {
-        await supabase.auth.setSession({ access_token: frag.access_token, refresh_token: frag.refresh_token });
+        const { error } = await supabase.auth.setSession({
+          access_token: frag.access_token,
+          refresh_token: frag.refresh_token,
+        });
+        return !error;
       }
+      // Expired / already-used link: Supabase redirects with #error=…&error_code=otp_expired
+      return false;
     }
 
     // Cold start: restore the session AND decide the biometric gate here — this is
@@ -108,9 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted) setLoading(false);
       // Initialization complete — any SIGNED_IN after this point is a fresh login.
       initializedRef.current = true;
-      // Check if the app was cold-started via a password reset deep link.
+      // Check if the app was cold-started via an auth email deep link (reset / confirm).
       const initialUrl = await Linking.getInitialURL();
-      if (initialUrl && mounted) await handleResetUrl(initialUrl);
+      if (initialUrl && mounted) await handleAuthUrl(initialUrl);
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
@@ -126,8 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Warm start: app already open when user taps the reset link.
-    const linkSub = Linking.addEventListener('url', ({ url }) => { void handleResetUrl(url); });
+    // Warm start: app already open when user taps the reset / confirm link.
+    const linkSub = Linking.addEventListener('url', ({ url }) => { void handleAuthUrl(url); });
 
     return () => {
       mounted = false;
@@ -142,6 +165,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
+
+    // Registration with email confirmation ON: the profile the user chose in
+    // RegisterStep2 couldn't be saved without a session, so it travels in
+    // user_metadata.pending_profile. Apply it on the first authenticated session,
+    // then clear it. On failure (e.g. username taken meanwhile) the row keeps the
+    // trigger-derived defaults and we retry next session.
+    const pending = session?.user?.user_metadata?.pending_profile as
+      | { username?: string; display_name?: string | null; language?: SupportedLanguage }
+      | null
+      | undefined;
+    if (pending && typeof pending.username === 'string') {
+      void (async () => {
+        const { error } = await supabase
+          .from('users')
+          .update({
+            username: pending.username,
+            display_name: pending.display_name ?? null,
+            language: pending.language ?? 'en',
+          })
+          .eq('id', userId);
+        if (error) {
+          console.warn('[AuthContext] pending_profile apply failed:', error.message);
+          return;
+        }
+        if (pending.language === 'en' || pending.language === 'es') changeAppLanguage(pending.language);
+        await supabase.auth.updateUser({ data: { pending_profile: null } });
+      })();
+      // The pending profile carries the language — skip the DB read below so a
+      // stale 'en' (trigger default) can't race and override it.
+      return;
+    }
 
     void supabase
       .from('users')

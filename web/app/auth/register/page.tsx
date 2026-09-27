@@ -775,7 +775,12 @@ export default function RegisterPage() {
     const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { captchaToken },
+      options: {
+        captchaToken,
+        // When email confirmation is ON, the link lands on the same PKCE callback
+        // used by Google OAuth (exchangeCodeForSession) → /auth/welcome.
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/auth/welcome")}`,
+      },
     });
 
     if (signUpErr) {
