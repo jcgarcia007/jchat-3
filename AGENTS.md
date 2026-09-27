@@ -56,6 +56,14 @@ Las carpetas de capacidades propias de una herramienta, como `.claude/`, no son 
 - Antes de escribir código dependiente de Expo, consultar la documentación exacta de SDK 56: `https://docs.expo.dev/versions/v56.0.0/`.
 - No actualizar dependencias, lockfiles o versiones fuera del alcance explícito de la tarea.
 
+## Builds (EAS)
+
+- Antes de `eas build`, limpiar las dependencias con `cd mobile && rm -rf node_modules && npm ci`. Un `node_modules` modificado por builds locales cambia la huella y provoca que EAS falle en “Configure expo-updates”.
+- Para builds de iOS, usar `EXPO_NO_CAPABILITY_SYNC=1 eas build -p ios …`.
+- El mínimo de iOS de los pods se fija con el config plugin `mobile/config-plugins/withMinPodsDeploymentTarget.js`, no con `expo-build-properties`. El `minSdkVersion` de Android se fija con `mobile/config-plugins/withAndroidMinSdkVersion.js`.
+- Un paquete nativo sin `app.plugin.js` va únicamente en `package.json` mediante autolinking; nunca añadirlo al array `plugins` de `app.config.ts`.
+- Probar en dispositivos físicos. El emulador no sirve para Bluetooth ni para el lector M2, y Expo Go no sirve para este proyecto.
+
 ## Verificación antes de entregar
 
 - Mobile, siempre: `cd mobile && npx tsc --noEmit`. Debe terminar con 0 errores.
@@ -69,12 +77,12 @@ Las carpetas de capacidades propias de una herramienta, como `.claude/`, no son 
 - Mobile usa React Navigation y mantiene navegación en `mobile/navigation/`, pantallas en `mobile/screens/`, componentes en `mobile/components/` y acceso a datos/lógica de dominio en `mobile/services/`.
 - Cuando una implementación difiera por plataforma, usar extensiones de archivo (`.web.tsx` y `.native.tsx`), no branching de plataforma en runtime.
 - Web usa Next.js App Router, con rutas en `web/app/` y componentes compartidos en `web/components/`.
-- Stage 4 usa Google Maps nativo y se desarrolla después de completar Stage 3, salvo cambio de alcance aprobado.
 - No implementar Event Tickets ni Delivery Module: permanecen fuera de alcance/Future salvo aprobación explícita.
 
 ## Diseño e interfaz
 
 - Nunca hardcodear colores en componentes; usar los tokens del Design System.
+- Excepción obligatoria: las páginas web públicas sin sesión (recibo `/r/[code]`, `/privacy`, `/terms`, `/support`, menú público) y las pantallas móviles con fondo oscuro fijo (Welcome, Onboarding) usan colores hex fijos y `colorScheme: 'light'` en web; nunca `var(--*)` ni tokens de tema que puedan resolver a un color ilegible. Los colores fijos van en constantes locales de la pantalla (por ejemplo, `WELCOME_COLORS`), no sueltos en los componentes.
 - Implementar y verificar dark mode y light mode en toda UI nueva o modificada.
 - No alterar los valores definidos de los 10 dashboard themes, 15 chat themes o 15 profile themes sin aprobación explícita.
 - Valores base vigentes: brand `#5C7CFA`, brand dark `#4A6AE8`, brand purple `#7C3AED`, success `#1D9E75`, warning `#f59e0b`, danger `#ef4444` y gold `#D97706`. Warning y gold no son intercambiables.
@@ -104,7 +112,7 @@ Las carpetas de capacidades propias de una herramienta, como `.claude/`, no son 
 
 ## Checklist adicional para tareas de UI
 
-- Colores únicamente desde tokens o temas.
+- Colores únicamente desde tokens o temas, salvo la excepción obligatoria para páginas públicas y pantallas de fondo oscuro fijo descrita arriba.
 - Dark y light mode comprobados.
 - Separación por plataforma mediante extensiones cuando aplique.
 - Temas de dashboard/chat/perfil consumidos mediante sus APIs, no con valores directos.
