@@ -50,7 +50,7 @@ verify_jwt = false
 # The "📱 open on your phone" notice is conditional on {{ .RedirectTo }}, so
 # it only shows when the link opens the app (jchat://…), never for web flows.
 [auth.email.template.recovery]
-subject = "JChat — Restablece tu contraseña · Reset your password"
+subject = "JChat — Tu código para restablecer la contraseña · Your password reset code"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.confirmation]

@@ -113,10 +113,8 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
-// jchat://reset deep links are NOT routed via React Navigation's linking config —
-// the link arrives when the user is unauthenticated, so the MainStackParamList
-// config cannot reach it. Instead, AuthContext listens to Linking events,
-// exchanges the code/tokens, and sets isRecovering=true via PASSWORD_RECOVERY.
+// Password recovery is an in-app OTP flow. AuthContext persists recovery intent
+// before verifyOtp creates a session, so this navigator never exposes MainStack.
 
 export default function AppNavigator() {
   const { isAuthenticated, locked, isRecovering } = useAuth();
@@ -125,9 +123,9 @@ export default function AppNavigator() {
     <>
     <NavigationContainer linking={linking}>
       {isAuthenticated && isRecovering ? (
-        // Password-recovery flow: session is active (Supabase recovery type) but the
-        // user must set a new password before entering the app.
-        <RecoveryStack.Navigator screenOptions={defaultScreenOptions}>
+        // The verified OTP creates a session, but the user must save or cancel
+        // before leaving this isolated stack.
+        <RecoveryStack.Navigator screenOptions={{ ...defaultScreenOptions, gestureEnabled: false }}>
           <RecoveryStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         </RecoveryStack.Navigator>
       ) : !isAuthenticated ? (

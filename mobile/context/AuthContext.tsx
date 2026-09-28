@@ -18,6 +18,7 @@ import React, {
 import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
 import i18n, { changeAppLanguage } from '../i18n';
@@ -42,19 +43,19 @@ interface AuthContextValue {
   justSignedIn: boolean;
   /** Clear the fresh-sign-in signal (called once the enrollment prompt has been handled). */
   clearJustSignedIn: () => void;
-  /**
-   * True when the app opened via a jchat://reset deep link (password recovery flow).
-   * AppNavigator shows ResetPasswordScreen instead of the normal stack while this is true.
-   */
+  /** True while a verified OTP recovery session is isolated from the normal app. */
   isRecovering: boolean;
-  /** Clear the recovery state after a successful password update. */
-  clearRecovery: () => void;
+  /** Persist recovery intent before verifyOtp creates its authenticated session. */
+  beginRecovery: () => Promise<void>;
+  /** Clear the recovery state after saving or cancelling. */
+  clearRecovery: () => Promise<void>;
   /** Dev-only: enter the app without a real session (placeholder buttons). */
   devBypass: () => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const RECOVERY_PENDING_KEY = 'jchat.recovery_pending';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -71,36 +72,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Intercepts auth email deep links (PKCE `?code=` or implicit token fragment):
-    //   jchat://reset   → password recovery; Supabase then fires PASSWORD_RECOVERY.
-    //   jchat://confirm → sign-up / email-change confirmation; the user ends up
-    //                     signed in and sees a "Email confirmed" message.
+    // Intercepts sign-up / email-change confirmation links. Password recovery no
+    // longer uses links; the user enters the emailed OTP inside the app instead.
     async function handleAuthUrl(url: string) {
-      const isReset = url.includes('://reset');
       const isConfirm = url.includes('://confirm');
-      if (!isReset && !isConfirm) return;
+      if (!isConfirm) return;
       const ok = await exchangeAuthUrl(url);
       if (!mounted) return;
-      if (isReset) {
-        if (ok) {
-          // The real recovery email uses the IMPLICIT flow (no `pkce_` prefix),
-          // which resolves via setSession() → fires SIGNED_IN, not
-          // PASSWORD_RECOVERY. Set isRecovering explicitly here so both flows
-          // (PKCE and implicit) show ResetPasswordScreen; the PASSWORD_RECOVERY
-          // listener below stays as a second path for whichever flow does emit it.
-          setIsRecovering(true);
-        } else {
-          // Link expired or already used (#error_code=otp_expired, single-use token).
-          Alert.alert(i18n.t('auth:resetPassword.expiredLinkTitle'), i18n.t('auth:resetPassword.expiredLinkMessage'));
-        }
-        return;
-      }
-      if (isConfirm) {
-        if (ok) {
-          Alert.alert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
-        } else {
-          Alert.alert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
-        }
+      if (ok) {
+        Alert.alert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
+      } else {
+        Alert.alert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
       }
     }
 
@@ -133,38 +115,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Cold start: restore the session AND decide the biometric gate here — this is
-    // the ONLY place `locked` is ever set to true, so a fresh login (handled by
-    // onAuthStateChange below) or a background return never triggers the lock.
+    // Cold start: a persisted recovery flag means the app closed before the user
+    // saved a new password. Discard that recovery session before showing any UI.
     void (async () => {
+      const recoveryPending = await AsyncStorage.getItem(RECOVERY_PENDING_KEY);
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setSession(data.session);
-      if (data.session && (await isBiometricEnabled())) {
+
+      if (recoveryPending === '1') {
+        if (data.session) {
+          const { error } = await supabase.auth.signOut({ scope: 'local' });
+          if (error) {
+            // Never expose the normal app if local cleanup could not be confirmed.
+            // Keep the persisted barrier and recovery UI so Cancel can retry.
+            console.warn('[AuthContext] recovery session cleanup failed:', error.message);
+            if (!mounted) return;
+            setSession(data.session);
+            setIsRecovering(true);
+            setLocked(false);
+            setLoading(false);
+            initializedRef.current = true;
+            return;
+          }
+        }
+        await AsyncStorage.removeItem(RECOVERY_PENDING_KEY);
+        if (!mounted) return;
+        setSession(null);
+        setIsRecovering(false);
+        setLocked(false);
+      } else {
+        setSession(data.session);
+      }
+
+      if (recoveryPending !== '1' && data.session && (await isBiometricEnabled())) {
         if (mounted) setLocked(true);
       }
       if (mounted) setLoading(false);
       // Initialization complete — any SIGNED_IN after this point is a fresh login.
       initializedRef.current = true;
-      // Check if the app was cold-started via an auth email deep link (reset / confirm).
+      // Registration confirmation still uses a deep link.
       const initialUrl = await Linking.getInitialURL();
       if (initialUrl && mounted) await handleAuthUrl(initialUrl);
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      // The cold-start routine above owns initial restoration and recovery cleanup.
+      if (!initializedRef.current) return;
       // Never touch `locked` here — a fresh sign-in must enter the app directly.
       setSession(next);
       // Only a fresh login (after init) offers the enrollment prompt.
       if (_event === 'SIGNED_IN' && initializedRef.current) {
         setJustSignedIn(true);
       }
-      // Password recovery deep link — show ResetPasswordScreen.
-      if (_event === 'PASSWORD_RECOVERY') {
-        setIsRecovering(true);
-      }
     });
 
-    // Warm start: app already open when user taps the reset / confirm link.
+    // Warm start: app already open when the user taps a confirmation link.
     const linkSub = Linking.addEventListener('url', ({ url }) => { void handleAuthUrl(url); });
 
     return () => {
@@ -226,7 +231,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const unlock = useCallback(() => setLocked(false), []);
   const clearJustSignedIn = useCallback(() => setJustSignedIn(false), []);
-  const clearRecovery = useCallback(() => setIsRecovering(false), []);
+  const beginRecovery = useCallback(async () => {
+    await AsyncStorage.setItem(RECOVERY_PENDING_KEY, '1');
+    setIsRecovering(true);
+  }, []);
+  const clearRecovery = useCallback(async () => {
+    await AsyncStorage.removeItem(RECOVERY_PENDING_KEY);
+    setIsRecovering(false);
+  }, []);
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {
     setBypass(false);
@@ -246,11 +258,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       justSignedIn,
       clearJustSignedIn,
       isRecovering,
+      beginRecovery,
       clearRecovery,
       devBypass,
       signOut,
     }),
-    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, isRecovering, clearRecovery, devBypass, signOut],
+    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, isRecovering, beginRecovery, clearRecovery, devBypass, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
