@@ -35,6 +35,7 @@ create view public.public_profiles as
 
 grant select on public.public_profiles to anon, authenticated;
 revoke insert, update, delete on public.public_profiles from anon, authenticated;
+revoke references, trigger, truncate on public.public_profiles from anon, authenticated;
 
 -- Storage remove requires SELECT as well as DELETE. Keep profile-media
 -- non-listable to the public, but let an authenticated owner select objects in
