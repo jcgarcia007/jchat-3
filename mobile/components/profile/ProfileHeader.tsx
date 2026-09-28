@@ -11,6 +11,18 @@ import type { ProfileTheme } from '../../theme/profileThemes';
 
 export interface ProfilePlace { businessId: string; businessName: string }
 
+export interface ProfileTopBarProps {
+  isOwnProfile: boolean;
+  username: string;
+  topInset: number;
+  onBack: () => void;
+  onOpenMenu: () => void;
+  onShare: () => void;
+  onSettings: () => void;
+  onCreatePost: () => void;
+  theme: ProfileTheme;
+}
+
 export interface ProfileHeaderProps {
   isOwnProfile: boolean;
   displayName: string | null;
@@ -30,13 +42,8 @@ export interface ProfileHeaderProps {
   isPending: boolean;
   followLoading: boolean;
   completion: { hasPhoto: boolean; hasBio: boolean; hasCheckIn: boolean };
-  topInset: number;
-  onBack: () => void;
-  onOpenMenu: () => void;
-  onShare: () => void;
-  onSettings: () => void;
   onEditProfile: () => void;
-  onCreatePost: () => void;
+  onShare: () => void;
   onOpenMap: () => void;
   onOpenPlaces: () => void;
   onFollow: () => void;
@@ -79,22 +86,19 @@ function CompletionStep({ complete, label, onPress, theme }: { complete: boolean
   );
 }
 
-export default function ProfileHeader({
-  isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
-  followerCount, followingCount, placeCount, frequentPlaces, commonPlaces,
-  isFollowing, isPending, followLoading, completion, topInset, onBack,
-  onOpenMenu, onShare, onSettings, onEditProfile, onCreatePost, onOpenMap, onOpenPlaces,
-  onFollow, onUnfollow, onMessage, theme,
-}: ProfileHeaderProps) {
+/**
+ * Fixed profile top bar (username / +/share/settings or back/more), rendered as
+ * a sibling ABOVE the screen's ScrollView so it never scrolls — it respects
+ * `topInset` itself, and everything else (cover, avatar, stats...) scrolls
+ * underneath it. Previously this row lived inside the scrolling ProfileHeader,
+ * so scrolling could pass the avatar/cover behind the status bar clock/battery.
+ */
+export function ProfileTopBar({
+  isOwnProfile, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
+}: ProfileTopBarProps) {
   const { t } = useTranslation('profile');
-  const name = displayName?.trim() || username;
-  const initials = name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
-  const completedCount = Object.values(completion).filter(Boolean).length;
-  const extraFrequent = Math.max(0, placeCount - frequentPlaces.length);
-  const followLabel = isPending ? t('header.requested') : isFollowing ? t('header.following') : t('header.follow');
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.statsBg, paddingTop: topInset }]}>
+    <View style={[styles.topBarRoot, { backgroundColor: theme.statsBg, paddingTop: topInset }]}>
       <View style={styles.topBar}>
         {isOwnProfile ? (
           <Text style={[styles.topUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text>
@@ -114,7 +118,26 @@ export default function ProfileHeader({
           )}
         </View>
       </View>
+    </View>
+  );
+}
 
+export default function ProfileHeader({
+  isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
+  followerCount, followingCount, placeCount, frequentPlaces, commonPlaces,
+  isFollowing, isPending, followLoading, completion, onEditProfile,
+  onShare, onOpenMap, onOpenPlaces,
+  onFollow, onUnfollow, onMessage, theme,
+}: ProfileHeaderProps) {
+  const { t } = useTranslation('profile');
+  const name = displayName?.trim() || username;
+  const initials = name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
+  const completedCount = Object.values(completion).filter(Boolean).length;
+  const extraFrequent = Math.max(0, placeCount - frequentPlaces.length);
+  const followLabel = isPending ? t('header.requested') : isFollowing ? t('header.following') : t('header.follow');
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.statsBg }]}>
       <View style={styles.coverFrame}>
         {coverUrl ? (
           <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('header.coverPhotoA11y', { name })} />
@@ -216,6 +239,7 @@ export default function ProfileHeader({
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
+  topBarRoot: { width: '100%' },
   topBar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
   topUsername: { flex: 1, paddingLeft: 6, fontSize: 17, fontWeight: '800' },
   otherTopUsername: { position: 'absolute', left: 64, right: 64, bottom: 16, textAlign: 'center', fontSize: 16, fontWeight: '800' },

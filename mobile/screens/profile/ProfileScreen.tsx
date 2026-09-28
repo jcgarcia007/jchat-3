@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Animated, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView,
-  Share, StyleSheet, Text, TouchableOpacity, View,
+  Share, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -9,7 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
-  IconBan, IconFlag, IconGift, IconMapPin, IconPhoto, IconShare3, IconX,
+  IconBan, IconFlag, IconGift, IconMapPin, IconPhoto, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -26,13 +26,15 @@ import type { CheckInPlace } from '../../services/checkIn';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser, isBlocked, unblockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
-import ProfileHeader from '../../components/profile/ProfileHeader';
+import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
 import GiftsReceivedScreen from './GiftsReceivedScreen';
 
 type TabId = 'posts' | 'places' | 'gifts';
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
 const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'impersonation', 'other'] as const;
+const GRID_COLUMNS = 3;
+const GRID_GAP = 2;
 
 function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: number }) {
   const opacity = useRef(new Animated.Value(0.38)).current;
@@ -62,16 +64,36 @@ function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: n
   );
 }
 
-function PostCell({ post, theme, onPress }: { post: PostRow; theme: ProfileTheme; onPress: () => void }) {
+function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: ProfileTheme; size: number; onPress: () => void }) {
   const { t } = useTranslation('profile');
+  const [imageFailed, setImageFailed] = useState(false);
   const media = post.media_urls?.[0];
+  const hasMultiplePhotos = (post.media_urls?.length ?? 0) > 1;
   return (
-    <TouchableOpacity style={[styles.postCell, { backgroundColor: theme.cellColors[0] }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={t('view.openPostA11y')}>
-      {media ? <Image source={{ uri: media }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('view.postThumbnailA11y')} /> : (
+    <TouchableOpacity
+      style={[styles.postCell, { width: size, height: size, backgroundColor: theme.cellColors[1] }]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={t('view.openPostA11y')}
+    >
+      {media && !imageFailed ? (
+        <Image
+          source={{ uri: media }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          onError={() => setImageFailed(true)}
+          accessibilityLabel={t('view.postThumbnailA11y')}
+        />
+      ) : (
         <View style={[StyleSheet.absoluteFill, styles.postTextWrap, { backgroundColor: theme.cellColors[1] }]}>
           <Text style={[styles.postText, { color: theme.bodyText }]} numberOfLines={4}>{post.caption ?? ''}</Text>
         </View>
       )}
+      {hasMultiplePhotos ? (
+        <View style={styles.multiPhotoBadge}>
+          <IconStack2 size={15} color="#ffffff" strokeWidth={2.2} />
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -107,6 +129,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const c = useThemeColors();
   const { t } = useTranslation('profile');
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const cellSize = (windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<ProfileRoute>();
   const { user: authUser } = useAuth();
@@ -244,7 +268,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   }
 
   const renderPosts = () => posts.length ? (
-    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
+    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
     <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} theme={theme} />
   );
@@ -262,6 +286,11 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.statsBg }]}>
+      <ProfileTopBar
+        isOwnProfile={isOwnProfile} username={profile.username} topInset={insets.top}
+        onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
+        onSettings={() => navigation.navigate('Settings')} onCreatePost={() => navigation.navigate('CreatePost')} theme={theme}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -273,8 +302,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           followingCount={counts.following} placeCount={places.length} frequentPlaces={frequentPlaces} commonPlaces={commonPlaces}
           isFollowing={isFollowing} isPending={isPending} followLoading={followLoading}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasCheckIn: places.length > 0 }}
-          topInset={insets.top} onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
-          onSettings={() => navigation.navigate('Settings')} onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')} onOpenMap={openMap}
+          onShare={() => void shareProfile()} onEditProfile={() => navigation.navigate('EditProfile')} onOpenMap={openMap}
           onOpenPlaces={() => setActiveTab('places')} onFollow={() => void handleFollow()} onUnfollow={() => void handleUnfollow()}
           onMessage={() => void openMessage()} theme={theme}
         />
@@ -331,7 +359,8 @@ const styles = StyleSheet.create({
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
   tabs: { marginTop: 20, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth }, tab: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   tabLabel: { fontSize: 12, fontWeight: '700' }, tabUnderline: { position: 'absolute', height: 3, left: 18, right: 18, bottom: 0, borderRadius: 2 }, tabContent: { minHeight: 300 },
-  postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, postCell: { width: '32.9%', aspectRatio: 1, overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
+  postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
+  multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
   emptySubtitle: { marginTop: 7, textAlign: 'center', fontSize: 14, lineHeight: 20 }, emptyAction: { marginTop: 18, minHeight: 44, borderRadius: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }, emptyActionText: { fontSize: 14, fontWeight: '700' },
   placesList: { paddingHorizontal: 16 }, placeRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, placeLogo: { width: 46, height: 46, borderRadius: 13 }, placeFallback: { alignItems: 'center', justifyContent: 'center' },
