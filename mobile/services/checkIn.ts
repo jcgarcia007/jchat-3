@@ -50,6 +50,8 @@ export interface CheckInPlace {
   businessCategory: string | null;
   businessCity: string | null;
   businessLogoUrl: string | null;
+  /** Aggregate visit count only; individual check-in dates remain private. */
+  visitCount: number;
 }
 
 /** Discriminated union returned by checkIn() */
@@ -277,7 +279,12 @@ export async function getCheckInHistory(
   // De-duplicate: keep only the most recent check-in per business,
   // then return without created_at (privacy).
   const seen = new Set<string>();
+  const visitCounts = new Map<string, number>();
   const places: CheckInPlace[] = [];
+
+  for (const row of data as unknown as JoinedRow[]) {
+    visitCounts.set(row.business_id, (visitCounts.get(row.business_id) ?? 0) + 1);
+  }
 
   type JoinedRow = {
     id: string;
@@ -305,6 +312,7 @@ export async function getCheckInHistory(
       businessCategory: biz?.category ?? null,
       businessCity: biz?.city ?? null,
       businessLogoUrl: biz?.logo_url ?? null,
+      visitCount: visitCounts.get(row.business_id) ?? 1,
     });
 
     if (places.length >= 50) break;

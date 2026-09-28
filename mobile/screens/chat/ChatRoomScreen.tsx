@@ -805,10 +805,9 @@ export default function ChatRoomScreen() {
   // (each caller closes its own surface first).
   const handleViewProfile = useCallback(
     (userId: string) => {
-      // TODO: navigate to UserProfile screen
-      Alert.alert(t('chatRoom.profileTitle'), t('chatRoom.viewProfileOf', { userId }));
+      navigation.navigate('UserProfile', { userId });
     },
-    [t],
+    [navigation],
   );
 
   const handleStartDM = useCallback(

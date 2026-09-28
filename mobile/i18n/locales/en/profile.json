@@ -72,6 +72,7 @@
     "followers": "Followers",
     "following": "Following",
     "follow": "Follow",
+    "following": "Following",
     "requested": "Requested",
     "coverPhotoA11y": "{{name}}'s cover photo",
     "changeCoverA11y": "Change cover photo",
@@ -82,7 +83,74 @@
     "messageA11y": "Message {{name}}",
     "message": "Message",
     "signOutA11y": "Sign out",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "backA11y": "Go back",
+    "shareA11y": "Share profile",
+    "settingsA11y": "Open settings",
+    "moreA11y": "More profile actions",
+    "addBio": "+ Add a bio",
+    "frequents": "Frequents",
+    "inCommon": "In common",
+    "commonPlace": "You've both been to {{place}}",
+    "commonMore": "and {{count}} more place",
+    "commonMore_other": "and {{count}} more places",
+    "places": "Places",
+    "shareProfile": "Share Profile"
+  },
+  "tabs": {
+    "posts": "Posts",
+    "places": "Places",
+    "gifts": "Gifts"
+  },
+  "empty": {
+    "ownPostsTitle": "Share your first moment",
+    "ownPostsSubtitle": "Your photos and posts from the places you visit will appear here.",
+    "otherPostsTitle": "No posts yet",
+    "otherPostsSubtitle": "Their posts will appear here.",
+    "ownPlacesTitle": "Check in somewhere to make it appear here",
+    "ownPlacesSubtitle": "Explore nearby places and share the places you enjoy.",
+    "otherPlacesTitle": "No places yet",
+    "otherPlacesSubtitle": "The places they frequent will appear here.",
+    "exploreMap": "Explore the map"
+  },
+  "actions": {
+    "shareText": "Find @{{username}} on JChat — https://jchat.cloud",
+    "messageErrorTitle": "Can't open message",
+    "messageError": "The conversation couldn't be opened.",
+    "errorTitle": "Something went wrong",
+    "cancel": "Cancel"
+  },
+  "menu": {
+    "share": "Share profile",
+    "report": "Report",
+    "block": "Block",
+    "unblock": "Unblock"
+  },
+  "report": {
+    "title": "Why are you reporting this profile?",
+    "thanksTitle": "Report sent",
+    "thanksMessage": "Thank you. We'll review your report.",
+    "error": "The report couldn't be sent.",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Harassment or bullying",
+      "inappropriate": "Inappropriate content",
+      "impersonation": "Impersonation",
+      "other": "Other"
+    }
+  },
+  "block": {
+    "title": "Block @{{username}}?",
+    "message": "They won't be able to see your profile or message you.",
+    "confirm": "Block",
+    "error": "This profile action couldn't be completed."
+  },
+  "completion": {
+    "title": "Complete your profile",
+    "progress": "{{count}} of 3",
+    "photo": "Add a profile photo",
+    "bio": "Add a bio",
+    "checkIn": "Make your first check-in"
   },
   "themeSelector": {
     "themeOptionA11y": "{{name}} theme",

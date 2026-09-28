@@ -72,6 +72,7 @@
     "followers": "Seguidores",
     "following": "Siguiendo",
     "follow": "Seguir",
+    "following": "Siguiendo",
     "requested": "Solicitado",
     "coverPhotoA11y": "Foto de portada de {{name}}",
     "changeCoverA11y": "Cambiar foto de portada",
@@ -82,7 +83,74 @@
     "messageA11y": "Enviar mensaje a {{name}}",
     "message": "Mensaje",
     "signOutA11y": "Cerrar sesión",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "backA11y": "Volver",
+    "shareA11y": "Compartir perfil",
+    "settingsA11y": "Abrir ajustes",
+    "moreA11y": "Más acciones del perfil",
+    "addBio": "+ Agregar una bio",
+    "frequents": "Frecuenta",
+    "inCommon": "En común",
+    "commonPlace": "Los dos han estado en {{place}}",
+    "commonMore": "y {{count}} lugar más",
+    "commonMore_other": "y {{count}} lugares más",
+    "places": "Lugares",
+    "shareProfile": "Compartir perfil"
+  },
+  "tabs": {
+    "posts": "Publicaciones",
+    "places": "Lugares",
+    "gifts": "Regalos"
+  },
+  "empty": {
+    "ownPostsTitle": "Comparte tu primer momento",
+    "ownPostsSubtitle": "Tus fotos y publicaciones en los lugares que visitas aparecerán aquí.",
+    "otherPostsTitle": "Aún no ha publicado",
+    "otherPostsSubtitle": "Sus publicaciones aparecerán aquí.",
+    "ownPlacesTitle": "Haz check-in en un lugar para que aparezca aquí",
+    "ownPlacesSubtitle": "Explora lugares cercanos y comparte los que disfrutas.",
+    "otherPlacesTitle": "Aún no tiene lugares",
+    "otherPlacesSubtitle": "Los lugares que frecuenta aparecerán aquí.",
+    "exploreMap": "Explorar el mapa"
+  },
+  "actions": {
+    "shareText": "Encuentra a @{{username}} en JChat — https://jchat.cloud",
+    "messageErrorTitle": "No se pudo abrir el mensaje",
+    "messageError": "No se pudo abrir la conversación.",
+    "errorTitle": "Algo salió mal",
+    "cancel": "Cancelar"
+  },
+  "menu": {
+    "share": "Compartir perfil",
+    "report": "Reportar",
+    "block": "Bloquear",
+    "unblock": "Desbloquear"
+  },
+  "report": {
+    "title": "¿Por qué reportas este perfil?",
+    "thanksTitle": "Reporte enviado",
+    "thanksMessage": "Gracias. Revisaremos tu reporte.",
+    "error": "No se pudo enviar el reporte.",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Acoso o bullying",
+      "inappropriate": "Contenido inapropiado",
+      "impersonation": "Suplantación de identidad",
+      "other": "Otro"
+    }
+  },
+  "block": {
+    "title": "¿Bloquear a @{{username}}?",
+    "message": "No podrá ver tu perfil ni escribirte.",
+    "confirm": "Bloquear",
+    "error": "No se pudo completar esta acción del perfil."
+  },
+  "completion": {
+    "title": "Completa tu perfil",
+    "progress": "{{count}} de 3",
+    "photo": "Agregar foto de perfil",
+    "bio": "Agregar una bio",
+    "checkIn": "Hacer tu primer check-in"
   },
   "themeSelector": {
     "themeOptionA11y": "Tema {{name}}",

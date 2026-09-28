@@ -1,640 +1,329 @@
-/**
- * JChat 3.0 — Profile Screen (Task 1.7)
- *
- * Full user-profile view with:
- *   - ProfileHeader (cover, avatar, name, bio, stats, action buttons)
- *   - 5 icon-only content tabs with theme-accent active underline:
- *       0 IconGridDots  → Posts (3-col square grid)
- *       1 IconMovie     → Reels/Stories (TODO stub)
- *       2 IconMapPin    → Places (check-in history, NO timestamps)
- *       3 IconGift      → Gifts (GiftsReceivedScreen)
- *       4 IconBookmark  → Saved (TODO stub)
- *
- * Loading the profile:
- *   - Own profile:  uses AuthContext `user.id`
- *   - Other user:   reads `userId` from route params
- *
- * Profile theme: getProfileTheme(profileData.profile_theme_id)
- *
- * Privacy rules enforced:
- *   - Places tab: uses getCheckInHistory() which strips created_at
- *   - GPS never exposed on profile
- *
- * TODO(nav): when Task 1.8 (EditProfileScreen) lands, wire onEditProfile.
- * TODO(nav): when DMs screen (Task 1.12) exposes a "start DM" API, wire onMessage.
- */
-
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  Alert, Animated, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView,
+  Share, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import {
-  IconGridDots,
-  IconGift,
-  IconBookmark,
-  IconMapPin,
-  IconMovie,
-} from '@tabler/icons-react-native';
-import { useTranslation } from 'react-i18next';
-
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+import {
+  IconBan, IconFlag, IconGift, IconMapPin, IconPhoto, IconShare3, IconX,
+} from '@tabler/icons-react-native';
+
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
-import { palette } from '../../theme/tokens';
-
-import { getPublicProfile } from '../../services/users';
+import { getPublicProfile, getFollowerCount, getFollowingCount, reportUser } from '../../services/users';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
 import { getCheckInHistory } from '../../services/checkIn';
 import type { CheckInPlace } from '../../services/checkIn';
-
+import { getOrCreateConversation, DmGateError } from '../../services/dms';
+import { blockUser, isBlocked, unblockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
-
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import GiftsReceivedScreen from './GiftsReceivedScreen';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+type TabId = 'posts' | 'places' | 'gifts';
+type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
-const SCREEN_W = Dimensions.get('window').width;
-const GRID_GAP = 2;
-const GRID_COLS = 3;
-const CELL_SIZE = (SCREEN_W - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'impersonation', 'other'] as const;
 
-// ── Tab definition ───────────────────────────────────────────────────────────
-
-type TabId = 'posts' | 'reels' | 'places' | 'gifts' | 'saved';
-
-type TabA11yKey =
-  | 'view.postsTab'
-  | 'view.reelsTab'
-  | 'view.placesTab'
-  | 'view.giftsTab'
-  | 'view.savedTab';
-
-interface TabConfig {
-  id: TabId;
-  Icon: React.ComponentType<{ size: number; color: string }>;
-  a11yKey: TabA11yKey;
+function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: number }) {
+  const opacity = useRef(new Animated.Value(0.38)).current;
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.82, duration: 650, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.38, duration: 650, useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+  const block = { backgroundColor: theme.statsBorder };
+  return (
+    <View style={[styles.skeletonRoot, { backgroundColor: theme.statsBg, paddingTop: topInset + 12 }]}>
+      <Animated.View style={[styles.skeletonTop, block, { opacity }]} />
+      <Animated.View style={[styles.skeletonCover, block, { opacity }]} />
+      <Animated.View style={[styles.skeletonAvatar, { backgroundColor: theme.coverBg, borderColor: theme.statsBg, opacity }]} />
+      <Animated.View style={[styles.skeletonName, block, { opacity }]} />
+      <Animated.View style={[styles.skeletonHandle, block, { opacity }]} />
+      <Animated.View style={[styles.skeletonStats, block, { opacity }]} />
+      <View style={styles.skeletonGrid}>
+        {Array.from({ length: 6 }).map((_, index) => <Animated.View key={index} style={[styles.skeletonCell, block, { opacity }]} />)}
+      </View>
+    </View>
+  );
 }
 
-const TABS: TabConfig[] = [
-  { id: 'posts',  Icon: IconGridDots, a11yKey: 'view.postsTab'  },
-  { id: 'reels',  Icon: IconMovie,    a11yKey: 'view.reelsTab'  },
-  { id: 'places', Icon: IconMapPin,   a11yKey: 'view.placesTab' },
-  { id: 'gifts',  Icon: IconGift,     a11yKey: 'view.giftsTab'  },
-  { id: 'saved',  Icon: IconBookmark, a11yKey: 'view.savedTab'  },
-];
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-/** 3-column square grid cell for a post thumbnail */
-function PostCell({ post }: { post: PostRow }) {
-  const c = useThemeColors();
+function PostCell({ post, theme }: { post: PostRow; theme: ProfileTheme }) {
   const { t } = useTranslation('profile');
-  const firstMedia = post.media_urls?.[0] ?? null;
-
+  const media = post.media_urls?.[0];
   return (
-    <View
-      style={[
-        styles.gridCell,
-        { width: CELL_SIZE, height: CELL_SIZE, backgroundColor: c.bgSurface },
-      ]}
-    >
-      {firstMedia ? (
-        <Image
-          source={{ uri: firstMedia }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          accessibilityLabel={t('view.postThumbnailA11y')}
-        />
-      ) : (
-        /* Text-only post placeholder */
-        <View style={[StyleSheet.absoluteFill, styles.textPostPlaceholder, { backgroundColor: c.bgOverlay }]}>
-          <Text style={[styles.textPostCaption, { color: c.textSecondary }]} numberOfLines={4}>
-            {post.caption ?? ''}
-          </Text>
+    <View style={[styles.postCell, { backgroundColor: theme.cellColors[0] }]}>
+      {media ? <Image source={{ uri: media }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('view.postThumbnailA11y')} /> : (
+        <View style={[StyleSheet.absoluteFill, styles.postTextWrap, { backgroundColor: theme.cellColors[1] }]}>
+          <Text style={[styles.postText, { color: theme.bodyText }]} numberOfLines={4}>{post.caption ?? ''}</Text>
         </View>
       )}
     </View>
   );
 }
 
-/** Tab bar icon button */
-interface TabIconProps {
-  config: TabConfig;
-  isActive: boolean;
-  theme: ProfileTheme;
-  onPress: () => void;
+function EmptyState({
+  icon, title, subtitle, actionLabel, onAction, theme,
+}: {
+  icon: React.ReactNode; title: string; subtitle: string; actionLabel?: string; onAction?: () => void; theme: ProfileTheme;
+}) {
+  return (
+    <View style={styles.emptyState}>
+      {icon}
+      <Text style={[styles.emptyTitle, { color: theme.bodyText }]}>{title}</Text>
+      <Text style={[styles.emptySubtitle, { color: theme.bodyTextSecondary }]}>{subtitle}</Text>
+      {actionLabel && onAction ? (
+        <TouchableOpacity style={[styles.emptyAction, { backgroundColor: theme.btn1Bg }]} onPress={onAction} accessibilityRole="button">
+          <Text style={[styles.emptyActionText, { color: theme.btn1Color }]}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
 }
 
-function TabIcon({ config, isActive, theme, onPress }: TabIconProps) {
-  const { Icon } = config;
-  const { t } = useTranslation('profile');
+function SheetRow({ icon, label, color, borderColor, onPress }: { icon?: React.ReactNode; label: string; color: string; borderColor: string; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      style={styles.tabBtn}
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityLabel={t(config.a11yKey)}
-      accessibilityState={{ selected: isActive }}
-    >
-      <Icon
-        size={22}
-        color={isActive ? theme.tabActive : theme.tabInactive}
-      />
-      {isActive && (
-        <View style={[styles.tabUnderline, { backgroundColor: theme.tabActive }]} />
-      )}
+    <TouchableOpacity style={[styles.sheetRow, { borderBottomColor: borderColor }]} onPress={onPress} accessibilityRole="button">
+      {icon}<Text style={[styles.sheetRowText, { color }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-/** Empty state for Places tab */
-function PlacesEmpty({ theme }: { theme: ProfileTheme }) {
-  const { t } = useTranslation('profile');
-  return (
-    <View style={styles.emptyTab}>
-      <IconMapPin size={40} color={theme.tabInactive} />
-      <Text style={[styles.emptyTabText, { color: theme.tabInactive }]}>
-        {t('view.noPlacesYet')}
-      </Text>
-    </View>
-  );
-}
-
-/** Empty state for generic tabs */
-function GenericEmpty({ theme, label }: { theme: ProfileTheme; label: string }) {
-  return (
-    <View style={styles.emptyTab}>
-      <Text style={[styles.emptyTabText, { color: theme.tabInactive }]}>{label}</Text>
-    </View>
-  );
-}
-
-// ── Places tab content ────────────────────────────────────────────────────────
-
-interface PlacesTabProps {
-  places: CheckInPlace[];
-  theme: ProfileTheme;
-}
-
-function PlacesTab({ places, theme }: PlacesTabProps) {
+export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const c = useThemeColors();
   const { t } = useTranslation('profile');
-  if (places.length === 0) return <PlacesEmpty theme={theme} />;
-
-  return (
-    <FlatList<CheckInPlace>
-      data={places}
-      keyExtractor={(item) => item.checkInId}
-      scrollEnabled={false}
-      renderItem={({ item }) => (
-        <View
-          style={[
-            styles.placeRow,
-            {
-              backgroundColor: c.bgSurface,
-              borderBottomColor: c.borderSubtle,
-            },
-          ]}
-        >
-          {/* Logo / fallback circle */}
-          {item.businessLogoUrl ? (
-            <Image
-              source={{ uri: item.businessLogoUrl }}
-              style={[styles.placeLogo, { backgroundColor: c.bgOverlay }]}
-              resizeMode="cover"
-              accessibilityLabel={t('view.businessLogoA11y', { name: item.businessName })}
-            />
-          ) : (
-            <View style={[styles.placeLogo, styles.placeLogoFallback, { backgroundColor: theme.btn1Bg }]}>
-              <IconMapPin size={16} color={theme.btn1Color} />
-            </View>
-          )}
-
-          <View style={styles.placeInfo}>
-            <Text style={[styles.placeName, { color: c.textPrimary }]} numberOfLines={1}>
-              {item.businessName}
-            </Text>
-            {(item.businessCategory || item.businessCity) ? (
-              <Text style={[styles.placeMeta, { color: c.textTertiary }]} numberOfLines={1}>
-                {[item.businessCategory, item.businessCity].filter(Boolean).join(' · ')}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      )}
-      contentContainerStyle={styles.placesList}
-    />
-  );
-}
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
-
-interface ProfileScreenProps {
-  /** Optional — when provided, shows another user's profile. */
-  userId?: string;
-}
-
-export default function ProfileScreen({ userId: routeUserId }: ProfileScreenProps = {}) {
-  const c = useThemeColors();
-  const { t } = useTranslation('profile');
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { user: authUser, signOut } = useAuth();
-
-  // Determine whose profile to show
+  const route = useRoute<ProfileRoute>();
+  const { user: authUser } = useAuth();
+  const routeUserId = userId ?? route.params?.userId;
   const targetId = routeUserId ?? authUser?.id ?? null;
   const isOwnProfile = !routeUserId || routeUserId === authUser?.id;
 
-  // ── Profile data ──────────────────────────────────────────────────────────
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
-
-  // ── Posts (tab 0) ─────────────────────────────────────────────────────────
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
-
-  // ── Places (tab 2) ────────────────────────────────────────────────────────
   const [places, setPlaces] = useState<CheckInPlace[]>([]);
-  const [placesLoading, setPlacesLoading] = useState(false);
-  const placesLoaded = useRef(false);
-
-  // ── Active tab ────────────────────────────────────────────────────────────
+  const [myPlaces, setMyPlaces] = useState<CheckInPlace[]>([]);
+  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('posts');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
 
-  // ── Follow system ─────────────────────────────────────────────────────────
-  const {
-    isFollowing,
-    isPending,
-    followerCount,
-    followingCount,
-    loading: followLoading,
-    follow,
-    unfollow,
-  } = useFollowSystem(isOwnProfile ? null : targetId);
+  const { isFollowing, isPending, loading: followLoading, follow, unfollow } = useFollowSystem(isOwnProfile ? null : targetId);
+  const theme = getProfileTheme(profile?.profile_theme_id ?? 1);
 
-  // ── Load profile ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!targetId) {
-      setProfileLoading(false);
-      return;
+  const loadProfile = useCallback(async (refresh = false) => {
+    if (!targetId) { setInitialLoading(false); return; }
+    if (refresh) setRefreshing(true); else setInitialLoading(true);
+    setError(null);
+    try {
+      const [profileRow, postRows, placeRows, followerCount, followingCount, viewerPlaces, blockedState] = await Promise.all([
+        getPublicProfile(targetId),
+        getUserPosts(targetId),
+        getCheckInHistory(targetId),
+        getFollowerCount(targetId),
+        getFollowingCount(targetId),
+        !isOwnProfile && authUser?.id ? getCheckInHistory(authUser.id) : Promise.resolve([]),
+        !isOwnProfile ? isBlocked(targetId) : Promise.resolve(false),
+      ]);
+      if (!profileRow) throw new Error(t('view.profileNotFound'));
+      setProfile(profileRow);
+      setPosts(postRows);
+      setPlaces(placeRows);
+      setMyPlaces(isOwnProfile ? placeRows : viewerPlaces);
+      setCounts({ followers: followerCount, following: followingCount });
+      setBlocked(blockedState);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : t('view.loadProfileError'));
+    } finally {
+      setInitialLoading(false);
+      setRefreshing(false);
     }
+  }, [authUser?.id, isOwnProfile, t, targetId]);
 
-    let cancelled = false;
-    async function loadProfile() {
-      setProfileLoading(true);
-      setProfileError(null);
-      try {
-        const row = await getPublicProfile(targetId as string);
-        if (!cancelled) setProfile(row);
-      } catch (err) {
-        if (!cancelled)
-          setProfileError(err instanceof Error ? err.message : t('view.loadProfileError'));
-      } finally {
-        if (!cancelled) setProfileLoading(false);
-      }
+  useEffect(() => { void loadProfile(); }, [loadProfile]);
+
+  const frequentPlaces = useMemo(
+    () => [...places].sort((a, b) => b.visitCount - a.visitCount).slice(0, 2),
+    [places],
+  );
+  const commonPlaces = useMemo(() => {
+    if (isOwnProfile) return [];
+    const mine = new Set(myPlaces.map((place) => place.businessId));
+    return places.filter((place) => mine.has(place.businessId));
+  }, [isOwnProfile, myPlaces, places]);
+
+  const shareProfile = useCallback(async () => {
+    if (!profile) return;
+    await Share.share({ message: t('actions.shareText', { username: profile.username }) });
+  }, [profile, t]);
+
+  const openMap = useCallback(() => navigation.navigate('Tabs', { screen: 'Map' }), [navigation]);
+  const openMessage = useCallback(async () => {
+    if (!authUser?.id || !targetId) return;
+    try {
+      const conversation = await getOrCreateConversation(authUser.id, targetId);
+      navigation.navigate('Tabs', { screen: 'DMs', params: { screen: 'DMChat', params: { conversationId: conversation.id, otherUserId: targetId } } });
+    } catch (messageError) {
+      Alert.alert(t('actions.messageErrorTitle'), messageError instanceof DmGateError ? messageError.message : t('actions.messageError'));
     }
-    void loadProfile();
-    return () => { cancelled = true; };
-  }, [targetId, t]);
+  }, [authUser?.id, navigation, t, targetId]);
 
-  // ── Load posts on mount ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (!targetId) return;
-    let cancelled = false;
-    async function loadPosts() {
-      setPostsLoading(true);
-      try {
-        const rows = await getUserPosts(targetId as string);
-        if (!cancelled) setPosts(rows);
-      } catch {
-        // silently fail; show empty grid
-      } finally {
-        if (!cancelled) setPostsLoading(false);
-      }
-    }
-    void loadPosts();
-    return () => { cancelled = true; };
-  }, [targetId]);
-
-  // ── Load places lazily when tab is first opened ───────────────────────────
-  useEffect(() => {
-    if (activeTab !== 'places' || placesLoaded.current || !targetId) return;
-    placesLoaded.current = true;
-    let cancelled = false;
-    async function loadPlaces() {
-      setPlacesLoading(true);
-      try {
-        const rows = await getCheckInHistory(targetId as string);
-        if (!cancelled) setPlaces(rows);
-      } catch {
-        // silently fail; show empty list
-      } finally {
-        if (!cancelled) setPlacesLoading(false);
-      }
-    }
-    void loadPlaces();
-    return () => { cancelled = true; };
-  }, [activeTab, targetId]);
-
-  // ── Derive theme from loaded profile ──────────────────────────────────────
-  const theme: ProfileTheme = getProfileTheme(profile?.profile_theme_id ?? 1);
-
-  // ── Animated scroll ref so content scrolls behind a sticky header ─────────
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleFollow = useCallback(async () => {
     await follow();
+    setCounts((value) => ({ ...value, followers: value.followers + 1 }));
   }, [follow]);
-
   const handleUnfollow = useCallback(async () => {
     await unfollow();
+    setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
   }, [unfollow]);
 
-  const handleMessage = useCallback(() => {
-    // TODO(nav Task 1.12): navigate to DM thread with targetId
-  }, []);
+  const submitReport = useCallback(async (reason: typeof REPORT_REASONS[number]) => {
+    if (!authUser?.id || !targetId || actionBusy) return;
+    setActionBusy(true);
+    try {
+      await reportUser(authUser.id, targetId, reason);
+      setReportVisible(false);
+      Alert.alert(t('report.thanksTitle'), t('report.thanksMessage'));
+    } catch {
+      Alert.alert(t('actions.errorTitle'), t('report.error'));
+    } finally { setActionBusy(false); }
+  }, [actionBusy, authUser?.id, t, targetId]);
 
-  const handleEditProfile = useCallback(() => {
-    navigation.navigate('EditProfile');
-  }, [navigation]);
-
-  const handleSettings = useCallback(() => {
-    navigation.navigate('Settings');
-  }, [navigation]);
-
-  const handleEditCover = useCallback(() => {
-    // TODO(Task 1.8): open cover photo picker
-  }, []);
-
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-  }, [signOut]);
-
-  // ── Loading / error states ─────────────────────────────────────────────────
-
-  if (profileLoading) {
-    return (
-      <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="large" color={palette.brand} />
-      </View>
-    );
-  }
-
-  if (profileError || !profile) {
-    return (
-      <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <Text style={[styles.errorText, { color: palette.danger }]}>
-          {profileError ?? t('view.profileNotFound')}
-        </Text>
-      </View>
-    );
-  }
-
-  // ── Tab content ──────────────────────────────────────────────────────────
-
-  function renderTabContent() {
-    switch (activeTab) {
-      case 'posts':
-        if (postsLoading) {
-          return (
-            <View style={styles.tabLoading}>
-              <ActivityIndicator color={theme.tabActive} />
-            </View>
-          );
-        }
-        if (posts.length === 0) {
-          return <GenericEmpty theme={theme} label={t('view.noPostsYet')} />;
-        }
-        return (
-          <View style={styles.grid}>
-            {posts.map((post) => (
-              <PostCell key={post.id} post={post} />
-            ))}
-          </View>
-        );
-
-      case 'reels':
-        // TODO: Reels/Stories data source not yet implemented
-        return <GenericEmpty theme={theme} label={t('view.reelsSoon')} />;
-
-      case 'places':
-        if (placesLoading) {
-          return (
-            <View style={styles.tabLoading}>
-              <ActivityIndicator color={theme.tabActive} />
-            </View>
-          );
-        }
-        return <PlacesTab places={places} theme={theme} />;
-
-      case 'gifts':
-        return <GiftsReceivedScreen userId={profile?.id} />;
-
-      case 'saved':
-        // TODO: Saved posts data source not yet implemented
-        return <GenericEmpty theme={theme} label={t('view.savedSoon')} />;
-
-      default:
-        return null;
+  const confirmBlock = useCallback(() => {
+    if (!profile || !targetId) return;
+    if (blocked) {
+      setActionBusy(true);
+      void unblockUser(targetId).then(() => { setBlocked(false); setMenuVisible(false); }).catch(() => Alert.alert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
+      return;
     }
+    Alert.alert(t('block.title', { username: profile.username }), t('block.message'), [
+      { text: t('actions.cancel'), style: 'cancel' },
+      { text: t('block.confirm'), style: 'destructive', onPress: () => {
+        setActionBusy(true);
+        void blockUser(targetId).then(() => { setMenuVisible(false); navigation.goBack(); }).catch(() => Alert.alert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
+      } },
+    ]);
+  }, [blocked, navigation, profile, t, targetId]);
+
+  if (initialLoading) return <ProfileSkeleton theme={theme} topInset={insets.top} />;
+  if (error || !profile) {
+    return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.danger }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const renderPosts = () => posts.length ? (
+    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} />)}</View>
+  ) : (
+    <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} theme={theme} />
+  );
+
+  const renderPlaces = () => places.length ? (
+    <FlatList data={places} scrollEnabled={false} keyExtractor={(item) => item.businessId} contentContainerStyle={styles.placesList} renderItem={({ item }) => (
+      <View style={[styles.placeRow, { borderBottomColor: theme.statsBorder }]}>
+        {item.businessLogoUrl ? <Image source={{ uri: item.businessLogoUrl }} style={[styles.placeLogo, { backgroundColor: theme.btn2Bg }]} /> : <View style={[styles.placeLogo, styles.placeFallback, { backgroundColor: theme.btn1Bg }]}><IconMapPin size={18} color={theme.btn1Color} /></View>}
+        <View style={styles.placeCopy}><Text style={[styles.placeName, { color: theme.bodyText }]}>{item.businessName}</Text>{item.businessCategory || item.businessCity ? <Text style={[styles.placeMeta, { color: theme.bodyTextSecondary }]}>{[item.businessCategory, item.businessCity].filter(Boolean).join(' · ')}</Text> : null}</View>
+      </View>
+    )} />
+  ) : (
+    <EmptyState icon={<IconMapPin size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPlacesTitle') : t('empty.otherPlacesTitle')} subtitle={isOwnProfile ? t('empty.ownPlacesSubtitle') : t('empty.otherPlacesSubtitle')} actionLabel={isOwnProfile ? t('empty.exploreMap') : undefined} onAction={isOwnProfile ? openMap : undefined} theme={theme} />
+  );
 
   return (
-    <ScrollView
-      style={[styles.root, { backgroundColor: theme.statsBg }]}
-      contentContainerStyle={{ paddingBottom: 40 }}
-      showsVerticalScrollIndicator={false}
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: false },
-      )}
-      scrollEventThrottle={16}
-    >
-      {/* ── Profile header ──────────────────────────────────────────────────── */}
-      <ProfileHeader
-        userId={profile.id}
-        isOwnProfile={isOwnProfile}
-        displayName={profile.display_name}
-        username={profile.username}
-        avatarUrl={profile.avatar_url}
-        coverUrl={null}  // TODO(Task 1.8): add cover_url column to users table
-        bio={profile.bio}
-        isVerified={profile.is_verified}
-        postCount={posts.length}
-        followerCount={isOwnProfile ? followerCount : followerCount}
-        followingCount={isOwnProfile ? followingCount : followingCount}
-        isFollowing={isFollowing}
-        isPending={isPending}
-        followLoading={followLoading}
-        onFollow={handleFollow}
-        onUnfollow={handleUnfollow}
-        onMessage={handleMessage}
-        onEditProfile={handleEditProfile}
-        onEditCover={handleEditCover}
-        onSignOut={handleSignOut}
-        onSettings={handleSettings}
-        theme={theme}
-      />
-
-      {/* ── Icon-only tab bar ───────────────────────────────────────────────── */}
-      <View
-        style={[
-          styles.tabBar,
-          {
-            backgroundColor: theme.statsBg,
-            borderTopColor: theme.statsBorder,
-            borderBottomColor: theme.statsBorder,
-          },
-        ]}
+    <View style={[styles.root, { backgroundColor: theme.statsBg }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile(true)} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
-        {TABS.map((tab) => (
-          <TabIcon
-            key={tab.id}
-            config={tab}
-            isActive={activeTab === tab.id}
-            theme={theme}
-            onPress={() => setActiveTab(tab.id)}
-          />
-        ))}
-      </View>
+        <ProfileHeader
+          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
+          bio={profile.bio} isVerified={profile.is_verified} postCount={posts.length} followerCount={counts.followers}
+          followingCount={counts.following} placeCount={places.length} frequentPlaces={frequentPlaces} commonPlaces={commonPlaces}
+          isFollowing={isFollowing} isPending={isPending} followLoading={followLoading}
+          completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasCheckIn: places.length > 0 }}
+          topInset={insets.top} onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
+          onSettings={() => navigation.navigate('Settings')} onEditProfile={() => navigation.navigate('EditProfile')} onOpenMap={openMap}
+          onOpenPlaces={() => setActiveTab('places')} onFollow={() => void handleFollow()} onUnfollow={() => void handleUnfollow()}
+          onMessage={() => void openMessage()} theme={theme}
+        />
 
-      {/* ── Tab content ─────────────────────────────────────────────────────── */}
-      <View style={[styles.tabContent, { backgroundColor: theme.statsBg }]}>
-        {renderTabContent()}
-      </View>
-    </ScrollView>
+        <View style={[styles.tabs, { borderBottomColor: theme.statsBorder, borderTopColor: theme.statsBorder }]}>
+          {(['posts', 'places', 'gifts'] as TabId[]).map((tab) => {
+            const active = activeTab === tab;
+            const Icon = tab === 'posts' ? IconPhoto : tab === 'places' ? IconMapPin : IconGift;
+            return (
+              <TouchableOpacity key={tab} style={styles.tab} onPress={() => setActiveTab(tab)} accessibilityRole="tab" accessibilityState={{ selected: active }}>
+                <Icon size={19} color={active ? theme.tabActive : theme.tabInactiveText} />
+                <Text style={[styles.tabLabel, { color: active ? theme.tabActive : theme.tabInactiveText }]}>{t(`tabs.${tab}`)}</Text>
+                {active ? <View style={[styles.tabUnderline, { backgroundColor: theme.tabActive }]} /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={[styles.tabContent, { backgroundColor: theme.statsBg }]}>
+          {activeTab === 'posts' ? renderPosts() : activeTab === 'places' ? renderPlaces() : <GiftsReceivedScreen userId={profile.id} />}
+        </View>
+      </ScrollView>
+
+      <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: c.bgBase }]} onPress={() => setMenuVisible(false)} />
+        <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
+          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
+          <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>@{profile.username}</Text>
+          <SheetRow icon={<IconShare3 size={20} color={theme.bodyText} />} label={t('menu.share')} color={theme.bodyText} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); void shareProfile(); }} />
+          <SheetRow icon={<IconFlag size={20} color={c.danger} />} label={t('menu.report')} color={c.danger} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
+          <SheetRow icon={<IconBan size={20} color={c.danger} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.danger} borderColor={theme.statsBorder} onPress={confirmBlock} />
+          <SheetRow icon={<IconX size={20} color={theme.bodyTextSecondary} />} label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setMenuVisible(false)} />
+        </View>
+      </Modal>
+
+      <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: c.bgBase }]} onPress={() => setReportVisible(false)} />
+        <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
+          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
+          <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>{t('report.title')}</Text>
+          {REPORT_REASONS.map((reason) => <SheetRow key={reason} label={t(`report.reasons.${reason}`)} color={theme.bodyText} borderColor={theme.statsBorder} onPress={() => void submitReport(reason)} />)}
+          <SheetRow label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setReportVisible(false)} />
+        </View>
+      </Modal>
+    </View>
   );
 }
 
-// ── Styles (numbers only) ────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorText: {
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-
-  // Tab bar
-  tabBar: {
-    flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  tabBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    position: 'relative',
-  },
-  tabUnderline: {
-    position: 'absolute',
-    bottom: 0,
-    left: '20%',
-    right: '20%',
-    height: 2,
-    borderRadius: 1,
-  },
-
-  // Tab content area
-  tabContent: {
-    minHeight: 300,
-  },
-  tabLoading: {
-    paddingTop: 40,
-    alignItems: 'center',
-  },
-
-  // Posts grid
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GRID_GAP,
-  },
-  gridCell: {
-    overflow: 'hidden',
-  },
-  textPostPlaceholder: {
-    padding: 8,
-    justifyContent: 'center',
-  },
-  textPostCaption: {
-    fontSize: 10,
-    lineHeight: 14,
-  },
-
-  // Places list
-  placesList: {
-    paddingTop: 4,
-  },
-  placeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  placeLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-  },
-  placeLogoFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  placeName: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  placeMeta: {
-    fontSize: 12,
-  },
-
-  // Empty states
-  emptyTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
+  root: { flex: 1 }, scrollContent: { paddingBottom: 40 }, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
+  skeletonRoot: { flex: 1 }, skeletonTop: { width: 150, height: 18, borderRadius: 9, marginLeft: 16 }, skeletonCover: { height: 120, marginHorizontal: 16, marginTop: 18, borderRadius: 20 },
+  skeletonAvatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 4, marginLeft: 28, marginTop: -48 }, skeletonName: { width: 180, height: 22, borderRadius: 8, marginLeft: 20, marginTop: 12 },
+  skeletonHandle: { width: 110, height: 14, borderRadius: 7, marginLeft: 20, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
+  skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
+  tabs: { marginTop: 20, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth }, tab: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tabLabel: { fontSize: 12, fontWeight: '700' }, tabUnderline: { position: 'absolute', height: 3, left: 18, right: 18, bottom: 0, borderRadius: 2 }, tabContent: { minHeight: 300 },
+  postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, postCell: { width: '32.9%', aspectRatio: 1, overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
+  emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
+  emptySubtitle: { marginTop: 7, textAlign: 'center', fontSize: 14, lineHeight: 20 }, emptyAction: { marginTop: 18, minHeight: 44, borderRadius: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }, emptyActionText: { fontSize: 14, fontWeight: '700' },
+  placesList: { paddingHorizontal: 16 }, placeRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, placeLogo: { width: 46, height: 46, borderRadius: 13 }, placeFallback: { alignItems: 'center', justifyContent: 'center' },
+  placeCopy: { flex: 1, gap: 3 }, placeName: { fontSize: 15, fontWeight: '700' }, placeMeta: { fontSize: 12 },
+  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.72 }, sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopWidth: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingBottom: 30 },
+  sheetHandleWrap: { height: 28, alignItems: 'center', justifyContent: 'center' }, sheetHandle: { width: 42, height: 5, borderRadius: 3 }, sheetTitle: { fontSize: 17, fontWeight: '800', paddingBottom: 10 },
+  sheetRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, sheetRowText: { flex: 1, fontSize: 15, fontWeight: '600' },
 });
