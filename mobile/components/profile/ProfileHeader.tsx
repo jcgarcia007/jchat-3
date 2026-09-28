@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
   IconArrowLeft, IconCheck, IconCircleCheckFilled, IconCircleDashed, IconDots,
-  IconMapPin, IconMessage, IconPencil, IconSettings, IconShare3,
+  IconCamera, IconMapPin, IconMessage, IconPencil, IconPlus, IconSettings, IconShare3,
 } from '@tabler/icons-react-native';
 
 import type { ProfileTheme } from '../../theme/profileThemes';
@@ -16,7 +16,9 @@ export interface ProfileHeaderProps {
   displayName: string | null;
   username: string;
   avatarUrl: string | null;
+  coverUrl: string | null;
   bio: string | null;
+  city: string | null;
   isVerified: boolean;
   postCount: number;
   followerCount: number;
@@ -34,6 +36,7 @@ export interface ProfileHeaderProps {
   onShare: () => void;
   onSettings: () => void;
   onEditProfile: () => void;
+  onCreatePost: () => void;
   onOpenMap: () => void;
   onOpenPlaces: () => void;
   onFollow: () => void;
@@ -77,10 +80,10 @@ function CompletionStep({ complete, label, onPress, theme }: { complete: boolean
 }
 
 export default function ProfileHeader({
-  isOwnProfile, displayName, username, avatarUrl, bio, isVerified, postCount,
+  isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
   followerCount, followingCount, placeCount, frequentPlaces, commonPlaces,
   isFollowing, isPending, followLoading, completion, topInset, onBack,
-  onOpenMenu, onShare, onSettings, onEditProfile, onOpenMap, onOpenPlaces,
+  onOpenMenu, onShare, onSettings, onEditProfile, onCreatePost, onOpenMap, onOpenPlaces,
   onFollow, onUnfollow, onMessage, theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
@@ -102,6 +105,7 @@ export default function ProfileHeader({
         <View style={styles.topActions}>
           {isOwnProfile ? (
             <>
+              <IconButton label={t('header.createPostA11y')} onPress={onCreatePost}><IconPlus size={24} color={theme.bodyText} /></IconButton>
               <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={theme.bodyText} /></IconButton>
               <IconButton label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={theme.bodyText} /></IconButton>
             </>
@@ -112,9 +116,16 @@ export default function ProfileHeader({
       </View>
 
       <View style={styles.coverFrame}>
-        {theme.coverGradient.length >= 2 ? (
+        {coverUrl ? (
+          <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('header.coverPhotoA11y', { name })} />
+        ) : theme.coverGradient.length >= 2 ? (
           <LinearGradient colors={theme.coverGradient as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
         ) : <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.coverBg }]} />}
+        {isOwnProfile ? (
+          <TouchableOpacity style={[styles.coverCamera, { backgroundColor: theme.btn1Bg, borderColor: theme.statsBg }]} onPress={onEditProfile} accessibilityRole="button" accessibilityLabel={t('header.changeCoverA11y')}>
+            <IconCamera size={20} color={theme.btn1Color} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.avatarPositioner}>
@@ -137,6 +148,9 @@ export default function ProfileHeader({
           <Text style={[styles.bio, { color: theme.bodyText }]} numberOfLines={3}>{bio.trim()}</Text>
         ) : isOwnProfile ? (
           <TouchableOpacity onPress={onEditProfile} accessibilityRole="button"><Text style={[styles.addBio, { color: theme.tabActive }]}>{t('header.addBio')}</Text></TouchableOpacity>
+        ) : null}
+        {city?.trim() ? (
+          <View style={styles.cityRow}><IconMapPin size={16} color={theme.bodyTextSecondary} /><Text style={[styles.city, { color: theme.bodyTextSecondary }]}>{city.trim()}</Text></View>
         ) : null}
       </View>
 
@@ -208,6 +222,7 @@ const styles = StyleSheet.create({
   topActions: { marginLeft: 'auto', flexDirection: 'row' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   coverFrame: { height: 120, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' },
+  coverCamera: { position: 'absolute', right: 10, bottom: 10, width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   avatarPositioner: { height: 104, marginTop: -48, paddingLeft: 28 },
   avatarRing: { width: 104, height: 104, borderRadius: 52, padding: 4 },
   avatar: { width: 96, height: 96, borderRadius: 48 },
@@ -219,6 +234,8 @@ const styles = StyleSheet.create({
   username: { marginTop: 1, fontSize: 15, lineHeight: 20 },
   bio: { marginTop: 10, fontSize: 15, lineHeight: 21 },
   addBio: { marginTop: 9, fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  city: { fontSize: 14, lineHeight: 19 },
   frequentRow: { paddingHorizontal: 20, paddingTop: 16, gap: 9 },
   frequentLabel: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },

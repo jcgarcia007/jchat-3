@@ -6,6 +6,7 @@
     "giftsTab": "Gifts tab",
     "savedTab": "Saved tab",
     "postThumbnailA11y": "Post thumbnail",
+    "openPostA11y": "Open post",
     "businessLogoA11y": "{{name}} logo",
     "noPostsYet": "No posts yet",
     "noPlacesYet": "No places yet",
@@ -87,6 +88,7 @@
     "backA11y": "Go back",
     "shareA11y": "Share profile",
     "settingsA11y": "Open settings",
+    "createPostA11y": "Create a post",
     "moreA11y": "More profile actions",
     "addBio": "+ Add a bio",
     "frequents": "Frequents",
@@ -111,7 +113,8 @@
     "ownPlacesSubtitle": "Explore nearby places and share the places you enjoy.",
     "otherPlacesTitle": "No places yet",
     "otherPlacesSubtitle": "The places they frequent will appear here.",
-    "exploreMap": "Explore the map"
+    "exploreMap": "Explore the map",
+    "createPost": "Create post"
   },
   "actions": {
     "shareText": "Find @{{username}} on JChat — https://jchat.cloud",

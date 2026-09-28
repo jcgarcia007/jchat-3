@@ -36,6 +36,8 @@ import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import CreatePostScreen from '../screens/feed/CreatePostScreen';
+import PostDetailScreen from '../screens/posts/PostDetailScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
@@ -67,6 +69,8 @@ export type MainStackParamList = {
   Onboarding: undefined;
   EditProfile: undefined;
   UserProfile: { userId: string };
+  CreatePost: undefined;
+  PostDetail: { postId: string };
   Settings: undefined;
   /**
    * Task 3.2 — Full-screen menu for a business.
@@ -151,6 +155,8 @@ export default function AppNavigator() {
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="UserProfile" component={ProfileScreen} />
+          <MainStack.Screen name="CreatePost" component={CreatePostScreen} />
+          <MainStack.Screen name="PostDetail" component={PostDetailScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />
           <MainStack.Screen name="Menu" component={MenuScreen} />
           <MainStack.Screen name="MenuWebPreview" component={MenuWebPreviewScreen} />

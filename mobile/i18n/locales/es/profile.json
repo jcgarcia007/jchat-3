@@ -6,6 +6,7 @@
     "giftsTab": "Pestaña de regalos",
     "savedTab": "Pestaña de guardados",
     "postThumbnailA11y": "Miniatura de publicación",
+    "openPostA11y": "Abrir publicación",
     "businessLogoA11y": "Logo de {{name}}",
     "noPostsYet": "Aún no hay publicaciones",
     "noPlacesYet": "Aún no hay lugares",
@@ -87,6 +88,7 @@
     "backA11y": "Volver",
     "shareA11y": "Compartir perfil",
     "settingsA11y": "Abrir ajustes",
+    "createPostA11y": "Crear una publicación",
     "moreA11y": "Más acciones del perfil",
     "addBio": "+ Agregar una bio",
     "frequents": "Frecuenta",
@@ -111,7 +113,8 @@
     "ownPlacesSubtitle": "Explora lugares cercanos y comparte los que disfrutas.",
     "otherPlacesTitle": "Aún no tiene lugares",
     "otherPlacesSubtitle": "Los lugares que frecuenta aparecerán aquí.",
-    "exploreMap": "Explorar el mapa"
+    "exploreMap": "Explorar el mapa",
+    "createPost": "Crear publicación"
   },
   "actions": {
     "shareText": "Encuentra a @{{username}} en JChat — https://jchat.cloud",

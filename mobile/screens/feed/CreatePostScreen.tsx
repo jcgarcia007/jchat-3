@@ -3,7 +3,7 @@
  *
  * Flow:
  *  1. User picks photos from gallery or takes one with the camera.
- *  2. Writes a caption (≤ 500 chars) and an optional manual geotag.
+ *  2. Writes a caption (≤ 2200 chars) and an optional manual place label.
  *  3. Taps "Post": each image is read as an ArrayBuffer and uploaded via
  *     `uploadPostMedia`; then `createPost` is called with the resulting URLs.
  *  4. On success the screen pops back (the post surfaces in the profile grid
@@ -33,19 +33,20 @@ import {
   SafeAreaView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { IconPhoto, IconCamera, IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
-import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
-import { createPost, uploadPostMedia } from '../../services/posts';
+import { createPost, removePostMedia, uploadPostMedia } from '../../services/posts';
 
 // ── constants ───────────────────────────────────────────────────────────────
 
-const CAPTION_LIMIT = 500;
-const MAX_IMAGES = 10;
+const CAPTION_LIMIT = 2200;
+const MAX_IMAGES = 4;
 const THUMB_SIZE = 84;
 
 // ── types ────────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ interface SelectedAsset {
   key: string;
   /** expo-image-picker local URI (file:// or ph://). */
   uri: string;
+  mimeType: string;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -85,8 +87,10 @@ async function requestCameraPermission(title: string, message: string): Promise<
  * portable option across Hermes and JSI without native modules.
  */
 async function uriToArrayBuffer(uri: string): Promise<ArrayBuffer> {
-  const response = await fetch(uri);
-  return response.arrayBuffer();
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return decode(base64);
 }
 
 // ── component ────────────────────────────────────────────────────────────────
@@ -102,13 +106,15 @@ export default function CreatePostScreen() {
   // PRIVACY: geotag is manual text only — never GPS.
   const [geotag, setGeotag] = useState('');
   const [posting, setPosting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
 
   // ── derived state ──────────────────────────────────────────────────────────
 
   const captionLength = caption.length;
   const overLimit = captionLength > CAPTION_LIMIT;
-  const hasContent = assets.length > 0 || caption.trim().length > 0 || geotag.trim().length > 0;
-  const canPost = !overLimit && hasContent && !posting;
+  const hasDraft = assets.length > 0 || caption.trim().length > 0 || geotag.trim().length > 0;
+  const hasPublishableContent = assets.length > 0 || caption.trim().length > 0;
+  const canPost = !overLimit && hasPublishableContent && !posting;
 
   // ── image picking ──────────────────────────────────────────────────────────
 
@@ -128,6 +134,7 @@ export default function CreatePostScreen() {
       selectionLimit: remaining,
       quality: 0.85,
       allowsEditing: false,
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
     if (result.canceled) return;
@@ -135,6 +142,7 @@ export default function CreatePostScreen() {
     const newAssets: SelectedAsset[] = result.assets.map((a) => ({
       key: `${a.uri}-${Date.now()}-${Math.random()}`,
       uri: a.uri,
+      mimeType: a.mimeType ?? 'image/jpeg',
     }));
     setAssets((prev) => [...prev, ...newAssets].slice(0, MAX_IMAGES));
   }, [assets.length, t]);
@@ -158,7 +166,7 @@ export default function CreatePostScreen() {
 
     const a = result.assets[0];
     setAssets((prev) =>
-      [...prev, { key: `${a.uri}-${Date.now()}`, uri: a.uri }].slice(0, MAX_IMAGES),
+      [...prev, { key: `${a.uri}-${Date.now()}`, uri: a.uri, mimeType: a.mimeType ?? 'image/jpeg' }].slice(0, MAX_IMAGES),
     );
   }, [assets.length, t]);
 
@@ -169,7 +177,7 @@ export default function CreatePostScreen() {
   // ── discard guard ──────────────────────────────────────────────────────────
 
   const handleCancel = useCallback(() => {
-    if (!hasContent) {
+    if (!hasDraft) {
       navigation.goBack();
       return;
     }
@@ -185,7 +193,7 @@ export default function CreatePostScreen() {
         },
       ],
     );
-  }, [hasContent, navigation, t]);
+  }, [hasDraft, navigation, t]);
 
   // ── submit ─────────────────────────────────────────────────────────────────
 
@@ -197,22 +205,33 @@ export default function CreatePostScreen() {
     }
 
     setPosting(true);
+    setUploadProgress({ done: 0, total: assets.length });
+    const mediaUrls: string[] = [];
     try {
-      // Upload each selected image and collect the resulting public URLs.
-      const mediaUrls: string[] = await Promise.all(
-        assets.map(async (asset) => {
+      for (const asset of assets) {
+        try {
           const buffer = await uriToArrayBuffer(asset.uri);
-          return uploadPostMedia(user.id, asset.uri, buffer, 'image/jpeg');
-        }),
-      );
+          mediaUrls.push(await uploadPostMedia(user.id, asset.uri, buffer, asset.mimeType));
+          setUploadProgress((value) => ({ ...value, done: value.done + 1 }));
+        } catch (uploadError) {
+          await removePostMedia(mediaUrls).catch(() => undefined);
+          Alert.alert(t('create.uploadFailedTitle'), t('create.uploadFailedMessage'));
+          return;
+        }
+      }
 
-      await createPost({
-        userId: user.id,
-        caption: caption.trim() || undefined,
-        mediaUrls,
-        // PRIVACY: geotag is manual text only — never GPS.
-        geotag: geotag.trim() || undefined,
-      });
+      try {
+        await createPost({
+          userId: user.id,
+          caption: caption.trim() || undefined,
+          mediaUrls,
+          // PRIVACY: geotag is manual text only — never GPS.
+          geotag: geotag.trim() || undefined,
+        });
+      } catch (createError) {
+        await removePostMedia(mediaUrls).catch(() => undefined);
+        throw createError;
+      }
 
       navigation.goBack();
     } catch (err) {
@@ -220,6 +239,7 @@ export default function CreatePostScreen() {
       Alert.alert(t('create.couldNotPost'), message);
     } finally {
       setPosting(false);
+      setUploadProgress({ done: 0, total: 0 });
     }
   }, [canPost, user, assets, caption, geotag, navigation, t]);
 
@@ -253,13 +273,13 @@ export default function CreatePostScreen() {
           accessibilityLabel={t('create.postA11y')}
         >
           {posting ? (
-            <ActivityIndicator size="small" color={palette.brand} />
+            <ActivityIndicator size="small" color={c.brand} />
           ) : (
             <Text
               style={[
                 styles.headerAction,
                 styles.headerActionPost,
-                { color: canPost ? palette.brand : c.textTertiary },
+                { color: canPost ? c.brand : c.textTertiary },
               ]}
             >
               {t('create.post')}
@@ -318,7 +338,7 @@ export default function CreatePostScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('create.galleryA11y')}
             >
-              <IconPhoto size={22} color={palette.brand} strokeWidth={1.8} />
+              <IconPhoto size={22} color={c.brand} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
                 {t('create.gallery')}
               </Text>
@@ -331,12 +351,23 @@ export default function CreatePostScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('create.cameraA11y')}
             >
-              <IconCamera size={22} color={palette.brand} strokeWidth={1.8} />
+              <IconCamera size={22} color={c.brand} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
                 {t('create.camera')}
               </Text>
             </TouchableOpacity>
           </View>
+
+          {posting && uploadProgress.total > 0 ? (
+            <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: uploadProgress.total, now: uploadProgress.done }}>
+              <Text style={[styles.progressText, { color: c.textSecondary }]}>
+                {t('create.uploadProgress', uploadProgress)}
+              </Text>
+              <View style={[styles.progressTrack, { backgroundColor: c.borderSubtle }]}>
+                <View style={[styles.progressFill, { backgroundColor: c.brand, width: `${(uploadProgress.done / uploadProgress.total) * 100}%` }]} />
+              </View>
+            </View>
+          ) : null}
 
           {/* ── Caption ───────────────────────────────────────────────────── */}
           <View style={[styles.fieldCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -356,7 +387,7 @@ export default function CreatePostScreen() {
             <Text
               style={[
                 styles.counter,
-                { color: overLimit ? palette.danger : c.textTertiary },
+                { color: overLimit ? c.danger : c.textTertiary },
               ]}
             >
               {captionLength}/{CAPTION_LIMIT}
@@ -486,6 +517,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  progressText: { fontSize: 12, marginBottom: 6 },
+  progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: 4, borderRadius: 2 },
 
   // Field cards
   fieldCard: {

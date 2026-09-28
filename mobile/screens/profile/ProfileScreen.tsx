@@ -3,7 +3,7 @@ import {
   Alert, Animated, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView,
   Share, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,17 +62,17 @@ function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: n
   );
 }
 
-function PostCell({ post, theme }: { post: PostRow; theme: ProfileTheme }) {
+function PostCell({ post, theme, onPress }: { post: PostRow; theme: ProfileTheme; onPress: () => void }) {
   const { t } = useTranslation('profile');
   const media = post.media_urls?.[0];
   return (
-    <View style={[styles.postCell, { backgroundColor: theme.cellColors[0] }]}>
+    <TouchableOpacity style={[styles.postCell, { backgroundColor: theme.cellColors[0] }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={t('view.openPostA11y')}>
       {media ? <Image source={{ uri: media }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('view.postThumbnailA11y')} /> : (
         <View style={[StyleSheet.absoluteFill, styles.postTextWrap, { backgroundColor: theme.cellColors[1] }]}>
           <Text style={[styles.postText, { color: theme.bodyText }]} numberOfLines={4}>{post.caption ?? ''}</Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -127,6 +127,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [reportVisible, setReportVisible] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   const { isFollowing, isPending, loading: followLoading, follow, unfollow } = useFollowSystem(isOwnProfile ? null : targetId);
   const theme = getProfileTheme(profile?.profile_theme_id ?? 1);
@@ -160,7 +161,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     }
   }, [authUser?.id, isOwnProfile, t, targetId]);
 
-  useEffect(() => { void loadProfile(); }, [loadProfile]);
+  useFocusEffect(useCallback(() => {
+    void loadProfile(hasLoadedRef.current).finally(() => { hasLoadedRef.current = true; });
+  }, [loadProfile]));
 
   const sortedPlaces = useMemo(
     () => [...places].sort((a, b) => {
@@ -241,9 +244,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   }
 
   const renderPosts = () => posts.length ? (
-    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} />)}</View>
+    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
-    <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} theme={theme} />
+    <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} theme={theme} />
   );
 
   const renderPlaces = () => sortedPlaces.length ? (
@@ -265,13 +268,13 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile(true)} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader
-          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
-          bio={profile.bio} isVerified={profile.is_verified} postCount={posts.length} followerCount={counts.followers}
+          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} coverUrl={profile.cover_url}
+          bio={profile.bio} city={profile.city} isVerified={profile.is_verified} postCount={posts.length} followerCount={counts.followers}
           followingCount={counts.following} placeCount={places.length} frequentPlaces={frequentPlaces} commonPlaces={commonPlaces}
           isFollowing={isFollowing} isPending={isPending} followLoading={followLoading}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasCheckIn: places.length > 0 }}
           topInset={insets.top} onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
-          onSettings={() => navigation.navigate('Settings')} onEditProfile={() => navigation.navigate('EditProfile')} onOpenMap={openMap}
+          onSettings={() => navigation.navigate('Settings')} onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')} onOpenMap={openMap}
           onOpenPlaces={() => setActiveTab('places')} onFollow={() => void handleFollow()} onUnfollow={() => void handleUnfollow()}
           onMessage={() => void openMessage()} theme={theme}
         />

@@ -18,8 +18,6 @@
  *   5. Save: updates the `users` table row and navigates back.
  *   6. Cancel: Alert confirm if unsaved changes, then goBack().
  *
- * TODO(schema): add `city` text column to the users table.
- * TODO(schema): add `cover_url` text column to the users table.
  */
 
 import React, {
@@ -51,7 +49,6 @@ import {
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
-  IconLogout,
   IconPalette,
   IconUser,
   IconX,
@@ -94,7 +91,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   const c = useThemeColors();
   const { t } = useTranslation('profile');
   const navigation = useNavigation();
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser } = useAuth();
 
   // ── Local form state ──────────────────────────────────────────────────────
 
@@ -107,7 +104,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
-  const [city, setCity] = useState(''); // TODO(schema): city column
+  const [city, setCity] = useState('');
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [profileThemeId, setProfileThemeId] = useState(1);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -146,6 +143,8 @@ export default function EditProfileScreen(): React.JSX.Element {
           language: row.language,
           profile_theme_id: row.profile_theme_id,
           avatar_url: row.avatar_url ?? null,
+          cover_url: row.cover_url ?? null,
+          city: row.city ?? '',
         };
 
         setDisplayName(row.display_name ?? '');
@@ -154,7 +153,8 @@ export default function EditProfileScreen(): React.JSX.Element {
         setLanguage((row.language as LanguageCode) ?? 'en');
         setProfileThemeId(row.profile_theme_id ?? 1);
         setAvatarUri(row.avatar_url ?? null);
-        // TODO(schema): load cover_url once the column exists
+        setCoverUri(row.cover_url ?? null);
+        setCity(row.city ?? '');
       } catch {
         // Silently fall through; fields stay blank
       } finally {
@@ -242,6 +242,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
     if (!result.canceled && result.assets.length > 0) {
@@ -258,6 +259,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.85,
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
     if (!result.canceled && result.assets.length > 0) {
@@ -273,25 +275,13 @@ export default function EditProfileScreen(): React.JSX.Element {
       displayName !== (o.display_name ?? '') ||
       username !== (o.username ?? '') ||
       bio !== (o.bio ?? '') ||
+      city !== (o.city ?? '') ||
       language !== (o.language ?? 'en') ||
       profileThemeId !== (o.profile_theme_id ?? 1) ||
       avatarUri !== (o.avatar_url ?? null) ||
-      coverUri !== null // cover is always "new" if set
+      coverUri !== (o.cover_url ?? null)
     );
   }
-
-  // ── Logout handler ────────────────────────────────────────────────────────
-
-  const handleLogout = useCallback(() => {
-    Alert.alert(
-      t('edit.logoutConfirmTitle'),
-      t('edit.logoutConfirmMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        { text: t('edit.logoutConfirmButton'), style: 'destructive', onPress: () => { void signOut(); } },
-      ],
-    );
-  }, [signOut, t]);
 
   // ── Cancel handler ────────────────────────────────────────────────────────
 
@@ -340,9 +330,10 @@ export default function EditProfileScreen(): React.JSX.Element {
         finalAvatarUrl = await uploadImage(authUser.id, avatarUri, AVATAR_BUCKET);
       }
 
-      // Upload cover if set
-      let finalCoverUrl: string | null = null;
-      if (coverUri) {
+      // Upload the cover only when the user selected a different local image.
+      let finalCoverUrl = coverUri;
+      const originalCover = originalRef.current.cover_url ?? null;
+      if (coverUri && coverUri !== originalCover) {
         finalCoverUrl = await uploadImage(authUser.id, coverUri, COVER_BUCKET);
       }
 
@@ -359,18 +350,10 @@ export default function EditProfileScreen(): React.JSX.Element {
         language,
         profile_theme_id: profileThemeId,
         avatar_url: finalAvatarUrl,
+        cover_url: finalCoverUrl,
+        city: city.trim() || null,
         updated_at: new Date().toISOString(),
-        // TODO(schema): uncomment once columns are added to users table:
-        // city: city.trim() || null,
-        // cover_url: finalCoverUrl,
       };
-
-      // Only include cover_url if we have one (avoids touching the column if it doesn't exist yet)
-      if (finalCoverUrl) {
-        // TODO(schema): enable this line once cover_url column exists
-        // updates.cover_url = finalCoverUrl;
-        void finalCoverUrl; // suppress unused warning until schema is ready
-      }
 
       const { error } = await supabase
         .from('users')
@@ -422,7 +405,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="large" color={palette.brand} />
+        <ActivityIndicator size="large" color={c.brand} />
       </View>
     );
   }
@@ -455,9 +438,9 @@ export default function EditProfileScreen(): React.JSX.Element {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator size="small" color={palette.brand} />
+            <ActivityIndicator size="small" color={c.brand} />
           ) : (
-            <Text style={[styles.saveText, { color: palette.brand }]}>{t('actions.save', { ns: 'common' })}</Text>
+            <Text style={[styles.saveText, { color: c.brand }]}>{t('actions.save', { ns: 'common' })}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -489,7 +472,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                   accessibilityLabel={t('edit.coverPreviewA11y')}
                 />
               ) : null}
-              <View style={styles.coverOverlay}>
+              <View style={[styles.coverOverlay, { backgroundColor: c.scrim }]}>
                 <View style={[styles.cameraChip, { backgroundColor: c.bgOverlay }]}>
                   <IconCamera size={16} color={c.textPrimary} />
                   <Text style={[styles.cameraLabel, { color: c.textPrimary }]}>
@@ -612,7 +595,6 @@ export default function EditProfileScreen(): React.JSX.Element {
 
             {/* City */}
             <View style={styles.fieldGroup}>
-              {/* TODO(schema): city column not yet in users table */}
               <Text style={[styles.label, { color: c.textSecondary }]}>
                 {t('edit.cityLabel')}
               </Text>
@@ -651,10 +633,10 @@ export default function EditProfileScreen(): React.JSX.Element {
                         styles.langChip,
                         {
                           backgroundColor: isSelected
-                            ? palette.brand
+                            ? c.brand
                             : c.bgSurface,
                           borderColor: isSelected
-                            ? palette.brand
+                            ? c.brand
                             : c.borderSubtle,
                         },
                       ]}
@@ -667,7 +649,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                           styles.langLabel,
                           {
                             color: isSelected
-                              ? '#ffffff'
+                              ? selectedTheme.btn1Color
                               : c.textPrimary,
                           },
                         ]}
@@ -712,18 +694,6 @@ export default function EditProfileScreen(): React.JSX.Element {
               </TouchableOpacity>
             </View>
 
-            {/* Log Out */}
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={[styles.logoutBtn, { borderColor: palette.danger }]}
-              accessibilityRole="button"
-              accessibilityLabel={t('edit.logOutA11y')}
-              disabled={saving}
-            >
-              <IconLogout size={18} color={palette.danger} />
-              <Text style={[styles.logoutLabel, { color: palette.danger }]}>{t('edit.logOut')}</Text>
-            </TouchableOpacity>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -747,7 +717,7 @@ export default function EditProfileScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel={t('edit.closeThemePickerA11y')}
             >
-              <IconCheck size={22} color={palette.brand} />
+              <IconCheck size={22} color={c.brand} />
             </TouchableOpacity>
           </View>
 
@@ -879,7 +849,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   cameraChip: {
     flexDirection: 'row',
@@ -1038,11 +1007,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 40,
   },
-
-  // ── Log Out button ────────────────────────────────────────────────────────
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 13, borderRadius: 10, borderWidth: 1, marginTop: 4,
-  },
-  logoutLabel: { fontSize: 15, fontWeight: '600' },
 });

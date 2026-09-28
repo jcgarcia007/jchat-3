@@ -21,7 +21,9 @@ export interface UserRow {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
   bio: string | null;
+  city: string | null;
   profile_theme_id: number;
   is_incognito: boolean;
   is_verified: boolean;
@@ -41,7 +43,9 @@ export interface PublicProfileRow {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
   bio: string | null;
+  city: string | null;
   profile_theme_id: number;
   is_verified: boolean;
   created_at: string;
@@ -119,7 +123,7 @@ export async function getPublicProfile(
 ): Promise<PublicProfileRow | null> {
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, username, display_name, avatar_url, bio, profile_theme_id, is_verified, created_at')
+    .select('id, username, display_name, avatar_url, cover_url, bio, city, profile_theme_id, is_verified, created_at')
     .eq('id', userId)
     .single();
 
