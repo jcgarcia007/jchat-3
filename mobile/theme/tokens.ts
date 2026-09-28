@@ -15,6 +15,8 @@ export const palette = {
   warning: '#f59e0b',
   danger: '#ef4444',
   gold: '#D97706',
+  /** Modal/backdrop scrim — intentionally dark in both color schemes. */
+  scrim: 'rgba(0,0,0,0.72)',
 
   // 1.2 Dark Mode Surface Colors
   bgBase: '#0f0f11',

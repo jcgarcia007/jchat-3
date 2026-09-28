@@ -21,6 +21,7 @@ const shared = {
   warning: palette.warning,
   danger: palette.danger,
   gold: palette.gold,
+  scrim: palette.scrim,
 
   // Map + heatmap colors are explicitly named per scheme in the Design System,
   // so they are not remapped — exposed as-is for the map layers.

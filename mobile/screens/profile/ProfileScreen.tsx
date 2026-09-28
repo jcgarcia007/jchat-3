@@ -162,9 +162,19 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   useEffect(() => { void loadProfile(); }, [loadProfile]);
 
-  const frequentPlaces = useMemo(
-    () => [...places].sort((a, b) => b.visitCount - a.visitCount).slice(0, 2),
+  const sortedPlaces = useMemo(
+    () => [...places].sort((a, b) => {
+      const visitDifference = b.visitCount - a.visitCount;
+      return visitDifference !== 0
+        ? visitDifference
+        : a.businessName.localeCompare(b.businessName);
+    }),
     [places],
+  );
+
+  const frequentPlaces = useMemo(
+    () => sortedPlaces.slice(0, 2),
+    [sortedPlaces],
   );
   const commonPlaces = useMemo(() => {
     if (isOwnProfile) return [];
@@ -236,8 +246,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} theme={theme} />
   );
 
-  const renderPlaces = () => places.length ? (
-    <FlatList data={places} scrollEnabled={false} keyExtractor={(item) => item.businessId} contentContainerStyle={styles.placesList} renderItem={({ item }) => (
+  const renderPlaces = () => sortedPlaces.length ? (
+    <FlatList data={sortedPlaces} scrollEnabled={false} keyExtractor={(item) => item.businessId} contentContainerStyle={styles.placesList} renderItem={({ item }) => (
       <View style={[styles.placeRow, { borderBottomColor: theme.statsBorder }]}>
         {item.businessLogoUrl ? <Image source={{ uri: item.businessLogoUrl }} style={[styles.placeLogo, { backgroundColor: theme.btn2Bg }]} /> : <View style={[styles.placeLogo, styles.placeFallback, { backgroundColor: theme.btn1Bg }]}><IconMapPin size={18} color={theme.btn1Color} /></View>}
         <View style={styles.placeCopy}><Text style={[styles.placeName, { color: theme.bodyText }]}>{item.businessName}</Text>{item.businessCategory || item.businessCity ? <Text style={[styles.placeMeta, { color: theme.bodyTextSecondary }]}>{[item.businessCategory, item.businessCity].filter(Boolean).join(' · ')}</Text> : null}</View>
@@ -286,7 +296,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       </ScrollView>
 
       <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.bgBase }]} onPress={() => setMenuVisible(false)} />
+        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
           <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>@{profile.username}</Text>
@@ -298,7 +308,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       </Modal>
 
       <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.bgBase }]} onPress={() => setReportVisible(false)} />
+        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setReportVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
           <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>{t('report.title')}</Text>
@@ -323,7 +333,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { marginTop: 7, textAlign: 'center', fontSize: 14, lineHeight: 20 }, emptyAction: { marginTop: 18, minHeight: 44, borderRadius: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }, emptyActionText: { fontSize: 14, fontWeight: '700' },
   placesList: { paddingHorizontal: 16 }, placeRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, placeLogo: { width: 46, height: 46, borderRadius: 13 }, placeFallback: { alignItems: 'center', justifyContent: 'center' },
   placeCopy: { flex: 1, gap: 3 }, placeName: { fontSize: 15, fontWeight: '700' }, placeMeta: { fontSize: 12 },
-  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.72 }, sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopWidth: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingBottom: 30 },
+  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }, sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopWidth: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingBottom: 30 },
   sheetHandleWrap: { height: 28, alignItems: 'center', justifyContent: 'center' }, sheetHandle: { width: 42, height: 5, borderRadius: 3 }, sheetTitle: { fontSize: 17, fontWeight: '800', paddingBottom: 10 },
   sheetRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, sheetRowText: { flex: 1, fontSize: 15, fontWeight: '600' },
 });
