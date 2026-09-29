@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconMap, IconSatellite, IconMountain, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -113,7 +113,6 @@ interface StyleOption {
 const STYLE_OPTIONS: StyleOption[] = [
   { variant: 'normal', Icon: IconMap },
   { variant: 'satellite', Icon: IconSatellite },
-  { variant: 'terrain', Icon: IconMountain },
 ];
 
 export default function MapScreen() {
@@ -124,7 +123,6 @@ export default function MapScreen() {
   const styleLabels: Record<MapStyleVariant, string> = {
     normal: t('mapScreen.styleNormal'),
     satellite: t('mapScreen.styleSatellite'),
-    terrain: t('mapScreen.styleTerrain'),
   };
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<MapNav>();
@@ -186,7 +184,7 @@ export default function MapScreen() {
       const { data } = await supabase
         .from('businesses')
         .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours, slug')
-        .in('status', ['pending', 'verified']);
+        .eq('status', 'verified');
       if (!active) return;
       const rows = (data ?? []) as Array<Partial<MapBusiness>>;
       setBusinesses(

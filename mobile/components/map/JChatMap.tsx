@@ -9,7 +9,6 @@
  * mapStyleVariant:
  *   - "normal"    → default provider style
  *   - "satellite" → satellite imagery
- *   - "terrain"   → terrain view
  *
  * DEFERRED: custom pastel/dark JSON styles (Google-Maps-only, needs customMapStyle).
  * See HeatmapLayer.tsx comment for context.
@@ -28,7 +27,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 // Map style variant type
 // ---------------------------------------------------------------------------
 
-export type MapStyleVariant = 'satellite' | 'terrain' | 'normal';
+export type MapStyleVariant = 'satellite' | 'normal';
 
 // ---------------------------------------------------------------------------
 // Helper: resolve mapType from variant
@@ -42,8 +41,6 @@ export function resolveMapConfig(variant: MapStyleVariant): ResolvedMapConfig {
   switch (variant) {
     case 'satellite':
       return { mapType: 'satellite' };
-    case 'terrain':
-      return { mapType: 'terrain' };
     case 'normal':
     default:
       return { mapType: 'standard' };
@@ -73,7 +70,7 @@ export interface JChatMapProps
  *
  * Android uses PROVIDER_GOOGLE explicitly (key injected via app.config.ts).
  * iOS omits the provider, which defaults to Apple Maps.
- * Pass `mapStyleVariant` to switch between normal / satellite / terrain.
+ * Pass `mapStyleVariant` to switch between normal / satellite.
  * All other MapView props are forwarded transparently.
  */
 const JChatMap = forwardRef<MapView, JChatMapProps>(

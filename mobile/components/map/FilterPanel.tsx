@@ -9,9 +9,7 @@
  *   - Results count badge — "{N} places near you".
  *   - Advanced filter sheet — slides up from bottom via RN Modal + Animated.
  *       • Distance: segmented selector (1 / 2 / 5 / 10 km) — no slider lib needed.
- *       • Minimum rating: 1–5 star stepper.
  *       • Category multi-select (same set as chips, extended).
- *       • Minimum active users stepper.
  *   - Reset filters button — visible only when any filter differs from defaultFilters.
  *   - Emits MapFilters via onChange on every change.
  *
@@ -41,9 +39,6 @@ import {
   IconCalendarEvent,
   IconClock,
   IconSearch,
-  IconStar,
-  IconStarFilled,
-  IconUsers,
   IconX,
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
@@ -133,15 +128,6 @@ function hasActiveFilters(f: MapFilters): boolean {
     f.minActiveUsers !== defaultFilters.minActiveUsers ||
     f.searchQuery.trim() !== ''
   );
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-/** A single star icon for the rating stepper. */
-function StarIcon({ filled, size, c }: { filled: boolean; size: number; c: ReturnType<typeof useThemeColors> }) {
-  return filled
-    ? <IconStarFilled size={size} color={palette.gold} />
-    : <IconStar size={size} color={c.textTertiary} />;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -429,38 +415,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               </View>
             </View>
 
-            {/* ── Minimum rating ────────────────────────────────────────────── */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                {t('filterPanel.minRatingSectionLabel')}
-              </Text>
-              <View style={styles.ratingStepperRow}>
-                {[0, 1, 2, 3, 4, 5].map((n) => (
-                  <Pressable
-                    key={n}
-                    onPress={() => setDraft((d) => ({ ...d, minRating: n }))}
-                    style={({ pressed }) => [styles.starBtn, { opacity: pressed ? 0.7 : 1 }]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: draft.minRating === n }}
-                    accessibilityLabel={n === 0 ? t('filterPanel.anyRating') : t('filterPanel.starsMinimum', { count: n })}
-                  >
-                    {n === 0 ? (
-                      <Text style={[
-                        styles.anyRatingLabel,
-                        {
-                          color: draft.minRating === 0 ? palette.brand : c.textTertiary,
-                          fontWeight: draft.minRating === 0 ? '700' : '400',
-                        },
-                      ]}>
-                        {t('filterPanel.any')}
-                      </Text>
-                    ) : (
-                      <StarIcon filled={n <= draft.minRating} size={26} c={c} />
-                    )}
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+            {/* TODO(rating): Reactivate this control when business rating data is available. */}
 
             {/* ── Category multi-select ─────────────────────────────────────── */}
             <View style={styles.section}>
@@ -496,57 +451,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
               </View>
             </View>
 
-            {/* ── Minimum active users ──────────────────────────────────────── */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                {t('filterPanel.minActiveUsersSectionLabel')}
-              </Text>
-              <View style={styles.stepperRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepperBtn,
-                    {
-                      backgroundColor: c.bgElevated,
-                      borderColor: c.borderSubtle,
-                      opacity: pressed || draft.minActiveUsers === 0 ? 0.4 : 1,
-                    },
-                  ]}
-                  onPress={() =>
-                    setDraft((d) => ({ ...d, minActiveUsers: Math.max(0, d.minActiveUsers - 1) }))
-                  }
-                  disabled={draft.minActiveUsers === 0}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('filterPanel.decreaseActiveUsersA11y')}
-                >
-                  <Text style={[styles.stepperSymbol, { color: c.textPrimary }]}>−</Text>
-                </Pressable>
-
-                <View style={styles.stepperValueWrap}>
-                  <IconUsers size={14} color={c.textSecondary} style={styles.stepperIcon} />
-                  <Text style={[styles.stepperValue, { color: c.textPrimary }]}>
-                    {draft.minActiveUsers === 0 ? t('filterPanel.any') : String(draft.minActiveUsers)}
-                  </Text>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepperBtn,
-                    {
-                      backgroundColor: c.bgElevated,
-                      borderColor: c.borderSubtle,
-                      opacity: pressed ? 0.4 : 1,
-                    },
-                  ]}
-                  onPress={() =>
-                    setDraft((d) => ({ ...d, minActiveUsers: d.minActiveUsers + 1 }))
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={t('filterPanel.increaseActiveUsersA11y')}
-                >
-                  <Text style={[styles.stepperSymbol, { color: c.textPrimary }]}>+</Text>
-                </Pressable>
-              </View>
-            </View>
+            {/* TODO(presence): Reactivate this control when live presence data is available. */}
 
             {/* ── Open now toggle ───────────────────────────────────────────── */}
             <View style={[styles.section, styles.openNowRow]}>
@@ -774,22 +679,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Star rating stepper
-  ratingStepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  starBtn: {
-    padding: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 34,
-  },
-  anyRatingLabel: {
-    fontSize: 13,
-  },
-
   // Category multi-select chips
   categoryGrid: {
     flexDirection: 'row',
@@ -805,40 +694,6 @@ const styles = StyleSheet.create({
   categoryChipLabel: {
     fontSize: 13,
     fontWeight: '500',
-  },
-
-  // Active users stepper
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  stepperBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperSymbol: {
-    fontSize: 20,
-    fontWeight: '300',
-    lineHeight: 22,
-  },
-  stepperValueWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  stepperIcon: {
-    // color applied inline
-  },
-  stepperValue: {
-    fontSize: 15,
-    fontWeight: '600',
   },
 
   // Open now toggle row
