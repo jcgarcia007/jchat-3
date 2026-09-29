@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { useColorScheme } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import {
@@ -50,6 +51,7 @@ const ICON_SIZE = 24;
 // ---------------------------------------------------------------------------
 
 export default function BottomTabs() {
+  const { t } = useTranslation('common');
   const scheme = useColorScheme();
   const c = getColors(scheme);
 
@@ -74,6 +76,7 @@ export default function BottomTabs() {
         name="Map"
         component={MapScreen}
         options={{
+          tabBarLabel: t('tabs.map'),
           tabBarIcon: ({ color }) => (
             <IconMap size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
@@ -83,6 +86,7 @@ export default function BottomTabs() {
         name="Nearby"
         component={NearbyScreen}
         options={{
+          tabBarLabel: t('tabs.nearby'),
           tabBarIcon: ({ color }) => (
             <IconBuildingStore size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
@@ -92,6 +96,7 @@ export default function BottomTabs() {
         name="DMs"
         component={DMStack}
         options={{
+          tabBarLabel: t('tabs.dms'),
           tabBarIcon: ({ color }) => (
             <IconMessage size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
@@ -103,6 +108,7 @@ export default function BottomTabs() {
         name="Friends"
         component={FriendsScreen}
         options={{
+          tabBarLabel: t('tabs.friends'),
           tabBarIcon: ({ color }) => (
             <IconUsers size={ICON_SIZE} color={color} strokeWidth={2} />
           ),
@@ -112,6 +118,7 @@ export default function BottomTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ({ color }) => (
             <IconUser size={ICON_SIZE} color={color} strokeWidth={2} />
           ),

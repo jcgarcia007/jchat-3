@@ -14,6 +14,13 @@
     "error": "Something went wrong",
     "empty": "Nothing here yet"
   },
+  "tabs": {
+    "map": "Map",
+    "nearby": "Nearby",
+    "dms": "DMs",
+    "friends": "Friends",
+    "profile": "Profile"
+  },
   "language": {
     "en": "English",
     "es": "Spanish"
