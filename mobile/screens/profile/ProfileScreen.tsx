@@ -15,6 +15,7 @@ import {
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
 import { getPublicProfile, getFollowerCount, getFollowingCount, reportUser } from '../../services/users';
@@ -91,7 +92,7 @@ function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: Profil
       )}
       {hasMultiplePhotos ? (
         <View style={styles.multiPhotoBadge}>
-          <IconStack2 size={15} color="#ffffff" strokeWidth={2.2} />
+          <IconStack2 size={15} color={palette.textPrimary} strokeWidth={2.2} />
         </View>
       ) : null}
     </TouchableOpacity>
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
   tabs: { marginTop: 20, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth }, tab: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   tabLabel: { fontSize: 12, fontWeight: '700' }, tabUnderline: { position: 'absolute', height: 3, left: 18, right: 18, bottom: 0, borderRadius: 2 }, tabContent: { minHeight: 300 },
   postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
-  multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
+  multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
   emptySubtitle: { marginTop: 7, textAlign: 'center', fontSize: 14, lineHeight: 20 }, emptyAction: { marginTop: 18, minHeight: 44, borderRadius: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }, emptyActionText: { fontSize: 14, fontWeight: '700' },
   placesList: { paddingHorizontal: 16 }, placeRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth }, placeLogo: { width: 46, height: 46, borderRadius: 13 }, placeFallback: { alignItems: 'center', justifyContent: 'center' },
