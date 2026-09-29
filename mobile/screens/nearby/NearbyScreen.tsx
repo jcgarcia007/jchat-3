@@ -33,6 +33,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconBuildingStore,
   IconMapPin,
@@ -222,7 +223,7 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
   const { data: businesses, error } = await supabase
     .from('businesses')
     .select('id, name, slug, category, address, icon_emoji, hours')
-    .in('status', ['pending', 'verified'])
+    .eq('status', 'verified')
     .order('name');
 
   if (error || !businesses) {
@@ -415,6 +416,7 @@ function CategoryChip({ label, active, onPress }: CategoryChipProps) {
 export default function NearbyScreen() {
   const { t } = useTranslation('nearby');
   const c = useThemeColors();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
@@ -508,7 +510,7 @@ export default function NearbyScreen() {
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: c.borderSubtle }]}>
+      <View style={[styles.header, { borderBottomColor: c.borderSubtle, paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <IconBuildingStore size={22} color={palette.brand} strokeWidth={2} />
           <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
@@ -551,6 +553,11 @@ export default function NearbyScreen() {
           contentContainerStyle={styles.chipsContainer}
           style={[styles.chipsScroll, { borderBottomColor: c.borderSubtle }]}
         >
+          <CategoryChip
+            label={t('allCategories')}
+            active={selectedCategory === null}
+            onPress={() => setSelectedCategory(null)}
+          />
           {categories.map((cat) => (
             <CategoryChip
               key={cat}
@@ -613,7 +620,6 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    paddingTop: 56,
     paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 12,
@@ -649,9 +655,11 @@ const styles = StyleSheet.create({
 
   // Category chips
   chipsScroll: {
+    flexGrow: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   chipsContainer: {
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,

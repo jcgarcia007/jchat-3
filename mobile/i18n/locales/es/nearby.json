@@ -6,6 +6,7 @@
   "activeUsersCount_one": "{{count}} activo",
   "activeUsersCount_other": "{{count}} activos",
   "headerTitle": "Cerca de ti",
+  "allCategories": "Todos",
   "searchPlaceholder": "Buscar locales…",
   "noVenuesTitle": "No hay locales cerca",
   "noResultsTitle": "No se encontraron resultados",
