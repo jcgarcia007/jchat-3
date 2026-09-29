@@ -2,12 +2,9 @@
   "view": {
     "postsTab": "Posts tab",
     "reelsTab": "Reels tab",
-    "placesTab": "Places tab",
-    "giftsTab": "Gifts tab",
     "savedTab": "Saved tab",
     "postThumbnailA11y": "Post thumbnail",
     "openPostA11y": "Open post",
-    "businessLogoA11y": "{{name}} logo",
     "noPostsYet": "No posts yet",
     "noPlacesYet": "No places yet",
     "reelsSoon": "Reels coming soon",
@@ -91,29 +88,13 @@
     "createPostA11y": "Create a post",
     "moreA11y": "More profile actions",
     "addBio": "+ Add a bio",
-    "frequents": "Frequents",
-    "inCommon": "In common",
-    "commonPlace": "You've both been to {{place}}",
-    "commonMore": "and {{count}} more place",
-    "commonMore_other": "and {{count}} more places",
-    "places": "Places",
     "shareProfile": "Share Profile"
-  },
-  "tabs": {
-    "posts": "Posts",
-    "places": "Places",
-    "gifts": "Gifts"
   },
   "empty": {
     "ownPostsTitle": "Share your first moment",
     "ownPostsSubtitle": "Your photos and posts from the places you visit will appear here.",
     "otherPostsTitle": "No posts yet",
     "otherPostsSubtitle": "Their posts will appear here.",
-    "ownPlacesTitle": "Check in somewhere to make it appear here",
-    "ownPlacesSubtitle": "Explore nearby places and share the places you enjoy.",
-    "otherPlacesTitle": "No places yet",
-    "otherPlacesSubtitle": "The places they frequent will appear here.",
-    "exploreMap": "Explore the map",
     "createPost": "Create post"
   },
   "actions": {
@@ -149,11 +130,8 @@
     "error": "This profile action couldn't be completed."
   },
   "completion": {
-    "title": "Complete your profile",
-    "progress": "{{count}} of 3",
-    "photo": "Add a profile photo",
-    "bio": "Add a bio",
-    "checkIn": "Make your first check-in"
+    "summary": "Complete your profile · {{count}} of 3",
+    "dismissA11y": "Dismiss profile completion"
   },
   "themeSelector": {
     "themeOptionA11y": "{{name}} theme",

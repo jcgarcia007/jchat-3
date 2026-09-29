@@ -3,13 +3,11 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TouchableOpacity
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
-  IconArrowLeft, IconCheck, IconCircleCheckFilled, IconCircleDashed, IconDots,
+  IconArrowLeft, IconCircleCheckFilled, IconDots, IconX,
   IconCamera, IconMapPin, IconMessage, IconPencil, IconPlus, IconSettings, IconShare3,
 } from '@tabler/icons-react-native';
 
 import type { ProfileTheme } from '../../theme/profileThemes';
-
-export interface ProfilePlace { businessId: string; businessName: string }
 
 export interface ProfileTopBarProps {
   isOwnProfile: boolean;
@@ -35,17 +33,16 @@ export interface ProfileHeaderProps {
   postCount: number;
   followerCount: number;
   followingCount: number;
-  placeCount: number;
-  frequentPlaces: ProfilePlace[];
-  commonPlaces: ProfilePlace[];
   isFollowing: boolean;
   isPending: boolean;
   followLoading: boolean;
-  completion: { hasPhoto: boolean; hasBio: boolean; hasCheckIn: boolean };
+  completion: { hasPhoto: boolean; hasBio: boolean; hasPost: boolean };
+  completionVisible: boolean;
   onEditProfile: () => void;
   onShare: () => void;
-  onOpenMap: () => void;
-  onOpenPlaces: () => void;
+  onDismissCompletion: () => void;
+  onOpenFollowers: () => void;
+  onOpenFollowing: () => void;
   onFollow: () => void;
   onUnfollow: () => void;
   onMessage: () => void;
@@ -74,16 +71,6 @@ function StatItem({ label, value, theme, onPress }: { label: string; value: numb
   return onPress ? (
     <Pressable style={styles.statItem} onPress={onPress} accessibilityRole="button">{content}</Pressable>
   ) : <View style={styles.statItem}>{content}</View>;
-}
-
-function CompletionStep({ complete, label, onPress, theme }: { complete: boolean; label: string; onPress: () => void; theme: ProfileTheme }) {
-  const Icon = complete ? IconCheck : IconCircleDashed;
-  return (
-    <Pressable style={styles.completionStep} onPress={onPress} disabled={complete} accessibilityRole={complete ? 'text' : 'button'}>
-      <Icon size={19} color={complete ? theme.tabActive : theme.bodyTextSecondary} />
-      <Text style={[styles.completionStepLabel, { color: complete ? theme.bodyTextSecondary : theme.bodyText }]}>{label}</Text>
-    </Pressable>
-  );
 }
 
 /**
@@ -124,16 +111,14 @@ export function ProfileTopBar({
 
 export default function ProfileHeader({
   isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
-  followerCount, followingCount, placeCount, frequentPlaces, commonPlaces,
-  isFollowing, isPending, followLoading, completion, onEditProfile,
-  onShare, onOpenMap, onOpenPlaces,
+  followerCount, followingCount, isFollowing, isPending, followLoading, completion,
+  completionVisible, onEditProfile, onShare, onDismissCompletion, onOpenFollowers, onOpenFollowing,
   onFollow, onUnfollow, onMessage, theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
   const name = displayName?.trim() || username;
   const initials = name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
   const completedCount = Object.values(completion).filter(Boolean).length;
-  const extraFrequent = Math.max(0, placeCount - frequentPlaces.length);
   const followLabel = isPending ? t('header.requested') : isFollowing ? t('header.following') : t('header.follow');
 
   return (
@@ -177,51 +162,38 @@ export default function ProfileHeader({
         ) : null}
       </View>
 
-      {frequentPlaces.length > 0 ? (
-        <View style={styles.frequentRow}>
-          <View style={styles.frequentLabel}><IconMapPin size={17} color={theme.bodyTextSecondary} /><Text style={[styles.eyebrow, { color: theme.bodyTextSecondary }]}>{t('header.frequents')}</Text></View>
-          <View style={styles.chips}>
-            {frequentPlaces.map((place) => (
-              <View key={place.businessId} style={[styles.chip, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
-                <Text style={[styles.chipText, { color: theme.bodyText }]} numberOfLines={1}>{place.businessName}</Text>
-              </View>
-            ))}
-            {extraFrequent > 0 ? <View style={[styles.chip, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}><Text style={[styles.chipText, { color: theme.bodyText }]}>+{extraFrequent}</Text></View> : null}
+      {isOwnProfile && completionVisible && completedCount < 3 ? (
+        <View style={[styles.completionStrip, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
+          <View style={styles.completionCopy}>
+            <Text style={[styles.completionSummary, { color: theme.bodyText }]} numberOfLines={1}>
+              {t('completion.summary', { count: completedCount })}
+            </Text>
+            <View style={[styles.progressTrack, { backgroundColor: theme.statsBorder }]}>
+              <View style={[styles.progressFill, { backgroundColor: theme.tabActive, width: `${(completedCount / 3) * 100}%` }]} />
+            </View>
           </View>
-        </View>
-      ) : null}
-
-      {!isOwnProfile && commonPlaces.length > 0 ? (
-        <View style={[styles.commonCard, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
-          <View style={styles.commonTitleRow}><IconMapPin size={18} color={theme.tabActive} /><Text style={[styles.eyebrow, { color: theme.bodyTextSecondary }]}>{t('header.inCommon')}</Text></View>
-          <Text style={[styles.commonText, { color: theme.bodyText }]}>{t('header.commonPlace', { place: commonPlaces[0].businessName })}{commonPlaces.length > 1 ? ` ${t('header.commonMore', { count: commonPlaces.length - 1 })}` : ''}</Text>
-        </View>
-      ) : null}
-
-      {isOwnProfile && completedCount < 3 ? (
-        <View style={[styles.completionCard, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
-          <View style={styles.completionHeader}><Text style={[styles.completionTitle, { color: theme.bodyText }]}>{t('completion.title')}</Text><Text style={[styles.completionCount, { color: theme.bodyTextSecondary }]}>{t('completion.progress', { count: completedCount })}</Text></View>
-          <View style={[styles.progressTrack, { backgroundColor: theme.statsBorder }]}>
-            <View style={[styles.progressFill, { backgroundColor: theme.tabActive, width: `${(completedCount / 3) * 100}%` }]} />
-          </View>
-          <CompletionStep complete={completion.hasPhoto} label={t('completion.photo')} onPress={onEditProfile} theme={theme} />
-          <CompletionStep complete={completion.hasBio} label={t('completion.bio')} onPress={onEditProfile} theme={theme} />
-          <CompletionStep complete={completion.hasCheckIn} label={t('completion.checkIn')} onPress={onOpenMap} theme={theme} />
+          <Pressable
+            style={styles.completionDismiss}
+            onPress={onDismissCompletion}
+            accessibilityRole="button"
+            accessibilityLabel={t('completion.dismissA11y')}
+          >
+            <IconX size={18} color={theme.bodyTextSecondary} />
+          </Pressable>
         </View>
       ) : null}
 
       <View style={[styles.statsCard, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
         <StatItem label={t('header.posts')} value={postCount} theme={theme} />
-        <StatItem label={t('header.followers')} value={followerCount} theme={theme} />
-        <StatItem label={t('header.following')} value={followingCount} theme={theme} />
-        <StatItem label={t('header.places')} value={placeCount} theme={theme} onPress={onOpenPlaces} />
+        <StatItem label={t('header.followers')} value={followerCount} theme={theme} onPress={onOpenFollowers} />
+        <StatItem label={t('header.following')} value={followingCount} theme={theme} onPress={onOpenFollowing} />
       </View>
 
       <View style={styles.actionRow}>
         {isOwnProfile ? (
           <>
-            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.btn1Bg }]} onPress={onEditProfile} accessibilityRole="button"><IconPencil size={18} color={theme.btn1Color} /><Text style={[styles.buttonLabel, { color: theme.btn1Color }]}>{t('header.editProfile')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.shareProfile')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.editProfile')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.shareProfile')}</Text></TouchableOpacity>
           </>
         ) : (
           <>
@@ -260,29 +232,19 @@ const styles = StyleSheet.create({
   addBio: { marginTop: 9, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   city: { fontSize: 14, lineHeight: 19 },
-  frequentRow: { paddingHorizontal: 20, paddingTop: 16, gap: 9 },
-  frequentLabel: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  chip: { maxWidth: 160, minHeight: 30, justifyContent: 'center', borderWidth: 1, borderRadius: 15, paddingHorizontal: 11 },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  commonCard: { marginHorizontal: 16, marginTop: 16, borderWidth: 1, borderRadius: 16, padding: 14 },
-  commonTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 7 },
-  commonText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   statsCard: { marginHorizontal: 16, marginTop: 18, flexDirection: 'row', borderWidth: 1, borderRadius: 16, paddingVertical: 13 },
   statItem: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', gap: 2 },
   statValue: { fontSize: 18, lineHeight: 22, fontWeight: '800' },
   statLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
   actionRow: { flexDirection: 'row', gap: 9, marginHorizontal: 16, marginTop: 12 },
+  ownActionButton: { flex: 1, height: 36, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   primaryButton: { flex: 1, height: 44, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   secondaryButton: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   buttonLabel: { fontSize: 14, fontWeight: '700' },
-  completionCard: { marginHorizontal: 16, marginTop: 16, borderWidth: 1, borderRadius: 18, padding: 15 },
-  completionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
-  completionTitle: { fontSize: 16, fontWeight: '800' },
-  completionCount: { fontSize: 12, fontWeight: '700' },
-  progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 8 },
-  progressFill: { height: 4, borderRadius: 2 },
-  completionStep: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  completionStepLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  completionStrip: { height: 44, marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
+  completionCopy: { flex: 1, gap: 4 },
+  completionSummary: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
+  completionDismiss: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  progressTrack: { height: 3, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: 3, borderRadius: 2 },
 });

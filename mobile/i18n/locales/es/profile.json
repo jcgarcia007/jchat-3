@@ -2,12 +2,9 @@
   "view": {
     "postsTab": "Pestaña de publicaciones",
     "reelsTab": "Pestaña de reels",
-    "placesTab": "Pestaña de lugares",
-    "giftsTab": "Pestaña de regalos",
     "savedTab": "Pestaña de guardados",
     "postThumbnailA11y": "Miniatura de publicación",
     "openPostA11y": "Abrir publicación",
-    "businessLogoA11y": "Logo de {{name}}",
     "noPostsYet": "Aún no hay publicaciones",
     "noPlacesYet": "Aún no hay lugares",
     "reelsSoon": "Reels próximamente",
@@ -91,29 +88,13 @@
     "createPostA11y": "Crear una publicación",
     "moreA11y": "Más acciones del perfil",
     "addBio": "+ Agregar una bio",
-    "frequents": "Frecuenta",
-    "inCommon": "En común",
-    "commonPlace": "Los dos han estado en {{place}}",
-    "commonMore": "y {{count}} lugar más",
-    "commonMore_other": "y {{count}} lugares más",
-    "places": "Lugares",
     "shareProfile": "Compartir perfil"
-  },
-  "tabs": {
-    "posts": "Publicaciones",
-    "places": "Lugares",
-    "gifts": "Regalos"
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primer momento",
     "ownPostsSubtitle": "Tus fotos y publicaciones en los lugares que visitas aparecerán aquí.",
     "otherPostsTitle": "Aún no ha publicado",
     "otherPostsSubtitle": "Sus publicaciones aparecerán aquí.",
-    "ownPlacesTitle": "Haz check-in en un lugar para que aparezca aquí",
-    "ownPlacesSubtitle": "Explora lugares cercanos y comparte los que disfrutas.",
-    "otherPlacesTitle": "Aún no tiene lugares",
-    "otherPlacesSubtitle": "Los lugares que frecuenta aparecerán aquí.",
-    "exploreMap": "Explorar el mapa",
     "createPost": "Crear publicación"
   },
   "actions": {
@@ -149,11 +130,8 @@
     "error": "No se pudo completar esta acción del perfil."
   },
   "completion": {
-    "title": "Completa tu perfil",
-    "progress": "{{count}} de 3",
-    "photo": "Agregar foto de perfil",
-    "bio": "Agregar una bio",
-    "checkIn": "Hacer tu primer check-in"
+    "summary": "Completa tu perfil · {{count}} de 3",
+    "dismissA11y": "Cerrar progreso del perfil"
   },
   "themeSelector": {
     "themeOptionA11y": "Tema {{name}}",
