@@ -44,6 +44,10 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { getTotalUnread } from '../../services/dms';
 import GlassIconButton from '../../components/navigation/GlassIconButton';
+import NearbySheet, {
+  NEARBY_SHEET_BOTTOM_OFFSET,
+  NEARBY_SHEET_COLLAPSED_HEIGHT,
+} from '../../components/map/NearbySheet';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -374,7 +378,16 @@ export default function MapScreen() {
         </View>
 
         {/* Style switcher — absolute bottom-right */}
-        <View style={[styles.styleSwitcher, { bottom: 112 + insets.bottom, backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+        <View
+          style={[
+            styles.styleSwitcher,
+            {
+              bottom: NEARBY_SHEET_BOTTOM_OFFSET + NEARBY_SHEET_COLLAPSED_HEIGHT + 12 + insets.bottom,
+              backgroundColor: c.bgSurface,
+              borderColor: c.borderSubtle,
+            },
+          ]}
+        >
           {STYLE_OPTIONS.map(({ variant, Icon }, idx) => {
             const isActive = mapVariant === variant;
             return (
@@ -391,6 +404,8 @@ export default function MapScreen() {
           })}
         </View>
       </View>
+
+      <NearbySheet />
 
       {/* Business preview bottom sheet (Task 2.3) */}
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>

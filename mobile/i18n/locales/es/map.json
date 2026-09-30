@@ -7,6 +7,9 @@
     "centerOnLocationA11y": "Centrar en mi ubicación"
   },
   "messagesA11y": "Mensajes, {{count}} sin leer",
+  "nearbyTitle": "Cerca de ti",
+  "nearbySwipe": "Desliza para ver todos",
+  "nearbyEnter": "Entrar",
   "businessPin": {
     "pendingBadge": "Pendiente"
   },

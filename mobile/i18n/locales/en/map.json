@@ -7,6 +7,9 @@
     "centerOnLocationA11y": "Center on my location"
   },
   "messagesA11y": "Messages, {{count}} unread",
+  "nearbyTitle": "Near you",
+  "nearbySwipe": "Swipe to see all",
+  "nearbyEnter": "Enter",
   "businessPin": {
     "pendingBadge": "Pending"
   },

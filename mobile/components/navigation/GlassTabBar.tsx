@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: '600' },
   postButton: {
     position: 'absolute',
-    top: -34,
+    top: -46,
     left: '50%',
     marginLeft: -49,
   },
