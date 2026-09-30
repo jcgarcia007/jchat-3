@@ -12,7 +12,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import MapScreen from '../../screens/map/MapScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
-import GlassTabBar from '../../components/navigation/GlassTabBar';
 
 // ---------------------------------------------------------------------------
 // Param list
@@ -33,7 +32,6 @@ export default function BottomTabs() {
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
-      tabBar={(props) => <GlassTabBar {...props} />}
     >
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

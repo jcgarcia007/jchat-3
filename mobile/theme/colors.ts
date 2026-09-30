@@ -22,8 +22,6 @@ const shared = {
   danger: palette.danger,
   gold: palette.gold,
   scrim: palette.scrim,
-  glassBorder: palette.glassBorder,
-  transparent: palette.transparent,
 
   // Map + heatmap colors are explicitly named per scheme in the Design System,
   // so they are not remapped — exposed as-is for the map layers.
@@ -53,7 +51,6 @@ export const darkColors = {
   textPrimary: palette.textPrimary,
   textSecondary: palette.textSecondary,
   textTertiary: palette.textTertiary,
-  glassBackground: palette.glassDark,
 };
 
 /** All color values widen to `string` so light/dark share one shape. */
@@ -70,7 +67,6 @@ export const lightColors: ThemeColors = {
   textPrimary: palette.textPrimaryLight,
   textSecondary: palette.textSecondaryLight,
   textTertiary: palette.textTertiaryLight,
-  glassBackground: palette.glassLight,
 };
 
 export type ColorScheme = 'light' | 'dark';

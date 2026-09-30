@@ -27,10 +27,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconMap, IconSatellite, IconX, IconPlus, IconMinus, IconCurrentLocation, IconSend } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
@@ -41,13 +41,6 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
-import { useAuth } from '../../context/AuthContext';
-import { getTotalUnread } from '../../services/dms';
-import GlassIconButton from '../../components/navigation/GlassIconButton';
-import NearbySheet, {
-  NEARBY_SHEET_BOTTOM_OFFSET,
-  NEARBY_SHEET_COLLAPSED_HEIGHT,
-} from '../../components/map/NearbySheet';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -133,7 +126,6 @@ export default function MapScreen() {
   };
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<MapNav>();
-  const { user } = useAuth();
   const mapRef = useRef<MapView>(null);
   const isMounted = useRef(true);
 
@@ -151,37 +143,6 @@ export default function MapScreen() {
   const [businesses, setBusinesses] = useState<MapBusiness[]>([]);
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [selected, setSelected] = useState<MapBusiness | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const loadUnread = useCallback(async () => {
-    if (!user?.id) {
-      setUnreadCount(0);
-      return;
-    }
-    try {
-      setUnreadCount(await getTotalUnread(user.id));
-    } catch {
-      setUnreadCount(0);
-    }
-  }, [user?.id]);
-
-  useFocusEffect(useCallback(() => {
-    void loadUnread();
-  }, [loadUnread]));
-
-  useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
-    const channel = supabase
-      .channel(`map_dm_unread_${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'dm_messages' },
-        () => { void loadUnread(); },
-      )
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [loadUnread, user?.id]);
-
   const requestLocation = useCallback(async () => {
     if (!isMounted.current) return;
     setLocationLoading(true);
@@ -334,26 +295,7 @@ export default function MapScreen() {
         )}
 
         {/* Filters (chips + advanced + search) — Task 4.6 */}
-        <View style={styles.filterRow}>
-          <View style={styles.filterPanel}>
-            <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
-          </View>
-          <View style={styles.messagesButtonWrap}>
-            <GlassIconButton
-              accessibilityLabel={t('messagesA11y', { count: unreadCount })}
-              onPress={() => navigation.navigate('DMs', { screen: 'DMInbox' })}
-            >
-              <IconSend size={22} color={c.brand} strokeWidth={2} />
-            </GlassIconButton>
-            {unreadCount > 0 ? (
-              <View style={[styles.unreadBadge, { backgroundColor: c.danger }]}>
-                <Text style={[styles.unreadBadgeText, { color: palette.bgSurfaceLight }]}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
+        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
 
         {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
         <View style={styles.zoomRow} pointerEvents="box-none">
@@ -382,7 +324,7 @@ export default function MapScreen() {
           style={[
             styles.styleSwitcher,
             {
-              bottom: NEARBY_SHEET_BOTTOM_OFFSET + NEARBY_SHEET_COLLAPSED_HEIGHT + 12 + insets.bottom,
+              bottom: 68 + 26 + 12 + insets.bottom,
               backgroundColor: c.bgSurface,
               borderColor: c.borderSubtle,
             },
@@ -404,8 +346,6 @@ export default function MapScreen() {
           })}
         </View>
       </View>
-
-      <NearbySheet />
 
       {/* Business preview bottom sheet (Task 2.3) */}
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
@@ -454,21 +394,6 @@ const styles = StyleSheet.create({
   overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
-  filterRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  filterPanel: { flex: 1 },
-  messagesButtonWrap: { width: 48, height: 48 },
-  unreadBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadBadgeText: { fontSize: 10, fontWeight: '800' },
   styleSwitcher: {
     position: 'absolute', right: 16, borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 90,

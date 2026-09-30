@@ -17,23 +17,6 @@ export const palette = {
   gold: '#D97706',
   /** Modal/backdrop scrim — intentionally dark in both color schemes. */
   scrim: 'rgba(0,0,0,0.72)',
-  /** Frosted-glass navigation surfaces. */
-  glassLight: 'rgba(255,255,255,0.72)',
-  glassDark: 'rgba(24,24,27,0.78)',
-  glassBorder: 'rgba(255,255,255,0.38)',
-  transparent: 'transparent',
-  /** Eight-stop spectrum used by the elevated create-post halo. */
-  postHalo: [
-    '#FF5C7A',
-    '#FF9F43',
-    '#FFD43B',
-    '#51CF66',
-    '#22B8CF',
-    '#5C7CFA',
-    '#845EF7',
-    '#E64980',
-  ] as const,
-
   // 1.2 Dark Mode Surface Colors
   bgBase: '#0f0f11',
   bgSurface: '#18181b',
