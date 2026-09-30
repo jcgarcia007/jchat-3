@@ -1,0 +1,8 @@
+{
+  "title": "Business offers",
+  "enter": "Enter",
+  "expires": "Ends {{date}}",
+  "code": "Code {{code}}",
+  "emptyTitle": "No offers right now",
+  "emptySubtitle": "Verified businesses will post their offers here."
+}

@@ -49,6 +49,8 @@ import pricingEn from './locales/en/pricing.json';
 import pricingEs from './locales/es/pricing.json';
 import inventoryEn from './locales/en/inventory.json';
 import inventoryEs from './locales/es/inventory.json';
+import offersEn from './locales/en/offers.json';
+import offersEs from './locales/es/offers.json';
 
 export type SupportedLanguage = 'en' | 'es';
 
@@ -56,8 +58,8 @@ const SUPPORTED: readonly SupportedLanguage[] = ['en', 'es'];
 const FALLBACK: SupportedLanguage = 'en';
 
 export const resources = {
-  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn, pricing: pricingEn, inventory: inventoryEn },
-  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs, pricing: pricingEs, inventory: inventoryEs },
+  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn, pricing: pricingEn, inventory: inventoryEn, offers: offersEn },
+  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs, pricing: pricingEs, inventory: inventoryEs, offers: offersEs },
 } as const;
 
 /** Device language clamped to a supported one (expo-localization, SDK 56 API). */
@@ -72,7 +74,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: FALLBACK,
-  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map', 'pricing', 'inventory'],
+  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map', 'pricing', 'inventory', 'offers'],
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,

@@ -1,0 +1,8 @@
+{
+  "title": "Ofertas de negocios",
+  "enter": "Entrar",
+  "expires": "Vence {{date}}",
+  "code": "Código {{code}}",
+  "emptyTitle": "No hay ofertas por ahora",
+  "emptySubtitle": "Aquí aparecerán las ofertas de los negocios verificados."
+}

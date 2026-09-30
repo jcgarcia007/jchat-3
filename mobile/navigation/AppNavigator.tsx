@@ -40,7 +40,7 @@ import CreatePostScreen from '../screens/feed/CreatePostScreen';
 import PostDetailScreen from '../screens/posts/PostDetailScreen';
 import DMStack, { type DMStackParamList } from './DMStack';
 import FriendsScreen from '../screens/friends/FriendsScreen';
-import NearbyScreen from '../screens/nearby/NearbyScreen';
+import OffersScreen from '../screens/offers/OffersScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
@@ -159,7 +159,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="Tabs" component={BottomTabs} />
           <MainStack.Screen name="DMs" component={DMStack} />
           <MainStack.Screen name="Friends" component={FriendsScreen} />
-          <MainStack.Screen name="Offers" component={NearbyScreen} />
+          <MainStack.Screen name="Offers" component={OffersScreen} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
