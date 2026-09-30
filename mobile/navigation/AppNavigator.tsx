@@ -65,7 +65,7 @@ export type MainStackParamList = {
   Tabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   DMs: NavigatorScreenParams<DMStackParamList>;
   Friends: undefined;
-  Nearby: undefined;
+  Offers: undefined;
   ChatRoom: { id: string };
   /**
    * Onboarding — 4-screen flow for brand-new users.
@@ -159,7 +159,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="Tabs" component={BottomTabs} />
           <MainStack.Screen name="DMs" component={DMStack} />
           <MainStack.Screen name="Friends" component={FriendsScreen} />
-          <MainStack.Screen name="Nearby" component={NearbyScreen} />
+          <MainStack.Screen name="Offers" component={NearbyScreen} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />

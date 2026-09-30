@@ -271,7 +271,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 112 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile(true)} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader

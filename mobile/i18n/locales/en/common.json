@@ -17,8 +17,10 @@
   },
   "tabs": {
     "map": "Map",
-    "profile": "Profile",
-    "post": "Post"
+    "nearby": "Nearby",
+    "messages": "Messages",
+    "offers": "Offers",
+    "profile": "Profile"
   },
   "language": {
     "en": "English",

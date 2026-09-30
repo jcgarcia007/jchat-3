@@ -49,6 +49,14 @@ export type NotificationType =
   | 'comment'
   | 'work_alert';
 
+export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'dm',
+  'follower',
+  'like',
+  'comment',
+  'work_alert',
+];
+
 /**
  * Row shape returned by `listNotifications()`.
  * Matches the `notifications` table schema.
@@ -233,6 +241,24 @@ export async function markNotificationRead(id: string): Promise<boolean> {
   }
 
   return true;
+}
+
+/** Count unread social notifications without loading their payloads. */
+export async function getUnreadSocialNotificationCount(userId: string): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+    .in('type', [...SOCIAL_NOTIFICATION_TYPES]);
+
+  if (error) {
+    console.warn('[notifications] unread count error:', error.message);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 // ── Navigation routing ────────────────────────────────────────────────────────

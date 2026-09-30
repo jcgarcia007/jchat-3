@@ -25,7 +25,7 @@ export default function NearbyScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const translation = useTranslation('nearby');
-  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList, 'Nearby'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const nearby = useNearbyBusinesses();
 
   const enterBusiness = useCallback((business: NearbyBusiness) => {
@@ -75,7 +75,7 @@ export default function NearbyScreen() {
         />
       </View>
       <FlatList
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom }]}
         data={nearby.filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}

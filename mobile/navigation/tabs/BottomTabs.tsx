@@ -12,6 +12,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import MapScreen from '../../screens/map/MapScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
+import NearbyScreen from '../../screens/nearby/NearbyScreen';
+import DMInboxScreen from '../../screens/dms/DMInboxScreen';
+import NotchTabBar from '../../components/navigation/NotchTabBar';
 
 // ---------------------------------------------------------------------------
 // Param list
@@ -19,6 +22,8 @@ import ProfileScreen from '../../screens/profile/ProfileScreen';
 
 export type BottomTabParamList = {
   Map: undefined;
+  Nearby: undefined;
+  Messages: undefined;
   Profile: undefined;
 };
 
@@ -32,8 +37,11 @@ export default function BottomTabs() {
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
+      tabBar={(props) => <NotchTabBar {...props} />}
     >
       <Tab.Screen name="Map" component={MapScreen} />
+      <Tab.Screen name="Nearby" component={NearbyScreen} />
+      <Tab.Screen name="Messages" component={DMInboxScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
