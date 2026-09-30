@@ -816,13 +816,9 @@ export default function ChatRoomScreen() {
       try {
         // start_dm RPC applies the gate (block + whoCanDMMe) server-side.
         const conv = await getOrCreateConversation(user.id, userId);
-        // Cross-stack: ChatRoom (MainStack) → Tabs → DMs (DMStack) → DMChat.
-        navigation.navigate('Tabs', {
-          screen: 'DMs',
-          params: {
-            screen: 'DMChat',
-            params: { conversationId: conv.id, otherUserId: userId },
-          },
+        navigation.navigate('DMs', {
+          screen: 'DMChat',
+          params: { conversationId: conv.id, otherUserId: userId },
         });
       } catch (err) {
         if (err instanceof DmGateError) {

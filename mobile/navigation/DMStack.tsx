@@ -5,7 +5,7 @@
  *   DMInbox  — conversation list
  *   DMChat   — full chat for a given conversationId
  *
- * Usage: rendered as the DMs tab component inside BottomTabs.
+ * Usage: rendered as the DMs destination inside the authenticated MainStack.
  */
 
 import React from 'react';

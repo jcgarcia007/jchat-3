@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { IconArrowLeft } from '@tabler/icons-react-native';
 
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
@@ -155,6 +156,7 @@ function ConversationRow({ item, onPress }: RowProps) {
 export default function DMInboxScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('social');
+  const commonTranslation = useTranslation('common');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<InboxNav>();
   const { user } = useAuth();
@@ -238,6 +240,15 @@ export default function DMInboxScreen() {
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.borderSubtle }]}>
+        <Pressable
+          accessibilityLabel={commonTranslation.t('back')}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
+        </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
           {t('inbox.title')}
         </Text>
@@ -287,10 +298,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',

@@ -199,7 +199,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     await Share.share({ message: t('actions.shareText', { username: profile.username }) });
   }, [profile, t]);
 
-  const openFriends = useCallback(() => navigation.navigate('Tabs', { screen: 'Friends' }), [navigation]);
+  const openFriends = useCallback(() => navigation.navigate('Friends'), [navigation]);
   const dismissCompletion = useCallback(() => {
     setCompletionDismissed(true);
     void AsyncStorage.setItem(PROFILE_COMPLETION_DISMISSED_KEY, '1').catch(() => undefined);
@@ -208,7 +208,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (!authUser?.id || !targetId) return;
     try {
       const conversation = await getOrCreateConversation(authUser.id, targetId);
-      navigation.navigate('Tabs', { screen: 'DMs', params: { screen: 'DMChat', params: { conversationId: conversation.id, otherUserId: targetId } } });
+      navigation.navigate('DMs', { screen: 'DMChat', params: { conversationId: conversation.id, otherUserId: targetId } });
     } catch (messageError) {
       Alert.alert(t('actions.messageErrorTitle'), messageError instanceof DmGateError ? messageError.message : t('actions.messageError'));
     }
@@ -271,7 +271,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 112 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile(true)} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader
@@ -314,7 +314,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 }, scrollContent: { paddingBottom: 40 }, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
+  root: { flex: 1 }, scrollContent: {}, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
   skeletonRoot: { flex: 1 }, skeletonTop: { width: 150, height: 18, borderRadius: 9, marginLeft: 16 }, skeletonCover: { height: 120, marginHorizontal: 16, marginTop: 18, borderRadius: 20 },
   skeletonAvatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 4, marginLeft: 28, marginTop: -48 }, skeletonName: { width: 180, height: 22, borderRadius: 8, marginLeft: 20, marginTop: 12 },
   skeletonHandle: { width: 110, height: 14, borderRadius: 7, marginLeft: 20, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },

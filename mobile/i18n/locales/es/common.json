@@ -1,5 +1,6 @@
 {
   "appName": "JChat",
+  "back": "Volver",
   "actions": {
     "ok": "OK",
     "cancel": "Cancelar",
@@ -16,9 +17,6 @@
   },
   "tabs": {
     "map": "Mapa",
-    "nearby": "Cerca de ti",
-    "dms": "Mensajes",
-    "friends": "Amigos",
     "profile": "Perfil",
     "post": "Publicar"
   },

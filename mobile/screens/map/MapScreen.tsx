@@ -321,7 +321,7 @@ export default function MapScreen() {
         </View>
 
         {/* Style switcher — absolute bottom-right */}
-        <View style={[styles.styleSwitcher, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+        <View style={[styles.styleSwitcher, { bottom: 112 + insets.bottom, backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
           {STYLE_OPTIONS.map(({ variant, Icon }, idx) => {
             const isActive = mapVariant === variant;
             return (
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
   styleSwitcher: {
-    position: 'absolute', bottom: 24, right: 16, borderRadius: 12,
+    position: 'absolute', right: 16, borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 90,
     ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
   },

@@ -22,7 +22,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { IconUser } from '@tabler/icons-react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { IconArrowLeft, IconUser } from '@tabler/icons-react-native';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { unfollowUser } from '../../services/users';
@@ -140,6 +143,8 @@ function UserRow({
 export default function FriendsScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('social');
+  const commonTranslation = useTranslation('common');
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList, 'Friends'>>();
   const { user } = useAuth();
   const myId = user?.id ?? null;
 
@@ -257,7 +262,18 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgBase }]} edges={['top']}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>{t('friends.title')}</Text>
+      <View style={styles.header}>
+        <Pressable
+          accessibilityLabel={commonTranslation.t('back')}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
+        </Pressable>
+        <Text style={[styles.title, { color: c.textPrimary }]}>{t('friends.title')}</Text>
+      </View>
 
       {/* Tabs */}
       <View style={[styles.tabBar, { borderBottomColor: c.borderSubtle }]}>
@@ -308,10 +324,12 @@ export default function FriendsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   title: {
+    flex: 1,
     fontSize: 24,
     fontWeight: '700',
-    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
   },

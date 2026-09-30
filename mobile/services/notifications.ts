@@ -81,7 +81,12 @@ export interface NotificationStyle {
  * The caller is responsible for converting this to an actual navigation call.
  */
 export type NotificationRoute =
-  | { screen: 'DMs'; params: { conversationId?: string } }
+  | {
+      screen: 'DMs';
+      params:
+        | { screen: 'DMChat'; params: { conversationId: string } }
+        | { screen: 'DMInbox' };
+    }
   | { screen: 'Profile'; params: { userId: string } }
   | { screen: 'Feed'; params: { postId?: string } }
   | { screen: 'Notifications'; params: Record<string, never> };
@@ -247,13 +252,14 @@ export function routeForNotification(
 ): NotificationRoute {
   switch (type) {
     case 'dm':
+      if (typeof payload?.conversation_id !== 'string') {
+        return { screen: 'DMs', params: { screen: 'DMInbox' } };
+      }
       return {
         screen: 'DMs',
         params: {
-          conversationId:
-            typeof payload?.conversation_id === 'string'
-              ? payload.conversation_id
-              : undefined,
+          screen: 'DMChat',
+          params: { conversationId: payload.conversation_id },
         },
       };
 

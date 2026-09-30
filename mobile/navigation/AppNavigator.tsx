@@ -38,6 +38,9 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import CreatePostScreen from '../screens/feed/CreatePostScreen';
 import PostDetailScreen from '../screens/posts/PostDetailScreen';
+import DMStack, { type DMStackParamList } from './DMStack';
+import FriendsScreen from '../screens/friends/FriendsScreen';
+import NearbyScreen from '../screens/nearby/NearbyScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
@@ -60,6 +63,9 @@ export type AuthStackParamList = {
 /** Tabs are nested under BottomTabs — only ChatRoom is a "push" screen here */
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<BottomTabParamList> | undefined;
+  DMs: NavigatorScreenParams<DMStackParamList>;
+  Friends: undefined;
+  Nearby: undefined;
   ChatRoom: { id: string };
   /**
    * Onboarding — 4-screen flow for brand-new users.
@@ -151,6 +157,9 @@ export default function AppNavigator() {
       ) : (
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
           <MainStack.Screen name="Tabs" component={BottomTabs} />
+          <MainStack.Screen name="DMs" component={DMStack} />
+          <MainStack.Screen name="Friends" component={FriendsScreen} />
+          <MainStack.Screen name="Nearby" component={NearbyScreen} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
