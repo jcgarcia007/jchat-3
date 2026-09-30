@@ -6,6 +6,7 @@
     "locationUnavailable": "Location unavailable — showing default area. Tap to retry.",
     "centerOnLocationA11y": "Center on my location"
   },
+  "messagesA11y": "Messages, {{count}} unread",
   "businessPin": {
     "pendingBadge": "Pending"
   },

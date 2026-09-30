@@ -6,6 +6,7 @@
     "locationUnavailable": "Ubicación no disponible — mostrando área predeterminada. Toca para reintentar.",
     "centerOnLocationA11y": "Centrar en mi ubicación"
   },
+  "messagesA11y": "Mensajes, {{count}} sin leer",
   "businessPin": {
     "pendingBadge": "Pendiente"
   },
