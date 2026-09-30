@@ -13,7 +13,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MapScreen from '../../screens/map/MapScreen';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
-import DMInboxScreen from '../../screens/dms/DMInboxScreen';
+import MessagesScreen from '../../screens/dms/MessagesScreen';
 import NotchTabBar from '../../components/navigation/NotchTabBar';
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ export default function BottomTabs() {
     >
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Nearby" component={NearbyScreen} />
-      <Tab.Screen name="Messages" component={DMInboxScreen} />
+      <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

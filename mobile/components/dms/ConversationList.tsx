@@ -1,0 +1,211 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { useAuth } from '../../context/AuthContext';
+import { listConversations, type ConversationPreview } from '../../services/dms';
+import { isSupabaseConfigured, supabase } from '../../services/supabase';
+import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
+
+interface ConversationListProps {
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  nestedScrollEnabled?: boolean;
+  onConversationPress: (conversation: ConversationPreview) => void;
+  onUnreadCountChange?: (count: number) => void;
+}
+
+function initials(name: string | null, username: string): string {
+  return (name ?? username)
+    .split(/\s+/)
+    .map((word) => word[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function relativeTime(iso: string | null, nowLabel: string): string {
+  if (!iso) return '';
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return nowLabel;
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+function ConversationRow({
+  conversation,
+  onPress,
+}: {
+  conversation: ConversationPreview;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const translation = useTranslation('social');
+  const { otherUser, lastMessageBody, lastMessageAt, unreadCount } = conversation;
+  const hasUnread = unreadCount > 0;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[styles.row, { borderBottomColor: colors.borderSubtle }]}
+    >
+      <View style={[styles.avatar, { backgroundColor: colors.brandLight }]}>
+        <Text style={[styles.avatarInitials, { color: colors.brand }]}>
+          {initials(otherUser.display_name, otherUser.username)}
+        </Text>
+      </View>
+      <View style={styles.rowContent}>
+        <View style={styles.rowTop}>
+          <Text
+            numberOfLines={1}
+            style={[styles.rowName, { color: colors.textPrimary, fontWeight: hasUnread ? '700' : '500' }]}
+          >
+            {otherUser.display_name ?? otherUser.username}
+          </Text>
+          <Text style={[styles.rowTime, { color: colors.textTertiary }]}>
+            {relativeTime(lastMessageAt, translation.t('inbox.now'))}
+          </Text>
+        </View>
+        <View style={styles.rowBottom}>
+          <Text
+            numberOfLines={1}
+            style={[styles.rowPreview, { color: hasUnread ? colors.textPrimary : colors.textSecondary, fontWeight: hasUnread ? '500' : '400' }]}
+          >
+            {lastMessageBody ?? translation.t('inbox.noMessagesYet')}
+          </Text>
+          {hasUnread ? (
+            <View style={[styles.badge, { backgroundColor: colors.brand }]}>
+              <Text style={[styles.badgeText, { color: palette.bgSurfaceLight }]}>
+                {unreadCount > 99 ? '99+' : String(unreadCount)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+export default function ConversationList({
+  contentContainerStyle,
+  nestedScrollEnabled = false,
+  onConversationPress,
+  onUnreadCountChange,
+}: ConversationListProps) {
+  const colors = useThemeColors();
+  const translation = useTranslation('social');
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setConversations(await listConversations(user.id));
+    } catch (error) {
+      console.warn('[ConversationList] fetch error:', error);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    void load().finally(() => setLoading(false));
+  }, [load]);
+
+  useEffect(() => {
+    onUnreadCountChange?.(
+      conversations.reduce((total, conversation) => total + conversation.unreadCount, 0),
+    );
+  }, [conversations, onUnreadCountChange]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user?.id) return;
+    const channel = supabase
+      .channel(`conversation_list_${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, () => {
+        void load();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [load, user?.id]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  if (loading && conversations.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+          {translation.t('state.loading', { ns: 'common' })}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      contentContainerStyle={[
+        contentContainerStyle,
+        conversations.length === 0 && styles.emptyContainer,
+      ]}
+      data={conversations}
+      keyExtractor={(item) => item.id}
+      nestedScrollEnabled={nestedScrollEnabled}
+      refreshControl={(
+        <RefreshControl
+          onRefresh={() => { void refresh(); }}
+          refreshing={refreshing}
+          tintColor={palette.brand}
+        />
+      )}
+      renderItem={({ item }) => (
+        <ConversationRow conversation={item} onPress={() => onConversationPress(item)} />
+      )}
+      ListEmptyComponent={(
+        <View style={styles.center}>
+          <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+            {translation.t('inbox.empty')}
+          </Text>
+        </View>
+      )}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  avatar: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', marginRight: 12, width: 48 },
+  avatarInitials: { fontSize: 18, fontWeight: '700' },
+  rowContent: { flex: 1 },
+  rowTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
+  rowName: { flex: 1, fontSize: 16, marginRight: 8 },
+  rowTime: { fontSize: 12 },
+  rowBottom: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  rowPreview: { flex: 1, fontSize: 14, marginRight: 8 },
+  badge: { alignItems: 'center', borderRadius: 10, height: 20, justifyContent: 'center', minWidth: 20, paddingHorizontal: 5 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  center: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
+  emptyContainer: { flexGrow: 1 },
+  emptyText: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
+});

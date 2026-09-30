@@ -5,6 +5,21 @@
     "now": "now",
     "empty": "No conversations yet.\nStart chatting from a user's profile."
   },
+  "messages": {
+    "privateTitle": "Private messages",
+    "newCount_one": "{{count}} new",
+    "newCount_other": "{{count}} new",
+    "notificationsTitle": "Notifications",
+    "emptyNotifications": "No notifications yet.",
+    "someone": "Someone",
+    "notif": {
+      "follower": "{{name}} started following you",
+      "like": "{{name}} liked your post",
+      "comment": "{{name}} commented on your post",
+      "dm": "{{name}} sent you a message",
+      "workAlert": "You have a new work alert"
+    }
+  },
   "dmChat": {
     "title": "Chat",
     "voiceNote": "Voice note",

@@ -5,6 +5,21 @@
     "now": "ahora",
     "empty": "Aún no tienes conversaciones.\nInicia un chat desde el perfil de un usuario."
   },
+  "messages": {
+    "privateTitle": "Mensajes privados",
+    "newCount_one": "{{count}} nuevo",
+    "newCount_other": "{{count}} nuevos",
+    "notificationsTitle": "Notificaciones",
+    "emptyNotifications": "Aún no tienes notificaciones.",
+    "someone": "Alguien",
+    "notif": {
+      "follower": "{{name}} empezó a seguirte",
+      "like": "A {{name}} le gustó tu publicación",
+      "comment": "{{name}} comentó en tu publicación",
+      "dm": "{{name}} te envió un mensaje",
+      "workAlert": "Tienes una nueva alerta de trabajo"
+    }
+  },
   "dmChat": {
     "title": "Chat",
     "voiceNote": "Nota de voz",

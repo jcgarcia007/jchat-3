@@ -57,6 +57,11 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'work_alert',
 ];
 
+export function isSocialNotificationType(value: unknown): value is NotificationType {
+  return typeof value === 'string'
+    && SOCIAL_NOTIFICATION_TYPES.includes(value as NotificationType);
+}
+
 /**
  * Row shape returned by `listNotifications()`.
  * Matches the `notifications` table schema.
@@ -95,9 +100,8 @@ export type NotificationRoute =
         | { screen: 'DMChat'; params: { conversationId: string } }
         | { screen: 'DMInbox' };
     }
-  | { screen: 'Profile'; params: { userId: string } }
-  | { screen: 'Feed'; params: { postId?: string } }
-  | { screen: 'Notifications'; params: Record<string, never> };
+  | { screen: 'UserProfile'; params: { userId: string } }
+  | { screen: 'PostDetail'; params: { postId: string } };
 
 // ── Push permission & token registration ──────────────────────────────────────
 
@@ -275,7 +279,7 @@ export async function getUnreadSocialNotificationCount(userId: string): Promise<
 export function routeForNotification(
   type: NotificationType,
   payload: Record<string, unknown> | null,
-): NotificationRoute {
+): NotificationRoute | null {
   switch (type) {
     case 'dm':
       if (typeof payload?.conversation_id !== 'string') {
@@ -290,30 +294,21 @@ export function routeForNotification(
       };
 
     case 'follower':
+      if (typeof payload?.from_user_id !== 'string' || !payload.from_user_id) return null;
       return {
-        screen: 'Profile',
-        params: {
-          userId:
-            typeof payload?.from_user_id === 'string'
-              ? payload.from_user_id
-              : '',
-        },
+        screen: 'UserProfile',
+        params: { userId: payload.from_user_id },
       };
 
     case 'like':
     case 'comment':
+      if (typeof payload?.post_id !== 'string' || !payload.post_id) return null;
       return {
-        screen: 'Feed',
-        params: {
-          postId:
-            typeof payload?.post_id === 'string'
-              ? payload.post_id
-              : undefined,
-        },
+        screen: 'PostDetail',
+        params: { postId: payload.post_id },
       };
 
     case 'work_alert':
-      // Work alerts currently navigate to the Notifications centre.
-      return { screen: 'Notifications', params: {} };
+      return null;
   }
 }

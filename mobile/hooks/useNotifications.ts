@@ -27,6 +27,7 @@ import {
   listNotifications,
   markNotificationRead,
   routeForNotification,
+  isSocialNotificationType,
   type NotificationRow,
   type NotificationType,
   type NotificationRoute,
@@ -71,7 +72,12 @@ export interface UseNotificationsResult {
 
 // ── Hook ───────────────────────────────────────────────────────────────────────
 
-export function useNotifications(): UseNotificationsResult {
+export interface UseNotificationsOptions {
+  /** Skip permission/token registration and Expo event listeners. */
+  passive?: boolean;
+}
+
+export function useNotifications({ passive = false }: UseNotificationsOptions = {}): UseNotificationsResult {
   const { user, isAuthenticated } = useAuth();
 
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
@@ -84,7 +90,9 @@ export function useNotifications(): UseNotificationsResult {
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.is_read && isSocialNotificationType(notification.type),
+  ).length;
 
   // ── Data helpers ────────────────────────────────────────────────────────────
 
@@ -115,8 +123,9 @@ export function useNotifications(): UseNotificationsResult {
     const userId = user.id;
     let cancelled = false;
 
-    // 1. Register for push notifications and store the token.
-    void registerForPushNotifications(userId);
+    // Passive consumers read database state without requesting notification
+    // permission. Push registration remains intentionally outside Lote 3.
+    if (!passive) void registerForPushNotifications(userId);
 
     // 2. Fetch initial notification list.
     if (isSupabaseConfigured) {
@@ -126,42 +135,37 @@ export function useNotifications(): UseNotificationsResult {
     }
 
     // 3. Foreground received listener — refresh the list so the new row appears.
-    receivedSubRef.current = Notifications.addNotificationReceivedListener(
-      (_notification) => {
-        // Refresh the DB-backed list so the new notification row appears.
-        // The Realtime subscription below also catches this, but this listener
-        // ensures we pick it up even if Realtime hasn't connected yet.
-        if (!cancelled && isSupabaseConfigured) {
-          void listNotifications().then((rows) => {
-            if (!cancelled) setNotifications(rows);
-          });
-        }
-      },
-    );
+    if (!passive) {
+      receivedSubRef.current = Notifications.addNotificationReceivedListener(
+        (_notification) => {
+          if (!cancelled && isSupabaseConfigured) {
+            void listNotifications().then((rows) => {
+              if (!cancelled) setNotifications(rows);
+            });
+          }
+        },
+      );
 
-    // 4. Response (tap) listener — build a navigation descriptor.
-    responseSubRef.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        if (cancelled) return;
+      // 4. Response (tap) listener — build a navigation descriptor.
+      responseSubRef.current = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          if (cancelled) return;
 
-        const data = response.notification.request.content.data as
-          | Record<string, unknown>
-          | null
-          | undefined;
+          const data = response.notification.request.content.data as
+            | Record<string, unknown>
+            | null
+            | undefined;
+          const rawType = data?.type;
+          const payload = (data?.payload as Record<string, unknown> | null) ?? null;
 
-        // The server payload is expected to include a `type` field.
-        const rawType = data?.type;
-        const payload = (data?.payload as Record<string, unknown> | null) ?? null;
-
-        if (isValidNotificationType(rawType)) {
-          const route = routeForNotification(rawType, payload);
-          setPendingRoute(route);
-        } else {
-          // Fallback — navigate to Notifications screen.
-          setPendingRoute({ screen: 'Notifications', params: {} });
-        }
-      },
-    );
+          setPendingRoute(
+            isValidNotificationType(rawType)
+              ? routeForNotification(rawType, payload)
+              : null,
+          );
+        },
+      );
+    }
 
     // 5. Supabase Realtime subscription for the notifications table.
     if (isSupabaseConfigured) {
@@ -219,7 +223,7 @@ export function useNotifications(): UseNotificationsResult {
         channelRef.current = null;
       }
     };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, passive, user?.id]);
 
   // ── Return ──────────────────────────────────────────────────────────────────
 
