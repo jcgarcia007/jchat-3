@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { getTotalUnread } from '../services/dms';
+import { getTotalUnread, subscribeToDmUnreadInvalidation } from '../services/dms';
 import { getUnreadSocialNotificationCount } from '../services/notifications';
 import { isSupabaseConfigured, supabase } from '../services/supabase';
 
@@ -51,16 +51,34 @@ export function useUnreadBadge(): boolean {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
         () => { void refreshNotificationCount(); },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => { void refreshNotificationCount(); },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications' },
+        () => { void refreshNotificationCount(); },
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED' && !cancelled) void refreshNotificationCount();
       });
+    const unsubscribeDmInvalidation = subscribeToDmUnreadInvalidation(() => {
+      if (!cancelled) void refresh();
+    });
     const appStateSubscription = AppState.addEventListener('change', (status) => {
       if (status === 'active' && !cancelled) void refreshNotificationCount();
     });
@@ -68,6 +86,7 @@ export function useUnreadBadge(): boolean {
     return () => {
       cancelled = true;
       appStateSubscription.remove();
+      unsubscribeDmInvalidation();
       void supabase.removeChannel(dmChannel);
       void supabase.removeChannel(notificationChannel);
     };

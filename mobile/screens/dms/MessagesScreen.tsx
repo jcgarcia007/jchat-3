@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -24,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import ConversationList from '../../components/dms/ConversationList';
+import SwipeToDelete from '../../components/common/SwipeToDelete';
 import { useNotifications } from '../../hooks/useNotifications';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import type { ConversationPreview } from '../../services/dms';
@@ -63,7 +65,7 @@ export default function MessagesScreen() {
   const translation = useTranslation('social');
   const [dmUnreadCount, setDmUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const { notifications, markRead, refresh } = useNotifications({ passive: true });
+  const { notifications, markRead, refresh, remove } = useNotifications({ passive: true });
 
   const socialNotifications = useMemo(
     () => notifications.filter((notification) => isSocialNotificationType(notification.type)),
@@ -111,40 +113,51 @@ export default function MessagesScreen() {
     });
   }, [translation]);
 
+  const removeNotification = useCallback((id: string) => {
+    void remove(id).catch(() => {
+      Alert.alert(translation.t('state.error', { ns: 'common' }));
+    });
+  }, [remove, translation]);
+
   const renderNotification = useCallback(({ item }: ListRenderItemInfo<NotificationRow>) => {
     if (!isSocialNotificationType(item.type)) return null;
     const NotificationIcon = NOTIFICATION_ICONS[item.type];
     return (
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => openNotification(item)}
-        style={[
-          styles.notificationRow,
-          {
-            backgroundColor: item.is_read ? colors.bgBase : colors.bgElevated,
-            borderBottomColor: colors.borderSubtle,
-          },
-        ]}
+      <SwipeToDelete
+        deleteLabel={translation.t('actions.delete', { ns: 'common' })}
+        onDelete={() => removeNotification(item.id)}
       >
-        <View style={[styles.notificationIcon, { backgroundColor: colors.brandLight }]}>
-          <NotificationIcon
-            color={item.type === 'work_alert' ? colors.warning : colors.brand}
-            size={21}
-            strokeWidth={2}
-          />
-        </View>
-        <View style={styles.notificationContent}>
-          <Text style={[styles.notificationText, { color: colors.textPrimary }]}>
-            {notificationText(item)}
-          </Text>
-          <Text style={[styles.notificationTime, { color: colors.textTertiary }]}>
-            {formatSocialTime(item.created_at, translation.i18n.language, translation.t)}
-          </Text>
-        </View>
-        {!item.is_read ? <View style={[styles.notificationUnread, { backgroundColor: colors.danger }]} /> : null}
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => openNotification(item)}
+          style={[
+            styles.notificationRow,
+            {
+              backgroundColor: item.is_read ? colors.bgBase : colors.bgElevated,
+              borderBottomColor: colors.borderSubtle,
+            },
+          ]}
+        >
+          <View style={[styles.notificationIcon, { backgroundColor: colors.brandLight }]}>
+            <NotificationIcon
+              color={item.type === 'work_alert' ? colors.warning : colors.brand}
+              size={21}
+              strokeWidth={2}
+            />
+          </View>
+          <View style={styles.notificationContent}>
+            <Text style={[styles.notificationText, { color: colors.textPrimary }]}>
+              {notificationText(item)}
+            </Text>
+            <Text style={[styles.notificationTime, { color: colors.textTertiary }]}>
+              {formatSocialTime(item.created_at, translation.i18n.language, translation.t)}
+            </Text>
+          </View>
+          {!item.is_read ? <View style={[styles.notificationUnread, { backgroundColor: colors.danger }]} /> : null}
+        </Pressable>
+      </SwipeToDelete>
     );
-  }, [colors, notificationText, openNotification, translation]);
+  }, [colors, notificationText, openNotification, removeNotification, translation]);
 
   return (
     <View

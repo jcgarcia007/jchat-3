@@ -25,6 +25,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
   registerForPushNotifications,
+  deleteNotification,
   listNotifications,
   markNotificationRead,
   routeForNotification,
@@ -59,6 +60,8 @@ export interface UseNotificationsResult {
    * No-op if Supabase is not configured.
    */
   markRead: (id: string) => Promise<void>;
+  /** Delete one notification optimistically, restoring it if the request fails. */
+  remove: (id: string) => Promise<void>;
   /** Re-fetch notifications from Supabase on demand. */
   refresh: () => Promise<void>;
   /**
@@ -111,6 +114,25 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     );
     await markNotificationRead(id);
   }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const originalIndex = notifications.findIndex((notification) => notification.id === id);
+    if (originalIndex < 0) return;
+    const removedNotification = notifications[originalIndex];
+
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+    try {
+      await deleteNotification(id);
+    } catch (error) {
+      setNotifications((prev) => {
+        if (prev.some((notification) => notification.id === id)) return prev;
+        const restored = [...prev];
+        restored.splice(Math.min(originalIndex, restored.length), 0, removedNotification);
+        return restored;
+      });
+      throw error;
+    }
+  }, [notifications]);
 
   const clearPendingRoute = useCallback(() => {
     setPendingRoute(null);
@@ -242,6 +264,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     notifications,
     unreadCount,
     markRead,
+    remove,
     refresh,
     pendingRoute,
     clearPendingRoute,
