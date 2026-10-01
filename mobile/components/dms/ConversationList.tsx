@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -11,8 +12,13 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import SwipeToDelete from '../common/SwipeToDelete';
 import { useAuth } from '../../context/AuthContext';
-import { listConversations, type ConversationPreview } from '../../services/dms';
+import {
+  hideConversation,
+  listConversations,
+  type ConversationPreview,
+} from '../../services/dms';
 import { isSupabaseConfigured, supabase } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -50,7 +56,13 @@ function ConversationRow({
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
-      style={[styles.row, { borderBottomColor: colors.borderSubtle }]}
+      style={[
+        styles.row,
+        {
+          backgroundColor: colors.bgSurface,
+          borderBottomColor: colors.borderSubtle,
+        },
+      ]}
     >
       <View style={[styles.avatar, { backgroundColor: colors.brandLight }]}>
         <Text style={[styles.avatarInitials, { color: colors.brand }]}>
@@ -138,6 +150,43 @@ export default function ConversationList({
     setRefreshing(false);
   }, [load]);
 
+  const removeConversation = useCallback(async (conversation: ConversationPreview) => {
+    const originalIndex = conversations.findIndex((item) => item.id === conversation.id);
+    if (originalIndex < 0) return;
+
+    setConversations((prev) => prev.filter((item) => item.id !== conversation.id));
+    try {
+      await hideConversation(conversation.id);
+    } catch (error) {
+      console.warn('[ConversationList] hide error:', error);
+      setConversations((prev) => {
+        if (prev.some((item) => item.id === conversation.id)) return prev;
+        const restored = [...prev];
+        restored.splice(Math.min(originalIndex, restored.length), 0, conversation);
+        return restored;
+      });
+      Alert.alert(translation.t('state.error', { ns: 'common' }));
+    }
+  }, [conversations, translation]);
+
+  const confirmRemoveConversation = useCallback((conversation: ConversationPreview) => {
+    Alert.alert(
+      translation.t('messages.deleteConversationTitle'),
+      translation.t('messages.deleteConversationBody'),
+      [
+        {
+          style: 'cancel',
+          text: translation.t('actions.cancel', { ns: 'common' }),
+        },
+        {
+          onPress: () => { void removeConversation(conversation); },
+          style: 'destructive',
+          text: translation.t('actions.delete', { ns: 'common' }),
+        },
+      ],
+    );
+  }, [removeConversation, translation]);
+
   if (loading && conversations.length === 0) {
     return (
       <View style={styles.center}>
@@ -165,7 +214,12 @@ export default function ConversationList({
         />
       )}
       renderItem={({ item }) => (
-        <ConversationRow conversation={item} onPress={() => onConversationPress(item)} />
+        <SwipeToDelete
+          deleteLabel={translation.t('actions.delete', { ns: 'common' })}
+          onDelete={() => confirmRemoveConversation(item)}
+        >
+          <ConversationRow conversation={item} onPress={() => onConversationPress(item)} />
+        </SwipeToDelete>
       )}
       ListEmptyComponent={(
         <View style={styles.center}>

@@ -12,6 +12,8 @@
     "notificationsTitle": "Notifications",
     "emptyNotifications": "No notifications yet.",
     "someone": "Someone",
+    "deleteConversationTitle": "Delete conversation?",
+    "deleteConversationBody": "It will only be removed from your inbox. The other person will still see it.",
     "time": {
       "now": "now",
       "minutes_one": "{{count}} min ago",

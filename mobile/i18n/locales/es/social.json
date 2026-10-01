@@ -12,6 +12,8 @@
     "notificationsTitle": "Notificaciones",
     "emptyNotifications": "Aún no tienes notificaciones.",
     "someone": "Alguien",
+    "deleteConversationTitle": "¿Eliminar conversación?",
+    "deleteConversationBody": "Se eliminará solo de tu bandeja. La otra persona la seguirá viendo.",
     "time": {
       "now": "ahora",
       "minutes_one": "hace {{count}} min",
