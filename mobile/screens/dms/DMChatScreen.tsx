@@ -214,7 +214,7 @@ export default function DMChatScreen() {
   const fetchMessages = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await listMessages(conversationId);
+      const data = await listMessages(conversationId, user.id);
       // listMessages returns newest-first; FlatList is inverted so this is correct
       setMessages(data);
     } catch (err) {

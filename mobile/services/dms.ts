@@ -3,7 +3,8 @@
  *
  * Pure async functions wrapping the shared Supabase client.
  * DB tables (002_social_schema.sql):
- *   dm_conversations(id, user_a, user_b, last_message_at, created_at)
+ *   dm_conversations(id, user_a, user_b, last_message_at, created_at,
+ *                    hidden_at_a, hidden_at_b)
  *   dm_messages(id, conversation_id, sender_id, body, media_url, voice_url, read_at, created_at)
  *
  * All types are co-located here.
@@ -42,6 +43,8 @@ export interface DmConversationRow {
   user_b: string;
   last_message_at: string | null;
   created_at: string;
+  hidden_at_a: string | null;
+  hidden_at_b: string | null;
 }
 
 export interface DmMessageRow {
@@ -73,6 +76,28 @@ export interface SendMessageInput {
   voiceUrl?: string;
 }
 
+type DmUnreadInvalidationListener = () => void;
+
+const dmUnreadInvalidationListeners = new Set<DmUnreadInvalidationListener>();
+
+/** Subscribe to local changes that can affect the current user's DM badge. */
+export function subscribeToDmUnreadInvalidation(
+  listener: DmUnreadInvalidationListener,
+): () => void {
+  dmUnreadInvalidationListeners.add(listener);
+  return () => { dmUnreadInvalidationListeners.delete(listener); };
+}
+
+function emitDmUnreadInvalidation(): void {
+  dmUnreadInvalidationListeners.forEach((listener) => listener());
+}
+
+function hiddenAtForUser(conversation: DmConversationRow, userId: string): string | null {
+  return conversation.user_a === userId
+    ? conversation.hidden_at_a
+    : conversation.hidden_at_b;
+}
+
 // ─── listConversations ────────────────────────────────────────────────────────
 
 /**
@@ -88,14 +113,19 @@ export async function listConversations(
   // 1 — fetch conversations where userId is user_a or user_b
   const { data: convos, error: convErr } = await supabase
     .from('dm_conversations')
-    .select('*')
+    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order('last_message_at', { ascending: false, nullsFirst: false });
 
   if (convErr) throw convErr;
   if (!convos || convos.length === 0) return [];
 
-  const rows = convos as DmConversationRow[];
+  const rows = (convos as DmConversationRow[]).filter((conversation) => {
+    const hiddenAt = hiddenAtForUser(conversation, userId);
+    return hiddenAt === null
+      || (conversation.last_message_at !== null && conversation.last_message_at > hiddenAt);
+  });
+  if (rows.length === 0) return [];
 
   // 2 — collect the other participant IDs
   const otherIds = rows.map((c) => (c.user_a === userId ? c.user_b : c.user_a));
@@ -125,29 +155,36 @@ export async function listConversations(
       };
 
       // Last message
-      const { data: lastMsgData } = await supabase
+      const hiddenAt = hiddenAtForUser(c, userId);
+      let lastMessageQuery = supabase
         .from('dm_messages')
         .select('body, created_at')
         .eq('conversation_id', c.id)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (hiddenAt) lastMessageQuery = lastMessageQuery.gt('created_at', hiddenAt);
+      const { data: lastMsgRows } = await lastMessageQuery;
 
-      const lastMsg = lastMsgData as { body: string | null; created_at: string } | null;
+      const lastMsg = (lastMsgRows?.[0] ?? null) as {
+        body: string | null;
+        created_at: string;
+      } | null;
 
       // Unread count — messages sent BY the other user that haven't been read
-      const { count: unreadCount } = await supabase
+      let unreadQuery = supabase
         .from('dm_messages')
         .select('id', { count: 'exact', head: true })
         .eq('conversation_id', c.id)
         .eq('sender_id', otherId)
         .is('read_at', null);
+      if (hiddenAt) unreadQuery = unreadQuery.gt('created_at', hiddenAt);
+      const { count: unreadCount } = await unreadQuery;
 
       return {
         id: c.id,
         otherUser,
         lastMessageBody: lastMsg?.body ?? null,
-        lastMessageAt: c.last_message_at,
+        lastMessageAt: lastMsg?.created_at ?? c.last_message_at,
         unreadCount: unreadCount ?? 0,
       };
     }),
@@ -177,6 +214,8 @@ export async function getOrCreateConversation(
       user_b: userId < otherUserId ? otherUserId : userId,
       last_message_at: null,
       created_at: new Date().toISOString(),
+      hidden_at_a: null,
+      hidden_at_b: null,
     };
   }
 
@@ -210,17 +249,48 @@ export async function getOrCreateConversation(
  * Return all messages for a conversation, sorted oldest-first (for FlatList
  * rendered in reverse). Caller should pass `inverted` to the FlatList.
  */
-export async function listMessages(conversationId: string): Promise<DmMessageRow[]> {
+export async function listMessages(
+  conversationId: string,
+  userId: string,
+): Promise<DmMessageRow[]> {
   if (!isSupabaseConfigured) return [];
 
-  const { data, error } = await supabase
+  const { data: conversationData, error: conversationError } = await supabase
+    .from('dm_conversations')
+    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
+    .eq('id', conversationId)
+    .single();
+
+  if (conversationError) throw conversationError;
+  const conversation = conversationData as DmConversationRow;
+  const hiddenAt = hiddenAtForUser(conversation, userId);
+
+  let messagesQuery = supabase
     .from('dm_messages')
     .select('*')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false });
+  if (hiddenAt) messagesQuery = messagesQuery.gt('created_at', hiddenAt);
+  const { data, error } = await messagesQuery;
 
   if (error) throw error;
   return (data ?? []) as DmMessageRow[];
+}
+
+// ─── hideConversation ─────────────────────────────────────────────────────────
+
+/** Hide a conversation only for the authenticated participant. */
+export async function hideConversation(conversationId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    emitDmUnreadInvalidation();
+    return;
+  }
+
+  const { error } = await supabase.rpc('hide_dm_conversation', {
+    p_conversation_id: conversationId,
+  });
+  if (error) throw error;
+  emitDmUnreadInvalidation();
 }
 
 // ─── sendMessage ──────────────────────────────────────────────────────────────
@@ -352,22 +422,30 @@ export async function getTotalUnread(userId: string): Promise<number> {
   // Get conversations the user is part of
   const { data: convos, error: convErr } = await supabase
     .from('dm_conversations')
-    .select('id')
+    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
     .or(`user_a.eq.${userId},user_b.eq.${userId}`);
 
   if (convErr) throw convErr;
   if (!convos || convos.length === 0) return 0;
 
-  const convoIds = (convos as { id: string }[]).map((c) => c.id);
+  const counts = await Promise.all((convos as DmConversationRow[]).map(async (conversation) => {
+    const hiddenAt = hiddenAtForUser(conversation, userId);
+    if (hiddenAt && (
+      conversation.last_message_at === null
+      || conversation.last_message_at <= hiddenAt
+    )) return 0;
 
-  // Count unread messages NOT sent by the user
-  const { count, error } = await supabase
-    .from('dm_messages')
-    .select('id', { count: 'exact', head: true })
-    .in('conversation_id', convoIds)
-    .neq('sender_id', userId)
-    .is('read_at', null);
+    let unreadQuery = supabase
+      .from('dm_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('conversation_id', conversation.id)
+      .neq('sender_id', userId)
+      .is('read_at', null);
+    if (hiddenAt) unreadQuery = unreadQuery.gt('created_at', hiddenAt);
+    const { count, error } = await unreadQuery;
+    if (error) throw error;
+    return count ?? 0;
+  }));
 
-  if (error) throw error;
-  return count ?? 0;
+  return counts.reduce((total, count) => total + count, 0);
 }

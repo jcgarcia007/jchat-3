@@ -247,6 +247,18 @@ export async function markNotificationRead(id: string): Promise<boolean> {
   return true;
 }
 
+/** Permanently delete one notification. RLS restricts deletion to its owner. */
+export async function deleteNotification(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
 /** Count unread social notifications without loading their payloads. */
 export async function getUnreadSocialNotificationCount(userId: string): Promise<number> {
   if (!isSupabaseConfigured) return 0;

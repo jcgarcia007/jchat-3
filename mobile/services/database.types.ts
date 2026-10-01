@@ -651,6 +651,8 @@ export type Database = {
       dm_conversations: {
         Row: {
           created_at: string
+          hidden_at_a: string | null
+          hidden_at_b: string | null
           id: string
           last_message_at: string
           user_a: string
@@ -658,6 +660,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          hidden_at_a?: string | null
+          hidden_at_b?: string | null
           id?: string
           last_message_at?: string
           user_a: string
@@ -665,6 +669,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          hidden_at_a?: string | null
+          hidden_at_b?: string | null
           id?: string
           last_message_at?: string
           user_a?: string
@@ -3644,6 +3650,10 @@ export type Database = {
         Returns: string
       }
       get_room_qr_token: { Args: { p_room_id: string }; Returns: string }
+      hide_dm_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
       is_blocked: { Args: { a: string; b: string }; Returns: boolean }
       is_employee_of_business: {
         Args: { p_business_id: string }
@@ -3715,6 +3725,8 @@ export type Database = {
         Args: { p_target_id: string }
         Returns: {
           created_at: string
+          hidden_at_a: string | null
+          hidden_at_b: string | null
           id: string
           last_message_at: string
           user_a: string
