@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -9,7 +10,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -61,13 +62,27 @@ export default function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigation>();
   const translation = useTranslation('social');
   const [dmUnreadCount, setDmUnreadCount] = useState(0);
-  const { notifications, markRead } = useNotifications({ passive: true });
+  const [refreshing, setRefreshing] = useState(false);
+  const { notifications, markRead, refresh } = useNotifications({ passive: true });
 
   const socialNotifications = useMemo(
     () => notifications.filter((notification) => isSocialNotificationType(notification.type)),
     [notifications],
   );
   const clearSurface = `${colors.bgSurface}00`;
+
+  useFocusEffect(useCallback(() => {
+    void refresh();
+  }, [refresh]));
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const openConversation = useCallback((conversation: ConversationPreview) => {
     navigation.navigate('DMs', {
@@ -187,6 +202,14 @@ export default function MessagesScreen() {
         contentContainerStyle={socialNotifications.length === 0 ? styles.emptyNotifications : undefined}
         data={socialNotifications}
         keyExtractor={(item) => item.id}
+        refreshControl={(
+          <RefreshControl
+            colors={[colors.brand]}
+            onRefresh={() => { void handleRefresh(); }}
+            refreshing={refreshing}
+            tintColor={colors.brand}
+          />
+        )}
         renderItem={renderNotification}
         ListEmptyComponent={(
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>

@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
@@ -123,26 +124,29 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     const userId = user.id;
     let cancelled = false;
 
+    const refetch = () => {
+      if (cancelled || !isSupabaseConfigured) return;
+      void listNotifications().then((rows) => {
+        if (!cancelled) setNotifications(rows);
+      });
+    };
+
     // Passive consumers read database state without requesting notification
     // permission. Push registration remains intentionally outside Lote 3.
     if (!passive) void registerForPushNotifications(userId);
 
     // 2. Fetch initial notification list.
-    if (isSupabaseConfigured) {
-      void listNotifications().then((rows) => {
-        if (!cancelled) setNotifications(rows);
-      });
-    }
+    refetch();
+
+    const appStateSubscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') refetch();
+    });
 
     // 3. Foreground received listener — refresh the list so the new row appears.
     if (!passive) {
       receivedSubRef.current = Notifications.addNotificationReceivedListener(
         (_notification) => {
-          if (!cancelled && isSupabaseConfigured) {
-            void listNotifications().then((rows) => {
-              if (!cancelled) setNotifications(rows);
-            });
-          }
+          refetch();
         },
       );
 
@@ -183,7 +187,11 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
             if (cancelled) return;
             // Prepend the new row to keep the list sorted newest-first.
             const newRow = payload.new as NotificationRow;
-            setNotifications((prev) => [newRow, ...prev]);
+            setNotifications((prev) => (
+              prev.some((notification) => notification.id === newRow.id)
+                ? prev
+                : [newRow, ...prev]
+            ));
           },
         )
         .on(
@@ -202,7 +210,9 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
             );
           },
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') refetch();
+        });
 
       channelRef.current = channel;
     }
@@ -210,6 +220,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     // ── Cleanup ──────────────────────────────────────────────────────────────
     return () => {
       cancelled = true;
+      appStateSubscription.remove();
 
       // Remove expo-notifications listeners.
       receivedSubRef.current?.remove();

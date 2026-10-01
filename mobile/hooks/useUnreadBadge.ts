@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +34,12 @@ export function useUnreadBadge(): boolean {
   useEffect(() => {
     if (!isSupabaseConfigured || !user?.id) return;
 
+    let cancelled = false;
+    const refreshNotificationCount = async () => {
+      const nextCount = await getUnreadSocialNotificationCount(user.id).catch(() => 0);
+      if (!cancelled) setNotificationUnread(nextCount);
+    };
+
     const dmChannel = supabase
       .channel(`tab_badge_dm_${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_messages' }, () => {
@@ -49,11 +56,18 @@ export function useUnreadBadge(): boolean {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => { void refresh(); },
+        () => { void refreshNotificationCount(); },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && !cancelled) void refreshNotificationCount();
+      });
+    const appStateSubscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active' && !cancelled) void refreshNotificationCount();
+    });
 
     return () => {
+      cancelled = true;
+      appStateSubscription.remove();
       void supabase.removeChannel(dmChannel);
       void supabase.removeChannel(notificationChannel);
     };
