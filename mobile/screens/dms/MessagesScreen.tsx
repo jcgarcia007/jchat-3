@@ -34,6 +34,7 @@ import {
 } from '../../services/notifications';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { formatSocialTime } from '../../utils/formatSocialTime';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
 
@@ -53,17 +54,6 @@ function actorName(payload: Record<string, unknown> | null, fallback: string): s
   return fallback;
 }
 
-function relativeTime(iso: string, formatter: Intl.RelativeTimeFormat): string {
-  const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
-  const absoluteSeconds = Math.abs(seconds);
-  if (absoluteSeconds < 60) return formatter.format(seconds, 'second');
-  const minutes = Math.round(seconds / 60);
-  if (Math.abs(minutes) < 60) return formatter.format(minutes, 'minute');
-  const hours = Math.round(minutes / 60);
-  if (Math.abs(hours) < 24) return formatter.format(hours, 'hour');
-  return formatter.format(Math.round(hours / 24), 'day');
-}
-
 export default function MessagesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -76,10 +66,6 @@ export default function MessagesScreen() {
   const socialNotifications = useMemo(
     () => notifications.filter((notification) => isSocialNotificationType(notification.type)),
     [notifications],
-  );
-  const relativeFormatter = useMemo(
-    () => new Intl.RelativeTimeFormat(translation.i18n.language, { numeric: 'auto' }),
-    [translation.i18n.language],
   );
   const clearSurface = `${colors.bgSurface}00`;
 
@@ -137,13 +123,13 @@ export default function MessagesScreen() {
             {notificationText(item)}
           </Text>
           <Text style={[styles.notificationTime, { color: colors.textTertiary }]}>
-            {relativeTime(item.created_at, relativeFormatter)}
+            {formatSocialTime(item.created_at, translation.i18n.language, translation.t)}
           </Text>
         </View>
         {!item.is_read ? <View style={[styles.notificationUnread, { backgroundColor: colors.danger }]} /> : null}
       </Pressable>
     );
-  }, [colors, notificationText, openNotification, relativeFormatter]);
+  }, [colors, notificationText, openNotification, translation]);
 
   return (
     <View

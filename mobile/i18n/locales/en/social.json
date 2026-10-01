@@ -12,6 +12,15 @@
     "notificationsTitle": "Notifications",
     "emptyNotifications": "No notifications yet.",
     "someone": "Someone",
+    "time": {
+      "now": "now",
+      "minutes_one": "{{count}} min ago",
+      "minutes_other": "{{count}} min ago",
+      "hours_one": "{{count}} h ago",
+      "hours_other": "{{count}} h ago",
+      "days_one": "{{count}} d ago",
+      "days_other": "{{count}} d ago"
+    },
     "notif": {
       "follower": "{{name}} started following you",
       "like": "{{name}} liked your post",
