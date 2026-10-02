@@ -241,11 +241,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const devBypass = useCallback(() => setBypass(true), []);
   const signOut = useCallback(async () => {
+    const userId = session?.user?.id;
+    if (userId) {
+      try {
+        const { error } = await supabase
+          .from('users')
+          .update({ push_token: null })
+          .eq('id', userId);
+        if (error) {
+          console.warn('[AuthContext] Failed to clear push token before sign out:', error.message);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.warn('[AuthContext] Failed to clear push token before sign out:', message);
+      }
+    }
     setBypass(false);
     setLocked(false);
     setJustSignedIn(false);
     await supabase.auth.signOut();
-  }, []);
+  }, [session?.user?.id]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

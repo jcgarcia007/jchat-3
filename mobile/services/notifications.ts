@@ -23,6 +23,7 @@
  */
 
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import {
   IconBell,
@@ -129,10 +130,12 @@ export async function registerForPushNotifications(
     });
   }
 
-  // Check existing permission before prompting.
-  let { status } = await Notifications.getPermissionsAsync();
+  // Prompt only while the user has never answered. A denied permission must not
+  // produce a new prompt on every login or foreground transition.
+  const existingPermission = await Notifications.getPermissionsAsync();
+  let status = existingPermission.status;
 
-  if (status !== 'granted') {
+  if (status === Notifications.PermissionStatus.UNDETERMINED && existingPermission.canAskAgain) {
     const result = await Notifications.requestPermissionsAsync({
       ios: { allowAlert: true, allowBadge: true, allowSound: true },
     });
@@ -146,7 +149,10 @@ export async function registerForPushNotifications(
 
   let expoPushToken: string;
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId
+      ?? Constants.easConfig?.projectId;
+    if (typeof projectId !== 'string' || !projectId) return null;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     expoPushToken = tokenData.data;
   } catch {
     // Token fetch can fail in Expo Go without EAS project configuration,

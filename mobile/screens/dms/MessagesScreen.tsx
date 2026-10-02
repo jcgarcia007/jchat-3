@@ -11,6 +11,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,6 +76,7 @@ export default function MessagesScreen() {
 
   useFocusEffect(useCallback(() => {
     void refresh();
+    void Notifications.setBadgeCountAsync(0).catch(() => {});
   }, [refresh]));
 
   const handleRefresh = useCallback(async () => {

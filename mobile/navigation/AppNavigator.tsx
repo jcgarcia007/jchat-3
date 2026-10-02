@@ -8,8 +8,13 @@
  * Auth comes from AuthContext (useAuth); screens consume it directly.
  */
 
-import React from 'react';
-import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import * as Notifications from 'expo-notifications';
+import {
+  createNavigationContainerRef,
+  NavigationContainer,
+  LinkingOptions,
+} from '@react-navigation/native';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import {
   createNativeStackNavigator,
@@ -17,6 +22,8 @@ import {
 } from '@react-navigation/native-stack';
 
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
+import type { NotificationRoute } from '../services/notifications';
 import BottomTabs from './tabs/BottomTabs';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
@@ -125,15 +132,43 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
+const navigationRef = createNavigationContainerRef<MainStackParamList>();
+
+function navigateNotificationRoute(route: NotificationRoute): void {
+  if (!navigationRef.isReady()) return;
+  if (route.screen === 'DMs') navigationRef.navigate('DMs', route.params);
+  else if (route.screen === 'UserProfile') navigationRef.navigate('UserProfile', route.params);
+  else navigationRef.navigate('PostDetail', route.params);
+}
+
+function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady: boolean }) {
+  const { pendingRoute, clearPendingRoute } = useNotifications({ passive: false });
+
+  useEffect(() => {
+    if (!navigationReady || !pendingRoute || !navigationRef.isReady()) return;
+    navigateNotificationRoute(pendingRoute);
+    clearPendingRoute();
+    void Notifications.clearLastNotificationResponseAsync().catch(() => {});
+  }, [clearPendingRoute, navigationReady, pendingRoute]);
+
+  return null;
+}
+
 // Password recovery is an in-app OTP flow. AuthContext persists recovery intent
 // before verifyOtp creates a session, so this navigator never exposes MainStack.
 
 export default function AppNavigator() {
   const { isAuthenticated, locked, isRecovering } = useAuth();
+  const [navigationReady, setNavigationReady] = useState(false);
+  const notificationsEnabled = isAuthenticated && !locked && !isRecovering;
 
   return (
     <>
-    <NavigationContainer linking={linking}>
+    <NavigationContainer
+      linking={linking}
+      onReady={() => setNavigationReady(true)}
+      ref={navigationRef}
+    >
       {isAuthenticated && isRecovering ? (
         // The verified OTP creates a session, but the user must save or cancel
         // before leaving this isolated stack.
@@ -177,9 +212,12 @@ export default function AppNavigator() {
         </MainStack.Navigator>
       )}
     </NavigationContainer>
+    {notificationsEnabled ? (
+      <AuthenticatedNotificationsBridge navigationReady={navigationReady} />
+    ) : null}
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
-    {isAuthenticated && !locked && !isRecovering && <BiometricEnrollGate />}
+    {notificationsEnabled && <BiometricEnrollGate />}
     </>
   );
 }

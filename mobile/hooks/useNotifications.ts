@@ -40,11 +40,10 @@ import {
 // first notification arrives (Expo SDK requirement).
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
+    shouldShowBanner: false,
+    shouldShowList: false,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
   }),
 });
 
@@ -145,6 +144,8 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
 
     const userId = user.id;
     let cancelled = false;
+    let registrationInFlight = false;
+    let shouldRetryUndeterminedPermission = false;
 
     const refetch = () => {
       if (cancelled || !isSupabaseConfigured) return;
@@ -153,19 +154,46 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       });
     };
 
-    // Passive consumers read database state without requesting notification
-    // permission. Push registration remains intentionally outside Lote 3.
-    if (!passive) void registerForPushNotifications(userId);
+    const attemptPushRegistration = async () => {
+      if (cancelled || passive || registrationInFlight) return;
+      registrationInFlight = true;
+      try {
+        await registerForPushNotifications(userId);
+        const permission = await Notifications.getPermissionsAsync();
+        shouldRetryUndeterminedPermission = (
+          permission.status === Notifications.PermissionStatus.UNDETERMINED
+          && permission.canAskAgain
+        );
+      } catch {
+        // Native permission/channel APIs can fail on unsupported devices.
+        // Registration is best-effort and must never interrupt the app session.
+      } finally {
+        registrationInFlight = false;
+      }
+    };
+
+    // The non-passive root consumer owns the single registration attempt for
+    // this authenticated mount/session.
+    if (!passive) void attemptPushRegistration();
 
     // 2. Fetch initial notification list.
     refetch();
 
     const appStateSubscription = AppState.addEventListener('change', (status) => {
-      if (status === 'active') refetch();
+      if (status !== 'active') return;
+      refetch();
+      if (shouldRetryUndeterminedPermission) void attemptPushRegistration();
     });
 
     // 3. Foreground received listener — refresh the list so the new row appears.
     if (!passive) {
+      void Notifications.getLastNotificationResponseAsync()
+        .then((response) => {
+          if (cancelled || !response) return;
+          setPendingRoute(routeFromNotificationResponse(response));
+        })
+        .catch(() => {});
+
       receivedSubRef.current = Notifications.addNotificationReceivedListener(
         (_notification) => {
           refetch();
@@ -176,19 +204,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       responseSubRef.current = Notifications.addNotificationResponseReceivedListener(
         (response) => {
           if (cancelled) return;
-
-          const data = response.notification.request.content.data as
-            | Record<string, unknown>
-            | null
-            | undefined;
-          const rawType = data?.type;
-          const payload = (data?.payload as Record<string, unknown> | null) ?? null;
-
-          setPendingRoute(
-            isValidNotificationType(rawType)
-              ? routeForNotification(rawType, payload)
-              : null,
-          );
+          setPendingRoute(routeFromNotificationResponse(response));
         },
       );
     }
@@ -196,7 +212,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     // 5. Supabase Realtime subscription for the notifications table.
     if (isSupabaseConfigured) {
       const channel = supabase
-        .channel(`notifications:user:${userId}`)
+        .channel(`notifications:${passive ? 'passive' : 'active'}:user:${userId}`)
         .on(
           'postgres_changes',
           {
@@ -286,4 +302,18 @@ function isValidNotificationType(value: unknown): value is NotificationType {
     typeof value === 'string' &&
     VALID_NOTIFICATION_TYPES.has(value as NotificationType)
   );
+}
+
+function routeFromNotificationResponse(
+  response: Notifications.NotificationResponse,
+): NotificationRoute | null {
+  const data = response.notification.request.content.data;
+  const rawType = data?.type;
+  const rawPayload = data?.payload;
+  const payload = rawPayload && typeof rawPayload === 'object' && !Array.isArray(rawPayload)
+    ? rawPayload as Record<string, unknown>
+    : null;
+  return isValidNotificationType(rawType)
+    ? routeForNotification(rawType, payload)
+    : null;
 }
