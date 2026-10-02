@@ -1,9 +1,8 @@
 import { isSupabaseConfigured, supabase } from './supabase';
+import type { AppearancePreference } from '../theme/appearance';
 
 export type ProximityMode = 'all' | 'favorites' | 'visited' | 'off';
 export type UserLanguage = 'en' | 'es';
-export type AppearancePreference = 'dark' | 'light' | 'system';
-
 export interface UserSettings {
   notifWork: boolean;
   notifSocial: boolean;

@@ -58,6 +58,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { applyAppearance, type AppearancePreference } from '../../theme/appearance';
 import { useAuth } from '../../context/AuthContext';
 import {
   supabase,
@@ -78,7 +79,6 @@ import {
   loadUserSettings,
   updateMyLanguage,
   updateMySettings,
-  type AppearancePreference,
   type UserLanguage,
   type UserSettings,
 } from '../../services/userSettings';
@@ -316,6 +316,9 @@ export default function SettingsScreen() {
       if (delta.language) {
         void changeAppLanguage(delta.language as SupportedLanguage);
       }
+      if (delta.appearance) {
+        void applyAppearance(delta.appearance).catch(() => undefined);
+      }
 
       if (!user?.id) return;
       try {
@@ -327,6 +330,9 @@ export default function SettingsScreen() {
         setSettings(previous);
         if (delta.language) {
           void changeAppLanguage(previous.language as SupportedLanguage);
+        }
+        if (delta.appearance) {
+          void applyAppearance(previous.appearance).catch(() => undefined);
         }
         Alert.alert(t('state.error', { ns: 'common' }));
       }
@@ -619,7 +625,6 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.rowBody}>
               <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.theme')}</Text>
-              {/* TODO(ThemeContext): apply appearance override without restart */}
               <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
                 {t('main.themeSub')}
               </Text>
@@ -631,7 +636,6 @@ export default function SettingsScreen() {
               value={settings.appearance}
               onChange={(v) => {
                 void patch({ appearance: v });
-                // TODO(ThemeContext): apply appearance override without restart
               }}
               labelMap={APPEARANCE_LABELS}
             />

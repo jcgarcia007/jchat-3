@@ -11,16 +11,58 @@
  */
 
 import './i18n'; // must be first — initialises i18next before any component renders
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import StripeRoot from './components/StripeRoot';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import AppNavigator from './navigation/AppNavigator';
+import { applyAppearance, loadStoredAppearance } from './theme/appearance';
+import { loadUserSettings } from './services/userSettings';
+
+function AuthenticatedAppearanceBridge() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    void Promise.all([loadUserSettings(user.id), loadStoredAppearance()])
+      .then(async ([remote, local]) => {
+        if (cancelled || !remote.appearance || remote.appearance === local) return;
+        await applyAppearance(remote.appearance);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  return null;
+}
 
 export default function App() {
+  const [appearanceReady, setAppearanceReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void loadStoredAppearance()
+      .then((stored) => applyAppearance(stored ?? 'system'))
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) setAppearanceReady(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!appearanceReady) return null;
+
   return (
     <StripeRoot>
       <AuthProvider>
+        <AuthenticatedAppearanceBridge />
         <CartProvider>
           <AppNavigator />
         </CartProvider>
