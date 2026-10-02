@@ -43,6 +43,10 @@ verify_jwt = false
 [functions.guest-tab]
 verify_jwt = false
 
+# Database webhook: invoked by pg_net with x-push-secret, not a user JWT.
+[functions.send-push]
+verify_jwt = false
+
 # ── Auth email templates (bilingual ES/EN) ─────────────────────────────────
 # Source of truth: supabase/templates/*.html (see docs/JCHAT_PLANTILLAS_CORREO_SUPABASE.md).
 # Applies to local dev only; in production they are pasted manually into
