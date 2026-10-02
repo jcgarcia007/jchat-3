@@ -5,12 +5,8 @@
  * Design: dark gradient background (matching Splash), illustration icon,
  * title, description, progress dots, Next / "Explore the map" button, Skip.
  *
- * On finish (step 4 or Skip): sets users.onboarding_completed = true in
- * Supabase (guarded by isSupabaseConfigured), then navigates to Tabs.
- *
- * TODO(Task 1.7): gate Onboarding display on users.onboarding_completed flag.
- * TODO(schema): add users.onboarding_completed boolean default false
- *   to supabase/migrations/001_initial_schema.sql
+ * On finish (step 4 or Skip): waits for users.onboarding_completed = true,
+ * falls back to a local completion flag if that write fails, then opens Tabs.
  */
 
 import React, { useRef, useState } from 'react';
@@ -35,9 +31,12 @@ import {
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import {
+  completeOnboarding,
+  storeLocalOnboardingCompletion,
+} from '../../services/onboarding';
 
 // ---------------------------------------------------------------------------
 // One-off screen colors NOT in the shared palette.
@@ -160,18 +159,6 @@ function ProgressDots({ current, total }: { current: number; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-async function markOnboardingComplete(userId: string): Promise<void> {
-  if (!isSupabaseConfigured) return;
-  // TODO(schema): ensure users table has: onboarding_completed boolean default false
-  await supabase
-    .from('users')
-    .update({ onboarding_completed: true })
-    .eq('id', userId);
-}
-
-// ---------------------------------------------------------------------------
 // Main Screen
 // ---------------------------------------------------------------------------
 export default function OnboardingScreen() {
@@ -182,6 +169,7 @@ export default function OnboardingScreen() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const finishingRef = useRef(false);
 
   const isLastStep = currentStep === TOTAL_STEPS - 1;
 
@@ -203,24 +191,27 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (isLastStep) {
-      handleFinish();
+      void handleFinish();
     } else {
       transitionToStep(currentStep + 1);
     }
   };
 
   const handleSkip = () => {
-    handleFinish();
+    void handleFinish();
   };
 
-  const handleFinish = () => {
-    if (user?.id) {
-      // Fire-and-forget — don't block navigation on the DB write
-      markOnboardingComplete(user.id).catch(() => {
-        // TODO(i18n): surface error gracefully if needed
-      });
+  const handleFinish = async () => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+
+    try {
+      if (!user?.id) throw new Error('Missing authenticated user');
+      await completeOnboarding(user.id);
+    } catch {
+      await storeLocalOnboardingCompletion().catch(() => undefined);
     }
-    navigation.navigate('Tabs');
+    navigation.replace('Tabs');
   };
 
   const step = STEPS[currentStep];

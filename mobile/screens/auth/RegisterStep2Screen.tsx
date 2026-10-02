@@ -409,10 +409,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // Applied here directly (session present) — drop the pending copy.
       void supabase.auth.updateUser({ data: { pending_profile: null } });
 
-      // TODO(Task 1.6): navigate to Onboarding before main tabs.
-      // For now, the AuthContext session listener (supabase.auth.onAuthStateChange)
-      // detects the new session and flips isAuthenticated → AppNavigator renders
-      // MainStack (BottomTabs) automatically — no explicit navigation needed here.
+      // The authenticated root navigator reads onboarding_completed and routes
+      // this new session to Onboarding before the user enters the main tabs.
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('register.alerts.unexpectedError');
       Alert.alert(t('register.alerts.errorTitle'), message);

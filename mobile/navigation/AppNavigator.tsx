@@ -8,7 +8,7 @@
  * Auth comes from AuthContext (useAuth); screens consume it directly.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import {
   createNavigationContainerRef,
@@ -24,6 +24,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import type { NotificationRoute } from '../services/notifications';
+import {
+  getOnboardingCompleted,
+  hasLocalOnboardingCompletion,
+} from '../services/onboarding';
 import BottomTabs from './tabs/BottomTabs';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
@@ -158,9 +162,35 @@ function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady
 // before verifyOtp creates a session, so this navigator never exposes MainStack.
 
 export default function AppNavigator() {
-  const { isAuthenticated, locked, isRecovering } = useAuth();
+  const { isAuthenticated, locked, isRecovering, user } = useAuth();
   const [navigationReady, setNavigationReady] = useState(false);
   const notificationsEnabled = isAuthenticated && !locked && !isRecovering;
+  const onboardingCheckedUserRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      onboardingCheckedUserRef.current = null;
+      return;
+    }
+    if (!notificationsEnabled || !navigationReady || !navigationRef.isReady()) return;
+    if (onboardingCheckedUserRef.current === user.id) return;
+
+    onboardingCheckedUserRef.current = user.id;
+    let cancelled = false;
+    void Promise.all([
+      getOnboardingCompleted(user.id),
+      hasLocalOnboardingCompletion(),
+    ])
+      .then(([completedRemotely, completedLocally]) => {
+        if (cancelled || completedRemotely || completedLocally || !navigationRef.isReady()) return;
+        navigationRef.resetRoot({ index: 0, routes: [{ name: 'Onboarding' }] });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigationReady, notificationsEnabled, user?.id]);
 
   return (
     <>
