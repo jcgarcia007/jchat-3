@@ -23,7 +23,7 @@
  * TODO(nav): register a SettingsStack so the Privacy route can be pushed from here
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
   Alert,
@@ -54,7 +54,6 @@ import {
   IconShield,
   IconTrash,
   IconUser,
-  IconWifi,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -72,83 +71,31 @@ import {
   setBiometricEnabled,
   authenticateBiometric,
 } from '../../services/biometric';
-import { changeAppLanguage, type SupportedLanguage } from '../../i18n';
+import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { posMyBusinesses } from '../../services/pos';
+import { getUserById } from '../../services/users';
+import {
+  loadUserSettings,
+  updateMyLanguage,
+  updateMySettings,
+  type AppearancePreference,
+  type UserLanguage,
+  type UserSettings,
+} from '../../services/userSettings';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type ProximityMode = 'all' | 'favorites' | 'visited' | 'off';
-type Language = 'en' | 'es';
-type AppearancePref = 'dark' | 'light' | 'system';
-
-interface UserSettings {
-  notifWork: boolean;
-  notifSocial: boolean;
-  proximityMode: ProximityMode;
-  language: Language;
-  appearance: AppearancePref;
-}
-
-const DEFAULT_SETTINGS: UserSettings = {
-  notifWork: true,
-  notifSocial: true,
-  proximityMode: 'all',
-  language: 'en',
-  appearance: 'system',
-};
-
-// ---------------------------------------------------------------------------
-// Helpers — Supabase persistence
-// ---------------------------------------------------------------------------
-
-async function loadUserSettings(userId: string): Promise<Partial<UserSettings>> {
-  if (!isSupabaseConfigured) return {};
-  // TODO(schema): ensure users has: language text, settings jsonb
-  const { data, error } = await supabase
-    .from('users')
-    .select('language, settings')
-    .eq('id', userId)
-    .single();
-
-  if (error || !data) return {};
-
-  const dbSettings = (data.settings as Record<string, unknown>) ?? {};
+function defaultSettings(): UserSettings {
   return {
-    language: (data.language as Language) ?? undefined,
-    notifWork:
-      typeof dbSettings.notifWork === 'boolean' ? dbSettings.notifWork : undefined,
-    notifSocial:
-      typeof dbSettings.notifSocial === 'boolean' ? dbSettings.notifSocial : undefined,
-    proximityMode: (dbSettings.proximityMode as ProximityMode) ?? undefined,
-    appearance: (dbSettings.appearance as AppearancePref) ?? undefined,
+    notifWork: true,
+    notifSocial: true,
+    // TODO(geofence): Keep the stored mode while proximity controls are hidden.
+    proximityMode: 'all',
+    language: i18n.language?.startsWith('es') ? 'es' : 'en',
+    appearance: 'system',
   };
-}
-
-async function persistUserSettings(
-  userId: string,
-  patch: Partial<UserSettings>,
-): Promise<void> {
-  if (!isSupabaseConfigured) return;
-
-  // Split: language lives in its own column; the rest go into settings JSONB.
-  const { language, ...rest } = patch;
-
-  const updates: Record<string, unknown> = {};
-  if (language !== undefined) {
-    updates.language = language;
-  }
-  if (Object.keys(rest).length > 0) {
-    // Merge into existing JSONB via a read-modify-write approach.
-    // For a production implementation, use a Postgres function or jsonb || operator.
-    // TODO(schema): ensure settings column exists in users table
-    updates.settings = rest;
-  }
-
-  if (Object.keys(updates).length === 0) return;
-
-  await supabase.from('users').update(updates).eq('id', userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -279,7 +226,9 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
 
   // ── Local state ────────────────────────────────────────────────────────────
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+  const settingsRef = useRef(settings);
+  const [username, setUsername] = useState<string | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   // Biometric app-lock (M2) — device-local opt-in, independent of user settings.
   const [biometricOn, setBiometricOn] = useState(false);
@@ -294,12 +243,19 @@ export default function SettingsScreen() {
     }
     loadUserSettings(user.id)
       .then((remote) => {
-        setSettings((prev) => ({ ...prev, ...remote }));
+        setSettings((prev) => {
+          const next = { ...prev, ...remote };
+          settingsRef.current = next;
+          return next;
+        });
       })
       .catch(() => {
         // Fall back to defaults silently
       })
       .finally(() => setLoadingSettings(false));
+    void getUserById(user.id)
+      .then((row) => setUsername(row?.username ?? null))
+      .catch(() => setUsername(null));
   }, [user?.id]);
 
   // ── Biometric app-lock: read the current opt-in state on mount ─────────────
@@ -351,18 +307,31 @@ export default function SettingsScreen() {
 
   // ── Patch helper — updates local state + persists delta ───────────────────
   const patch = useCallback(
-    (delta: Partial<UserSettings>) => {
-      setSettings((prev) => {
-        const next = { ...prev, ...delta };
-        if (user?.id) {
-          persistUserSettings(user.id, delta).catch(() => {
-            // TODO: surface persistence error to user (toast / retry)
-          });
+    async (delta: Partial<UserSettings>) => {
+      const previous = settingsRef.current;
+      const next = { ...previous, ...delta };
+      settingsRef.current = next;
+      setSettings(next);
+
+      if (delta.language) {
+        void changeAppLanguage(delta.language as SupportedLanguage);
+      }
+
+      if (!user?.id) return;
+      try {
+        const { language, ...settingsPatch } = delta;
+        if (language) await updateMyLanguage(user.id, language);
+        if (Object.keys(settingsPatch).length > 0) await updateMySettings(settingsPatch);
+      } catch {
+        settingsRef.current = previous;
+        setSettings(previous);
+        if (delta.language) {
+          void changeAppLanguage(previous.language as SupportedLanguage);
         }
-        return next;
-      });
+        Alert.alert(t('state.error', { ns: 'common' }));
+      }
     },
-    [user?.id],
+    [t, user?.id],
   );
 
   // ── Sign out ───────────────────────────────────────────────────────────────
@@ -472,25 +441,18 @@ export default function SettingsScreen() {
     await WebBrowser.openBrowserAsync('https://jchat.cloud/terms');
   }, []);
 
-  // ── Proximity mode options ─────────────────────────────────────────────────
-  const PROXIMITY_OPTIONS: ProximityMode[] = ['all', 'favorites', 'visited', 'off'];
-  const PROXIMITY_LABELS: Record<ProximityMode, string> = {
-    all: t('main.proxAll'),
-    favorites: t('main.proxFavorites'),
-    visited: t('main.proxVisited'),
-    off: t('main.proxOff'),
-  };
+  // TODO(geofence): Restore the proximityMode control when geofencing ships.
 
   // ── Language options ───────────────────────────────────────────────────────
-  const LANGUAGE_OPTIONS: Language[] = ['en', 'es'];
-  const LANGUAGE_LABELS: Record<Language, string> = {
+  const LANGUAGE_OPTIONS: UserLanguage[] = ['en', 'es'];
+  const LANGUAGE_LABELS: Record<UserLanguage, string> = {
     en: 'English',
     es: 'Español',
   };
 
   // ── Appearance options ─────────────────────────────────────────────────────
-  const APPEARANCE_OPTIONS: AppearancePref[] = ['dark', 'light', 'system'];
-  const APPEARANCE_LABELS: Record<AppearancePref, string> = {
+  const APPEARANCE_OPTIONS: AppearancePreference[] = ['dark', 'light', 'system'];
+  const APPEARANCE_LABELS: Record<AppearancePreference, string> = {
     dark: t('main.appearanceDark'),
     light: t('main.appearanceLight'),
     system: t('main.appearanceSystem'),
@@ -512,7 +474,7 @@ export default function SettingsScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('back', { ns: 'common' })}
         >
           <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
         </Pressable>
@@ -549,13 +511,7 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
           label={t('main.username')}
-          // TODO(schema): surface user_metadata.username or users.username
-          sublabel={
-            (() => {
-              const uname = user?.user_metadata?.username as string | undefined;
-              return uname ? `@${uname}` : '@—';
-            })()
-          }
+          sublabel={username ? `@${username}` : '@—'}
         />
 
         <SectionDivider />
@@ -623,31 +579,6 @@ export default function SettingsScreen() {
           }
         />
 
-        <SectionDivider />
-
-        {/* Proximity alerts mode */}
-        <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
-          <View style={styles.row}>
-            <View style={styles.rowIcon}>
-              <IconWifi size={20} color={c.brand} strokeWidth={2} />
-            </View>
-            <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.proximityAlerts')}</Text>
-              <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
-                {t('main.proximitySub')}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.pickerPad}>
-            <SegmentedPicker<ProximityMode>
-              options={PROXIMITY_OPTIONS}
-              value={settings.proximityMode}
-              onChange={(v) => patch({ proximityMode: v })}
-              labelMap={PROXIMITY_LABELS}
-            />
-          </View>
-        </View>
-
         {/* Spacer */}
         <View style={styles.sectionGap} />
 
@@ -664,12 +595,11 @@ export default function SettingsScreen() {
             </View>
           </View>
           <View style={styles.pickerPad}>
-            <SegmentedPicker<Language>
+            <SegmentedPicker<UserLanguage>
               options={LANGUAGE_OPTIONS}
               value={settings.language}
               onChange={(v) => {
-                patch({ language: v });
-                changeAppLanguage(v as SupportedLanguage);
+                void patch({ language: v });
               }}
               labelMap={LANGUAGE_LABELS}
             />
@@ -696,11 +626,11 @@ export default function SettingsScreen() {
             </View>
           </View>
           <View style={styles.pickerPad}>
-            <SegmentedPicker<AppearancePref>
+            <SegmentedPicker<AppearancePreference>
               options={APPEARANCE_OPTIONS}
               value={settings.appearance}
               onChange={(v) => {
-                patch({ appearance: v });
+                void patch({ appearance: v });
                 // TODO(ThemeContext): apply appearance override without restart
               }}
               labelMap={APPEARANCE_LABELS}
