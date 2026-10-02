@@ -13,7 +13,6 @@
  *
  * TODOs
  * ─────
- * TODO(ThemeContext): apply appearance override without restart
  * TODO: change-password flow (supabase.auth.updateUser or resetPasswordForEmail)
  * TODO(server): schedule account deletion with 24h delay
  * TODO(schema): ensure users table has columns:

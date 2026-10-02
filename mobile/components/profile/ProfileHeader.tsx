@@ -65,7 +65,12 @@ function StatItem({ label, value, theme, onPress }: { label: string; value: numb
   const content = (
     <>
       <Text style={[styles.statValue, { color: theme.bodyText }]}>{formatCount(value)}</Text>
-      <Text style={[styles.statLabel, { color: theme.bodyTextSecondary }]}>{label}</Text>
+      <Text
+        style={[styles.statLabel, { color: theme.bodyTextSecondary }]}
+        numberOfLines={2}
+      >
+        {label}
+      </Text>
     </>
   );
   return onPress ? (
@@ -136,13 +141,18 @@ export default function ProfileHeader({
         ) : null}
       </View>
 
-      <View style={styles.avatarPositioner}>
+      <View style={styles.avatarStatsRow}>
         <View style={[styles.avatarRing, { backgroundColor: theme.statsBg }]}>
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={[styles.avatar, { backgroundColor: theme.coverBg }]} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.coverBg }]}><Text style={[styles.avatarInitials, { color: theme.nameColor }]}>{initials}</Text></View>
           )}
+        </View>
+        <View style={styles.inlineStats}>
+          <StatItem label={t('header.posts')} value={postCount} theme={theme} />
+          <StatItem label={t('header.followers')} value={followerCount} theme={theme} onPress={onOpenFollowers} />
+          <StatItem label={t('header.following')} value={followingCount} theme={theme} onPress={onOpenFollowing} />
         </View>
       </View>
 
@@ -183,12 +193,6 @@ export default function ProfileHeader({
         </View>
       ) : null}
 
-      <View style={[styles.statsCard, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
-        <StatItem label={t('header.posts')} value={postCount} theme={theme} />
-        <StatItem label={t('header.followers')} value={followerCount} theme={theme} onPress={onOpenFollowers} />
-        <StatItem label={t('header.following')} value={followingCount} theme={theme} onPress={onOpenFollowing} />
-      </View>
-
       <View style={styles.actionRow}>
         {isOwnProfile ? (
           <>
@@ -219,11 +223,12 @@ const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   coverFrame: { height: 120, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' },
   coverCamera: { position: 'absolute', right: 10, bottom: 10, width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  avatarPositioner: { height: 104, marginTop: -48, paddingLeft: 28 },
+  avatarStatsRow: { minHeight: 104, marginTop: -48, paddingLeft: 28, paddingRight: 12, flexDirection: 'row', alignItems: 'flex-end' },
   avatarRing: { width: 104, height: 104, borderRadius: 52, padding: 4 },
   avatar: { width: 96, height: 96, borderRadius: 48 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontSize: 30, fontWeight: '800' },
+  inlineStats: { flex: 1, height: 56, marginLeft: 6, flexDirection: 'row', alignItems: 'stretch' },
   identity: { paddingHorizontal: 20, paddingTop: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   displayName: { maxWidth: '90%', fontSize: 22, lineHeight: 28, fontWeight: '800' },
@@ -232,10 +237,9 @@ const styles = StyleSheet.create({
   addBio: { marginTop: 9, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   city: { fontSize: 14, lineHeight: 19 },
-  statsCard: { marginHorizontal: 16, marginTop: 18, flexDirection: 'row', borderWidth: 1, borderRadius: 16, paddingVertical: 13 },
-  statItem: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  statValue: { fontSize: 18, lineHeight: 22, fontWeight: '800' },
-  statLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  statItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2 },
+  statValue: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
+  statLabel: { minHeight: 28, fontSize: 12, lineHeight: 14, fontWeight: '600', textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 9, marginHorizontal: 16, marginTop: 12 },
   ownActionButton: { flex: 1, height: 36, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   primaryButton: { flex: 1, height: 44, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
