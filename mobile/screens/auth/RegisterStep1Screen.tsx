@@ -7,7 +7,7 @@
  *
  * Design:
  *  • Progress dots (2 dots, first filled brand, second empty)
- *  • Social signup row: Google | Apple | Facebook (OAuth stubs)
+ *  • Social signup row: Google | Apple
  *  • Divider "or with email"
  *  • Form fields with inline validation errors
  *  • "Continue" button → navigate to RegisterStep2
@@ -38,7 +38,6 @@ import {
   IconEyeOff,
   IconBrandGoogle,
   IconBrandApple,
-  IconBrandFacebook,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -55,7 +54,6 @@ const LOCAL_COLORS = {
   socialIconGoogle: '#EA4335',             // Google brand red
   socialIconApple: '#000000',              // Apple logo black (light mode)
   socialIconAppleDark: '#FFFFFF',          // Apple logo white (dark mode)
-  socialIconFacebook: '#1877F2',           // Facebook brand blue
   onBrand: '#FFFFFF',                      // text on filled brand button
 } as const;
 
@@ -191,10 +189,6 @@ export default function RegisterStep1Screen() {
   const handleGoogleSignUp = useCallback(() => handleOAuth('google'), [handleOAuth]);
   const handleAppleSignUp  = useCallback(() => handleOAuth('apple'),  [handleOAuth]);
 
-  const handleFacebookSignUp = useCallback(async () => {
-    // Facebook OAuth not yet configured — stub
-    await WebBrowser.openBrowserAsync('https://jchat.app/auth/facebook');
-  }, []);
 
   // ---------------------------------------------------------------------------
   // Continue — validate all fields, navigate if clean
@@ -282,20 +276,6 @@ export default function RegisterStep1Screen() {
               <IconBrandApple
                 size={22}
                 color={appleIconColor}
-                strokeWidth={1.75}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.socialButton, { backgroundColor: inputBg, borderColor: inputBorder }]}
-              onPress={handleFacebookSignUp}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={t('register.facebookA11y')}
-            >
-              <IconBrandFacebook
-                size={22}
-                color={LOCAL_COLORS.socialIconFacebook}
                 strokeWidth={1.75}
               />
             </TouchableOpacity>
