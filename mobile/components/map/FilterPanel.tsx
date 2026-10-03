@@ -9,7 +9,6 @@
  *   - Results count badge — "{N} places near you".
  *   - Advanced filter sheet — slides up from bottom via RN Modal + Animated.
  *       • Distance: segmented selector (1 / 2 / 5 / 10 km) — no slider lib needed.
- *       • Category multi-select (same set as chips, extended).
  *   - Reset filters button — visible only when any filter differs from defaultFilters.
  *   - Emits MapFilters via onChange on every change.
  *
@@ -36,7 +35,6 @@ import {
   IconAdjustmentsHorizontal,
   IconBuilding,
   IconBuildingStore,
-  IconCalendarEvent,
   IconClock,
   IconSearch,
   IconX,
@@ -44,17 +42,12 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { usesKilometers } from '../../utils/distanceUnits';
+import type { CategoryOption } from '../../utils/categories';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
-/** Categories mirrored by the quick-filter chips and the advanced panel. */
-export type MapCategory =
-  | 'all'
-  | 'bars'
-  | 'cafes'
-  | 'food'
-  | 'events'
-  | 'open_now';
+/** 'all' (no restriction) or the normalized key of a real category (see utils/categories). */
+export type MapCategory = string;
 
 /** Distance filter in kilometres; 'all' = no radius (the default). */
 export type DistanceKm = 'all' | 1 | 2 | 5 | 10;
@@ -102,23 +95,22 @@ export interface FilterPanelProps {
   resultCount?: number;
   /** Whether the user's position is known; without it the radius can't be applied. */
   hasLocation?: boolean;
+  /** Real categories present on the map (one chip each). */
+  categories: CategoryOption[];
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
 interface ChipDef {
-  key: MapCategory;
+  /** 'all', 'open_now', or a category key. */
+  key: string;
+  kind: 'all' | 'category' | 'open_now';
+  label: string;
   icon: React.ReactNode;
 }
 
 const DISTANCE_OPTIONS: DistanceKm[] = ['all', 1, 2, 5, 10];
 const MILES_PER_KM = 0.621371;
-
-// Same 4 keys as the "bars"/"cafes"/"food"/"events" chips above — both this
-// array and `chips` read their display label from the shared `categoryLabels`
-// map (built with t() inside the component), so there is a single source of
-// translated text for each MapCategory value, not two.
-const ADVANCED_CATEGORY_KEYS: MapCategory[] = ['bars', 'cafes', 'food', 'events'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -139,7 +131,7 @@ function hasActiveFilters(f: MapFilters, hasLocation: boolean): boolean {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function FilterPanel({ filters, onChange, resultCount, hasLocation = true }: FilterPanelProps) {
+export default function FilterPanel({ filters, onChange, resultCount, hasLocation = true, categories }: FilterPanelProps) {
   const { t } = useTranslation('map');
   // Radius labels follow the region: kilometres, or miles for everyone else.
   const inKilometers = usesKilometers();
@@ -149,17 +141,6 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
     return t('filterPanel.distanceMiles', { count: Math.round(km * MILES_PER_KM * 10) / 10 });
   };
   const c = useThemeColors();
-  // Display-only labels for MapCategory — the persisted/compared value (the
-  // `key`) never changes. Single source shared by `chips` and the advanced
-  // category grid below (see ADVANCED_CATEGORY_KEYS comment).
-  const categoryLabels: Record<MapCategory, string> = {
-    all: t('filterPanel.categoryAll'),
-    bars: t('filterPanel.categoryBars'),
-    cafes: t('filterPanel.categoryCafes'),
-    food: t('filterPanel.categoryFood'),
-    events: t('filterPanel.categoryEvents'),
-    open_now: t('filterPanel.categoryOpenNow'),
-  };
   const [sheetVisible, setSheetVisible] = useState(false);
 
   // Local draft state for the advanced sheet — applied on "Apply"
@@ -194,15 +175,14 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
 
   // ── Chip tap ──────────────────────────────────────────────────────────────
 
-  const handleChipPress = useCallback((key: MapCategory) => {
-    if (key === 'open_now') {
+  const handleChipPress = useCallback((chip: ChipDef) => {
+    if (chip.kind === 'open_now') {
       onChange({ ...filters, openNow: !filters.openNow });
-    } else if (key === 'all') {
+    } else if (chip.kind === 'all') {
       onChange({ ...filters, category: 'all', openNow: false });
     } else {
       // Toggle: tapping the same category again resets to 'all'
-      const next: MapCategory = filters.category === key ? 'all' : key;
-      onChange({ ...filters, category: next });
+      onChange({ ...filters, category: filters.category === chip.key ? 'all' : chip.key });
     }
   }, [filters, onChange]);
 
@@ -227,13 +207,20 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
 
   // ── Chip definitions (icons use the theme colors via closure) ─────────────
 
+  const chipIconColor = (isActive: boolean) => (isActive ? palette.bgSurfaceLight : c.textSecondary);
   const chips: ChipDef[] = [
-    { key: 'all',      icon: <IconBuildingStore size={13} color={filters.category === 'all' ? '#ffffff' : c.textSecondary} /> },
-    { key: 'bars',     icon: <IconBuilding       size={13} color={filters.category === 'bars'   ? '#ffffff' : c.textSecondary} /> },
-    { key: 'cafes',    icon: <IconBuilding       size={13} color={filters.category === 'cafes'  ? '#ffffff' : c.textSecondary} /> },
-    { key: 'food',     icon: <IconBuilding       size={13} color={filters.category === 'food'   ? '#ffffff' : c.textSecondary} /> },
-    { key: 'events',   icon: <IconCalendarEvent  size={13} color={filters.category === 'events' ? '#ffffff' : c.textSecondary} /> },
-    { key: 'open_now', icon: <IconClock          size={13} color={filters.openNow              ? '#ffffff' : c.textSecondary} /> },
+    {
+      key: 'all', kind: 'all', label: t('filterPanel.categoryAll'),
+      icon: <IconBuildingStore size={13} color={chipIconColor(filters.category === 'all' && !filters.openNow)} />,
+    },
+    ...categories.map((option): ChipDef => ({
+      key: option.key, kind: 'category', label: option.label,
+      icon: <IconBuilding size={13} color={chipIconColor(filters.category === option.key)} />,
+    })),
+    {
+      key: 'open_now', kind: 'open_now', label: t('filterPanel.categoryOpenNow'),
+      icon: <IconClock size={13} color={chipIconColor(filters.openNow)} />,
+    },
   ];
 
   const active = hasActiveFilters(filters, hasLocation);
@@ -292,9 +279,9 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
       >
         {chips.map((chip) => {
           const isActive =
-            chip.key === 'open_now'
+            chip.kind === 'open_now'
               ? filters.openNow
-              : chip.key === 'all'
+              : chip.kind === 'all'
               ? filters.category === 'all' && !filters.openNow
               : filters.category === chip.key;
 
@@ -308,14 +295,14 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                   borderColor: isActive ? palette.brand : c.borderSubtle,
                 },
               ]}
-              onPress={() => handleChipPress(chip.key)}
+              onPress={() => handleChipPress(chip)}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={categoryLabels[chip.key]}
+              accessibilityLabel={chip.label}
             >
               {chip.icon}
-              <Text style={[styles.chipLabel, { color: isActive ? '#ffffff' : c.textSecondary }]}>
-                {categoryLabels[chip.key]}
+              <Text style={[styles.chipLabel, { color: isActive ? palette.bgSurfaceLight : c.textSecondary }]}>
+                {chip.label}
               </Text>
             </TouchableOpacity>
           );
@@ -437,40 +424,6 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
             </View>
 
             {/* TODO(rating): Reactivate this control when business rating data is available. */}
-
-            {/* ── Category multi-select ─────────────────────────────────────── */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                {t('filterPanel.categorySectionLabel')}
-              </Text>
-              <View style={styles.categoryGrid}>
-                {ADVANCED_CATEGORY_KEYS.map((key) => {
-                  const sel = draft.category === key;
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[
-                        styles.categoryChip,
-                        {
-                          backgroundColor: sel ? palette.brandLight : c.bgElevated,
-                          borderColor: sel ? palette.brand : c.borderSubtle,
-                        },
-                      ]}
-                      onPress={() =>
-                        setDraft((d) => ({ ...d, category: sel ? 'all' : key }))
-                      }
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: sel }}
-                      accessibilityLabel={categoryLabels[key]}
-                    >
-                      <Text style={[styles.categoryChipLabel, { color: sel ? palette.brand : c.textPrimary }]}>
-                        {categoryLabels[key]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
 
             {/* TODO(presence): Reactivate this control when live presence data is available. */}
 
@@ -701,21 +654,6 @@ const styles = StyleSheet.create({
   },
 
   // Category multi-select chips
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 0.5,
-  },
-  categoryChipLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
 
   // Open now toggle row
   openNowRow: {

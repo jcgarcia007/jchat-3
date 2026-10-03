@@ -37,10 +37,6 @@
   },
   "filterPanel": {
     "categoryAll": "Todas",
-    "categoryBars": "Bares",
-    "categoryCafes": "Cafés",
-    "categoryFood": "Comida",
-    "categoryEvents": "Eventos",
     "categoryOpenNow": "Abierto ahora",
     "distanceKm": "{{count}} km",
     "searchPlaceholder": "Buscar lugares…",
@@ -57,7 +53,6 @@
     "starsMinimum_one": "{{count}} estrella mínimo",
     "starsMinimum_other": "{{count}} estrellas mínimo",
     "any": "Cualquiera",
-    "categorySectionLabel": "Categoría",
     "minActiveUsersSectionLabel": "Mínimo de usuarios activos",
     "decreaseActiveUsersA11y": "Disminuir mínimo de usuarios activos",
     "increaseActiveUsersA11y": "Aumentar mínimo de usuarios activos",

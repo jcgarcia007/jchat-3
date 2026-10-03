@@ -37,10 +37,6 @@
   },
   "filterPanel": {
     "categoryAll": "All",
-    "categoryBars": "Bars",
-    "categoryCafes": "Cafes",
-    "categoryFood": "Food",
-    "categoryEvents": "Events",
     "categoryOpenNow": "Open now",
     "distanceKm": "{{count}} km",
     "searchPlaceholder": "Search places…",
@@ -57,7 +53,6 @@
     "starsMinimum_one": "{{count}} star minimum",
     "starsMinimum_other": "{{count}} stars minimum",
     "any": "Any",
-    "categorySectionLabel": "Category",
     "minActiveUsersSectionLabel": "Minimum active users",
     "decreaseActiveUsersA11y": "Decrease minimum active users",
     "increaseActiveUsersA11y": "Increase minimum active users",

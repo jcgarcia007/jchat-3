@@ -40,6 +40,7 @@ import FilterPanel, { defaultFilters, type MapFilters } from '../../components/m
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
+import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -116,19 +117,6 @@ const DEMO_BUSINESSES: MapBusiness[] = [
   { id: 'b3', name: 'Taco Loco', category: 'Restaurant', icon_emoji: '🌮', lat: 25.7705, lng: -80.188, status: 'pending', activeCount: 3, address: '7 Washington Ave', cover_url: null, hours: null, rating: 4.1 },
   { id: 'b4', name: 'Pulse Live', category: 'Event', icon_emoji: '🎉', lat: 25.7555, lng: -80.184, status: 'verified', activeCount: 28, address: '500 Biscayne Blvd', cover_url: null, hours: null, rating: 4.8 },
 ];
-
-/** Map a FilterPanel category to the business.category text. */
-function categoryMatches(cat: string, filter: MapFilters['category']): boolean {
-  if (filter === 'all' || filter === 'open_now') return true;
-  const c = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  switch (filter) {
-    case 'bars': return c.includes('bar');
-    case 'cafes': return c.includes('cafe') || c.includes('coffee');
-    case 'food': return c.includes('restaurant') || c.includes('food');
-    case 'events': return c.includes('event');
-    default: return true;
-  }
-}
 
 interface StyleOption {
   variant: MapStyleVariant;
@@ -260,11 +248,14 @@ export default function MapScreen() {
 
   useEffect(() => { void loadBusinesses(); }, [loadBusinesses]);
 
+  // Chips come from the categories that really exist on the loaded businesses.
+  const categoryOptions = useMemo(() => buildCategoryOptions(businesses.map((b) => b.category)), [businesses]);
+
   const filtered = useMemo(
     () =>
       businesses.filter((b) => {
         if (!categoryMatches(b.category, filters.category)) return false;
-        if ((filters.openNow || filters.category === 'open_now') && !isOpenNow(b.hours)) return false;
+        if (filters.openNow && !isOpenNow(b.hours)) return false;
         // Radius: real distance from the user; without a position it is not applied.
         if (userCoords && filters.distanceKm !== 'all') {
           const meters = haversineMeters(userCoords.lat, userCoords.lng, b.lat, b.lng);
@@ -372,7 +363,7 @@ export default function MapScreen() {
         )}
 
         {/* Filters (chips + advanced + search) — Task 4.6 */}
-        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} hasLocation={userCoords !== null} />
+        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} hasLocation={userCoords !== null} categories={categoryOptions} />
 
         {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
         <View style={styles.zoomRow} pointerEvents="box-none">
