@@ -13,7 +13,7 @@
  * a. Tap "Pay" → processing starts at once (no double taps) → Face ID / biometrics.
  *    A failed verification asks "Try again / Cancel" and never pays; a device without
  *    biometrics goes straight on.
- * b. initAndPresentPaymentSheet with ONE idempotency key per quote (q_<quote_hash>) and
+ * b. initAndPresentPaymentSheet with ONE idempotency key per quote and visit (q_<quote_hash>_<nonce>) and
  *    expected_total_cents = the total shown. If the server says TOTAL_CHANGED, nothing is
  *    charged: the new breakdown is shown and the screen re-quotes.
  * c. On success the app polls orders.stripe_pi_id (the webhook creates the order) for up to
@@ -94,6 +94,17 @@ const ORDER_POLL_INTERVAL_MS = 1000;
 /** 0.07 → "7", 0.0725 → "7.25": the rate exactly as the server returned it. */
 function formatTaxRate(rate: number): string {
   return String(parseFloat((rate * 100).toFixed(3)));
+}
+
+/**
+ * Idempotency key for ONE payment attempt of ONE quote: `q_<quote_hash>_<nonce>`.
+ * The hash makes it change with the quote; the nonce (random per checkout visit, rotated when
+ * the table/room/gift/order type change or a server error leaves the PaymentIntent unusable)
+ * stops a later identical order from replaying an old, already-paid PaymentIntent. A retry of
+ * the same quote in the same visit reuses the key.
+ */
+function makeAttemptNonce(): string {
+  return Math.random().toString(36).slice(2, 10).padEnd(8, '0');
 }
 
 function sleep(ms: number): Promise<void> {
@@ -336,6 +347,7 @@ export default function CheckoutScreen() {
   // Synchronous guards: state updates are too late to stop a fast double tap, and effects
   // must ignore answers that belong to an older cart.
   const processingRef = useRef(false);
+  const attemptRef = useRef<{ paramKey: string; nonce: string } | null>(null);
   const quoteSeqRef = useRef(0);
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -506,11 +518,18 @@ export default function CheckoutScreen() {
       }
 
       // ── Present Stripe PaymentSheet ─────────────────────────────────────────
+      // These fields travel in the PaymentIntent metadata but not in the quote hash: if they
+      // change, the key must change too (Stripe rejects the same key with different params).
+      const paramKey = JSON.stringify([orderType, giftRecipientId, tableLabel, roomId ?? null]);
+      if (!attemptRef.current || attemptRef.current.paramKey !== paramKey) {
+        attemptRef.current = { paramKey, nonce: makeAttemptNonce() };
+      }
+      const attemptNonce = attemptRef.current.nonce;
       const result = await initAndPresentPaymentSheet({
         ...buildRequest(),
         userId: user.id,
-        // ONE key per quote: a retry of the same quote reuses the same PaymentIntent.
-        idempotencyKey: `q_${current.quote_hash}`,
+        // ONE key per quote and visit: a retry of the same quote reuses the same PaymentIntent.
+        idempotencyKey: `q_${current.quote_hash}_${attemptNonce}`,
         expectedTotalCents: current.total_cents,
       });
 
@@ -532,6 +551,9 @@ export default function CheckoutScreen() {
           setQuoteNonce((n) => n + 1); // re-quote; nothing was charged
           return;
         }
+        // A server-side failure may leave that PaymentIntent unusable (e.g. cancelled when its
+        // cart could not be saved): the next attempt must get a new key.
+        attemptRef.current = null;
         setErrorMessage(result.message);
         setErrorVisible(true);
         return;
@@ -561,7 +583,7 @@ export default function CheckoutScreen() {
       processingRef.current = false;
       if (mountedRef.current) setProcessing(false);
     }
-  }, [quoteState, user?.id, t, buildRequest, waitForPaidOrder, clear, navigation, orderType, roomId]);
+  }, [quoteState, user?.id, t, buildRequest, waitForPaidOrder, clear, navigation, orderType, roomId, giftRecipientId, tableLabel]);
 
   const handleRetry = useCallback(() => {
     setErrorVisible(false);
