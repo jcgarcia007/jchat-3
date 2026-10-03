@@ -3256,5 +3256,39 @@
     "bad_oauth_callback": "Sign-in could not be completed. Please try again.",
     "flow_state_expired": "The sign-in attempt expired. Please try again.",
     "request_timeout": "The request took too long. Please try again."
+  },
+  "meta": {
+    "home": {
+      "title": "JChat — Chat, order and pay where you are",
+      "description": "Join location-based chat rooms at your favorite venues, order from your table and pay in the app."
+    },
+    "pricing": {
+      "title": "Plans and pricing — JChat",
+      "description": "Plans for venues: chat rooms, menu, POS and analytics. Start with a free trial."
+    },
+    "nearby": {
+      "title": "Nearby venues — JChat",
+      "description": "Browse bars, restaurants and venues on JChat and join their chat rooms."
+    },
+    "legal": {
+      "terms": {
+        "title": "Terms of Service — JChat",
+        "description": "The Terms of Service governing use of JChat and related services by Otunity Labs LLC."
+      },
+      "privacy": {
+        "title": "Privacy Policy — JChat",
+        "description": "How JChat, operated by Otunity Labs LLC, collects, uses and protects your information."
+      },
+      "support": {
+        "title": "Help & Support — JChat",
+        "description": "Get help with JChat: account, privacy, payments and how to contact us."
+      }
+    },
+    "business": {
+      "title": "{name} on JChat",
+      "description": "{name} is on JChat. Download the app to join the conversation.",
+      "notFoundTitle": "Business not found — JChat",
+      "notFoundDescription": "This business could not be found on JChat."
+    }
   }
 }

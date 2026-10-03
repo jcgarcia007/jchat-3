@@ -13,6 +13,7 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   IconMapPin,
   IconClock,
@@ -162,17 +163,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const biz = await getBusiness(slug);
 
+  const t = await getTranslations("meta");
+
   if (!biz) {
     return {
-      title: "Business Not Found — JChat",
-      description: "This business could not be found on JChat.",
+      title: t("business.notFoundTitle"),
+      description: t("business.notFoundDescription"),
     };
   }
 
-  const title = `${biz.name} — JChat`;
-  const description =
-    biz.description ??
-    `${biz.name} is on JChat. Download the app to join the conversation.`;
+  const title = t("business.title", { name: biz.name });
+  const description = biz.description ?? t("business.description", { name: biz.name });
 
   return {
     title,

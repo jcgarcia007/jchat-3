@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { getLocale } from "next-intl/server";
 import LegalLangToggle from "./LegalLangToggle";
 
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const isEs = cookieStore.get("jchat-lang")?.value === "es";
+  const isEs = (await getLocale()) === "es";
 
   return (
     <div

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono, Inter, Playfair_Display, Space_Grotesk } from "next/font/google";
 import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { brandFromHost } from "@/lib/brand";
 import "./globals.css";
 
@@ -51,10 +51,12 @@ const inter = Inter({
   preload: false,
 });
 
-export const metadata: Metadata = {
-  title: "JChat 3.0 — Dashboard",
-  description: "JChat business dashboard",
-};
+// Public pages (landing and any route without its own metadata) get a translated title/description.
+// Dashboard, auth, terminal and super-admin keep the metadata they define.
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return { title: t("home.title"), description: t("home.description") };
+}
 
 export default async function RootLayout({
   children,

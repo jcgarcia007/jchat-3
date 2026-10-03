@@ -3256,5 +3256,39 @@
     "bad_oauth_callback": "No se pudo completar el inicio de sesión. Inténtalo de nuevo.",
     "flow_state_expired": "El intento de inicio de sesión venció. Inténtalo de nuevo.",
     "request_timeout": "La solicitud tardó demasiado. Inténtalo de nuevo."
+  },
+  "meta": {
+    "home": {
+      "title": "JChat — Chatea, pide y paga donde estés",
+      "description": "Únete a salas de chat en tus lugares favoritos, pide desde tu mesa y paga en la app."
+    },
+    "pricing": {
+      "title": "Planes y precios — JChat",
+      "description": "Planes para negocios: salas de chat, menú, POS y analítica. Empieza con una prueba gratis."
+    },
+    "nearby": {
+      "title": "Lugares cercanos — JChat",
+      "description": "Explora bares, restaurantes y locales en JChat y únete a sus salas de chat."
+    },
+    "legal": {
+      "terms": {
+        "title": "Términos de servicio — JChat",
+        "description": "Los Términos de servicio que rigen el uso de JChat y servicios relacionados de Otunity Labs LLC."
+      },
+      "privacy": {
+        "title": "Política de privacidad — JChat",
+        "description": "Cómo JChat, operado por Otunity Labs LLC, recopila, usa y protege tu información."
+      },
+      "support": {
+        "title": "Ayuda y soporte — JChat",
+        "description": "Obtén ayuda con JChat: cuenta, privacidad, pagos y cómo contactarnos."
+      }
+    },
+    "business": {
+      "title": "{name} en JChat",
+      "description": "{name} está en JChat. Descarga la app para unirte a la conversación.",
+      "notFoundTitle": "Negocio no encontrado — JChat",
+      "notFoundDescription": "No pudimos encontrar este negocio en JChat."
+    }
   }
 }

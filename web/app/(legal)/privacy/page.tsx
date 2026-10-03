@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PrivacyEN } from "@/content/legal/privacy.en";
 import { PrivacyES } from "@/content/legal/privacy.es";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — JChat",
-  description:
-    "How JChat (operated by Otunity Labs LLC) collects, uses and protects your information.",
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return {
+    title: t("legal.privacy.title"),
+    description: t("legal.privacy.description"),
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function PrivacyPage() {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("jchat-lang")?.value === "es" ? "es" : "en";
+  const locale = await getLocale();
   return locale === "es" ? <PrivacyES /> : <PrivacyEN />;
 }
