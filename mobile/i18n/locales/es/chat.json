@@ -291,5 +291,20 @@
     "mutedMessage": "Estás silenciado en esta sala.",
     "bannedTitle": "Sin acceso",
     "bannedMessage": "Ya no tienes acceso a esta sala."
+  },
+  "report": {
+    "title": "Reportar a {{name}}",
+    "subtitle": "¿Por qué reportas a esta persona?",
+    "reason": {
+      "spam": "Spam",
+      "harassment": "Acoso",
+      "inappropriate_content": "Contenido inapropiado",
+      "other": "Otro"
+    }
+  },
+  "dmGate": {
+    "blocked": "No puedes enviar mensajes a este usuario.",
+    "nobody": "Este usuario no acepta mensajes directos.",
+    "notFollower": "Debes seguir a este usuario para enviarle un mensaje."
   }
 }

@@ -34,7 +34,6 @@ import {
 
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
-import { reportUser } from '../../services/users';
 import { requestOrFollow } from '../../services/follows';
 import { blockUser } from '../../services/blocks';
 import type { UserAnchor } from './MessageBubble';
@@ -53,6 +52,8 @@ interface UserQuickCardProps {
   onViewProfile: (userId: string) => void;
   onDM: (userId: string) => void;
   onOpenFull: (userId: string, userName: string) => void;
+  /** Report flow lives at screen level (reason picker); the card just hands the target over. */
+  onReport: (userId: string, userName: string) => void;
   onClose: () => void;
 }
 
@@ -96,6 +97,7 @@ export default function UserQuickCard({
   onViewProfile,
   onDM,
   onOpenFull,
+  onReport,
   onClose,
 }: UserQuickCardProps) {
   const c = useThemeColors();
@@ -147,24 +149,9 @@ export default function UserQuickCard({
   }, [targetUserId, t, onClose]);
 
   const handleReport = useCallback(() => {
-    Alert.alert(t('quickCard.report'), t('quickCard.reportConfirm', { name: targetName }), [
-      { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-      {
-        text: t('quickCard.report'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              if (user?.id) await reportUser(user.id, targetUserId, 'Reported from chat');
-            } catch {
-              Alert.alert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
-            }
-            onClose();
-          })();
-        },
-      },
-    ]);
-  }, [t, targetName, targetUserId, user?.id, onClose]);
+    onClose();
+    onReport(targetUserId, targetName);
+  }, [onClose, onReport, targetUserId, targetName]);
 
   const handleBlock = useCallback(() => {
     Alert.alert(t('quickCard.block'), t('quickCard.blockConfirm', { name: targetName }), [

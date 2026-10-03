@@ -14,6 +14,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase, isSupabaseConfigured } from './supabase';
+import i18n from '../i18n';
 
 // ─── DM gate error ─────────────────────────────────────────────────────────────
 
@@ -226,16 +227,13 @@ export async function getOrCreateConversation(
   if (error) {
     // Map the RPC's Postgres error codes to friendly, actionable messages.
     if (error.code === 'P0002') {
-      throw new DmGateError('blocked', 'No puedes enviar mensajes a este usuario.');
+      throw new DmGateError('blocked', i18n.t('chat:dmGate.blocked'));
     }
     if (error.code === 'P0003') {
-      throw new DmGateError('nobody', 'Este usuario no acepta mensajes directos.');
+      throw new DmGateError('nobody', i18n.t('chat:dmGate.nobody'));
     }
     if (error.code === 'P0004') {
-      throw new DmGateError(
-        'not_follower',
-        'Debes seguir a este usuario para enviarle un mensaje.',
-      );
+      throw new DmGateError('not_follower', i18n.t('chat:dmGate.notFollower'));
     }
     throw error;
   }

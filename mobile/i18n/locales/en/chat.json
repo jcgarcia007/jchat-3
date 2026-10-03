@@ -291,5 +291,20 @@
     "mutedMessage": "You're muted in this room.",
     "bannedTitle": "No access",
     "bannedMessage": "You no longer have access to this room."
+  },
+  "report": {
+    "title": "Report {{name}}",
+    "subtitle": "Why are you reporting this person?",
+    "reason": {
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "inappropriate_content": "Inappropriate content",
+      "other": "Other"
+    }
+  },
+  "dmGate": {
+    "blocked": "You can't message this user.",
+    "nobody": "This user doesn't accept direct messages.",
+    "notFollower": "You need to follow this user to message them."
   }
 }

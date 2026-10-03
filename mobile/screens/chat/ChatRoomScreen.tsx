@@ -84,6 +84,8 @@ import type { ViewerRole } from '../../components/chat/UserActionSheet';
 import { usePresenceChannels } from './usePresenceChannels';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { getBlockRelations } from '../../services/blocks';
+import { reportUser } from '../../services/users';
+import { ReportReasonSheet, type ReportReason } from '../../components/chat/ReportReasonSheet';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
@@ -902,6 +904,31 @@ export default function ChatRoomScreen() {
     [user?.id],
   );
 
+  // Report: the card / action sheet hand the target over, then the reason picker opens
+  // (after the closing sheet has gone, so iOS doesn't stack two modals).
+  const [reportTarget, setReportTarget] = useState<{ userId: string; userName: string } | null>(null);
+  const [reportVisible, setReportVisible] = useState(false);
+
+  const handleStartReport = useCallback((userId: string, userName: string) => {
+    setReportTarget({ userId, userName });
+    setTimeout(() => setReportVisible(true), 350);
+  }, []);
+
+  const handleSubmitReport = useCallback(
+    async (reason: ReportReason) => {
+      const target = reportTarget;
+      setReportVisible(false);
+      if (!target || !user?.id) return;
+      try {
+        await reportUser(user.id, target.userId, reason);
+        Alert.alert(t('userAction.reportSubmittedTitle'), t('userAction.reportSubmittedMessage'));
+      } catch {
+        Alert.alert(t('userAction.errorTitle'), t('userAction.tryAgain'));
+      }
+    },
+    [reportTarget, user?.id, t],
+  );
+
   const handleCloseQuickCard = useCallback(() => {
     setQuickCard((p) => ({ ...p, visible: false }));
     void refreshBlocks(); // the card may have just blocked someone
@@ -1341,6 +1368,7 @@ export default function ChatRoomScreen() {
         onBanned={(userId) => {
           setHiddenUserIds((prev) => new Set(prev).add(userId));
         }}
+        onReport={handleStartReport}
         onClose={handleCloseUserSheet}
       />
 
@@ -1356,7 +1384,16 @@ export default function ChatRoomScreen() {
           handleCloseQuickCard();
           setUserSheet({ visible: true, userId, userName });
         }}
+        onReport={handleStartReport}
         onClose={handleCloseQuickCard}
+      />
+
+      {/* ── Report reason picker ──────────────────────────────────────────── */}
+      <ReportReasonSheet
+        visible={reportVisible}
+        targetName={reportTarget?.userName ?? ''}
+        onSelect={(reason) => { void handleSubmitReport(reason); }}
+        onClose={() => setReportVisible(false)}
       />
 
       {/* ── Pin message sheet (Task 2.5) ──────────────────────────────────── */}

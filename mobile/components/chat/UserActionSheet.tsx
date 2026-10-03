@@ -69,7 +69,6 @@ import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
-import { reportUser } from '../../services/users';
 import { requestOrFollow } from '../../services/follows';
 import { blockUser } from '../../services/blocks';
 import {
@@ -116,6 +115,8 @@ export interface UserActionSheetProps {
    * member list.
    */
   onBanned?: (userId: string) => void;
+  /** Start the report flow (reason picker lives at screen level). */
+  onReport: (userId: string, userName: string) => void;
   /** Dismiss the sheet without taking action. */
   onClose: () => void;
 }
@@ -275,6 +276,7 @@ export function UserActionSheet({
   onDM,
   onRemove,
   onBanned,
+  onReport,
   onClose,
 }: UserActionSheetProps) {
   const c = useThemeColors();
@@ -353,14 +355,10 @@ export function UserActionSheet({
     onClose();
   }, [targetName, onClose]);
 
-  const handleReport = useCallback(async () => {
-    if (!user) return;
-    await run('report', async () => {
-      await reportUser(user.id, targetUserId, 'Reported from chat'); // TODO: let the user pick a reason
-      Alert.alert(t('userAction.reportSubmittedTitle'), t('userAction.reportSubmittedMessage'));
-      onClose();
-    });
-  }, [user, run, targetUserId, onClose]);
+  const handleReport = useCallback(() => {
+    onClose();
+    onReport(targetUserId, targetName);
+  }, [onClose, onReport, targetUserId, targetName]);
 
   const handleBlock = useCallback(async () => {
     if (!user) return;
