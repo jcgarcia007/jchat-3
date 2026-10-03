@@ -1210,6 +1210,7 @@ export default function ChatRoomScreen() {
         usersInRoom={usersInRoom}
         onBack={handleBack}
         onMenuPress={handleMenuPress}
+        onOrdersPress={() => navigation.navigate('MyOrders')}
         onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}

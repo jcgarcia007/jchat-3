@@ -60,6 +60,7 @@ import CartScreen from '../screens/menu/CartScreen';
 import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
 import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
+import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
 import type { MenuItem } from '../services/menu';
 
 export type AuthStackParamList = {
@@ -245,6 +246,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="Checkout" component={CheckoutScreen} />
           <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+          <MainStack.Screen name="MyOrders" component={MyOrdersScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

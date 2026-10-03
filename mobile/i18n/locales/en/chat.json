@@ -50,7 +50,8 @@
     "peopleList": "People in this room",
     "peopleHere_one": "{{count}} person here",
     "peopleHere_other": "{{count}} people here",
-    "userTapA11y": "View {{name}}'s options"
+    "userTapA11y": "View {{name}}'s options",
+    "myOrders": "My orders"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — password protected"

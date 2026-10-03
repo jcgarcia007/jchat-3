@@ -33,7 +33,9 @@
     "appearanceSystem": "System",
     "sectionFeed": "News",
     "feedRadius": "News radius",
-    "feedRadiusSub": "How far to look for offers and posts from nearby businesses"
+    "feedRadiusSub": "How far to look for offers and posts from nearby businesses",
+    "myOrders": "My orders",
+    "myOrdersSub": "Track your orders and see their status"
   },
   "changePassword": {
     "currentPassword": "Current password",

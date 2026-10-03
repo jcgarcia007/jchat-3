@@ -50,6 +50,7 @@ import {
   IconLanguage,
   IconLock,
   IconMoon,
+  IconReceipt,
   IconSpeakerphone,
   IconShield,
   IconTrash,
@@ -533,6 +534,17 @@ export default function SettingsScreen() {
           icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
           label={t('main.username')}
           sublabel={username ? `@${username}` : '@—'}
+        />
+
+        <SectionDivider />
+
+        {/* My orders */}
+        <SettingsRow
+          icon={<IconReceipt size={20} color={c.brand} strokeWidth={2} />}
+          label={t('main.myOrders')}
+          sublabel={t('main.myOrdersSub')}
+          onPress={() => navigation.navigate('MyOrders')}
+          right={<ChevronRight />}
         />
 
         <SectionDivider />

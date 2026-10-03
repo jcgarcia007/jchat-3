@@ -33,7 +33,9 @@
     "appearanceSystem": "Sistema",
     "sectionFeed": "Novedades",
     "feedRadius": "Radio de novedades",
-    "feedRadiusSub": "Hasta dónde buscar ofertas y publicaciones de negocios cercanos"
+    "feedRadiusSub": "Hasta dónde buscar ofertas y publicaciones de negocios cercanos",
+    "myOrders": "Mis pedidos",
+    "myOrdersSub": "Sigue tus pedidos y su estado"
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",

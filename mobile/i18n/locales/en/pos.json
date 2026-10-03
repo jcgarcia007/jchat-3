@@ -180,7 +180,6 @@
     "delivered": "Delivered!",
     "thisBusiness": "this business",
     "yourItems": "Your Items",
-    "itemFallback": "Item #{{id}}",
     "statusReady": "Ready",
     "statusCooking": "Cooking",
     "tax": "Tax",
@@ -192,7 +191,27 @@
     "sheetTitle": "Call for Staff Assistance",
     "sheetBody": "A staff member will be notified and will come to your table.",
     "confirmServiceA11y": "Confirm service call",
-    "notifyStaff": "Notify Staff"
+    "notifyStaff": "Notify Staff",
+    "statusPending": "Pending",
+    "itemUnknown": "Item",
+    "orderPending": "Order received — waiting to be confirmed.",
+    "awaitingApproval": "Waiting for the business's approval.",
+    "rejected": "Rejected: {{reason}}",
+    "rejectedNoReason": "The business rejected this order.",
+    "disputed": "This order is under review. Contact the business if you need help.",
+    "loadError": "We couldn't load your order.",
+    "retry": "Retry",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "disputed": "Under review",
+      "awaitingApproval": "Waiting for approval",
+      "rejected": "Rejected"
+    }
   },
   "comandaCustomer": "Customer",
   "errors": {
@@ -207,5 +226,13 @@
     "securityMessage": "The order's business doesn't match. Please go back to the menu.",
     "signInTitle": "Sign-in required",
     "signInMessage": "You need to sign in to pay."
+  },
+  "myOrders": {
+    "title": "My orders",
+    "emptyTitle": "No orders yet",
+    "emptySub": "Your paid orders will show up here.",
+    "loadError": "We couldn't load your orders.",
+    "retry": "Retry",
+    "orderFallback": "Order"
   }
 }

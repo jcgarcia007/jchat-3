@@ -180,7 +180,6 @@
     "delivered": "¡Entregado!",
     "thisBusiness": "este negocio",
     "yourItems": "Tus artículos",
-    "itemFallback": "Artículo n.º {{id}}",
     "statusReady": "Listo",
     "statusCooking": "Cocinando",
     "tax": "Impuesto",
@@ -192,7 +191,27 @@
     "sheetTitle": "Llamar al personal",
     "sheetBody": "Se avisará a un miembro del personal y acudirá a tu mesa.",
     "confirmServiceA11y": "Confirmar llamada",
-    "notifyStaff": "Avisar al personal"
+    "notifyStaff": "Avisar al personal",
+    "statusPending": "Pendiente",
+    "itemUnknown": "Artículo",
+    "orderPending": "Pedido recibido — esperando confirmación.",
+    "awaitingApproval": "Esperando la aprobación del negocio.",
+    "rejected": "Rechazado: {{reason}}",
+    "rejectedNoReason": "El negocio rechazó este pedido.",
+    "disputed": "Este pedido está en revisión. Contacta al negocio si necesitas ayuda.",
+    "loadError": "No pudimos cargar tu pedido.",
+    "retry": "Reintentar",
+    "status": {
+      "pending": "Pendiente",
+      "confirmed": "Confirmado",
+      "preparing": "En preparación",
+      "ready": "Listo",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado",
+      "disputed": "En revisión",
+      "awaitingApproval": "Esperando aprobación",
+      "rejected": "Rechazado"
+    }
   },
   "comandaCustomer": "Cliente",
   "errors": {
@@ -207,5 +226,13 @@
     "securityMessage": "El negocio del pedido no coincide. Por favor vuelve al menú.",
     "signInTitle": "Sesión requerida",
     "signInMessage": "Necesitas iniciar sesión para pagar."
+  },
+  "myOrders": {
+    "title": "Mis pedidos",
+    "emptyTitle": "Aún no tienes pedidos",
+    "emptySub": "Tus pedidos pagados aparecerán aquí.",
+    "loadError": "No pudimos cargar tus pedidos.",
+    "retry": "Reintentar",
+    "orderFallback": "Pedido"
   }
 }

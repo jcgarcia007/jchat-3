@@ -28,6 +28,7 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Modal,
   Platform,
@@ -57,9 +58,12 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import {
   getOrder,
   getOrderItems,
+  orderBusinessName,
+  orderItemName,
   subscribeOrder,
 } from '../../services/orders';
 import type { OrderRow, OrderItemRow, OrderStatus } from '../../services/orders';
+import { formatCents } from '../../utils/currency';
 import { RatingPrompt } from '../../components/reviews/RatingPrompt';
 
 // ── Route / Navigation types ──────────────────────────────────────────────────
@@ -119,6 +123,16 @@ function statusToStepIndex(status: OrderStatus): number {
   }
 }
 
+/** "Large · Bacon, Egg" from the server-verified options snapshot saved on the order item. */
+function optionsSummary(options: Record<string, unknown> | null | undefined): string {
+  if (!options) return '';
+  const parts: string[] = [];
+  if (typeof options.size === 'string' && options.size) parts.push(options.size);
+  if (Array.isArray(options.extras)) parts.push(...options.extras.filter((x): x is string => typeof x === 'string'));
+  if (Array.isArray(options.modifiers)) parts.push(...options.modifiers.filter((x): x is string => typeof x === 'string'));
+  return parts.join(', ');
+}
+
 // ── ETA countdown ─────────────────────────────────────────────────────────────
 
 /** Returns a formatted remaining minutes string, or null when expired / no ETA. */
@@ -172,49 +186,70 @@ export default function OrderTrackingScreen(): React.ReactElement {
   const [serviceCallLoading, setServiceCallLoading] = useState(false);
   const [ratingDone, setRatingDone] = useState(false);
 
+  const [loadError, setLoadError] = useState(false);
+
   // Track previous status to detect "delivered" transition
   const prevStatusRef = useRef<OrderStatus | null>(null);
-
-  // ── Initial load
+  // Bumped on every realtime update: a slower read that started earlier must not overwrite it.
+  const liveVersionRef = useRef(0);
+  const mountedRef = useRef(true);
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-    async function load() {
-      if (!orderId) return;
-      try {
-        const [orderData, itemsData] = await Promise.all([
-          getOrder(orderId),
-          getOrderItems(orderId),
-        ]);
-        if (!mounted) return;
-        if (orderData) {
-          prevStatusRef.current = orderData.status;
-          setOrder(orderData);
-        }
-        setItems(itemsData);
-      } catch (err) {
-        console.warn('[OrderTracking] load error', err);
-      } finally {
-        if (mounted) setLoadingOrder(false);
+  // ── Load (initial, on SUBSCRIBED, and when the app comes back to the foreground) ──
+  const load = useCallback(async () => {
+    if (!orderId) { setLoadingOrder(false); return; }
+    const versionAtStart = liveVersionRef.current;
+    try {
+      const [orderData, itemsData] = await Promise.all([
+        getOrder(orderId),
+        getOrderItems(orderId),
+      ]);
+      if (!mountedRef.current) return;
+      setLoadError(false);
+      if (orderData && liveVersionRef.current === versionAtStart) {
+        prevStatusRef.current = orderData.status;
+        setOrder(orderData);
       }
+      setItems(itemsData);
+    } catch (err) {
+      console.warn('[OrderTracking] load error', err);
+      if (mountedRef.current) setLoadError(true);
+    } finally {
+      if (mountedRef.current) setLoadingOrder(false);
     }
-
-    void load();
-    return () => { mounted = false; };
   }, [orderId]);
 
-  // ── Real-time subscription
+  useEffect(() => { void load(); }, [load]);
+
+  // ── Real-time subscription (refetch once it is live, so nothing between read and subscribe is lost)
   useEffect(() => {
     if (!orderId) return;
 
-    const unsubscribe = subscribeOrder(orderId, (updated) => {
-      // TODO(server): push on ready — handled server-side; client receives the update here
-      setOrder(updated);
-      prevStatusRef.current = updated.status;
-    });
+    const unsubscribe = subscribeOrder(
+      orderId,
+      (updated) => {
+        // TODO(server): push on ready — handled server-side; client receives the update here
+        liveVersionRef.current += 1;
+        // The realtime row has no joins: keep the business we already loaded.
+        setOrder((previous) => ({ ...(previous ?? updated), ...updated, businesses: previous?.businesses }));
+        prevStatusRef.current = updated.status;
+      },
+      () => { void load(); },
+    );
 
     return unsubscribe;
-  }, [orderId]);
+  }, [orderId, load]);
+
+  // ── Back from the background: the socket may have dropped, so read again
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => subscription.remove();
+  }, [load]);
 
   // ── Refresh items when order status changes (cooking → ready)
   useEffect(() => {
@@ -288,7 +323,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
   if (!order) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <Text style={styles.errorText}>{t('tracking.orderNotFound')}</Text>
+        <Text style={styles.errorText}>
+          {loadError ? t('tracking.loadError') : t('tracking.orderNotFound')}
+        </Text>
+        {loadError ? (
+          <Pressable onPress={() => { setLoadingOrder(true); void load(); }} style={styles.backBtn}>
+            <Text style={styles.backBtnLabel}>{t('tracking.retry')}</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backBtnLabel}>{t('shared.goBack')}</Text>
         </Pressable>
@@ -297,6 +339,13 @@ export default function OrderTrackingScreen(): React.ReactElement {
   }
 
   const isCancelled = order.status === 'cancelled';
+  const isAwaitingApproval = order.approval_status === 'awaiting';
+  const isRejected = order.approval_status === 'rejected';
+  const isDisputed = order.status === 'disputed';
+  const isPending = order.status === 'pending' && !isAwaitingApproval && !isRejected;
+  // The stepper only makes sense for an order that is moving through the kitchen.
+  const showStepper = !isCancelled && !isDisputed && !isAwaitingApproval && !isRejected;
+  const businessName = orderBusinessName(order);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -320,15 +369,49 @@ export default function OrderTrackingScreen(): React.ReactElement {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Cancelled banner ── */}
+        {/* ── Who and which order ── */}
+        {order.order_number != null || businessName ? (
+          <Text style={styles.orderHeading}>
+            {[
+              order.order_number != null ? t('success.orderNumberValue', { number: order.order_number }) : null,
+              businessName,
+            ].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
+
+        {/* ── Status banners (every state an order can be in) ── */}
         {isCancelled && (
           <View style={[styles.statusBanner, { backgroundColor: c.danger }]}>
             <Text style={styles.statusBannerText}>{t('tracking.orderCancelled')}</Text>
           </View>
         )}
+        {isAwaitingApproval && (
+          <View style={[styles.statusBanner, { backgroundColor: palette.warning }]}>
+            <Text style={styles.statusBannerText}>{t('tracking.awaitingApproval')}</Text>
+          </View>
+        )}
+        {isRejected && (
+          <View style={[styles.statusBanner, { backgroundColor: c.danger }]}>
+            <Text style={styles.statusBannerText}>
+              {order.rejected_reason
+                ? t('tracking.rejected', { reason: order.rejected_reason })
+                : t('tracking.rejectedNoReason')}
+            </Text>
+          </View>
+        )}
+        {isDisputed && (
+          <View style={[styles.statusBanner, { backgroundColor: palette.warning }]}>
+            <Text style={styles.statusBannerText}>{t('tracking.disputed')}</Text>
+          </View>
+        )}
+        {isPending && (
+          <View style={[styles.statusBanner, { backgroundColor: c.brand }]}>
+            <Text style={styles.statusBannerText}>{t('tracking.orderPending')}</Text>
+          </View>
+        )}
 
         {/* ── ETA Card ── */}
-        {!isCancelled && !isDelivered && etaLabel !== null && (
+        {showStepper && !isDelivered && etaLabel !== null && (
           <View style={styles.etaCard}>
             <Text style={styles.etaLabel}>{t('tracking.estimatedWait')}</Text>
             <Text style={styles.etaValue}>{etaLabel}</Text>
@@ -336,7 +419,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         )}
 
         {/* ── Stepper ── */}
-        {!isCancelled && (
+        {showStepper && (
           <View style={styles.stepperContainer}>
             {STEPS.map((step, idx) => {
               const isActive = idx <= currentStepIdx;
@@ -409,7 +492,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
           <View style={styles.ratingContainer}>
             <RatingPrompt
               businessId={order.business_id}
-              businessName={t('tracking.thisBusiness')} // TODO: pass business name through route params in a future update
+              businessName={businessName ?? t('tracking.thisBusiness')}
               onDone={() => setRatingDone(true)}
             />
           </View>
@@ -423,10 +506,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
               <View key={item.id} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                   <Text style={styles.itemQty}>{item.qty}×</Text>
-                  <Text style={styles.itemName}>
-                    {/* menu_item_id used as fallback label until name join is added */}
-                    {t('tracking.itemFallback', { id: item.menu_item_id.slice(0, 8) })}
-                  </Text>
+                  <View style={styles.itemNameCol}>
+                    <Text style={styles.itemName}>
+                      {orderItemName(item) ?? t('tracking.itemUnknown')}
+                    </Text>
+                    {optionsSummary(item.options) ? (
+                      <Text style={styles.itemOptions}>{optionsSummary(item.options)}</Text>
+                    ) : null}
+                  </View>
                 </View>
                 <View
                   style={[
@@ -435,7 +522,9 @@ export default function OrderTrackingScreen(): React.ReactElement {
                       backgroundColor:
                         item.item_status === 'ready'
                           ? palette.success + '22'
-                          : palette.warning + '22',
+                          : item.item_status === 'preparing'
+                            ? palette.warning + '22'
+                            : c.bgElevated,
                     },
                   ]}
                 >
@@ -446,11 +535,17 @@ export default function OrderTrackingScreen(): React.ReactElement {
                         color:
                           item.item_status === 'ready'
                             ? palette.success
-                            : palette.warning,
+                            : item.item_status === 'preparing'
+                              ? palette.warning
+                              : c.textSecondary,
                       },
                     ]}
                   >
-                    {item.item_status === 'ready' ? t('tracking.statusReady') : t('tracking.statusCooking')}
+                    {item.item_status === 'ready'
+                      ? t('tracking.statusReady')
+                      : item.item_status === 'preparing'
+                        ? t('tracking.statusCooking')
+                        : t('tracking.statusPending')}
                   </Text>
                 </View>
               </View>
@@ -464,14 +559,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{t('cart.subtotal')}</Text>
             <Text style={styles.summaryValue}>
-              ${(order.subtotal_cents / 100).toFixed(2)}
+              {formatCents(order.subtotal_cents)}
             </Text>
           </View>
           {order.tax_cents > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('tracking.tax')}</Text>
               <Text style={styles.summaryValue}>
-                ${(order.tax_cents / 100).toFixed(2)}
+                {formatCents(order.tax_cents)}
               </Text>
             </View>
           )}
@@ -479,7 +574,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('tracking.tip')}</Text>
               <Text style={styles.summaryValue}>
-                ${(order.tip_cents / 100).toFixed(2)}
+                {formatCents(order.tip_cents)}
               </Text>
             </View>
           )}
@@ -487,14 +582,14 @@ export default function OrderTrackingScreen(): React.ReactElement {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('tracking.discount')}</Text>
               <Text style={[styles.summaryValue, { color: c.success }]}>
-                −${(order.discount_cents / 100).toFixed(2)}
+                −{formatCents(order.discount_cents)}
               </Text>
             </View>
           )}
           <View style={[styles.summaryRow, styles.summaryTotal]}>
             <Text style={styles.summaryTotalLabel}>{t('cart.total')}</Text>
             <Text style={styles.summaryTotalValue}>
-              ${(order.total_cents / 100).toFixed(2)}
+              {formatCents(order.total_cents)}
             </Text>
           </View>
         </View>
@@ -503,7 +598,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
       {/* ── Bottom actions ── */}
       <View style={styles.bottomBar}>
         {/* Service call button */}
-        {!isCancelled && !isDelivered && (
+        {showStepper && !isDelivered && (
           <Pressable
             onPress={() => setShowServiceSheet(true)}
             style={styles.serviceBtn}
@@ -519,7 +614,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {roomId ? (
           <Pressable
             onPress={handleBackToChat}
-            style={[styles.chatBtn, !(!isCancelled && !isDelivered) && styles.chatBtnFull]}
+            style={[styles.chatBtn, !(showStepper && !isDelivered) && styles.chatBtnFull]}
             accessibilityRole="button"
             accessibilityLabel={t('tracking.backToChatA11y')}
           >
@@ -760,6 +855,14 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       color: c.textSecondary,
       minWidth: 28,
     },
+    orderHeading: {
+      color: c.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    itemNameCol: { flexShrink: 1 },
+    itemOptions: { color: c.textTertiary, fontSize: 12, marginTop: 2 },
     itemName: {
       fontSize: 14,
       color: c.textPrimary,

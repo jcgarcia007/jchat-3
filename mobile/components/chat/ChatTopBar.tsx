@@ -34,6 +34,7 @@ import {
 import {
   IconArrowLeft,
   IconMenuDeep,
+  IconReceipt,
   IconUser,
 } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +68,8 @@ export interface ChatTopBarProps {
   usersInRoom: UserSummary[];
   onBack: () => void;
   onMenuPress: () => void;
+  /** Opens the user's own orders. Optional: the button only shows when provided. */
+  onOrdersPress?: () => void;
   onUserPress: (userId: string, displayName: string, anchor: UserAnchor) => void;
   children?: React.ReactNode;
 }
@@ -151,6 +154,7 @@ export function ChatTopBar({
   usersInRoom,
   onBack,
   onMenuPress,
+  onOrdersPress,
   onUserPress,
   children,
 }: ChatTopBarProps) {
@@ -187,9 +191,20 @@ export function ChatTopBar({
           </View>
         </View>
 
-        {/* Menu icon — only when business.menu_enabled */}
+        {/* Menu + orders icons — only when business.menu_enabled */}
         {business.menu_enabled && (
           <View style={[topBarStyles.menuSection, { borderLeftColor: theme.border }]}>
+            {onOrdersPress ? (
+              <Pressable
+                onPress={onOrdersPress}
+                accessibilityRole="button"
+                accessibilityLabel={t('topBar.myOrders')}
+                hitSlop={10}
+                style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
+              >
+                <IconReceipt size={22} color={theme.tabActive} />
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={onMenuPress}
               accessibilityRole="button"
