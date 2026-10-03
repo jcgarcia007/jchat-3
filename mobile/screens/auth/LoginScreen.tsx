@@ -1,62 +1,31 @@
 /**
- * JChat 3.0 — Login Screen (Task 1.3)
- * Biometric (Face ID / Touch ID) primary, social (Google / Apple) secondary,
- * email + password form, forgot password stub, sign-up link.
+ * JChat 3.0 — Login ("boleto" design).
+ *
+ * Night photo + paper ticket: "Continue with email" (opens the email step), Apple and Google through
+ * the same browser OAuth flow as before (handleOAuth), and the link to create an account.
+ * Fixed artwork: it does not follow light/dark mode (theme/ticket.ts).
  */
 
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import * as LocalAuthentication from 'expo-local-authentication';
+import React, { useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  IconBrandApple,
-  IconBrandGoogle,
-  IconEye,
-  IconEyeOff,
-  IconFaceId,
-} from '@tabler/icons-react-native';
+import { IconArrowRight, IconMail } from '@tabler/icons-react-native';
 
-import { palette } from '../../theme/tokens';
-import { useThemeColors } from '../../theme/colors';
+import { ticket } from '../../theme/ticket';
+import { loginFont, useLoginFonts } from '../../theme/loginFonts';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
-import { isBiometricEnabled } from '../../services/biometric';
-import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
-
-// ---------------------------------------------------------------------------
-// Screen-local brand gradient hexes (login header background).
-// All surface / text colors come from useThemeColors() / palette.
-// ---------------------------------------------------------------------------
-const LOGIN_COLORS = {
-  gradientCardTop: '#0d1235',   // top of biometric card (dark)
-  ghostBorder:     '#2a2a3e',   // social button border on dark
-  onBrand:         '#ffffff',   // text / icon on brand-filled surface
-} as const;
+import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
+import { TicketHeader } from '../../components/auth/TicketHeader';
+import { TicketPerforation } from '../../components/auth/TicketPerforation';
+import { TicketTitle } from '../../components/auth/TicketReveal';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const H_PAD = 24;
-const BTN_RADIUS = 14;
-const BTN_HEIGHT = 52;
-const INPUT_HEIGHT = 52;
 
 /**
  * Parse the `#key=value&…` fragment of the OAuth callback URL into a plain object.
@@ -76,69 +45,11 @@ function parseAuthFragment(url: string): Record<string, string> {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 export default function LoginScreen() {
-  const c = useThemeColors();
   const navigation = useNavigation<LoginNav>();
   const { t } = useTranslation('auth');
-  // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
-  const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  // Biometric login card is opt-in: only shown once the user enabled the lock (M2).
-  const [biometricButtonVisible, setBiometricButtonVisible] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void isBiometricEnabled().then((enabled) => {
-      if (!cancelled) setBiometricButtonVisible(enabled);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // ── Biometric ─────────────────────────────────────────────────────────────
-  async function handleBiometric() {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    if (!hasHardware) {
-      Alert.alert(t('login.alerts.notSupportedTitle'), t('login.alerts.notSupportedMessage'));
-      return;
-    }
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    if (!isEnrolled) {
-      Alert.alert(
-        t('login.alerts.noBiometricsTitle'),
-        t('login.alerts.noBiometricsMessage'),
-      );
-      return;
-    }
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: t('login.biometricPrompt'),
-      fallbackLabel: t('login.biometricFallback'),
-    });
-    if (result.success) {
-      // The real cold-start biometric gate lives in LockScreen (M2); this button
-      // only matters for the rare case of an already-authenticated user viewing
-      // the login screen. If a session exists, AuthContext has already routed
-      // into the app — nothing to do. If not, there is no session to unlock, so
-      // direct the user to sign in with email.
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        Alert.alert(
-          t('login.alerts.biometricVerifiedTitle'),
-          t('login.alerts.biometricVerifiedMessage'),
-        );
-      }
-    } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-      Alert.alert(t('login.alerts.authFailedTitle'), t('login.alerts.authFailedMessage'));
-    }
-  }
+  const fontsReady = useLoginFonts();
+  const [oauthBusy, setOauthBusy] = useState(false);
 
   // ── Social OAuth (deep-link, M1) ───────────────────────────────────────────
   // signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
@@ -201,404 +112,112 @@ export default function LoginScreen() {
     Alert.alert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInErrorMessage'));
   }
 
-  // ── Email / password ──────────────────────────────────────────────────────
-  async function handleSignIn() {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert(t('login.alerts.missingFieldsTitle'), t('login.alerts.missingFieldsMessage'));
-      return;
+  async function runOAuth(provider: 'google' | 'apple') {
+    if (oauthBusy) return;
+    setOauthBusy(true);
+    try {
+      await handleOAuth(provider);
+    } finally {
+      setOauthBusy(false);
     }
-    if (!isSupabaseConfigured) {
-      Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
-      return;
-    }
-
-    setLoading(true);
-
-    // hCaptcha (D-38): obtener token JUSTO antes del intento (uso único, expira).
-    // Kill-switch (sin sitekey): captchaEnabled=false → se procede sin token.
-    let captchaToken: string | null = null;
-    if (captchaEnabled) {
-      try {
-        captchaToken = await getCaptchaToken();
-      } catch (err) {
-        // Expiración / timeout / red / no disponible / ocupado: mensaje según el código.
-        setLoading(false);
-        const { titleKey, messageKey } = captchaErrorI18nKeys(err);
-        Alert.alert(t(titleKey), t(messageKey));
-        return;
-      }
-      if (captchaToken === null) {
-        // Usuario canceló: no llamar a Supabase sin token (con el captcha activado
-        // fallaría con "captcha verification failed").
-        setLoading(false);
-        Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
-        return;
-      }
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password: trimmedPassword,
-      options: { captchaToken: captchaToken ?? undefined },
-    });
-    setLoading(false);
-
-    if (error) {
-      // AuthContext session listener handles successful sign-in automatically.
-      // Tras cualquier intento el token queda quemado: el próximo pide uno nuevo.
-      Alert.alert(t('login.alerts.signInFailedTitle'), toUserMessage(error, 'auth:login.alerts.signInErrorMessage'));
-    }
-    // On success: AuthContext onAuthStateChange fires → isAuthenticated flips →
-    // AppNavigator switches to MainStack. No explicit navigation call needed.
   }
 
-  // ── Forgot password ───────────────────────────────────────────────────────
-  function handleForgotPassword() {
-    navigation.navigate('ForgotPassword');
-  }
+  if (!fontsReady) return <TicketPlaceholder />;
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bgBase }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar barStyle="light-content" />
-      {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
-      {CaptchaGate}
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <TicketShell>
+      <TicketHeader />
+      <TicketTitle text={t('ticket.title')} />
+      <Text style={styles.subtitle}>{t('ticket.subtitle')}</Text>
+
+      <Pressable
+        onPress={() => navigation.navigate('LoginEmail')}
+        style={styles.primary}
+        accessibilityRole="button"
+        accessibilityLabel={t('ticket.continueEmail')}
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('login.title')}</Text>
-          <Text style={[styles.headerSub, { color: c.textSecondary }]}>
-            {t('login.subtitle')}
-          </Text>
-        </View>
+        <IconMail size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
+        <Text style={styles.primaryText}>{t('ticket.continueEmail')}</Text>
+        <IconArrowRight size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
+      </Pressable>
 
-        {/* ── Biometric card (primary) — opt-in, only when the lock is enabled ── */}
-        {biometricButtonVisible && (
-          <TouchableOpacity
-            style={[styles.biometricCard, { backgroundColor: palette.brand }]}
-            onPress={handleBiometric}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t('login.biometricA11y')}
-          >
-            <IconFaceId size={36} color={LOGIN_COLORS.onBrand} strokeWidth={1.5} />
-            <View style={styles.biometricText}>
-              <Text style={styles.biometricTitle}>{t('login.biometricTitle')}</Text>
-              <Text style={styles.biometricSub}>{t('login.biometricSub')}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* ── Social buttons ──────────────────────────────────────────────── */}
-        <View style={styles.socialRow}>
-          <TouchableOpacity
-            style={[
-              styles.socialBtn,
-              { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-            ]}
-            onPress={() => handleOAuth('google')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={t('login.googleA11y')}
-          >
-            <IconBrandGoogle size={22} color={c.textPrimary} strokeWidth={1.5} />
-            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>{t('login.google')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.socialBtn,
-              { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-            ]}
-            onPress={() => handleOAuth('apple')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={t('login.appleA11y')}
-          >
-            <IconBrandApple size={22} color={c.textPrimary} strokeWidth={1.5} />
-            <Text style={[styles.socialBtnText, { color: c.textPrimary }]}>{t('login.apple')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Divider ─────────────────────────────────────────────────────── */}
-        <View style={styles.dividerRow}>
-          <View style={[styles.dividerLine, { backgroundColor: c.borderSubtle }]} />
-          <Text style={[styles.dividerLabel, { color: c.textTertiary }]}>
-            {t('login.divider')}
-          </Text>
-          <View style={[styles.dividerLine, { backgroundColor: c.borderSubtle }]} />
-        </View>
-
-        {/* ── Email input ─────────────────────────────────────────────────── */}
-        <View style={[styles.inputWrap, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          <TextInput
-            style={[styles.input, { color: c.textPrimary }]}
-            value={email}
-            onChangeText={setEmail}
-            placeholder={t('login.emailPlaceholder')}
-            placeholderTextColor={c.textTertiary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            returnKeyType="next"
-            accessibilityLabel={t('login.emailA11y')}
-          />
-        </View>
-
-        {/* ── Password input ──────────────────────────────────────────────── */}
-        <View
-          style={[
-            styles.inputWrap,
-            styles.inputRow,
-            { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-          ]}
-        >
-          <TextInput
-            style={[styles.input, styles.inputFlex, { color: c.textPrimary }]}
-            value={password}
-            onChangeText={setPassword}
-            placeholder={t('login.passwordPlaceholder')}
-            placeholderTextColor={c.textTertiary}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="password"
-            returnKeyType="done"
-            onSubmitEditing={handleSignIn}
-            accessibilityLabel={t('login.passwordA11y')}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword((v) => !v)}
-            style={styles.eyeBtn}
-            accessibilityRole="button"
-            accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            {showPassword ? (
-              <IconEyeOff size={20} color={c.textTertiary} strokeWidth={1.5} />
-            ) : (
-              <IconEye size={20} color={c.textTertiary} strokeWidth={1.5} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Forgot password ─────────────────────────────────────────────── */}
-        <TouchableOpacity
-          onPress={handleForgotPassword}
-          style={styles.forgotWrap}
+      {/* TODO(official-social-buttons): text-only for now. The official Google "G" logo and the native
+          Apple button (expo-apple-authentication) arrive with the build of the accounts change. */}
+      <View style={styles.socialRow}>
+        <Pressable
+          onPress={() => void runOAuth('apple')}
+          disabled={oauthBusy}
+          style={[styles.social, oauthBusy && styles.socialBusy]}
           accessibilityRole="button"
-          accessibilityLabel={t('login.forgot')}
+          accessibilityLabel={t('login.appleA11y')}
         >
-          <Text style={[styles.forgotText, { color: palette.brand }]}>{t('login.forgot')}</Text>
-        </TouchableOpacity>
-
-        {/* ── Sign in button ──────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={[
-            styles.signInBtn,
-            { backgroundColor: palette.brand },
-            loading && styles.signInBtnDisabled,
-          ]}
-          onPress={handleSignIn}
-          disabled={loading}
-          activeOpacity={0.85}
+          <Text style={styles.socialText}>{t('ticket.apple')}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => void runOAuth('google')}
+          disabled={oauthBusy}
+          style={[styles.social, oauthBusy && styles.socialBusy]}
           accessibilityRole="button"
-          accessibilityLabel={t('login.signIn')}
+          accessibilityLabel={t('login.googleA11y')}
         >
-          <Text style={styles.signInBtnText}>{loading ? t('login.signingIn') : t('login.signIn')}</Text>
-        </TouchableOpacity>
+          <Text style={styles.socialText}>{t('ticket.google')}</Text>
+        </Pressable>
+      </View>
 
-        {/* ── Sign up link ────────────────────────────────────────────────── */}
-        <View style={styles.signUpRow}>
-          <Text style={[styles.signUpLabel, { color: c.textSecondary }]}>
-            {t('login.noAccount')}
-          </Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('RegisterStep1')}
-            accessibilityRole="button"
-            accessibilityLabel={t('login.signUp')}
-          >
-            <Text style={[styles.signUpLink, { color: palette.brand }]}>{t('login.signUp')}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {/* TODO(biometric-login): the "BIOMETRICS" divider + Face ID button go here once a real biometric
+          sign-in exists (needs the session stored with expo-secure-store). Hidden until then: the
+          old button could not sign anyone in. LockScreen is unrelated and untouched. */}
+
+      <TicketPerforation />
+
+      <View style={styles.newHere}>
+        <Text style={styles.newHereText}>{t('ticket.newHere')} </Text>
+        <Pressable
+          onPress={() => navigation.navigate('RegisterStep1')}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('ticket.createAccount')}
+        >
+          <Text style={styles.link}>{t('ticket.createAccount')}</Text>
+        </Pressable>
+      </View>
+    </TicketShell>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: H_PAD,
-    paddingTop: Platform.OS === 'ios' ? 64 : 48,
-    paddingBottom: 40,
-  },
-
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
-    marginBottom: 32,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 6,
-  },
-  headerSub: {
+  subtitle: {
+    marginTop: 10,
+    marginBottom: 22,
+    fontFamily: loginFont.text,
     fontSize: 15,
-    fontWeight: '400',
+    lineHeight: 22,
+    color: ticket.ticketInkMuted,
   },
-
-  // ── Biometric card ────────────────────────────────────────────────────────
-  biometricCard: {
+  primary: {
+    height: 56,
+    borderRadius: 14,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BTN_RADIUS,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    marginBottom: 16,
-    gap: 16,
-    // Shadow for depth
-    shadowColor: palette.brand,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+    justifyContent: 'space-between',
+    backgroundColor: ticket.ticketButton,
   },
-  biometricText: {
+  primaryText: { fontFamily: loginFont.textXBold, fontSize: 16, color: ticket.ticketButtonText },
+  socialRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  social: {
     flex: 1,
-  },
-  biometricTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: LOGIN_COLORS.onBrand,
-    marginBottom: 2,
-  },
-  biometricSub: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.75)',
-  },
-
-  // ── Social buttons ────────────────────────────────────────────────────────
-  socialRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: BTN_HEIGHT,
-    borderRadius: BTN_RADIUS,
+    height: 50,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 8,
-  },
-  socialBtnText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
-  // ── Divider ───────────────────────────────────────────────────────────────
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-  },
-
-  // ── Inputs ────────────────────────────────────────────────────────────────
-  inputWrap: {
-    height: INPUT_HEIGHT,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    justifyContent: 'center',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    fontSize: 15,
-    fontWeight: '400',
-  },
-  inputFlex: {
-    flex: 1,
-  },
-  eyeBtn: {
-    paddingLeft: 8,
-  },
-
-  // ── Forgot password ───────────────────────────────────────────────────────
-  forgotWrap: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-    paddingVertical: 2,
-  },
-  forgotText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  // ── Sign in button ────────────────────────────────────────────────────────
-  signInBtn: {
-    height: BTN_HEIGHT,
-    borderRadius: BTN_RADIUS,
+    borderColor: ticket.ticketFieldBorder,
+    backgroundColor: ticket.ticketField,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    width: '100%',
   },
-  signInBtnDisabled: {
-    opacity: 0.65,
-  },
-  signInBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: LOGIN_COLORS.onBrand,
-    letterSpacing: 0.1,
-  },
-
-  // ── Sign up link ──────────────────────────────────────────────────────────
-  signUpRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signUpLabel: {
-    fontSize: 14,
-  },
-  signUpLink: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  socialBusy: { opacity: 0.6 },
+  socialText: { fontFamily: loginFont.textBold, fontSize: 15, color: ticket.ticketInk },
+  newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  newHereText: { fontFamily: loginFont.text, fontSize: 14, color: ticket.ticketInkMuted },
+  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.brandAccent },
 });
