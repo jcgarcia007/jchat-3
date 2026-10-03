@@ -14,6 +14,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { getLocales } from 'expo-localization';
+import { getLanguageChoice } from '../services/languageChoice';
 
 import en from './locales/en/common.json';
 import es from './locales/es/common.json';
@@ -82,6 +83,11 @@ void i18n.use(initReactI18next).init({
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,
+});
+
+/** Apply the language picked on the login screen, if any (it survives restarts while signed out). */
+void getLanguageChoice().then((choice) => {
+  if (choice && i18n.language !== choice) void i18n.changeLanguage(choice);
 });
 
 /** Switch the app language at runtime (no-op if already active or unsupported). */

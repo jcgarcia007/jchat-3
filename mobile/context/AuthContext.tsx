@@ -22,6 +22,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
 import { fetchAgeConfirmed } from '../services/age';
+import { clearLanguageChoice, getLanguageChoice } from '../services/languageChoice';
+import { updateMyLanguage } from '../services/userSettings';
 import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
 
@@ -227,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (pending.language === 'en' || pending.language === 'es') changeAppLanguage(pending.language);
+        await clearLanguageChoice(); // the language chosen in the sign-up form wins
         await supabase.auth.updateUser({ data: { pending_profile: null } });
       })();
       // The pending profile carries the language — skip the DB read below so a
@@ -234,16 +237,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    void supabase
-      .from('users')
-      .select('language')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        if (data?.language && (data.language === 'en' || data.language === 'es')) {
-          changeAppLanguage(data.language as SupportedLanguage);
+    // Language picked with the ES · EN selector on the login screen: it wins over users.language
+    // on the first sign-in, is saved to the account, and then the local mark is cleared.
+    void (async () => {
+      const choice = await getLanguageChoice();
+      if (choice) {
+        changeAppLanguage(choice);
+        try {
+          await updateMyLanguage(userId, choice);
+          await clearLanguageChoice();
+        } catch (err) {
+          // Keep the mark so the next session retries; the screen already shows the choice.
+          console.warn('[AuthContext] saving the chosen language failed:', err);
         }
-      });
+        return;
+      }
+      const { data } = await supabase.from('users').select('language').eq('id', userId).single();
+      if (data?.language && (data.language === 'en' || data.language === 'es')) {
+        changeAppLanguage(data.language as SupportedLanguage);
+      }
+    })();
   }, [session?.user?.id]);
 
   const refreshAge = useCallback(async () => {
