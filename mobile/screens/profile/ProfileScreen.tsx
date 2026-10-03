@@ -19,7 +19,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
-import { getPublicProfile, getFollowerCount, getFollowingCount, reportUser } from '../../services/users';
+import { getPublicProfile, getProfileCounts, reportUser, type ProfileCounts } from '../../services/users';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
@@ -139,7 +139,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+  const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,17 +158,17 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (refresh) setRefreshing(true); else setInitialLoading(true);
     setError(null);
     try {
-      const [profileRow, postRows, followerCount, followingCount, blockedState] = await Promise.all([
+      const [profileRow, postRows, profileCounts, blockedState] = await Promise.all([
         getPublicProfile(targetId),
         getUserPosts(targetId),
-        getFollowerCount(targetId),
-        getFollowingCount(targetId),
+        // A counters failure must not take the whole profile down: keep what we had.
+        getProfileCounts(targetId).catch(() => null),
         !isOwnProfile ? isBlocked(targetId) : Promise.resolve(false),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
       setProfile(profileRow);
       setPosts(postRows);
-      setCounts({ followers: followerCount, following: followingCount });
+      if (profileCounts) setCounts(profileCounts);
       setBlocked(blockedState);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('view.loadProfileError'));
@@ -276,7 +276,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       >
         <ProfileHeader
           isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} coverUrl={profile.cover_url}
-          bio={profile.bio} city={profile.city} isVerified={profile.is_verified} postCount={posts.length} followerCount={counts.followers}
+          bio={profile.bio} city={profile.city} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
           followingCount={counts.following} isFollowing={isFollowing} isPending={isPending} followLoading={followLoading}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}

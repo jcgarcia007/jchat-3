@@ -187,6 +187,32 @@ export async function isFollowing(
   return data !== null;
 }
 
+/** Public counters of a profile (visible even for private accounts; zeros when blocked). */
+export interface ProfileCounts {
+  followers: number;
+  following: number;
+  /** Personal posts only: business posts are not counted. */
+  posts: number;
+}
+
+/**
+ * Counters via the profile_counts RPC (migration 180). Unlike counting `follows` rows from the
+ * client, it is not limited by RLS or by the first page of posts.
+ */
+export async function getProfileCounts(userId: string): Promise<ProfileCounts> {
+  const { data, error } = await supabase.rpc('profile_counts', { p_user: userId });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { followers?: number | string; following?: number | string; posts?: number | string }
+    | null
+    | undefined;
+  return {
+    followers: Number(row?.followers ?? 0),
+    following: Number(row?.following ?? 0),
+    posts: Number(row?.posts ?? 0),
+  };
+}
+
 /** Get the number of followers for a given user. */
 export async function getFollowerCount(userId: string): Promise<number> {
   const { count, error } = await supabase
