@@ -53,6 +53,8 @@ export interface CheckInButtonProps {
    * // TODO(Stage 2): wire up via ChatRoomScreen context (Task 2.4)
    */
   roomId: string;
+  /** The viewer's display name from public_profiles (never from auth metadata). */
+  username?: string;
   /**
    * Optional venue location data for geofence enforcement.
    * When omitted the geofence check is skipped.
@@ -97,6 +99,7 @@ export function CheckInButton({
   enabled,
   businessId,
   roomId,
+  username,
   venueData,
   onSuccess,
 }: CheckInButtonProps) {
@@ -118,7 +121,7 @@ export function CheckInButton({
         userId: user.id,
         businessId,
         roomId,
-        username: (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName'),
+        username: username ?? t('chatRoom.fallbackUserName'),
         venueData,
         // TODO(Stage 4): pass userLat/userLng from expo-location here
         // userLat: deviceLocation.coords.latitude,
@@ -142,7 +145,7 @@ export function CheckInButton({
     } finally {
       setLoading(false);
     }
-  }, [user, businessId, roomId, venueData, onSuccess]);
+  }, [user, businessId, roomId, username, venueData, onSuccess]);
 
   // Owner has not enabled check-ins — render nothing
   if (!enabled) return null;

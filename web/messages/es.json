@@ -3221,5 +3221,8 @@
     "notEligibleMessage": "No cumples los requisitos para usar JChat.",
     "backHome": "Volver al inicio",
     "signOut": "Cerrar sesión"
+  },
+  "businessRegister": {
+    "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte."
   }
 }

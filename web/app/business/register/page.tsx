@@ -10,6 +10,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconBuilding,
   IconCalendarEvent,
@@ -1109,6 +1110,7 @@ function friendlyError(msg: string): string {
 }
 
 function BusinessRegisterWizard() {
+  const tr = useTranslations("businessRegister");
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEventMode = searchParams.get("type") === "event";
@@ -1192,29 +1194,15 @@ function BusinessRegisterWizard() {
         return;
       }
 
-      // 0) Ensure a public.users profile exists for this user.
-      // businesses.owner_id → public.users(id) FK; an OAuth/email user who never
-      // completed a profile has an auth.users row but no public.users row, which
-      // is what triggers the businesses_owner_id_fkey violation. Upsert it first.
-      const baseUsername =
-        (
-          (user.user_metadata?.username as string | undefined) ||
-          user.email?.split("@")[0] ||
-          "user"
-        )
-          .toLowerCase()
-          .replace(/[^a-z0-9_]/g, "")
-          .slice(0, 20) || "user";
-      const { error: profileError } = await supabase.from("users").upsert(
-        {
-          id: user.id,
-          username: `${baseUsername}_${user.id.slice(0, 6)}`,
-          display_name:
-            (user.user_metadata?.full_name as string | undefined) ?? null,
-        },
-        { onConflict: "id", ignoreDuplicates: true },
-      );
-      if (profileError) throw new Error(profileError.message);
+      // 0) The public.users row is created by the handle_new_auth_user trigger for every
+      // auth user (email, Google, Apple). businesses.owner_id → public.users(id), so just
+      // verify it exists. Never invent a username here (it used to derive one from the email).
+      const { data: profileRow, error: profileError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profileError || !profileRow) throw new Error(tr("profileMissing"));
 
       // 1) Insert business row (owned by the signed-in user)
       // Append a short random suffix so the slug never collides with an

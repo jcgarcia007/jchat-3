@@ -3221,5 +3221,8 @@
     "notEligibleMessage": "You don't meet the requirements to use JChat.",
     "backHome": "Back to start",
     "signOut": "Sign out"
+  },
+  "businessRegister": {
+    "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support."
   }
 }

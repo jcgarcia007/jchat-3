@@ -1294,6 +1294,7 @@ export default function ChatRoomScreen() {
               enabled
               businessId={room?.business_id ?? DEMO_BUSINESS.id}
               roomId={activeRoomId}
+              username={selfProfile?.name ?? undefined}
             />
           </View>
         )}

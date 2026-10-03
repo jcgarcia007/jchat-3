@@ -31,7 +31,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { IconUsers } from '@tabler/icons-react-native';
@@ -326,18 +326,31 @@ export default function FeedScreen() {
 
   // ── Stories row header ────────────────────────────────────────────────────
 
+  // Own avatar comes from the database (public_profiles), never from auth metadata.
+  const [ownAvatarUrl, setOwnAvatarUrl] = useState<string | null>(null);
+  // Re-read on focus so a new photo from Edit profile shows up when coming back.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !isSupabaseConfigured) return undefined;
+      let active = true;
+      void supabase
+        .from('public_profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (active) setOwnAvatarUrl(data?.avatar_url ?? null);
+        });
+      return () => {
+        active = false;
+      };
+    }, [user?.id]),
+  );
+
   const StoriesHeader = useMemo(() => {
     if (!user?.id) return null;
-    return (
-      <StoriesRow
-        currentUserId={user.id}
-        currentUserAvatarUrl={
-          // user.user_metadata may carry avatar_url from the auth provider.
-          (user.user_metadata?.avatar_url as string | undefined) ?? null
-        }
-      />
-    );
-  }, [user?.id, user?.user_metadata?.avatar_url]);
+    return <StoriesRow currentUserId={user.id} currentUserAvatarUrl={ownAvatarUrl} />;
+  }, [user?.id, ownAvatarUrl]);
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgBase }]}>
