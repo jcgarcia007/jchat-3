@@ -81,7 +81,7 @@ import { ServiceCallSheet } from '../../components/chat/ServiceCallSheet';
 import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
-import { usePresenceChannels } from './usePresenceChannels';
+import { usePresenceChannels, type SelfProfile } from './usePresenceChannels';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { getBlockRelations } from '../../services/blocks';
 import { reportUser } from '../../services/users';
@@ -245,6 +245,9 @@ export default function ChatRoomScreen() {
   // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
 
+  // Own name/avatar for presence (undefined until read, so presence is not published early).
+  const [selfProfile, setSelfProfile] = useState<SelfProfile | undefined>(undefined);
+
   // Users related to me by a block (either direction): their messages and presence are hidden.
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
@@ -284,6 +287,7 @@ export default function ChatRoomScreen() {
     anchorRoomId,
     activeRoomId,
     user,
+    selfProfile,
     enteredIncognito,
     entryVisible,
   });
@@ -535,18 +539,28 @@ export default function ChatRoomScreen() {
   // Sembrar el nombre propio en la caché (para envío optimista y para resolver
   // el bubble propio). public_profiles es legible por authenticated.
   useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
+    if (!isSupabaseConfigured) { setSelfProfile({ name: null, avatarUrl: null }); return; }
+    if (!user?.id) return;
     let cancelled = false;
     void (async () => {
-      const { data: prof } = await supabase
-        .from('public_profiles')
-        .select('id, username, display_name, avatar_url')
-        .eq('id', user.id)
-        .maybeSingle();
+      let name: string | null = null;
+      let avatarUrl: string | null = null;
+      try {
+        const { data: prof } = await supabase
+          .from('public_profiles')
+          .select('id, username, display_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        name = prof?.display_name ?? prof?.username ?? null;
+        avatarUrl = prof?.avatar_url ?? null;
+      } catch {
+        // fall back to the translated generic name
+      }
       if (cancelled) return;
-      const nm = prof?.display_name ?? prof?.username ?? undefined;
-      if (nm) userNameCacheRef.current.set(user.id, nm);
-      userAvatarCacheRef.current.set(user.id, prof?.avatar_url ?? null);
+      if (name) userNameCacheRef.current.set(user.id, name);
+      userAvatarCacheRef.current.set(user.id, avatarUrl);
+      // Presence waits for this: it is published once, with the real name.
+      setSelfProfile({ name, avatarUrl });
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -718,7 +732,7 @@ export default function ChatRoomScreen() {
         created_at: new Date().toISOString(),
         sender_name: incognito?.enabled
           ? incognito.nickname
-          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName')),
+          : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).
@@ -782,7 +796,7 @@ export default function ChatRoomScreen() {
         created_at: new Date().toISOString(),
         sender_name: incognito?.enabled
           ? incognito.nickname
-          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName')),
+          : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).

@@ -37,6 +37,12 @@ interface PresencePayload {
   nickname: string | null;
 }
 
+/** The signed-in user's own name/avatar, read once from public_profiles (NOT from session metadata). */
+export interface SelfProfile {
+  name: string | null;
+  avatarUrl: string | null;
+}
+
 interface UsePresenceChannelsArgs {
   /** The business's main room id (from the sub-rooms query; may be undefined until it resolves). */
   mainRoomId: string | undefined;
@@ -45,6 +51,12 @@ interface UsePresenceChannelsArgs {
   /** The room currently on screen. Changes as the user navigates. */
   activeRoomId: string;
   user: User | null;
+  /**
+   * Own profile. `undefined` = still loading: presence is NOT published until it resolves, so
+   * nobody sees a placeholder name that later changes. `{ name: null }` = couldn't be read
+   * (the translated fallback is used).
+   */
+  selfProfile: SelfProfile | undefined;
   /** Locked incognito choice — defines the presence payload's name/avatar. */
   enteredIncognito: IncognitoState | null;
   /** Gate: don't mount channels until the user has entered the room. */
@@ -108,6 +120,7 @@ export function usePresenceChannels({
   anchorRoomId,
   activeRoomId,
   user,
+  selfProfile,
   enteredIncognito,
   entryVisible,
 }: UsePresenceChannelsArgs): UsePresenceChannelsResult {
@@ -123,19 +136,16 @@ export function usePresenceChannels({
   // Always-current payload for the AppState listener (registered once).
   const payloadRef = useRef<PresencePayload | null>(null);
 
-  // Presence payload — depends only on the locked incognito choice + user.
+  // Presence payload — depends on the user, their own profile and the locked incognito choice.
   const payload = useMemo<PresencePayload | null>(() => {
-    if (!user) return null;
+    if (!user || !selfProfile) return null;
     const inc = enteredIncognito;
     const displayName = inc?.enabled
       ? (inc.nickname ?? 'Anonymous')
-      // Visible name: display_name → username → translated fallback. NEVER the email.
-      : ((user.user_metadata?.display_name as string | undefined)
-        ?? (user.user_metadata?.username as string | undefined)
-        ?? t('chatRoom.fallbackUserName'));
-    const avatarUrl = inc?.enabled
-      ? null
-      : ((user.user_metadata?.avatar_url as string | undefined) ?? null);
+      // display_name → username (resolved from public_profiles) → translated fallback.
+      // Never the session metadata and never the email.
+      : (selfProfile.name ?? t('chatRoom.fallbackUserName'));
+    const avatarUrl = inc?.enabled ? null : selfProfile.avatarUrl;
     return {
       user_id: user.id,
       display_name: displayName,
@@ -143,7 +153,7 @@ export function usePresenceChannels({
       is_incognito: inc?.enabled ?? false,
       nickname: inc?.nickname ?? null,
     };
-  }, [user, enteredIncognito, t]);
+  }, [user, selfProfile, enteredIncognito, t]);
 
   useEffect(() => {
     payloadRef.current = payload;
