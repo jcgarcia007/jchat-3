@@ -2,33 +2,42 @@
  * JChat 3.0 — Friends Screen (Social Fase A+B, sub-parte 2)
  *
  * Three tabs — Seguidores / Siguiendo / Solicitudes — over the RPC-backed follow
- * system (migration 040). Operates on the current authenticated user.
+ * system (migration 040). Opened with no params it shows MY lists; opened with
+ * { userId } it shows the Seguidores / Siguiendo of THAT user (read-only, no requests tab),
+ * unless the account is private and I don't follow it, or there is a block between us.
  *   - Seguidores: quien me sigue → "Quitar" (remove_follower RPC).
  *   - Siguiendo:  a quién sigo    → "Dejar de seguir" (unfollowUser).
- *   - Solicitudes: pending requests to me → "Aceptar" / "Rechazar".
+ *   - Solicitudes: pending requests to me → "Aceptar" (accept_follow_request) /
+ *     "Rechazar" (reject_follow_request).
+ * Tapping a row opens that user's profile.
  *
  * RLS (can_view_profile) already gates what the lists can read.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   Image,
   Pressable,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconArrowLeft, IconUser } from '@tabler/icons-react-native';
+import { IconArrowLeft, IconLock, IconUser } from '@tabler/icons-react-native';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
-import { unfollowUser } from '../../services/users';
+import { canViewProfile, unfollowUser } from '../../services/users';
+import { getBlockRelations } from '../../services/blocks';
 import {
   listFollowers,
   listFollowing,
@@ -56,13 +65,12 @@ const TABS: { id: TabId; labelKey: TabLabelKey }[] = [
 type EmptyCopyKey =
   | 'friends.emptyFollowers'
   | 'friends.emptyFollowing'
-  | 'friends.emptyRequests';
+  | 'friends.emptyRequests'
+  | 'friends.emptyOtherFollowers'
+  | 'friends.emptyOtherFollowing';
 
-const EMPTY_COPY: Record<TabId, EmptyCopyKey> = {
-  followers: 'friends.emptyFollowers',
-  following: 'friends.emptyFollowing',
-  requests: 'friends.emptyRequests',
-};
+/** Whether I may see the lists of the viewed user. */
+type Access = 'checking' | 'ok' | 'private' | 'blocked';
 
 // ── User row ──────────────────────────────────────────────────────────────────
 
@@ -76,10 +84,13 @@ function UserRow({
   profile,
   actions,
   busy,
+  onPress,
 }: {
   profile: SocialUser | null;
   actions: RowAction[];
   busy: boolean;
+  /** Opens the user's profile. */
+  onPress?: () => void;
 }) {
   const c = useThemeColors();
   const { t } = useTranslation('social');
@@ -88,23 +99,31 @@ function UserRow({
 
   return (
     <View style={[styles.row, { borderBottomColor: c.borderSubtle }]}>
-      {profile?.avatar_url ? (
-        <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
-      ) : (
-        <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgElevated }]}>
-          <IconUser size={20} color={c.textTertiary} />
-        </View>
-      )}
-      <View style={styles.rowText}>
-        <Text style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>
-          {name}
-        </Text>
-        {handle ? (
-          <Text style={[styles.handle, { color: c.textTertiary }]} numberOfLines={1}>
-            {handle}
+      <Pressable
+        accessibilityLabel={name}
+        accessibilityRole="button"
+        disabled={!onPress}
+        onPress={onPress}
+        style={styles.rowMain}
+      >
+        {profile?.avatar_url ? (
+          <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgElevated }]}>
+            <IconUser size={20} color={c.textTertiary} />
+          </View>
+        )}
+        <View style={styles.rowText}>
+          <Text style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>
+            {name}
           </Text>
-        ) : null}
-      </View>
+          {handle ? (
+            <Text style={[styles.handle, { color: c.textTertiary }]} numberOfLines={1}>
+              {handle}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
       <View style={styles.actions}>
         {busy ? (
           <ActivityIndicator size="small" color={c.brand} />
@@ -125,7 +144,7 @@ function UserRow({
               <Text
                 style={[
                   styles.actionText,
-                  { color: a.destructive ? c.textSecondary : '#ffffff' },
+                  { color: a.destructive ? c.textSecondary : palette.bgSurfaceLight },
                 ]}
               >
                 {a.label}
@@ -145,51 +164,108 @@ export default function FriendsScreen() {
   const { t } = useTranslation('social');
   const commonTranslation = useTranslation('common');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList, 'Friends'>>();
+  const route = useRoute<RouteProp<MainStackParamList, 'Friends'>>();
   const { user } = useAuth();
   const myId = user?.id ?? null;
 
-  const [tab, setTab] = useState<TabId>('followers');
+  // Whose lists: mine by default, or another user's when a userId is passed.
+  const viewedId = route.params?.userId ?? myId;
+  const isOwn = !viewedId || viewedId === myId;
+  const visibleTabs = isOwn ? TABS : TABS.filter((tabItem) => tabItem.id !== 'requests');
+
+  const requestedTab = route.params?.initialTab;
+  const [tab, setTab] = useState<TabId>(
+    requestedTab && visibleTabs.some((tabItem) => tabItem.id === requestedTab) ? requestedTab : 'followers',
+  );
   const [followers, setFollowers] = useState<SocialUser[]>([]);
   const [following, setFollowing] = useState<SocialUser[]>([]);
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [access, setAccess] = useState<Access>(isOwn ? 'ok' : 'checking');
+  // Latest load wins: switching tabs quickly must not let an old answer overwrite a newer one.
+  const requestRef = useRef(0);
+
+  // Another user's lists: private accounts I don't follow (and blocks) show a notice instead.
+  useEffect(() => {
+    if (isOwn || !myId || !viewedId) {
+      setAccess('ok');
+      return;
+    }
+    let active = true;
+    setAccess('checking');
+    void (async () => {
+      try {
+        if (await canViewProfile(myId, viewedId)) {
+          if (active) setAccess('ok');
+          return;
+        }
+        const blockedPeople = await getBlockRelations().catch(() => new Set<string>());
+        if (active) setAccess(blockedPeople.has(viewedId) ? 'blocked' : 'private');
+      } catch {
+        if (active) setAccess('ok'); // can't tell: RLS still decides what the lists return
+      }
+    })();
+    return () => { active = false; };
+  }, [isOwn, myId, viewedId]);
 
   const load = useCallback(
-    async (which: TabId) => {
-      if (!myId) return;
-      setLoading(true);
+    async (which: TabId, asRefresh = false) => {
+      if (!viewedId) return;
+      const requestId = ++requestRef.current;
+      if (asRefresh) setRefreshing(true); else setLoading(true);
+      setLoadFailed(false);
       try {
-        if (which === 'followers') setFollowers(await listFollowers(myId));
-        else if (which === 'following') setFollowing(await listFollowing(myId));
-        else setRequests(await listPendingRequests());
-      } catch {
-        // Leave the current list; empty state covers the no-data case.
+        if (which === 'followers') {
+          const rows = await listFollowers(viewedId);
+          if (requestId === requestRef.current) setFollowers(rows);
+        } else if (which === 'following') {
+          const rows = await listFollowing(viewedId);
+          if (requestId === requestRef.current) setFollowing(rows);
+        } else {
+          const rows = await listPendingRequests();
+          if (requestId === requestRef.current) setRequests(rows);
+        }
+      } catch (error) {
+        console.warn('[friends] load error:', error);
+        if (requestId === requestRef.current) setLoadFailed(true);
       } finally {
-        setLoading(false);
+        if (requestId === requestRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [myId],
+    [viewedId],
   );
 
   useEffect(() => {
-    void load(tab);
-  }, [tab, load]);
+    if (access === 'ok') void load(tab);
+  }, [tab, load, access]);
 
-  // ── Actions: run then reload the active tab so the UI reflects true state ────
+  // ── Actions: run, tell the user if it failed, then reload the tab ────────────
   const withBusy = useCallback(
     async (id: string, fn: () => Promise<void>, reload: TabId) => {
+      if (busyId) return; // one row action at a time (double-tap guard)
       setBusyId(id);
       try {
         await fn();
-        await load(reload);
-      } catch {
-        // swallow; the list reload reflects the true state
+      } catch (error) {
+        console.warn('[friends] action error:', error);
+        Alert.alert(t('friends.actionErrorTitle'), t('friends.actionError'));
       } finally {
         setBusyId(null);
+        void load(reload);
       }
     },
-    [load],
+    [busyId, load, t],
+  );
+
+  const openProfile = useCallback(
+    (userId: string) => navigation.navigate('UserProfile', { userId }),
+    [navigation],
   );
 
   const renderItem = useCallback(
@@ -200,17 +276,18 @@ export default function FriendsScreen() {
           <UserRow
             profile={req.requester}
             busy={busyId === req.requester_id}
+            onPress={() => openProfile(req.requester_id)}
             actions={[
               {
                 label: t('friends.accept'),
                 onPress: () =>
-                  withBusy(req.requester_id, () => acceptRequest(req.requester_id), 'requests'),
+                  void withBusy(req.requester_id, () => acceptRequest(req.requester_id), 'requests'),
               },
               {
                 label: t('friends.reject'),
                 destructive: true,
                 onPress: () =>
-                  withBusy(req.requester_id, () => rejectRequest(req.requester_id), 'requests'),
+                  void withBusy(req.requester_id, () => rejectRequest(req.requester_id), 'requests'),
               },
             ]}
           />
@@ -218,16 +295,21 @@ export default function FriendsScreen() {
       }
 
       const u = item as SocialUser;
+      // Another user's lists are read-only: just open the profile.
+      if (!isOwn) {
+        return <UserRow profile={u} busy={false} actions={[]} onPress={() => openProfile(u.id)} />;
+      }
       if (tab === 'followers') {
         return (
           <UserRow
             profile={u}
             busy={busyId === u.id}
+            onPress={() => openProfile(u.id)}
             actions={[
               {
                 label: t('friends.remove'),
                 destructive: true,
-                onPress: () => withBusy(u.id, () => removeFollower(u.id), 'followers'),
+                onPress: () => void withBusy(u.id, () => removeFollower(u.id), 'followers'),
               },
             ]}
           />
@@ -238,21 +320,29 @@ export default function FriendsScreen() {
         <UserRow
           profile={u}
           busy={busyId === u.id}
+          onPress={() => openProfile(u.id)}
           actions={[
             {
               label: t('friends.unfollow'),
               destructive: true,
-              onPress: () => withBusy(u.id, () => unfollowUser(myId as string, u.id), 'following'),
+              onPress: () => void withBusy(u.id, () => unfollowUser(myId as string, u.id), 'following'),
             },
           ]}
         />
       );
     },
-    [tab, busyId, withBusy, myId, t],
+    [tab, isOwn, busyId, withBusy, openProfile, myId, t],
   );
 
   const data: (SocialUser | PendingRequest)[] =
     tab === 'followers' ? followers : tab === 'following' ? following : requests;
+
+  const emptyKey: EmptyCopyKey =
+    tab === 'followers'
+      ? isOwn ? 'friends.emptyFollowers' : 'friends.emptyOtherFollowers'
+      : tab === 'following'
+        ? isOwn ? 'friends.emptyFollowing' : 'friends.emptyOtherFollowing'
+        : 'friends.emptyRequests';
 
   const keyExtractor = useCallback(
     (item: SocialUser | PendingRequest) =>
@@ -277,7 +367,7 @@ export default function FriendsScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabBar, { borderBottomColor: c.borderSubtle }]}>
-        {TABS.map((tabItem) => {
+        {visibleTabs.map((tabItem) => {
           const active = tabItem.id === tab;
           return (
             <Pressable
@@ -301,14 +391,39 @@ export default function FriendsScreen() {
         })}
       </View>
 
-      {/* List */}
-      {loading && data.length === 0 ? (
+      {/* Body */}
+      {access === 'checking' ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={c.brand} />
+        </View>
+      ) : access !== 'ok' ? (
+        <View style={styles.center}>
+          <IconLock size={42} color={c.textTertiary} />
+          <Text style={[styles.empty, styles.noticeTitle, { color: c.textPrimary }]}>
+            {access === 'private' ? t('friends.privateTitle') : t('friends.blockedTitle')}
+          </Text>
+          {access === 'private' ? (
+            <Text style={[styles.empty, { color: c.textTertiary }]}>{t('friends.privateSubtitle')}</Text>
+          ) : null}
+        </View>
+      ) : loadFailed && data.length === 0 ? (
+        <View style={styles.center}>
+          <Text style={[styles.empty, { color: c.textTertiary }]}>{t('friends.loadError')}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void load(tab)}
+            style={[styles.retryBtn, { backgroundColor: c.brand }]}
+          >
+            <Text style={[styles.actionText, { color: palette.bgSurfaceLight }]}>{t('friends.retry')}</Text>
+          </Pressable>
+        </View>
+      ) : loading && data.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={c.brand} />
         </View>
       ) : data.length === 0 ? (
         <View style={styles.center}>
-          <Text style={[styles.empty, { color: c.textTertiary }]}>{t(EMPTY_COPY[tab])}</Text>
+          <Text style={[styles.empty, { color: c.textTertiary }]}>{t(emptyKey)}</Text>
         </View>
       ) : (
         <FlatList
@@ -316,6 +431,14 @@ export default function FriendsScreen() {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
+          refreshControl={(
+            <RefreshControl
+              colors={[c.brand]}
+              onRefresh={() => void load(tab, true)}
+              refreshing={refreshing}
+              tintColor={c.brand}
+            />
+          )}
         />
       )}
     </SafeAreaView>
@@ -338,7 +461,9 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 14, fontWeight: '600', paddingVertical: 12 },
   tabUnderline: { height: 2, width: '60%', borderRadius: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  empty: { fontSize: 15, textAlign: 'center' },
+  empty: { fontSize: 15, textAlign: 'center', marginTop: 8 },
+  noticeTitle: { fontSize: 17, fontWeight: '700' },
+  retryBtn: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
   listContent: { paddingBottom: 24 },
   row: {
     flexDirection: 'row',
@@ -349,6 +474,7 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 44, height: 44, borderRadius: 22 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   rowText: { flex: 1, marginLeft: 12 },
   name: { fontSize: 15, fontWeight: '600' },
   handle: { fontSize: 13, marginTop: 1 },

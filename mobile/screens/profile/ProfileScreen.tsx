@@ -217,7 +217,12 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     await Share.share({ message: t('actions.shareText', { username: profile.username }) });
   }, [profile, t]);
 
-  const openFriends = useCallback(() => navigation.navigate('Friends'), [navigation]);
+  // Another user's counters open THEIR lists, not mine.
+  const openFriends = useCallback(
+    (initialTab: 'followers' | 'following') =>
+      navigation.navigate('Friends', { userId: isOwnProfile ? undefined : targetId ?? undefined, initialTab }),
+    [isOwnProfile, navigation, targetId],
+  );
   const dismissCompletion = useCallback(() => {
     setCompletionDismissed(true);
     void AsyncStorage.setItem(PROFILE_COMPLETION_DISMISSED_KEY, '1').catch(() => undefined);
@@ -344,7 +349,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
           onShare={() => void shareProfile()} onEditProfile={() => navigation.navigate('EditProfile')}
-          onOpenFollowers={openFriends} onOpenFollowing={openFriends}
+          onOpenFollowers={() => openFriends('followers')} onOpenFollowing={() => openFriends('following')}
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />

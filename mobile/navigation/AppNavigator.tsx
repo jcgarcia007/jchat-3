@@ -75,7 +75,7 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   DMs: NavigatorScreenParams<DMStackParamList>;
-  Friends: undefined;
+  Friends: { userId?: string; initialTab?: 'followers' | 'following' | 'requests' } | undefined;
   Offers: undefined;
   ChatRoom: { id: string };
   /**

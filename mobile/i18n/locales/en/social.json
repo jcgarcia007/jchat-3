@@ -56,6 +56,15 @@
     "accept": "Accept",
     "reject": "Decline",
     "remove": "Remove",
-    "unfollow": "Unfollow"
+    "unfollow": "Unfollow",
+    "emptyOtherFollowers": "No followers yet.",
+    "emptyOtherFollowing": "Not following anyone yet.",
+    "loadError": "We couldn't load this list.",
+    "retry": "Retry",
+    "actionErrorTitle": "Something went wrong",
+    "actionError": "We couldn't complete that. Please try again.",
+    "privateTitle": "This account is private",
+    "privateSubtitle": "Follow them to see their followers and who they follow.",
+    "blockedTitle": "You can't interact with this account."
   }
 }

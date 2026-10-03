@@ -56,6 +56,15 @@
     "accept": "Aceptar",
     "reject": "Rechazar",
     "remove": "Quitar",
-    "unfollow": "Dejar de seguir"
+    "unfollow": "Dejar de seguir",
+    "emptyOtherFollowers": "Aún no tiene seguidores.",
+    "emptyOtherFollowing": "Aún no sigue a nadie.",
+    "loadError": "No pudimos cargar esta lista.",
+    "retry": "Reintentar",
+    "actionErrorTitle": "Algo salió mal",
+    "actionError": "No pudimos completar eso. Inténtalo de nuevo.",
+    "privateTitle": "Esta cuenta es privada",
+    "privateSubtitle": "Síguela para ver sus seguidores y a quién sigue.",
+    "blockedTitle": "No puedes interactuar con esta cuenta."
   }
 }
