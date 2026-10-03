@@ -417,13 +417,23 @@
     "none": "None",
     "saveFailedTitle": "Save failed",
     "saveFailedMessage": "Your settings could not be saved. Please try again.",
-    "blockedComingSoonTitle": "Coming soon",
-    "blockedComingSoonMessage": "Blocked Users management will be available in a future update.",
     "selectRowA11y": "{{label}}, current value: {{value}}. Tap to change.",
     "visEveryone": "Everyone",
     "visFollowers": "Followers",
     "visNobody": "Nobody",
     "accPublic": "Public",
     "accPrivate": "Private"
+  },
+  "blockedUsers": {
+    "title": "Blocked users",
+    "empty": "You haven't blocked anyone.",
+    "unblock": "Unblock",
+    "unblockA11y": "Unblock {{name}}",
+    "confirmTitle": "Unblock {{name}}?",
+    "confirmMessage": "They will be able to find you and interact with you again. Follows removed when you blocked them are not restored.",
+    "errorTitle": "Couldn't unblock",
+    "errorMessage": "Please try again.",
+    "loadError": "We couldn't load your blocked users.",
+    "unknownUser": "Unknown user"
   }
 }

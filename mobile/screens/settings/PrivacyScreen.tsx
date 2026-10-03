@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   IconChevronLeft,
@@ -49,7 +49,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import type { MainStackParamList } from '../../navigation/AppNavigator';
+import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -117,12 +117,10 @@ const DEFAULT_SETTINGS: PrivacySettings = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Navigation — extend MainStackParamList with BlockedUsers stub
+// Navigation — this screen lives in SettingsStack (Privacy → BlockedUsers)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// TODO(BlockedUsersScreen): add 'BlockedUsers: undefined' to MainStackParamList
-// once that screen is implemented and registered in AppNavigator.tsx.
-type PrivacyNavProp = NativeStackNavigationProp<MainStackParamList>;
+type PrivacyNavProp = NativeStackNavigationProp<SettingsStackParamList, 'Privacy'>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -399,6 +397,24 @@ export default function PrivacyScreen() {
   // Debounce timer for auto-save.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Blocked count — reloaded on focus so it follows unblocking ─────────────
+  useFocusEffect(
+    useCallback(() => {
+      if (!isSupabaseConfigured || user == null) return undefined;
+      let active = true;
+      void supabase
+        .from('blocks')
+        .select('id', { count: 'exact', head: true })
+        .eq('blocker_id', user.id)
+        .then(({ count }) => {
+          if (active) setBlockedCount(count ?? 0);
+        });
+      return () => {
+        active = false;
+      };
+    }, [user]),
+  );
+
   // ── Load settings on mount ─────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
@@ -422,13 +438,6 @@ export default function PrivacyScreen() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setSettings(parseSettings((data as any).privacy_settings));
         }
-
-        // Load blocked count — TODO(schema): requires blocks table
-        const { count } = await supabase
-          .from('blocks' as 'follows') // cast: blocks table not yet in schema
-          .select('id', { count: 'exact', head: true })
-          .eq('blocker_id' as 'follower_id', user.id);
-        if (mounted) setBlockedCount(count ?? 0);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -484,9 +493,7 @@ export default function PrivacyScreen() {
 
   // ── Navigate to BlockedUsers ───────────────────────────────────────────────
   function handleManageBlocked() {
-    // TODO(BlockedUsersScreen): implement and register BlockedUsers in MainStackParamList.
-    // navigation.navigate('BlockedUsers');
-    Alert.alert(t('privacy.blockedComingSoonTitle'), t('privacy.blockedComingSoonMessage'));
+    navigation.navigate('BlockedUsers');
   }
 
   // ── Shared row colors ──────────────────────────────────────────────────────
@@ -871,7 +878,6 @@ export default function PrivacyScreen() {
           isLast
           labelColor={labelColor}
           valueColor={valueColor}
-          // TODO(BlockedUsersScreen): navigation.navigate('BlockedUsers')
         />
       </View>
 

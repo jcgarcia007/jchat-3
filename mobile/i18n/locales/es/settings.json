@@ -417,13 +417,23 @@
     "none": "Ninguno",
     "saveFailedTitle": "Error al guardar",
     "saveFailedMessage": "No se pudieron guardar tus ajustes. Inténtalo de nuevo.",
-    "blockedComingSoonTitle": "Próximamente",
-    "blockedComingSoonMessage": "La gestión de usuarios bloqueados estará disponible en una próxima actualización.",
     "selectRowA11y": "{{label}}, valor actual: {{value}}. Toca para cambiar.",
     "visEveryone": "Todos",
     "visFollowers": "Seguidores",
     "visNobody": "Nadie",
     "accPublic": "Público",
     "accPrivate": "Privado"
+  },
+  "blockedUsers": {
+    "title": "Usuarios bloqueados",
+    "empty": "No has bloqueado a nadie.",
+    "unblock": "Desbloquear",
+    "unblockA11y": "Desbloquear a {{name}}",
+    "confirmTitle": "¿Desbloquear a {{name}}?",
+    "confirmMessage": "Podrá encontrarte e interactuar contigo de nuevo. Los seguimientos que se quitaron al bloquearlo no se restauran.",
+    "errorTitle": "No se pudo desbloquear",
+    "errorMessage": "Inténtalo de nuevo.",
+    "loadError": "No pudimos cargar tus usuarios bloqueados.",
+    "unknownUser": "Usuario desconocido"
   }
 }
