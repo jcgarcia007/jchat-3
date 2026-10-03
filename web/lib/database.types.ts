@@ -2398,6 +2398,7 @@ export type Database = {
       }
       posts: {
         Row: {
+          business_id: string | null
           caption: string | null
           created_at: string
           geotag: string | null
@@ -2406,6 +2407,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_id?: string | null
           caption?: string | null
           created_at?: string
           geotag?: string | null
@@ -2414,6 +2416,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_id?: string | null
           caption?: string | null
           created_at?: string
           geotag?: string | null
