@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import type { RealtimeChannel, User } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { UserSummary } from '../../components/chat/ChatTopBar';
@@ -110,6 +111,7 @@ export function usePresenceChannels({
   enteredIncognito,
   entryVisible,
 }: UsePresenceChannelsArgs): UsePresenceChannelsResult {
+  const { t } = useTranslation('chat');
   const [presenceByRoom, setPresenceByRoom] = useState<Record<string, UserSummary[]>>({});
   // Bumped by the AppState handler to force a clean rebuild of channels whose
   // socket dropped in the background.
@@ -127,7 +129,10 @@ export function usePresenceChannels({
     const inc = enteredIncognito;
     const displayName = inc?.enabled
       ? (inc.nickname ?? 'Anonymous')
-      : ((user.user_metadata?.username as string | undefined) ?? user.email ?? 'User');
+      // Visible name: display_name → username → translated fallback. NEVER the email.
+      : ((user.user_metadata?.display_name as string | undefined)
+        ?? (user.user_metadata?.username as string | undefined)
+        ?? t('chatRoom.fallbackUserName'));
     const avatarUrl = inc?.enabled
       ? null
       : ((user.user_metadata?.avatar_url as string | undefined) ?? null);
@@ -138,7 +143,7 @@ export function usePresenceChannels({
       is_incognito: inc?.enabled ?? false,
       nickname: inc?.nickname ?? null,
     };
-  }, [user, enteredIncognito]);
+  }, [user, enteredIncognito, t]);
 
   useEffect(() => {
     payloadRef.current = payload;

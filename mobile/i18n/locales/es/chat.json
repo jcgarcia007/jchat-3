@@ -66,7 +66,8 @@
     "unknownUser": "Desconocido",
     "roleOwner": "Dueño",
     "roleStaff": "Staff",
-    "userLongPressA11y": "Mantén presionado para ver acciones de {{name}}"
+    "userLongPressA11y": "Mantén presionado para ver acciones de {{name}}",
+    "imageUnavailable": "Imagen no disponible"
   },
   "checkIn": {
     "labelCheckIn": "Registrarme",
@@ -280,6 +281,7 @@
     "geoGraceWarning": "Saliste del área de {{business}}. Vuelve en 2 minutos o el chat se cerrará.",
     "geoRemoved": "Saliste del área de {{business}}, el chat se cerró.",
     "geoUnavailable": "No se pudo verificar tu ubicación para este chat.",
-    "geoRetry": "Reintentar"
+    "geoRetry": "Reintentar",
+    "fallbackUserName": "Usuario"
   }
 }

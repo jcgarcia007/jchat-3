@@ -626,7 +626,7 @@ export default function ChatRoomScreen() {
         created_at: new Date().toISOString(),
         sender_name: incognito?.enabled
           ? incognito.nickname
-          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
+          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName')),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).
@@ -690,7 +690,7 @@ export default function ChatRoomScreen() {
         created_at: new Date().toISOString(),
         sender_name: incognito?.enabled
           ? incognito.nickname
-          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? user.email ?? 'You'),
+          : (userNameCacheRef.current.get(user.id) ?? (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName')),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).

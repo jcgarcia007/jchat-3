@@ -118,7 +118,7 @@ export function CheckInButton({
         userId: user.id,
         businessId,
         roomId,
-        username: user.user_metadata?.username as string ?? user.email ?? user.id,
+        username: (user.user_metadata?.username as string | undefined) ?? t('chatRoom.fallbackUserName'),
         venueData,
         // TODO(Stage 4): pass userLat/userLng from expo-location here
         // userLat: deviceLocation.coords.latitude,

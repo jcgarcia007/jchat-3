@@ -34,6 +34,7 @@ import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
 import { OfferCard } from './OfferCard';
 import type { Offer } from './OfferCard';
+import { isTrustedMediaUrl } from '../../utils/mediaUrl';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,10 @@ interface BubbleContentProps {
 function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentProps) {
   const { t } = useTranslation('chat');
   const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
+  // Only this project's Storage URLs are rendered. The sender's own optimistic bubble
+  // still shows the local file while the upload runs (it is removed if the upload fails).
+  const canShowMedia =
+    isTrustedMediaUrl(message.media_url) || (isOwn && message.id.startsWith('optimistic-'));
 
   switch (message.type) {
     case 'text':
@@ -142,7 +147,12 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
     case 'photo':
       return (
         <View>
-          {message.media_url ? (
+          {message.media_url && !canShowMedia ? (
+            <View style={styles.mediaPlaceholder}>
+              <IconPhoto size={28} color={textColor} />
+              <Text style={[styles.mediaLabel, { color: textColor }]}>{t('bubble.imageUnavailable')}</Text>
+            </View>
+          ) : message.media_url ? (
             <Pressable
               onPress={() => onImagePress?.(message.media_url!)}
               accessibilityRole="imagebutton"
@@ -172,7 +182,12 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
     case 'gif':
       return (
         <View>
-          {message.media_url ? (
+          {message.media_url && !canShowMedia ? (
+            <View style={styles.mediaPlaceholder}>
+              <IconGif size={28} color={textColor} />
+              <Text style={[styles.mediaLabel, { color: textColor }]}>{t('bubble.imageUnavailable')}</Text>
+            </View>
+          ) : message.media_url ? (
             <Image
               source={{ uri: message.media_url }}
               style={styles.gifImage}
