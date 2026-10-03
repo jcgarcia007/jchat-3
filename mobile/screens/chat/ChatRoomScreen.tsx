@@ -1062,9 +1062,10 @@ export default function ChatRoomScreen() {
         onPressUser={handleUserPress}
         onLongPressMessage={handleLongPressMessage}
         onImagePress={setViewerImage}
+        onOrderNow={handleMenuPress}
       />
     ),
-    [user?.id, chatTheme, roleMap, handleUserPress, handleLongPressMessage],
+    [user?.id, chatTheme, roleMap, handleUserPress, handleLongPressMessage, handleMenuPress],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────

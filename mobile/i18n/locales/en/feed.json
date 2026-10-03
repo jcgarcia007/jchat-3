@@ -15,8 +15,6 @@
   },
   "list": {
     "loadError": "Could not load feed. Pull down to retry.",
-    "commentsTitle": "Comments",
-    "commentsStub": "{{count}} comment(s) on this post.\nComment sheet coming soon.",
     "emptyBody": "Follow people to see their posts.\nFind them inside business chats."
   },
   "create": {

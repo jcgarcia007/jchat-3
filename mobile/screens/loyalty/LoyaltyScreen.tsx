@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — Loyalty Screen (Task 2.20)
  *
- * Shows a user's loyalty balance, current tier, points history stub, and the
+ * Shows a user's loyalty balance, current tier, and the
  * rewards catalog for a given business. Redemption triggers redeemReward()
  * from mobile/services/loyalty.ts; the price discount is applied server-side
  * at checkout (Task 3.5).
@@ -32,7 +32,6 @@ import { palette } from '../../theme/tokens';
 import {
   getAllBalances,
   getBalance,
-  getPointsHistory,
   listRewards,
   listTiers,
   getTierForPoints,
@@ -41,7 +40,6 @@ import {
 import type {
   LoyaltyBalanceWithBusiness,
   LoyaltyBalance,
-  LoyaltyHistoryEntry,
   LoyaltyReward,
   LoyaltyTier,
 } from '../../services/loyalty';
@@ -50,14 +48,6 @@ import type {
 
 function formatPoints(n: number): string {
   return n.toLocaleString();
-}
-
-function formatDate(iso: string, locale: string): string {
-  return new Date(iso).toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -129,35 +119,6 @@ function BalanceHero({
           </Text>
         </View>
       )}
-    </View>
-  );
-}
-
-/** Single history row. */
-function HistoryRow({ entry }: { entry: LoyaltyHistoryEntry }) {
-  const c = useThemeColors();
-  const { i18n } = useTranslation('loyalty');
-  const isPositive = entry.delta >= 0;
-
-  return (
-    <View style={[styles.historyRow, { borderBottomColor: c.borderSubtle }]}>
-      <View style={styles.historyInfo}>
-        <Text style={[styles.historyDesc, { color: c.textPrimary }]} numberOfLines={1}>
-          {entry.description}
-        </Text>
-        <Text style={[styles.historyDate, { color: c.textTertiary }]}>
-          {formatDate(entry.occurred_at, i18n.language)}
-        </Text>
-      </View>
-      <Text
-        style={[
-          styles.historyDelta,
-          { color: isPositive ? palette.success : palette.danger },
-        ]}
-      >
-        {isPositive ? '+' : ''}
-        {formatPoints(entry.delta)}
-      </Text>
     </View>
   );
 }
@@ -280,7 +241,6 @@ export default function LoyaltyScreen({ businessId }: Props) {
   // ── Single-business state ───────────────────────────────────────────────────
   const [balance, setBalance] = useState<LoyaltyBalance | null>(null);
   const [tiers, setTiers] = useState<LoyaltyTier[]>([]);
-  const [history, setHistory] = useState<LoyaltyHistoryEntry[]>([]);
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
 
   // ── Wallet (all businesses) state ───────────────────────────────────────────
@@ -302,15 +262,13 @@ export default function LoyaltyScreen({ businessId }: Props) {
     setError(null);
     try {
       if (businessId) {
-        const [bal, tiersData, hist, rewardsData] = await Promise.all([
+        const [bal, tiersData, rewardsData] = await Promise.all([
           getBalance(userId, businessId),
           listTiers(businessId),
-          getPointsHistory(userId, businessId),
           listRewards(businessId),
         ]);
         setBalance(bal);
         setTiers(tiersData);
-        setHistory(hist);
         setRewards(rewardsData);
       } else {
         const rows = await getAllBalances(userId);
@@ -454,22 +412,6 @@ export default function LoyaltyScreen({ businessId }: Props) {
         </View>
       )}
 
-      {/* Points history */}
-      <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>
-        {t('historySectionTitle')}
-      </Text>
-      {history.length === 0 ? (
-        <Text style={[styles.emptyHint, { color: c.textTertiary }]}>
-          {t('historyEmptyMessage')}
-        </Text>
-      ) : (
-        <View style={[styles.historyContainer, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          {history.map((entry) => (
-            <HistoryRow key={entry.id} entry={entry} />
-          ))}
-        </View>
-      )}
-
       {/* Rewards catalog */}
       <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>
         {t('rewardsSectionTitle')}
@@ -593,35 +535,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // ── History ─────────────────────────────────────────────────────────────────
-  historyContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  historyInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  historyDesc: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  historyDate: {
-    fontSize: 12,
-  },
-  historyDelta: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
   // ── Rewards ─────────────────────────────────────────────────────────────────
   rewardsList: {
     gap: 10,
@@ -742,11 +655,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  emptyHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
-    paddingHorizontal: 20,
   },
 });

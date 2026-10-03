@@ -60,24 +60,6 @@ export interface LoyaltyRule {
   created_at: string;
 }
 
-/**
- * Stub history entry.
- * TODO(schema): a `loyalty_ledger` table would back this with real debit/credit
- *   rows (order completions, redemptions, adjustments). For now we derive a
- *   synthetic entry from the current balance row.
- */
-export interface LoyaltyHistoryEntry {
-  id: string;
-  /** ISO timestamp of when the entry was recorded. */
-  occurred_at: string;
-  /** Human-readable description — e.g. "Order #123", "Redeemed: Free Coffee". */
-  description: string;
-  /** Positive = earned, negative = redeemed/deducted. */
-  delta: number;
-  /** Running balance after this entry. */
-  balance_after: number;
-}
-
 // ── getBalance ────────────────────────────────────────────────────────────────
 
 /**
@@ -136,35 +118,6 @@ export async function getAllBalances(
 }
 
 // ── getPointsHistory ──────────────────────────────────────────────────────────
-
-/**
- * Return a synthetic history for a user at a business.
- *
- * TODO(schema): a `loyalty_ledger` table would back this with real debit/credit
- *   rows. Until that table is added, we synthesize a single entry from the
- *   current balance row so the UI has something to render without crashing.
- *   Replace this stub once Task 3.x wires up ledger inserts.
- */
-export async function getPointsHistory(
-  userId: string,
-  businessId: string
-): Promise<LoyaltyHistoryEntry[]> {
-  if (!isSupabaseConfigured) return [];
-
-  const balance = await getBalance(userId, businessId);
-  if (!balance || balance.points === 0) return [];
-
-  // Synthetic single entry — represents total accumulated balance
-  const stub: LoyaltyHistoryEntry = {
-    id: balance.id,
-    occurred_at: balance.created_at,
-    description: 'Points balance',
-    delta: balance.points,
-    balance_after: balance.points,
-  };
-
-  return [stub];
-}
 
 // ── listRewards ───────────────────────────────────────────────────────────────
 

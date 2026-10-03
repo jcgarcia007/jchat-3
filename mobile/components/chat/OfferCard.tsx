@@ -169,7 +169,7 @@ export function OfferCard({
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleOrderNow = useCallback(() => {
-    // TODO(Task 3.2): open menu filtered to offer
+    // Opens the business menu (offers aren't linked to menu items, so nothing to preselect).
     onOrderNow?.(offer);
   }, [offer, onOrderNow]);
 

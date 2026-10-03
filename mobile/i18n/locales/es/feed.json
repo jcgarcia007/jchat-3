@@ -15,8 +15,6 @@
   },
   "list": {
     "loadError": "No se pudo cargar el feed. Desliza hacia abajo para reintentar.",
-    "commentsTitle": "Comentarios",
-    "commentsStub": "{{count}} comentario(s) en esta publicación.\nLos comentarios llegarán pronto.",
     "emptyBody": "Sigue a personas para ver sus publicaciones.\nEncuéntralas dentro de los chats de negocios."
   },
   "create": {

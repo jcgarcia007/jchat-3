@@ -364,13 +364,16 @@ export default function BusinessPreviewCard({
         {/* ── Live strip ────────────────────────────────────────────────────── */}
         {((business.active_count ?? 0) > 0 || (business.rooms?.length ?? 0) > 0) && (
           <View style={[styles.liveStrip, { borderTopColor: c.borderSubtle }]}>
-            <View style={styles.liveLeft}>
-              {/* Green live dot */}
-              <View style={[styles.liveDot, { backgroundColor: CARD_COLORS.openGreen }]} />
-              <Text style={[styles.liveCount, { color: c.textSecondary }]}>
-                {t('businessPreviewCard.activeCount', { count: business.active_count ?? 0 })}
-              </Text>
-            </View>
+            {/* Presence is not real yet (activeCount is 0 until it is): never show "0 active". */}
+            {(business.active_count ?? 0) > 0 && (
+              <View style={styles.liveLeft}>
+                {/* Green live dot */}
+                <View style={[styles.liveDot, { backgroundColor: CARD_COLORS.openGreen }]} />
+                <Text style={[styles.liveCount, { color: c.textSecondary }]}>
+                  {t('businessPreviewCard.activeCount', { count: business.active_count ?? 0 })}
+                </Text>
+              </View>
+            )}
 
             {/* Room chips */}
             {business.rooms && business.rooms.length > 0 && (

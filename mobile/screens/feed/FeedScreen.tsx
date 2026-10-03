@@ -10,7 +10,7 @@
  *                                  like_count + liked_by_me in local state; unsubscribe on unmount.
  *
  * Empty state: "Follow people to see their posts. Find them inside business chats."
- * CommentSheet: TODO stub — onOpenComments triggers an Alert placeholder until Task 2.x.
+ * Comments: onOpenComments opens PostDetail, which lists and creates comments.
  *
  * Colors: useThemeColors() only. Icons: @tabler/icons-react-native only.
  */
@@ -24,7 +24,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   ListRenderItemInfo,
   RefreshControl,
@@ -32,11 +31,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { IconUsers } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import {
   listFeed,
@@ -78,6 +80,7 @@ export default function FeedScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('feed');
   const { user } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
@@ -251,14 +254,10 @@ export default function FeedScreen() {
     [user?.id],
   );
 
-  // ── 7. Open comments — stub ───────────────────────────────────────────────
+  // ── 7. Open comments — PostDetail already lists and creates comments ──────
   const handleOpenComments = useCallback((post: PostRow) => {
-    // TODO(comments): replace with real CommentSheet (Task 1.x / 2.x)
-    Alert.alert(
-      t('list.commentsTitle'),
-      t('list.commentsStub', { count: post.comment_count ?? 0 }),
-    );
-  }, [t]);
+    navigation.navigate('PostDetail', { postId: post.id });
+  }, [navigation]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 

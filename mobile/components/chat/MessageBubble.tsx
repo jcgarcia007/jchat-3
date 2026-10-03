@@ -79,6 +79,8 @@ export interface MessageBubbleProps {
   onLongPressMessage?: (message: ChatMessage) => void;
   /** Called with a photo message's media_url when its image is tapped. */
   onImagePress?: (url: string) => void;
+  /** Called when "Order now" on an offer card is tapped (opens the business menu). */
+  onOrderNow?: (offer: Offer) => void;
 }
 
 /** Build an Offer object from an offer message's metadata snapshot (Task 2.6). */
@@ -126,9 +128,10 @@ interface BubbleContentProps {
   isOwn: boolean;
   theme: ChatTheme;
   onImagePress?: (url: string) => void;
+  onOrderNow?: (offer: Offer) => void;
 }
 
-function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentProps) {
+function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow }: BubbleContentProps) {
   const { t } = useTranslation('chat');
   const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
   // Only this project's Storage URLs are rendered. The sender's own optimistic bubble
@@ -218,7 +221,7 @@ function BubbleContent({ message, isOwn, theme, onImagePress }: BubbleContentPro
       );
 
     case 'offer':
-      return <OfferCard offer={offerFromMessage(message, t('bubble.offerFallback'))} theme={theme} />;
+      return <OfferCard offer={offerFromMessage(message, t('bubble.offerFallback'))} theme={theme} onOrderNow={onOrderNow} />;
 
     case 'system':
     default:
@@ -241,6 +244,7 @@ export function MessageBubble({
   onPressUser,
   onLongPressMessage,
   onImagePress,
+  onOrderNow,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const displayName = resolveDisplayName(message, t('bubble.unknownUser'));
@@ -343,10 +347,10 @@ export function MessageBubble({
         {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
         <Pressable onLongPress={handleLongPressMessage} delayLongPress={400}>
           {isOffer ? (
-            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} />
+            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} />
           ) : (
             <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} />
+              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} />
             </View>
           )}
         </Pressable>
