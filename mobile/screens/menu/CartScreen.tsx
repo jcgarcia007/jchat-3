@@ -62,6 +62,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
+import { qtyOfItemInOtherLines, stockLimitOf } from '../../context/CartContext';
 import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
@@ -260,8 +261,15 @@ export default function CartScreen() {
   }, [navigation]);
 
   const handleIncrement = useCallback((lineId: string, qty: number) => {
+    const line = lines.find((l) => l.lineId === lineId);
+    const limit = line ? stockLimitOf(line.item) : null;
+    // Stock cap: tell the user instead of silently ignoring the tap.
+    if (line && limit !== null && qty + 1 + qtyOfItemInOtherLines(lines, line.item.id, lineId) > limit) {
+      Alert.alert(t('cart.onlyLeftTitle'), t('cart.onlyLeft', { count: limit }));
+      return;
+    }
     updateQty(lineId, qty + 1);
-  }, [updateQty]);
+  }, [lines, updateQty, t]);
 
   const handleDecrement = useCallback((lineId: string, qty: number) => {
     if (qty <= 1) {

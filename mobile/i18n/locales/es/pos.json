@@ -47,7 +47,11 @@
     "addToCart": "Agregar al carrito",
     "selectSize": "Elige un tamaño",
     "addToCartA11y": "Agregar al carrito — {{price}}",
-    "selectSizeA11y": "Elige un tamaño para agregar al carrito"
+    "selectSizeA11y": "Elige un tamaño para agregar al carrito",
+    "loadingOptions": "Cargando opciones…",
+    "optionsError": "No pudimos cargar las opciones de este artículo.",
+    "optionsRetry": "Reintentar",
+    "onlyLeft": "Solo quedan {{count}}"
   },
   "cart": {
     "yourOrder": "Tu pedido",
@@ -93,7 +97,9 @@
     "proceedCheckout": "Ir al pago · {{amount}}",
     "proceedCheckoutA11y": "Ir al pago — {{amount}}",
     "selectOrderType": "Elige el tipo de pedido para continuar",
-    "taxAtCheckout": "Los impuestos y la propina se calculan al pagar."
+    "taxAtCheckout": "Los impuestos y la propina se calculan al pagar.",
+    "onlyLeftTitle": "Existencias limitadas",
+    "onlyLeft": "Solo quedan {{count}}."
   },
   "checkout": {
     "title": "Pago",

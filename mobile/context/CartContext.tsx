@@ -56,6 +56,24 @@ interface CartContextValue {
   clear: () => void;
 }
 
+/** How many of `item` the cart may hold in total (null = unlimited: stock isn't tracked). */
+export function stockLimitOf(item: MenuItem): number | null {
+  return typeof item.stock_count === 'number' && item.stock_count >= 0 ? item.stock_count : null;
+}
+
+/** Units of `item` already in other lines of the cart (same dish, different options). */
+export function qtyOfItemInOtherLines(lines: CartLine[], itemId: string, exceptLineId: string): number {
+  return lines
+    .filter((l) => l.item.id === itemId && l.lineId !== exceptLineId)
+    .reduce((n, l) => n + l.qty, 0);
+}
+
+function clampToStock(lines: CartLine[], item: MenuItem, lineId: string, wanted: number): number {
+  const limit = stockLimitOf(item);
+  if (limit === null) return wanted;
+  return Math.max(0, Math.min(wanted, limit - qtyOfItemInOtherLines(lines, item.id, lineId)));
+}
+
 function makeLineId(
   itemId: string,
   size: MenuOptionChoice | null,
@@ -96,21 +114,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const lineId = makeLineId(line.item.id, line.size, line.extras, line.modifierSelections);
     setLines((prev) => {
       const existing = prev.find((l) => l.lineId === lineId);
+      const wanted = (existing?.qty ?? 0) + line.qty;
+      // Never more than the stock the menu reported (null = stock is not tracked).
+      const qty = clampToStock(prev, line.item, lineId, wanted);
+      if (qty <= 0) return prev;
       if (existing) {
-        return prev.map((l) =>
-          l.lineId === lineId ? { ...l, qty: l.qty + line.qty } : l,
-        );
+        return prev.map((l) => (l.lineId === lineId ? { ...l, qty } : l));
       }
-      return [...prev, { ...line, lineId }];
+      return [...prev, { ...line, qty, lineId }];
     });
   }, []);
 
   const updateQty = useCallback((lineId: string, qty: number) => {
-    setLines((prev) =>
-      qty <= 0
-        ? prev.filter((l) => l.lineId !== lineId)
-        : prev.map((l) => (l.lineId === lineId ? { ...l, qty } : l)),
-    );
+    setLines((prev) => {
+      if (qty <= 0) return prev.filter((l) => l.lineId !== lineId);
+      const target = prev.find((l) => l.lineId === lineId);
+      if (!target) return prev;
+      const clamped = clampToStock(prev, target.item, lineId, qty);
+      return prev.map((l) => (l.lineId === lineId ? { ...l, qty: clamped } : l));
+    });
   }, []);
 
   const removeLine = useCallback((lineId: string) => {

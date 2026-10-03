@@ -47,7 +47,11 @@
     "addToCart": "Add to Cart",
     "selectSize": "Select a size",
     "addToCartA11y": "Add to cart — {{price}}",
-    "selectSizeA11y": "Select a size to add to cart"
+    "selectSizeA11y": "Select a size to add to cart",
+    "loadingOptions": "Loading options…",
+    "optionsError": "We couldn't load this item's options.",
+    "optionsRetry": "Retry",
+    "onlyLeft": "Only {{count}} left"
   },
   "cart": {
     "yourOrder": "Your Order",
@@ -93,7 +97,9 @@
     "proceedCheckout": "Proceed to Checkout · {{amount}}",
     "proceedCheckoutA11y": "Proceed to checkout — {{amount}}",
     "selectOrderType": "Select order type to proceed",
-    "taxAtCheckout": "Taxes and tip are calculated at checkout."
+    "taxAtCheckout": "Taxes and tip are calculated at checkout.",
+    "onlyLeftTitle": "Limited stock",
+    "onlyLeft": "Only {{count}} left."
   },
   "checkout": {
     "title": "Checkout",

@@ -91,7 +91,9 @@ export async function getMenu(businessId: string): Promise<MenuCategory[]> {
   const byCat = new Map<string, MenuItem[]>();
   for (const raw of (items ?? []) as Record<string, unknown>[]) {
     const it = mapMenuItem(raw);
-    // Auto-hide out-of-stock items (stock_count === 0)
+    // Auto-hide unavailable items (is_available = false) and out-of-stock ones (stock_count === 0).
+    // The server refuses unavailable items at checkout anyway; hiding them here avoids the dead end.
+    if (it.is_available === false) continue;
     if (it.stock_count === 0) continue;
     const arr = byCat.get(it.category_id) ?? [];
     arr.push(it);

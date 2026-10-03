@@ -30,6 +30,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -53,6 +54,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
+import { stockLimitOf } from '../../context/CartContext';
 import type { CartModifierSelection } from '../../context/CartContext';
 import { getItemModifierGroups } from '../../services/menu';
 import type { MenuItem, MenuOptionChoice, ModifierGroup } from '../../services/menu';
@@ -106,20 +108,29 @@ export default function ProductDetailScreen() {
   // Modifier groups (new system) + selection state: groupId → Set of chosen labels.
   const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
   const [modifierSel, setModifierSel] = useState<Record<string, Set<string>>>({});
+  // The groups decide what is REQUIRED, so the item can't be added until they are known:
+  // while loading, and (above all) when the load failed.
+  const [modifiersState, setModifiersState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [modifiersNonce, setModifiersNonce] = useState(0);
+  const [stockNotice, setStockNotice] = useState(false);
 
   useEffect(() => {
     let alive = true;
+    setModifiersState('loading');
     getItemModifierGroups(item.id)
       .then((groups) => {
-        if (alive) setModifierGroups(groups);
+        if (!alive) return;
+        setModifierGroups(groups);
+        setModifiersState('ready');
       })
-      .catch(() => {
-        if (alive) setModifierGroups([]);
+      .catch((error) => {
+        console.warn('[product] modifier groups load failed:', error);
+        if (alive) setModifiersState('error');
       });
     return () => {
       alive = false;
     };
-  }, [item.id]);
+  }, [item.id, modifiersNonce]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
@@ -171,7 +182,7 @@ export default function ProductDetailScreen() {
   const totalCents = unitPriceCents * qty;
 
   // Add to Cart is disabled when a required size/modifier isn't satisfied yet.
-  const canAddToCart = (!hasSizes || selectedSize !== null) && modifiersValid;
+  const canAddToCart = (!hasSizes || selectedSize !== null) && modifiersState === 'ready' && modifiersValid;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -217,9 +228,17 @@ export default function ProductDetailScreen() {
     setQty((q) => Math.max(1, q - 1));
   }, []);
 
+  const stockLimit = stockLimitOf(item);
   const handleIncrement = useCallback(() => {
-    setQty((q) => q + 1);
-  }, []);
+    setQty((q) => {
+      // Never more than the stock the menu reported (null = not tracked).
+      if (stockLimit !== null && q >= stockLimit) {
+        setStockNotice(true);
+        return q;
+      }
+      return q + 1;
+    });
+  }, [stockLimit]);
 
   const handleAddToCart = useCallback(() => {
     if (!canAddToCart) return;
@@ -312,7 +331,7 @@ export default function ProductDetailScreen() {
               accessibilityLabel={t('shared.goBack')}
               hitSlop={8}
             >
-              <IconArrowLeft size={20} color="#ffffff" strokeWidth={2.5} />
+              <IconArrowLeft size={20} color={palette.bgSurfaceLight} strokeWidth={2.5} />
             </Pressable>
 
             {/* Badge — top-right overlay */}
@@ -490,6 +509,24 @@ export default function ProductDetailScreen() {
           ) : null}
 
           {/* ── Modifier groups (new system) ── */}
+          {modifiersState === 'loading' ? (
+            <View style={[styles.section, { backgroundColor: c.bgSurface, alignItems: 'center' }]}>
+              <ActivityIndicator color={palette.brand} />
+              <Text style={[styles.optionsStateText, { color: c.textSecondary }]}>{t('productDetail.loadingOptions')}</Text>
+            </View>
+          ) : null}
+          {modifiersState === 'error' ? (
+            <View style={[styles.section, { backgroundColor: c.bgSurface, alignItems: 'center' }]}>
+              <Text style={[styles.optionsStateText, { color: palette.danger }]}>{t('productDetail.optionsError')}</Text>
+              <Pressable
+                onPress={() => setModifiersNonce((n) => n + 1)}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.optionsRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={styles.optionsRetryText}>{t('productDetail.optionsRetry')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           {modifierGroups.map((group) => {
             const isRequired = group.min_select >= 1;
             const subtitle =
@@ -650,6 +687,11 @@ export default function ProductDetailScreen() {
                 <IconPlus size={18} color={palette.brand} strokeWidth={2.5} />
               </Pressable>
             </View>
+            {stockLimit !== null && (stockNotice || qty >= stockLimit) ? (
+              <Text style={[styles.optionsStateText, { color: palette.warning }]}>
+                {t('productDetail.onlyLeft', { count: stockLimit })}
+              </Text>
+            ) : null}
           </View>
 
           {/* Bottom padding so the sticky bar doesn't obscure content */}
@@ -691,10 +733,16 @@ export default function ProductDetailScreen() {
             <Text
               style={[
                 styles.addButtonText,
-                { color: canAddToCart ? '#ffffff' : c.textTertiary },
+                { color: canAddToCart ? palette.bgSurfaceLight : c.textTertiary },
               ]}
             >
-              {canAddToCart ? t('productDetail.addToCart') : t('productDetail.selectSize')}
+              {canAddToCart
+                ? t('productDetail.addToCart')
+                : modifiersState === 'loading'
+                  ? t('productDetail.loadingOptions')
+                  : modifiersState === 'error'
+                    ? t('productDetail.optionsError')
+                    : t('productDetail.selectSize')}
             </Text>
           </Pressable>
         </View>
@@ -753,7 +801,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   badgeChipText: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.4,
@@ -882,7 +930,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ffffff',
+    backgroundColor: palette.bgSurfaceLight,
   },
   checkbox: {
     width: 20,
@@ -894,7 +942,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   checkmark: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 14,
@@ -922,6 +970,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Quantity selector ─────────────────────────────────────────────────────────
+  optionsStateText: { fontSize: 13, lineHeight: 18, marginTop: 8, textAlign: 'center' },
+  optionsRetryBtn: { borderRadius: 10, marginTop: 10, paddingHorizontal: 18, paddingVertical: 9 },
+  optionsRetryText: { color: palette.bgSurfaceLight, fontSize: 14, fontWeight: '700' },
   qtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
