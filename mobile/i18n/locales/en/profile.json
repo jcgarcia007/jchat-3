@@ -70,7 +70,6 @@
     "followers": "Followers",
     "following": "Following",
     "follow": "Follow",
-    "following": "Following",
     "requested": "Requested",
     "coverPhotoA11y": "{{name}}'s cover photo",
     "changeCoverA11y": "Change cover photo",
@@ -88,7 +87,9 @@
     "createPostA11y": "Create a post",
     "moreA11y": "More profile actions",
     "addBio": "+ Add a bio",
-    "shareProfile": "Share Profile"
+    "shareProfile": "Share Profile",
+    "unblock": "Unblock",
+    "blockedMe": "You can't interact with this account."
   },
   "empty": {
     "ownPostsTitle": "Share your first moment",
@@ -127,7 +128,10 @@
     "title": "Block @{{username}}?",
     "message": "They won't be able to see your profile or message you.",
     "confirm": "Block",
-    "error": "This profile action couldn't be completed."
+    "error": "This profile action couldn't be completed.",
+    "unblockTitle": "Unblock @{{username}}?",
+    "unblockMessage": "They will be able to see your profile and message you again. Follows are not restored.",
+    "unblockConfirm": "Unblock"
   },
   "completion": {
     "summary": "Complete your profile · {{count}} of 3",
@@ -136,5 +140,15 @@
   "themeSelector": {
     "themeOptionA11y": "{{name}} theme",
     "themeOptionSelectedA11y": "{{name}} theme, selected"
+  },
+  "follow": {
+    "error": "We couldn't update this. Please try again.",
+    "unfollowTitle": "Unfollow @{{username}}?",
+    "unfollowMessage": "You will stop seeing their updates.",
+    "unfollowConfirm": "Unfollow",
+    "cancelRequestTitle": "Cancel follow request?",
+    "cancelRequestMessage": "They won't be notified, and you can ask again later.",
+    "cancelRequestConfirm": "Cancel request",
+    "keepRequest": "Keep request"
   }
 }

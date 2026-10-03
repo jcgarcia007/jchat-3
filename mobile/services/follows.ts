@@ -67,21 +67,38 @@ export async function acceptRequest(requesterId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Reject a pending request FROM requesterId (RLS scopes to target_id = auth.uid()). */
+/**
+ * Reject a pending request FROM requesterId (I am the target). The reject_follow_request RPC
+ * (migration 180) deletes the request, so the requester can ask again later.
+ */
 export async function rejectRequest(requesterId: string): Promise<void> {
-  const { error } = await supabase
-    .from('follow_requests')
-    .update({ status: 'rejected' })
-    .eq('requester_id', requesterId)
-    .eq('status', 'pending');
+  const { error } = await supabase.rpc('reject_follow_request', { p_requester: requesterId });
   if (error) throw error;
 }
 
-/** Cancel a request I sent to targetId (RLS scopes to requester_id = auth.uid()). */
+/** Is there a pending request FROM me TO targetId? (RLS lets each side read its own requests.) */
+export async function hasPendingRequestTo(targetId: string): Promise<boolean> {
+  const me = await currentUserId();
+  if (!me) return false;
+  const { data, error } = await supabase
+    .from('follow_requests')
+    .select('id')
+    .eq('requester_id', me)
+    .eq('target_id', targetId)
+    .eq('status', 'pending')
+    .maybeSingle();
+  if (error) throw error;
+  return data !== null;
+}
+
+/** Cancel the request I sent to targetId: deleted by requester (me) AND target, both explicit. */
 export async function cancelRequest(targetId: string): Promise<void> {
+  const me = await currentUserId();
+  if (!me) throw new Error('not authenticated');
   const { error } = await supabase
     .from('follow_requests')
     .delete()
+    .eq('requester_id', me)
     .eq('target_id', targetId);
   if (error) throw error;
 }

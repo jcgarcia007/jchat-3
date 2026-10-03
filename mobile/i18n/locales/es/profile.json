@@ -70,7 +70,6 @@
     "followers": "Seguidores",
     "following": "Siguiendo",
     "follow": "Seguir",
-    "following": "Siguiendo",
     "requested": "Solicitado",
     "coverPhotoA11y": "Foto de portada de {{name}}",
     "changeCoverA11y": "Cambiar foto de portada",
@@ -88,7 +87,9 @@
     "createPostA11y": "Crear una publicación",
     "moreA11y": "Más acciones del perfil",
     "addBio": "+ Agregar una bio",
-    "shareProfile": "Compartir perfil"
+    "shareProfile": "Compartir perfil",
+    "unblock": "Desbloquear",
+    "blockedMe": "No puedes interactuar con esta cuenta."
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primer momento",
@@ -127,7 +128,10 @@
     "title": "¿Bloquear a @{{username}}?",
     "message": "No podrá ver tu perfil ni escribirte.",
     "confirm": "Bloquear",
-    "error": "No se pudo completar esta acción del perfil."
+    "error": "No se pudo completar esta acción del perfil.",
+    "unblockTitle": "¿Desbloquear a @{{username}}?",
+    "unblockMessage": "Podrá ver tu perfil y escribirte de nuevo. No se restauran los seguimientos.",
+    "unblockConfirm": "Desbloquear"
   },
   "completion": {
     "summary": "Completa tu perfil · {{count}} de 3",
@@ -136,5 +140,15 @@
   "themeSelector": {
     "themeOptionA11y": "Tema {{name}}",
     "themeOptionSelectedA11y": "Tema {{name}}, seleccionado"
+  },
+  "follow": {
+    "error": "No pudimos actualizar esto. Inténtalo de nuevo.",
+    "unfollowTitle": "¿Dejar de seguir a @{{username}}?",
+    "unfollowMessage": "Dejarás de ver sus novedades.",
+    "unfollowConfirm": "Dejar de seguir",
+    "cancelRequestTitle": "¿Cancelar solicitud?",
+    "cancelRequestMessage": "No se les avisará y podrás volver a solicitarlo más tarde.",
+    "cancelRequestConfirm": "Cancelar solicitud",
+    "keepRequest": "Mantener solicitud"
   }
 }

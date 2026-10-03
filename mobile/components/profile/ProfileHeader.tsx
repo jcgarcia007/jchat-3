@@ -8,6 +8,7 @@ import {
 } from '@tabler/icons-react-native';
 
 import type { ProfileTheme } from '../../theme/profileThemes';
+import type { FollowRelation } from '../../hooks/useFollowSystem';
 
 export interface ProfileTopBarProps {
   isOwnProfile: boolean;
@@ -33,9 +34,10 @@ export interface ProfileHeaderProps {
   postCount: number;
   followerCount: number;
   followingCount: number;
-  isFollowing: boolean;
-  isPending: boolean;
-  followLoading: boolean;
+  /** Relationship with the viewed user (ignored on the own profile). */
+  relation: FollowRelation;
+  /** A relationship action is in flight (or the relationship is still loading). */
+  followBusy: boolean;
   completion: { hasPhoto: boolean; hasBio: boolean; hasPost: boolean };
   completionVisible: boolean;
   onEditProfile: () => void;
@@ -45,6 +47,8 @@ export interface ProfileHeaderProps {
   onOpenFollowing: () => void;
   onFollow: () => void;
   onUnfollow: () => void;
+  onCancelRequest: () => void;
+  onUnblock: () => void;
   onMessage: () => void;
   theme: ProfileTheme;
 }
@@ -116,15 +120,17 @@ export function ProfileTopBar({
 
 export default function ProfileHeader({
   isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
-  followerCount, followingCount, isFollowing, isPending, followLoading, completion,
+  followerCount, followingCount, relation, followBusy, completion,
   completionVisible, onEditProfile, onShare, onDismissCompletion, onOpenFollowers, onOpenFollowing,
-  onFollow, onUnfollow, onMessage, theme,
+  onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
   const name = displayName?.trim() || username;
   const initials = name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
   const completedCount = Object.values(completion).filter(Boolean).length;
-  const followLabel = isPending ? t('header.requested') : isFollowing ? t('header.following') : t('header.follow');
+  const followLabel = relation === 'requested' ? t('header.requested') : relation === 'following' ? t('header.following') : t('header.follow');
+  const followOutlined = relation === 'requested' || relation === 'following';
+  const followAction = relation === 'requested' ? onCancelRequest : relation === 'following' ? onUnfollow : onFollow;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.statsBg }]}>
@@ -200,12 +206,20 @@ export default function ProfileHeader({
             <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.shareProfile')}</Text></TouchableOpacity>
           </>
         ) : (
-          <>
-            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: isFollowing || isPending ? theme.btn2Bg : theme.btn1Bg }, (isFollowing || isPending) && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={isFollowing ? onUnfollow : onFollow} disabled={followLoading || isPending} accessibilityRole="button">
-              {followLoading ? <ActivityIndicator color={isFollowing ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: isFollowing || isPending ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
+          relation === 'blockedMe' ? (
+            <Text style={[styles.blockedNotice, { color: theme.bodyTextSecondary }]}>{t('header.blockedMe')}</Text>
+          ) : relation === 'blockedByMe' ? (
+            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
+              {followBusy ? <ActivityIndicator color={theme.btn2Color} /> : <Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.unblock')}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onMessage} accessibilityRole="button"><IconMessage size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.message')}</Text></TouchableOpacity>
-          </>
+          ) : (
+            <>
+              <TouchableOpacity style={[styles.primaryButton, { backgroundColor: followOutlined ? theme.btn2Bg : theme.btn1Bg }, followOutlined && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={followAction} disabled={followBusy} accessibilityRole="button">
+                {followBusy ? <ActivityIndicator color={followOutlined ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onMessage} accessibilityRole="button"><IconMessage size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.message')}</Text></TouchableOpacity>
+            </>
+          )
         )}
       </View>
 
@@ -215,6 +229,7 @@ export default function ProfileHeader({
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
+  blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },
   topBarRoot: { width: '100%' },
   topBar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
   topUsername: { flex: 1, paddingLeft: 6, fontSize: 17, fontWeight: '800' },

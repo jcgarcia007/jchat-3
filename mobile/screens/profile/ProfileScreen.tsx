@@ -24,7 +24,7 @@ import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
-import { blockUser, isBlocked, unblockUser } from '../../services/blocks';
+import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
 
@@ -146,11 +146,14 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [completionDismissed, setCompletionDismissed] = useState<boolean | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
-  const [blocked, setBlocked] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const hasLoadedRef = useRef(false);
 
-  const { isFollowing, isPending, loading: followLoading, follow, unfollow } = useFollowSystem(isOwnProfile ? null : targetId);
+  const {
+    relation, loading: relationLoading, busy: relationBusy,
+    follow, unfollow, cancelFollowRequest, unblock, refresh: refreshRelation,
+  } = useFollowSystem(isOwnProfile ? null : targetId);
+  const blocked = relation === 'blockedByMe';
   const theme = getProfileTheme(profile?.profile_theme_id ?? 1);
 
   const loadProfile = useCallback(async (refresh = false) => {
@@ -158,29 +161,28 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (refresh) setRefreshing(true); else setInitialLoading(true);
     setError(null);
     try {
-      const [profileRow, postRows, profileCounts, blockedState] = await Promise.all([
+      const [profileRow, postRows, profileCounts] = await Promise.all([
         getPublicProfile(targetId),
         getUserPosts(targetId),
         // A counters failure must not take the whole profile down: keep what we had.
         getProfileCounts(targetId).catch(() => null),
-        !isOwnProfile ? isBlocked(targetId) : Promise.resolve(false),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
       setProfile(profileRow);
       setPosts(postRows);
       if (profileCounts) setCounts(profileCounts);
-      setBlocked(blockedState);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('view.loadProfileError'));
     } finally {
       setInitialLoading(false);
       setRefreshing(false);
     }
-  }, [isOwnProfile, t, targetId]);
+  }, [t, targetId]);
 
   useFocusEffect(useCallback(() => {
     void loadProfile(hasLoadedRef.current).finally(() => { hasLoadedRef.current = true; });
-  }, [loadProfile]));
+    if (!isOwnProfile) void refreshRelation(); // follow state / blocks may have changed while away
+  }, [loadProfile, isOwnProfile, refreshRelation]));
 
   useEffect(() => {
     if (!isOwnProfile) {
@@ -214,14 +216,61 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     }
   }, [authUser?.id, navigation, t, targetId]);
 
+  // Optimistic ±1 on the follower counter, then the server's number replaces it.
+  const reconcileCounts = useCallback(() => {
+    if (!targetId) return;
+    void getProfileCounts(targetId).then(setCounts).catch(() => undefined);
+  }, [targetId]);
+
   const handleFollow = useCallback(async () => {
-    await follow();
-    setCounts((value) => ({ ...value, followers: value.followers + 1 }));
-  }, [follow]);
-  const handleUnfollow = useCallback(async () => {
-    await unfollow();
-    setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
-  }, [unfollow]);
+    const result = await follow();
+    if (result === null) { Alert.alert(t('actions.errorTitle'), t('follow.error')); return; }
+    // 'requested' (private account) does NOT add a follower yet.
+    if (result === 'following') setCounts((value) => ({ ...value, followers: value.followers + 1 }));
+    reconcileCounts();
+  }, [follow, reconcileCounts, t]);
+
+  const handleUnfollow = useCallback(() => {
+    if (!profile) return;
+    Alert.alert(t('follow.unfollowTitle', { username: profile.username }), t('follow.unfollowMessage'), [
+      { text: t('actions.cancel'), style: 'cancel' },
+      { text: t('follow.unfollowConfirm'), style: 'destructive', onPress: () => {
+        void (async () => {
+          const done = await unfollow();
+          if (!done) { Alert.alert(t('actions.errorTitle'), t('follow.error')); return; }
+          setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
+          reconcileCounts();
+        })();
+      } },
+    ]);
+  }, [profile, unfollow, reconcileCounts, t]);
+
+  const handleCancelRequest = useCallback(() => {
+    Alert.alert(t('follow.cancelRequestTitle'), t('follow.cancelRequestMessage'), [
+      { text: t('follow.keepRequest'), style: 'cancel' },
+      { text: t('follow.cancelRequestConfirm'), style: 'destructive', onPress: () => {
+        void (async () => {
+          const done = await cancelFollowRequest();
+          if (!done) Alert.alert(t('actions.errorTitle'), t('follow.error'));
+        })();
+      } },
+    ]);
+  }, [cancelFollowRequest, t]);
+
+  const handleUnblock = useCallback(() => {
+    if (!profile) return;
+    Alert.alert(t('block.unblockTitle', { username: profile.username }), t('block.unblockMessage'), [
+      { text: t('actions.cancel'), style: 'cancel' },
+      { text: t('block.unblockConfirm'), onPress: () => {
+        void (async () => {
+          setMenuVisible(false);
+          const done = await unblock();
+          if (!done) { Alert.alert(t('actions.errorTitle'), t('block.error')); return; }
+          void loadProfile(true);
+        })();
+      } },
+    ]);
+  }, [profile, unblock, loadProfile, t]);
 
   const submitReport = useCallback(async (reason: typeof REPORT_REASONS[number]) => {
     if (!authUser?.id || !targetId || actionBusy) return;
@@ -236,12 +285,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   }, [actionBusy, authUser?.id, t, targetId]);
 
   const confirmBlock = useCallback(() => {
-    if (!profile || !targetId) return;
-    if (blocked) {
-      setActionBusy(true);
-      void unblockUser(targetId).then(() => { setBlocked(false); setMenuVisible(false); }).catch(() => Alert.alert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
-      return;
-    }
+    if (!profile || !targetId || actionBusy || relationBusy) return; // double-tap guard
+    if (blocked) { handleUnblock(); return; }
     Alert.alert(t('block.title', { username: profile.username }), t('block.message'), [
       { text: t('actions.cancel'), style: 'cancel' },
       { text: t('block.confirm'), style: 'destructive', onPress: () => {
@@ -249,7 +294,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         void blockUser(targetId).then(() => { setMenuVisible(false); navigation.goBack(); }).catch(() => Alert.alert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
       } },
     ]);
-  }, [blocked, navigation, profile, t, targetId]);
+  }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
   if (initialLoading) return <ProfileSkeleton theme={theme} topInset={insets.top} />;
   if (error || !profile) {
@@ -277,12 +322,12 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         <ProfileHeader
           isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} coverUrl={profile.cover_url}
           bio={profile.bio} city={profile.city} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
-          followingCount={counts.following} isFollowing={isFollowing} isPending={isPending} followLoading={followLoading}
+          followingCount={counts.following} relation={relation} followBusy={relationLoading || relationBusy}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
           onShare={() => void shareProfile()} onEditProfile={() => navigation.navigate('EditProfile')}
           onOpenFollowers={openFriends} onOpenFollowing={openFriends}
-          onFollow={() => void handleFollow()} onUnfollow={() => void handleUnfollow()}
+          onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />
         {renderPosts()}
