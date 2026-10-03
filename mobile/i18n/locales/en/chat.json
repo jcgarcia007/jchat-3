@@ -282,6 +282,11 @@
     "geoRemoved": "You left {{business}}'s area, the chat closed.",
     "geoUnavailable": "Couldn't verify your location for this chat.",
     "geoRetry": "Retry",
-    "fallbackUserName": "User"
+    "fallbackUserName": "User",
+    "photoUploadFailedTitle": "Couldn't send the photo",
+    "photoUploadFailedMessage": "The photo wasn't uploaded, so nothing was sent. Check your connection and try again.",
+    "retry": "Retry",
+    "mutedTitle": "You're muted",
+    "mutedMessage": "You're muted in this room."
   }
 }

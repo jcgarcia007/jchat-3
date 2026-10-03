@@ -212,7 +212,11 @@ export default function ChatRoomScreen() {
   const [menuMode, setMenuMode] = useState<string | null>(null);
   const [externalMenuUrl, setExternalMenuUrl] = useState<string | null>(null);
   const [subRooms, setSubRooms] = useState<SubRoom[]>([]);
+  // loadMessages staleness guards: latest request id and the room currently on screen.
+  const loadSeqRef = useRef(0);
+  const activeRoomIdRef = useRef(rootRoomId);
   const [activeRoomId, setActiveRoomId] = useState<string>(rootRoomId);
+  activeRoomIdRef.current = activeRoomId;
 
   // Sub-room password
   const [pendingProtectedRoom, setPendingProtectedRoom] = useState<SubRoom | null>(null);
@@ -399,6 +403,9 @@ export default function ChatRoomScreen() {
 
   const loadMessages = useCallback(async (roomId: string, before?: string) => {
     if (!isSupabaseConfigured) return;
+    // A newer load, or a switch to another room, makes this response stale: drop it.
+    const requestId = ++loadSeqRef.current;
+    const isStale = () => requestId !== loadSeqRef.current || roomId !== activeRoomIdRef.current;
     setLoadingMessages(true);
     try {
       let query = supabase
@@ -413,6 +420,7 @@ export default function ChatRoomScreen() {
       }
 
       const { data, error } = await query;
+      if (isStale()) return;
       if (error) {
         console.error('loadMessages error:', error);
         return;
@@ -430,6 +438,7 @@ export default function ChatRoomScreen() {
           .from('public_profiles')
           .select('id, username, display_name, avatar_url')
           .in('id', uniqueUserIds);
+        if (isStale()) return;
         for (const p of profs ?? []) {
           const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
           if (nm) userNameCacheRef.current.set(p.id as string, nm);
@@ -460,7 +469,7 @@ export default function ChatRoomScreen() {
         setMessages(msgs);
       }
     } finally {
-      setLoadingMessages(false);
+      if (requestId === loadSeqRef.current) setLoadingMessages(false);
     }
   }, []);
 
@@ -605,6 +614,34 @@ export default function ChatRoomScreen() {
     setServiceSheetVisible(true);
   }, []);
 
+  /**
+   * A message insert failed: drop the optimistic bubble and tell the user why. A 42501
+   * (RLS) may mean the owner muted them here; ask the server and, if so, say so without
+   * offering a retry.
+   */
+  const handleSendFailure = useCallback(
+    async (error: unknown, optimisticId: string) => {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      const code = (error as { code?: unknown } | null)?.code;
+      if (code === '42501' && user?.id) {
+        try {
+          const { data: muted } = await supabase.rpc('is_muted_in_room', {
+            p_room: activeRoomId,
+            p_user: user.id,
+          });
+          if (muted === true) {
+            Alert.alert(t('chatRoom.mutedTitle'), t('chatRoom.mutedMessage'));
+            return;
+          }
+        } catch {
+          // fall through to the generic error
+        }
+      }
+      Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.messageFailed'));
+    },
+    [user?.id, activeRoomId, t],
+  );
+
   const handleSendText = useCallback(
     async (text: string) => {
       if (!user) return;
@@ -658,16 +695,16 @@ export default function ChatRoomScreen() {
               .map((m) => (m.id === optimisticId ? confirmed : m)),
           );
         } else {
-          // Remove optimistic on failure
-          setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
-          Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.messageFailed'));
+          await handleSendFailure(error, optimisticId);
         }
-      } catch {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      } catch (sendError) {
+        await handleSendFailure(sendError, optimisticId);
       }
     },
-    [user, activeRoomId, enteredIncognito, t],
+    [user, activeRoomId, enteredIncognito, handleSendFailure],
   );
+
+  const sendPhotoRef = useRef<((uri: string) => void) | null>(null);
 
   const handleSendPhoto = useCallback(
     async (uri: string) => {
@@ -710,13 +747,19 @@ export default function ChatRoomScreen() {
       if (!isSupabaseConfigured) return;
 
       try {
-        // Upload to Storage first; fall back to local URI on error so the
-        // optimistic message stays visible even if upload fails.
-        let publicUrl = uri;
+        // Upload first. If it fails NO message is created (a local file:// path must never
+        // be stored in media_url): the optimistic bubble goes away and the user can retry.
+        let publicUrl: string;
         try {
           publicUrl = await uploadImage(user.id, uri, 'post-media');
         } catch (uploadErr) {
-          console.warn('[ChatRoom] photo upload failed, using local URI:', uploadErr);
+          console.warn('[ChatRoom] photo upload failed:', uploadErr);
+          setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+          Alert.alert(t('chatRoom.photoUploadFailedTitle'), t('chatRoom.photoUploadFailedMessage'), [
+            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+            { text: t('chatRoom.retry'), onPress: () => { sendPhotoRef.current?.(uri); } },
+          ]);
+          return;
         }
 
         const { data, error } = await supabase.from('messages').insert({
@@ -745,14 +788,15 @@ export default function ChatRoomScreen() {
             );
           }
         } else {
-          setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+          await handleSendFailure(error, optimisticId);
         }
-      } catch {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      } catch (sendError) {
+        await handleSendFailure(sendError, optimisticId);
       }
     },
-    [user, activeRoomId, enteredIncognito],
+    [user, activeRoomId, enteredIncognito, handleSendFailure, t],
   );
+  sendPhotoRef.current = handleSendPhoto;
 
   // ── Sub-room switching ─────────────────────────────────────────────────────
 

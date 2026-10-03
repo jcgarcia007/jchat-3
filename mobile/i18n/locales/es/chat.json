@@ -282,6 +282,11 @@
     "geoRemoved": "Saliste del área de {{business}}, el chat se cerró.",
     "geoUnavailable": "No se pudo verificar tu ubicación para este chat.",
     "geoRetry": "Reintentar",
-    "fallbackUserName": "Usuario"
+    "fallbackUserName": "Usuario",
+    "photoUploadFailedTitle": "No se pudo enviar la foto",
+    "photoUploadFailedMessage": "La foto no se subió, así que no se envió nada. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "mutedTitle": "Estás silenciado",
+    "mutedMessage": "Estás silenciado en esta sala."
   }
 }
