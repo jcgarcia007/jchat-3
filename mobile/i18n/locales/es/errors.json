@@ -57,5 +57,18 @@
     "Canceled": "Pago cancelado.",
     "Failed": "No se pudo completar el pago. Inténtalo de nuevo.",
     "Timeout": "El pago tardó demasiado. Inténtalo de nuevo."
+  },
+  "decline": {
+    "card_declined": "Tarjeta rechazada, usa otra tarjeta.",
+    "lost_card": "Tarjeta rechazada, usa otra tarjeta.",
+    "stolen_card": "Tarjeta rechazada, usa otra tarjeta.",
+    "insufficient_funds": "Fondos insuficientes. Usa otra tarjeta.",
+    "expired_card": "Tu tarjeta está vencida. Usa otra tarjeta.",
+    "incorrect_cvc": "El código de seguridad (CVC) es incorrecto. Revísalo e inténtalo de nuevo.",
+    "incorrect_number": "El número de la tarjeta es incorrecto. Revísalo e inténtalo de nuevo.",
+    "processing_error": "Hubo un error al procesar la tarjeta. Inténtalo de nuevo.",
+    "do_not_honor": "Tu banco rechazó el pago. Contacta a tu banco o usa otra tarjeta.",
+    "card_not_supported": "Esta tarjeta no es compatible con esta compra. Usa otra tarjeta.",
+    "authentication_required": "Tu banco requiere autenticación. Inténtalo de nuevo y completa la verificación."
   }
 }

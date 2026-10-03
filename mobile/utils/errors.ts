@@ -31,6 +31,27 @@ function tr(key: string, params?: Record<string, unknown>): string | null {
   return i18n.exists(key) ? (i18n.t(key, params) as string) : null;
 }
 
+/** Stripe card-decline reason from the PaymentSheet, Terminal SDK or Edge Function error shapes. */
+function declineMessage(err: object): string | null {
+  const e = err as Record<string, unknown> & { apiError?: Record<string, unknown>; metadata?: Record<string, unknown> };
+  const candidates = [
+    e.declineCode,
+    e.decline_code,
+    e.apiError?.declineCode,
+    e.metadata?.declineCode,
+    e.stripeErrorCode,
+    e.code,
+    e.apiError?.code,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string') {
+      const m = tr(`errors:decline.${c}`);
+      if (m) return m;
+    }
+  }
+  return null;
+}
+
 function isNetworkFailure(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   return (
@@ -56,6 +77,9 @@ export function toUserMessage(err: unknown, fallbackKey = 'errors:generic'): str
   } else if (isNetworkFailure(err)) {
     message = tr('errors:network');
   } else if (err && typeof err === 'object') {
+    // A card decline carries the issuer's reason (decline_code); show the matching message.
+    const decline = declineMessage(err);
+    if (decline) return decline;
     const code = (err as { code?: unknown }).code;
     if (typeof code === 'string') {
       message = tr(`errors:db.${code}`) ?? tr(`errors:stripe.${code}`) ?? tr(`errors:app.${code}`);

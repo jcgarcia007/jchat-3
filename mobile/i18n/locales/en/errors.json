@@ -57,5 +57,18 @@
     "Canceled": "Payment cancelled.",
     "Failed": "The payment couldn't be completed. Please try again.",
     "Timeout": "The payment took too long. Please try again."
+  },
+  "decline": {
+    "card_declined": "Card declined. Please use a different card.",
+    "lost_card": "Card declined. Please use a different card.",
+    "stolen_card": "Card declined. Please use a different card.",
+    "insufficient_funds": "Insufficient funds. Please use a different card.",
+    "expired_card": "Your card has expired. Please use a different card.",
+    "incorrect_cvc": "The security code (CVC) is incorrect. Check it and try again.",
+    "incorrect_number": "The card number is incorrect. Check it and try again.",
+    "processing_error": "There was an error processing the card. Please try again.",
+    "do_not_honor": "Your bank declined the payment. Contact your bank or use another card.",
+    "card_not_supported": "This card isn't supported for this purchase. Please use a different card.",
+    "authentication_required": "Your bank requires authentication. Try again and complete the verification."
   }
 }
