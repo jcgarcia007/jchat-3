@@ -345,7 +345,11 @@
       "noPairedBody": "Empareja la impresora en Ajustes → Bluetooth de Android y vuelve.",
       "btPermTitle": "Permiso Bluetooth",
       "btPermBody": "Otorga el permiso de Bluetooth para continuar.",
-      "openSettings": "Abrir ajustes"
+      "openSettings": "Abrir ajustes",
+      "typeNetwork": "Red",
+      "removePrinter": "Quitar impresora",
+      "errorTitle": "Error de impresora",
+      "btErrorTitle": "Error de Bluetooth"
     },
     "voucher": {
       "printSuccess": "Vale impreso",
@@ -378,7 +382,12 @@
       "sentToKitchen": "Pedido aprobado y enviado a cocina.",
       "approveError": "No se pudo aprobar el pedido.",
       "deviceStrikes": "{{count}} strike(s)"
-    }
+    },
+    "inventoryBtn": "Inventario",
+    "tipPlus": "+{{tip}} propina",
+    "optionsAvailableA11y": ", con opciones",
+    "tipPercentA11y": "Propina en porcentaje",
+    "tipDollarA11y": "Propina en monto"
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

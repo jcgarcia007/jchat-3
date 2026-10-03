@@ -327,7 +327,7 @@ export default function PosHomeScreen() {
             onPress={() => navigation.navigate('PosInventory', { businessId, businessName })}
             style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel={t('pos.inventoryBtn', { defaultValue: 'Inventario' })}
+            accessibilityLabel={t('pos.inventoryBtn')}
           >
             <IconArchive size={22} color={c.brand} strokeWidth={2} />
           </Pressable>
@@ -348,7 +348,7 @@ export default function PosHomeScreen() {
           onPress={() => navigation.navigate('PosApproval', { businessId })}
           style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel={t('pos.approval.badge', { defaultValue: 'Por aprobar' })}
+          accessibilityLabel={t('pos.approval.badge')}
         >
           <IconBell size={22} color={awaitingCount > 0 ? c.warning : c.brand} strokeWidth={2} />
           {awaitingCount > 0 && (

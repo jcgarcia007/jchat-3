@@ -180,7 +180,7 @@ export default function PosTipPicker({
                     : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="percent"
+                accessibilityLabel={t('pos.tipPercentA11y')}
               >
                 <Text
                   style={[
@@ -200,7 +200,7 @@ export default function PosTipPicker({
                     : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="dollar amount"
+                accessibilityLabel={t('pos.tipDollarA11y')}
               >
                 <Text
                   style={[

@@ -542,7 +542,7 @@ export default function PrivacyScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('back', { ns: 'common' })}
         >
           <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
         </Pressable>

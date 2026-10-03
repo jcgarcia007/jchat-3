@@ -19,6 +19,9 @@
  *   GS ( k     (1D 28 6B ...) — QR code commands (model 2, size 3, level L)
  */
 
+import i18n from '../i18n';
+import type { SupportedLanguage } from '../i18n';
+
 // ─── Public receipt shape (from get_public_receipt RPC) ───────────────────────
 
 export interface PublicReceiptItem {
@@ -88,6 +91,23 @@ function enc(s: string): Uint8Array {
     out[i] = normalized.charCodeAt(i) & 0xFF;
   }
   return out;
+}
+
+/**
+ * Ticket text comes from the `ticket` i18n namespace, in the language of the app on the
+ * device that prints (staff device). All strings are ASCII-only because enc() strips accents.
+ * `lang` is optional; it defaults to the current app language.
+ */
+function ticketT(lang?: SupportedLanguage) {
+  return i18n.getFixedT(lang ?? (i18n.language === 'es' ? 'es' : 'en'), 'ticket');
+}
+
+/** Manual date (Hermes Intl is unreliable): es → DD/MM/YYYY, en → MM/DD/YYYY. */
+function fmtTicketDate(d: Date, lang?: SupportedLanguage): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const es = (lang ?? i18n.language) === 'es';
+  return es ? `${dd}/${mm}/${d.getFullYear()}` : `${mm}/${dd}/${d.getFullYear()}`;
 }
 
 /** Concatenate an arbitrary number of Uint8Arrays. */
@@ -185,8 +205,8 @@ function wrapText(text: string, maxCols: number): string[] {
  * No prices — just items routed to this station.
  */
 export function buildKitchenTicketEscPos(opts: {
-  stationLabel: string;   // 'COCINA' | 'BAR'
-  tableLabel: string;     // e.g. 'Mesa 4' or 'Mesa 4 · Silla 2'
+  stationLabel: string;   // already translated: 'KITCHEN' | 'BAR' (ticket ns)
+  tableLabel: string;     // e.g. 'Table 4'
   serverName: string | null;
   items: Array<{
     qty: number;
@@ -196,8 +216,10 @@ export function buildKitchenTicketEscPos(opts: {
     seat?: number | null;
   }>;
   widthMm?: number;  // default 80
+  lang?: SupportedLanguage;  // default: app language
 }): Uint8Array {
-  const { stationLabel, tableLabel, serverName, items } = opts;
+  const { stationLabel, tableLabel, serverName, items, lang } = opts;
+  const tt = ticketT(lang);
   // Manual HH:MM — Hermes' Intl may render "1:32" instead of "01:32".
   const now  = new Date();
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -214,12 +236,12 @@ export function buildKitchenTicketEscPos(opts: {
     align('left'),
     enc(separator(48)), lf(),
     // ── Table label (bold) ───────────────────────────────────────────────────
-    bold(true), enc(`Mesa: ${tableLabel}`), lf(), bold(false),
+    bold(true), enc(`${tt('table')}: ${tableLabel}`), lf(), bold(false),
   ];
 
   // Server name (optional)
   if (serverName) {
-    parts.push(enc(`Mesero: ${serverName}`.slice(0, 48)), lf());
+    parts.push(enc(`${tt('server')}: ${serverName}`.slice(0, 48)), lf());
   }
 
   // Timestamp
@@ -296,7 +318,7 @@ export function buildKitchenTicketEscPos(opts: {
 
     // Seat
     if (item.seat != null && item.seat > 0) {
-      parts.push(enc(`  . Silla ${item.seat}`), lf());
+      parts.push(enc(`  . ${tt('seat')} ${item.seat}`), lf());
     }
   }
 
@@ -327,17 +349,15 @@ export function buildReceiptEscPos(
   receipt: PublicReceipt,
   receiptCode: string,
   widthMm: number = 80,
+  lang?: SupportedLanguage,
 ): Uint8Array {
+  const tt   = ticketT(lang);
   const cols = widthMm <= 58 ? 32 : 48;
   const biz  = receipt.business;
   const pay  = receipt.payment;
 
   // ── Date ────────────────────────────────────────────────────────────────────
-  const date = pay.created_at
-    ? new Date(pay.created_at).toLocaleDateString('en-US', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-      })
-    : '';
+  const date = pay.created_at ? fmtTicketDate(new Date(pay.created_at), lang) : '';
 
   // ── Business header ─────────────────────────────────────────────────────────
   const header: Uint8Array[] = [
@@ -366,7 +386,7 @@ export function buildReceiptEscPos(
   } else {
     orderInfo.push(enc(date.padEnd(cols)), lf());
   }
-  orderInfo.push(enc(`Recibo: #${shortCode}`), lf());
+  orderInfo.push(enc(`${tt('receipt')}: #${shortCode}`), lf());
   orderInfo.push(enc(separator(cols)), lf());
 
   // ── Items ───────────────────────────────────────────────────────────────────
@@ -413,18 +433,18 @@ export function buildReceiptEscPos(
   ];
 
   // Subtotal — always (mirrors digital)
-  totals.push(enc(labelValue('Subtotal', fmtPriceRaw(pay.subtotal_cents), cols)), lf());
+  totals.push(enc(labelValue(tt('subtotal'), fmtPriceRaw(pay.subtotal_cents), cols)), lf());
   // Impuesto — always (mirrors digital)
-  totals.push(enc(labelValue('Impuesto', fmtPriceRaw(pay.tax_cents), cols)), lf());
+  totals.push(enc(labelValue(tt('tax'), fmtPriceRaw(pay.tax_cents), cols)), lf());
   // Propina — only when charged (mirrors digital)
   if (pay.tip_cents > 0) {
-    totals.push(enc(labelValue('Propina', fmtPriceRaw(pay.tip_cents), cols)), lf());
+    totals.push(enc(labelValue(tt('tip'), fmtPriceRaw(pay.tip_cents), cols)), lf());
   }
 
   // TOTAL in double size + bold — grandTotal = base + propina
   totals.push(
     doubleSize(true), bold(true),
-    enc(labelValue('TOTAL', fmtPriceRaw(grandTotal), cols)), lf(),
+    enc(labelValue(tt('total'), fmtPriceRaw(grandTotal), cols)), lf(),
     doubleSize(false), bold(false),
     enc(separator(cols)), lf(),
   );
@@ -433,7 +453,7 @@ export function buildReceiptEscPos(
   const confirmation: Uint8Array[] = [
     align('center'),
     bold(true),
-    enc('PAGADO'), lf(),
+    enc(tt('paid')), lf(),
     bold(false),
   ];
 
@@ -449,7 +469,7 @@ export function buildReceiptEscPos(
   const qr: Uint8Array[] = [
     buildQR(receiptUrl),
     lf(),
-    enc('Escanea para ver tu recibo digital'), lf(),
+    enc(tt('scanQr')), lf(),
     enc(receiptUrl.slice(0, cols)), lf(),
     lf(),
   ];
@@ -458,10 +478,10 @@ export function buildReceiptEscPos(
   const footer: Uint8Array[] = [];
   if (receipt.server_name) {
     // "Atendido por: [nombre]" — shown only when paid_by is set and resolves to a name
-    footer.push(enc(`Atendido: ${receipt.server_name}`.slice(0, cols)), lf());
+    footer.push(enc(`${tt('servedBy')}: ${receipt.server_name}`.slice(0, cols)), lf());
   }
   footer.push(
-    enc('Gracias por su visita'), lf(),
+    enc(tt('thanks')), lf(),
     enc('jchat.cloud'), lf(),
     lf(),
     feed(40),   // ~5mm blank space before cut
@@ -533,16 +553,18 @@ export interface PaymentVoucher {
 export function buildPaymentVoucherEscPos(
   voucher: PaymentVoucher,
   widthMm: number = 80,
+  lang?: SupportedLanguage,
 ): Uint8Array {
+  const tt   = ticketT(lang);
   const cols = widthMm <= 58 ? 32 : 48;
 
   const methodLabel = voucher.payment_method === 'cash'
-    ? '*** EFECTIVO ***'
-    : '*** TARJETA EXTERNA ***';
+    ? tt('cash')
+    : tt('cardExternal');
 
   const paidAt   = new Date(voucher.paid_at);
   const timeStr  = `${String(paidAt.getHours()).padStart(2, '0')}:${String(paidAt.getMinutes()).padStart(2, '0')}`;
-  const dateStr  = `${String(paidAt.getDate()).padStart(2, '0')}/${String(paidAt.getMonth() + 1).padStart(2, '0')}/${paidAt.getFullYear()}`;
+  const dateStr  = fmtTicketDate(paidAt, lang);
 
   const parts: Uint8Array[] = [
     reset(),
@@ -551,7 +573,7 @@ export function buildPaymentVoucherEscPos(
     enc(voucher.business_name.slice(0, cols)), lf(),
     bold(false),
     // Title
-    enc('VALE DE CAJA'), lf(),
+    enc(tt('cashVoucher')), lf(),
     // Separator
     align('left'), enc(separator(cols)), lf(),
     // Payment method (double size, center)
@@ -561,22 +583,22 @@ export function buildPaymentVoucherEscPos(
     // Separator
     align('left'), enc(separator(cols)), lf(),
     // Table + time
-    enc(twoCol(`Mesa: ${voucher.table_label}`, timeStr, cols)), lf(),
+    enc(twoCol(`${tt('table')}: ${voucher.table_label}`, timeStr, cols)), lf(),
     // Waiter
-    enc(`Mesero: ${voucher.waiter_name}`.slice(0, cols)), lf(),
+    enc(`${tt('server')}: ${voucher.waiter_name}`.slice(0, cols)), lf(),
     // Date
     enc(dateStr), lf(),
     // Separator
     enc(separator(cols)), lf(),
     // Venta (base amount)
-    enc(labelValue('Venta:', `$${(voucher.amount_cents / 100).toFixed(2)}`, cols)), lf(),
+    enc(labelValue(tt('sale'), `$${(voucher.amount_cents / 100).toFixed(2)}`, cols)), lf(),
     // Propina — always printed (even $0.00)
-    enc(labelValue('Propina:', `$${(voucher.tip_cents / 100).toFixed(2)}`, cols)), lf(),
+    enc(labelValue(tt('tipColon'), `$${(voucher.tip_cents / 100).toFixed(2)}`, cols)), lf(),
     // Separator
     enc(separator(cols)), lf(),
     // TOTAL (bold)
     bold(true),
-    enc(labelValue('TOTAL:', `$${(voucher.total_cents / 100).toFixed(2)}`, cols)), lf(),
+    enc(labelValue(tt('totalColon'), `$${(voucher.total_cents / 100).toFixed(2)}`, cols)), lf(),
     bold(false),
     // Separator
     enc(separator(cols)), lf(),
@@ -584,7 +606,7 @@ export function buildPaymentVoucherEscPos(
 
   // Split index (only when there are multiple parts)
   if (voucher.split_total > 1) {
-    parts.push(enc(`Parte ${voucher.split_index} de ${voucher.split_total}`), lf());
+    parts.push(enc(tt('part', { index: voucher.split_index, total: voucher.split_total })), lf());
   }
 
   // Items covered (if any)
@@ -599,8 +621,8 @@ export function buildPaymentVoucherEscPos(
 
   // Receipt code reference
   parts.push(
-    enc(`Ref: ${voucher.receipt_code}`.slice(0, cols)), lf(),
-    enc('Conservar para cierre de caja'.slice(0, cols)), lf(),
+    enc(tt('ref', { code: voucher.receipt_code }).slice(0, cols)), lf(),
+    enc(tt('keepForClose').slice(0, cols)), lf(),
     feedLines(5),
     cut(),
   );
@@ -619,6 +641,8 @@ export interface TableCodeTicketOpts {
   widthMm?: number;
   /** Printer role — guard rejects 'kitchen' | 'bar'. */
   printerRole?: string;
+  /** Ticket language; default: app language. */
+  lang?: SupportedLanguage;
 }
 
 /**
@@ -655,7 +679,9 @@ export function buildTableCodeTicketEscPos(opts: TableCodeTicketOpts): Uint8Arra
     serverName,
     widthMm = 80,
     printerRole,
+    lang,
   } = opts;
+  const tt = ticketT(lang);
 
   // ── Guard ────────────────────────────────────────────────────────────────────
   if (printerRole === 'kitchen' || printerRole === 'bar') {
@@ -682,13 +708,13 @@ export function buildTableCodeTicketEscPos(opts: TableCodeTicketOpts): Uint8Arra
     enc(businessName.slice(0, cols)), lf(),
     bold(false),
     enc(separator(cols)), lf(),
-    enc(`Mesa: ${tableLabel}`.slice(0, cols)), lf(),
+    enc(`${tt('table')}: ${tableLabel}`.slice(0, cols)), lf(),
     enc(separator(cols)), lf(),
   ];
 
   const title: Uint8Array[] = [
     bold(true),
-    enc('CODIGO DE MESA'), lf(),
+    enc(tt('tableCode')), lf(),
     bold(false),
     lf(),
   ];
@@ -708,14 +734,14 @@ export function buildTableCodeTicketEscPos(opts: TableCodeTicketOpts): Uint8Arra
   const instructions: Uint8Array[] = [
     align('left'),
     // ASCII-safe — NFD strips tildes anyway
-    enc('Muestra este codigo al mesero'.slice(0, cols)), lf(),
-    enc('Es valido mientras la mesa este abierta'.slice(0, cols)), lf(),
-    enc('No lo compartas con nadie mas'.slice(0, cols)), lf(),
+    enc(tt('showCode').slice(0, cols)), lf(),
+    enc(tt('validWhile').slice(0, cols)), lf(),
+    enc(tt('dontShare').slice(0, cols)), lf(),
   ];
 
   const footer: Uint8Array[] = [];
   const serverLine = serverName
-    ? `Mesero: ${serverName}  ${timeStr}`
+    ? `${tt('server')}: ${serverName}  ${timeStr}`
     : timeStr;
   footer.push(enc(serverLine.slice(0, cols)), lf());
   footer.push(feedLines(5), cut());

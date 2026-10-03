@@ -173,7 +173,7 @@ function MenuItemCard({
         pressed && { opacity: 0.80 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ${formatPrice(item.price_cents)}${item.has_modifiers ? ', options available' : ''}`}
+      accessibilityLabel={`${item.name}, ${formatPrice(item.price_cents)}${item.has_modifiers ? t('pos.optionsAvailableA11y') : ''}`}
     >
       {/* Photo area — square aspect ratio, rounded corners */}
       <View style={[styles.cardImgWrapper, { backgroundColor: c.bgSurface }]}>
@@ -408,7 +408,7 @@ function ModifierSheet({
           onPress={onClose}
           style={styles.modCloseBtn}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('actions.close', { ns: 'common' })}
         >
           <IconX size={20} color={c.textSecondary} strokeWidth={2} />
         </Pressable>

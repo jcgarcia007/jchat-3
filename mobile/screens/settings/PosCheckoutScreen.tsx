@@ -808,7 +808,7 @@ export default function PosCheckoutScreen() {
                 <Text style={styles.extMethodBtnSub}>
                   {formatCents((tabAmountCents ?? 0) + computedTipCents)}
                   {computedTipCents > 0
-                    ? `  (+${formatCents(computedTipCents)} tip)`
+                    ? `  (${t('pos.tipPlus', { tip: formatCents(computedTipCents) })})`
                     : ''}
                 </Text>
               </View>
@@ -830,7 +830,7 @@ export default function PosCheckoutScreen() {
                 <Text style={styles.extMethodBtnSub}>
                   {formatCents((tabAmountCents ?? 0) + computedTipCents)}
                   {computedTipCents > 0
-                    ? `  (+${formatCents(computedTipCents)} tip)`
+                    ? `  (${t('pos.tipPlus', { tip: formatCents(computedTipCents) })})`
                     : ''}
                 </Text>
               </View>

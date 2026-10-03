@@ -132,7 +132,7 @@ function ReceiptRowItem({ row, businessId, pickerRef, colors, t }: RowProps) {
         </Text>
         {row.tip_cents > 0 && (
           <Text style={[styles.rowTip, { color: colors.textSecondary }]}>
-            +{formatCents(row.tip_cents)} tip
+            {t('pos.tipPlus', { tip: formatCents(row.tip_cents) })}
           </Text>
         )}
         <Text style={[styles.rowTip, { color: colors.textTertiary ?? colors.textSecondary }]}>
@@ -236,7 +236,7 @@ export default function PosReceiptsScreen(): React.ReactElement {
           style={styles.backBtn}
           onPress={() => navigation.canGoBack() && navigation.goBack()}
           hitSlop={12}
-          accessibilityLabel="Regresar"
+          accessibilityLabel={t('back', { ns: 'common' })}
         >
           <IconChevronLeft size={24} color={colors.textPrimary} />
         </Pressable>

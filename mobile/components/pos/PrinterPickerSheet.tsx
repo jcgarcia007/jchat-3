@@ -225,7 +225,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
         >
           <View style={s.printerRowLeft}>
             <View style={[s.chip, isBt ? s.chipBt : s.chipNet]}>
-              <Text style={s.chipText}>{isBt ? 'BT' : 'Red'}</Text>
+              <Text style={s.chipText}>{isBt ? 'BT' : t('pos.printers.typeNetwork')}</Text>
             </View>
           </View>
           <View style={s.printerRowRight}>
@@ -263,7 +263,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
             />
             <Pressable style={[s.cancelBtn, { backgroundColor: colors.bgBase }]} onPress={handleCancel}>
               <Text style={[s.cancelText, { color: colors.danger }]}>
-                {t('common.cancel', { defaultValue: 'Cancelar' })}
+                {t('actions.cancel', { ns: 'common' })}
               </Text>
             </Pressable>
           </View>

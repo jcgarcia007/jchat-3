@@ -18,6 +18,7 @@
 import TcpSocket from 'react-native-tcp-socket';
 import { supabase } from './supabase';
 import { AppError } from '../utils/errors';
+import i18n from '../i18n';
 import { buildKitchenTicketEscPos } from './escpos';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -228,8 +229,8 @@ export async function printKitchenTickets(opts: {
 
     // 3. Print per station, each in its own try/catch
     const stationMeta: Array<{ role: 'kitchen' | 'bar'; label: string }> = [
-      { role: 'kitchen', label: 'COCINA' },
-      { role: 'bar',     label: 'BAR'    },
+      { role: 'kitchen', label: i18n.getFixedT(null, 'ticket')('stationKitchen') },
+      { role: 'bar',     label: i18n.getFixedT(null, 'ticket')('stationBar') },
     ];
 
     for (const { role, label } of stationMeta) {

@@ -561,7 +561,7 @@ export default function PosTableHub(): React.ReactElement {
             setReleaseLoading(false);
           }
         } },
-        { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
       ],
     );
   }, [businessId, tableId, sessionDetail, t]);
@@ -998,7 +998,7 @@ export default function PosTableHub(): React.ReactElement {
                     {sec.label}
                   </Text>
                   <Text style={[styles.combinedRowSeats, { color: c.textTertiary }]}>
-                    {sec.seats != null ? `${sec.seats} asientos` : ''}
+                    {sec.seats != null ? t('pos.tableSeats', { count: sec.seats }) : ''}
                   </Text>
                   <Pressable
                     onPress={() => { void handleUncombine(sec.table_id); }}
@@ -1540,7 +1540,7 @@ export default function PosTableHub(): React.ReactElement {
                 </Text>
                 {freeTable.seats != null && (
                   <Text style={[styles.modalTableSeats, { color: c.textTertiary }]}>
-                    {freeTable.seats} asientos
+                    {t('pos.tableSeats', { count: freeTable.seats })}
                   </Text>
                 )}
                 <IconPlugConnected size={16} color={c.brand} strokeWidth={1.5} />

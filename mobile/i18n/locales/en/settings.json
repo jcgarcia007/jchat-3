@@ -345,7 +345,11 @@
       "noPairedBody": "Pair the printer in Android Settings → Bluetooth and come back.",
       "btPermTitle": "Bluetooth Permission",
       "btPermBody": "Grant Bluetooth permission to continue.",
-      "openSettings": "Open settings"
+      "openSettings": "Open settings",
+      "typeNetwork": "Network",
+      "removePrinter": "Remove printer",
+      "errorTitle": "Printer error",
+      "btErrorTitle": "Bluetooth error"
     },
     "voucher": {
       "printSuccess": "Voucher printed",
@@ -378,7 +382,12 @@
       "sentToKitchen": "Order approved and sent to kitchen.",
       "approveError": "Could not approve the order.",
       "deviceStrikes": "{{count}} strike(s)"
-    }
+    },
+    "inventoryBtn": "Inventory",
+    "tipPlus": "+{{tip}} tip",
+    "optionsAvailableA11y": ", options available",
+    "tipPercentA11y": "Tip as a percentage",
+    "tipDollarA11y": "Tip as an amount"
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

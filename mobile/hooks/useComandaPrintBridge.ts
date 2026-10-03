@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { supabase } from '../services/supabase';
 import { printKitchenTickets } from '../services/printer';
+import i18n from '../i18n';
 
 type PendingComanda = {
   order_id:    string;
@@ -71,11 +72,12 @@ export function useComandaPrintBridge(businessId: string): void {
 
     processedRef.current.add(orderId);
 
-    const label = tableLabel ?? 'Mostrador';
+    const tt = i18n.getFixedT(null, 'ticket');
+    const label = tableLabel ?? tt('counter');
 
     let printOk = false;
     try {
-      await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
+      await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: tt('customer') });
       printOk = true;
       if (__DEV__) console.log('[ComandaBridge] impresión OK — orderId=', orderId);
     } catch (printErr) {
@@ -90,7 +92,7 @@ export function useComandaPrintBridge(businessId: string): void {
     // Reintento único tras 30 s
     setTimeout(async () => {
       try {
-        await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: 'Cliente' });
+        await printKitchenTickets({ businessId, orderId, tableLabel: label, serverName: tt('customer') });
         await markPrinted(orderId);
         if (__DEV__) console.log('[ComandaBridge] impresión OK (2.º intento) — orderId=', orderId);
       } catch (retryErr) {

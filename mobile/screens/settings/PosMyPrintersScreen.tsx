@@ -57,6 +57,7 @@ type PosMyPrintersRoute = RouteProp<PosStackParamList, 'PosMyPrinters'>;
 
 export default function PosMyPrintersScreen(): React.ReactElement {
   const { t }    = useTranslation('settings');
+  const { t: tTicket } = useTranslation('ticket');
   const colors   = useThemeColors();
   const insets   = useSafeAreaInsets();
   const nav      = useNavigation();
@@ -107,7 +108,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
   async function handleTestPrint(record: BtPrinterRecord) {
     const bytes = buildTableCodeTicketEscPos({
       businessName,
-      tableLabel: 'Prueba',
+      tableLabel: tTicket('test'),
       accessCode: '000000',
       serverName: null,
       widthMm: record.widthMm,
@@ -115,7 +116,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     try {
       await printToBluetooth(record.address, bytes);
     } catch (err) {
-      Alert.alert('Error', toUserMessage(err));
+      Alert.alert(t('pos.printers.errorTitle'), toUserMessage(err));
     }
   }
 
@@ -128,7 +129,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
       Alert.alert(
         t('pos.printers.btPermTitle'),
         t('pos.printers.btPermBody'),
-        [{ text: t('pos.printers.openSettings'), onPress: () => Linking.openSettings() }, { text: 'OK' }],
+        [{ text: t('pos.printers.openSettings'), onPress: () => Linking.openSettings() }, { text: t('actions.ok', { ns: 'common' }) }],
       );
       setAddPhase('idle');
       return;
@@ -143,7 +144,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
       setPairedDevices(devices);
       setAddPhase('picking');
     } catch (err) {
-      Alert.alert('Error Bluetooth', toUserMessage(err));
+      Alert.alert(t('pos.printers.btErrorTitle'), toUserMessage(err));
       setAddPhase('idle');
     }
   }
@@ -162,7 +163,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
 
     const bytes = buildTableCodeTicketEscPos({
       businessName,
-      tableLabel: 'Prueba',
+      tableLabel: tTicket('test'),
       accessCode: '000000',
       serverName: null,
       widthMm: selectedWidth,
@@ -240,7 +241,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           ))}
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
             <Text style={[s.cancelText, { color: colors.danger }]}>
-              {t('common.cancel', { defaultValue: 'Cancelar' })}
+              {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
         </View>
@@ -277,7 +278,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           </Pressable>
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
             <Text style={[s.cancelText, { color: colors.danger }]}>
-              {t('common.cancel', { defaultValue: 'Cancelar' })}
+              {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
         </View>
@@ -324,7 +325,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           )}
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
             <Text style={[s.cancelText, { color: colors.danger }]}>
-              {t('common.cancel', { defaultValue: 'Cancelar' })}
+              {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
         </View>
@@ -344,7 +345,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           style={s.backBtn}
           onPress={() => nav.canGoBack() && nav.goBack()}
           hitSlop={12}
-          accessibilityLabel="Regresar"
+          accessibilityLabel={t('back', { ns: 'common' })}
         >
           <IconChevronLeft size={24} color={colors.textPrimary} />
         </Pressable>
@@ -386,14 +387,14 @@ export default function PosMyPrintersScreen(): React.ReactElement {
               <Pressable
                 style={[s.iconBtn, { borderColor: colors.brand }]}
                 onPress={() => handleTestPrint(p)}
-                accessibilityLabel="Imprimir prueba"
+                accessibilityLabel={t('pos.printers.printTest')}
               >
                 <IconPrinter size={16} color={colors.brand} strokeWidth={1.8} />
               </Pressable>
               <Pressable
                 style={[s.iconBtn, { borderColor: colors.danger, marginLeft: 6 }]}
                 onPress={() => handleRemove(p.address)}
-                accessibilityLabel="Quitar impresora"
+                accessibilityLabel={t('pos.printers.removePrinter')}
               >
                 <IconTrash size={16} color={colors.danger} strokeWidth={1.8} />
               </Pressable>

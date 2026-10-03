@@ -409,7 +409,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           onPress={handleCancel}
           style={styles.headerBtn}
           accessibilityRole="button"
-          accessibilityLabel={t('actions.back', { ns: 'common', defaultValue: 'Back' })}
+          accessibilityLabel={t('back', { ns: 'common' })}
           disabled={saving}
         >
           <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
