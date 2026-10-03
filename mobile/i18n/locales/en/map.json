@@ -3,8 +3,12 @@
     "styleNormal": "Normal",
     "styleSatellite": "Satellite",
     "findingLocation": "Finding your location…",
-    "locationUnavailable": "Location unavailable — showing default area. Tap to retry.",
-    "centerOnLocationA11y": "Center on my location"
+    "locationUnavailable": "Couldn't get your location. Tap to retry.",
+    "centerOnLocationA11y": "Center on my location",
+    "locationDenied": "Location is off for JChat, so distances and the radius filter are unavailable.",
+    "openSettings": "Open Settings",
+    "loadError": "Couldn't load places.",
+    "retry": "Tap to retry"
   },
   "messagesA11y": "Messages, {{count}} unread",
   "nearbyTitle": "Near you",
@@ -61,6 +65,9 @@
     "resetAllFiltersA11y": "Reset all filters",
     "resetAll": "Reset all",
     "applyFiltersA11y": "Apply filters",
-    "apply": "Apply"
+    "apply": "Apply",
+    "distanceAll": "Any distance",
+    "distanceMiles": "{{count}} mi",
+    "distanceNeedsLocation": "Turn on location to filter by distance."
   }
 }

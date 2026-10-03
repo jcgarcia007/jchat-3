@@ -19,6 +19,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  AppState,
   Modal,
   ActivityIndicator,
   Share,
@@ -38,6 +39,7 @@ import BusinessPin from '../../components/map/BusinessPin';
 import FilterPanel, { defaultFilters, type MapFilters } from '../../components/map/FilterPanel';
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { isOpenNow, type HoursMap } from '../../utils/hours';
+import { haversineMeters } from '../../services/geofence';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -86,6 +88,27 @@ const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
 // GPS timeout — if no fix in 8s, fall back to FALLBACK_REGION (common in emulators).
 const LOCATION_TIMEOUT_MS = 8_000;
+
+/** Device position known to the screen. 'unavailable' = permission granted but no fix in time. */
+type LocationState = 'checking' | 'granted' | 'denied' | 'unavailable';
+
+/** Resolves/rejects like the promise, but always clears its own timer. */
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('location_timeout')), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** Sends the user to the app's page in the system Settings (the only way back after a denial). */
+function openAppSettings(): void {
+  Linking.openSettings().catch(() => undefined);
+}
 
 const DEMO_BUSINESSES: MapBusiness[] = [
   { id: 'b1', name: 'The Rooftop Bar', category: 'Bar', icon_emoji: '🍸', lat: 25.765, lng: -80.193, status: 'verified', activeCount: 62, address: '100 Ocean Dr', cover_url: null, hours: null, rating: 4.6 },
@@ -138,54 +161,85 @@ export default function MapScreen() {
   const [mapVariant, setMapVariant] = useState<MapStyleVariant>('normal');
 
   const [region, setRegion] = useState<Region | null>(null);
-  const [locationLoading, setLocationLoading] = useState(true);
-  const [locationDenied, setLocationDenied] = useState(false);
+  const [locationState, setLocationState] = useState<LocationState>('checking');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [businesses, setBusinesses] = useState<MapBusiness[]>([]);
+  const [businessesError, setBusinessesError] = useState(false);
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [selected, setSelected] = useState<MapBusiness | null>(null);
-  const requestLocation = useCallback(async () => {
-    if (!isMounted.current) return;
-    setLocationLoading(true);
-    setLocationDenied(false);
+
+  /**
+   * Reads the device position. The permission prompt is shown only when the user was never
+   * asked (`allowPrompt`); a denial is never asked again — the banner sends them to Settings.
+   */
+  const readPosition = useCallback(async (allowPrompt: boolean): Promise<{ lat: number; lng: number } | null> => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (!isMounted.current) return;
-      if (status !== 'granted') {
-        setLocationDenied(true);
-        setRegion(FALLBACK_REGION);
-        return;
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status === Location.PermissionStatus.UNDETERMINED && allowPrompt) {
+        permission = await Location.requestForegroundPermissionsAsync();
       }
-      const locationTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('location_timeout')), LOCATION_TIMEOUT_MS),
-      );
-      const pos = await Promise.race([
+      if (!isMounted.current) return null;
+      if (permission.status !== Location.PermissionStatus.GRANTED) {
+        setLocationState('denied');
+        setUserCoords(null);
+        return null;
+      }
+      const pos = await withTimeout(
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        locationTimeout,
-      ]);
-      if (!isMounted.current) return;
-      setRegion({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, ...DEFAULT_DELTA });
+        LOCATION_TIMEOUT_MS,
+      );
+      if (!isMounted.current) return null;
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setUserCoords(coords);
+      setLocationState('granted');
+      return coords;
     } catch {
-      if (!isMounted.current) return;
-      setLocationDenied(true);
-      setRegion(FALLBACK_REGION);
-    } finally {
-      if (isMounted.current) setLocationLoading(false);
+      if (isMounted.current) setLocationState('unavailable');
+      return null;
     }
   }, []);
 
-  useEffect(() => { void requestLocation(); }, [requestLocation]);
+  const centerOn = useCallback((coords: { lat: number; lng: number }) => {
+    const target = { latitude: coords.lat, longitude: coords.lng, ...DEFAULT_DELTA };
+    setRegion(target);
+    mapRef.current?.animateToRegion(target, 350);
+  }, []);
 
-  // Load businesses (demo when Supabase isn't configured).
+  // First load: ask once if never asked, then place the initial camera. The map is only
+  // mounted after this, and it is never unmounted again (retries/recenter keep the camera).
   useEffect(() => {
-    let active = true;
-    (async () => {
-      if (!isSupabaseConfigured) { setBusinesses(DEMO_BUSINESSES); return; }
-      const { data } = await supabase
+    void (async () => {
+      const coords = await readPosition(true);
+      if (!isMounted.current) return;
+      setRegion(
+        coords
+          ? { latitude: coords.lat, longitude: coords.lng, ...DEFAULT_DELTA }
+          : FALLBACK_REGION,
+      );
+    })();
+  }, [readPosition]);
+
+  // Back from Settings (permission just granted?): re-read silently, never prompting.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' || locationState === 'granted' || locationState === 'checking') return;
+      void readPosition(false).then((coords) => { if (coords) centerOn(coords); });
+    });
+    return () => subscription.remove();
+  }, [locationState, readPosition, centerOn]);
+
+  // Verified businesses. A failure keeps what is already on the map and shows a retry banner.
+  const loadBusinesses = useCallback(async () => {
+    if (!isSupabaseConfigured) { setBusinesses(DEMO_BUSINESSES); return; }
+    setBusinessesError(false);
+    try {
+      const { data, error } = await supabase
         .from('businesses')
         .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours, slug')
         .eq('status', 'verified');
-      if (!active) return;
+      if (error) throw error;
+      if (!isMounted.current) return;
       const rows = (data ?? []) as Array<Partial<MapBusiness>>;
       setBusinesses(
         rows
@@ -198,48 +252,43 @@ export default function MapScreen() {
             slug: r.slug ?? null,
           })),
       );
-    })();
-    return () => { active = false; };
+    } catch (error) {
+      console.warn('[map] businesses load error:', error);
+      if (isMounted.current) setBusinessesError(true);
+    }
   }, []);
+
+  useEffect(() => { void loadBusinesses(); }, [loadBusinesses]);
 
   const filtered = useMemo(
     () =>
       businesses.filter((b) => {
         if (!categoryMatches(b.category, filters.category)) return false;
         if ((filters.openNow || filters.category === 'open_now') && !isOpenNow(b.hours)) return false;
+        // Radius: real distance from the user; without a position it is not applied.
+        if (userCoords && filters.distanceKm !== 'all') {
+          const meters = haversineMeters(userCoords.lat, userCoords.lng, b.lat, b.lng);
+          if (meters > filters.distanceKm * 1000) return false;
+        }
         if (filters.minActiveUsers > 0 && b.activeCount < filters.minActiveUsers) return false;
         if (filters.minRating > 0 && (b.rating ?? 0) < filters.minRating) return false;
         if (filters.searchQuery && !b.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
         return true;
       }),
-    [businesses, filters],
+    [businesses, filters, userCoords],
   );
 
+  // Recenter: a denied permission is never re-requested (the system would ignore it) — go to Settings.
   const recenterToUser = useCallback(async () => {
-    try {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        const req = await Location.requestForegroundPermissionsAsync();
-        if (req.status !== 'granted') { setLocationDenied(true); return; }
-      }
-      const locationTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('location_timeout')), LOCATION_TIMEOUT_MS),
-      );
-      const pos = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        locationTimeout,
-      ]);
-      if (!isMounted.current) return;
-      const target = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, ...DEFAULT_DELTA };
-      setRegion(target);
-      setLocationDenied(false);
-      mapRef.current?.animateToRegion(target, 350);
-    } catch {
-      if (!isMounted.current) return;
-      const fallback = region ?? FALLBACK_REGION;
-      mapRef.current?.animateToRegion(fallback, 350);
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (permission.status === Location.PermissionStatus.DENIED) {
+      setLocationState('denied');
+      openAppSettings();
+      return;
     }
-  }, [region]);
+    const coords = await readPosition(true);
+    if (coords && isMounted.current) centerOn(coords);
+  }, [readPosition, centerOn]);
 
   const handleZoom = useCallback(async (delta: number) => {
     const cam = await mapRef.current?.getCamera();
@@ -266,7 +315,7 @@ export default function MapScreen() {
     void Linking.openURL(url);
   }, []);
 
-  if (locationLoading) {
+  if (region === null) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
         <ActivityIndicator size="large" color={palette.brand} />
@@ -289,14 +338,41 @@ export default function MapScreen() {
       </JChatMap>
 
       <View style={[styles.overlayContainer, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
-        {locationDenied && (
-          <TouchableOpacity style={[styles.deniedBanner, { backgroundColor: palette.warning }]} onPress={requestLocation} activeOpacity={0.8}>
+        {locationState === 'denied' && (
+          <TouchableOpacity
+            style={[styles.deniedBanner, { backgroundColor: palette.warning }]}
+            onPress={openAppSettings}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
+            <Text style={styles.deniedBannerText}>{t('mapScreen.locationDenied')}</Text>
+            <Text style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.openSettings')}</Text>
+          </TouchableOpacity>
+        )}
+        {locationState === 'unavailable' && (
+          <TouchableOpacity
+            style={[styles.deniedBanner, { backgroundColor: palette.warning }]}
+            onPress={() => { void readPosition(false).then((coords) => { if (coords) centerOn(coords); }); }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
             <Text style={styles.deniedBannerText}>{t('mapScreen.locationUnavailable')}</Text>
+          </TouchableOpacity>
+        )}
+        {businessesError && (
+          <TouchableOpacity
+            style={[styles.deniedBanner, { backgroundColor: palette.danger }]}
+            onPress={() => { void loadBusinesses(); }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
+            <Text style={styles.deniedBannerText}>{t('mapScreen.loadError')}</Text>
+            <Text style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.retry')}</Text>
           </TouchableOpacity>
         )}
 
         {/* Filters (chips + advanced + search) — Task 4.6 */}
-        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} />
+        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} hasLocation={userCoords !== null} />
 
         {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
         <View style={styles.zoomRow} pointerEvents="box-none">
@@ -395,6 +471,7 @@ const styles = StyleSheet.create({
   overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
+  bannerAction: { fontWeight: '800', marginTop: 2, textDecorationLine: 'underline' },
   styleSwitcher: {
     position: 'absolute', right: 16, borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 90,

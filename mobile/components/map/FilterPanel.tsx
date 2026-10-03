@@ -43,6 +43,7 @@ import {
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { usesKilometers } from '../../utils/distanceUnits';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -55,8 +56,8 @@ export type MapCategory =
   | 'events'
   | 'open_now';
 
-/** Distance filter in kilometres. */
-export type DistanceKm = 1 | 2 | 5 | 10;
+/** Distance filter in kilometres; 'all' = no radius (the default). */
+export type DistanceKm = 'all' | 1 | 2 | 5 | 10;
 
 /**
  * Full filter state emitted to the parent (MapScreen).
@@ -81,7 +82,7 @@ export interface MapFilters {
 export const defaultFilters: MapFilters = {
   category: 'all',
   openNow: false,
-  distanceKm: 5,
+  distanceKm: 'all',
   minRating: 0,
   minActiveUsers: 0,
   searchQuery: '',
@@ -99,6 +100,8 @@ export interface FilterPanelProps {
    * Passed in from MapScreen (which owns the pin data).
    */
   resultCount?: number;
+  /** Whether the user's position is known; without it the radius can't be applied. */
+  hasLocation?: boolean;
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -108,7 +111,8 @@ interface ChipDef {
   icon: React.ReactNode;
 }
 
-const DISTANCE_OPTIONS: DistanceKm[] = [1, 2, 5, 10];
+const DISTANCE_OPTIONS: DistanceKm[] = ['all', 1, 2, 5, 10];
+const MILES_PER_KM = 0.621371;
 
 // Same 4 keys as the "bars"/"cafes"/"food"/"events" chips above — both this
 // array and `chips` read their display label from the shared `categoryLabels`
@@ -118,12 +122,15 @@ const ADVANCED_CATEGORY_KEYS: MapCategory[] = ['bars', 'cafes', 'food', 'events'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Returns true when filters differ from defaultFilters in any meaningful way. */
-function hasActiveFilters(f: MapFilters): boolean {
+/**
+ * Returns true when filters differ from defaultFilters in any meaningful way. Without a user
+ * location the radius can't be applied, so it does not count as an active filter.
+ */
+function hasActiveFilters(f: MapFilters, hasLocation: boolean): boolean {
   return (
     f.category !== defaultFilters.category ||
     f.openNow !== defaultFilters.openNow ||
-    f.distanceKm !== defaultFilters.distanceKm ||
+    (hasLocation && f.distanceKm !== defaultFilters.distanceKm) ||
     f.minRating !== defaultFilters.minRating ||
     f.minActiveUsers !== defaultFilters.minActiveUsers ||
     f.searchQuery.trim() !== ''
@@ -132,8 +139,15 @@ function hasActiveFilters(f: MapFilters): boolean {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps) {
+export default function FilterPanel({ filters, onChange, resultCount, hasLocation = true }: FilterPanelProps) {
   const { t } = useTranslation('map');
+  // Radius labels follow the region: kilometres, or miles for everyone else.
+  const inKilometers = usesKilometers();
+  const distanceLabel = (km: DistanceKm): string => {
+    if (km === 'all') return t('filterPanel.distanceAll');
+    if (inKilometers) return t('filterPanel.distanceKm', { count: km });
+    return t('filterPanel.distanceMiles', { count: Math.round(km * MILES_PER_KM * 10) / 10 });
+  };
   const c = useThemeColors();
   // Display-only labels for MapCategory — the persisted/compared value (the
   // `key`) never changes. Single source shared by `chips` and the advanced
@@ -222,7 +236,7 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
     { key: 'open_now', icon: <IconClock          size={13} color={filters.openNow              ? '#ffffff' : c.textSecondary} /> },
   ];
 
-  const active = hasActiveFilters(filters);
+  const active = hasActiveFilters(filters, hasLocation);
 
   // Sheet translate Y: 0 = fully off-screen below, 1 = fully visible
   const translateY = slideAnim.interpolate({
@@ -393,26 +407,33 @@ export default function FilterPanel({ filters, onChange, resultCount }: FilterPa
                   const sel = draft.distanceKm === km;
                   return (
                     <TouchableOpacity
-                      key={km}
+                      key={String(km)}
+                      disabled={!hasLocation}
                       style={[
                         styles.segmentedBtn,
                         {
                           backgroundColor: sel ? palette.brand : c.bgElevated,
                           borderColor: sel ? palette.brand : c.borderSubtle,
+                          opacity: hasLocation ? 1 : 0.4,
                         },
                       ]}
                       onPress={() => setDraft((d) => ({ ...d, distanceKm: km }))}
                       accessibilityRole="radio"
-                      accessibilityState={{ checked: sel }}
-                      accessibilityLabel={t('filterPanel.distanceKm', { count: km })}
+                      accessibilityState={{ checked: sel, disabled: !hasLocation }}
+                      accessibilityLabel={distanceLabel(km)}
                     >
                       <Text style={[styles.segmentedLabel, { color: sel ? '#ffffff' : c.textPrimary }]}>
-                        {t('filterPanel.distanceKm', { count: km })}
+                        {distanceLabel(km)}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+              {!hasLocation ? (
+                <Text style={[styles.sectionLabel, { color: c.textTertiary, marginTop: 8, textTransform: 'none' }]}>
+                  {t('filterPanel.distanceNeedsLocation')}
+                </Text>
+              ) : null}
             </View>
 
             {/* TODO(rating): Reactivate this control when business rating data is available. */}

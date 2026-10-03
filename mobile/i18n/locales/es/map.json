@@ -3,8 +3,12 @@
     "styleNormal": "Normal",
     "styleSatellite": "Satélite",
     "findingLocation": "Buscando tu ubicación…",
-    "locationUnavailable": "Ubicación no disponible — mostrando área predeterminada. Toca para reintentar.",
-    "centerOnLocationA11y": "Centrar en mi ubicación"
+    "locationUnavailable": "No pudimos obtener tu ubicación. Toca para reintentar.",
+    "centerOnLocationA11y": "Centrar en mi ubicación",
+    "locationDenied": "La ubicación está desactivada para JChat, así que no hay distancias ni filtro por radio.",
+    "openSettings": "Abrir Ajustes",
+    "loadError": "No se pudieron cargar los lugares.",
+    "retry": "Toca para reintentar"
   },
   "messagesA11y": "Mensajes, {{count}} sin leer",
   "nearbyTitle": "Cerca de ti",
@@ -61,6 +65,9 @@
     "resetAllFiltersA11y": "Restablecer todos los filtros",
     "resetAll": "Restablecer todo",
     "applyFiltersA11y": "Aplicar filtros",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "distanceAll": "Cualquiera",
+    "distanceMiles": "{{count}} mi",
+    "distanceNeedsLocation": "Activa la ubicación para filtrar por distancia."
   }
 }
