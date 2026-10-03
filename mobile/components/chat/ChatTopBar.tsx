@@ -87,6 +87,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
 
   // Tap → measure the avatar rect (window coords) and open the anchored quick card.
   const handlePress = useCallback(() => {
+    if (user.is_incognito) return; // never open the real profile of an incognito user
     const node = ref.current;
     if (node && typeof node.measureInWindow === 'function') {
       node.measureInWindow((x, y, width, height) => {
@@ -95,7 +96,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
     } else {
       onPressUser(user.id, displayName, { x: 0, y: 0, width: 0, height: 0 });
     }
-  }, [onPressUser, user.id, displayName]);
+  }, [onPressUser, user.id, user.is_incognito, displayName]);
 
   return (
     <Pressable

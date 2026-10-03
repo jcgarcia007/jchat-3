@@ -33,6 +33,17 @@ import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 
+// ── Feature flag ──────────────────────────────────────────────────────────────
+
+/**
+ * Incognito mode is hidden for now: the room-entry gate does not show the toggle and any
+ * incognito choice is treated as off. Messages already sent in incognito keep their nickname
+ * and no avatar (and cannot be tapped through to the real user).
+ * TODO(incognito): turn this back on once the real identity can no longer leak through
+ * message user_id, presence and public Storage URLs.
+ */
+export const INCOGNITO_ENABLED = false;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Incognito state passed to / received from IncognitoToggle. */

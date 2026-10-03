@@ -250,7 +250,8 @@ export function MessageBubble({
 
   // Tap → measure the avatar rect (window coords) and open the anchored quick card.
   const handlePressUser = useCallback(() => {
-    if (!onPressUser) return;
+    // An incognito sender's real identity must not be reachable from the bubble.
+    if (!onPressUser || incognito) return;
     const node = avatarRef.current;
     if (node && typeof node.measureInWindow === 'function') {
       node.measureInWindow((x, y, width, height) => {
@@ -259,7 +260,7 @@ export function MessageBubble({
     } else {
       onPressUser(message.user_id, displayName, { x: 0, y: 0, width: 0, height: 0 });
     }
-  }, [onPressUser, message.user_id, displayName]);
+  }, [onPressUser, incognito, message.user_id, displayName]);
 
   const handleLongPressMessage = useCallback(() => {
     onLongPressMessage?.(message);

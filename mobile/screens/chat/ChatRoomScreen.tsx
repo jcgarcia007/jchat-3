@@ -71,7 +71,7 @@ import { MessageBubble } from '../../components/chat/MessageBubble';
 import type { ChatMessage, UserAnchor } from '../../components/chat/MessageBubble';
 import UserQuickCard from '../../components/chat/UserQuickCard';
 import ImageView from 'react-native-image-viewing';
-import { IncognitoToggle, isIncognitoValid } from '../../components/chat/IncognitoToggle';
+import { IncognitoToggle, INCOGNITO_ENABLED, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
 import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
 import { PinnedBanner } from '../../components/chat/PinnedBanner';
@@ -564,14 +564,15 @@ export default function ChatRoomScreen() {
     // false-negative owner check racing the fetch. Button is disabled below
     // while initialLoading anyway; this is the belt-and-suspenders guard.
     if (initialLoading) return;
-    if (!isIncognitoValid(incognitoState)) {
+    if (INCOGNITO_ENABLED && !isIncognitoValid(incognitoState)) {
       setIncognitoError(t('chatRoom.nicknameRequired'));
       return;
     }
     setIncognitoError(undefined);
     const granted = await geoGate.checkAndEnter();
     if (!granted) return; // stays on the entry gate; geoGate.gateStatus drives the message shown
-    setEnteredIncognito(incognitoState);
+    // Incognito is hidden (INCOGNITO_ENABLED): any stored choice counts as off.
+    setEnteredIncognito(INCOGNITO_ENABLED ? incognitoState : null);
     setEntryVisible(false);
   }, [incognitoState, t, geoGate, initialLoading]);
 
@@ -944,11 +945,13 @@ export default function ChatRoomScreen() {
               </Text>
 
               {/* IncognitoToggle */}
-              <IncognitoToggle
-                value={incognitoState}
-                onChange={setIncognitoState}
-                error={incognitoError}
-              />
+              {INCOGNITO_ENABLED && (
+                <IncognitoToggle
+                  value={incognitoState}
+                  onChange={setIncognitoState}
+                  error={incognitoError}
+                />
+              )}
 
               {/* Enter button — or the geofence gate status/retry (épica geocerca Fase 3.2).
                   Disabled while initialLoading: owner detection needs business.owner_id
