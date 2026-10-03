@@ -43,6 +43,7 @@ import type {
   LoyaltyReward,
   LoyaltyTier,
 } from '../../services/loyalty';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -275,7 +276,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
         setAllBalances(rows);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('loadError');
+      const msg = toUserMessage(e, 'loyalty:loadError');
       setError(msg);
     } finally {
       setLoading(false);
@@ -305,7 +306,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
         );
         // TODO(Task 3.5): pass redeemed reward info to checkout discount handler
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : t('redeemError');
+        const msg = toUserMessage(e, 'loyalty:redeemError');
         setError(msg);
       } finally {
         setRedeemingId(null);

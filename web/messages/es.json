@@ -3224,5 +3224,37 @@
   },
   "businessRegister": {
     "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte."
+  },
+  "authErrors": {
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "network": "No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.",
+    "notConfigured": "El inicio de sesión no está disponible por ahora.",
+    "captchaFailed": "No pudimos verificar que eres humano. Inténtalo de nuevo.",
+    "oauthFailed": "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
+    "noSession": "Tu cuenta se creó pero aún no has iniciado sesión. Intenta iniciar sesión.",
+    "notEligible": "No cumples los requisitos para usar JChat.",
+    "usernameTaken": "Ese nombre de usuario ya está en uso.",
+    "invalid_credentials": "Correo o contraseña incorrectos.",
+    "email_not_confirmed": "Primero confirma tu correo. Revisa tu bandeja de entrada.",
+    "user_already_exists": "Ya existe una cuenta con este correo.",
+    "email_exists": "Ya existe una cuenta con este correo.",
+    "weak_password": "Esa contraseña es muy débil. Usa una más larga y difícil de adivinar.",
+    "over_email_send_rate_limit": "Se han pedido demasiados correos. Espera unos minutos e inténtalo de nuevo.",
+    "over_request_rate_limit": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+    "captcha_failed": "No pudimos verificar que eres humano. Inténtalo de nuevo.",
+    "signup_disabled": "Los registros nuevos no están disponibles por ahora.",
+    "email_address_invalid": "Ese correo no es válido.",
+    "email_address_not_authorized": "Ese correo no se puede usar.",
+    "same_password": "Tu nueva contraseña debe ser distinta de la actual.",
+    "otp_expired": "Ese código venció. Pide uno nuevo.",
+    "validation_failed": "Alguno de los datos que ingresaste no es válido.",
+    "session_expired": "Tu sesión venció. Inicia sesión de nuevo.",
+    "reauthentication_needed": "Por seguridad, inicia sesión de nuevo e inténtalo otra vez.",
+    "user_banned": "Esta cuenta no está disponible.",
+    "provider_disabled": "Este método de inicio de sesión no está disponible por ahora.",
+    "oauth_provider_not_supported": "Este método de inicio de sesión no está disponible por ahora.",
+    "bad_oauth_callback": "No se pudo completar el inicio de sesión. Inténtalo de nuevo.",
+    "flow_state_expired": "El intento de inicio de sesión venció. Inténtalo de nuevo.",
+    "request_timeout": "La solicitud tardó demasiado. Inténtalo de nuevo."
   }
 }

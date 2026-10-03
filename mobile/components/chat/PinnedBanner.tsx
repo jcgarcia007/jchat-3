@@ -53,6 +53,7 @@ import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -489,7 +490,7 @@ export function PinnedBanner({
               } catch (err) {
                 Alert.alert(
                   t('pin.couldNotUnpinTitle'),
-                  err instanceof Error ? err.message : t('pin.tryAgain'),
+                  toUserMessage(err, 'chat:pin.tryAgain'),
                 );
               } finally {
                 setUnpinning((prev) => {

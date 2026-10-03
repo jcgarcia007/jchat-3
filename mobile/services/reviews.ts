@@ -23,6 +23,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { AppError } from '../utils/errors';
 
 // ── Co-located types ───────────────────────────────────────────────────────
 
@@ -80,19 +81,19 @@ export interface AverageRating {
  */
 export async function createReview(input: CreateReviewInput): Promise<ReviewRow> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   const { data: userData, error: authError } = await supabase.auth.getUser();
   if (authError || !userData.user) {
-    throw new Error('User must be authenticated to submit a review');
+    throw new AppError('NOT_AUTHENTICATED');
   }
 
   const userId = userData.user.id;
 
   const allowed = await canReview(input.businessId, userId);
   if (!allowed) {
-    throw new Error('You can only review this business once every 7 days');
+    throw new AppError('REVIEW_RATE_LIMIT');
   }
 
   const { data, error } = await supabase
@@ -202,7 +203,7 @@ export async function respondToReview(
   response: string,
 ): Promise<void> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   const { error } = await supabase
@@ -228,7 +229,7 @@ export async function respondToReview(
  */
 export async function reportReview(reviewId: string): Promise<void> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   const { error } = await supabase

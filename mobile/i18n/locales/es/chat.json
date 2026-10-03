@@ -155,7 +155,15 @@
     "errorAlreadyExists": "Este usuario ya está en tu equipo.",
     "errorNotConfigured": "Servicio no disponible. Inténtalo más tarde.",
     "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
-    "errorGenericShort": "Algo salió mal."
+    "errorGenericShort": "Algo salió mal.",
+    "roles": {
+      "manager": "Gerente",
+      "cashier": "Cajero",
+      "waiter": "Mesero",
+      "kitchen": "Cocina",
+      "chatModerator": "Moderador del chat",
+      "analyst": "Analista"
+    }
   },
   "userAction": {
     "mutePickerTitle": "Silenciar en la sala por…",

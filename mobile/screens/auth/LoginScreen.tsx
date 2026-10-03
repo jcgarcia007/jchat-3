@@ -35,6 +35,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 import { isBiometricEnabled } from '../../services/biometric';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
@@ -160,7 +161,7 @@ export default function LoginScreen() {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) {
-      Alert.alert(t('login.alerts.signInErrorTitle'), error.message);
+      Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(error, 'auth:login.alerts.signInErrorMessage'));
       return;
     }
     if (!data?.url) return;
@@ -179,7 +180,7 @@ export default function LoginScreen() {
         refresh_token: fragment.refresh_token,
       });
       if (sessionError) {
-        Alert.alert(t('login.alerts.signInErrorTitle'), sessionError.message);
+        Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(sessionError, 'auth:login.alerts.signInErrorMessage'));
       }
       // Éxito: onAuthStateChange en AuthContext dispara y la app entra.
       return;
@@ -191,17 +192,13 @@ export default function LoginScreen() {
     if (typeof code === 'string' && code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
-        Alert.alert(t('login.alerts.signInErrorTitle'), exchangeError.message);
+        Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(exchangeError, 'auth:login.alerts.signInErrorMessage'));
       }
       return;
     }
 
-    // Ni token ni code: mostrar el error del provider si vino, o un fallback genérico.
-    const errDesc = fragment.error_description ?? fragment.error;
-    Alert.alert(
-      t('login.alerts.signInErrorTitle'),
-      errDesc ?? t('login.alerts.signInErrorMessage'),
-    );
+    // Ni token ni code: el texto del provider es crudo e inglés; mostrar el genérico traducido.
+    Alert.alert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInErrorMessage'));
   }
 
   // ── Email / password ──────────────────────────────────────────────────────
@@ -252,7 +249,7 @@ export default function LoginScreen() {
     if (error) {
       // AuthContext session listener handles successful sign-in automatically.
       // Tras cualquier intento el token queda quemado: el próximo pide uno nuevo.
-      Alert.alert(t('login.alerts.signInFailedTitle'), error.message);
+      Alert.alert(t('login.alerts.signInFailedTitle'), toUserMessage(error, 'auth:login.alerts.signInErrorMessage'));
     }
     // On success: AuthContext onAuthStateChange fires → isAuthenticated flips →
     // AppNavigator switches to MainStack. No explicit navigation call needed.

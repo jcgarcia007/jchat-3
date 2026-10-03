@@ -1,0 +1,59 @@
+{
+  "generic": "Algo salió mal. Inténtalo de nuevo.",
+  "network": "No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.",
+  "auth": {
+    "invalid_credentials": "Correo o contraseña incorrectos.",
+    "email_not_confirmed": "Primero confirma tu correo. Revisa tu bandeja de entrada.",
+    "user_already_exists": "Ya existe una cuenta con este correo.",
+    "email_exists": "Ya existe una cuenta con este correo.",
+    "weak_password": "Esa contraseña es muy débil. Usa una más larga y difícil de adivinar.",
+    "over_email_send_rate_limit": "Se han pedido demasiados correos. Espera unos minutos e inténtalo de nuevo.",
+    "over_request_rate_limit": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+    "captcha_failed": "No pudimos verificar que eres humano. Inténtalo de nuevo.",
+    "signup_disabled": "Los registros nuevos no están disponibles por ahora.",
+    "email_address_invalid": "Ese correo no es válido.",
+    "email_address_not_authorized": "Ese correo no se puede usar.",
+    "same_password": "Tu nueva contraseña debe ser distinta de la actual.",
+    "otp_expired": "Ese código venció. Pide uno nuevo.",
+    "validation_failed": "Alguno de los datos que ingresaste no es válido.",
+    "session_expired": "Tu sesión venció. Inicia sesión de nuevo.",
+    "reauthentication_needed": "Por seguridad, inicia sesión de nuevo e inténtalo otra vez.",
+    "user_banned": "Esta cuenta no está disponible.",
+    "provider_disabled": "Este método de inicio de sesión no está disponible por ahora.",
+    "oauth_provider_not_supported": "Este método de inicio de sesión no está disponible por ahora.",
+    "bad_oauth_callback": "No se pudo completar el inicio de sesión. Inténtalo de nuevo.",
+    "flow_state_expired": "El intento de inicio de sesión venció. Inténtalo de nuevo.",
+    "request_timeout": "La solicitud tardó demasiado. Inténtalo de nuevo."
+  },
+  "db": {
+    "23505": "Ese valor ya está en uso.",
+    "23503": "Este elemento ya no está disponible.",
+    "42501": "No tienes permiso para hacer eso.",
+    "PGRST301": "Tu sesión venció. Inicia sesión de nuevo."
+  },
+  "app": {
+    "NOT_CONFIGURED": "El servicio no está disponible por ahora.",
+    "NOT_AUTHENTICATED": "Inicia sesión para continuar.",
+    "REVIEW_RATE_LIMIT": "Solo puedes reseñar este negocio una vez cada 7 días.",
+    "REVIEW_FAILED": "No pudimos guardar tu reseña. Inténtalo de nuevo.",
+    "INSUFFICIENT_POINTS": "Puntos insuficientes. Tienes {{have}} y necesitas {{need}}.",
+    "NO_QUOTE": "No pudimos obtener el total del pedido. Inténtalo de nuevo.",
+    "PAYMENT_CANCELLED": "Pago cancelado.",
+    "PAYMENT_FAILED": "No se pudo completar el pago. Inténtalo de nuevo.",
+    "CARD_SAVE_CANCELLED": "Se canceló el guardado de la tarjeta.",
+    "CARD_SAVE_FAILED": "No pudimos guardar la tarjeta. Inténtalo de nuevo.",
+    "TOTAL_CHANGED": "El total cambió. Revisa tu pedido.",
+    "MODIFIERS_INVALID": "Algunas opciones de tu pedido ya no son válidas.",
+    "BUSINESS_NOT_READY": "Este negocio no puede recibir pedidos por ahora.",
+    "PRINT_TIMEOUT": "La impresora no respondió. Revísala e inténtalo de nuevo.",
+    "PRINT_CONNECT": "No se pudo conectar con la impresora.",
+    "BT_OFF": "El Bluetooth está apagado.",
+    "CONNECT_FAILED": "No se pudo conectar con la impresora.",
+    "WRITE_FAILED": "Falló la impresión. Inténtalo de nuevo."
+  },
+  "stripe": {
+    "Canceled": "Pago cancelado.",
+    "Failed": "No se pudo completar el pago. Inténtalo de nuevo.",
+    "Timeout": "El pago tardó demasiado. Inténtalo de nuevo."
+  }
+}

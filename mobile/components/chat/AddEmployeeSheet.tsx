@@ -49,6 +49,7 @@ import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { addEmployee, EMPLOYEE_ROLES } from '../../services/employees';
 import type { EmployeeRole } from '../../services/employees';
+import { toUserMessage } from '../../utils/errors';
 import type { ThemeColors } from '../../theme/colors';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -74,6 +75,15 @@ export interface AddEmployeeSheetProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const ROLE_KEYS: Record<EmployeeRole, string> = {
+  Manager: 'manager',
+  Cashier: 'cashier',
+  Waiter: 'waiter',
+  Kitchen: 'kitchen',
+  'Chat Moderator': 'chatModerator',
+  Analyst: 'analyst',
+};
+
 export function AddEmployeeSheet({
   visible,
   targetUserId,
@@ -84,6 +94,8 @@ export function AddEmployeeSheet({
 }: AddEmployeeSheetProps) {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
+  // Roles are stored in English in the database; only the label is translated.
+  const roleLabel = (role: EmployeeRole): string => t(`employee.roles.${ROLE_KEYS[role]}`);
   const s = makeStyles(c);
 
   const [selectedRole, setSelectedRole] = useState<EmployeeRole | null>(null);
@@ -120,21 +132,21 @@ export function AddEmployeeSheet({
       } else {
         switch (result.reason) {
           case 'plan_limit':
-            setErrorMsg(result.message ?? t('employee.errorPlanLimit'));
+            setErrorMsg(t('employee.errorPlanLimit'));
             break;
           case 'already_exists':
-            setErrorMsg(result.message ?? t('employee.errorAlreadyExists'));
+            setErrorMsg(t('employee.errorAlreadyExists'));
             break;
           case 'not_configured':
             setErrorMsg(t('employee.errorNotConfigured'));
             break;
           case 'db_error':
           default:
-            setErrorMsg(result.message ?? t('employee.errorGeneric'));
+            setErrorMsg(t('employee.errorGeneric'));
         }
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : t('employee.errorGenericShort'));
+      setErrorMsg(toUserMessage(err, 'chat:employee.errorGenericShort'));
     } finally {
       setLoading(false);
     }
@@ -216,7 +228,7 @@ export function AddEmployeeSheet({
                     }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={role}
+                    accessibilityLabel={roleLabel(role)}
                     style={({ pressed }) => [
                       s.roleRow,
                       isSelected && s.roleRowSelected,
@@ -241,7 +253,7 @@ export function AddEmployeeSheet({
                           isSelected && s.roleLabelSelected,
                         ]}
                       >
-                        {role}
+                        {roleLabel(role)}
                       </Text>
                     </View>
                     {isSelected ? (
@@ -289,7 +301,7 @@ export function AddEmployeeSheet({
                 <ActivityIndicator size="small" color={c.bgSurface} />
               ) : (
                 <Text style={s.ctaBtnLabel}>
-                  {selectedRole ? t('employee.inviteAs', { role: selectedRole }) : t('employee.selectRole')}
+                  {selectedRole ? t('employee.inviteAs', { role: roleLabel(selectedRole) }) : t('employee.selectRole')}
                 </Text>
               )}
             </Pressable>

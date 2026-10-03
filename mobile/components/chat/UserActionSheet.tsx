@@ -76,6 +76,7 @@ import {
   logAction,
 } from '../../services/moderation';
 import type { ThemeColors } from '../../theme/colors';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -304,9 +305,7 @@ export function UserActionSheet({
           t('userAction.errorTitle'),
           code === '42501'
             ? t('userAction.noPermission')
-            : err instanceof Error
-              ? err.message
-              : t('userAction.tryAgain'),
+            : toUserMessage(err, 'chat:userAction.tryAgain'),
         );
       } finally {
         setLoadingAction(null);

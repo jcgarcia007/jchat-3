@@ -18,6 +18,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { AppError } from '../utils/errors';
 
 // ── Co-located types ──────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ export async function redeemReward(
   reward: LoyaltyReward
 ): Promise<LoyaltyBalance> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   // 1. Fetch current balance
@@ -200,9 +201,7 @@ export async function redeemReward(
   const currentPoints = current?.points ?? 0;
 
   if (currentPoints < reward.cost_points) {
-    throw new Error(
-      `Not enough points. You have ${currentPoints} pts but need ${reward.cost_points} pts for "${reward.name}".`
-    );
+    throw new AppError('INSUFFICIENT_POINTS', { have: currentPoints, need: reward.cost_points });
   }
 
   const newPoints = currentPoints - reward.cost_points;
@@ -245,7 +244,7 @@ export async function awardPoints(
   pointsToAdd: number
 ): Promise<LoyaltyBalance> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   // Read current balance to compute new total

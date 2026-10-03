@@ -26,6 +26,7 @@ import { palette } from '../../theme/tokens';
 import { getReceivedGifts } from '../../services/gifts';
 import type { GiftWithSender } from '../../services/gifts';
 import { formatCents } from '../../utils/currency';
+import { toUserMessage } from '../../utils/errors';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,7 +166,7 @@ export default function GiftsReceivedScreen({ userId }: Props) {
       setGifts(rows);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t('gifts.loadError');
+        toUserMessage(err, 'profile:gifts.loadError');
       setError(message);
     } finally {
       setLoading(false);

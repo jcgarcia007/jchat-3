@@ -75,6 +75,7 @@ import { buildReceiptEscPos, buildPaymentVoucherEscPos } from '../../services/es
 import type { PublicReceipt, PaymentVoucher } from '../../services/escpos';
 import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
 import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
+import { toUserMessage } from '../../utils/errors';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -232,7 +233,7 @@ export default function PosCheckoutScreen() {
           setCheckoutError(t('pos.errorNoAccess'));
           break;
         default:
-          setCheckoutError(piResult.message ?? t('pos.errorPayment'));
+          setCheckoutError(toUserMessage(piResult, 'settings:pos.errorPayment'));
       }
       return;
     }
@@ -244,7 +245,7 @@ export default function PosCheckoutScreen() {
     const retrieveResult = await retrievePaymentIntent(piResult.clientSecret);
     if (retrieveResult.error) {
       setPhase('error');
-      setCheckoutError(retrieveResult.error.message ?? t('pos.errorPayment'));
+      setCheckoutError(toUserMessage(retrieveResult.error, 'settings:pos.errorPayment'));
       return;
     }
 
@@ -254,7 +255,7 @@ export default function PosCheckoutScreen() {
     });
     if (collectResult.error) {
       setPhase('error');
-      setCheckoutError(collectResult.error.message ?? t('pos.errorPayment'));
+      setCheckoutError(toUserMessage(collectResult.error, 'settings:pos.errorPayment'));
       return;
     }
 
@@ -264,7 +265,7 @@ export default function PosCheckoutScreen() {
     });
     if (confirmResult.error) {
       setPhase('error');
-      setCheckoutError(confirmResult.error.message ?? t('pos.errorPayment'));
+      setCheckoutError(toUserMessage(confirmResult.error, 'settings:pos.errorPayment'));
       return;
     }
 
@@ -391,7 +392,7 @@ export default function PosCheckoutScreen() {
       setPrintStatus('success');
     } catch (err) {
       setPrintStatus('error');
-      setPrintError(err instanceof Error ? err.message : t('pos.printError'));
+      setPrintError(toUserMessage(err, 'settings:pos.printError'));
     }
   }, [isExternal, printStatus, businessId, t]);
 
@@ -900,7 +901,7 @@ export default function PosCheckoutScreen() {
         }}
         onError={(err) => {
           setPrintStatus('error');
-          setPrintError(err instanceof Error ? err.message : t('pos.printError'));
+          setPrintError(toUserMessage(err, 'settings:pos.printError'));
         }}
       />
     </View>

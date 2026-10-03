@@ -27,6 +27,7 @@ import { IconEye, IconEyeOff, IconChevronLeft } from '@tabler/icons-react-native
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 
 const BTN_HEIGHT = 52;
@@ -106,11 +107,11 @@ export default function ChangePasswordScreen() {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
     if (error) {
-      Alert.alert(t('changePassword.errorTitle'), error.message);
+      Alert.alert(t('changePassword.errorTitle'), toUserMessage(error));
       return;
     }
     Alert.alert(t('changePassword.successTitle'), t('changePassword.successMessage'), [
-      { text: 'OK', onPress: () => navigation.goBack() },
+      { text: t('actions.ok', { ns: 'common' }), onPress: () => navigation.goBack() },
     ]);
   }, [currentPassword, newPassword, confirmPassword, t, tAuth, navigation, captchaEnabled, getCaptchaToken]);
 

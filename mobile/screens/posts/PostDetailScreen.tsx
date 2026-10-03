@@ -50,6 +50,7 @@ import {
 } from '../../services/posts';
 import { getPublicProfile, type PublicProfileRow } from '../../services/users';
 import BusinessAvatar from '../../components/megaphone/BusinessAvatar';
+import { toUserMessage } from '../../utils/errors';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
@@ -101,7 +102,7 @@ export default function PostDetailScreen(): React.JSX.Element {
       setLikeCount(count);
       setLiked(likedByMe);
     } catch (error) {
-      Alert.alert(t('detail.loadFailedTitle'), error instanceof Error ? error.message : t('detail.loadFailed'));
+      Alert.alert(t('detail.loadFailedTitle'), toUserMessage(error, 'feed:detail.loadFailed'));
       navigation.goBack();
     } finally {
       setLoading(false);

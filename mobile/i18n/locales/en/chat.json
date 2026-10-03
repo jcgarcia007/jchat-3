@@ -155,7 +155,15 @@
     "errorAlreadyExists": "This user is already on your staff.",
     "errorNotConfigured": "Service unavailable. Please try again later.",
     "errorGeneric": "Something went wrong. Please try again.",
-    "errorGenericShort": "Something went wrong."
+    "errorGenericShort": "Something went wrong.",
+    "roles": {
+      "manager": "Manager",
+      "cashier": "Cashier",
+      "waiter": "Waiter",
+      "kitchen": "Kitchen",
+      "chatModerator": "Chat moderator",
+      "analyst": "Analyst"
+    }
   },
   "userAction": {
     "mutePickerTitle": "Mute in room for…",

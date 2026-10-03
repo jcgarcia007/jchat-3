@@ -40,6 +40,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { checkIn } from '../../services/checkIn';
 import type { CheckInParams } from '../../services/checkIn';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export function CheckInButton({
     } catch (err) {
       Alert.alert(
         t('checkIn.errorTitle'),
-        err instanceof Error ? err.message : t('checkIn.tryAgain'),
+        toUserMessage(err, 'chat:checkIn.tryAgain'),
       );
     } finally {
       setLoading(false);

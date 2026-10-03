@@ -44,6 +44,7 @@ import {
   reportReview,
   type ReviewWithAuthor,
 } from '../../services/reviews';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       const data = await getBusinessReviews(businessId);
       setReviews(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('reviewList.loadError'));
+      setError(toUserMessage(err, 'reviews:reviewList.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -194,7 +195,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       // Optimistically remove the reported review from local state.
       setReviews((prev) => prev.filter((r) => r.id !== reviewId));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('reviewList.reportError');
+      const msg = toUserMessage(err, 'reviews:reviewList.reportError');
       Alert.alert(t('reviewList.errorAlertTitle'), msg);
     }
   }, [t]);

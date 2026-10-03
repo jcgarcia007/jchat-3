@@ -42,6 +42,7 @@ import { IconPhoto, IconCamera, IconX } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { createPost, removePostMedia, uploadPostMedia } from '../../services/posts';
+import { toUserMessage } from '../../utils/errors';
 
 // ── constants ───────────────────────────────────────────────────────────────
 
@@ -235,7 +236,7 @@ export default function CreatePostScreen() {
 
       navigation.goBack();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t('create.genericError');
+      const message = toUserMessage(err, 'feed:create.genericError');
       Alert.alert(t('create.couldNotPost'), message);
     } finally {
       setPosting(false);

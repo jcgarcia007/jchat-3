@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { StarRating } from './StarRating';
 import { createReview } from '../../services/reviews';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ export function RatingPrompt({
       onDone();
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : t('state.error', { ns: 'common' });
+        toUserMessage(err, 'common:state.error');
       Alert.alert(t('ratingPrompt.submitErrorTitle'), message);
     } finally {
       setLoading(false);

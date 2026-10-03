@@ -3224,5 +3224,37 @@
   },
   "businessRegister": {
     "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support."
+  },
+  "authErrors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Couldn't connect. Check your internet connection and try again.",
+    "notConfigured": "Sign-in is unavailable right now.",
+    "captchaFailed": "We couldn't verify you're human. Please try again.",
+    "oauthFailed": "Google sign-in failed. Please try again.",
+    "noSession": "Your account was created but you aren't signed in yet. Try signing in.",
+    "notEligible": "You don't meet the requirements to use JChat.",
+    "usernameTaken": "That username is already taken.",
+    "invalid_credentials": "Incorrect email or password.",
+    "email_not_confirmed": "Please confirm your email address first. Check your inbox.",
+    "user_already_exists": "An account with this email already exists.",
+    "email_exists": "An account with this email already exists.",
+    "weak_password": "That password is too weak. Use a longer, harder-to-guess one.",
+    "over_email_send_rate_limit": "Too many emails requested. Please wait a few minutes and try again.",
+    "over_request_rate_limit": "Too many attempts. Please wait a moment and try again.",
+    "captcha_failed": "We couldn't verify you're human. Please try again.",
+    "signup_disabled": "New sign-ups are currently unavailable.",
+    "email_address_invalid": "That email address isn't valid.",
+    "email_address_not_authorized": "That email address can't be used.",
+    "same_password": "Your new password must be different from the current one.",
+    "otp_expired": "That code has expired. Request a new one.",
+    "validation_failed": "Some of the information you entered isn't valid.",
+    "session_expired": "Your session expired. Please sign in again.",
+    "reauthentication_needed": "For security, please sign in again and retry.",
+    "user_banned": "This account is unavailable.",
+    "provider_disabled": "This sign-in method isn't available right now.",
+    "oauth_provider_not_supported": "This sign-in method isn't available right now.",
+    "bad_oauth_callback": "Sign-in could not be completed. Please try again.",
+    "flow_state_expired": "The sign-in attempt expired. Please try again.",
+    "request_timeout": "The request took too long. Please try again."
   }
 }

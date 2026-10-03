@@ -47,6 +47,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -357,7 +358,7 @@ export default function ReservationScreen({
       setSubmittedWaitlist(is_waitlist);
       onSuccess?.(resId, is_waitlist);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = toUserMessage(e);
       setError(t('bookingFailedError', { msg }));
     } finally {
       setSubmitting(false);

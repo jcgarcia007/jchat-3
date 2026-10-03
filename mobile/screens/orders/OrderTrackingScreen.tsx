@@ -65,6 +65,7 @@ import {
 import type { OrderRow, OrderItemRow, OrderStatus } from '../../services/orders';
 import { formatCents } from '../../utils/currency';
 import { RatingPrompt } from '../../components/reviews/RatingPrompt';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Route / Navigation types ──────────────────────────────────────────────────
 
@@ -301,7 +302,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
       setShowServiceSheet(false);
       Alert.alert(t('tracking.staffNotifiedTitle'), t('tracking.staffNotifiedMessage'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('tracking.genericError');
+      const msg = toUserMessage(err, 'pos:tracking.genericError');
       Alert.alert(t('shared.errorTitle'), msg);
     } finally {
       setServiceCallLoading(false);

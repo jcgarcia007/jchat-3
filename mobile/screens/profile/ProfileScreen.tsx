@@ -27,6 +27,7 @@ import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
+import { toUserMessage } from '../../utils/errors';
 
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
@@ -178,7 +179,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       setPosts(postRows);
       if (profileCounts) setCounts(profileCounts);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('view.loadProfileError'));
+      setError(toUserMessage(loadError, 'profile:view.loadProfileError'));
     } finally {
       setInitialLoading(false);
       setRefreshing(false);

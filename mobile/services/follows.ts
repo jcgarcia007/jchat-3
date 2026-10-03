@@ -14,6 +14,7 @@
  */
 
 import { supabase } from './supabase';
+import { AppError } from '../utils/errors';
 
 export interface SocialUser {
   id: string;
@@ -95,7 +96,7 @@ export async function hasPendingRequestTo(targetId: string): Promise<boolean> {
 /** Cancel the request I sent to targetId: deleted by requester (me) AND target, both explicit. */
 export async function cancelRequest(targetId: string): Promise<void> {
   const me = await currentUserId();
-  if (!me) throw new Error('not authenticated');
+  if (!me) throw new AppError('NOT_AUTHENTICATED');
   const { error } = await supabase
     .from('follow_requests')
     .delete()

@@ -70,6 +70,7 @@ import { buildReceiptEscPos } from '../../services/escpos';
 import type { PublicReceipt } from '../../services/escpos';
 import { fetchAnyPrinter, printToNetwork } from '../../services/printer';
 import type { NetworkPrinter } from '../../services/printer';
+import { toUserMessage } from '../../utils/errors';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -510,7 +511,7 @@ export default function PosSplitScreen(): React.ReactElement {
             setCheckoutError(t('pos.errorNoAccess'));
             break;
           default:
-            setCheckoutError(piResult.message ?? t('pos.errorPayment'));
+            setCheckoutError(toUserMessage(piResult, 'settings:pos.errorPayment'));
         }
         return;
       }
@@ -522,7 +523,7 @@ export default function PosSplitScreen(): React.ReactElement {
         setCheckoutPhase('error');
         setActivePaymentId(null);
         setActiveAccountId(null);
-        setCheckoutError(retrieveResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(retrieveResult.error, 'settings:pos.errorPayment'));
         return;
       }
 
@@ -535,7 +536,7 @@ export default function PosSplitScreen(): React.ReactElement {
         setCheckoutPhase('error');
         setActivePaymentId(null);
         setActiveAccountId(null);
-        setCheckoutError(collectResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(collectResult.error, 'settings:pos.errorPayment'));
         return;
       }
 
@@ -548,7 +549,7 @@ export default function PosSplitScreen(): React.ReactElement {
         setCheckoutPhase('error');
         setActivePaymentId(null);
         setActiveAccountId(null);
-        setCheckoutError(confirmResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(confirmResult.error, 'settings:pos.errorPayment'));
         return;
       }
 
@@ -653,7 +654,7 @@ export default function PosSplitScreen(): React.ReactElement {
             setCheckoutError(t('pos.errorNoAccess'));
             break;
           default:
-            setCheckoutError(piResult.message ?? t('pos.errorPayment'));
+            setCheckoutError(toUserMessage(piResult, 'settings:pos.errorPayment'));
         }
         return;
       }
@@ -664,7 +665,7 @@ export default function PosSplitScreen(): React.ReactElement {
       if (retrieveResult.error) {
         setCheckoutPhase('error');
         setActivePaymentId(null);
-        setCheckoutError(retrieveResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(retrieveResult.error, 'settings:pos.errorPayment'));
         return;
       }
 
@@ -676,7 +677,7 @@ export default function PosSplitScreen(): React.ReactElement {
       if (collectResult.error) {
         setCheckoutPhase('error');
         setActivePaymentId(null);
-        setCheckoutError(collectResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(collectResult.error, 'settings:pos.errorPayment'));
         return;
       }
 
@@ -688,7 +689,7 @@ export default function PosSplitScreen(): React.ReactElement {
       if (confirmResult.error) {
         setCheckoutPhase('error');
         setActivePaymentId(null);
-        setCheckoutError(confirmResult.error.message ?? t('pos.errorPayment'));
+        setCheckoutError(toUserMessage(confirmResult.error, 'settings:pos.errorPayment'));
         return;
       }
 

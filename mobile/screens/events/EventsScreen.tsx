@@ -35,6 +35,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ export default function EventsScreen({
       if (err) throw err;
       setEvents((data as Event[]) ?? []);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = toUserMessage(e);
       setError(msg);
     } finally {
       setLoading(false);

@@ -27,6 +27,7 @@ import {
   initStripe,
 } from '@stripe/stripe-react-native';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { AppError, toUserMessage } from '../utils/errors';
 import { palette } from '../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -252,7 +253,7 @@ export async function quoteOrder(order: OrderRequest): Promise<OrderQuote> {
     const { status, message, code } = await readFunctionError(error);
     throw new QuoteError(message, status, code);
   }
-  if (!data?.quote_hash) throw new QuoteError('The server returned no quote.', null);
+  if (!data?.quote_hash) throw new QuoteError('The server returned no quote.', null, 'NO_QUOTE');
   return data;
 }
 
@@ -268,7 +269,7 @@ export async function fetchPaymentSheetParams(
   order: OrderPayload,
 ): Promise<PaymentSheetParams> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured. Cannot create a PaymentIntent.');
+    throw new AppError('NOT_CONFIGURED');
   }
 
   const { data, error } = await supabase.functions.invoke<PaymentSheetParams>('payments', {
@@ -287,7 +288,7 @@ export async function fetchPaymentSheetParams(
   }
 
   if (!data?.clientSecret) {
-    throw new Error('payments/create_payment_intent returned no clientSecret');
+    throw new AppError('PAYMENT_FAILED');
   }
 
   return data;
@@ -356,7 +357,7 @@ export async function initAndPresentPaymentSheet(
       return {
         ok: false,
         code: initError.code,
-        message: initError.localizedMessage ?? initError.message,
+        message: toUserMessage(initError, 'errors:app.PAYMENT_FAILED'),
       };
     }
 
@@ -365,13 +366,13 @@ export async function initAndPresentPaymentSheet(
     if (presentError) {
       if (presentError.code === 'Canceled') {
         // User dismissed the sheet — not an error, just a cancel
-        return { ok: false, code: 'Canceled', message: 'Payment cancelled' };
+        return { ok: false, code: 'Canceled', message: toUserMessage(new AppError('PAYMENT_CANCELLED')) };
       }
       console.error('[stripe] presentPaymentSheet error:', presentError);
       return {
         ok: false,
         code: presentError.code,
-        message: presentError.localizedMessage ?? presentError.message,
+        message: toUserMessage(presentError, 'errors:app.PAYMENT_FAILED'),
       };
     }
 
@@ -381,19 +382,19 @@ export async function initAndPresentPaymentSheet(
     if (err instanceof PaymentsFunctionError) {
       // 409 TOTAL_CHANGED = the price moved since the quote: nothing was charged, re-quote.
       if (err.code === 'TOTAL_CHANGED') {
-        return { ok: false, code: 'TotalChanged', message: err.message, breakdown: err.breakdown };
+        return { ok: false, code: 'TotalChanged', message: toUserMessage(err), breakdown: err.breakdown };
       }
       if (err.code === 'MODIFIERS_INVALID') {
-        return { ok: false, code: 'ModifiersInvalid', message: err.message };
+        return { ok: false, code: 'ModifiersInvalid', message: toUserMessage(err) };
       }
       // 409 = el negocio no puede cobrar aún (gates de Connect); 4xx = validación.
       return {
         ok: false,
         code: err.status === 409 ? 'BusinessNotReady' : 'ServerError',
-        message: err.message,
+        message: toUserMessage(new AppError(err.status === 409 ? 'BUSINESS_NOT_READY' : 'PAYMENT_FAILED')),
       };
     }
-    const message = err instanceof Error ? err.message : 'Unknown payment error';
+    const message = toUserMessage(err, 'errors:app.PAYMENT_FAILED');
     console.error('[stripe] unexpected error:', err);
     return { ok: false, code: 'UnexpectedError', message };
   }
@@ -412,7 +413,7 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
     return {
       ok: false,
       code: 'NotConfigured',
-      message: 'Supabase is not configured. Cannot save card.',
+      message: toUserMessage(new AppError('NOT_CONFIGURED')),
     };
   }
 
@@ -424,14 +425,14 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
     if (error) {
       const { status, message } = await readFunctionError(error);
       console.error('[stripe] create_setup_intent failed:', status, message);
-      return { ok: false, code: 'FunctionError', message };
+      return { ok: false, code: 'FunctionError', message: toUserMessage(new AppError('CARD_SAVE_FAILED')) };
     }
 
     if (!data?.clientSecret) {
       return {
         ok: false,
         code: 'NoClientSecret',
-        message: 'payments/create_setup_intent returned no clientSecret',
+        message: toUserMessage(new AppError('CARD_SAVE_FAILED')),
       };
     }
 
@@ -458,7 +459,7 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
       return {
         ok: false,
         code: initError.code,
-        message: initError.localizedMessage ?? initError.message,
+        message: toUserMessage(initError, 'errors:app.PAYMENT_FAILED'),
       };
     }
 
@@ -466,18 +467,18 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
 
     if (presentError) {
       if (presentError.code === 'Canceled') {
-        return { ok: false, code: 'Canceled', message: 'Card save cancelled' };
+        return { ok: false, code: 'Canceled', message: toUserMessage(new AppError('CARD_SAVE_CANCELLED')) };
       }
       return {
         ok: false,
         code: presentError.code,
-        message: presentError.localizedMessage ?? presentError.message,
+        message: toUserMessage(presentError, 'errors:app.PAYMENT_FAILED'),
       };
     }
 
     return { ok: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error saving card';
+    const message = toUserMessage(err, 'errors:app.CARD_SAVE_FAILED');
     console.error('[stripe] saveCard error:', err);
     return { ok: false, code: 'UnexpectedError', message };
   }

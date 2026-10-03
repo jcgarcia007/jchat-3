@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStripeTerminal } from '../services/terminalSdk';
 import { getOrCreateTerminalLocation } from '../services/terminal';
+import { toUserMessage } from '../utils/errors';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
         // Update failed — reader is disconnected; show error and allow retry.
         setReaderStatus('error');
         setReaderError(
-          (result.error as { message?: string })?.message ?? t('pos.readerError'),
+          toUserMessage(result.error, 'settings:pos.readerError'),
         );
         isConnectingRef.current = false;
       }
@@ -172,7 +173,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
 
       if (!locResult.ok) {
         setReaderStatus('error');
-        setReaderError(locResult.message ?? t('pos.readerError'));
+        setReaderError(toUserMessage(locResult, 'settings:pos.readerError'));
         return;
       }
       locationIdRef.current = locResult.locationId;
@@ -189,7 +190,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
         setReaderStatus((prev) =>
           prev === 'connecting' || prev === 'updating' || prev === 'ready' ? prev : 'error',
         );
-        setReaderError(res.error.message ?? t('pos.readerError'));
+        setReaderError(toUserMessage(res.error, 'settings:pos.readerError'));
       }
     }
 
@@ -237,7 +238,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
       .then((result: { error?: { message: string } | null }) => {
         if (result.error) {
           setReaderStatus('error');
-          setReaderError(result.error.message ?? t('pos.readerError'));
+          setReaderError(toUserMessage(result.error, 'settings:pos.readerError'));
           isConnectingRef.current = false;
         } else {
           // connectReader resolved without error → reader is ready (update, if
@@ -250,7 +251,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
       })
       .catch((err: unknown) => {
         setReaderStatus('error');
-        setReaderError(err instanceof Error ? err.message : t('pos.readerError'));
+        setReaderError(toUserMessage(err, 'settings:pos.readerError'));
         isConnectingRef.current = false;
       });
   }, [discoveredReaders, connectedReader, readerStatus, cancelDiscovering, connectReader, t]);
@@ -279,7 +280,7 @@ export function usePosReader({ businessId, enabled = true }: UsePosReaderOptions
       getOrCreateTerminalLocation(businessId).then((locResult) => {
         if (!locResult.ok) {
           setReaderStatus('error');
-          setReaderError(locResult.message ?? t('pos.readerError'));
+          setReaderError(toUserMessage(locResult, 'settings:pos.readerError'));
           return;
         }
         locationIdRef.current = locResult.locationId;

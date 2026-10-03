@@ -15,6 +15,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { AppError } from '../utils/errors';
 
 // ---------------------------------------------------------------------------
 // Co-located types
@@ -82,7 +83,7 @@ export async function sendGift(
   input: SendGiftInput,
 ): Promise<GiftRow> {
   if (!isSupabaseConfigured) {
-    return Promise.reject(new Error('Supabase is not configured'));
+    return Promise.reject(new AppError('NOT_CONFIGURED'));
   }
 
   const { data, error } = await supabase

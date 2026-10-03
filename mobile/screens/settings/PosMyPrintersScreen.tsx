@@ -49,6 +49,7 @@ import {
 import { buildTableCodeTicketEscPos } from '../../services/escpos';
 import { fetchStaffPrinters, type NetworkPrinter } from '../../services/printer';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { toUserMessage } from '../../utils/errors';
 
 type PosMyPrintersRoute = RouteProp<PosStackParamList, 'PosMyPrinters'>;
 
@@ -114,7 +115,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     try {
       await printToBluetooth(record.address, bytes);
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : String(err));
+      Alert.alert('Error', toUserMessage(err));
     }
   }
 
@@ -142,7 +143,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
       setPairedDevices(devices);
       setAddPhase('picking');
     } catch (err) {
-      Alert.alert('Error Bluetooth', err instanceof Error ? err.message : String(err));
+      Alert.alert('Error Bluetooth', toUserMessage(err));
       setAddPhase('idle');
     }
   }
@@ -172,7 +173,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
       setTestState('ok');
     } catch (err) {
       setTestState('error');
-      setTestError(err instanceof Error ? err.message : String(err));
+      setTestError(toUserMessage(err));
     }
   }
 

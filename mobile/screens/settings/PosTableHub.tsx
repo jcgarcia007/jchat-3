@@ -87,6 +87,7 @@ import { buildTableCodeTicketEscPos } from '../../services/escpos';
 import * as Clipboard from 'expo-clipboard';
 import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
 import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
+import { toUserMessage } from '../../utils/errors';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -531,7 +532,7 @@ export default function PosTableHub(): React.ReactElement {
       const detail = await posTableSession(businessId, tableId);
       setSessionDetail(detail);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = toUserMessage(err);
       Alert.alert(t('pos.tableCode.title'), msg);
     } finally {
       setSessionLoading(false);
@@ -554,7 +555,7 @@ export default function PosTableHub(): React.ReactElement {
             await posCloseTableSession(businessId, tableId);
             setSessionDetail(null);
           } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
+            const msg = toUserMessage(err);
             Alert.alert(t('pos.tableCode.title'), msg);
           } finally {
             setReleaseLoading(false);

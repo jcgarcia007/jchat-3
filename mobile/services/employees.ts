@@ -15,6 +15,7 @@
  * // TODO(i18n)
  */
 
+import { AppError } from '../utils/errors';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ export interface EmployeeWithProfile extends EmployeeRow {
 /** Result returned by addEmployee. */
 export type AddEmployeeResult =
   | { ok: true; employee: EmployeeRow }
-  | { ok: false; reason: 'plan_limit' | 'already_exists' | 'not_configured' | 'db_error'; message?: string };
+  | { ok: false; reason: 'plan_limit' | 'already_exists' | 'not_configured' | 'db_error' };
 
 // ─── countEmployees ───────────────────────────────────────────────────────────
 
@@ -115,11 +116,7 @@ export async function addEmployee(
   // TODO: read real plan; default cap is DEFAULT_PLAN_CAP. Pro = unlimited.
   const current = await countEmployees(businessId);
   if (current >= DEFAULT_PLAN_CAP) {
-    return {
-      ok: false,
-      reason: 'plan_limit',
-      message: `Your plan allows up to ${DEFAULT_PLAN_CAP} employees. Upgrade to Pro for unlimited staff.`,
-    };
+    return { ok: false, reason: 'plan_limit' };
   }
 
   // ── Insert ─────────────────────────────────────────────────────────────────
@@ -137,9 +134,10 @@ export async function addEmployee(
   if (error) {
     // Unique constraint violation: (business_id, user_id)
     if (error.code === '23505') {
-      return { ok: false, reason: 'already_exists', message: 'This user is already on your staff.' };
+      return { ok: false, reason: 'already_exists' };
     }
-    return { ok: false, reason: 'db_error', message: error.message };
+    console.warn('[employees] addEmployee failed:', error.message);
+    return { ok: false, reason: 'db_error' };
   }
 
   // TODO(push): notify invited user they have been invited as `role` at businessId
@@ -159,7 +157,7 @@ export async function addEmployee(
  */
 export async function acceptInvite(employeeId: string): Promise<EmployeeRow> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured.');
+    throw new AppError('NOT_CONFIGURED');
   }
 
   const { data, error } = await supabase
@@ -181,7 +179,7 @@ export async function acceptInvite(employeeId: string): Promise<EmployeeRow> {
  */
 export async function declineInvite(employeeId: string): Promise<EmployeeRow> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured.');
+    throw new AppError('NOT_CONFIGURED');
   }
 
   const { data, error } = await supabase

@@ -31,6 +31,8 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { confirmAge, deleteMyAccount } from "@/lib/account";
+import { useTranslations } from "next-intl";
+import { authErrorKey } from "@/lib/authErrors";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
@@ -481,6 +483,7 @@ function RegisterStep2Form({
   onCreate: () => void;
   onBack: () => void;
 }) {
+  const te = useTranslations("authErrors");
   const is18 = dob !== "" && ageFromDob(dob) >= 18;
   const usernameOk = usernameStatus === "available" && username.length >= 3;
   const canCreate = is18 && usernameOk && agreeTerms && !loading;
@@ -514,7 +517,7 @@ function RegisterStep2Form({
         </div>
         {dob !== "" && !is18 && (
           <div style={{ fontSize: 11, color: "var(--color-danger)", marginBottom: 14 }}>
-            You don't meet the requirements to use JChat.
+            {te("notEligible")}
           </div>
         )}
 
@@ -669,6 +672,7 @@ function RegisterStep2Form({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function RegisterPage() {
+  const te = useTranslations("authErrors");
   const router = useRouter();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -738,7 +742,7 @@ export default function RegisterPage() {
   async function handleGoogleSignup() {
     setError(null);
     if (!isSupabaseConfigured) {
-      setError("Auth is not configured. Set Supabase env vars to sign up.");
+      setError(te("notConfigured"));
       return;
     }
     setGoogleLoading(true);
@@ -751,14 +755,14 @@ export default function RegisterPage() {
     // On success the browser is redirected to Google, so we only reach here on error.
     if (oauthErr) {
       setGoogleLoading(false);
-      setError(oauthErr.message);
+      setError(te(authErrorKey(oauthErr)));
     }
   }
 
   async function handleCreateAccount() {
     setError(null);
     if (!isSupabaseConfigured) {
-      setError("Auth is not configured. Set Supabase env vars to sign up.");
+      setError(te("notConfigured"));
       return;
     }
 
@@ -769,7 +773,7 @@ export default function RegisterPage() {
     // switch (desactivado) → proceder sin token.
     const captcha = (await captchaRef.current?.getToken()) ?? { status: "disabled" as const };
     if (captcha.status === "failed") {
-      setError("No pudimos verificar que eres humano. Inténtalo de nuevo.");
+      setError(te("captchaFailed"));
       setLoading(false);
       return;
     }
@@ -788,14 +792,14 @@ export default function RegisterPage() {
 
     if (signUpErr) {
       setLoading(false);
-      setError(signUpErr.message);
+      setError(te(authErrorKey(signUpErr)));
       return;
     }
 
     const userId = signUpData.user?.id;
     if (!userId) {
       setLoading(false);
-      setError("Account created but no session was returned. Try signing in.");
+      setError(te("noSession"));
       return;
     }
 
@@ -808,7 +812,7 @@ export default function RegisterPage() {
         await deleteMyAccount();
         await supabase.auth.signOut();
         setLoading(false);
-        setError("You don't meet the requirements to use JChat.");
+        setError(te("notEligible"));
         return;
       }
       // "error": the account exists without confirmation → the gate will ask next time.
@@ -831,7 +835,7 @@ export default function RegisterPage() {
       // Surfaced below: a unique violation means the chosen username is taken —
       // the user sees the error instead of silently keeping the derived one.
       setLoading(false);
-      setError(upsertErr.message);
+      setError(upsertErr.code === "23505" ? te("usernameTaken") : te("generic"));
       return;
     }
 

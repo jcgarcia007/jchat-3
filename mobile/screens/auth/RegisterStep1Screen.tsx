@@ -44,6 +44,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 
 // ---------------------------------------------------------------------------
@@ -151,7 +152,7 @@ export default function RegisterStep1Screen() {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) {
-      Alert.alert(t('register.alerts.signUpFailedTitle'), error.message);
+      Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(error, 'auth:register.alerts.unexpectedError'));
       return;
     }
     if (!data?.url) return;
@@ -173,18 +174,18 @@ export default function RegisterStep1Screen() {
         access_token: fragment.access_token,
         refresh_token: fragment.refresh_token,
       });
-      if (sessionError) Alert.alert(t('register.alerts.signUpFailedTitle'), sessionError.message);
+      if (sessionError) Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(sessionError, 'auth:register.alerts.unexpectedError'));
       return;
     }
     // PKCE flow
     const code = Linking.parse(returnedUrl).queryParams?.code;
     if (typeof code === 'string' && code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) Alert.alert(t('register.alerts.signUpFailedTitle'), exchangeError.message);
+      if (exchangeError) Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(exchangeError, 'auth:register.alerts.unexpectedError'));
       return;
     }
-    const errMsg = fragment.error_description ?? fragment.error ?? t('register.alerts.unexpectedError');
-    Alert.alert(t('register.alerts.signUpFailedTitle'), decodeURIComponent(errMsg));
+    // The provider's text is raw and English-only: show the translated generic message.
+    Alert.alert(t('register.alerts.signUpFailedTitle'), t('register.alerts.unexpectedError'));
   }, [t]);
 
   const handleGoogleSignUp = useCallback(() => handleOAuth('google'), [handleOAuth]);

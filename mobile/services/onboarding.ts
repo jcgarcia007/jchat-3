@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isSupabaseConfigured, supabase } from './supabase';
+import { AppError } from '../utils/errors';
 
 const ONBOARDING_COMPLETED_KEY = 'onboarding.completed';
 
@@ -25,7 +26,7 @@ export async function getOnboardingCompleted(userId: string): Promise<boolean> {
 }
 
 export async function completeOnboarding(userId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured');
+  if (!isSupabaseConfigured) throw new AppError('NOT_CONFIGURED');
 
   const { error } = await supabase
     .from('users')

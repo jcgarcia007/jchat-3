@@ -67,6 +67,7 @@ import { getOrderByPaymentIntent } from '../../services/orders';
 import type { PaidOrderSummary } from '../../services/orders';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -423,7 +424,7 @@ export default function CheckoutScreen() {
         .catch((error: unknown) => {
           if (quoteId !== quoteSeqRef.current || !mountedRef.current) return;
           console.warn('[checkout] quote failed:', error);
-          const message = error instanceof Error && error.message ? error.message : t('checkout.quoteError');
+          const message = toUserMessage(error, 'pos:checkout.quoteError');
           setQuoteState((previous) => ({ status: 'error', message, quote: previous.quote }));
         });
     }, QUOTE_DEBOUNCE_MS);

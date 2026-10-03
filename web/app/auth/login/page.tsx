@@ -10,7 +10,9 @@
 
 import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { isSafeRedirectPath } from "@/lib/redirect";
+import { authErrorKey } from "@/lib/authErrors";
 import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import {
   IconMail,
@@ -28,6 +30,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
 function LoginForm() {
+  const te = useTranslations("authErrors");
   const router = useRouter();
   const searchParams = useSearchParams();
   // Accept ?next= (dashboard flow) or ?redirect= (QR flow). Validate: must be a safe
@@ -39,7 +42,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
-    oauthError === "oauth_failed" ? "Google sign-in failed. Please try again." : null
+    oauthError === "oauth_failed" ? te("oauthFailed") : null
   );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -51,7 +54,7 @@ function LoginForm() {
     setError(null);
 
     if (!isSupabaseConfigured) {
-      setError("Auth is not configured. Set Supabase env vars to sign in.");
+      setError(te("notConfigured"));
       return;
     }
 
@@ -61,7 +64,7 @@ function LoginForm() {
     // desactivado (kill-switch) → proceder sin token (Supabase lo ignora estando global-OFF).
     const captcha = (await captchaRef.current?.getToken()) ?? { status: "disabled" as const };
     if (captcha.status === "failed") {
-      setError("No pudimos verificar que eres humano. Inténtalo de nuevo.");
+      setError(te("captchaFailed"));
       setLoading(false);
       return;
     }
@@ -74,7 +77,7 @@ function LoginForm() {
     setLoading(false);
 
     if (signInError) {
-      setError(signInError.message);
+      setError(te(authErrorKey(signInError)));
       return;
     }
 
@@ -86,7 +89,7 @@ function LoginForm() {
     setError(null);
 
     if (!isSupabaseConfigured) {
-      setError("Auth is not configured. Set Supabase env vars to sign in.");
+      setError(te("notConfigured"));
       return;
     }
 
@@ -101,7 +104,7 @@ function LoginForm() {
     // On success the browser is redirected to Google, so we only reach here on error.
     if (oauthErr) {
       setGoogleLoading(false);
-      setError(oauthErr.message);
+      setError(te(authErrorKey(oauthErr)));
     }
   }
 

@@ -52,6 +52,7 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge } from '../../services/age';
 import { deleteMyAccount } from '../../services/account';
@@ -374,7 +375,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       });
 
       if (signUpError) {
-        Alert.alert(t('register.alerts.signUpFailedTitle'), signUpError.message);
+        Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(signUpError, 'auth:register.alerts.unexpectedError'));
         setSubmitting(false);
         return;
       }
@@ -396,7 +397,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         Alert.alert(
           t('register.alerts.checkEmailTitle'),
           t('register.alerts.checkEmailMessage', { email: email.trim().toLowerCase() }),
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+          [{ text: t('actions.ok', { ns: 'common' }), onPress: () => navigation.navigate('Login') }],
         );
         return;
       }
@@ -435,7 +436,13 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         // Surface it: a unique violation means the chosen username is taken — the
         // user must SEE that, not silently keep the email-derived fallback.
         console.warn('[RegisterStep2] profile update error:', profileError.message);
-        Alert.alert(t('register.alerts.signUpErrorTitle'), profileError.message);
+        // 23505 = the chosen username was taken in the meantime.
+        Alert.alert(
+          t('register.alerts.signUpErrorTitle'),
+          profileError.code === '23505'
+            ? t('register.usernameTaken')
+            : toUserMessage(profileError, 'auth:register.alerts.unexpectedError'),
+        );
         setSubmitting(false);
         return;
       }
@@ -445,8 +452,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // The authenticated root navigator reads onboarding_completed and routes
       // this new session to Onboarding before the user enters the main tabs.
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('register.alerts.unexpectedError');
-      Alert.alert(t('register.alerts.errorTitle'), message);
+      Alert.alert(t('register.alerts.errorTitle'), toUserMessage(err, 'auth:register.alerts.unexpectedError'));
       setSubmitting(false);
     } finally {
       holdAgeGate(false);

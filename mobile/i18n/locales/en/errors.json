@@ -1,0 +1,59 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "network": "Couldn't connect. Check your internet connection and try again.",
+  "auth": {
+    "invalid_credentials": "Incorrect email or password.",
+    "email_not_confirmed": "Please confirm your email address first. Check your inbox.",
+    "user_already_exists": "An account with this email already exists.",
+    "email_exists": "An account with this email already exists.",
+    "weak_password": "That password is too weak. Use a longer, harder-to-guess one.",
+    "over_email_send_rate_limit": "Too many emails requested. Please wait a few minutes and try again.",
+    "over_request_rate_limit": "Too many attempts. Please wait a moment and try again.",
+    "captcha_failed": "We couldn't verify you're human. Please try again.",
+    "signup_disabled": "New sign-ups are currently unavailable.",
+    "email_address_invalid": "That email address isn't valid.",
+    "email_address_not_authorized": "That email address can't be used.",
+    "same_password": "Your new password must be different from the current one.",
+    "otp_expired": "That code has expired. Request a new one.",
+    "validation_failed": "Some of the information you entered isn't valid.",
+    "session_expired": "Your session expired. Please sign in again.",
+    "reauthentication_needed": "For security, please sign in again and retry.",
+    "user_banned": "This account is unavailable.",
+    "provider_disabled": "This sign-in method isn't available right now.",
+    "oauth_provider_not_supported": "This sign-in method isn't available right now.",
+    "bad_oauth_callback": "Sign-in could not be completed. Please try again.",
+    "flow_state_expired": "The sign-in attempt expired. Please try again.",
+    "request_timeout": "The request took too long. Please try again."
+  },
+  "db": {
+    "23505": "That value is already in use.",
+    "23503": "This item is no longer available.",
+    "42501": "You don't have permission to do that.",
+    "PGRST301": "Your session expired. Please sign in again."
+  },
+  "app": {
+    "NOT_CONFIGURED": "The service is unavailable right now.",
+    "NOT_AUTHENTICATED": "Please sign in to continue.",
+    "REVIEW_RATE_LIMIT": "You can only review this business once every 7 days.",
+    "REVIEW_FAILED": "We couldn't save your review. Please try again.",
+    "INSUFFICIENT_POINTS": "Not enough points. You have {{have}} but need {{need}}.",
+    "NO_QUOTE": "We couldn't get the order total. Please try again.",
+    "PAYMENT_CANCELLED": "Payment cancelled.",
+    "PAYMENT_FAILED": "The payment couldn't be completed. Please try again.",
+    "CARD_SAVE_CANCELLED": "Card saving was cancelled.",
+    "CARD_SAVE_FAILED": "We couldn't save the card. Please try again.",
+    "TOTAL_CHANGED": "The total changed. Please review your order.",
+    "MODIFIERS_INVALID": "Some options in your order are no longer valid.",
+    "BUSINESS_NOT_READY": "This business can't take orders right now.",
+    "PRINT_TIMEOUT": "The printer didn't respond. Check it and try again.",
+    "PRINT_CONNECT": "Couldn't connect to the printer.",
+    "BT_OFF": "Bluetooth is turned off.",
+    "CONNECT_FAILED": "Couldn't connect to the printer.",
+    "WRITE_FAILED": "The print job failed. Please try again."
+  },
+  "stripe": {
+    "Canceled": "Payment cancelled.",
+    "Failed": "The payment couldn't be completed. Please try again.",
+    "Timeout": "The payment took too long. Please try again."
+  }
+}

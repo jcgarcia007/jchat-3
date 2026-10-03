@@ -71,6 +71,7 @@ import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector'
 // Using the generic hook so we don't depend on a typed param list here.
 // The screen is registered in AppNavigator separately (Task 1.8 wire-up).
 import { useNavigation } from '@react-navigation/native';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -364,7 +365,7 @@ export default function EditProfileScreen(): React.JSX.Element {
 
       navigation.goBack();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('edit.saveErrorGeneric');
+      const msg = toUserMessage(err, 'profile:edit.saveErrorGeneric');
       Alert.alert(t('edit.saveFailedTitle'), msg);
     } finally {
       setSaving(false);

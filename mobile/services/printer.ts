@@ -17,6 +17,7 @@
 
 import TcpSocket from 'react-native-tcp-socket';
 import { supabase } from './supabase';
+import { AppError } from '../utils/errors';
 import { buildKitchenTicketEscPos } from './escpos';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -318,7 +319,7 @@ export function printToNetwork(
         if (connectTimer) clearTimeout(connectTimer);
 
         writeTimer = setTimeout(() => {
-          settle(new Error(`Print write timed out after ${WRITE_TIMEOUT_MS / 1000}s`));
+          settle(new AppError('PRINT_TIMEOUT'));
         }, WRITE_TIMEOUT_MS);
 
         client.write(bytes as unknown as string, 'binary', (err) => {
@@ -336,7 +337,7 @@ export function printToNetwork(
 
     // Arm connect timeout.
     connectTimer = setTimeout(() => {
-      settle(new Error(`Could not connect to printer at ${host}:${port} — is it powered on?`));
+      settle(new AppError('PRINT_CONNECT'));
     }, CONNECT_TIMEOUT_MS);
 
     client.on('error', (err) => settle(err instanceof Error ? err : new Error(String(err))));

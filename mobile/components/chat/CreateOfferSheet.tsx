@@ -59,6 +59,7 @@ import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -321,7 +322,7 @@ export function CreateOfferSheet({
 
       onCreated();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : t('offerCreate.errorGeneric'));
+      setErrorMsg(toUserMessage(err, 'chat:offerCreate.errorGeneric'));
     } finally {
       setLoading(false);
     }
