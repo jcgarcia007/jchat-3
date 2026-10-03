@@ -20,3 +20,22 @@ export function isTrustedMediaUrl(url: string | null | undefined): boolean {
   if (!target || !base) return false;
   return target.authority === base.authority && target.path.startsWith('/storage/v1/object/public/');
 }
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+
+/**
+ * Voice notes live in PRIVATE buckets and are stored as a PATH (never a URL, never file://).
+ * A room voice note must be exactly room/{room_id}/{sender_uid}/{file}.m4a for THIS room.
+ */
+export function isRoomVoicePath(path: string | null | undefined, roomId: string): boolean {
+  if (!path) return false;
+  const re = new RegExp(`^room/${roomId.toLowerCase()}/${UUID}/[A-Za-z0-9_-]+\\.m4a$`, 'i');
+  return /^[0-9a-f-]{36}$/i.test(roomId) && re.test(path);
+}
+
+/** A DM voice note must be exactly {conversation_id}/{sender_uid}/{file}.m4a for THIS conversation. */
+export function isDmVoicePath(path: string | null | undefined, conversationId: string): boolean {
+  if (!path) return false;
+  const re = new RegExp(`^${conversationId.toLowerCase()}/${UUID}/[A-Za-z0-9_-]+\\.m4a$`, 'i');
+  return /^[0-9a-f-]{36}$/i.test(conversationId) && re.test(path);
+}

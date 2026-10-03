@@ -25,5 +25,19 @@
   "language": {
     "en": "Inglés",
     "es": "Español"
+  },
+  "voice": {
+    "record": "Grabar un mensaje de voz",
+    "send": "Enviar mensaje de voz",
+    "cancel": "Cancelar grabación",
+    "recording": "Grabando, {{time}}",
+    "play": "Reproducir mensaje de voz",
+    "pause": "Pausar mensaje de voz",
+    "duration": "Mensaje de voz, {{seconds}} segundos",
+    "note": "Mensaje de voz",
+    "unavailable": "Mensaje de voz no disponible",
+    "permissionTitle": "Se necesita acceso al micrófono",
+    "permissionMessage": "Permite el acceso al micrófono en Ajustes para grabar mensajes de voz.",
+    "openSettings": "Abrir Ajustes"
   }
 }

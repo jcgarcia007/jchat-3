@@ -25,5 +25,19 @@
   "language": {
     "en": "English",
     "es": "Spanish"
+  },
+  "voice": {
+    "record": "Record a voice message",
+    "send": "Send voice message",
+    "cancel": "Cancel recording",
+    "recording": "Recording, {{time}}",
+    "play": "Play voice message",
+    "pause": "Pause voice message",
+    "duration": "Voice message, {{seconds}} seconds",
+    "note": "Voice message",
+    "unavailable": "Voice message unavailable",
+    "permissionTitle": "Microphone access needed",
+    "permissionMessage": "Allow microphone access in Settings to record voice messages.",
+    "openSettings": "Open Settings"
   }
 }

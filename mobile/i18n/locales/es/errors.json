@@ -49,7 +49,9 @@
     "PRINT_CONNECT": "No se pudo conectar con la impresora.",
     "BT_OFF": "El Bluetooth está apagado.",
     "CONNECT_FAILED": "No se pudo conectar con la impresora.",
-    "WRITE_FAILED": "Falló la impresión. Inténtalo de nuevo."
+    "WRITE_FAILED": "Falló la impresión. Inténtalo de nuevo.",
+    "VOICE_UPLOAD_FAILED": "No pudimos enviar el mensaje de voz. Inténtalo de nuevo.",
+    "VOICE_UNAVAILABLE": "Este mensaje de voz no está disponible."
   },
   "stripe": {
     "Canceled": "Pago cancelado.",

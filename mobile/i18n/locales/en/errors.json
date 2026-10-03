@@ -49,7 +49,9 @@
     "PRINT_CONNECT": "Couldn't connect to the printer.",
     "BT_OFF": "Bluetooth is turned off.",
     "CONNECT_FAILED": "Couldn't connect to the printer.",
-    "WRITE_FAILED": "The print job failed. Please try again."
+    "WRITE_FAILED": "The print job failed. Please try again.",
+    "VOICE_UPLOAD_FAILED": "We couldn't send the voice message. Please try again.",
+    "VOICE_UNAVAILABLE": "This voice message isn't available."
   },
   "stripe": {
     "Canceled": "Payment cancelled.",
