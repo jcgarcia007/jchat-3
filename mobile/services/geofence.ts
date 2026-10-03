@@ -163,6 +163,15 @@ export async function requestForegroundPermission(): Promise<boolean> {
 }
 
 /**
+ * Read-only check: is foreground location permission already granted?
+ * Never shows a permission prompt (use it where asking is not allowed).
+ */
+export async function hasForegroundPermission(): Promise<boolean> {
+  const { status } = await Location.getForegroundPermissionsAsync();
+  return status === Location.PermissionStatus.GRANTED;
+}
+
+/**
  * Request always-on ("background") location permission.
  *
  * On iOS this shows the "Always Allow" prompt only after the user has already

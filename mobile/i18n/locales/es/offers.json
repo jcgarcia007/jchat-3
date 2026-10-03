@@ -4,5 +4,12 @@
   "expires": "Vence {{date}}",
   "code": "Código {{code}}",
   "emptyTitle": "No hay ofertas por ahora",
-  "emptySubtitle": "Aquí aparecerán las ofertas de los negocios verificados."
+  "emptySubtitle": "Aquí aparecerán las ofertas de los negocios verificados.",
+  "distanceAway": "a {{distance}}",
+  "seeMore": "Ver más",
+  "seeLess": "Ver menos",
+  "likeA11y": "Me gusta",
+  "commentsA11y": "Comentarios",
+  "emptyNearTitle": "No hay novedades en {{radius}}",
+  "emptyNearSubtitle": "Prueba con un radio mayor para ver más ofertas y publicaciones."
 }

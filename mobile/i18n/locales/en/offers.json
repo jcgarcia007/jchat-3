@@ -4,5 +4,12 @@
   "expires": "Ends {{date}}",
   "code": "Code {{code}}",
   "emptyTitle": "No offers right now",
-  "emptySubtitle": "Verified businesses will post their offers here."
+  "emptySubtitle": "Verified businesses will post their offers here.",
+  "distanceAway": "{{distance}} away",
+  "seeMore": "See more",
+  "seeLess": "See less",
+  "likeA11y": "Like",
+  "commentsA11y": "Comments",
+  "emptyNearTitle": "Nothing new within {{radius}}",
+  "emptyNearSubtitle": "Try a larger radius to see more offers and posts."
 }
