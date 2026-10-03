@@ -49,6 +49,7 @@ import {
   type PostRow,
 } from '../../services/posts';
 import { getPublicProfile, type PublicProfileRow } from '../../services/users';
+import BusinessAvatar from '../../components/megaphone/BusinessAvatar';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
@@ -88,7 +89,8 @@ export default function PostDetailScreen(): React.JSX.Element {
       const postRow = await getPostById(params.postId);
       if (!postRow) throw new Error(t('detail.notFound'));
       const [authorRow, commentRows, count, likedByMe] = await Promise.all([
-        getPublicProfile(postRow.user_id),
+        // Business posts show the business, never the owner's personal profile.
+        postRow.business_id ? Promise.resolve(null) : getPublicProfile(postRow.user_id),
         getComments(postRow.id),
         getLikeCount(postRow.id),
         user?.id ? isPostLiked(postRow.id, user.id) : Promise.resolve(false),
@@ -167,7 +169,8 @@ export default function PostDetailScreen(): React.JSX.Element {
   }
 
   const isOwner = post.user_id === user?.id;
-  const authorName = author?.display_name?.trim() || author?.username || t('post.unknownAuthor');
+  const business = post.business_id ? post.business ?? null : null;
+  const authorName = business?.name || author?.display_name?.trim() || author?.username || t('post.unknownAuthor');
   const date = new Date(post.created_at).toLocaleString(i18n.language);
 
   return (
@@ -185,7 +188,7 @@ export default function PostDetailScreen(): React.JSX.Element {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled">
           <View style={styles.authorRow}>
-            {author?.avatar_url ? <Image source={{ uri: author.avatar_url }} style={[styles.avatar, { backgroundColor: c.bgSurface }]} /> : <View style={[styles.avatar, { backgroundColor: c.bgSurface }]} />}
+            {post.business_id ? <BusinessAvatar emoji={business?.icon_emoji ?? null} logoUrl={business?.logo_url ?? null} size={42} /> : author?.avatar_url ? <Image source={{ uri: author.avatar_url }} style={[styles.avatar, { backgroundColor: c.bgSurface }]} /> : <View style={[styles.avatar, { backgroundColor: c.bgSurface }]} />}
             <View style={styles.authorCopy}>
               <Text style={[styles.authorName, { color: c.textPrimary }]}>{authorName}</Text>
               <Text style={[styles.date, { color: c.textTertiary }]}>{date}</Text>

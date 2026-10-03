@@ -13,9 +13,18 @@ export interface PostAuthor {
   avatar_url: string | null;
 }
 
+/** Business a post was published for (posts.business_id), when it is a business post. */
+export interface PostBusiness {
+  name: string;
+  icon_emoji: string | null;
+  logo_url: string | null;
+}
+
 export interface PostRow {
   id: string;
   user_id: string;
+  business_id?: string | null;
+  business?: PostBusiness | null;
   caption: string | null;
   media_urls: string[];
   geotag: string | null;
@@ -57,6 +66,7 @@ export async function listFeed(
     .from('posts')
     .select('*, author:users!posts_user_id_fkey(id, username, display_name, avatar_url)')
     .in('user_id', followingIds)
+    .is('business_id', null) // business posts live in the megaphone, not in personal feeds
     .order('created_at', { ascending: false })
     .range(from, to);
   if (error) throw error;
@@ -71,6 +81,7 @@ export async function getUserPosts(userId: string, page = 0): Promise<PostRow[]>
     .from('posts')
     .select('*')
     .eq('user_id', userId)
+    .is('business_id', null) // an owner's business posts never show on their personal profile
     .order('created_at', { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
   if (error) throw error;
@@ -82,7 +93,7 @@ export async function getPostById(postId: string): Promise<PostRow | null> {
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('posts')
-    .select('*')
+    .select('*, business:businesses(name, icon_emoji, logo_url)')
     .eq('id', postId)
     .maybeSingle();
   if (error) throw error;
