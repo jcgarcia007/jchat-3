@@ -6,8 +6,8 @@
  * Fixed artwork: it does not follow light/dark mode (theme/ticket.ts).
  */
 
-import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
@@ -23,7 +23,7 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
 import { TicketHeader } from '../../components/auth/TicketHeader';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
-import { TicketTitle } from '../../components/auth/TicketReveal';
+import { TicketTitle, useTicketCascade } from '../../components/auth/TicketReveal';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -50,6 +50,12 @@ export default function LoginScreen() {
   const { t } = useTranslation('auth');
   const fontsReady = useLoginFonts();
   const [oauthBusy, setOauthBusy] = useState(false);
+  // Entrance: the ticket rises, then six blocks fade in one after another; the title sweeps in.
+  const cascade = useTicketCascade(6, 1);
+  const handleLanded = useCallback(
+    (reduceMotion: boolean) => (reduceMotion ? cascade.showAll() : cascade.start()),
+    [cascade],
+  );
 
   // ── Social OAuth (deep-link, M1) ───────────────────────────────────────────
   // signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
@@ -125,11 +131,18 @@ export default function LoginScreen() {
   if (!fontsReady) return <TicketPlaceholder />;
 
   return (
-    <TicketShell>
-      <TicketHeader />
-      <TicketTitle text={t('ticket.title')} />
-      <Text style={styles.subtitle}>{t('ticket.subtitle')}</Text>
+    <TicketShell entrance onEntranceDone={handleLanded}>
+      <Animated.View style={cascade.blockStyle(0)}>
+        <TicketHeader />
+      </Animated.View>
+      <Animated.View style={cascade.blockStyle(1)}>
+        <TicketTitle text={t('ticket.title')} reveal={cascade.reveal} />
+      </Animated.View>
+      <Animated.View style={cascade.blockStyle(2)}>
+        <Text style={styles.subtitle}>{t('ticket.subtitle')}</Text>
+      </Animated.View>
 
+      <Animated.View style={cascade.blockStyle(3)}>
       <Pressable
         onPress={() => navigation.navigate('LoginEmail')}
         style={styles.primary}
@@ -140,10 +153,11 @@ export default function LoginScreen() {
         <Text style={styles.primaryText}>{t('ticket.continueEmail')}</Text>
         <IconArrowRight size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
       </Pressable>
+      </Animated.View>
 
       {/* TODO(official-social-buttons): text-only for now. The official Google "G" logo and the native
           Apple button (expo-apple-authentication) arrive with the build of the accounts change. */}
-      <View style={styles.socialRow}>
+      <Animated.View style={[styles.socialRow, cascade.blockStyle(4)]}>
         <Pressable
           onPress={() => void runOAuth('apple')}
           disabled={oauthBusy}
@@ -162,12 +176,13 @@ export default function LoginScreen() {
         >
           <Text style={styles.socialText}>{t('ticket.google')}</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       {/* TODO(biometric-login): the "BIOMETRICS" divider + Face ID button go here once a real biometric
           sign-in exists (needs the session stored with expo-secure-store). Hidden until then: the
           old button could not sign anyone in. LockScreen is unrelated and untouched. */}
 
+      <Animated.View style={cascade.blockStyle(5)}>
       <TicketPerforation />
 
       <View style={styles.newHere}>
@@ -181,6 +196,7 @@ export default function LoginScreen() {
           <Text style={styles.link}>{t('ticket.createAccount')}</Text>
         </Pressable>
       </View>
+      </Animated.View>
     </TicketShell>
   );
 }

@@ -38,7 +38,8 @@ export interface TicketShellProps {
   overlap?: number;
   /** Rise-from-below entrance (login only). */
   entrance?: boolean;
-  onEntranceDone?: () => void;
+  /** Called once the ticket is in place; `reduceMotion` tells whether the entrance was skipped. */
+  onEntranceDone?: (reduceMotion: boolean) => void;
   /** Top-left control over the photo (e.g. the Back button). */
   leftSlot?: React.ReactNode;
   children?: React.ReactNode;
@@ -83,21 +84,23 @@ export function TicketShell({
   const photoHeight = Math.round(height * photoFraction);
   const translateY = useRef(new Animated.Value(entrance ? height : 0)).current;
   const doneRef = useRef(false);
+  const doneCallbackRef = useRef(onEntranceDone);
+  doneCallbackRef.current = onEntranceDone;
 
   useEffect(() => {
-    const finish = () => {
+    const finish = (reduceMotion: boolean) => {
       if (doneRef.current) return;
       doneRef.current = true;
-      onEntranceDone?.();
+      doneCallbackRef.current?.(reduceMotion);
     };
     if (!entrance) {
-      finish();
+      finish(false);
       return undefined;
     }
     if (reduce === null) return undefined; // wait for the OS answer
     if (reduce) {
       translateY.setValue(0);
-      finish();
+      finish(true);
       return undefined;
     }
     // ≈ 1 s with a slight overshoot.
@@ -109,10 +112,10 @@ export function TicketShell({
       useNativeDriver: true,
     });
     spring.start(({ finished }) => {
-      if (finished) finish();
+      if (finished) finish(false);
     });
     return () => spring.stop();
-  }, [entrance, reduce, translateY, onEntranceDone]);
+  }, [entrance, reduce, translateY]);
 
   return (
     <View style={styles.root}>
