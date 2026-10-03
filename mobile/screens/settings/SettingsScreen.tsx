@@ -61,12 +61,8 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { applyAppearance, type AppearancePreference } from '../../theme/appearance';
 import { useAuth } from '../../context/AuthContext';
-import {
-  supabase,
-  isSupabaseConfigured,
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-} from '../../services/supabase';
+import { isSupabaseConfigured } from '../../services/supabase';
+import { deleteMyAccount } from '../../services/account';
 import {
   canUseBiometrics,
   isBiometricEnabled,
@@ -379,24 +375,8 @@ export default function SettingsScreen() {
       return;
     }
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
-        return;
-      }
-
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!res.ok) {
+      const deleted = await deleteMyAccount();
+      if (!deleted) {
         Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
         return;
       }

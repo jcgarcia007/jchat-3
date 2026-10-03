@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — Root Navigator (Task 0.7, auth upgraded in Stage 1)
  *
- * Auth guard: if isAuthenticated → MainStack (tabs + modal screens)
+ * Auth guard: if isAuthenticated (+ 18+ confirmed) → MainStack (tabs + modal screens)
  *             otherwise         → AuthStack (Splash → Welcome → Login → Register)
  *
  * Deep linking: jchat://room/:id  →  ChatRoomScreen
@@ -38,6 +38,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 import LockScreen from '../screens/auth/LockScreen';
+import ConfirmAgeScreen from '../screens/auth/ConfirmAgeScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import BiometricEnrollGate from '../components/auth/BiometricEnrollGate';
@@ -128,6 +129,7 @@ type RecoveryStackParamList = { ResetPassword: undefined };
 const AuthStack     = createNativeStackNavigator<AuthStackParamList>();
 const MainStack     = createNativeStackNavigator<MainStackParamList>();
 const LockStack     = createNativeStackNavigator<{ Lock: undefined }>();
+const AgeStack      = createNativeStackNavigator<{ ConfirmAge: undefined }>();
 const RecoveryStack = createNativeStackNavigator<RecoveryStackParamList>();
 
 const defaultScreenOptions: NativeStackNavigationOptions = {
@@ -169,9 +171,9 @@ function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady
 // before verifyOtp creates a session, so this navigator never exposes MainStack.
 
 export default function AppNavigator() {
-  const { isAuthenticated, locked, isRecovering, user } = useAuth();
+  const { isAuthenticated, locked, isRecovering, user, ageStatus } = useAuth();
   const [navigationReady, setNavigationReady] = useState(false);
-  const notificationsEnabled = isAuthenticated && !locked && !isRecovering;
+  const notificationsEnabled = isAuthenticated && !locked && !isRecovering && ageStatus === 'confirmed';
   const onboardingCheckedUserRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -226,6 +228,11 @@ export default function AppNavigator() {
         <LockStack.Navigator screenOptions={defaultScreenOptions}>
           <LockStack.Screen name="Lock" component={LockScreen} />
         </LockStack.Navigator>
+      ) : ageStatus !== 'confirmed' ? (
+        // 18+ gate — no tabs/app until users.age_confirmed_at is set server-side.
+        <AgeStack.Navigator screenOptions={{ ...defaultScreenOptions, gestureEnabled: false }}>
+          <AgeStack.Screen name="ConfirmAge" component={ConfirmAgeScreen} />
+        </AgeStack.Navigator>
       ) : (
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
           <MainStack.Screen name="Tabs" component={BottomTabs} />

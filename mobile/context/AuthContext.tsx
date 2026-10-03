@@ -21,8 +21,12 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
+import { fetchAgeConfirmed } from '../services/age';
 import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
+
+/** Server-side 18+ confirmation state of the signed-in user. */
+export type AgeStatus = 'loading' | 'confirmed' | 'required' | 'error';
 
 interface AuthContextValue {
   session: Session | null;
@@ -49,6 +53,16 @@ interface AuthContextValue {
   beginRecovery: () => Promise<void>;
   /** Clear the recovery state after saving or cancelling. */
   clearRecovery: () => Promise<void>;
+  /**
+   * 18+ gate. The app (tabs) must NOT render unless this is 'confirmed':
+   * 'required' = users.age_confirmed_at is null; 'error' = could not read it
+   * (fail closed — the gate shows "Retry").
+   */
+  ageStatus: AgeStatus;
+  /** Re-read users.age_confirmed_at (after confirm_age, or on Retry). */
+  refreshAge: () => Promise<void>;
+  /** Keep the gate in 'loading' while a sign-up flow calls confirm_age itself. */
+  holdAgeGate: (hold: boolean) => void;
   /** Dev-only: enter the app without a real session (placeholder buttons). */
   devBypass: () => void;
   signOut: () => Promise<void>;
@@ -64,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
+  // Age state is keyed by user id so a stale value can never leak across accounts.
+  const [ageState, setAgeState] = useState<{ userId: string; status: AgeStatus } | null>(null);
+  const [ageHold, setAgeHold] = useState(false);
   // True once the initial getSession has resolved. Guards justSignedIn so that
   // startup events ('INITIAL_SESSION' or a restore that fires 'SIGNED_IN' in some
   // versions) don't look like a fresh login.
@@ -229,6 +246,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, [session?.user?.id]);
 
+  const refreshAge = useCallback(async () => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    const confirmed = await fetchAgeConfirmed(userId);
+    setAgeState({
+      userId,
+      status: confirmed === null ? 'error' : confirmed ? 'confirmed' : 'required',
+    });
+  }, [session?.user?.id]);
+
+  // Read the 18+ confirmation whenever the signed-in user changes (email, Google,
+  // Apple and pre-existing accounts all go through here).
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      setAgeState(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchAgeConfirmed(userId).then((confirmed) => {
+      if (cancelled) return;
+      setAgeState({
+        userId,
+        status: confirmed === null ? 'error' : confirmed ? 'confirmed' : 'required',
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
+  const holdAgeGate = useCallback((hold: boolean) => setAgeHold(hold), []);
+
   const unlock = useCallback(() => setLocked(false), []);
   const clearJustSignedIn = useCallback(() => setJustSignedIn(false), []);
   const beginRecovery = useCallback(async () => {
@@ -259,8 +309,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBypass(false);
     setLocked(false);
     setJustSignedIn(false);
+    setAgeHold(false);
     await supabase.auth.signOut();
   }, [session?.user?.id]);
+
+  const ageStatus: AgeStatus = bypass && !session
+    ? 'confirmed'
+    : ageHold || !session || ageState?.userId !== session.user.id
+      ? 'loading'
+      : ageState.status;
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -275,10 +332,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRecovering,
       beginRecovery,
       clearRecovery,
+      ageStatus,
+      refreshAge,
+      holdAgeGate,
       devBypass,
       signOut,
     }),
-    [session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, isRecovering, beginRecovery, clearRecovery, devBypass, signOut],
+    [ageStatus, refreshAge, holdAgeGate, session, loading, bypass, locked, unlock, justSignedIn, clearJustSignedIn, isRecovering, beginRecovery, clearRecovery, devBypass, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
