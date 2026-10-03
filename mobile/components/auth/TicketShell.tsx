@@ -166,3 +166,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 });
+
+/** Full-screen placeholder while the fonts load: just the photo and the night background. */
+export function TicketPlaceholder({ photoFraction = 0.47 }: { photoFraction?: number }) {
+  return (
+    <View style={styles.root}>
+      <TicketBackdrop photoFraction={photoFraction} />
+    </View>
+  );
+}

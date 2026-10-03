@@ -35,6 +35,7 @@ import type { BottomTabParamList } from './tabs/BottomTabs';
 import SplashScreen from '../screens/auth/SplashScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import LoginEmailScreen from '../screens/auth/LoginEmailScreen';
 import RegisterStep1Screen from '../screens/auth/RegisterStep1Screen';
 import RegisterStep2Screen from '../screens/auth/RegisterStep2Screen';
 import LockScreen from '../screens/auth/LockScreen';
@@ -68,6 +69,7 @@ export type AuthStackParamList = {
   Splash: undefined;
   Welcome: undefined;
   Login: undefined;
+  LoginEmail: undefined;
   RegisterStep1: undefined;
   RegisterStep2: { name?: string; email?: string; password?: string };
   ForgotPassword: undefined;
@@ -220,6 +222,7 @@ export default function AppNavigator() {
           <AuthStack.Screen name="Splash" component={SplashScreen} />
           <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
           <AuthStack.Screen name="Login" component={LoginScreen} />
+          <AuthStack.Screen name="LoginEmail" component={LoginEmailScreen} />
           <AuthStack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
           <AuthStack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
           <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
