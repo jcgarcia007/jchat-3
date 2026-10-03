@@ -42,6 +42,17 @@ export async function listBlocked(): Promise<SocialUser[]> {
   return ids.map((id) => map.get(id)).filter((u): u is SocialUser => !!u);
 }
 
+/**
+ * Ids of every user related to me by a block, in EITHER direction (I blocked them, or they
+ * blocked me). Single RPC (migration 179: my_block_relations); the blocks table itself only
+ * exposes the rows I created. Used to hide their content in shared spaces such as chat rooms.
+ */
+export async function getBlockRelations(): Promise<Set<string>> {
+  const { data, error } = await supabase.rpc('my_block_relations');
+  if (error) throw error;
+  return new Set(((data ?? []) as unknown[]).filter((id): id is string => typeof id === 'string'));
+}
+
 /** Whether the current user has blocked targetId (own block rows only, per RLS). */
 export async function isBlocked(targetId: string): Promise<boolean> {
   const { data, error } = await supabase

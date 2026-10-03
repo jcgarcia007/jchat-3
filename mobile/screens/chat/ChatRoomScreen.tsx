@@ -49,7 +49,7 @@ import {
 import { IconX } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -83,6 +83,7 @@ import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
 import { usePresenceChannels } from './usePresenceChannels';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
+import { getBlockRelations } from '../../services/blocks';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
@@ -242,6 +243,9 @@ export default function ChatRoomScreen() {
   // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
 
+  // Users related to me by a block (either direction): their messages and presence are hidden.
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
   // Users optimistically hidden after remove/ban (presence sync catches up).
   const [hiddenUserIds, setHiddenUserIds] = useState<Set<string>>(new Set());
 
@@ -305,9 +309,32 @@ export default function ChatRoomScreen() {
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
   const usersInRoom = (isSupabaseConfigured ? liveUsers : DEMO_USERS).filter(
-    (u) => !hiddenUserIds.has(u.id),
+    (u) => !hiddenUserIds.has(u.id) && !blockedIds.has(u.id),
   );
   const activeCount = usersInRoom.length;
+
+  // ── Block relations: loaded when entering the room and every time we come back ──
+  const refreshBlocks = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      setBlockedIds(await getBlockRelations());
+    } catch (err) {
+      console.warn('[ChatRoom] block relations error:', err);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!entryVisible) void refreshBlocks();
+    }, [entryVisible, refreshBlocks]),
+  );
+
+  // Messages from blocked users never render: initial load, pagination and realtime all
+  // go through this one filter.
+  const visibleMessages = useMemo(
+    () => (blockedIds.size === 0 ? messages : messages.filter((m) => !blockedIds.has(m.user_id))),
+    [messages, blockedIds],
+  );
 
   // ── Hide native header (we render our own ChatTopBar) ─────────────────────
 
@@ -831,7 +858,8 @@ export default function ChatRoomScreen() {
 
   const handleCloseUserSheet = useCallback(() => {
     setUserSheet((prev) => ({ ...prev, visible: false }));
-  }, []);
+    void refreshBlocks(); // the sheet may have just blocked someone
+  }, [refreshBlocks]);
 
   // ── Tap user → anchored quick card (long-press still opens the full sheet) ──
   const handleUserPress = useCallback(
@@ -844,7 +872,8 @@ export default function ChatRoomScreen() {
 
   const handleCloseQuickCard = useCallback(() => {
     setQuickCard((p) => ({ ...p, visible: false }));
-  }, []);
+    void refreshBlocks(); // the card may have just blocked someone
+  }, [refreshBlocks]);
 
   // Shared profile/DM handlers — reused by both UserActionSheet and UserQuickCard
   // (each caller closes its own surface first).
@@ -1146,7 +1175,7 @@ export default function ChatRoomScreen() {
         <FlatList
           ref={flatListRef}
           inverted
-          data={messages}
+          data={visibleMessages}
           keyExtractor={keyExtractor}
           renderItem={renderMessage}
           contentContainerStyle={chatStyles.listContent}
