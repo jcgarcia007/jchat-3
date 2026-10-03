@@ -10,6 +10,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { requireAgeConfirmed } from "@/lib/age";
 import { ChatRoom } from "./ChatRoom";
 
 interface ResolvedRoom {
@@ -68,6 +69,7 @@ export default async function RoomPage({
       `/auth/login?next=${encodeURIComponent(`/c/${token}/room`)}`
     );
   }
+  await requireAgeConfirmed(supabase, authData.user.id, `/c/${token}/room`);
 
   // Invalid token
   if (!room) {

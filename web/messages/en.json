@@ -3199,5 +3199,27 @@
     "cancel": "Cancel",
     "error": "Payment error. Please try again.",
     "confirmError": "Could not confirm payment. Please try again."
+  },
+  "confirmAge": {
+    "title": "Confirm your age",
+    "subtitle": "Enter your date of birth to continue. We only keep the year.",
+    "dateLabel": "Date of birth",
+    "termsAgree": "I accept the",
+    "terms": "Terms",
+    "and": " and the ",
+    "privacy": "Privacy Policy",
+    "continue": "Continue",
+    "confirmTitle": "Confirm your date of birth",
+    "confirmMessage": "Is your date of birth {date}?",
+    "confirmYes": "Yes, continue",
+    "confirmEdit": "Edit",
+    "error": "We couldn't confirm your age. Please try again.",
+    "loadError": "We couldn't check your account. Check your connection and try again.",
+    "retry": "Retry",
+    "loading": "Loading",
+    "notEligibleTitle": "Not eligible",
+    "notEligibleMessage": "You don't meet the requirements to use JChat.",
+    "backHome": "Back to start",
+    "signOut": "Sign out"
   }
 }

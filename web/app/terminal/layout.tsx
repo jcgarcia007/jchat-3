@@ -5,6 +5,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { requireAgeConfirmed } from "@/lib/age";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("dashboardCommon");
@@ -37,6 +38,7 @@ export default async function TerminalLayout({
     if (!user) {
       redirect("/auth/login?next=/terminal");
     }
+    await requireAgeConfirmed(supabase, user.id, "/terminal");
 
     // Employee gate: accepted employee of ANY business? (RLS on employees allows
     // self-read: auth.uid() = user_id.)

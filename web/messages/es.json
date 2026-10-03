@@ -3199,5 +3199,27 @@
     "cancel": "Cancelar",
     "error": "Error de pago. Intenta de nuevo.",
     "confirmError": "No se pudo confirmar el pago. Intenta de nuevo."
+  },
+  "confirmAge": {
+    "title": "Confirma tu edad",
+    "subtitle": "Ingresa tu fecha de nacimiento para continuar. Solo guardamos el año.",
+    "dateLabel": "Fecha de nacimiento",
+    "termsAgree": "Acepto los",
+    "terms": "Términos",
+    "and": " y la ",
+    "privacy": "Política de privacidad",
+    "continue": "Continuar",
+    "confirmTitle": "Confirma tu fecha de nacimiento",
+    "confirmMessage": "¿Tu fecha de nacimiento es {date}?",
+    "confirmYes": "Sí, continuar",
+    "confirmEdit": "Editar",
+    "error": "No pudimos confirmar tu edad. Inténtalo de nuevo.",
+    "loadError": "No pudimos revisar tu cuenta. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "loading": "Cargando",
+    "notEligibleTitle": "No elegible",
+    "notEligibleMessage": "No cumples los requisitos para usar JChat.",
+    "backHome": "Volver al inicio",
+    "signOut": "Cerrar sesión"
   }
 }

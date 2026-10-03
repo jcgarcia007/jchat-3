@@ -3907,8 +3907,10 @@ export type Database = {
       users: {
         Row: {
           active_business_id: string | null
+          age_confirmed_at: string | null
           avatar_url: string | null
           bio: string | null
+          birth_year: number | null
           city: string | null
           cover_url: string | null
           created_at: string
@@ -4079,6 +4081,7 @@ export type Database = {
           image_url: string | null
         }[]
       }
+      confirm_age: { Args: { p_birth_date: string }; Returns: Json }
       check_geofence_and_join_room: {
         Args: { _lat: number; _lng: number; _room_id: string }
         Returns: {

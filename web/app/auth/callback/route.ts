@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isSafeRedirectPath } from '@/lib/redirect';
+import { confirmAgeUrl, isAgeConfirmed } from '@/lib/age';
 
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams, origin } = new URL(request.url);
@@ -22,6 +23,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // 18+ gate: OAuth (Google/Apple) and email-confirmation links land here.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && !(await isAgeConfirmed(supabase, user.id))) {
+        return NextResponse.redirect(`${origin}${confirmAgeUrl(next)}`);
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

@@ -23,6 +23,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { requireAgeConfirmed } from "@/lib/age";
 import {
   IconShield,
   IconMapPin,
@@ -65,6 +66,7 @@ export default async function SuperAdminLayout({
     if (!user) {
       redirect("/auth/login?next=/super-admin");
     }
+    await requireAgeConfirmed(supabase, user.id, "/super-admin");
     const { data: isAdmin } = await supabase.rpc("is_platform_admin");
     if (!isAdmin) {
       redirect("/dashboard");

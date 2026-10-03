@@ -8,6 +8,7 @@ import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { requireAgeConfirmed } from "@/lib/age";
 
 export const metadata: Metadata = {
   title: "JChat Dashboard",
@@ -36,6 +37,7 @@ export default async function DashboardLayout({
     if (!user) {
       redirect("/auth/login?next=/dashboard");
     }
+    await requireAgeConfirmed(supabase, user.id, "/dashboard");
 
     // Platform admins (super_admin / admin_roles) ALWAYS have dashboard access, even
     // without a paid plan. Manual business verification lives at /super-admin/verification
