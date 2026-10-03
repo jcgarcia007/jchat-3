@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -13,58 +12,108 @@ import { IconArrowLeft } from '@tabler/icons-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
-import { initAndPresentPaymentSheet } from '../../services/stripe';
-import type { OrderPayload } from '../../services/stripe';
-import { DEFAULT_TAX_RATE } from '../../services/tax';
+import { useCart } from '../../context/CartContext';
+import type { CartModifierSelection } from '../../context/CartContext';
+import type { MenuItem, MenuOptionChoice } from '../../services/menu';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 type WebRoute = RouteProp<MainStackParamList, 'MenuWebPreview'>;
 type WebNav = NativeStackNavigationProp<MainStackParamList, 'MenuWebPreview'>;
 
-// Shape of the postMessage the web sends when the user taps "Continuar al pago"
-// in app mode. Must match what web/app/m/[slug]/MenuPageClient.tsx sends.
+/** The WebView may only navigate inside our own domain. */
+const WEB_ORIGIN_WHITELIST = ['https://jchat.cloud', 'https://*.jchat.cloud'];
+
+// What the web sends when the user taps "Continuar al pago" in app mode
+// (web/app/m/[slug]/MenuPageClient.tsx). It is UNTRUSTED input: validated before use.
+interface CheckoutLine {
+  menuItemId: string;
+  name: string;
+  qty: number;
+  priceCents: number;
+  size: string | null;
+  extras: string[];
+  modifiers: { g: string; c: string[] }[];
+  specialInstructions: string | null;
+}
+
 interface CheckoutMessage {
-  type: 'CHECKOUT';
   businessId: string;
   roomId: string | null;
-  items: {
-    menuItemId: string;
-    name: string;
-    qty: number;
-    priceCents: number;
-    options: { size: string | null; extras: string[]; modifiers: { g: string; c: string[] }[] };
-    specialInstructions: string | null;
-  }[];
+  items: CheckoutLine[];
 }
 
-function makeDemoOrderNumber(): string {
-  return `#J-${String(Math.floor(Math.random() * 99999) + 1).padStart(5, '0')}`;
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+
+/** Returns the message only if it has exactly the shape the cart needs; otherwise null. */
+function parseCheckoutMessage(raw: unknown): CheckoutMessage | null {
+  if (!isObject(raw) || raw.type !== 'CHECKOUT') return null;
+  if (typeof raw.businessId !== 'string' || !raw.businessId) return null;
+  if (raw.roomId !== null && raw.roomId !== undefined && typeof raw.roomId !== 'string') return null;
+  if (!Array.isArray(raw.items) || raw.items.length === 0 || raw.items.length > 100) return null;
+
+  const items: CheckoutLine[] = [];
+  for (const entry of raw.items) {
+    if (!isObject(entry)) return null;
+    const { menuItemId, name, qty, priceCents, options, specialInstructions } = entry;
+    if (typeof menuItemId !== 'string' || !menuItemId) return null;
+    if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > 99) return null;
+    // The price is display-only on the way in: the server re-prices everything.
+    const unitPrice = typeof priceCents === 'number' && Number.isFinite(priceCents) && priceCents >= 0 ? priceCents : 0;
+    const opts = isObject(options) ? options : {};
+    const modifiers: { g: string; c: string[] }[] = [];
+    if (Array.isArray(opts.modifiers)) {
+      for (const m of opts.modifiers) {
+        if (!isObject(m) || typeof m.g !== 'string' || !isStringArray(m.c)) return null;
+        modifiers.push({ g: m.g, c: m.c });
+      }
+    }
+    if (opts.extras !== undefined && !isStringArray(opts.extras)) return null;
+    if (opts.size !== undefined && opts.size !== null && typeof opts.size !== 'string') return null;
+    items.push({
+      menuItemId,
+      name: typeof name === 'string' ? name : '',
+      qty,
+      priceCents: unitPrice,
+      size: typeof opts.size === 'string' ? opts.size : null,
+      extras: (opts.extras as string[] | undefined) ?? [],
+      modifiers,
+      specialInstructions: typeof specialInstructions === 'string' ? specialInstructions : null,
+    });
+  }
+  return { businessId: raw.businessId, roomId: (raw.roomId as string | null | undefined) ?? null, items };
 }
 
-function makeIdempotencyKey(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+/** Minimal MenuItem for a cart line built from the web: Checkout re-prices from the server. */
+function menuItemFromWeb(line: CheckoutLine, businessId: string): MenuItem {
+  return {
+    id: line.menuItemId, category_id: '', business_id: businessId, name: line.name || '—',
+    description: null, price_cents: line.priceCents, photo_url: null, image_url: null,
+    staff_details: null, staff_details_alt: null, dietary_tags: [], id_required: false, badge: null,
+    is_available: true, is_published: true, stock_count: null, options: {}, sort: 0, has_modifiers: false,
+  };
 }
 
 export default function MenuWebPreviewScreen() {
   const c = useThemeColors();
+  const { t } = useTranslation('pos');
   const navigation = useNavigation<WebNav>();
   const route = useRoute<WebRoute>();
   const { slug, businessName, businessId, roomId } = route.params;
   const { user } = useAuth();
+  const cart = useCart();
 
   // WebView state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-
-  // Payment processing state
-  const [payProcessing, setPayProcessing] = useState(false);
-  const payingRef = useRef(false); // prevents double-trigger
+  const handedOffRef = useRef(false); // prevents a double hand-off to Checkout
 
   // ?app=1 signals the web to skip its own payment flow; ?room= passes the roomId.
   const uri = `https://jchat.cloud/m/${slug}?app=1${roomId ? `&room=${encodeURIComponent(roomId)}` : ''}`;
@@ -75,91 +124,62 @@ export default function MenuWebPreviewScreen() {
   }, []);
 
   // ── Checkout bridge ─────────────────────────────────────────────────────────
+  // The app does not compute or charge here: the web's lines go into the cart and the
+  // native Checkout screen asks the server for the real quote.
 
-  const handleCheckout = useCallback(async (msg: CheckoutMessage) => {
-    // Guard: one payment at a time
-    if (payingRef.current) return;
+  const handleCheckout = useCallback((msg: CheckoutMessage) => {
+    if (handedOffRef.current) return;
 
-    // R4 — verify the businessId from the message matches this screen's context.
-    // Without this check, a malicious page could target a different business.
-    if (msg.businessId !== businessId) {
-      Alert.alert(
-        'Error de seguridad',
-        'El negocio del pedido no coincide. Por favor vuelve al menú.',
-      );
+    // R4 — the message must be for THIS screen's business and room. A page that was navigated
+    // elsewhere (or tampered with) can't target another business.
+    if (msg.businessId !== businessId || (msg.roomId ?? null) !== (roomId ?? null)) {
+      Alert.alert(t('webPreview.securityTitle'), t('webPreview.securityMessage'));
+      return;
+    }
+    // Who pays is ALWAYS the native session — never anything from the page.
+    if (!user?.id) {
+      Alert.alert(t('webPreview.signInTitle'), t('webPreview.signInMessage'));
       return;
     }
 
-    // userId ALWAYS from the native Supabase session — never from the message.
-    const userId = user?.id;
-    if (!userId) {
-      Alert.alert(
-        'Sesión requerida',
-        'Necesitas iniciar sesión para pagar.',
-      );
-      return;
+    handedOffRef.current = true;
+    cart.clear();
+    cart.setContext(businessId, roomId ?? null);
+    cart.setOrderType(roomId ? 'table' : 'counter');
+    for (const line of msg.items) {
+      const size: MenuOptionChoice | null = line.size ? { label: line.size, price_cents: 0 } : null;
+      const extras: MenuOptionChoice[] = line.extras.map((label) => ({ label, price_cents: 0 }));
+      const modifierSelections: CartModifierSelection[] = line.modifiers.map((m) => ({
+        groupId: m.g,
+        groupLabel: '',
+        choices: m.c.map((label) => ({ label, price_cents: 0 })),
+      }));
+      cart.addLine({
+        item: menuItemFromWeb(line, businessId),
+        qty: line.qty,
+        size,
+        extras,
+        modifierSelections,
+        specialInstructions: line.specialInstructions ?? undefined,
+        unitPriceCents: line.priceCents,
+      });
     }
-
-    // Compute totals client-side (server recalculates everything; these are hints only).
-    const subtotalCents = msg.items.reduce((s, i) => s + i.priceCents * i.qty, 0);
-    const taxCents = Math.round(subtotalCents * DEFAULT_TAX_RATE);
-    const tipCents = 0;
-    const totalCents = subtotalCents + taxCents + tipCents;
-    const orderType = msg.roomId ? 'table' : 'counter';
-
-    const payload: OrderPayload = {
-      businessId,
-      userId,
-      roomId: msg.roomId,
-      orderType,
-      subtotalCents,
-      taxCents,
-      tipCents,
-      discountCents: 0,
-      totalCents,
-      idempotencyKey: makeIdempotencyKey(),
-      items: msg.items.map((i) => ({
-        menuItemId: i.menuItemId,
-        name: i.name,
-        qty: i.qty,
-        priceCents: i.priceCents,
-        options: i.options as Record<string, unknown>,
-        specialInstructions: i.specialInstructions,
-      })),
-    };
-
-    payingRef.current = true;
-    setPayProcessing(true);
-    try {
-      const result = await initAndPresentPaymentSheet(payload);
-      if (result.ok) {
-        navigation.navigate('PaymentSuccess', {
-          orderNumber: makeDemoOrderNumber(),
-          businessName: businessName ?? 'Restaurante',
-          orderType,
-          roomId: msg.roomId ?? undefined,
-          cardAlreadySaved: false,
-        });
-      } else if (result.code !== 'Canceled') {
-        Alert.alert(
-          'Error en el pago',
-          result.message || 'No se pudo procesar el pago. Inténtalo de nuevo.',
-        );
-      }
-    } finally {
-      setPayProcessing(false);
-      payingRef.current = false;
-    }
-  }, [businessId, businessName, user?.id, navigation]);
+    navigation.navigate('Checkout');
+    // Allow a new hand-off if the user comes back to the menu.
+    setTimeout(() => { handedOffRef.current = false; }, 1000);
+  }, [businessId, roomId, user?.id, cart, navigation, t]);
 
   const handleMessage = useCallback((e: WebViewMessageEvent) => {
+    let raw: unknown;
     try {
-      const msg = JSON.parse(e.nativeEvent.data) as { type?: string };
-      if (msg.type === 'CHECKOUT') {
-        void handleCheckout(msg as CheckoutMessage);
-      }
+      raw = JSON.parse(e.nativeEvent.data);
     } catch {
-      // Malformed message — ignore silently
+      return; // not JSON — ignore
+    }
+    const msg = parseCheckoutMessage(raw);
+    if (msg) handleCheckout(msg);
+    else if (isObject(raw) && raw.type === 'CHECKOUT') {
+      console.warn('[menu-web] rejected a malformed CHECKOUT message');
     }
   }, [handleCheckout]);
 
@@ -176,7 +196,7 @@ export default function MenuWebPreviewScreen() {
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1}>
-          {businessName ?? 'Menú'}
+          {businessName ?? t('webPreview.menuTitle')}
         </Text>
         {/* Spacer to keep title centered */}
         <View style={styles.btn} />
@@ -186,13 +206,13 @@ export default function MenuWebPreviewScreen() {
       {error ? (
         <View style={[styles.center, { backgroundColor: c.bgBase }]}>
           <Text style={[styles.errorText, { color: c.textSecondary }]}>
-            No se pudo cargar el menú.
+            {t('webPreview.loadError')}
           </Text>
           <Pressable
             onPress={handleRetry}
             style={[styles.retryBtn, { backgroundColor: palette.brand }]}
           >
-            <Text style={styles.retryBtnText}>Reintentar</Text>
+            <Text style={styles.retryBtnText}>{t('webPreview.retry')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -205,6 +225,8 @@ export default function MenuWebPreviewScreen() {
             onLoadEnd={() => setLoading(false)}
             onError={() => { setLoading(false); setError(true); }}
             onMessage={handleMessage}
+            originWhitelist={WEB_ORIGIN_WHITELIST}
+            onShouldStartLoadWithRequest={(request) => /^https:\/\/([a-z0-9-]+\.)*jchat\.cloud(\/|$|\?)/i.test(request.url) || request.url === 'about:blank'}
           />
           {loading && (
             <View style={[styles.loadingOverlay, { backgroundColor: c.bgBase }]}>
@@ -214,17 +236,6 @@ export default function MenuWebPreviewScreen() {
         </View>
       )}
 
-      {/* Payment processing overlay */}
-      <Modal transparent animationType="fade" visible={payProcessing} statusBarTranslucent>
-        <View style={styles.payOverlayBg}>
-          <View style={[styles.payOverlayCard, { backgroundColor: c.bgElevated }]}>
-            <ActivityIndicator size="large" color={palette.brand} />
-            <Text style={[styles.payOverlayText, { color: c.textPrimary }]}>
-              Procesando pago…
-            </Text>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -243,7 +254,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   errorText: { fontSize: 15 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
-  retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  retryBtnText: { color: palette.bgSurfaceLight, fontWeight: '700', fontSize: 14 },
   loadingOverlay: {
     position: 'absolute',
     top: 0,
@@ -252,24 +263,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  payOverlayBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  payOverlayCard: {
-    borderRadius: 20,
-    paddingHorizontal: 40,
-    paddingVertical: 36,
-    alignItems: 'center',
-    gap: 14,
-    minWidth: 220,
-  },
-  payOverlayText: {
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
   },
 });

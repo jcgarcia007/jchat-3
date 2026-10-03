@@ -107,13 +107,19 @@ export type MainStackParamList = {
   Cart: undefined;
   Checkout: undefined;
   PaymentSuccess: {
-    orderNumber: string;
-    businessName: string;
+    /** Present once the webhook created the order. Absent in "processing" mode. */
+    orderId?: string;
+    /** The real, server-assigned order number. */
+    orderNumber?: number;
+    businessName?: string;
     orderType: string;
     roomId?: string;
-    cardAlreadySaved?: boolean;
+    /** The order didn't show up within the polling window: tell the user it is being processed. */
+    processing?: boolean;
   };
   OrderTracking: { orderId: string; roomId?: string };
+  /** The signed-in user's own orders. */
+  MyOrders: undefined;
 };
 
 type RecoveryStackParamList = { ResetPassword: undefined };

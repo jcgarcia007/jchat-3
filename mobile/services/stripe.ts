@@ -27,37 +27,78 @@ import {
   initStripe,
 } from '@stripe/stripe-react-native';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { palette } from '../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type StripeResult = { ok: true } | { ok: false; code: string; message: string };
+/** Money breakdown the server returns (quote_order, and TOTAL_CHANGED answers). */
+export interface QuoteBreakdown {
+  subtotalCents: number;
+  taxCents: number;
+  taxRate: number;
+  taxSource: TaxSource;
+  tipCents: number;
+  totalCents: number;
+}
 
-export interface OrderPayload {
+/** saveCard has no payment intent: a plain ok / error. */
+export type SaveCardResult = { ok: true } | { ok: false; code: string; message: string };
+
+export type StripeResult =
+  | { ok: true; paymentIntentId: string }
+  | { ok: false; code: string; message: string; breakdown?: QuoteBreakdown };
+
+/** Where the tax rate came from: the business, the US state table, or nowhere (0 %). */
+export type TaxSource = 'business' | 'state' | 'none';
+
+export interface OrderItemInput {
+  menuItemId: string;
+  qty: number;
+  options?: Record<string, unknown>;
+  specialInstructions?: string | null;
+}
+
+/** What the server needs to price an order. Prices, names, tax and totals are NEVER sent. */
+export interface OrderRequest {
   /** Supabase business UUID */
   businessId: string;
-  /** Supabase user UUID (logged-in user) */
-  userId: string;
   roomId?: string | null;
   orderType: 'table' | 'counter' | 'gift';
   giftRecipientId?: string | null;
-  subtotalCents: number;
-  taxCents: number;
-  tipCents: number;
-  discountCents: number;
-  totalCents: number;
-  promoCode?: string | null;
-  specialInstructions?: string | null;
   tableLabel?: string | null;
-  /** Fresh key per payment attempt (server namespaces it with the JWT user). */
+  specialInstructions?: string | null;
+  tipCents: number;
+  items: OrderItemInput[];
+}
+
+export interface OrderPayload extends OrderRequest {
+  /** Signed-in user UUID (trace only: the server trusts the JWT). */
+  userId: string;
+  /** One key per QUOTE (`q_<quote_hash>`); the server namespaces it with the JWT user. */
   idempotencyKey?: string;
-  items: {
-    menuItemId: string;
-    name: string;
-    qty: number;
-    priceCents: number;
-    options?: Record<string, unknown>;
-    specialInstructions?: string | null;
-  }[];
+  /** The total the customer saw; the server answers TOTAL_CHANGED instead of charging a different one. */
+  expectedTotalCents?: number;
+}
+
+export interface QuoteLine {
+  menu_item_id: string;
+  name: string;
+  qty: number;
+  unit_cents: number;
+  line_cents: number;
+  options: Record<string, unknown>;
+}
+
+/** The server's answer to quote_order — shown to the user exactly as returned. */
+export interface OrderQuote {
+  lines: QuoteLine[];
+  subtotal_cents: number;
+  tax_cents: number;
+  tax_rate: number;
+  tax_source: TaxSource;
+  tip_cents: number;
+  total_cents: number;
+  quote_hash: string;
 }
 
 /** Shape returned by the `payments` Edge Function for create_payment_intent */
@@ -88,7 +129,7 @@ interface SetupSheetParams {
  */
 async function readFunctionError(
   error: unknown,
-): Promise<{ status: number | null; message: string }> {
+): Promise<{ status: number | null; message: string; code?: string; breakdown?: QuoteBreakdown }> {
   const fallback =
     error instanceof Error ? error.message : 'Unknown function error';
 
@@ -113,7 +154,13 @@ async function readFunctionError(
       const body = await (source.json as () => Promise<unknown>)();
       const serverMsg = (body as { error?: unknown })?.error;
       if (typeof serverMsg === 'string' && serverMsg.length > 0) {
-        return { status, message: serverMsg };
+        const code = (body as { code?: unknown })?.code;
+        return {
+          status,
+          message: serverMsg,
+          code: typeof code === 'string' ? code : undefined,
+          breakdown: (body as { breakdown?: QuoteBreakdown })?.breakdown,
+        };
       }
     } catch {
       // sigue al intento por texto
@@ -129,7 +176,13 @@ async function readFunctionError(
           const body = JSON.parse(raw);
           const serverMsg = (body as { error?: unknown })?.error;
           if (typeof serverMsg === 'string' && serverMsg.length > 0) {
-            return { status, message: serverMsg };
+            const code = (body as { code?: unknown })?.code;
+            return {
+              status,
+              message: serverMsg,
+              code: typeof code === 'string' ? code : undefined,
+              breakdown: (body as { breakdown?: QuoteBreakdown })?.breakdown,
+            };
           }
         } catch {
           // el body no era JSON; devolvemos el texto crudo si es corto y útil
@@ -145,10 +198,62 @@ async function readFunctionError(
 }
 
 class PaymentsFunctionError extends Error {
-  constructor(message: string, public status: number | null) {
+  constructor(
+    message: string,
+    public status: number | null,
+    public code?: string,
+    public breakdown?: QuoteBreakdown,
+  ) {
     super(message);
     this.name = 'PaymentsFunctionError';
   }
+}
+
+// ── order body / quote ────────────────────────────────────────────────────────
+
+/** camelCase → snake_case body for the Edge Function. No prices, names or totals go out. */
+function toOrderBody(order: OrderRequest, userId?: string) {
+  return {
+    business_id: order.businessId,
+    ...(userId ? { user_id: userId } : {}),
+    room_id: order.roomId ?? null,
+    order_type: order.orderType,
+    table_label: order.tableLabel ?? null,
+    gift_recipient_id: order.giftRecipientId ?? null,
+    special_instructions: order.specialInstructions ?? null,
+    tip_cents: order.tipCents,
+    items: order.items.map((it) => ({
+      menu_item_id: it.menuItemId,
+      qty: it.qty,
+      options: it.options,
+      special_instructions: it.specialInstructions ?? null,
+    })),
+  };
+}
+
+/** Thrown by quoteOrder; `code` is the server's error code (e.g. 'MODIFIERS_INVALID'). */
+export class QuoteError extends Error {
+  constructor(message: string, public status: number | null, public code?: string) {
+    super(message);
+    this.name = 'QuoteError';
+  }
+}
+
+/**
+ * Ask the server to price an order (payments / quote_order). Creates nothing. The checkout
+ * screen displays EXACTLY what comes back and uses quote_hash as the payment idempotency key.
+ */
+export async function quoteOrder(order: OrderRequest): Promise<OrderQuote> {
+  if (!isSupabaseConfigured) throw new QuoteError('Supabase is not configured.', null);
+  const { data, error } = await supabase.functions.invoke<OrderQuote>('payments', {
+    body: { action: 'quote_order', order: toOrderBody(order) },
+  });
+  if (error) {
+    const { status, message, code } = await readFunctionError(error);
+    throw new QuoteError(message, status, code);
+  }
+  if (!data?.quote_hash) throw new QuoteError('The server returned no quote.', null);
+  return data;
 }
 
 // ── fetchPaymentSheetParams ───────────────────────────────────────────────────
@@ -166,41 +271,19 @@ export async function fetchPaymentSheetParams(
     throw new Error('Supabase is not configured. Cannot create a PaymentIntent.');
   }
 
-  // Map camelCase → snake_case for the Edge Function body
   const { data, error } = await supabase.functions.invoke<PaymentSheetParams>('payments', {
     body: {
       action: 'create_payment_intent',
       idempotency_key: order.idempotencyKey ?? null,
-      order: {
-        business_id: order.businessId,
-        user_id: order.userId,
-        room_id: order.roomId ?? null,
-        order_type: order.orderType,
-        table_label: order.tableLabel ?? null,
-        gift_recipient_id: order.giftRecipientId ?? null,
-        subtotal_cents: order.subtotalCents,
-        tax_cents: order.taxCents,
-        tip_cents: order.tipCents,
-        discount_cents: order.discountCents,
-        total_cents: order.totalCents,
-        promo_code: order.promoCode ?? null,
-        special_instructions: order.specialInstructions ?? null,
-        items: order.items.map((it) => ({
-          menu_item_id: it.menuItemId,
-          name: it.name,
-          qty: it.qty,
-          price_cents: it.priceCents,
-          options: it.options,
-          special_instructions: it.specialInstructions ?? null,
-        })),
-      },
+      expected_total_cents: order.expectedTotalCents ?? null,
+      order: toOrderBody(order, order.userId),
     },
   });
 
   if (error) {
-    const { status, message } = await readFunctionError(error);
-    console.error('[stripe] create_payment_intent failed:', status, message);
-    throw new PaymentsFunctionError(message, status);
+    const { status, message, code, breakdown } = await readFunctionError(error);
+    console.error('[stripe] create_payment_intent failed:', status, code, message);
+    throw new PaymentsFunctionError(message, status, code, breakdown);
   }
 
   if (!data?.clientSecret) {
@@ -231,6 +314,8 @@ export async function initAndPresentPaymentSheet(
 ): Promise<StripeResult> {
   try {
     const params = await fetchPaymentSheetParams(order);
+    // The PaymentIntent id is the part of the client secret before "_secret".
+    const paymentIntentId = params.clientSecret.split('_secret')[0];
 
     // Initialize Stripe with the publishable key from the server response
     // (allows the key to come from env without baking it into the bundle at build time)
@@ -257,10 +342,10 @@ export async function initAndPresentPaymentSheet(
         merchantCountryCode: 'US',
         testEnv: __DEV__,
       },
-      // Appearance — uses JChat brand color (BRAND token: #5C7CFA)
+      // Appearance — uses the JChat brand color token
       appearance: {
         colors: {
-          primary: '#5C7CFA',
+          primary: palette.brand,
         },
       },
       returnURL: 'jchat://stripe-return',
@@ -291,9 +376,16 @@ export async function initAndPresentPaymentSheet(
     }
 
     // Sheet was confirmed — payment succeeded. The server webhook will create the order.
-    return { ok: true };
+    return { ok: true, paymentIntentId };
   } catch (err) {
     if (err instanceof PaymentsFunctionError) {
+      // 409 TOTAL_CHANGED = the price moved since the quote: nothing was charged, re-quote.
+      if (err.code === 'TOTAL_CHANGED') {
+        return { ok: false, code: 'TotalChanged', message: err.message, breakdown: err.breakdown };
+      }
+      if (err.code === 'MODIFIERS_INVALID') {
+        return { ok: false, code: 'ModifiersInvalid', message: err.message };
+      }
       // 409 = el negocio no puede cobrar aún (gates de Connect); 4xx = validación.
       return {
         ok: false,
@@ -315,7 +407,7 @@ export async function initAndPresentPaymentSheet(
  *
  * The Edge Function creates the SetupIntent server-side; this module presents it.
  */
-export async function saveCard(userId: string): Promise<StripeResult> {
+export async function saveCard(userId: string): Promise<SaveCardResult> {
   if (!isSupabaseConfigured) {
     return {
       ok: false,
@@ -356,7 +448,7 @@ export async function saveCard(userId: string): Promise<StripeResult> {
       allowsDelayedPaymentMethods: false,
       appearance: {
         colors: {
-          primary: '#5C7CFA',
+          primary: palette.brand,
         },
       },
       returnURL: 'jchat://stripe-return',

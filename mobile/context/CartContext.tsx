@@ -44,7 +44,6 @@ interface CartContextValue {
   giftRecipientId: string | null;
   /** Free-text table/location for order_type = table (e.g. "5", "barra"). */
   tableLabel: string | null;
-  promoCode: string | null;
   itemCount: number;
   subtotalCents: number;
   setContext: (businessId: string, roomId: string | null) => void;
@@ -54,7 +53,6 @@ interface CartContextValue {
   setOrderType: (t: OrderType) => void;
   setGiftRecipient: (userId: string | null) => void;
   setTableLabel: (v: string | null) => void;
-  setPromoCode: (code: string | null) => void;
   clear: () => void;
 }
 
@@ -82,14 +80,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [orderType, setOrderType] = useState<OrderType>('table');
   const [giftRecipientId, setGiftRecipientId] = useState<string | null>(null);
   const [tableLabel, setTableLabel] = useState<string | null>(null);
-  const [promoCode, setPromoCode] = useState<string | null>(null);
 
   const setContext = useCallback((bId: string, rId: string | null) => {
     setBusinessId((prev) => {
       // Switching business clears the cart.
       if (prev && prev !== bId) {
         setLines([]);
-        setPromoCode(null);
       }
       return bId;
     });
@@ -123,7 +119,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => {
     setLines([]);
-    setPromoCode(null);
     setGiftRecipientId(null);
     setTableLabel(null);
     setOrderType('table');
@@ -143,7 +138,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       orderType,
       giftRecipientId,
       tableLabel,
-      promoCode,
       itemCount,
       subtotalCents,
       setContext,
@@ -153,11 +147,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setOrderType,
       setGiftRecipient: setGiftRecipientId,
       setTableLabel,
-      setPromoCode,
       clear,
     }),
     [
-      businessId, roomId, lines, orderType, giftRecipientId, tableLabel, promoCode,
+      businessId, roomId, lines, orderType, giftRecipientId, tableLabel,
       itemCount, subtotalCents, setContext, addLine, updateQty, removeLine, clear,
     ],
   );

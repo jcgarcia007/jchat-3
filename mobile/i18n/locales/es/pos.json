@@ -59,13 +59,6 @@
     "orderGift": "Regalo",
     "orderGiftSub": "Envíalo a alguien",
     "userFallback": "Usuario",
-    "invalidCode": "Código inválido o vencido.",
-    "invalidCodeShort": "Código inválido.",
-    "minOrder": "El pedido mínimo es {{amount}} para este código.",
-    "promoValidateError": "No se pudo validar el código. Inténtalo de nuevo.",
-    "percentOff": "{{value}}% de descuento",
-    "fixedOff": "{{amount}} de descuento",
-    "demoDiscount": "10% de descuento (demo)",
     "removeItemTitle": "¿Quitar artículo?",
     "removeItemMessage": "Esto quitará el artículo de tu carrito.",
     "removeItemNamed": "¿Quitar \"{{name}}\" de tu carrito?",
@@ -89,14 +82,7 @@
     "sendGiftToUserA11y": "Enviar regalo a {{name}}",
     "recipientRequired": "Se requiere un destinatario para continuar.",
     "items": "Artículos",
-    "promoCode": "Código promocional",
-    "promoPlaceholder": "Ingresa el código…",
-    "removePromoA11y": "Quitar código promocional",
-    "applyPromoA11y": "Aplicar código promocional",
-    "apply": "Aplicar",
-    "codeApplied": "Código aplicado — {{label}} (−{{amount}})",
     "subtotal": "Subtotal",
-    "discountLabel": "Descuento ({{label}})",
     "taxLabel": "Impuesto (8%)",
     "total": "Total",
     "checkoutHint": "Selecciona un destinatario arriba.",
@@ -106,7 +92,8 @@
     "tableLabelA11y": "Mesa o lugar",
     "proceedCheckout": "Ir al pago · {{amount}}",
     "proceedCheckoutA11y": "Ir al pago — {{amount}}",
-    "selectOrderType": "Elige el tipo de pedido para continuar"
+    "selectOrderType": "Elige el tipo de pedido para continuar",
+    "taxAtCheckout": "Los impuestos y la propina se calculan al pagar."
   },
   "checkout": {
     "title": "Pago",
@@ -116,14 +103,6 @@
     "paymentError": "Algo salió mal. Inténtalo de nuevo.",
     "retryA11y": "Reintentar el pago",
     "tryAgain": "Intentar de nuevo",
-    "payCard": "Tarjeta guardada",
-    "cardMasked": "•••• 4242",
-    "payApple": "Apple Pay",
-    "payAppleSub": "Touch o Face ID",
-    "payGoogle": "Google Pay",
-    "payGoogleSub": "Paga con Google",
-    "payPaypal": "PayPal",
-    "payPaypalSub": "Redirigir a PayPal",
     "bioPrompt": "Pagar {{amount}}",
     "bioFallback": "Usar código",
     "emptyTitle": "Nada para pagar",
@@ -139,13 +118,23 @@
     "tipCustom": "Personalizada",
     "tipPercent": "{{value}}%",
     "customTipA11y": "Monto de propina personalizada en dólares",
-    "paymentMethod": "Método de pago",
-    "paymentOptionA11y": "{{label}} — {{sublabel}}",
     "tipLabelCustom": "Propina (personalizada)",
     "tipLabelPercent": "Propina ({{value}}%)",
     "payA11y": "Pagar {{amount}} con Face ID",
     "payButton": "Pagar {{amount}} con Face ID",
-    "securedByStripe": "Protegido por Stripe"
+    "securedByStripe": "Protegido por Stripe",
+    "quoteError": "No pudimos obtener el precio exacto. Revisa tu conexión e inténtalo de nuevo.",
+    "quoteRetry": "Reintentar",
+    "taxLabelRate": "Impuesto ({{rate}}%)",
+    "taxNotConfigured": "El negocio no tiene impuestos configurados.",
+    "bioFailedTitle": "No pudimos verificar tu identidad",
+    "bioFailedMessage": "El pago no se realizó. Inténtalo de nuevo para confirmarlo.",
+    "totalChangedTitle": "El total cambió",
+    "totalChangedMessage": "Se actualizaron los precios: {{total}} (subtotal {{subtotal}}, impuesto {{tax}}, propina {{tip}}). No se cobró nada. Revísalo y paga de nuevo.",
+    "totalChangedGeneric": "Se actualizaron los precios. No se cobró nada. Revisa el nuevo total y paga de nuevo.",
+    "signInRequired": "Inicia sesión para pagar.",
+    "payWaiting": "Calculando total…",
+    "payWaitingA11y": "Calculando el total del pedido"
   },
   "success": {
     "title": "¡Pago confirmado!",
@@ -164,7 +153,13 @@
     "backToChatA11y": "Volver al chat",
     "doneA11y": "Listo",
     "backToChat": "Volver al chat",
-    "done": "Listo"
+    "done": "Listo",
+    "orderNumberValue": "#{{number}}",
+    "processingNote": "Tu pago se realizó. Estamos terminando tu pedido: lo verás en Mis pedidos.",
+    "viewOrder": "Ver pedido",
+    "viewOrderA11y": "Ver estado del pedido",
+    "viewMyOrders": "Ver mis pedidos",
+    "viewMyOrdersA11y": "Ver mis pedidos"
   },
   "tracking": {
     "stepConfirmed": "Confirmado",
@@ -203,5 +198,14 @@
   "errors": {
     "methodLockedAmount": "Esta mesa ya se está dividiendo por monto. No se puede cambiar a pago por platos.",
     "methodLockedItems": "Esta mesa ya se está dividiendo por platos. No se puede cambiar a partes iguales."
+  },
+  "webPreview": {
+    "menuTitle": "Menú",
+    "loadError": "No se pudo cargar el menú.",
+    "retry": "Reintentar",
+    "securityTitle": "Error de seguridad",
+    "securityMessage": "El negocio del pedido no coincide. Por favor vuelve al menú.",
+    "signInTitle": "Sesión requerida",
+    "signInMessage": "Necesitas iniciar sesión para pagar."
   }
 }

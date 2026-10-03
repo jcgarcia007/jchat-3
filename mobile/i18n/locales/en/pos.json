@@ -59,13 +59,6 @@
     "orderGift": "Gift",
     "orderGiftSub": "Send to someone",
     "userFallback": "User",
-    "invalidCode": "Invalid or expired code.",
-    "invalidCodeShort": "Invalid code.",
-    "minOrder": "Minimum order is {{amount}} for this code.",
-    "promoValidateError": "Could not validate promo code. Please try again.",
-    "percentOff": "{{value}}% off",
-    "fixedOff": "{{amount}} off",
-    "demoDiscount": "10% off (demo)",
     "removeItemTitle": "Remove item?",
     "removeItemMessage": "This will remove the item from your cart.",
     "removeItemNamed": "Remove \"{{name}}\" from your cart?",
@@ -89,14 +82,7 @@
     "sendGiftToUserA11y": "Send gift to {{name}}",
     "recipientRequired": "A recipient is required to proceed.",
     "items": "Items",
-    "promoCode": "Promo Code",
-    "promoPlaceholder": "Enter promo code…",
-    "removePromoA11y": "Remove promo code",
-    "applyPromoA11y": "Apply promo code",
-    "apply": "Apply",
-    "codeApplied": "Code applied — {{label}} (−{{amount}})",
     "subtotal": "Subtotal",
-    "discountLabel": "Discount ({{label}})",
     "taxLabel": "Tax (8%)",
     "total": "Total",
     "checkoutHint": "Please select a gift recipient above.",
@@ -106,7 +92,8 @@
     "tableLabelA11y": "Table or location",
     "proceedCheckout": "Proceed to Checkout · {{amount}}",
     "proceedCheckoutA11y": "Proceed to checkout — {{amount}}",
-    "selectOrderType": "Select order type to proceed"
+    "selectOrderType": "Select order type to proceed",
+    "taxAtCheckout": "Taxes and tip are calculated at checkout."
   },
   "checkout": {
     "title": "Checkout",
@@ -116,14 +103,6 @@
     "paymentError": "Something went wrong. Please try again.",
     "retryA11y": "Retry payment",
     "tryAgain": "Try again",
-    "payCard": "Saved Card",
-    "cardMasked": "•••• 4242",
-    "payApple": "Apple Pay",
-    "payAppleSub": "Touch or Face ID",
-    "payGoogle": "Google Pay",
-    "payGoogleSub": "Pay with Google",
-    "payPaypal": "PayPal",
-    "payPaypalSub": "Redirect to PayPal",
     "bioPrompt": "Pay {{amount}}",
     "bioFallback": "Use Passcode",
     "emptyTitle": "Nothing to check out",
@@ -139,13 +118,23 @@
     "tipCustom": "Custom",
     "tipPercent": "{{value}}%",
     "customTipA11y": "Custom tip amount in dollars",
-    "paymentMethod": "Payment Method",
-    "paymentOptionA11y": "{{label}} — {{sublabel}}",
     "tipLabelCustom": "Tip (custom)",
     "tipLabelPercent": "Tip ({{value}}%)",
     "payA11y": "Pay {{amount}} with Face ID",
     "payButton": "Pay {{amount}} with Face ID",
-    "securedByStripe": "Secured by Stripe"
+    "securedByStripe": "Secured by Stripe",
+    "quoteError": "We couldn't get the exact price. Check your connection and try again.",
+    "quoteRetry": "Retry",
+    "taxLabelRate": "Tax ({{rate}}%)",
+    "taxNotConfigured": "Taxes are not configured by this business.",
+    "bioFailedTitle": "We couldn't verify your identity",
+    "bioFailedMessage": "The payment was not made. Try again to confirm it.",
+    "totalChangedTitle": "The total changed",
+    "totalChangedMessage": "Prices were updated: {{total}} (subtotal {{subtotal}}, tax {{tax}}, tip {{tip}}). Nothing was charged. Review it and pay again.",
+    "totalChangedGeneric": "Prices were updated. Nothing was charged. Review the new total and pay again.",
+    "signInRequired": "Sign in to pay.",
+    "payWaiting": "Calculating total…",
+    "payWaitingA11y": "Calculating the order total"
   },
   "success": {
     "title": "Payment confirmed!",
@@ -164,7 +153,13 @@
     "backToChatA11y": "Back to chat",
     "doneA11y": "Done",
     "backToChat": "Back to chat",
-    "done": "Done"
+    "done": "Done",
+    "orderNumberValue": "#{{number}}",
+    "processingNote": "Your payment went through. We're finishing your order — you'll find it in My orders.",
+    "viewOrder": "View order",
+    "viewOrderA11y": "View order status",
+    "viewMyOrders": "View my orders",
+    "viewMyOrdersA11y": "View my orders"
   },
   "tracking": {
     "stepConfirmed": "Confirmed",
@@ -203,5 +198,14 @@
   "errors": {
     "methodLockedAmount": "This table is splitting by amount. Cannot switch to per-item payment.",
     "methodLockedItems": "This table is splitting by items. Cannot switch to equal shares."
+  },
+  "webPreview": {
+    "menuTitle": "Menu",
+    "loadError": "The menu couldn't be loaded.",
+    "retry": "Retry",
+    "securityTitle": "Security error",
+    "securityMessage": "The order's business doesn't match. Please go back to the menu.",
+    "signInTitle": "Sign-in required",
+    "signInMessage": "You need to sign in to pay."
   }
 }

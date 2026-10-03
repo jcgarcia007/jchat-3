@@ -1,28 +1,23 @@
 /**
- * JChat 3.0 — CheckoutScreen (Task 3.5)
+ * JChat 3.0 — CheckoutScreen (Task 3.5, reworked for the server quote)
  *
  * Single-scroll express checkout. Arrived at from CartScreen via
  * CommonActions.navigate({ name: 'Checkout' }).
  *
- * ── Sections ──────────────────────────────────────────────────────────────────
- * 1. Header — back button + "Checkout"
- * 2. Order summary — collapsed line list + edit shortcut (→ Cart)
- * 3. Tip selector — 10 / 15 / 20 / Custom (number input)
- * 4. Payment method — saved card · Apple Pay · Google Pay · PayPal (radio)
- * 5. Total breakdown — subtotal · tax (~8%) · tip · grand total
- * 6. Pay button — "Pay $XX.XX with Face ID" → authenticateAsync → payment sheet
- * 7. "Secured by Stripe" footer with IconLock
+ * The app does NOT compute money. On entry, and whenever the cart or the tip changes
+ * (debounced 400 ms), it asks the server for a quote (payments / quote_order) and shows
+ * EXACTLY what comes back: lines with the server's names and prices, subtotal, tax with its
+ * rate, tip and total. Pay stays disabled while a quote is loading or failed.
  *
  * ── Payment flow ──────────────────────────────────────────────────────────────
- * a. Tap "Pay" → Face ID / biometrics via expo-local-authentication.
- * b. On biometric success → initAndPresentPaymentSheet(orderPayload).
- *    (In demo mode: skip both and simulate success.)
- * c. On StripeResult.ok → inline Processing overlay → navigate PaymentSuccess.
- * d. On StripeResult.error → error bottom sheet with retry button.
- *
- * ── Guards ────────────────────────────────────────────────────────────────────
- * - If cart is empty, shows an empty state and a "Back to menu" button.
- * - isSupabaseConfigured guard: demo mode simulates success.
+ * a. Tap "Pay" → processing starts at once (no double taps) → Face ID / biometrics.
+ *    A failed verification asks "Try again / Cancel" and never pays; a device without
+ *    biometrics goes straight on.
+ * b. initAndPresentPaymentSheet with ONE idempotency key per quote (q_<quote_hash>) and
+ *    expected_total_cents = the total shown. If the server says TOTAL_CHANGED, nothing is
+ *    charged: the new breakdown is shown and the screen re-quotes.
+ * c. On success the app polls orders.stripe_pi_id (the webhook creates the order) for up to
+ *    15 s, then opens PaymentSuccess with the real order number, or in "processing" mode.
  *
  * Colors: useThemeColors() + palette — NO hardcoded hex.
  * Icons: @tabler/icons-react-native.
@@ -38,6 +33,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -56,11 +52,6 @@ import { authenticateAsync } from 'expo-local-authentication';
 
 import {
   IconArrowLeft,
-  IconBrandApple,
-  IconBrandGoogle,
-  IconBrandPaypal,
-  IconCheck,
-  IconCreditCard,
   IconEdit,
   IconLock,
   IconShoppingBag,
@@ -70,12 +61,11 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { initAndPresentPaymentSheet } from '../../services/stripe';
-import type { OrderPayload } from '../../services/stripe';
-import { createOrderRecord } from '../../services/orders';
+import { initAndPresentPaymentSheet, quoteOrder } from '../../services/stripe';
+import type { OrderItemInput, OrderQuote, OrderRequest } from '../../services/stripe';
+import { getOrderByPaymentIntent } from '../../services/orders';
+import type { PaidOrderSummary } from '../../services/orders';
 import { formatCents } from '../../utils/currency';
-import { isSupabaseConfigured } from '../../services/supabase';
-import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -84,72 +74,30 @@ type CheckoutNav = NativeStackNavigationProp<MainStackParamList>;
 
 type TipPreset = 10 | 15 | 20 | 'custom';
 
-type PaymentMethod = 'card' | 'apple' | 'google' | 'paypal';
-
-type PaymentLabelKey = 'checkout.payCard' | 'checkout.payApple' | 'checkout.payGoogle' | 'checkout.payPaypal';
-type PaymentSubKey = 'checkout.cardMasked' | 'checkout.payAppleSub' | 'checkout.payGoogleSub' | 'checkout.payPaypalSub';
-
-interface PaymentMethodOption {
-  id: PaymentMethod;
-  labelKey: PaymentLabelKey;
-  sublabelKey: PaymentSubKey;
-  Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
-}
+type QuoteState =
+  | { status: 'loading'; quote: OrderQuote | null }
+  | { status: 'ready'; quote: OrderQuote }
+  | { status: 'error'; message: string; quote: OrderQuote | null };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Tax rate is resolved per business via getTaxRateForBusiness (localized).
-
 const TIP_PRESETS: TipPreset[] = [10, 15, 20, 'custom'];
 
-const PAYMENT_OPTIONS: PaymentMethodOption[] = [
-  {
-    id: 'card',
-    labelKey: 'checkout.payCard',
-    sublabelKey: 'checkout.cardMasked',
-    Icon: IconCreditCard,
-  },
-  {
-    id: 'apple',
-    labelKey: 'checkout.payApple',
-    sublabelKey: 'checkout.payAppleSub',
-    Icon: IconBrandApple,
-  },
-  {
-    id: 'google',
-    labelKey: 'checkout.payGoogle',
-    sublabelKey: 'checkout.payGoogleSub',
-    Icon: IconBrandGoogle,
-  },
-  {
-    id: 'paypal',
-    labelKey: 'checkout.payPaypal',
-    // TODO(paypal): enable via Stripe PayPal integration
-    sublabelKey: 'checkout.payPaypalSub',
-    Icon: IconBrandPaypal,
-  },
-];
-
-// Show Apple Pay only on iOS, Google Pay only on Android.
-function filteredPaymentOptions(): PaymentMethodOption[] {
-  return PAYMENT_OPTIONS.filter((opt) => {
-    if (opt.id === 'apple') return Platform.OS === 'ios';
-    if (opt.id === 'google') return Platform.OS === 'android';
-    return true;
-  });
-}
+/** How long the cart/tip must stay still before asking the server for a new quote. */
+const QUOTE_DEBOUNCE_MS = 400;
+/** After paying, how long we wait for the webhook to create the order. */
+const ORDER_POLL_ATTEMPTS = 15;
+const ORDER_POLL_INTERVAL_MS = 1000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function generateDemoOrderNumber(): string {
-  const n = Math.floor(Math.random() * 99999) + 1;
-  return `#J-${String(n).padStart(5, '0')}`;
+/** 0.07 → "7", 0.0725 → "7.25": the rate exactly as the server returned it. */
+function formatTaxRate(rate: number): string {
+  return String(parseFloat((rate * 100).toFixed(3)));
 }
 
-/** Fresh key per payment attempt — see payments EF: a cart-derived key collides
- *  when the customer repeats an identical order. */
-function makeIdempotencyKey(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── Sub-component: Processing Overlay ─────────────────────────────────────────
@@ -186,7 +134,7 @@ function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
 const overlayStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: palette.scrim,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -286,7 +234,7 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
 const sheetStyles = StyleSheet.create({
   scrim: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: palette.scrim,
   },
   sheet: {
     position: 'absolute',
@@ -337,7 +285,7 @@ const sheetStyles = StyleSheet.create({
     alignItems: 'center',
   },
   retryBtnText: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -368,7 +316,6 @@ export default function CheckoutScreen() {
     orderType,
     giftRecipientId,
     tableLabel,
-    promoCode,
     subtotalCents,
     businessId,
     roomId,
@@ -379,26 +326,33 @@ export default function CheckoutScreen() {
 
   const [tipPreset, setTipPreset] = useState<TipPreset>(15);
   const [customTipInput, setCustomTipInput] = useState('');
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('card');
   const [processing, setProcessing] = useState(false);
   const [errorVisible, setErrorVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [quoteState, setQuoteState] = useState<QuoteState>({ status: 'loading', quote: null });
+  /** Bumped to force a new quote (Retry, or after the server said the total changed). */
+  const [quoteNonce, setQuoteNonce] = useState(0);
 
-  // Localized tax rate, resolved from the business (Stage 3 cleanup).
-  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
+  // Synchronous guards: state updates are too late to stop a fast double tap, and effects
+  // must ignore answers that belong to an older cart.
+  const processingRef = useRef(false);
+  const quoteSeqRef = useRef(0);
+  const mountedRef = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-    getTaxRateForBusiness(businessId).then((rate) => {
-      if (!cancelled) setTaxRate(rate);
-    });
-    return () => { cancelled = true; };
-  }, [businessId]);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Animated scale for pay button press
   const payBtnScale = useRef(new Animated.Value(1)).current;
 
-  // ── Tip calculation ──────────────────────────────────────────────────────────
+  const quote = quoteState.quote;
 
+  // ── Tip ──────────────────────────────────────────────────────────────────────
+  // Presets are a percentage of the SERVER subtotal once there is a quote (the cart's own
+  // number only until then). The tip is the one amount the server accepts from the app.
+
+  const tipBaseCents = quote?.subtotal_cents ?? subtotalCents;
   const tipCents = useMemo<number>(() => {
     if (tipPreset === 'custom') {
       const parsed = parseFloat(customTipInput.replace(/[^0-9.]/g, ''));
@@ -407,18 +361,64 @@ export default function CheckoutScreen() {
       }
       return 0;
     }
-    return Math.round(subtotalCents * (tipPreset / 100));
-  }, [tipPreset, customTipInput, subtotalCents]);
+    return Math.round(tipBaseCents * (tipPreset / 100));
+  }, [tipPreset, customTipInput, tipBaseCents]);
 
-  // ── Total breakdown ──────────────────────────────────────────────────────────
+  // ── What the server is asked to price (ids, quantities and selected option labels only) ──
 
-  // Localized tax rate (from business.tax_rate or address).
-  const taxCents = Math.round(subtotalCents * taxRate);
-  const totalCents = subtotalCents + taxCents + tipCents;
+  const orderItems = useMemo<OrderItemInput[]>(
+    () => lines.map((l) => ({
+      menuItemId: l.item.id,
+      qty: l.qty,
+      // Labels only: the server resolves every price (and checks required groups) from the DB.
+      options: {
+        size: l.size?.label ?? null,
+        extras: (l.extras ?? []).map((e) => e.label),
+        modifiers: (l.modifierSelections ?? []).map((g) => ({
+          g: g.groupId,
+          c: g.choices.map((ch) => ch.label),
+        })),
+      },
+      specialInstructions: l.specialInstructions ?? null,
+    })),
+    [lines],
+  );
+  const itemsKey = useMemo(() => JSON.stringify(orderItems), [orderItems]);
 
-  // ── Payment options (platform-filtered) ──────────────────────────────────────
+  const buildRequest = useCallback((): OrderRequest => ({
+    businessId: businessId ?? '',
+    roomId: roomId ?? null,
+    orderType,
+    giftRecipientId,
+    tableLabel,
+    tipCents,
+    items: orderItems,
+  }), [businessId, roomId, orderType, giftRecipientId, tableLabel, tipCents, orderItems]);
 
-  const paymentOptions = useMemo(() => filteredPaymentOptions(), []);
+  // ── Quote: on entry and whenever the cart or the tip changes (debounced) ─────
+
+  useEffect(() => {
+    if (!businessId || lines.length === 0) return;
+    const quoteId = ++quoteSeqRef.current;
+    setQuoteState((previous) => ({ status: 'loading', quote: previous.quote }));
+    const timer = setTimeout(() => {
+      quoteOrder(buildRequest())
+        .then((fresh) => {
+          if (quoteId === quoteSeqRef.current && mountedRef.current) {
+            setQuoteState({ status: 'ready', quote: fresh });
+          }
+        })
+        .catch((error: unknown) => {
+          if (quoteId !== quoteSeqRef.current || !mountedRef.current) return;
+          console.warn('[checkout] quote failed:', error);
+          const message = error instanceof Error && error.message ? error.message : t('checkout.quoteError');
+          setQuoteState((previous) => ({ status: 'error', message, quote: previous.quote }));
+        });
+    }, QUOTE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // buildRequest already depends on every input of the request; itemsKey/nonce re-trigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, lines.length, itemsKey, tipCents, orderType, giftRecipientId, tableLabel, roomId, quoteNonce]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -438,6 +438,8 @@ export default function CheckoutScreen() {
     }
   }, []);
 
+  const handleRetryQuote = useCallback(() => setQuoteNonce((n) => n + 1), []);
+
   // ── Animate pay button ────────────────────────────────────────────────────────
 
   const animatePayBtn = useCallback((toValue: number) => {
@@ -451,170 +453,119 @@ export default function CheckoutScreen() {
 
   // ── Core payment flow ─────────────────────────────────────────────────────────
 
-  const handlePay = useCallback(async () => {
-    if (processing) return;
-
-    const userId = user?.id ?? 'demo-user';
-
-    // ── Demo mode ────────────────────────────────────────────────────────────
-    if (!isSupabaseConfigured) {
-      setProcessing(true);
-      // Simulate a brief processing delay
-      await new Promise<void>((resolve) => setTimeout(resolve, 1200));
-
-      // Create a demo order record (not server-side — demo only)
+  /** The webhook creates the order a moment after the payment: look for it for up to 15 s. */
+  const waitForPaidOrder = useCallback(async (paymentIntentId: string): Promise<PaidOrderSummary | null> => {
+    for (let attempt = 0; attempt < ORDER_POLL_ATTEMPTS; attempt += 1) {
+      if (!mountedRef.current) return null;
       try {
-        await createOrderRecord({
-          businessId: businessId ?? 'demo-biz',
-          userId,
-          roomId: roomId ?? null,
-          orderType,
-          giftRecipientId,
-          tableLabel,
-          subtotalCents,
-          taxCents,
-          tipCents,
-          discountCents: 0,
-          totalCents,
-          promoCode,
-          items: lines.map((l) => ({
-            menuItemId: l.item.id,
-            qty: l.qty,
-            priceCents: l.unitPriceCents,
-            // Fix #6: forward selected modifier LABELS/IDs only; server prices them.
-            options: {
-              size: l.size?.label ?? null,
-              extras: (l.extras ?? []).map((e) => e.label),
-              // Modifier groups (new system): group id + chosen labels. The server
-              // prices them from modifier_groups.choices in the DB — never the client.
-              modifiers: (l.modifierSelections ?? []).map((g) => ({
-                g: g.groupId,
-                c: g.choices.map((ch) => ch.label),
-              })),
-            },
-            specialInstructions: l.specialInstructions ?? null,
-          })),
+        const found = await getOrderByPaymentIntent(paymentIntentId);
+        if (found) return found;
+      } catch (error) {
+        console.warn('[checkout] order lookup failed (will retry):', error);
+      }
+      await sleep(ORDER_POLL_INTERVAL_MS);
+    }
+    return null;
+  }, []);
+
+  const handlePay = useCallback(async () => {
+    if (processingRef.current) return; // synchronous double-tap guard
+    const current = quoteState.status === 'ready' ? quoteState.quote : null;
+    if (!current) return; // the button is disabled without a ready quote
+
+    if (!user?.id) {
+      Alert.alert(t('checkout.signInRequired'));
+      return;
+    }
+
+    // Processing starts BEFORE the biometric prompt, so a second tap can't start another flow.
+    processingRef.current = true;
+    setProcessing(true);
+    try {
+      // ── Biometric authentication ────────────────────────────────────────────
+      let bioResult: { success: boolean };
+      try {
+        bioResult = await authenticateAsync({
+          promptMessage: t('checkout.bioPrompt', { amount: formatCents(current.total_cents) }),
+          fallbackLabel: t('checkout.bioFallback'),
+          cancelLabel: t('actions.cancel', { ns: 'common' }),
+          disableDeviceFallback: false,
         });
       } catch {
-        // In demo mode swallow create errors — the order number is mocked anyway
+        // Device doesn't support biometrics — go straight to Stripe
+        bioResult = { success: true };
       }
 
-      setProcessing(false);
-      clear();
+      if (!bioResult.success) {
+        // Cancelled, locked out, not enrolled…: never pay, and say so (no silent exit).
+        Alert.alert(t('checkout.bioFailedTitle'), t('checkout.bioFailedMessage'), [
+          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+          { text: t('checkout.tryAgain'), onPress: () => { void handlePay(); } },
+        ]);
+        return;
+      }
 
-      navigation.navigate('PaymentSuccess', {
-        orderNumber: generateDemoOrderNumber(),
-        businessName: 'The Rooftop Bar',
-        orderType,
-        roomId: roomId ?? undefined,
-        cardAlreadySaved: false,
+      // ── Present Stripe PaymentSheet ─────────────────────────────────────────
+      const result = await initAndPresentPaymentSheet({
+        ...buildRequest(),
+        userId: user.id,
+        // ONE key per quote: a retry of the same quote reuses the same PaymentIntent.
+        idempotencyKey: `q_${current.quote_hash}`,
+        expectedTotalCents: current.total_cents,
       });
-      return;
-    }
 
-    // ── Biometric authentication ──────────────────────────────────────────────
-    let bioResult;
-    try {
-      bioResult = await authenticateAsync({
-        promptMessage: t('checkout.bioPrompt', { amount: formatCents(totalCents) }),
-        fallbackLabel: t('checkout.bioFallback'),
-        cancelLabel: t('actions.cancel', { ns: 'common' }),
-        disableDeviceFallback: false,
-      });
-    } catch {
-      // Device doesn't support biometrics — skip and go straight to Stripe
-      bioResult = { success: true } as const;
-    }
-
-    if (!bioResult.success) {
-      // User cancelled biometrics — don't show an error, just stop
-      return;
-    }
-
-    // ── Present Stripe PaymentSheet ───────────────────────────────────────────
-    setProcessing(true);
-
-    const orderPayload: OrderPayload = {
-      businessId: businessId ?? '',
-      userId,
-      roomId: roomId ?? null,
-      orderType,
-      giftRecipientId,
-      tableLabel,
-      idempotencyKey: makeIdempotencyKey(),
-      subtotalCents,
-      taxCents,
-      tipCents,
-      discountCents: 0,
-      totalCents,
-      promoCode,
-      items: lines.map((l) => ({
-        menuItemId: l.item.id,
-        name: l.item.name,
-        qty: l.qty,
-        priceCents: l.unitPriceCents,
-        // Fix #6: forward selected modifier LABELS/IDs only; the server resolves their
-        // price from the DB server-side (never trust client prices).
-        options: {
-          size: l.size?.label ?? null,
-          extras: (l.extras ?? []).map((e) => e.label),
-          // Modifier groups (new system): group id + chosen labels. Server-priced
-          // from modifier_groups.choices in the DB — never the client.
-          modifiers: (l.modifierSelections ?? []).map((g) => ({
-            g: g.groupId,
-            c: g.choices.map((ch) => ch.label),
-          })),
-        },
-        specialInstructions: l.specialInstructions ?? null,
-      })),
-    };
-
-    const result = await initAndPresentPaymentSheet(orderPayload);
-
-    setProcessing(false);
-
-    if (result.ok) {
-      clear();
-      // Order is created server-side by the Stripe webhook — generate a
-      // placeholder order number; the real one arrives via Realtime on the
-      // OrderTracking screen.
-      navigation.navigate('PaymentSuccess', {
-        orderNumber: generateDemoOrderNumber(),
-        businessName: 'The Rooftop Bar', // TODO: pass real businessName from route params once registered
-        orderType,
-        roomId: roomId ?? undefined,
-        cardAlreadySaved: selectedPayment === 'card',
-      });
-    } else {
-      // Don't show an error sheet for user-initiated cancels
-      if (result.code !== 'Canceled') {
+      if (!result.ok) {
+        if (result.code === 'Canceled') return; // user closed the sheet — not an error
+        if (result.code === 'TotalChanged') {
+          const b = result.breakdown;
+          Alert.alert(
+            t('checkout.totalChangedTitle'),
+            b
+              ? t('checkout.totalChangedMessage', {
+                  total: formatCents(b.totalCents),
+                  subtotal: formatCents(b.subtotalCents),
+                  tax: formatCents(b.taxCents),
+                  tip: formatCents(b.tipCents),
+                })
+              : t('checkout.totalChangedGeneric'),
+          );
+          setQuoteNonce((n) => n + 1); // re-quote; nothing was charged
+          return;
+        }
         setErrorMessage(result.message);
         setErrorVisible(true);
+        return;
       }
+
+      // ── Paid: find the order the webhook creates ────────────────────────────
+      const order = await waitForPaidOrder(result.paymentIntentId);
+      clear();
+      if (!mountedRef.current) return;
+      if (order) {
+        navigation.replace('PaymentSuccess', {
+          orderId: order.id,
+          orderNumber: order.order_number ?? undefined,
+          businessName: order.business_name ?? undefined,
+          orderType: order.order_type,
+          roomId: order.room_id ?? roomId ?? undefined,
+        });
+      } else {
+        // Paid but the order isn't visible yet: say so honestly, with a way to find it later.
+        navigation.replace('PaymentSuccess', {
+          orderType,
+          roomId: roomId ?? undefined,
+          processing: true,
+        });
+      }
+    } finally {
+      processingRef.current = false;
+      if (mountedRef.current) setProcessing(false);
     }
-  }, [
-    processing,
-    user?.id,
-    businessId,
-    roomId,
-    orderType,
-    giftRecipientId,
-    tableLabel,
-    subtotalCents,
-    taxCents,
-    tipCents,
-    totalCents,
-    promoCode,
-    lines,
-    clear,
-    selectedPayment,
-    navigation,
-    t,
-  ]);
+  }, [quoteState, user?.id, t, buildRequest, waitForPaidOrder, clear, navigation, orderType, roomId]);
 
   const handleRetry = useCallback(() => {
     setErrorVisible(false);
-    // Small delay so the sheet dismisses before re-triggering
+    // Small delay so the sheet dismisses before re-triggering. Same quote → same key.
     setTimeout(() => { void handlePay(); }, 300);
   }, [handlePay]);
 
@@ -673,6 +624,9 @@ export default function CheckoutScreen() {
     return p === 'custom' ? t('checkout.tipCustom') : t('checkout.tipPercent', { value: p });
   }
 
+  const quoteLoading = quoteState.status === 'loading';
+  const payDisabled = processing || quoteState.status !== 'ready';
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
@@ -704,7 +658,7 @@ export default function CheckoutScreen() {
           keyboardShouldPersistTaps="handled"
         >
 
-          {/* ── Order Summary ── */}
+          {/* ── Order Summary (the server's lines) ── */}
           <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
             <View style={styles.sectionTitleRow}>
               <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
@@ -722,27 +676,34 @@ export default function CheckoutScreen() {
               </Pressable>
             </View>
 
-            {lines.map((line, idx) => (
-              <View
-                key={line.lineId}
-                style={[
-                  styles.summaryRow,
-                  idx < lines.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle },
-                ]}
-              >
-                <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
-                  <Text style={[styles.qtyBadgeText, { color: palette.brand }]}>
-                    {line.qty}
+            {quote ? (
+              quote.lines.map((line, idx) => (
+                <View
+                  key={`${line.menu_item_id}:${idx}`}
+                  style={[
+                    styles.summaryRow,
+                    idx < quote.lines.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle },
+                    quoteLoading && { opacity: 0.5 },
+                  ]}
+                >
+                  <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
+                    <Text style={[styles.qtyBadgeText, { color: palette.brand }]}>
+                      {line.qty}
+                    </Text>
+                  </View>
+                  <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
+                    {line.name}
+                  </Text>
+                  <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]}>
+                    {formatCents(line.line_cents)}
                   </Text>
                 </View>
-                <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
-                  {line.item.name}
-                </Text>
-                <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]}>
-                  {formatCents(line.unitPriceCents * line.qty)}
-                </Text>
+              ))
+            ) : (
+              <View style={styles.quotePlaceholder}>
+                {quoteState.status === 'error' ? null : <ActivityIndicator color={palette.brand} />}
               </View>
-            ))}
+            )}
 
             {/* Order type badge */}
             <View style={[styles.orderTypeBadge, { backgroundColor: c.bgElevated }]}>
@@ -790,7 +751,7 @@ export default function CheckoutScreen() {
                           { color: isSelected ? palette.brandDark : c.textTertiary },
                         ]}
                       >
-                        {formatCents(Math.round(subtotalCents * (preset / 100)))}
+                        {formatCents(Math.round(tipBaseCents * (preset / 100)))}
                       </Text>
                     )}
                   </Pressable>
@@ -816,97 +777,69 @@ export default function CheckoutScreen() {
             )}
           </View>
 
-          {/* ── Payment Method ── */}
-          <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
-            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('checkout.paymentMethod')}</Text>
-
-            {paymentOptions.map((opt) => {
-              const isSelected = selectedPayment === opt.id;
-              const label = t(opt.labelKey);
-              const sublabel = t(opt.sublabelKey);
-              return (
-                <Pressable
-                  key={opt.id}
-                  onPress={() => setSelectedPayment(opt.id)}
-                  style={({ pressed }) => [
-                    styles.paymentRow,
-                    {
-                      borderBottomColor: c.borderSubtle,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isSelected }}
-                  accessibilityLabel={t('checkout.paymentOptionA11y', { label, sublabel })}
-                >
-                  {/* Icon */}
-                  <View style={[styles.paymentIconWrap, { backgroundColor: c.bgElevated }]}>
-                    <opt.Icon size={20} color={isSelected ? palette.brand : c.textSecondary} strokeWidth={2} />
-                  </View>
-
-                  {/* Label */}
-                  <View style={styles.paymentLabelWrap}>
-                    <Text style={[styles.paymentLabel, { color: c.textPrimary }]}>
-                      {label}
-                    </Text>
-                    <Text style={[styles.paymentSublabel, { color: c.textTertiary }]}>
-                      {sublabel}
-                    </Text>
-                  </View>
-
-                  {/* Radio indicator */}
-                  <View
-                    style={[
-                      styles.radioOuter,
-                      {
-                        borderColor: isSelected ? palette.brand : c.borderSubtle,
-                        backgroundColor: isSelected ? palette.brand : 'transparent',
-                      },
-                    ]}
-                  >
-                    {isSelected && (
-                      <IconCheck size={12} color="#ffffff" strokeWidth={3} />
-                    )}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* ── Total Breakdown ── */}
+          {/* ── Total Breakdown (exactly what the server returned) ── */}
           <View style={[styles.section, styles.totalsSection, { backgroundColor: c.bgSurface }]}>
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
-              <Text style={[styles.totalValue, { color: c.textPrimary }]}>
-                {formatCents(subtotalCents)}
-              </Text>
-            </View>
+            {quote ? (
+              <View style={quoteLoading ? { opacity: 0.5 } : undefined}>
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                    {formatCents(quote.subtotal_cents)}
+                  </Text>
+                </View>
 
-            {/* TODO: tax from business location */}
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.taxLabel')}</Text>
-              <Text style={[styles.totalValue, { color: c.textPrimary }]}>
-                {formatCents(taxCents)}
-              </Text>
-            </View>
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
+                    {quote.tax_source === 'none'
+                      ? t('cart.taxLabel')
+                      : t('checkout.taxLabelRate', { rate: formatTaxRate(quote.tax_rate) })}
+                  </Text>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                    {formatCents(quote.tax_cents)}
+                  </Text>
+                </View>
+                {quote.tax_source === 'none' ? (
+                  <Text style={[styles.quoteNote, { color: c.textTertiary }]}>
+                    {t('checkout.taxNotConfigured')}
+                  </Text>
+                ) : null}
 
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
-                {tipPreset === 'custom' ? t('checkout.tipLabelCustom') : t('checkout.tipLabelPercent', { value: tipPreset })}
-              </Text>
-              <Text style={[styles.totalValue, { color: c.textPrimary }]}>
-                {formatCents(tipCents)}
-              </Text>
-            </View>
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
+                    {tipPreset === 'custom' ? t('checkout.tipLabelCustom') : t('checkout.tipLabelPercent', { value: tipPreset })}
+                  </Text>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                    {formatCents(quote.tip_cents)}
+                  </Text>
+                </View>
 
-            <View style={[styles.totalDivider, { backgroundColor: c.borderSubtle }]} />
+                <View style={[styles.totalDivider, { backgroundColor: c.borderSubtle }]} />
 
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
-              <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
-                {formatCents(totalCents)}
-              </Text>
-            </View>
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
+                  <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
+                    {formatCents(quote.total_cents)}
+                  </Text>
+                </View>
+              </View>
+            ) : quoteState.status === 'loading' ? (
+              <View style={styles.quotePlaceholder}>
+                <ActivityIndicator color={palette.brand} />
+              </View>
+            ) : null}
+
+            {quoteState.status === 'error' ? (
+              <View style={styles.quoteErrorBox}>
+                <Text style={[styles.quoteErrorText, { color: palette.danger }]}>{quoteState.message}</Text>
+                <Pressable
+                  onPress={handleRetryQuote}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={styles.quoteRetryText}>{t('checkout.quoteRetry')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
 
           {/* Bottom spacing so the sticky bar doesn't obscure content */}
@@ -918,25 +851,25 @@ export default function CheckoutScreen() {
           <Animated.View style={{ transform: [{ scale: payBtnScale }], width: '100%' }}>
             <Pressable
               onPress={() => { void handlePay(); }}
-              disabled={processing}
+              disabled={payDisabled}
               onPressIn={() => animatePayBtn(0.97)}
               onPressOut={() => animatePayBtn(1)}
               style={({ pressed }) => [
                 styles.payButton,
                 {
                   backgroundColor: palette.brand,
-                  opacity: processing ? 0.7 : pressed ? 0.9 : 1,
+                  opacity: payDisabled ? 0.5 : pressed ? 0.9 : 1,
                 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={t('checkout.payA11y', { amount: formatCents(totalCents) })}
-              accessibilityState={{ disabled: processing }}
+              accessibilityLabel={quote ? t('checkout.payA11y', { amount: formatCents(quote.total_cents) }) : t('checkout.payWaitingA11y')}
+              accessibilityState={{ disabled: payDisabled }}
             >
-              {processing ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+              {processing || quoteLoading ? (
+                <ActivityIndicator color={palette.bgSurfaceLight} size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {t('checkout.payButton', { amount: formatCents(totalCents) })}
+                  {quote ? t('checkout.payButton', { amount: formatCents(quote.total_cents) }) : t('checkout.payWaiting')}
                 </Text>
               )}
             </Pressable>
@@ -970,6 +903,12 @@ export default function CheckoutScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  quotePlaceholder: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
+  quoteNote: { fontSize: 12, lineHeight: 17, marginTop: -4, marginBottom: 8 },
+  quoteErrorBox: { alignItems: 'center', gap: 10, paddingVertical: 8 },
+  quoteErrorText: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  quoteRetryBtn: { borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10 },
+  quoteRetryText: { color: palette.bgSurfaceLight, fontSize: 14, fontWeight: '700' },
   root: {
     flex: 1,
   },
@@ -1027,7 +966,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   backMenuBtnText: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -1231,7 +1170,7 @@ const styles = StyleSheet.create({
     minHeight: 58,
   },
   payButtonText: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.2,

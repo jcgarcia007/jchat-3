@@ -1,9 +1,8 @@
 /**
  * JChat 3.0 — Orders data access (Stage 3)
- * Reads/creates orders. NOTE: real payment + order creation goes through the
- * server (Stripe Edge Function — Task 3.6). `createOrderRecord` here is the
- * fallback/direct path used in demo mode and by the server callback shape.
- * Tables: orders, order_items (001 + 007_stage3_schema.sql).
+ * Reads orders. The app NEVER creates them: payment and order creation go through the server
+ * (payments Edge Function → Stripe → stripe-webhook → create_paid_order).
+ * Tables: orders, order_items (001 + 007_stage3_schema.sql, 184).
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
@@ -46,75 +45,50 @@ export interface OrderRow {
   special_instructions: string | null;
   table_label: string | null;
   stripe_pi_id: string | null;
+  /** Human-readable number (migration 184). */
+  order_number: number | null;
   created_at: string;
   status_updated_at: string | null;
 }
 
-export interface NewOrderInput {
-  businessId: string;
-  userId: string;
-  roomId: string | null;
-  orderType: 'table' | 'counter' | 'gift';
-  giftRecipientId?: string | null;
-  subtotalCents: number;
-  taxCents: number;
-  tipCents: number;
-  discountCents: number;
-  totalCents: number;
-  promoCode?: string | null;
-  specialInstructions?: string | null;
-  tableLabel?: string | null;
-  items: {
-    menuItemId: string;
-    qty: number;
-    priceCents: number;
-    options?: Record<string, unknown>;
-    specialInstructions?: string | null;
-  }[];
+/** What PaymentSuccess needs once the webhook has created the paid order. */
+export interface PaidOrderSummary {
+  id: string;
+  order_number: number | null;
+  order_type: 'table' | 'counter' | 'gift';
+  business_id: string;
+  room_id: string | null;
+  business_name: string | null;
 }
 
 /**
- * Create an order record + items. In production this is called by the payment
- * Edge Function AFTER the PaymentIntent is confirmed (never before payment).
+ * Find the order the webhook created for a PaymentIntent (orders.stripe_pi_id). It appears a
+ * moment AFTER payment, so callers poll. The app never creates orders: the server does,
+ * atomically (create_paid_order).
  */
-export async function createOrderRecord(input: NewOrderInput): Promise<OrderRow> {
-  const { data: order, error } = await supabase
+export async function getOrderByPaymentIntent(paymentIntentId: string): Promise<PaidOrderSummary | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase
     .from('orders')
-    .insert({
-      business_id: input.businessId,
-      user_id: input.userId,
-      room_id: input.roomId,
-      status: 'confirmed',
-      order_type: input.orderType,
-      gift_recipient_id: input.giftRecipientId ?? null,
-      subtotal_cents: input.subtotalCents,
-      tax_cents: input.taxCents,
-      tip_cents: input.tipCents,
-      discount_cents: input.discountCents,
-      total_cents: input.totalCents,
-      promo_code: input.promoCode ?? null,
-      special_instructions: input.specialInstructions ?? null,
-      table_label: input.tableLabel ?? null,
-    })
-    .select('*')
-    .single();
+    .select('id, order_number, order_type, business_id, room_id, businesses(name)')
+    .eq('stripe_pi_id', paymentIntentId)
+    .maybeSingle();
   if (error) throw error;
-
-  const orderRow = order as unknown as OrderRow;
-  if (input.items.length > 0) {
-    const { error: itemErr } = await supabase.from('order_items').insert(
-      input.items.map((it) => ({
-        order_id: orderRow.id,
-        menu_item_id: it.menuItemId,
-        qty: it.qty,
-        price_cents: it.priceCents,
-        options: it.options ?? {},
-        special_instructions: it.specialInstructions ?? null,
-      })),
-    );
-    if (itemErr) throw itemErr;
-  }
-  return orderRow;
+  if (!data) return null;
+  const row = data as unknown as {
+    id: string; order_number: number | null; order_type: PaidOrderSummary['order_type'];
+    business_id: string; room_id: string | null;
+    businesses: { name: string | null } | { name: string | null }[] | null;
+  };
+  const business = Array.isArray(row.businesses) ? row.businesses[0] : row.businesses;
+  return {
+    id: row.id,
+    order_number: row.order_number,
+    order_type: row.order_type,
+    business_id: row.business_id,
+    room_id: row.room_id,
+    business_name: business?.name ?? null,
+  };
 }
 
 export async function getOrder(orderId: string): Promise<OrderRow | null> {

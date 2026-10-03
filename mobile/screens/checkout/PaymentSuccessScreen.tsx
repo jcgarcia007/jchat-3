@@ -53,11 +53,12 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
  * with the generic cast used in useNavigation / useRoute.
  */
 type PaymentSuccessParams = {
-  orderNumber: string;
-  businessName: string;
+  orderId?: string;
+  orderNumber?: number;
+  businessName?: string;
   orderType: string;
   roomId?: string;
-  cardAlreadySaved?: boolean;
+  processing?: boolean;
 };
 
 /**
@@ -86,7 +87,7 @@ export default function PaymentSuccessScreen() {
   const navigation = useNavigation<PaymentSuccessNav>();
   const route = useRoute<PaymentSuccessRoute>();
 
-  const { orderNumber, businessName, orderType, roomId, cardAlreadySaved } =
+  const { orderId, orderNumber, businessName, orderType, roomId, processing } =
     route.params;
 
   // Localized order-type label (reuses the cart order labels; falls back to the raw value).
@@ -122,7 +123,7 @@ export default function PaymentSuccessScreen() {
   // would make comparisons like `saveState === 'saving'` unreachable.
   const [saveState, setSaveState] = useState<SaveCardState>('idle');
   const [isSaving, setIsSaving] = useState(false);
-  const showSavePrompt = !cardAlreadySaved && saveState === 'idle';
+  const showSavePrompt = saveState === 'idle';
 
   const handleSaveCard = useCallback(async () => {
     if (!user?.id) return;
@@ -158,6 +159,12 @@ export default function PaymentSuccessScreen() {
     }
   }, [navigation, roomId]);
 
+  const handleViewOrder = useCallback(() => {
+    const stack = navigation as NativeStackNavigationProp<MainStackParamList>;
+    if (orderId) stack.navigate('OrderTracking', { orderId, roomId });
+    else stack.navigate('MyOrders');
+  }, [navigation, orderId, roomId]);
+
   // ── Styles (dynamic) ─────────────────────────────────────────────────────────
   const styles = makeStyles(c);
 
@@ -183,27 +190,35 @@ export default function PaymentSuccessScreen() {
         <Text style={[styles.title, { color: c.textPrimary }]}>
           {t('success.title')}
         </Text>
+        {processing ? (
+          <Text style={[styles.emailNote, { color: c.textSecondary }]}>{t('success.processingNote')}</Text>
+        ) : null}
 
         {/* ── Order details card ────────────────────────────────────────── */}
         <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          {/* Order number — displayed prominently */}
-          <Text style={[styles.orderNumberLabel, { color: c.textSecondary }]}>
-            {t('success.orderNumber')}
-          </Text>
-          <Text style={[styles.orderNumber, { color: c.textPrimary }]}>
-            {orderNumber}
-          </Text>
+          {/* Real order number from the server (absent while the order is still being processed) */}
+          {orderNumber != null ? (
+            <>
+              <Text style={[styles.orderNumberLabel, { color: c.textSecondary }]}>
+                {t('success.orderNumber')}
+              </Text>
+              <Text style={[styles.orderNumber, { color: c.textPrimary }]}>
+                {t('success.orderNumberValue', { number: orderNumber })}
+              </Text>
+              <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
+            </>
+          ) : null}
 
-          <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: c.textSecondary }]}>
-              {t('success.business')}
-            </Text>
-            <Text style={[styles.detailValue, { color: c.textPrimary }]}>
-              {businessName}
-            </Text>
-          </View>
+          {businessName ? (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: c.textSecondary }]}>
+                {t('success.business')}
+              </Text>
+              <Text style={[styles.detailValue, { color: c.textPrimary }]}>
+                {businessName}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: c.textSecondary }]}>
@@ -266,14 +281,26 @@ export default function PaymentSuccessScreen() {
           </Text>
         )}
 
-        {/* ── Back to chat (primary CTA) ────────────────────────────────── */}
+        {/* ── View the order (primary CTA) ──────────────────────────────── */}
         <Pressable
           style={[styles.backBtn, { backgroundColor: c.brand }]}
-          onPress={handleBackToChat}
-          accessibilityLabel={roomId ? t('success.backToChatA11y') : t('success.doneA11y')}
+          onPress={handleViewOrder}
+          accessibilityLabel={orderId ? t('success.viewOrderA11y') : t('success.viewMyOrdersA11y')}
           accessibilityRole="button"
         >
           <Text style={styles.backBtnText}>
+            {orderId ? t('success.viewOrder') : t('success.viewMyOrders')}
+          </Text>
+        </Pressable>
+
+        {/* ── Back ──────────────────────────────────────────────────────── */}
+        <Pressable
+          onPress={handleBackToChat}
+          accessibilityLabel={roomId ? t('success.backToChatA11y') : t('success.doneA11y')}
+          accessibilityRole="button"
+          hitSlop={8}
+        >
+          <Text style={[styles.backLinkText, { color: c.textSecondary }]}>
             {roomId ? t('success.backToChat') : t('success.done')}
           </Text>
         </Pressable>
@@ -408,6 +435,11 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
     },
 
     // Back to chat CTA
+    backLinkText: {
+      fontSize: 15,
+      fontWeight: '600',
+      paddingVertical: 6,
+    },
     backBtn: {
       width: '100%',
       height: 52,

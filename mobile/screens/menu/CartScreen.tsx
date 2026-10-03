@@ -65,7 +65,6 @@ import { useCart } from '../../context/CartContext';
 import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { getTaxRateForBusiness, DEFAULT_TAX_RATE } from '../../services/tax';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 
@@ -79,17 +78,7 @@ interface RoomUser {
   username: string;
 }
 
-interface PromoResult {
-  valid: boolean;
-  discountCents: number;
-  /** Human-readable label, e.g. "20% off" or "−$5.00" */
-  label: string;
-  error?: string;
-}
-
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-// Tax rate is resolved per business via getTaxRateForBusiness (localized).
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -178,7 +167,6 @@ export default function CartScreen() {
     orderType,
     giftRecipientId,
     tableLabel,
-    promoCode,
     subtotalCents,
     roomId,
     businessId,
@@ -187,24 +175,9 @@ export default function CartScreen() {
     setOrderType,
     setGiftRecipient,
     setTableLabel,
-    setPromoCode,
   } = useCart();
 
   // ── Local state ─────────────────────────────────────────────────────────────
-
-  const [promoInput, setPromoInput] = useState(promoCode ?? '');
-  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
-
-  // Localized tax rate, resolved from the business (Stage 3 cleanup).
-  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
-  useEffect(() => {
-    let cancelled = false;
-    getTaxRateForBusiness(businessId).then((rate) => {
-      if (!cancelled) setTaxRate(rate);
-    });
-    return () => { cancelled = true; };
-  }, [businessId]);
 
   // Gift recipient picker state
   const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
@@ -266,93 +239,6 @@ export default function CartScreen() {
     void loadRoomUsers();
     return () => { cancelled = true; };
   }, [orderType, roomId, user?.id, t]);
-
-  // ── Promo code validation ────────────────────────────────────────────────────
-
-  const handleApplyPromo = useCallback(async () => {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) return;
-
-    if (!isSupabaseConfigured) {
-      // Demo mode: accept any code with a flat 10% discount
-      const discount = Math.round(subtotalCents * 0.1);
-      setPromoResult({ valid: true, discountCents: discount, label: t('cart.demoDiscount') });
-      setPromoCode(code);
-      return;
-    }
-
-    setPromoLoading(true);
-    try {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('offers')
-        .select('id, title, discount_type, discount_value, min_order_cents, expires_at')
-        .eq('code', code)
-        .eq('status', 'active')
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        setPromoResult({ valid: false, discountCents: 0, label: '', error: t('cart.invalidCode') });
-        setPromoCode(null);
-        return;
-      }
-
-      // Check minimum order
-      const minOrder: number = (data as { min_order_cents: number | null }).min_order_cents ?? 0;
-      if (subtotalCents < minOrder) {
-        setPromoResult({
-          valid: false,
-          discountCents: 0,
-          label: '',
-          error: t('cart.minOrder', { amount: formatCents(minOrder) }),
-        });
-        setPromoCode(null);
-        return;
-      }
-
-      // Compute discount
-      const offer = data as {
-        discount_type: 'percent' | 'fixed';
-        discount_value: number;
-        title: string;
-      };
-      let discountCents = 0;
-      let label = '';
-
-      if (offer.discount_type === 'percent') {
-        discountCents = Math.round(subtotalCents * (offer.discount_value / 100));
-        label = t('cart.percentOff', { value: offer.discount_value });
-      } else {
-        discountCents = Math.min(offer.discount_value, subtotalCents);
-        label = t('cart.fixedOff', { amount: formatCents(offer.discount_value) });
-      }
-
-      setPromoResult({ valid: true, discountCents, label });
-      setPromoCode(code);
-    } catch (err) {
-      console.warn('[CartScreen] applyPromo error:', err);
-      Alert.alert(t('shared.errorTitle'), t('cart.promoValidateError'));
-    } finally {
-      setPromoLoading(false);
-    }
-  }, [promoInput, subtotalCents, setPromoCode, t]);
-
-  const handleClearPromo = useCallback(() => {
-    setPromoInput('');
-    setPromoResult(null);
-    setPromoCode(null);
-  }, [setPromoCode]);
-
-  // ── Totals ───────────────────────────────────────────────────────────────────
-
-  const discountCents = promoResult?.valid ? promoResult.discountCents : 0;
-  const afterDiscount = Math.max(0, subtotalCents - discountCents);
-  // Localized tax rate (from business.tax_rate or address).
-  const taxCents = Math.round(afterDiscount * taxRate);
-  const totalCents = afterDiscount + taxCents;
 
   // ── Checkout eligibility ─────────────────────────────────────────────────────
 
@@ -754,97 +640,6 @@ export default function CartScreen() {
             />
           </View>
 
-          {/* ── Promo code ── */}
-          <View style={[styles.section, { backgroundColor: c.bgSurface }]}>
-            <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
-              {t('cart.promoCode')}
-            </Text>
-
-            <View style={styles.promoRow}>
-              <TextInput
-                style={[
-                  styles.promoInput,
-                  {
-                    backgroundColor: c.bgElevated,
-                    borderColor: promoResult
-                      ? promoResult.valid
-                        ? palette.success
-                        : palette.danger
-                      : c.borderSubtle,
-                    color: c.textPrimary,
-                  },
-                ]}
-                placeholder={t('cart.promoPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                value={promoInput}
-                onChangeText={setPromoInput}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={() => { void handleApplyPromo(); }}
-                editable={!promoResult?.valid}
-              />
-
-              {promoResult?.valid ? (
-                <Pressable
-                  onPress={handleClearPromo}
-                  style={({ pressed }) => [
-                    styles.promoBtn,
-                    { backgroundColor: c.bgElevated, opacity: pressed ? 0.7 : 1 },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('cart.removePromoA11y')}
-                >
-                  <Text style={[styles.promoBtnText, { color: palette.danger }]}>
-                    {t('cart.remove')}
-                  </Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={() => { void handleApplyPromo(); }}
-                  disabled={promoLoading || !promoInput.trim()}
-                  style={({ pressed }) => [
-                    styles.promoBtn,
-                    {
-                      backgroundColor: promoInput.trim() ? palette.brand : c.bgElevated,
-                      opacity: pressed ? 0.8 : 1,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('cart.applyPromoA11y')}
-                  accessibilityState={{ disabled: promoLoading || !promoInput.trim() }}
-                >
-                  {promoLoading ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.promoBtnText,
-                        { color: promoInput.trim() ? '#ffffff' : c.textTertiary },
-                      ]}
-                    >
-                      {t('cart.apply')}
-                    </Text>
-                  )}
-                </Pressable>
-              )}
-            </View>
-
-            {/* Promo feedback */}
-            {promoResult ? (
-              <Text
-                style={[
-                  styles.promoFeedback,
-                  { color: promoResult.valid ? palette.success : palette.danger },
-                ]}
-              >
-                {promoResult.valid
-                  ? t('cart.codeApplied', { label: promoResult.label, amount: formatCents(promoResult.discountCents) })
-                  : promoResult.error ?? t('cart.invalidCodeShort')}
-              </Text>
-            ) : null}
-          </View>
-
           {/* ── Totals ── */}
           <View style={[styles.section, styles.totalsSection, { backgroundColor: c.bgSurface }]}>
             {/* Subtotal */}
@@ -855,39 +650,8 @@ export default function CartScreen() {
               </Text>
             </View>
 
-            {/* Discount */}
-            {discountCents > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { color: palette.success }]}>
-                  {t('cart.discountLabel', { label: promoResult?.label ?? '' })}
-                </Text>
-                <Text style={[styles.totalValue, { color: palette.success }]}>
-                  −{formatCents(discountCents)}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Tax */}
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
-                {/* TODO: tax from business location */}
-                {t('cart.taxLabel')}
-              </Text>
-              <Text style={[styles.totalValue, { color: c.textPrimary }]}>
-                {formatCents(taxCents)}
-              </Text>
-            </View>
-
-            {/* Divider */}
-            <View style={[styles.totalDivider, { backgroundColor: c.borderSubtle }]} />
-
-            {/* Total */}
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
-              <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
-                {formatCents(totalCents)}
-              </Text>
-            </View>
+            {/* Taxes and tip are not guessed here: Checkout asks the server for the exact quote. */}
+            <Text style={[styles.taxNote, { color: c.textTertiary }]}>{t('cart.taxAtCheckout')}</Text>
           </View>
 
           {/* Bottom padding to clear the sticky button */}
@@ -919,16 +683,16 @@ export default function CartScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(totalCents) }) : t('cart.selectOrderType')}
+            accessibilityLabel={canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
             accessibilityState={{ disabled: !canCheckout }}
           >
             <Text
               style={[
                 styles.checkoutButtonText,
-                { color: canCheckout ? '#ffffff' : c.textTertiary },
+                { color: canCheckout ? palette.bgSurfaceLight : c.textTertiary },
               ]}
             >
-              {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(totalCents) }) : t('cart.selectOrderType')}
+              {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
             </Text>
           </Pressable>
         </View>
@@ -940,6 +704,7 @@ export default function CartScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  taxNote: { fontSize: 12, lineHeight: 17, marginTop: 8 },
   root: {
     flex: 1,
   },
@@ -1191,21 +956,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Promo code ────────────────────────────────────────────────────────────────
-  promoRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  promoInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
   tableInput: {
     borderWidth: 1,
     borderRadius: 10,
@@ -1213,24 +963,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     marginTop: 4,
-  },
-  promoBtn: {
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 72,
-  },
-  promoBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  promoFeedback: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 2,
-    marginBottom: 4,
   },
 
   // ── Totals ────────────────────────────────────────────────────────────────────
