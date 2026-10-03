@@ -2297,7 +2297,20 @@
     "methodCardExternal": "External card",
     "methodStripeM2": "Card (M2)",
     "methodStripeQr": "Customer (QR)",
-    "methodUnknown": "Other"
+    "methodUnknown": "Other",
+    "postsPageTitle": "Posts",
+    "postsSubtitle": "Share photos and updates from your business. Posts stay until you delete them.",
+    "postsLoadError": "Failed to load posts: {msg}",
+    "postsNoBusinessMessage": "Register a business to start publishing posts.",
+    "postsEmptyHeading": "No posts yet",
+    "postsEmptyMessage": "You haven't published anything yet.",
+    "postsCountHeading": "{count, plural, one {# post} other {# posts}}",
+    "postsUnverifiedNotice": "Your business isn't verified yet. You can create posts now; they will be visible in the app once your business is verified.",
+    "postsLoadMore": "Load more",
+    "postsThumbAlt": "Post photo",
+    "postsPhotoOnly": "Photo post",
+    "postsLikesLabel": "Likes",
+    "postsCommentsLabel": "Comments"
   },
   "superAdmin": {
     "shell": {

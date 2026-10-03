@@ -2297,7 +2297,20 @@
     "methodCardExternal": "Tarjeta externa",
     "methodStripeM2": "Tarjeta (M2)",
     "methodStripeQr": "Cliente (QR)",
-    "methodUnknown": "Otros"
+    "methodUnknown": "Otros",
+    "postsPageTitle": "Publicaciones",
+    "postsSubtitle": "Comparte fotos y novedades de tu negocio. Las publicaciones permanecen hasta que las borres.",
+    "postsLoadError": "No se pudieron cargar las publicaciones: {msg}",
+    "postsNoBusinessMessage": "Registra un negocio para empezar a publicar.",
+    "postsEmptyHeading": "Aún no hay publicaciones",
+    "postsEmptyMessage": "Todavía no has publicado nada.",
+    "postsCountHeading": "{count, plural, one {# publicación} other {# publicaciones}}",
+    "postsUnverifiedNotice": "Tu negocio aún no está verificado. Puedes crear publicaciones ahora; se verán en la app cuando tu negocio sea verificado.",
+    "postsLoadMore": "Cargar más",
+    "postsThumbAlt": "Foto de la publicación",
+    "postsPhotoOnly": "Publicación con foto",
+    "postsLikesLabel": "Me gusta",
+    "postsCommentsLabel": "Comentarios"
   },
   "superAdmin": {
     "shell": {
