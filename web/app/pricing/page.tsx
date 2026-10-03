@@ -21,7 +21,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -123,17 +123,6 @@ export default function PricingPage() {
   const router = useRouter();
   const t = useTranslations("pricing");
 
-  // ── Space Grotesk para los encabezados de sección ────────────────────────
-  useEffect(() => {
-    if (!document.querySelector('[data-font="space-grotesk"]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.dataset["font"] = "space-grotesk";
-      link.href =
-        "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&display=swap";
-      document.head.appendChild(link);
-    }
-  }, []);
 
   const [loadingPlan, setLoadingPlan] = useState<CheckoutPlanId | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -324,7 +313,7 @@ export default function PricingPage() {
       }
 
       /* Display font */
-      .sg { font-family:'Space Grotesk', system-ui, sans-serif; }
+      .sg { font-family:var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif; }
 
       /* Featured badge pulse (peach) */
       @keyframes pr-badge-glow {
@@ -401,7 +390,7 @@ export default function PricingPage() {
             <p style={{
               fontSize:"11px", fontWeight:700, textTransform:"uppercase",
               letterSpacing:".1em", color:"var(--land-peach)",
-              marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
+              marginBottom:"12px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
             }}>
               JChat Social
             </p>
@@ -508,7 +497,7 @@ export default function PricingPage() {
           <span style={{
             fontSize:"10px", fontWeight:700, textTransform:"uppercase",
             letterSpacing:".12em", color:"var(--land-muted)", whiteSpace:"nowrap",
-            fontFamily:"'Space Grotesk',sans-serif",
+            fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
           }}>
             Venue POS
           </span>
@@ -529,7 +518,7 @@ export default function PricingPage() {
             <motion.p variants={fadeUp} style={{
               fontSize:"11px", fontWeight:700, textTransform:"uppercase",
               letterSpacing:".1em", color:"#0EA5A0",
-              marginBottom:"12px", fontFamily:"'Space Grotesk',sans-serif",
+              marginBottom:"12px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
             }}>
               Venue POS
             </motion.p>

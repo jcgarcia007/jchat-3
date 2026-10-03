@@ -11,9 +11,11 @@ import createNextIntlPlugin from "next-intl/plugin";
 //     El cliente (@stripe/stripe-js) aún NO se carga hoy en web (solo el SDK server
 //     `stripe`), pero se deja en el allowlist para no re-editar al llegar W5. Inocuo:
 //     el CSP arranca en Report-Only.
-//   · Fuentes: se usan vía `next/font/google` → AUTO-HOSPEDADAS en build y servidas
-//     desde 'self'. Por eso NO se incluyen fonts.googleapis.com / fonts.gstatic.com
-//     (no se hace ningún request externo a Google Fonts en runtime).
+//   · Fuentes: las páginas públicas (landing, pricing, legales) usan `next/font/google` →
+//     AUTO-HOSPEDADAS en build y servidas desde 'self'; no piden nada a Google Fonts.
+//     fonts.googleapis.com / fonts.gstatic.com SIGUEN en el allowlist (style-src / font-src)
+//     solo porque el JS de Google Maps (mapa del dashboard, panel privado) inyecta su Roboto
+//     en runtime. No quitarlos mientras exista ese mapa.
 //
 const SUPABASE = "https://klfsgcfoahdtkojyqspd.supabase.co";
 const SUPABASE_WS = "wss://klfsgcfoahdtkojyqspd.supabase.co";

@@ -4,7 +4,7 @@
  * Design v3: CLARO · pastel · durazno/coral — estilo Apple/iOS.
  * Signature: PhoneHero — mockup del teléfono con mapa claro + tarjetas glass
  *   flotantes con parallax Framer Motion. Fondo #FAFAFA, blobs pastel suaves.
- * Font: Space Grotesk (display) via Google Fonts useEffect.
+ * Font: Space Grotesk (display) autohospedada vía next/font (var --font-grotesk, layout.tsx).
  * Motion: Framer Motion 13. prefers-reduced-motion → useReducedMotion().
  * Tokens: CSS vars --land-* definidas en <style>; --color-* globales de apoyo.
  *   NUNCA --db-*. NUNCA hex sueltos fuera del bloque de tokens.
@@ -13,7 +13,6 @@
 
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -234,15 +233,6 @@ export default function LandingPage() {
   const t = useTranslations("landing");
   const prefersReduced = useReducedMotion();
 
-  useEffect(() => {
-    if (!document.querySelector('[data-font="space-grotesk"]')) {
-      const link = document.createElement("link");
-      link.rel  = "stylesheet";
-      link.dataset["font"] = "space-grotesk";
-      link.href = "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&display=swap";
-      document.head.appendChild(link);
-    }
-  }, []);
 
   // Feature cards pre-computadas (evita t() dentro de arrays inline)
   const howItWorksSteps = [
@@ -285,7 +275,7 @@ export default function LandingPage() {
         }
 
         /* ── Display font ──────────────────────────────────────────────── */
-        .sg { font-family:'Space Grotesk', system-ui, sans-serif; }
+        .sg { font-family:var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif; }
 
         /* ── Gradient text (durazno → rose → brand) ────────────────────── */
         .gtext {
@@ -431,7 +421,7 @@ export default function LandingPage() {
           width:40px; height:40px; border-radius:12px;
           display:flex; align-items:center; justify-content:center;
           font-size:16px; font-weight:800; margin-bottom:16px;
-          font-family:'Space Grotesk',sans-serif;
+          font-family:var(--font-grotesk), 'Space Grotesk', sans-serif;
         }
         .hiw-n1 { background:var(--land-peach-glow); color:var(--land-peach); }
         .hiw-n2 { background:var(--land-mint-glow);  color:#0EA5A0; }
@@ -559,7 +549,7 @@ export default function LandingPage() {
               <motion.p variants={fadeUp} style={{
                 fontSize:"12px", fontWeight:700, textTransform:"uppercase",
                 letterSpacing:".10em", color:"var(--land-peach)",
-                marginBottom:"16px", fontFamily:"'Space Grotesk',sans-serif",
+                marginBottom:"16px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
               }}>
                 {t("hero.eyebrow")}
               </motion.p>
@@ -644,7 +634,7 @@ export default function LandingPage() {
             <motion.p variants={fadeUp} style={{
               fontSize:"12px", fontWeight:700, textTransform:"uppercase",
               letterSpacing:".10em", color:"#0EA5A0", marginBottom:"12px",
-              fontFamily:"'Space Grotesk',sans-serif",
+              fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
             }}>
               {t("howItWorks.label")}
             </motion.p>
