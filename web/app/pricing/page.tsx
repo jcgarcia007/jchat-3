@@ -40,7 +40,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
-  OFFERED_PLANS,
+  getOfferedPlans,
   SALES_EMAIL,
   SOCIAL_PLANS,
   type SocialPlanId,
@@ -79,12 +79,13 @@ const SOCIAL_ICONS: Record<SocialPlanId, React.ReactNode> = {
 };
 
 // ── Edge Function error reader (duck-typed, same as billing) ────────────────
-// IMPORTANTE: NO modificar — la lógica de checkout de negocios depende de esto.
+// Solo extrae la clave/estado del error para mapearla; la UI traduce (friendlyPromoError / errors.*).
 
 type FnCtx = { status?: unknown; json?: unknown; clone?: unknown; text?: unknown };
 
 async function readFunctionError(error: unknown): Promise<string> {
-  const fallback = error instanceof Error ? error.message : "Algo salió mal";
+  // Internal use only (matching stable error keys): this text is never shown to the user.
+  const fallback = error instanceof Error ? error.message : "";
   const ctx = (error as { context?: unknown })?.context as FnCtx | undefined;
   if (!ctx || typeof ctx !== "object") return fallback;
   const source: FnCtx = typeof ctx.clone === "function" ? (ctx.clone as () => FnCtx)() : ctx;
@@ -122,6 +123,8 @@ async function readFunctionError(error: unknown): Promise<string> {
 export default function PricingPage() {
   const router = useRouter();
   const t = useTranslations("pricing");
+  const tp = useTranslations("plans");
+  const offeredPlans = getOfferedPlans(tp);
 
 
   const [loadingPlan, setLoadingPlan] = useState<CheckoutPlanId | null>(null);
@@ -166,17 +169,17 @@ export default function PricingPage() {
   // Traduce los códigos de error del servidor (RPC validate_promo_code y Edge Function)
   // a lenguaje claro. El servidor manda claves estables; la UI decide cómo se leen.
   function friendlyPromoError(raw: string): string {
-    if (raw.includes("CODE_NOT_FOUND")) return "Ese código no existe. Revísalo.";
-    if (raw.includes("CODE_ALREADY_USED")) return "Ese código ya fue canjeado.";
-    if (raw.includes("CODE_INACTIVE")) return "Ese código ya no está activo.";
-    if (raw.includes("CODE_EXPIRED")) return "Ese código venció.";
-    if (raw.includes("CODE_PLAN_MISMATCH")) return "Ese código no aplica a este plan.";
-    if (raw.includes("NOT_AUTHENTICATED")) return "Inicia sesión para usar un código.";
+    if (raw.includes("CODE_NOT_FOUND")) return t("promoErrors.notFound");
+    if (raw.includes("CODE_ALREADY_USED")) return t("promoErrors.alreadyUsed");
+    if (raw.includes("CODE_INACTIVE")) return t("promoErrors.inactive");
+    if (raw.includes("CODE_EXPIRED")) return t("promoErrors.expired");
+    if (raw.includes("CODE_PLAN_MISMATCH")) return t("promoErrors.planMismatch");
+    if (raw.includes("NOT_AUTHENTICATED")) return t("promoErrors.loginRequired");
     // La migración 088 revocó EXECUTE a `anon`: sin sesión, Postgres corta con
     // "permission denied ... (42501)" ANTES de entrar en la función, así que la rama
     // NOT_AUTHENTICATED de dentro nunca llega a ejecutarse. Red de seguridad.
-    if (raw.includes("permission denied")) return "Inicia sesión para usar un código.";
-    return "No se pudo aplicar el código.";
+    if (raw.includes("permission denied")) return t("promoErrors.loginRequired");
+    return t("promoErrors.generic");
   }
 
   // ── Promo code validation ────────────────────────────────────────────────
@@ -195,7 +198,7 @@ export default function PricingPage() {
     } = await supabase.auth.getUser();
     if (!user) {
       setPromoChecking(false);
-      setPromoError("Inicia sesión para usar un código.");
+      setPromoError(t("promoErrors.loginRequired"));
       return;
     }
 
@@ -260,7 +263,8 @@ export default function PricingPage() {
       if (fnErr) {
         const raw = await readFunctionError(fnErr);
         // Los errores de código promocional vienen como clave estable desde la EF.
-        setError(raw.includes("CODE_") ? friendlyPromoError(raw) : raw);
+        // El texto del servidor NUNCA se muestra: solo claves conocidas o el genérico traducido.
+        setError(raw.includes("CODE_") ? friendlyPromoError(raw) : t("errors.checkoutFailed"));
         setLoadingPlan(null);
         return;
       }
@@ -268,11 +272,12 @@ export default function PricingPage() {
       if (data?.url) {
         window.location.href = data.url as string;
       } else {
-        throw new Error("No se recibió la URL de checkout.");
+        setError(t("errors.noCheckoutUrl"));
+        setLoadingPlan(null);
       }
     } catch (e) {
       console.error("[pricing] handleSubscribe error:", e);
-      setError(e instanceof Error ? e.message : "No se pudo iniciar el checkout.");
+      setError(t("errors.checkoutFailed"));
       setLoadingPlan(null);
     }
   }
@@ -572,7 +577,7 @@ export default function PricingPage() {
 
           {/* Plan grid */}
           <div className="pr-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"820px", margin:"0 auto" }}>
-            {OFFERED_PLANS.map((plan, idx) => {
+            {offeredPlans.map((plan, idx) => {
               const busy = loadingPlan === plan.id;
               // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
               // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
@@ -639,13 +644,13 @@ export default function PricingPage() {
                   <button
                     onClick={() => {
                       if (plan.cta === "contact") {
-                        window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("Plan Custom JChat")}`;
+                        window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(tp("customSubject"))}`;
                       } else {
                         void handleSubscribe(plan.id as CheckoutPlanId);
                       }
                     }}
                     disabled={busy || needsConsent}
-                    title={needsConsent ? "Marca la casilla de arriba para continuar" : undefined}
+                    title={needsConsent ? t("business.consentRequiredHint") : undefined}
                     style={{
                       marginTop:"auto", display:"flex", alignItems:"center",
                       justifyContent:"center", gap:"6px", padding:"10px 16px",

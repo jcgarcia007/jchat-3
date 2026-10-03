@@ -3088,12 +3088,26 @@
       "btnSubscribe": "Subscribe",
       "btnRedirecting": "Redirecting…",
       "btnContact": "Contact",
-      "popularBadge": "Most popular"
+      "popularBadge": "Most popular",
+      "consentRequiredHint": "Check the box above to continue"
     },
     "footer": {
       "privacy": "Privacy",
       "terms": "Terms",
       "support": "Support"
+    },
+    "promoErrors": {
+      "notFound": "That code doesn't exist. Check it.",
+      "alreadyUsed": "That code has already been redeemed.",
+      "inactive": "That code is no longer active.",
+      "expired": "That code has expired.",
+      "planMismatch": "That code doesn't apply to this plan.",
+      "loginRequired": "Sign in to use a code.",
+      "generic": "We couldn't apply the code."
+    },
+    "errors": {
+      "checkoutFailed": "We couldn't start the checkout. Please try again.",
+      "noCheckoutUrl": "We couldn't get the checkout link. Please try again."
     }
   },
   "tabCodeTitle": "Table code",
@@ -3290,5 +3304,39 @@
       "notFoundTitle": "Business not found — JChat",
       "notFoundDescription": "This business could not be found on JChat."
     }
+  },
+  "plans": {
+    "business": {
+      "label": "Business",
+      "price": "$49 / month",
+      "description": "Full POS, loyalty program and staff management.",
+      "f1": "Full POS + KDS",
+      "f2": "Loyalty program",
+      "f3": "Employee management",
+      "f4": "Reservations",
+      "f5": "Inventory control",
+      "f6": "Up to 1 business and 1 event"
+    },
+    "pro": {
+      "label": "Pro",
+      "price": "$99 / month",
+      "description": "Advanced analytics, unlimited menu and priority support.",
+      "f1": "Everything in Business",
+      "f2": "Advanced analytics and ROI",
+      "f3": "Unlimited menu items",
+      "f4": "Stripe Connect payouts",
+      "f5": "Priority support",
+      "f6": "Up to 10 businesses and 10 events"
+    },
+    "custom": {
+      "label": "Custom",
+      "price": "Contact us",
+      "description": "For chains or needs beyond Pro. A plan tailored to you.",
+      "f1": "More than 10 businesses / events",
+      "f2": "Dedicated onboarding",
+      "f3": "Priority support",
+      "f4": "Custom billing"
+    },
+    "customSubject": "JChat Custom plan"
   }
 }

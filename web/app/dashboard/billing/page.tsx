@@ -40,7 +40,7 @@ import {
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import {
-  OFFERED_PLANS,
+  getOfferedPlans,
   SALES_EMAIL,
   type OfferedPlanId,
   type CheckoutPlanId,
@@ -240,6 +240,8 @@ const DEMO_SUB: Subscription = {
 
 export default function BillingPage() {
   const t = useTranslations("dashboardCommon");
+  const tp = useTranslations("plans");
+  const offeredPlans = getOfferedPlans(tp);
   const locale = useLocale();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -520,7 +522,7 @@ export default function BillingPage() {
                     color: "var(--db-text-primary)",
                   }}
                 >
-                  {OFFERED_PLANS.find((p) => p.id === sub.plan)?.label ?? sub.plan} {t("billingPlanSuffix")}
+                  {offeredPlans.find((p) => p.id === sub.plan)?.label ?? sub.plan} {t("billingPlanSuffix")}
                 </span>
                 {/* Status badge */}
                 <span
@@ -676,7 +678,7 @@ export default function BillingPage() {
           marginBottom: "40px",
         }}
       >
-        {OFFERED_PLANS.map((plan) => {
+        {offeredPlans.map((plan) => {
           // Only business/pro can be the current plan (custom never is).
           const isCurrent = onBusinessPlan && plan.id === sub?.plan;
           // Spinner: "Suscribirme" tracks actionLoading; "Cambiar plan" tracks portalLoading.

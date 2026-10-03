@@ -17,7 +17,7 @@ export type OfferedPlanId = CheckoutPlanId | "custom";
 export interface OfferedPlan {
   id: OfferedPlanId;
   label: string;
-  /** "$49 / mes", "$99 / mes", "Contáctanos". */
+  /** Translated price with its period ("$49 / month") or the contact label. */
   priceLabel: string;
   description: string;
   features: string[];
@@ -27,51 +27,31 @@ export interface OfferedPlan {
 
 export const SALES_EMAIL = "ventas@jchat.cloud"; // TODO(confirm): correo real de ventas
 
-export const OFFERED_PLANS: OfferedPlan[] = [
-  {
-    id: "business",
-    label: "Business",
-    priceLabel: "$49 / mes",
-    description: "POS completo, programa de lealtad y gestión de personal.",
-    features: [
-      "POS + KDS completo",
-      "Programa de lealtad",
-      "Gestión de empleados",
-      "Reservas",
-      "Control de inventario",
-      "Hasta 1 negocio y 1 evento",
-    ],
-    cta: "checkout",
-  },
-  {
-    id: "pro",
-    label: "Pro",
-    priceLabel: "$99 / mes",
-    description: "Analíticas avanzadas, menú ilimitado y soporte prioritario.",
-    features: [
-      "Todo lo de Business",
-      "Analíticas avanzadas y ROI",
-      "Ítems de menú ilimitados",
-      "Payouts con Stripe Connect",
-      "Soporte prioritario",
-      "Hasta 10 negocios y 10 eventos",
-    ],
-    cta: "checkout",
-  },
-  {
-    id: "custom",
-    label: "Custom",
-    priceLabel: "Contáctanos",
-    description: "Para cadenas o necesidades más allá de Pro. Un plan a tu medida.",
-    features: [
-      "Más de 10 negocios / eventos",
-      "Onboarding dedicado",
-      "Soporte prioritario",
-      "Facturación personalizada",
-    ],
-    cta: "contact",
-  },
+/** Static data of each offered plan. All visible text lives in the `plans` i18n namespace. */
+const OFFERED_PLAN_DEFS: ReadonlyArray<{ id: OfferedPlanId; featureCount: number; cta: OfferedPlan["cta"] }> = [
+  { id: "business", featureCount: 6, cta: "checkout" },
+  { id: "pro", featureCount: 6, cta: "checkout" },
+  { id: "custom", featureCount: 4, cta: "contact" },
 ];
+
+/** A next-intl translator scoped to the `plans` namespace (`useTranslations("plans")`). */
+export type PlansTranslator = (key: string) => string;
+
+/**
+ * The offered business plans with their text in the current language. Used by /pricing and by
+ * the dashboard billing page, so the copy exists once. Keys: plans.<id>.label | price |
+ * description | f1..fN.
+ */
+export function getOfferedPlans(t: PlansTranslator): OfferedPlan[] {
+  return OFFERED_PLAN_DEFS.map((def) => ({
+    id: def.id,
+    label: t(`${def.id}.label`),
+    priceLabel: t(`${def.id}.price`),
+    description: t(`${def.id}.description`),
+    features: Array.from({ length: def.featureCount }, (_, i) => t(`${def.id}.f${i + 1}`)),
+    cta: def.cta,
+  }));
+}
 
 // ── Planes sociales (usuarios personales) ─────────────────────────────────────
 // Checkout social es fase 2. Esta constante es solo para display en /pricing.
