@@ -2342,7 +2342,8 @@
     "postsDeleteError": "No se pudo borrar la publicación: {msg}",
     "postsPermissionError": "No tienes permiso para publicar en este negocio.",
     "postsNotAuthenticatedError": "No has iniciado sesión.",
-    "postsSupabaseNotConfiguredError": "Supabase no está configurado."
+    "postsSupabaseNotConfiguredError": "Supabase no está configurado.",
+    "railPublicaciones": "Publicaciones"
   },
   "superAdmin": {
     "shell": {

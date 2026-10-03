@@ -23,6 +23,7 @@ import {
   IconGauge,
   IconBasket,
   IconTag,
+  IconPhoto,
   IconChartBar,
   IconChartHistogram,
   IconStar,
@@ -95,6 +96,7 @@ export const NAV_MODULES: NavModule[] = [
       { labelKey: "railKpisInventario", href: "/dashboard/inventory-kpis", icon: IconGauge },
       { labelKey: "railListaCompras", href: "/dashboard/purchase-suggestion", icon: IconBasket },
       { labelKey: "railOfertas", href: "/dashboard/offers", icon: IconTag },
+      { labelKey: "railPublicaciones", href: "/dashboard/posts", icon: IconPhoto },
     ],
   },
   {

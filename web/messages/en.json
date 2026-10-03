@@ -2342,7 +2342,8 @@
     "postsDeleteError": "Failed to delete the post: {msg}",
     "postsPermissionError": "You don't have permission to post for this business.",
     "postsNotAuthenticatedError": "Not authenticated.",
-    "postsSupabaseNotConfiguredError": "Supabase is not configured."
+    "postsSupabaseNotConfiguredError": "Supabase is not configured.",
+    "railPublicaciones": "Posts"
   },
   "superAdmin": {
     "shell": {
