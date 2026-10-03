@@ -150,5 +150,9 @@
     "cancelRequestMessage": "They won't be notified, and you can ask again later.",
     "cancelRequestConfirm": "Cancel request",
     "keepRequest": "Keep request"
+  },
+  "private": {
+    "title": "This account is private",
+    "subtitle": "Follow them to see their posts."
   }
 }

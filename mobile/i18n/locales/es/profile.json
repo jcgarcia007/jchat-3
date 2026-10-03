@@ -150,5 +150,9 @@
     "cancelRequestMessage": "No se les avisará y podrás volver a solicitarlo más tarde.",
     "cancelRequestConfirm": "Cancelar solicitud",
     "keepRequest": "Mantener solicitud"
+  },
+  "private": {
+    "title": "Esta cuenta es privada",
+    "subtitle": "Síguela para ver sus publicaciones."
   }
 }

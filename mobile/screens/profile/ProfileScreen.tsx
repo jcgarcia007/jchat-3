@@ -10,7 +10,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
-  IconBan, IconFlag, IconPhoto, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -19,7 +19,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
-import { getPublicProfile, getProfileCounts, reportUser, type ProfileCounts } from '../../services/users';
+import { canViewProfile, getPublicProfile, getProfileCounts, reportUser, type ProfileCounts } from '../../services/users';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
@@ -140,6 +140,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
+  // False for a private account I don't follow (the grid is replaced by a notice). Default true:
+  // if the check itself fails, RLS still decides what the posts query returns.
+  const [canViewPosts, setCanViewPosts] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,13 +164,16 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (refresh) setRefreshing(true); else setInitialLoading(true);
     setError(null);
     try {
-      const [profileRow, postRows, profileCounts] = await Promise.all([
+      const [canView, profileRow, profileCounts] = await Promise.all([
+        isOwnProfile || !authUser?.id ? Promise.resolve(true) : canViewProfile(authUser.id, targetId).catch(() => true),
         getPublicProfile(targetId),
-        getUserPosts(targetId),
         // A counters failure must not take the whole profile down: keep what we had.
         getProfileCounts(targetId).catch(() => null),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
+      // Posts are only requested when the viewer may see them.
+      const postRows = canView ? await getUserPosts(targetId) : [];
+      setCanViewPosts(canView);
       setProfile(profileRow);
       setPosts(postRows);
       if (profileCounts) setCounts(profileCounts);
@@ -177,7 +183,17 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       setInitialLoading(false);
       setRefreshing(false);
     }
-  }, [t, targetId]);
+  }, [authUser?.id, isOwnProfile, t, targetId]);
+
+  // Following a private account (e.g. my request was accepted) unlocks its posts: reload.
+  const previousRelationRef = useRef(relation);
+  useEffect(() => {
+    const previous = previousRelationRef.current;
+    previousRelationRef.current = relation;
+    if (!isOwnProfile && relation === 'following' && previous !== 'following' && !canViewPosts) {
+      void loadProfile(true);
+    }
+  }, [relation, isOwnProfile, canViewPosts, loadProfile]);
 
   useFocusEffect(useCallback(() => {
     void loadProfile(hasLoadedRef.current).finally(() => { hasLoadedRef.current = true; });
@@ -301,7 +317,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.danger }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
 
-  const renderPosts = () => posts.length ? (
+  const renderPosts = () => !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe') ? null : !canViewPosts ? (
+    <EmptyState icon={<IconLock size={42} color={theme.tabInactiveText} />} title={t('private.title')} subtitle={t('private.subtitle')} theme={theme} />
+  ) : posts.length ? (
     <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
     <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} theme={theme} />

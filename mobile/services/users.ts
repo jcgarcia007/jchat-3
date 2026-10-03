@@ -213,6 +213,16 @@ export async function getProfileCounts(userId: string): Promise<ProfileCounts> {
   };
 }
 
+/**
+ * Can `viewerId` see the posts of `targetId`? False for a private account the viewer does not
+ * follow, and whenever there is a block between them (server rule can_view_profile).
+ */
+export async function canViewProfile(viewerId: string, targetId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('can_view_profile', { viewer: viewerId, target: targetId });
+  if (error) throw error;
+  return data === true;
+}
+
 /** Get the number of followers for a given user. */
 export async function getFollowerCount(userId: string): Promise<number> {
   const { count, error } = await supabase
