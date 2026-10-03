@@ -18,8 +18,6 @@ import {
   IconMail,
   IconLock,
   IconBrandGoogle,
-  IconBrandFacebook,
-  IconBrandApple,
   IconAlertCircle,
   IconLoader2,
   IconMessageCircle2,
@@ -31,6 +29,7 @@ import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
 function LoginForm() {
   const te = useTranslations("authErrors");
+  const t = useTranslations("authPages.login");
   const router = useRouter();
   const searchParams = useSearchParams();
   // Accept ?next= (dashboard flow) or ?redirect= (QR flow). Validate: must be a safe
@@ -165,15 +164,15 @@ function LoginForm() {
             <span className="brand-tabpos">Tab POS</span>
           </div>
           <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            <span className="brand-jchat">Business dashboard</span>
-            <span className="brand-tabpos">Punto de venta</span>
+            <span className="brand-jchat">{t("brandSubtitle")}</span>
+            <span className="brand-tabpos">{t("brandSubtitlePos")}</span>
           </div>
         </div>
       </div>
 
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>Sign in</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>{t("title")}</h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
-        Access your business dashboard to manage your venue.
+        {t("subtitle")}
       </p>
 
       {error && (
@@ -206,7 +205,7 @@ function LoginForm() {
             marginBottom: 6,
           }}
         >
-          Email
+          {t("emailLabel")}
         </label>
         <div style={{ position: "relative", marginBottom: 14 }}>
           <span style={iconWrap}>
@@ -216,7 +215,7 @@ function LoginForm() {
             type="email"
             required
             autoComplete="email"
-            placeholder="you@business.com"
+            placeholder={t("emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
@@ -232,7 +231,7 @@ function LoginForm() {
             marginBottom: 6,
           }}
         >
-          Password
+          {t("passwordLabel")}
         </label>
         <div style={{ position: "relative", marginBottom: 20 }}>
           <span style={iconWrap}>
@@ -271,7 +270,7 @@ function LoginForm() {
           }}
         >
           {loading && <IconLoader2 size={18} className="spin" />}
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? t("submitting") : t("submit")}
         </button>
 
         {/* hCaptcha invisible (D-38): sin UI salvo cuando el reto se dispara. */}
@@ -321,63 +320,7 @@ function LoginForm() {
         ) : (
           <IconBrandGoogle size={18} />
         )}
-        Continue with Google
-      </button>
-
-      {/* Facebook — coming soon (provider not configured in Supabase yet) */}
-      <button
-        type="button"
-        className="auth-oauth"
-        disabled
-        title="Coming soon — Facebook login próximamente"
-        style={{
-          width: "100%",
-          marginTop: 10,
-          padding: "11px 16px",
-          borderRadius: 10,
-          border: "1px solid var(--border-subtle)",
-          background: "var(--bg-elevated)",
-          color: "var(--text-primary)",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "not-allowed",
-          opacity: 0.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-        }}
-      >
-        <IconBrandFacebook size={18} style={{ color: "#1877F2" }} />
-        Continue with Facebook
-      </button>
-
-      {/* Apple — coming soon (provider not configured in Supabase yet) */}
-      <button
-        type="button"
-        className="auth-oauth"
-        disabled
-        title="Coming soon — Apple login próximamente"
-        style={{
-          width: "100%",
-          marginTop: 10,
-          padding: "11px 16px",
-          borderRadius: 10,
-          border: "1px solid var(--border-subtle)",
-          background: "var(--bg-elevated)",
-          color: "var(--text-primary)",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "not-allowed",
-          opacity: 0.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-        }}
-      >
-        <IconBrandApple size={18} style={{ color: "var(--text-primary)" }} />
-        Continue with Apple
+        {t("google")}
       </button>
 
       {/* Sign up link */}
@@ -389,9 +332,9 @@ function LoginForm() {
           margin: "20px 0 0",
         }}
       >
-        Don&apos;t have an account?{" "}
+        {t("noAccount")}{" "}
         <a href="/auth/register" style={{ color: "var(--color-brand)", fontWeight: 600 }}>
-          Sign up
+          {t("signUp")}
         </a>
       </p>
 

@@ -26,8 +26,6 @@ import {
   IconMessageCircle2,
   IconReceipt2,
   IconBrandGoogle,
-  IconBrandFacebook,
-  IconBrandApple,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { confirmAge, deleteMyAccount } from "@/lib/account";
@@ -96,13 +94,6 @@ const oauthBtn: React.CSSProperties = {
   gap: 10,
 };
 
-const disabledOauthBtn: React.CSSProperties = {
-  ...oauthBtn,
-  marginTop: 10,
-  cursor: "not-allowed",
-  opacity: 0.5,
-};
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 type Strength = { label: "weak" | "fair" | "strong"; color: string; pct: number };
@@ -158,6 +149,7 @@ function ErrorAlert({ message }: { message: string }) {
 }
 
 function CardHeader() {
+  const t = useTranslations("authPages.register");
   // Both brand marks rendered; styles/brands/tabpos.css picks one by data-brand.
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
@@ -183,8 +175,8 @@ function CardHeader() {
           <span className="brand-tabpos">Tab POS</span>
         </div>
         <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-          <span className="brand-jchat">Business dashboard</span>
-          <span className="brand-tabpos">Punto de venta</span>
+          <span className="brand-jchat">{t("brandSubtitle")}</span>
+          <span className="brand-tabpos">{t("brandSubtitlePos")}</span>
         </div>
       </div>
     </div>
@@ -229,19 +221,20 @@ function RegisterStep1Form({
   onGoogle: () => void;
   onContinue: () => void;
 }) {
+  const t = useTranslations("authPages.register");
   const strength = passwordStrength(password);
   const canContinue =
     fullName.trim().length > 0 && email.trim().length > 0 && password.length >= 8;
 
   return (
     <>
-      <div className="auth-step" style={stepLabelStyle}>Step 1 of 2</div>
+      <div className="auth-step" style={stepLabelStyle}>{t("step1")}</div>
       <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>
-        Create your account
+        {t("createTitle")}
       </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
-        <span className="brand-jchat">Join JChat to manage your venue and connect with customers.</span>
-        <span className="brand-tabpos">Join Tab POS to run your bar or restaurant from one place.</span>
+        <span className="brand-jchat">{t("joinJchat")}</span>
+        <span className="brand-tabpos">{t("joinTabpos")}</span>
       </p>
 
       {error && <ErrorAlert message={error} />}
@@ -253,7 +246,7 @@ function RegisterStep1Form({
         }}
       >
         {/* Full name */}
-        <label style={labelStyle}>Full name</label>
+        <label style={labelStyle}>{t("fullName")}</label>
         <div style={{ position: "relative", marginBottom: 14 }}>
           <span style={iconWrap}>
             <IconUser size={18} />
@@ -262,7 +255,7 @@ function RegisterStep1Form({
             type="text"
             required
             autoComplete="name"
-            placeholder="Jane Doe"
+            placeholder={t("fullNamePlaceholder")}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             style={inputStyle}
@@ -270,7 +263,7 @@ function RegisterStep1Form({
         </div>
 
         {/* Email */}
-        <label style={labelStyle}>Email</label>
+        <label style={labelStyle}>{t("email")}</label>
         <div style={{ position: "relative", marginBottom: 14 }}>
           <span style={iconWrap}>
             <IconMail size={18} />
@@ -279,7 +272,7 @@ function RegisterStep1Form({
             type="email"
             required
             autoComplete="email"
-            placeholder="you@business.com"
+            placeholder={t("emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
@@ -287,7 +280,7 @@ function RegisterStep1Form({
         </div>
 
         {/* Password */}
-        <label style={labelStyle}>Password</label>
+        <label style={labelStyle}>{t("password")}</label>
         <div style={{ position: "relative", marginBottom: 8 }}>
           <span style={iconWrap}>
             <IconLock size={18} />
@@ -297,7 +290,7 @@ function RegisterStep1Form({
             required
             autoComplete="new-password"
             minLength={8}
-            placeholder="At least 8 characters"
+            placeholder={t("passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{ ...inputStyle, paddingRight: 40 }}
@@ -305,7 +298,7 @@ function RegisterStep1Form({
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             style={{
               position: "absolute",
               right: 8,
@@ -354,7 +347,7 @@ function RegisterStep1Form({
                 textTransform: "capitalize",
               }}
             >
-              {strength.label} password
+              {t(`strength.${strength.label}`)}
             </div>
           </div>
         )}
@@ -370,7 +363,7 @@ function RegisterStep1Form({
             opacity: canContinue ? 1 : 0.6,
           }}
         >
-          Continue →
+          {t("continue")}
         </button>
       </form>
 
@@ -386,7 +379,7 @@ function RegisterStep1Form({
         }}
       >
         <span style={{ flex: 1, height: 1, background: "var(--border-subtle)" }} />
-        OR
+        {t("or")}
         <span style={{ flex: 1, height: 1, background: "var(--border-subtle)" }} />
       </div>
 
@@ -407,31 +400,7 @@ function RegisterStep1Form({
         ) : (
           <IconBrandGoogle size={18} />
         )}
-        Continue with Google
-      </button>
-
-      {/* Facebook — coming soon (provider not configured in Supabase yet) */}
-      <button
-        type="button"
-        className="auth-oauth"
-        disabled
-        title="Coming soon — Facebook login próximamente"
-        style={disabledOauthBtn}
-      >
-        <IconBrandFacebook size={18} style={{ color: "#1877F2" }} />
-        Continue with Facebook
-      </button>
-
-      {/* Apple — coming soon (provider not configured in Supabase yet) */}
-      <button
-        type="button"
-        className="auth-oauth"
-        disabled
-        title="Coming soon — Apple login próximamente"
-        style={disabledOauthBtn}
-      >
-        <IconBrandApple size={18} style={{ color: "var(--text-primary)" }} />
-        Continue with Apple
+        {t("google")}
       </button>
 
       {/* Sign in link */}
@@ -443,9 +412,9 @@ function RegisterStep1Form({
           margin: "20px 0 0",
         }}
       >
-        Already have an account?{" "}
+        {t("haveAccount")}{" "}
         <a href="/auth/login" style={{ color: "var(--color-brand)", fontWeight: 600 }}>
-          Sign in
+          {t("signIn")}
         </a>
       </p>
     </>
@@ -484,16 +453,17 @@ function RegisterStep2Form({
   onBack: () => void;
 }) {
   const te = useTranslations("authErrors");
+  const t = useTranslations("authPages.register");
   const is18 = dob !== "" && ageFromDob(dob) >= 18;
   const usernameOk = usernameStatus === "available" && username.length >= 3;
   const canCreate = is18 && usernameOk && agreeTerms && !loading;
 
   return (
     <>
-      <div className="auth-step" style={stepLabelStyle}>Step 2 of 2</div>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>Almost there!</h1>
+      <div className="auth-step" style={stepLabelStyle}>{t("step2")}</div>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>{t("almostThere")}</h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
-        Just a few more details to finish setting up your profile.
+        {t("step2Subtitle")}
       </p>
 
       {error && <ErrorAlert message={error} />}
@@ -505,7 +475,7 @@ function RegisterStep2Form({
         }}
       >
         {/* Date of birth */}
-        <label style={labelStyle}>Date of birth</label>
+        <label style={labelStyle}>{t("dob")}</label>
         <div style={{ marginBottom: dob !== "" && !is18 ? 6 : 14 }}>
           <input
             type="date"
@@ -522,20 +492,20 @@ function RegisterStep2Form({
         )}
 
         {/* Language */}
-        <label style={labelStyle}>Language</label>
+        <label style={labelStyle}>{t("language")}</label>
         <div style={{ marginBottom: 14 }}>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             style={{ ...inputStyle, padding: "10px 12px", cursor: "pointer" }}
           >
-            <option value="en">🇺🇸 English</option>
-            <option value="es">🇲🇽 Español</option>
+            <option value="en">{t("languageEnglish")}</option>
+            <option value="es">{t("languageSpanish")}</option>
           </select>
         </div>
 
         {/* Username */}
-        <label style={labelStyle}>Username</label>
+        <label style={labelStyle}>{t("username")}</label>
         <div style={{ position: "relative", marginBottom: 6 }}>
           <span style={{ ...iconWrap, color: "var(--text-secondary)", fontWeight: 600 }}>
             <IconAt size={18} />
@@ -544,7 +514,7 @@ function RegisterStep2Form({
             type="text"
             required
             autoComplete="username"
-            placeholder="yourname"
+            placeholder={t("usernamePlaceholder")}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             style={{ ...inputStyle, paddingRight: 40 }}
@@ -582,12 +552,12 @@ function RegisterStep2Form({
           }}
         >
           {usernameStatus === "invalid"
-            ? "Username must be 3–30 characters (letters, numbers, underscore)."
+            ? t("usernameInvalid")
             : usernameStatus === "taken"
-              ? "That username is already taken."
+              ? t("usernameTaken")
               : usernameStatus === "available"
-                ? "Username is available!"
-                : "3–30 characters · lowercase letters, numbers, underscore."}
+                ? t("usernameAvailable")
+                : t("usernameHint")}
         </div>
 
         {/* Terms */}
@@ -609,23 +579,23 @@ function RegisterStep2Form({
             style={{ marginTop: 2, cursor: "pointer", flexShrink: 0 }}
           />
           <span>
-            I agree to the{" "}
+            {t("agreePrefix")}{" "}
             <a
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "var(--color-brand)", fontWeight: 600 }}
             >
-              Terms of Service
+              {t("terms")}
             </a>{" "}
-            and{" "}
+            {t("and")}{" "}
             <a
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "var(--color-brand)", fontWeight: 600 }}
             >
-              Privacy Policy
+              {t("privacy")}
             </a>
             .
           </span>
@@ -642,7 +612,7 @@ function RegisterStep2Form({
           }}
         >
           {loading && <IconLoader2 size={18} className="spin" />}
-          {loading ? "Creating account…" : "Create my account 🎉"}
+          {loading ? t("creating") : t("create")}
         </button>
       </form>
 
@@ -663,7 +633,7 @@ function RegisterStep2Form({
           cursor: loading ? "default" : "pointer",
         }}
       >
-        ← Back
+        {t("back")}
       </button>
     </>
   );

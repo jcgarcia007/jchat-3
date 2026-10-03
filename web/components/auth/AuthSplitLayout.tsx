@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { IconMessageCircle2, IconMapPin, IconReceipt2 } from "@tabler/icons-react";
 
 /**
@@ -19,6 +20,7 @@ export default function AuthSplitLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("authPages.panel");
   return (
     <>
       <style>{`
@@ -194,16 +196,16 @@ export default function AuthSplitLayout({
               }}
             >
               <span className="brand-jchat">
-                Tu venue,
+                {t("jchatHeadline1")}
                 <br />
-                en el bolsillo
+                {t("jchatHeadline2")}
                 <br />
-                de cada cliente
+                {t("jchatHeadline3")}
               </span>
               <span className="brand-tabpos">
-                Que cada cliente
+                {t("tabposHeadline1")}
                 <br />
-                se sienta <em>atendido</em>
+                {t.rich("tabposHeadline2", { em: (chunks) => <em>{chunks}</em> })}
               </span>
             </h2>
             <p
@@ -216,14 +218,14 @@ export default function AuthSplitLayout({
               }}
             >
               <span className="brand-jchat">
-                Chats por ubicación, pedidos y pagos,
+                {t("jchatBody1")}
                 <br />
-                en un solo lugar.
+                {t("jchatBody2")}
               </span>
               <span className="brand-tabpos">
-                Pedidos en la mesa, cocina al instante
+                {t("tabposBody1")}
                 <br />
-                y cuenta sin esperas.
+                {t("tabposBody2")}
               </span>
             </p>
           </div>
@@ -242,8 +244,8 @@ export default function AuthSplitLayout({
             }}
           >
             <IconMapPin className="brand-jchat" size={15} />
-            <span className="brand-jchat">Social por ubicación</span>
-            <span className="brand-tabpos">Una solución de Otunity Labs</span>
+            <span className="brand-jchat">{t("jchatFoot")}</span>
+            <span className="brand-tabpos">{t("tabposFoot")}</span>
           </div>
         </aside>
 
