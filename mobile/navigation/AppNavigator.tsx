@@ -141,6 +141,7 @@ const linking: LinkingOptions<MainStackParamList> = {
   config: {
     screens: {
       ChatRoom: 'room/:id',
+      PostDetail: 'post/:postId',
     },
   },
 };

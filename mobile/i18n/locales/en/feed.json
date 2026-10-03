@@ -11,7 +11,8 @@
     "likeA11y": "Like post",
     "unlikeA11y": "Unlike post",
     "commentsA11y": "View comments ({{count}})",
-    "shareA11y": "Share post"
+    "shareA11y": "Share post",
+    "shareOnJChat": "@{{username}} on JChat"
   },
   "list": {
     "loadError": "Could not load feed. Pull down to retry.",

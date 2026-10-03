@@ -11,7 +11,8 @@
     "likeA11y": "Me gusta",
     "unlikeA11y": "Quitar me gusta",
     "commentsA11y": "Ver comentarios ({{count}})",
-    "shareA11y": "Compartir publicación"
+    "shareA11y": "Compartir publicación",
+    "shareOnJChat": "@{{username}} en JChat"
   },
   "list": {
     "loadError": "No se pudo cargar el feed. Desliza hacia abajo para reintentar.",

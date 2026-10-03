@@ -17,6 +17,7 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useThemeColors } from '../../theme/colors';
 import type { PostRow } from '../../services/posts';
+import { buildPostShareMessage } from '../../utils/postShare';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -120,6 +122,14 @@ export default function PostCard({
   const initials = authorName.slice(0, 2).toUpperCase();
   const likeCount = post.like_count ?? 0;
   const commentCount = post.comment_count ?? 0;
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({ message: buildPostShareMessage(post, t) });
+    } catch {
+      // The user dismissed the sheet or the platform refused it: nothing to report.
+    }
+  }, [post, t]);
 
   return (
     <View
@@ -237,12 +247,10 @@ export default function PostCard({
           ) : null}
         </TouchableOpacity>
 
-        {/* Share — stub */}
+        {/* Share — native share sheet */}
         <TouchableOpacity
           style={styles.action}
-          onPress={() => {
-            // TODO(share): open native share sheet for this post
-          }}
+          onPress={() => void handleShare()}
           accessibilityRole="button"
           accessibilityLabel={t('post.shareA11y')}
         >
