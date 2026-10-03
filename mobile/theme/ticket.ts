@@ -32,8 +32,12 @@ export const ticket = {
   ticketPillActiveText: '#0A0E1C',
   /** Shadow under the ticket. */
   ticketShadow: '#000000',
-  /** Soft scrim at the bottom of the photo so the ticket edge reads against it. */
-  ticketPhotoFade: 'rgba(10,14,28,0)',
+  /** Same color as the paper but fully transparent (start of the title-reveal gradient). */
+  ticketPaperClear: 'rgba(243,239,231,0)',
+  /** Transparent end of the photo fade (the other end is ticketBg). */
+  ticketBgClear: 'rgba(10,14,28,0)',
+  /** Back button over the photo. */
+  ticketBackBg: 'rgba(10,14,28,0.62)',
   /** Error text on the paper (≥ 4.5:1). */
   ticketError: '#B3261E',
 } as const;
