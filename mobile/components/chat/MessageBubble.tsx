@@ -25,7 +25,6 @@ import {
   View,
 } from 'react-native';
 import {
-  IconMicrophone,
   IconGif,
   IconPhoto,
 } from '@tabler/icons-react-native';
@@ -34,7 +33,9 @@ import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
 import { OfferCard } from './OfferCard';
 import type { Offer } from './OfferCard';
-import { isTrustedMediaUrl } from '../../utils/mediaUrl';
+import { isRoomVoicePath, isTrustedMediaUrl } from '../../utils/mediaUrl';
+import { VoiceBubble } from '../common/VoiceBubble';
+import type { VoiceSource } from '../../services/voiceNotes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -206,19 +207,23 @@ function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow }: Bubb
         </View>
       );
 
-    case 'voice':
-      // TODO(expo-av): render waveform + play button
+    case 'voice': {
+      // Voice notes live in the private voice-notes bucket; media_url holds the storage PATH.
+      const pending = message.id.startsWith('optimistic-');
+      const source: VoiceSource | null =
+        !pending && isRoomVoicePath(message.media_url, message.room_id)
+          ? { bucket: 'voice-notes', path: message.media_url as string }
+          : null;
       return (
-        <View style={styles.voiceRow}>
-          <IconMicrophone size={18} color={textColor} />
-          <Text style={[styles.bodyText, { color: textColor }]}>
-            {t('bubble.voiceNote')}
-            {typeof message.metadata.duration_s === 'number'
-              ? ` · ${Math.round(message.metadata.duration_s as number)}s`
-              : ''}
-          </Text>
-        </View>
+        <VoiceBubble
+          id={message.id}
+          source={source}
+          pending={pending}
+          durationSec={typeof message.metadata.duration_s === 'number' ? (message.metadata.duration_s as number) : null}
+          textColor={textColor}
+        />
       );
+    }
 
     case 'offer':
       return <OfferCard offer={offerFromMessage(message, t('bubble.offerFallback'))} theme={theme} onOrderNow={onOrderNow} />;
@@ -520,11 +525,6 @@ const styles = StyleSheet.create({
   },
 
   // Voice note
-  voiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
 
   // Offer slot — TODO(Task 2.6)
   offerSlot: {

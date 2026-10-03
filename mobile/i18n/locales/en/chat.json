@@ -21,13 +21,10 @@
     "closeAttachment": "Close attachment panel",
     "takePhoto": "Take a photo",
     "send": "Send message",
-    "voiceComingSoonA11y": "Voice message (coming soon)",
     "cameraPermissionTitle": "Permission required",
     "cameraPermissionMessage": "Allow camera access to take photos in chat.",
     "cameraErrorTitle": "Camera unavailable",
-    "cameraErrorMessage": "Could not open the camera. Check permissions.",
-    "voiceComingSoonTitle": "Coming soon",
-    "voiceComingSoonMessage": "Voice messages will be available soon."
+    "cameraErrorMessage": "Could not open the camera. Check permissions."
   },
   "attachment": {
     "photo": "Photo",
@@ -57,7 +54,6 @@
     "photo": "Photo",
     "gifA11y": "GIF message",
     "gif": "GIF",
-    "voiceNote": "Voice note",
     "offerFallback": "Offer",
     "unknownUser": "Unknown",
     "roleOwner": "Owner",

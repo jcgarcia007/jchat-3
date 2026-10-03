@@ -13,7 +13,7 @@
  *   disabled       — prevents sending (e.g. muted)
  *
  * Dynamic mic/send button:
- *   text is empty  → microphone icon (tapping shows "coming soon" alert)
+ *   text is empty  → microphone icon (tapping starts a voice recording)
  *   text has chars → send icon (tapping sends the message)
  */
 
@@ -37,6 +37,8 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
+import { VoiceRecorderBar } from '../common/VoiceRecorderBar';
+import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -45,6 +47,8 @@ export interface ChatInputProps {
   theme: ChatTheme;
   onSendText: (text: string) => void;
   onSendPhoto: (uri: string) => void;
+  /** Called with the finished voice recording (local file + duration); the parent uploads it. */
+  onSendVoice: (recording: VoiceRecording) => void;
   onMenuPress?: () => void;
   onServiceCall?: () => void;
   onOfferPress?: () => void;
@@ -59,6 +63,7 @@ export function ChatInput({
   theme,
   onSendText,
   onSendPhoto,
+  onSendVoice,
   onMenuPress,
   onServiceCall,
   onOfferPress,
@@ -68,6 +73,7 @@ export function ChatInput({
   const { t } = useTranslation('chat');
   const [text, setText] = useState('');
   const [attachmentOpen, setAttachmentOpen] = useState(false);
+  const [recordingVoice, setRecordingVoice] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -130,9 +136,18 @@ export function ChatInput({
   }, [onSendPhoto]);
 
   const handleMicPress = useCallback(() => {
-    // TODO(audio): implement voice recording in a future tanda
-    Alert.alert(t('input.voiceComingSoonTitle'), t('input.voiceComingSoonMessage'));
+    setAttachmentOpen(false);
+    setRecordingVoice(true);
   }, []);
+
+  const handleVoiceSend = useCallback(
+    (recording: VoiceRecording) => {
+      setRecordingVoice(false);
+      onSendVoice(recording);
+    },
+    [onSendVoice],
+  );
+  const handleVoiceCancel = useCallback(() => setRecordingVoice(false), []);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -152,7 +167,17 @@ export function ChatInput({
         canCreateOffer={canCreateOffer}
       />
 
-      {/* Input bar */}
+      {/* Input bar — replaced by the voice recorder while recording */}
+      {recordingVoice ? (
+        <VoiceRecorderBar
+          onSend={handleVoiceSend}
+          onCancel={handleVoiceCancel}
+          textColor={theme.bubbleInText}
+          accentColor={theme.accent}
+          backgroundColor={theme.topBg}
+          borderColor={theme.border}
+        />
+      ) : (
       <View style={[barStyles.container, { backgroundColor: theme.topBg, borderTopColor: theme.border }]}>
 
         {/* + / X toggle — opens AttachmentPanel */}
@@ -214,7 +239,7 @@ export function ChatInput({
         <Pressable
           onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
-          accessibilityLabel={canSend ? t('input.send') : t('input.voiceComingSoonA11y')}
+          accessibilityLabel={canSend ? t('input.send') : t('voice.record', { ns: 'common' })}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: canSend ? theme.accent : theme.inputBg, borderColor: theme.border },
@@ -230,6 +255,7 @@ export function ChatInput({
         </Pressable>
 
       </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

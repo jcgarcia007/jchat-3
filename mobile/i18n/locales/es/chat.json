@@ -21,13 +21,10 @@
     "closeAttachment": "Cerrar panel de adjuntos",
     "takePhoto": "Tomar una foto",
     "send": "Enviar mensaje",
-    "voiceComingSoonA11y": "Mensaje de voz (próximamente)",
     "cameraPermissionTitle": "Permiso requerido",
     "cameraPermissionMessage": "Permite el acceso a la cámara para tomar fotos en el chat.",
     "cameraErrorTitle": "Cámara no disponible",
-    "cameraErrorMessage": "No se pudo abrir la cámara. Verifica los permisos.",
-    "voiceComingSoonTitle": "Próximamente",
-    "voiceComingSoonMessage": "Los mensajes de voz estarán disponibles pronto."
+    "cameraErrorMessage": "No se pudo abrir la cámara. Verifica los permisos."
   },
   "attachment": {
     "photo": "Foto",
@@ -57,7 +54,6 @@
     "photo": "Foto",
     "gifA11y": "Mensaje con GIF",
     "gif": "GIF",
-    "voiceNote": "Nota de voz",
     "offerFallback": "Oferta",
     "unknownUser": "Desconocido",
     "roleOwner": "Dueño",

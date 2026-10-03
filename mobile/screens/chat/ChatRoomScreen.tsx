@@ -67,6 +67,9 @@ import type { BusinessSummary, UserSummary } from '../../components/chat/ChatTop
 import { SubRoomTabs } from '../../components/chat/SubRoomTabs';
 import type { SubRoom } from '../../components/chat/SubRoomTabs';
 import { ChatInput } from '../../components/chat/ChatInput';
+import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
+import { discardLocalRecording, uploadRoomVoice } from '../../services/voiceNotes';
+import { toUserMessage } from '../../utils/errors';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import type { ChatMessage, UserAnchor } from '../../components/chat/MessageBubble';
 import UserQuickCard from '../../components/chat/UserQuickCard';
@@ -688,10 +691,17 @@ export default function ChatRoomScreen() {
    * offering a retry.
    */
   const handleSendFailure = useCallback(
-    async (error: unknown, optimisticId: string) => {
+    async (error: unknown, optimisticId: string, fallbackMessage?: string) => {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
-      const code = (error as { code?: unknown } | null)?.code;
-      if (code === '42501' && user?.id) {
+      const err = error as { code?: unknown; status?: unknown; statusCode?: unknown; message?: unknown } | null;
+      // 42501 = RLS refused the insert; Storage reports the same refusal as HTTP 403.
+      const forbidden =
+        err?.code === '42501' ||
+        err?.status === 403 ||
+        err?.statusCode === '403' ||
+        err?.statusCode === 403 ||
+        (typeof err?.message === 'string' && /row-level security/i.test(err.message));
+      if (forbidden && user?.id) {
         try {
           const { data: muted } = await supabase.rpc('is_muted_in_room', {
             p_room: activeRoomId,
@@ -705,7 +715,7 @@ export default function ChatRoomScreen() {
           // fall through to the generic error
         }
       }
-      Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.messageFailed'));
+      Alert.alert(t('chatRoom.errorTitle'), fallbackMessage ?? t('chatRoom.messageFailed'));
     },
     [user?.id, activeRoomId, t],
   );
@@ -865,6 +875,81 @@ export default function ChatRoomScreen() {
     [user, activeRoomId, enteredIncognito, handleSendFailure, t],
   );
   sendPhotoRef.current = handleSendPhoto;
+
+  // ── Voice note: upload to the private voice-notes bucket, then insert type 'voice' ─
+  const handleSendVoice = useCallback(
+    async (recording: VoiceRecording) => {
+      if (!user) {
+        void discardLocalRecording(recording.uri);
+        return;
+      }
+      const incognito = enteredIncognito;
+      const meta: Record<string, unknown> = {
+        ...(incognito?.enabled ? { incognito: true, nickname: incognito.nickname } : {}),
+        duration_s: recording.durationSec,
+      };
+      const optimisticId = `optimistic-voice-${Date.now()}`;
+      const optimistic: ChatMessage = {
+        id: optimisticId,
+        room_id: activeRoomId,
+        user_id: user.id,
+        body: '',
+        type: 'voice',
+        media_url: null, // never the local file:// — the bubble shows a spinner until it is sent
+        metadata: meta,
+        is_system: false,
+        created_at: new Date().toISOString(),
+        sender_name: incognito?.enabled
+          ? incognito.nickname
+          : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
+      };
+      setMessages((prev) => [optimistic, ...prev]);
+      isNearBottomRef.current = true;
+      requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
+
+      if (!isSupabaseConfigured) {
+        void discardLocalRecording(recording.uri);
+        return;
+      }
+
+      try {
+        let path: string;
+        try {
+          path = await uploadRoomVoice(activeRoomId, user.id, recording.uri);
+        } catch (uploadErr) {
+          console.warn('[ChatRoom] voice upload failed:', uploadErr);
+          await handleSendFailure(uploadErr, optimisticId, toUserMessage(uploadErr, 'errors:app.VOICE_UPLOAD_FAILED'));
+          return;
+        }
+
+        const { data, error } = await supabase.from('messages').insert({
+          room_id: activeRoomId,
+          user_id: user.id,
+          body: '',
+          type: 'voice',
+          media_url: path,
+          metadata: meta,
+          is_system: false,
+        }).select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at').single();
+
+        if (!error && data) {
+          const confirmed = data as ChatMessage;
+          setMessages((prev) =>
+            prev
+              .filter((m) => m.id !== confirmed.id)
+              .map((m) => (m.id === optimisticId ? confirmed : m)),
+          );
+        } else {
+          await handleSendFailure(error, optimisticId, toUserMessage(error, 'errors:app.VOICE_UPLOAD_FAILED'));
+        }
+      } catch (sendError) {
+        await handleSendFailure(sendError, optimisticId, toUserMessage(sendError, 'errors:app.VOICE_UPLOAD_FAILED'));
+      } finally {
+        void discardLocalRecording(recording.uri);
+      }
+    },
+    [user, activeRoomId, enteredIncognito, handleSendFailure, t],
+  );
 
   // ── Sub-room switching ─────────────────────────────────────────────────────
 
@@ -1304,6 +1389,7 @@ export default function ChatRoomScreen() {
           theme={chatTheme}
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
+          onSendVoice={handleSendVoice}
           onMenuPress={handleMenuPress}
           onServiceCall={handleServiceCall}
           onOfferPress={() => setOfferVisible(true)}

@@ -27,6 +27,8 @@ export interface VoiceBubbleProps {
   /** Duration from the database (messages.metadata.duration_s / dm_messages.voice_duration_s). */
   durationSec?: number | null;
   textColor: string;
+  /** The message is still being uploaded (optimistic bubble): show it inert with a spinner. */
+  pending?: boolean;
 }
 
 function formatClock(totalSeconds: number): string {
@@ -34,7 +36,7 @@ function formatClock(totalSeconds: number): string {
   return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
 }
 
-export function VoiceBubble({ id, source, durationSec, textColor }: VoiceBubbleProps) {
+export function VoiceBubble({ id, source, durationSec, textColor, pending = false }: VoiceBubbleProps) {
   const { t } = useTranslation('common');
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
@@ -57,7 +59,7 @@ export function VoiceBubble({ id, source, durationSec, textColor }: VoiceBubbleP
   useEffect(() => () => releasePlayback(id), [id]);
 
   const toggle = useCallback(async () => {
-    if (!source || loading) return;
+    if (!source || loading || pending) return;
     if (status.playing) {
       player.pause();
       releasePlayback(id);
@@ -82,7 +84,7 @@ export function VoiceBubble({ id, source, durationSec, textColor }: VoiceBubbleP
     }
   }, [source, loading, status.playing, player, id]);
 
-  if (!source || failed) {
+  if (!pending && (!source || failed)) {
     return (
       <Text style={[styles.unavailable, { color: textColor }]}>{t('voice.unavailable')}</Text>
     );
@@ -95,12 +97,13 @@ export function VoiceBubble({ id, source, durationSec, textColor }: VoiceBubbleP
     >
       <Pressable
         onPress={() => void toggle()}
+        disabled={pending}
         style={[styles.playBtn, { borderColor: textColor }]}
         accessibilityRole="button"
         accessibilityLabel={status.playing ? t('voice.pause') : t('voice.play')}
         hitSlop={6}
       >
-        {loading ? (
+        {loading || pending ? (
           <ActivityIndicator size="small" color={textColor} />
         ) : status.playing ? (
           <IconPlayerPause size={18} color={textColor} />
