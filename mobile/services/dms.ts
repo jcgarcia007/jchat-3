@@ -5,7 +5,7 @@
  * DB tables (002_social_schema.sql):
  *   dm_conversations(id, user_a, user_b, last_message_at, created_at,
  *                    hidden_at_a, hidden_at_b)
- *   dm_messages(id, conversation_id, sender_id, body, media_url, voice_url, read_at, created_at)
+ *   dm_messages(id, conversation_id, sender_id, body, media_url, voice_url, voice_duration_s, read_at, created_at)
  *
  * All types are co-located here.
  * Every function guards against unconfigured Supabase with isSupabaseConfigured.
@@ -54,7 +54,10 @@ export interface DmMessageRow {
   sender_id: string;
   body: string | null;
   media_url: string | null;
+  /** dm-media storage PATH of a voice note (never a URL / file://). */
   voice_url: string | null;
+  /** Length of the voice note in seconds (1–60). */
+  voice_duration_s: number | null;
   read_at: string | null;
   created_at: string;
 }
@@ -74,7 +77,10 @@ export interface SendMessageInput {
   senderId: string;
   body?: string;
   mediaUrl?: string;
+  /** dm-media storage PATH of the voice note. */
   voiceUrl?: string;
+  /** Voice note length in seconds (1–60). */
+  voiceDurationSeconds?: number;
 }
 
 type DmUnreadInvalidationListener = () => void;
@@ -304,6 +310,7 @@ export async function sendMessage(input: SendMessageInput): Promise<DmMessageRow
       body: input.body ?? null,
       media_url: input.mediaUrl ?? null,
       voice_url: input.voiceUrl ?? null,
+      voice_duration_s: input.voiceDurationSeconds ?? null,
       read_at: null,
       created_at: new Date().toISOString(),
     };
@@ -317,6 +324,7 @@ export async function sendMessage(input: SendMessageInput): Promise<DmMessageRow
       body: input.body ?? null,
       media_url: input.mediaUrl ?? null,
       voice_url: input.voiceUrl ?? null,
+      voice_duration_s: input.voiceDurationSeconds ?? null,
     })
     .select('*')
     .single();

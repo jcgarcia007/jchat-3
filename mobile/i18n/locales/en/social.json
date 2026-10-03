@@ -33,16 +33,13 @@
   },
   "dmChat": {
     "title": "Chat",
-    "voiceNote": "Voice note",
     "sayHello": "Say hello!",
     "placeholder": "Message…",
     "errorTitle": "Error",
     "sendTextError": "Failed to send message.",
     "sendPhotoError": "Failed to send photo.",
     "permissionTitle": "Permission required",
-    "permissionMessage": "Allow photo access to send images.",
-    "voiceTitle": "Voice notes",
-    "voiceMessage": "Voice recording coming soon."
+    "permissionMessage": "Allow photo access to send images."
   },
   "friends": {
     "title": "Friends",

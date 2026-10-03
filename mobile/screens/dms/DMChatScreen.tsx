@@ -66,6 +66,12 @@ import {
   type DmMessageRow,
 } from '../../services/dms';
 import type { DMStackParamList } from '../../navigation/DMStack';
+import { VoiceBubble } from '../../components/common/VoiceBubble';
+import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
+import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
+import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
+import { isDmVoicePath } from '../../utils/mediaUrl';
+import { toUserMessage } from '../../utils/errors';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -147,14 +153,18 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
           />
         )}
 
-        {/* Voice note placeholder */}
+        {/* Voice note (private dm-media bucket; voice_url holds the storage PATH) */}
         {message.voice_url != null && (
-          <View style={styles.voiceRow}>
-            <IconMicrophone size={16} color={textColor} strokeWidth={2} />
-            <Text style={[styles.voiceLabel, { color: textColor }]}>
-              {t('dmChat.voiceNote')}
-            </Text>
-          </View>
+          <VoiceBubble
+            id={message.id}
+            source={
+              isDmVoicePath(message.voice_url, message.conversation_id)
+                ? { bucket: 'dm-media', path: message.voice_url }
+                : null
+            }
+            durationSec={message.voice_duration_s}
+            textColor={textColor}
+          />
         )}
 
         {/* Meta row: time + read receipt (own messages only) */}
@@ -196,6 +206,7 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
 export default function DMChatScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('social');
+  const { t: tc } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
@@ -326,16 +337,36 @@ export default function DMChatScreen() {
     }
   }, [user, conversationId, t]);
 
-  // ── Voice note stub ─────────────────────────────────────────────────────────
+  // ── Voice note ──────────────────────────────────────────────────────────────
 
-  const handleVoiceNote = useCallback(() => {
-    // TODO(expo-av not installed): voice recording
-    // When expo-av is available, implement record → stop → upload → sendMessage({voiceUrl})
-    Alert.alert(
-      t('dmChat.voiceTitle'),
-      t('dmChat.voiceMessage'),
-    );
-  }, [t]);
+  const [recordingVoice, setRecordingVoice] = useState(false);
+
+  const handleVoiceSend = useCallback(
+    async (recording: VoiceRecording) => {
+      setRecordingVoice(false);
+      if (!user) {
+        void discardLocalRecording(recording.uri);
+        return;
+      }
+      try {
+        // Upload to the PRIVATE dm-media bucket; store the PATH (never file://) in voice_url.
+        const path = await uploadDmVoice(conversationId, user.id, recording.uri);
+        await sendMessage({
+          conversationId,
+          senderId: user.id,
+          voiceUrl: path,
+          voiceDurationSeconds: recording.durationSec,
+        });
+      } catch (err) {
+        console.warn('[DMChat] voice send error', err);
+        Alert.alert(t('dmChat.errorTitle'), toUserMessage(err, 'errors:app.VOICE_UPLOAD_FAILED'));
+      } finally {
+        void discardLocalRecording(recording.uri);
+      }
+    },
+    [user, conversationId, t],
+  );
+  const handleVoiceCancel = useCallback(() => setRecordingVoice(false), []);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -396,7 +427,19 @@ export default function DMChatScreen() {
         />
       )}
 
-      {/* Composer */}
+      {/* Composer — replaced by the voice recorder while recording */}
+      {recordingVoice ? (
+        <View style={{ paddingBottom: insets.bottom, backgroundColor: c.bgSurface }}>
+          <VoiceRecorderBar
+            onSend={(rec) => void handleVoiceSend(rec)}
+            onCancel={handleVoiceCancel}
+            textColor={c.textPrimary}
+            accentColor={palette.brand}
+            backgroundColor={c.bgSurface}
+            borderColor={c.borderSubtle}
+          />
+        </View>
+      ) : (
       <View
         style={[
           styles.composer,
@@ -419,7 +462,9 @@ export default function DMChatScreen() {
         {/* Voice note */}
         <TouchableOpacity
           style={styles.composerIconBtn}
-          onPress={handleVoiceNote}
+          onPress={() => setRecordingVoice(true)}
+          accessibilityRole="button"
+          accessibilityLabel={tc('voice.record')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <IconMicrophone size={22} color={c.textSecondary} strokeWidth={2} />
@@ -465,6 +510,7 @@ export default function DMChatScreen() {
           />
         </TouchableOpacity>
       </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -539,15 +585,6 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 12,
     marginVertical: 4,
-  },
-  voiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  voiceLabel: {
-    fontSize: 14,
   },
   bubbleMeta: {
     flexDirection: 'row',
