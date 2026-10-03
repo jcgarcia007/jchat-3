@@ -179,7 +179,7 @@
     "warnUser": "Warn user",
     "muteInRoom": "Mute in room",
     "removeFromRoom": "Remove from room",
-    "banPermanently": "Ban permanently",
+    "banPermanently": "Ban from business",
     "ownerView": "Owner view",
     "moderatorView": "Moderator view",
     "errorTitle": "Something went wrong",
@@ -199,11 +199,12 @@
     "warnedMessage": "Warning has been logged.",
     "mutedInRoomFor": "They have been muted in this room {{duration}}.",
     "removeTitle": "Remove {{name}}?",
-    "removeMessage": "They will be removed from this room but can re-enter.",
+    "removeMessage": "They will be removed from this room and won't be able to re-enter it.",
     "removeConfirm": "Remove",
     "banTitle": "Ban {{name}}?",
-    "banMessage": "They will be permanently removed from this room and cannot re-enter.",
-    "banConfirm": "Ban"
+    "banMessage": "They will be banned from this business and won't be able to enter any of its rooms.",
+    "banConfirm": "Ban",
+    "noPermission": "You don't have permission to do this."
   },
   "pin": {
     "timer1h": "1 hour",
@@ -287,6 +288,8 @@
     "photoUploadFailedMessage": "The photo wasn't uploaded, so nothing was sent. Check your connection and try again.",
     "retry": "Retry",
     "mutedTitle": "You're muted",
-    "mutedMessage": "You're muted in this room."
+    "mutedMessage": "You're muted in this room.",
+    "bannedTitle": "No access",
+    "bannedMessage": "You no longer have access to this room."
   }
 }

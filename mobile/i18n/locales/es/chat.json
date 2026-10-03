@@ -179,7 +179,7 @@
     "warnUser": "Advertir al usuario",
     "muteInRoom": "Silenciar en la sala",
     "removeFromRoom": "Quitar de la sala",
-    "banPermanently": "Bloquear permanentemente",
+    "banPermanently": "Banear del negocio",
     "ownerView": "Vista de dueño",
     "moderatorView": "Vista de moderador",
     "errorTitle": "Algo salió mal",
@@ -199,11 +199,12 @@
     "warnedMessage": "La advertencia fue registrada.",
     "mutedInRoomFor": "Fue silenciado en esta sala {{duration}}.",
     "removeTitle": "¿Quitar a {{name}}?",
-    "removeMessage": "Será quitado de esta sala, pero puede volver a entrar.",
+    "removeMessage": "Se les expulsará de esta sala y no podrán volver a entrar en ella.",
     "removeConfirm": "Quitar",
     "banTitle": "¿Bloquear a {{name}}?",
-    "banMessage": "Será quitado permanentemente de esta sala y no podrá volver a entrar.",
-    "banConfirm": "Bloquear"
+    "banMessage": "Se les baneará de este negocio y no podrán entrar en ninguna de sus salas.",
+    "banConfirm": "Banear",
+    "noPermission": "No tienes permiso para hacer esto."
   },
   "pin": {
     "timer1h": "1 hora",
@@ -287,6 +288,8 @@
     "photoUploadFailedMessage": "La foto no se subió, así que no se envió nada. Revisa tu conexión e inténtalo de nuevo.",
     "retry": "Reintentar",
     "mutedTitle": "Estás silenciado",
-    "mutedMessage": "Estás silenciado en esta sala."
+    "mutedMessage": "Estás silenciado en esta sala.",
+    "bannedTitle": "Sin acceso",
+    "bannedMessage": "Ya no tienes acceso a esta sala."
   }
 }

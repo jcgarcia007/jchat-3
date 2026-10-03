@@ -217,20 +217,47 @@ export async function unmute(
   });
 }
 
+// ── expelFromRoom ─────────────────────────────────────────────────────────────
+
+/**
+ * Remove a user from ONE room for good: a `bans` row with room_id (no expiry). The server
+ * enforces it (is_banned_from_room / migration 179); the owner is the only one who can write it.
+ * Idempotent: an existing room ban counts as done.
+ */
+export async function expelFromRoom(
+  businessId: string,
+  roomId: string,
+  userId: string,
+  expelledBy: string,
+): Promise<void> {
+  assertConfigured();
+
+  const { error } = await supabase
+    .from('bans')
+    .insert({ room_id: roomId, user_id: userId, banned_by: expelledBy });
+  if (error && error.code !== '23505') throw error; // 23505: already banned from this room
+
+  await logAction({
+    businessId,
+    roomId,
+    actorId: expelledBy,
+    targetId: userId,
+    action: 'remove',
+    detail: null,
+  });
+}
+
 // ── banUser ───────────────────────────────────────────────────────────────────
 
 /**
- * Permanently ban a user from a business room.
- *
- * This inserts into `bans` (the unique constraint on room_id + user_id makes
- * it idempotent) and writes an audit log row. The caller is responsible for
- * physically removing the user from the live room (e.g. via Realtime presence
- * eviction or a server-side signal).
+ * Ban a user from the whole business: a `bans` row with business_id and room_id NULL, which
+ * the server treats as a ban from every room of that business (is_banned_from_room).
+ * Idempotent: an existing business ban counts as done.
  *
  * @param businessId — UUID of the business
- * @param roomId     — UUID of the room
+ * @param roomId     — UUID of the room the action came from (audit log only)
  * @param userId     — UUID of the user being banned
- * @param bannedBy   — UUID of the moderator/owner performing the action
+ * @param bannedBy   — UUID of the owner performing the action
  * @param reason     — optional human-readable reason (stored in bans.reason)
  */
 export async function banUser(
@@ -242,29 +269,25 @@ export async function banUser(
 ): Promise<void> {
   assertConfigured();
 
-  // UPDATE-then-INSERT instead of upsert: keeps room_id/user_id (and
-  // business_id) out of the SET clause, so a column-level UPDATE grant on
-  // just (banned_by, reason) is enough — see the same note in muteInRoom.
-  const { data: updated, error: updateErr } = await supabase
+  // (room_id, user_id) is unique, but NULL room_ids never collide: look for an existing
+  // business-wide ban first so a repeated ban does not pile up duplicate rows.
+  const { data: existing, error: lookupErr } = await supabase
     .from('bans')
-    .update({ banned_by: bannedBy, reason: reason ?? null })
-    .eq('room_id', roomId)
+    .select('id')
+    .eq('business_id', businessId)
     .eq('user_id', userId)
-    .select('id');
+    .is('room_id', null)
+    .maybeSingle();
+  if (lookupErr) throw lookupErr;
 
-  if (updateErr) throw updateErr;
-
-  if (!updated || updated.length === 0) {
-    const { error: insertErr } = await supabase
-      .from('bans')
-      .insert({
-        business_id: businessId,
-        room_id: roomId,
-        user_id: userId,
-        banned_by: bannedBy,
-        reason: reason ?? null,
-      });
-
+  if (!existing) {
+    const { error: insertErr } = await supabase.from('bans').insert({
+      business_id: businessId,
+      room_id: null,
+      user_id: userId,
+      banned_by: bannedBy,
+      reason: reason ?? null,
+    });
     if (insertErr) throw insertErr;
   }
 
@@ -281,12 +304,12 @@ export async function banUser(
 // ── unban ─────────────────────────────────────────────────────────────────────
 
 /**
- * Lift a permanent ban.
+ * Lift a ban (room-level and business-wide) for a user.
  *
  * @param businessId — UUID of the business (for the audit log)
  * @param roomId     — UUID of the room
  * @param userId     — UUID of the user being unbanned
- * @param unbannedBy — UUID of the moderator/owner performing the action
+ * @param unbannedBy — UUID of the owner performing the action
  */
 export async function unban(
   businessId: string,
@@ -296,13 +319,20 @@ export async function unban(
 ): Promise<void> {
   assertConfigured();
 
-  const { error } = await supabase
+  const { error: roomErr } = await supabase
     .from('bans')
     .delete()
     .eq('room_id', roomId)
     .eq('user_id', userId);
+  if (roomErr) throw roomErr;
 
-  if (error) throw error;
+  const { error: bizErr } = await supabase
+    .from('bans')
+    .delete()
+    .eq('business_id', businessId)
+    .is('room_id', null)
+    .eq('user_id', userId);
+  if (bizErr) throw bizErr;
 
   await logAction({
     businessId,
@@ -327,13 +357,12 @@ export async function isBanned(
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
 
-  const { data, error } = await supabase
-    .from('bans')
-    .select('user_id')
-    .eq('room_id', roomId)
-    .eq('user_id', userId)
-    .maybeSingle();
+  // Server-side rule (migration 179): a ban on this room, or a business-wide ban.
+  const { data, error } = await supabase.rpc('is_banned_from_room', {
+    p_room: roomId,
+    p_user: userId,
+  });
 
   if (error) throw error;
-  return data !== null;
+  return data === true;
 }

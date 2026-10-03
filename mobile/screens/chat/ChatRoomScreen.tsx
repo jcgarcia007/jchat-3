@@ -323,10 +323,35 @@ export default function ChatRoomScreen() {
     }
   }, []);
 
+  // ── Bans are enforced by the server; here the banned user is told and sent out ──
+  const notifyBanned = useCallback(() => {
+    Alert.alert(t('chatRoom.bannedTitle'), t('chatRoom.bannedMessage'));
+  }, [t]);
+
+  const checkBannedFromRoom = useCallback(
+    async (roomId: string): Promise<boolean> => {
+      if (!isSupabaseConfigured || !user?.id || isOwner) return false;
+      try {
+        const { data } = await supabase.rpc('is_banned_from_room', { p_room: roomId, p_user: user.id });
+        return data === true;
+      } catch {
+        return false; // can't tell: the server still refuses what a ban forbids
+      }
+    },
+    [user?.id, isOwner],
+  );
+
+  // On entering the room and on every return to it: refresh blocks and re-check the ban.
   useFocusEffect(
     useCallback(() => {
-      if (!entryVisible) void refreshBlocks();
-    }, [entryVisible, refreshBlocks]),
+      if (entryVisible) return;
+      void refreshBlocks();
+      void checkBannedFromRoom(rootRoomId).then((banned) => {
+        if (!banned) return;
+        notifyBanned();
+        navigation.goBack();
+      });
+    }, [entryVisible, refreshBlocks, checkBannedFromRoom, rootRoomId, notifyBanned, navigation]),
   );
 
   // Messages from blocked users never render: initial load, pagination and realtime all
@@ -828,12 +853,19 @@ export default function ChatRoomScreen() {
   // ── Sub-room switching ─────────────────────────────────────────────────────
 
   const handleSelectSubRoom = useCallback((subRoom: SubRoom) => {
-    setActiveRoomId(subRoom.id);
-    oldestTimestampRef.current = null;
-    isNearBottomRef.current = true;
-    setMessages([]);
-    setHasMore(true);
-  }, []);
+    void (async () => {
+      // A ban can be limited to one room: don't switch into a room the user is banned from.
+      if (await checkBannedFromRoom(subRoom.id)) {
+        notifyBanned();
+        return;
+      }
+      setActiveRoomId(subRoom.id);
+      oldestTimestampRef.current = null;
+      isNearBottomRef.current = true;
+      setMessages([]);
+      setHasMore(true);
+    })();
+  }, [checkBannedFromRoom, notifyBanned]);
 
   const handleSelectProtectedSubRoom = useCallback((subRoom: SubRoom) => {
     setPendingProtectedRoom(subRoom);
@@ -908,8 +940,11 @@ export default function ChatRoomScreen() {
 
   // ── Role resolution ────────────────────────────────────────────────────────
 
-  // TODO(Task 2.9): resolve viewer role from employees table.
-  const viewerRole: ViewerRole = 'user';
+  // Only the business OWNER moderates from the app: the server (migration 179) lets only the
+  // owner ban, mute, write moderation logs and pin messages.
+  // TODO(staff-moderation): give employees with chat_moderate / chat_ban / chat_pin the
+  // 'moderator' role once the server allows staff to do those things.
+  const viewerRole: ViewerRole = isOwner ? 'owner' : 'user';
 
   // ── Chat permissions (offers_manage gate — migration 022) ──────────────────
 

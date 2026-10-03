@@ -15,17 +15,17 @@
  *   5. Report
  *   6. Block (personal — hides user from your own view; does NOT expel them)
  *
- * Owner / Moderator (all 6 + 4 extras = 10 options):
+ * Owner only for now (all 6 + 4 extras = 10 options; staff moderation is TODO(staff-moderation)):
  *   7.  Warn user                 → logAction 'warn'
- *   8.  Mute in room              → muteInRoom (1 h / 24 h / permanent picker)
- *   9.  Remove from room          → logAction 'remove' (caller handles eviction)
- *   10. Ban permanently           → banUser   (removes + prevents re-entry)
+ *   8.  Mute in room              → muteInRoom (1 h / 24 h picker; room_mutes, enforced by the server)
+ *   9.  Remove from room          → expelFromRoom (bans row with room_id, enforced by the server)
+ *   10. Ban from business         → banUser   (bans row with business_id and no room: every room)
  *
  * ── Block vs. Ban ─────────────────────────────────────────────────────────────
  *   Block (personal) — uses blockUser from users.ts — hides the user from your
  *     own view in the app but does NOT remove them from the room.
- *   Ban (owner/mod)  — uses banUser from moderation.ts — permanently removes the
- *     user from the room AND prevents re-entry.
+ *   Ban (owner)      — uses banUser from moderation.ts — bans the user from the whole
+ *     business; the server refuses their access and messages.
  *
  * ── Design ────────────────────────────────────────────────────────────────────
  *   - No hardcoded hex — all colors from useThemeColors() / palette tokens
@@ -74,6 +74,7 @@ import { requestOrFollow } from '../../services/follows';
 import { blockUser } from '../../services/blocks';
 import {
   banUser,
+  expelFromRoom,
   muteInRoom,
   logAction,
 } from '../../services/moderation';
@@ -84,7 +85,7 @@ import type { ThemeColors } from '../../theme/colors';
 export type ViewerRole = 'user' | 'moderator' | 'owner';
 
 /** Duration options for the room-mute picker. */
-type MuteDuration = '1h' | '24h' | 'permanent';
+type MuteDuration = '1h' | '24h';
 
 export interface UserActionSheetProps {
   /** Controls Modal visibility. */
@@ -142,11 +143,6 @@ function MuteDurationPicker({ onSelect, onCancel, c }: MuteDurationPickerProps) 
       <Pressable style={s.option} onPress={() => onSelect('24h')}>
         <IconClock size={18} color={c.textSecondary} />
         <Text style={s.optionLabel}>{t('userAction.duration24h')}</Text>
-      </Pressable>
-
-      <Pressable style={s.option} onPress={() => onSelect('permanent')}>
-        <IconBellOff size={18} color={palette.danger} />
-        <Text style={[s.optionLabel, { color: palette.danger }]}>{t('userAction.durationPermanent')}</Text>
       </Pressable>
 
       <Pressable style={s.cancelOption} onPress={onCancel}>
@@ -302,9 +298,15 @@ export function UserActionSheet({
       try {
         await fn();
       } catch (err) {
+        // 42501 = RLS refused it: only the business owner can moderate.
+        const code = (err as { code?: unknown } | null)?.code;
         Alert.alert(
           t('userAction.errorTitle'),
-          err instanceof Error ? err.message : t('userAction.tryAgain'),
+          code === '42501'
+            ? t('userAction.noPermission')
+            : err instanceof Error
+              ? err.message
+              : t('userAction.tryAgain'),
         );
       } finally {
         setLoadingAction(null);
@@ -410,18 +412,13 @@ export function UserActionSheet({
       if (!user) return;
       setShowMutePicker(false);
 
-      const durationHours: number | null =
-        duration === '1h' ? 1 : duration === '24h' ? 24 : null;
+      const durationHours = duration === '1h' ? 1 : 24;
 
       await run('muteRoom', async () => {
         // TODO(Stage 4): require moderator physical presence (geofence check)
         await muteInRoom(roomId, targetUserId, user.id, businessId, durationHours);
         const label =
-          duration === '1h'
-            ? t('userAction.forOneHour')
-            : duration === '24h'
-            ? t('userAction.forTwentyFourHours')
-            : t('userAction.forPermanent');
+          duration === '1h' ? t('userAction.forOneHour') : t('userAction.forTwentyFourHours');
         Alert.alert(
           t('userAction.mutedTitle', { name: targetName }),
           t('userAction.mutedInRoomFor', { duration: label }),
@@ -445,14 +442,8 @@ export function UserActionSheet({
           onPress: async () => {
             await run('remove', async () => {
               // TODO(Stage 4): require moderator physical presence (geofence check)
-              await logAction({
-                businessId,
-                roomId,
-                actorId: user.id,
-                targetId: targetUserId,
-                action: 'remove',
-                detail: null,
-              });
+              // Real server-enforced removal from THIS room (bans row with room_id); it logs itself.
+              await expelFromRoom(businessId, roomId, targetUserId, user.id);
               onRemove?.(targetUserId);
               onClose();
             });
