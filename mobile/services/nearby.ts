@@ -1,13 +1,7 @@
+import type { HoursMap } from '../utils/hours';
 import { isSupabaseConfigured, supabase } from './supabase';
 
-interface HoursEntry {
-  open: string;
-  close: string;
-  closed?: boolean;
-}
-
-type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
-export type BusinessHours = Partial<Record<DayKey, HoursEntry>>;
+export type BusinessHours = HoursMap;
 
 export interface NearbyBusiness {
   id: string;
@@ -104,23 +98,6 @@ const DEMO_BUSINESSES: NearbyBusiness[] = [
     room_count: 4,
   },
 ];
-
-const DAY_KEYS: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
-export function isOpenNow(hours: BusinessHours | null): boolean {
-  if (!hours) return false;
-  const entry = hours[DAY_KEYS[new Date().getDay()]];
-  if (!entry || entry.closed) return false;
-
-  const now = new Date();
-  const [openH, openM] = entry.open.split(':').map(Number);
-  const [closeH, closeM] = entry.close.split(':').map(Number);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = openH * 60 + openM;
-  let closeMinutes = closeH * 60 + closeM;
-  if (closeMinutes < openMinutes) closeMinutes += 24 * 60;
-  return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
-}
 
 export function nearbyCategories(businesses: NearbyBusiness[]): string[] {
   return [...new Set(businesses.map((business) => business.category))].sort();

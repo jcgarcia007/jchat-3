@@ -28,7 +28,8 @@
     "navigateA11y": "Ir al negocio",
     "shareA11y": "Compartir este negocio",
     "shareTitle": "Mira {{name}} en JChat",
-    "shareMessage": "{{name}} — {{url}}"
+    "shareMessage": "{{name}} — {{url}}",
+    "hoursUnavailable": "Horario no disponible"
   },
   "filterPanel": {
     "categoryAll": "Todas",

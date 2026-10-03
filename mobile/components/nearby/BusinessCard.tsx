@@ -5,7 +5,8 @@ import { IconMapPin, IconMessage, IconUsers } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { isOpenNow, type NearbyBusiness } from '../../services/nearby';
+import { type NearbyBusiness } from '../../services/nearby';
+import { getOpenStatus } from '../../utils/hours';
 
 interface BusinessCardProps {
   item: NearbyBusiness;
@@ -16,7 +17,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
   const colors = useThemeColors();
   const nearbyTranslation = useTranslation('nearby');
   const mapTranslation = useTranslation('map');
-  const open = isOpenNow(item.hours);
+  const status = getOpenStatus(item.hours);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
@@ -29,8 +30,8 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             {item.name}
           </Text>
           <View style={[styles.badge, { backgroundColor: colors.bgElevated }]}>
-            <Text style={[styles.badgeText, { color: open ? colors.success : colors.danger }]}>
-              {nearbyTranslation.t(open ? 'openBadge' : 'closedBadge')}
+            <Text style={[styles.badgeText, { color: status === 'open' ? colors.success : status === 'closed' ? colors.danger : colors.textSecondary }]}>
+              {nearbyTranslation.t(status === 'open' ? 'openBadge' : status === 'closed' ? 'closedBadge' : 'hoursUnavailable')}
             </Text>
           </View>
         </View>

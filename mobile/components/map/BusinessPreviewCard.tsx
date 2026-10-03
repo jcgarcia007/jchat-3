@@ -36,6 +36,14 @@ import {
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import {
+  DAY_ORDER,
+  formatDayRange,
+  getOpenStatus,
+  type DayHours,
+  type DayKey,
+  type HoursMap,
+} from '../../utils/hours';
 
 // ── Design-System accent hexes not covered by global tokens ──────────────────
 // These exact values come from JCHAT_3.0_DESIGN_SYSTEM.docx Section 11 and
@@ -47,15 +55,7 @@ const CARD_COLORS = {
 
 // ── Hours type ────────────────────────────────────────────────────────────────
 
-type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
-
-export interface DayHours {
-  open: string;   // e.g. "09:00" (24h)
-  close: string;  // e.g. "22:00" (24h)
-  closed?: boolean;
-}
-
-export type HoursMap = Partial<Record<DayKey, DayHours>>;
+export type { DayHours, HoursMap } from '../../utils/hours';
 
 // ── Room type ─────────────────────────────────────────────────────────────────
 
@@ -93,47 +93,6 @@ export interface BusinessPreviewCardProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DAY_ORDER: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
-/**
- * Returns whether the business is open right now based on its hours map.
- * Uses the device's local clock and the 24h open/close strings.
- */
-export function isOpenNow(hours: HoursMap | null | undefined): boolean {
-  if (!hours) return false;
-  const now = new Date();
-  const dayKey = DAY_ORDER[now.getDay()];
-  const todayHours = hours[dayKey];
-  if (!todayHours || todayHours.closed) return false;
-
-  const [openH, openM] = todayHours.open.split(':').map(Number);
-  const [closeH, closeM] = todayHours.close.split(':').map(Number);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-
-  // Handle overnight hours (e.g. 20:00 – 02:00)
-  if (closeMinutes < openMinutes) {
-    return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
-  }
-  return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
-}
-
-/**
- * Format "09:00" → "9:00 AM" (en) / "9:00" (es, 24h — whatever the locale's
- * own convention is) via Intl.DateTimeFormat, keyed to i18n.language like
- * getDayLabels below. hour12 is intentionally NOT forced — the locale decides
- * 12h vs 24h and the AM/PM-equivalent suffix, same as a real clock would show.
- * 2023-01-01 is a fixed reference date (same one getDayLabels uses) purely to
- * build a Date to format — it has no bearing on the open/close hours-lookup
- * logic above, which only ever reads the raw "HH:MM" strings and
- * getHours()/getMinutes(). This is DISPLAY only.
- */
-function formatHourLabel(time24: string, locale: string): string {
-  const [h, m] = time24.split(':').map(Number);
-  const d = new Date(Date.UTC(2023, 0, 1, h, m));
-  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(d);
-}
 
 /**
  * Derives localized short weekday names (Sun/Mon/… or Dom/Lun/… in es) via
@@ -174,7 +133,15 @@ export default function BusinessPreviewCard({
   const { t, i18n } = useTranslation('map');
   const c = useThemeColors();
 
-  const open = useMemo(() => isOpenNow(business.hours), [business.hours]);
+  const status = useMemo(() => getOpenStatus(business.hours), [business.hours]);
+  const open = status === 'open';
+
+  // One day's row in the hours grid: never throws, "Hours unavailable" when the entry can't be read.
+  const dayRange = (entry: DayHours | undefined): string => {
+    const range = formatDayRange(entry, i18n.language);
+    if (range.kind === 'closed') return t('businessPreviewCard.closedBadge');
+    return range.kind === 'range' ? range.text : t('businessPreviewCard.hoursUnavailable');
+  };
 
   // Localized short weekday names (Sun/Mon/… → Dom/Lun/… in es), derived via
   // Intl — DAY_ORDER's day-KEY indexing (used for the hours lookup) is untouched.
@@ -230,7 +197,11 @@ export default function BusinessPreviewCard({
         <View style={[styles.openBadge, { backgroundColor: c.bgSurface }]}>
           <View style={[styles.openDot, { backgroundColor: open ? CARD_COLORS.openGreen : c.textTertiary }]} />
           <Text style={[styles.openBadgeText, { color: open ? CARD_COLORS.openGreen : c.textSecondary }]}>
-            {open ? t('businessPreviewCard.openBadge') : t('businessPreviewCard.closedBadge')}
+            {status === 'open'
+              ? t('businessPreviewCard.openBadge')
+              : status === 'closed'
+                ? t('businessPreviewCard.closedBadge')
+                : t('businessPreviewCard.hoursUnavailable')}
           </Text>
         </View>
 
@@ -358,9 +329,7 @@ export default function BusinessPreviewCard({
                       },
                     ]}
                   >
-                    {!dayH || dayH.closed
-                      ? t('businessPreviewCard.closedBadge')
-                      : `${formatHourLabel(dayH.open, i18n.language)} – ${formatHourLabel(dayH.close, i18n.language)}`}
+                    {dayRange(dayH)}
                   </Text>
                 </View>
               ))}

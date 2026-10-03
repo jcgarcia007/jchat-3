@@ -11,5 +11,6 @@
   "noVenuesTitle": "No hay locales cerca",
   "noResultsTitle": "No se encontraron resultados",
   "noVenuesSubtitle": "Vuelve pronto — más locales se están uniendo a JChat.",
-  "noResultsSubtitle": "Intenta otra búsqueda o borra el filtro."
+  "noResultsSubtitle": "Intenta otra búsqueda o borra el filtro.",
+  "hoursUnavailable": "Horario no disponible"
 }

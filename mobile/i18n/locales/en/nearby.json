@@ -11,5 +11,6 @@
   "noVenuesTitle": "No venues nearby",
   "noResultsTitle": "No results found",
   "noVenuesSubtitle": "Check back soon — more venues are joining JChat.",
-  "noResultsSubtitle": "Try a different search or clear the filter."
+  "noResultsSubtitle": "Try a different search or clear the filter.",
+  "hoursUnavailable": "Hours unavailable"
 }
