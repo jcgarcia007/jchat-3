@@ -63,3 +63,4 @@ generar-jwt.mjs
 .mcp.json
 gallery/
 scripts/test-*.ts
+.backup-claude-*/

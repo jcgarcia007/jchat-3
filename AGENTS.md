@@ -120,3 +120,21 @@ Las carpetas de capacidades propias de una herramienta, como `.claude/`, no son 
 - Suscripciones Realtime con cleanup.
 - Textos EN/ES en paridad.
 - Solo se modificaron archivos pertenecientes a la tarea.
+
+## ECC — flujo de trabajo permanente (desde 2026-10-02)
+
+- **Instalado:** ECC (`ecc@ecc`) versión **2.2.3**, el 2026-10-02, con `npx ecc-universal@2.2.3 setup --mode claude-plugin --scope project`. Fuente oficial: repo `github.com/affaan-m/ECC` y paquete npm `ecc-universal`.
+- **Dónde:** scope `project`. Config en `.claude/settings.json` (`extraKnownMarketplaces.ecc` + `enabledPlugins."ecc@ecc": true`). Los archivos del plugin viven en la caché de plugins de Claude Code (`~/.claude/plugins/cache/ecc/ecc/2.2.3/`), no en el repo. Hooks en preferencia `standard`.
+- **Backup previo:** `.backup-claude-2026-10-02/` (ignorado por git; contiene `~/.claude.json`, así que no se sube ni se comparte).
+- **Flujo estándar, siempre y sin preguntar:** `plan → test → implement → review → verify → remember`.
+  1. **Plan:** planificar antes de codificar (`/plan`, agente `planner`/`architect`).
+  2. **Test:** escribir o verificar tests primero (`tdd-workflow`, agente `tdd-guide`).
+  3. **Implement:** el cambio mínimo que cumple el spec.
+  4. **Review:** revisar el propio trabajo desde un contexto fresco antes de entregar (`/code-review`, agentes `code-reviewer`, `typescript-reviewer`, `security-reviewer`, `database-reviewer`).
+  5. **Verify:** `npx tsc --noEmit`, tests y comprobación real (`verification-loop`, `/quality-gate`).
+  6. **Remember:** persistir las decisiones importantes del proyecto (memoria de Claude Code, `docs/DECISIONS.md`, `/save-session`).
+- **Precedencia:** este flujo no anula las reglas de arriba. Siguen mandando el flujo Git obligatorio, las fuentes de verdad, "no mejoras fuera del spec sin aprobación" y el checklist de UI.
+- **Disponible (v2.2.3):** 68 agentes, 293 skills y 94 comandos.
+  - Agentes relevantes aquí: `planner`, `architect`, `tdd-guide`, `code-reviewer`, `typescript-reviewer`, `react-reviewer`, `react-build-resolver`, `security-reviewer`, `database-reviewer`, `e2e-runner`, `build-error-resolver`, `refactor-cleaner`, `performance-optimizer`, `doc-updater`, `silent-failure-hunter`, `swift-reviewer`. El resto cubre otros lenguajes (Go, Rust, Java, Python…).
+  - Skills relevantes: `tdd-workflow`, `verification-loop`, `security-review`, `strategic-compact`, `continuous-learning-v2`, `unified-memory`, `plan-orchestrate`.
+  - Comandos relevantes: `/plan`, `/prp-plan`, `/prp-implement`, `/code-review`, `/review-pr`, `/quality-gate`, `/build-fix`, `/test-coverage`, `/security-scan`, `/refactor-clean`, `/update-docs`, `/save-session`, `/resume-session`, `/learn`.
