@@ -15,10 +15,12 @@ import Link from "next/link";
 import { IconQrcode } from "@tabler/icons-react";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { TableEntry } from "./TableEntry";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Mesa — JChat",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return { title: t("table.title") };
+}
 
 interface ResolvedTable {
   table_label: string;
@@ -32,6 +34,7 @@ export default async function TableQrPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const t = await getTranslations("tableEntry");
 
   let resolved: ResolvedTable | null = null;
   let hasSession = false;
@@ -54,13 +57,13 @@ export default async function TableQrPage({
             <IconQrcode size={30} />
           </span>
           <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>
-            Esta mesa no está disponible
+            {t("unavailableTitle")}
           </h1>
           <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>
-            El código QR no corresponde a ninguna mesa activa. Pídele al personal que lo revise.
+            {t("unavailableBody")}
           </p>
           <Link href="/" style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
-            Ir al inicio
+            {t("goHome")}
           </Link>
         </div>
       </div>

@@ -2342,7 +2342,7 @@ export default function MenuPageClient({
             } catch (err: unknown) {
               const e = err as { code?: string; message?: string };
               // EF already returns human-readable messages for METHOD_LOCKED and other errors
-              alert(e.message ?? "Error al crear el pago");
+              alert(e.message ?? t("createPaymentError"));
             }
           }}
           onClose={() => setStep("tabBalance")}

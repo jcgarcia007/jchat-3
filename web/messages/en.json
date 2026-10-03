@@ -179,7 +179,12 @@
     "onTheTab": "on the tab",
     "courses": "courses",
     "piece": "piece",
-    "pieces": "pieces"
+    "pieces": "pieces",
+    "createPaymentError": "We couldn't create the payment. Please try again.",
+    "fallbackCategorySeasonal": "Seasonal Menu",
+    "fallbackCategoryMenu": "Menu",
+    "collectionSuffix": "A Collection",
+    "featuredBadge": "Featured"
   },
   "dashboardCommon": {
     "navOverview": "Overview",
@@ -3303,6 +3308,12 @@
       "description": "{name} is on JChat. Download the app to join the conversation.",
       "notFoundTitle": "Business not found — JChat",
       "notFoundDescription": "This business could not be found on JChat."
+    },
+    "qrEntry": {
+      "title": "Join the chat — JChat"
+    },
+    "table": {
+      "title": "Table — JChat"
     }
   },
   "plans": {
@@ -3455,5 +3466,34 @@
     "notFoundBefore": "We couldn't find a business at",
     "notFoundAfter": ". It may have moved or the link could be incorrect.",
     "chatRooms": "Chat Rooms"
-  }
+  },
+  "qrEntry": {
+    "accessByQr": "QR access",
+    "invalidTitle": "Invalid QR",
+    "invalidBody": "This QR code isn't linked to any active room. Ask the venue for a new one.",
+    "scanTitle": "QR code scan",
+    "business": "Business",
+    "enteringBefore": "You're joining the chat of",
+    "alsoMainRoom": "You'll also get access to the venue's main room.",
+    "signInToEnter": "Sign in to enter",
+    "needAccount": "You need a JChat account to access the chat.",
+    "invalidQr": "This QR code is no longer valid. Ask the venue for a new one.",
+    "genericError": "Something went wrong. Try again.",
+    "entering": "Entering…",
+    "enterChat": "Enter the chat",
+    "retry": "Try again",
+    "invalidQrShort": "This QR is no longer valid. Ask the venue for the new code.",
+    "verifyFailed": "We couldn't verify your access. Try again.",
+    "alsoMainRoomHub": "You also have access to the venue's main room.",
+    "whatToDo": "What do you want to do?",
+    "callService": "Call service"
+  },
+  "tableEntry": {
+    "unavailableTitle": "This table isn't available",
+    "unavailableBody": "The QR code doesn't match any active table. Ask the staff to check it.",
+    "goHome": "Go to home",
+    "preparing": "Getting your table ready…",
+    "joiningChat": "Joining the table chat…"
+  },
+  "tabCodeUnexpectedError": "Unexpected error. Please try again."
 }

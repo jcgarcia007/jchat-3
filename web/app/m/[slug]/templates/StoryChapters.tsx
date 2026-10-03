@@ -68,7 +68,7 @@ export default function StoryChapters({
             {business.name}
           </div>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "3px", color: ACCENT, textTransform: "uppercase", marginTop: 5 }}>
-            {business.category ?? "Menu"} · A Collection
+            {business.category ?? t("fallbackCategoryMenu")} · {t("collectionSuffix")}
           </div>
         </div>
 

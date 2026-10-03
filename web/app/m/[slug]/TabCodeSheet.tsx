@@ -128,7 +128,7 @@ export default function TabCodeSheet({ tableQrToken, palette, onSuccess, onClose
           break;
         default:
           setPhase("error");
-          setErrorMsg(e.message ?? "Error inesperado");
+          setErrorMsg(e.message ?? t("tabCodeUnexpectedError"));
       }
     }
   }, [code, tableQrToken, t, onSuccess]);

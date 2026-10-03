@@ -179,7 +179,12 @@
     "onTheTab": "en la cuenta",
     "courses": "platos",
     "piece": "pieza",
-    "pieces": "piezas"
+    "pieces": "piezas",
+    "createPaymentError": "No pudimos crear el pago. Inténtalo de nuevo.",
+    "fallbackCategorySeasonal": "Menú de temporada",
+    "fallbackCategoryMenu": "Menú",
+    "collectionSuffix": "Una colección",
+    "featuredBadge": "Destacado"
   },
   "dashboardCommon": {
     "navOverview": "Resumen",
@@ -3303,6 +3308,12 @@
       "description": "{name} está en JChat. Descarga la app para unirte a la conversación.",
       "notFoundTitle": "Negocio no encontrado — JChat",
       "notFoundDescription": "No pudimos encontrar este negocio en JChat."
+    },
+    "qrEntry": {
+      "title": "Entrar al chat — JChat"
+    },
+    "table": {
+      "title": "Mesa — JChat"
     }
   },
   "plans": {
@@ -3455,5 +3466,34 @@
     "notFoundBefore": "No encontramos un negocio en",
     "notFoundAfter": ". Puede que se haya movido o que el enlace sea incorrecto.",
     "chatRooms": "Salas de chat"
-  }
+  },
+  "qrEntry": {
+    "accessByQr": "Acceso por QR",
+    "invalidTitle": "QR inválido",
+    "invalidBody": "Este código QR no está asociado a ninguna sala activa. Pide uno nuevo al establecimiento.",
+    "scanTitle": "Escaneo de código QR",
+    "business": "Negocio",
+    "enteringBefore": "Estás entrando al chat de",
+    "alsoMainRoom": "También tendrás acceso a la sala principal del lugar.",
+    "signInToEnter": "Iniciar sesión para entrar",
+    "needAccount": "Necesitas una cuenta JChat para acceder al chat.",
+    "invalidQr": "Este código QR ya no es válido. Pide uno nuevo al establecimiento.",
+    "genericError": "Algo salió mal. Intenta de nuevo.",
+    "entering": "Entrando…",
+    "enterChat": "Entrar al chat",
+    "retry": "Reintentar",
+    "invalidQrShort": "Este QR ya no es válido. Pide el nuevo código al establecimiento.",
+    "verifyFailed": "No se pudo verificar el acceso. Intenta de nuevo.",
+    "alsoMainRoomHub": "También tienes acceso a la sala principal del lugar.",
+    "whatToDo": "¿Qué quieres hacer?",
+    "callService": "Llamar al servicio"
+  },
+  "tableEntry": {
+    "unavailableTitle": "Esta mesa no está disponible",
+    "unavailableBody": "El código QR no corresponde a ninguna mesa activa. Pídele al personal que lo revise.",
+    "goHome": "Ir al inicio",
+    "preparing": "Preparando tu mesa…",
+    "joiningChat": "Entrando al chat de la mesa…"
+  },
+  "tabCodeUnexpectedError": "Error inesperado. Inténtalo de nuevo."
 }

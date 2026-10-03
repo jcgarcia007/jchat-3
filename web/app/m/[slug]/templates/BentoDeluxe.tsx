@@ -76,7 +76,7 @@ export default function BentoDeluxe({
               {business.name}
             </div>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "2.5px", color: MUTED, textTransform: "uppercase", marginTop: 4 }}>
-              {business.category ?? "Seasonal Menu"}
+              {business.category ?? t("fallbackCategorySeasonal")}
             </div>
           </div>
           <button type="button" onClick={onOpenCart} aria-label={t("openCartAria")}

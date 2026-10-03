@@ -21,10 +21,12 @@ import {
 } from "@/lib/supabase/server";
 import { RoomHub } from "./RoomHub";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Entrar al chat — JChat",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return { title: t("qrEntry.title") };
+}
 
 interface ResolvedRoom {
   room_id: string;
@@ -41,6 +43,7 @@ export default async function QREntryPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const t = await getTranslations("qrEntry");
 
   let room: ResolvedRoom | null = null;
   let hasSession = false;
@@ -107,7 +110,7 @@ export default async function QREntryPage({
               <div
                 style={{ fontSize: 12, color: "var(--text-secondary)" }}
               >
-                Acceso por QR
+                {t("accessByQr")}
               </div>
             </div>
           </div>
@@ -116,7 +119,7 @@ export default async function QREntryPage({
             <h1
               style={{ fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}
             >
-              QR inválido
+              {t("invalidTitle")}
             </h1>
             <p
               style={{
@@ -126,8 +129,7 @@ export default async function QREntryPage({
                 lineHeight: 1.5,
               }}
             >
-              Este código QR no está asociado a ninguna sala activa. Pide
-              uno nuevo al establecimiento.
+              {t("invalidBody")}
             </p>
           </div>
         </div>
@@ -161,7 +163,7 @@ export default async function QREntryPage({
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>JChat</div>
             <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              Escaneo de código QR
+              {t("scanTitle")}
             </div>
           </div>
         </div>
@@ -187,7 +189,7 @@ export default async function QREntryPage({
             }}
           >
             <IconBuilding size={14} />
-            Negocio
+            {t("business")}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
             {room.business_name}
@@ -218,7 +220,7 @@ export default async function QREntryPage({
                 lineHeight: 1.5,
               }}
             >
-              Estás entrando al chat de{" "}
+              {t("enteringBefore")}{" "}
               <strong>{room.business_name}</strong>
               {" — "}
               <strong>{room.room_name}</strong>.
@@ -232,7 +234,7 @@ export default async function QREntryPage({
                   lineHeight: 1.5,
                 }}
               >
-                También tendrás acceso a la sala principal del lugar.
+                {t("alsoMainRoom")}
               </p>
             )}
           </div>
@@ -267,7 +269,7 @@ export default async function QREntryPage({
                 textAlign: "center",
               }}
             >
-              Iniciar sesión para entrar
+              {t("signInToEnter")}
             </Link>
             <p
               style={{
@@ -277,7 +279,7 @@ export default async function QREntryPage({
                 margin: 0,
               }}
             >
-              Necesitas una cuenta JChat para acceder al chat.
+              {t("needAccount")}
             </p>
           </div>
         )}

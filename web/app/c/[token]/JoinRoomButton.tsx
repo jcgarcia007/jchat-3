@@ -5,6 +5,7 @@
  * Calls join_room_via_qr(token), then navigates to the live chat room.
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconLoader2, IconAlertCircle } from "@tabler/icons-react";
@@ -17,6 +18,7 @@ interface Props {
 type State = "idle" | "loading" | "error";
 
 export function JoinRoomButton({ token }: Props) {
+  const t = useTranslations("qrEntry");
   const router = useRouter();
   const [state, setState] = useState<State>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -47,11 +49,11 @@ export function JoinRoomButton({ token }: Props) {
     }
     if (msg.includes("invalid_qr")) {
       setState("error");
-      setErrorMsg("Este código QR ya no es válido. Pide uno nuevo al establecimiento.");
+      setErrorMsg(t("invalidQr"));
       return;
     }
     setState("error");
-    setErrorMsg("Algo salió mal. Intenta de nuevo.");
+    setErrorMsg(t("genericError"));
   }
 
   const btnBase: React.CSSProperties = {
@@ -105,7 +107,7 @@ export function JoinRoomButton({ token }: Props) {
         {state === "loading" && (
           <IconLoader2 size={18} className="spin" />
         )}
-        {state === "loading" ? "Entrando…" : "Entrar al chat"}
+        {state === "loading" ? t("entering") : t("enterChat")}
       </button>
 
       {state === "error" && (
@@ -118,7 +120,7 @@ export function JoinRoomButton({ token }: Props) {
             border: "1px solid var(--border-subtle)",
           }}
         >
-          Reintentar
+          {t("retry")}
         </button>
       )}
     </div>

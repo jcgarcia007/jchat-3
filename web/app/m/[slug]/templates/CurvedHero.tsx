@@ -163,7 +163,7 @@ export default function CurvedHero({
           {business.name}
         </div>
         <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "2.5px", color: ACCENT, textTransform: "uppercase" }}>
-          {business.category ?? "Menu"}
+          {business.category ?? t("fallbackCategoryMenu")}
         </div>
       </div>
 

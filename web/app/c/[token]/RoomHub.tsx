@@ -12,6 +12,7 @@
  *   menu_mode='none' (or unset)              → "Próximamente" / disabled
  */
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -34,6 +35,7 @@ interface Props {
 type JoinState = "joining" | "ok" | "invalid_qr" | "error";
 
 export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props) {
+  const t = useTranslations("qrEntry");
   const router = useRouter();
   const [joinState, setJoinState] = useState<JoinState>("joining");
   const [retryCount, setRetryCount] = useState(0);
@@ -149,7 +151,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
           lineHeight: 1.5,
         }}
       >
-        Este QR ya no es válido. Pide el nuevo código al establecimiento.
+        {t("invalidQrShort")}
       </div>
     );
   }
@@ -159,7 +161,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-          No se pudo verificar el acceso. Intenta de nuevo.
+          {t("verifyFailed")}
         </p>
         <button
           type="button"
@@ -172,7 +174,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
             justifyContent: "center",
           }}
         >
-          Reintentar
+          {t("retry")}
         </button>
       </div>
     );
@@ -187,7 +189,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
     <>
       {isSubRoom && (
         <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 4px", lineHeight: 1.5 }}>
-          También tienes acceso a la sala principal del lugar.
+          {t("alsoMainRoomHub")}
         </p>
       )}
 
@@ -201,7 +203,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
           letterSpacing: "0.06em",
         }}
       >
-        ¿Qué quieres hacer?
+        {t("whatToDo")}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -336,7 +338,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
           >
             <IconBell size={20} />
           </span>
-          Llamar al servicio
+          {t("callService")}
         </button>
 
         {/* ENTRAR AL CHAT */}
@@ -363,7 +365,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
           >
             <IconMessages size={20} />
           </span>
-          Entrar al chat
+          {t("enterChat")}
         </button>
       </div>
 

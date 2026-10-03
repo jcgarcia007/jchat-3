@@ -13,6 +13,7 @@
  * this phase only WRITES it.
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -35,7 +36,8 @@ export function TableEntry({
 }) {
   const router = useRouter();
   const ran = useRef(false);
-  const [status, setStatus] = useState("Preparando tu mesa…");
+  const t = useTranslations("tableEntry");
+  const [status, setStatus] = useState<"preparing" | "joining">("preparing");
 
   useEffect(() => {
     if (ran.current) return;
@@ -57,7 +59,7 @@ export function TableEntry({
       //    room + its parent). Without a session we skip — anonymous login lands
       //    later; the redirect still proceeds.
       if (roomQrToken && hasSession && isSupabaseConfigured) {
-        setStatus("Entrando al chat de la mesa…");
+        setStatus("joining");
         try {
           await supabase.rpc("join_room_via_qr", { token: roomQrToken });
         } catch {
@@ -86,7 +88,7 @@ export function TableEntry({
       }}
     >
       <div style={{ fontSize: 18, fontWeight: 800 }}>{tableLabel}</div>
-      <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>{status}</div>
+      <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>{t(status === "joining" ? "joiningChat" : "preparing")}</div>
     </div>
   );
 }

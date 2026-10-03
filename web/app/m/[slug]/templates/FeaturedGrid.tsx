@@ -189,7 +189,7 @@ function FeatureCard({ item, isFaved, onFav, onAdd, t, accent, muted }: {
         )}
         {/* Featured badge */}
         <div style={{ position: "absolute", top: 12, left: 12, background: accent, color: "#fff", fontSize: 9, fontWeight: 900, letterSpacing: "1.5px", padding: "4px 10px", borderRadius: 99, textTransform: "uppercase" }}>
-          Featured
+          {t("featuredBadge")}
         </div>
         {/* Fav */}
         <button type="button" onClick={onFav} aria-label={isFaved ? t("removeFavoriteAria") : t("addFavoriteAria")}
