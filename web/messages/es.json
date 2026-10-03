@@ -3413,5 +3413,47 @@
       "jchatFoot": "Social por ubicación",
       "tabposFoot": "Una solución de Otunity Labs"
     }
+  },
+  "nearbyPage": {
+    "title": "Negocios cercanos",
+    "subtitle": "Explora y únete a locales en JChat.",
+    "searchPlaceholder": "Buscar locales…",
+    "clearSearch": "Borrar búsqueda",
+    "selectCity": "Elegir ciudad",
+    "allCities": "Todas las ciudades",
+    "unknownCity": "Desconocida",
+    "open": "Abierto",
+    "closed": "Cerrado",
+    "rooms": "{count, plural, one {# sala} other {# salas}}",
+    "active": "{count} activos",
+    "results": "{count, plural, =0 {No se encontraron locales} one {# local} other {# locales}}",
+    "inCity": "en {city}",
+    "emptyTitle": "No hay locales disponibles",
+    "emptyBody": "Vuelve pronto: se están sumando más locales a JChat.",
+    "noResultsTitle": "No se encontraron resultados",
+    "noResultsBody": "Prueba con otra búsqueda, categoría o ciudad."
+  },
+  "businessPage": {
+    "coverPhoto": "Foto de portada de {name}",
+    "hours": "Horario",
+    "closed": "Cerrado",
+    "days": {
+      "mon": "Lunes",
+      "tue": "Martes",
+      "wed": "Miércoles",
+      "thu": "Jueves",
+      "fri": "Viernes",
+      "sat": "Sábado",
+      "sun": "Domingo"
+    },
+    "menu": "Menú",
+    "menuSoon": "Menú próximamente: descarga JChat para ver el menú completo en la app.",
+    "downloadBody": "Descarga JChat para entrar a la sala de chat, ver ofertas en vivo y conectar con este local.",
+    "appStore": "Descargar en el App Store",
+    "googlePlay": "Disponible en Google Play",
+    "notFoundTitle": "Local no encontrado",
+    "notFoundBefore": "No encontramos un negocio en",
+    "notFoundAfter": ". Puede que se haya movido o que el enlace sea incorrecto.",
+    "chatRooms": "Salas de chat"
   }
 }

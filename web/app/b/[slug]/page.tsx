@@ -13,6 +13,7 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import {
   IconMapPin,
@@ -127,23 +128,16 @@ async function getBusiness(slug: string): Promise<Business | null> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const DAY_LABELS: Record<DayKey, string> = {
-  mon: "Monday",
-  tue: "Tuesday",
-  wed: "Wednesday",
-  thu: "Thursday",
-  fri: "Friday",
-  sat: "Saturday",
-  sun: "Sunday",
-};
-
 const DAY_ORDER: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
-function formatHour(time: string): string {
+/** 12 h with AM/PM in English, 24 h in Spanish. */
+function formatHour(time: string, locale: string): string {
   const [h, m] = time.split(":").map(Number);
+  const mm = m.toString().padStart(2, "0");
+  if (locale === "es") return `${h}:${mm}`;
   const period = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${hour} ${period}` : `${hour}:${m.toString().padStart(2, "0")} ${period}`;
+  return m === 0 ? `${hour} ${period}` : `${hour}:${mm} ${period}`;
 }
 
 function getTodayKey(): DayKey {
@@ -227,6 +221,7 @@ function JsonLd({ biz }: { biz: Business }) {
 // ---------------------------------------------------------------------------
 
 function CoverPhoto({ url, name }: { url: string | null; name: string }) {
+  const t = useTranslations("businessPage");
   return (
     <div
       style={{
@@ -240,7 +235,7 @@ function CoverPhoto({ url, name }: { url: string | null; name: string }) {
         position: "relative",
         flexShrink: 0,
       }}
-      aria-label={`Cover photo for ${name}`}
+      aria-label={t("coverPhoto", { name })}
       role="img"
     >
       {/* Gradient overlay for readability */}
@@ -257,6 +252,8 @@ function CoverPhoto({ url, name }: { url: string | null; name: string }) {
 }
 
 function HoursSection({ hours }: { hours: Hours }) {
+  const t = useTranslations("businessPage");
+  const locale = useLocale();
   const todayKey = getTodayKey();
 
   return (
@@ -285,7 +282,7 @@ function HoursSection({ hours }: { hours: Hours }) {
             margin: 0,
           }}
         >
-          Hours
+          {t("hours")}
         </h2>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -312,7 +309,7 @@ function HoursSection({ hours }: { hours: Hours }) {
                   minWidth: 90,
                 }}
               >
-                {DAY_LABELS[day]}
+                {t(`days.${day}`)}
               </span>
               <span
                 style={{
@@ -326,8 +323,8 @@ function HoursSection({ hours }: { hours: Hours }) {
                 }}
               >
                 {entry?.closed || !entry
-                  ? "Closed"
-                  : `${formatHour(entry.open)} – ${formatHour(entry.close)}`}
+                  ? t("closed")
+                  : `${formatHour(entry.open, locale)} – ${formatHour(entry.close, locale)}`}
               </span>
             </div>
           );
@@ -398,6 +395,7 @@ function RoomCard({ room }: { room: Room }) {
 }
 
 function MenuPreviewStub() {
+  const t = useTranslations("businessPage");
   return (
     <div
       style={{
@@ -410,7 +408,7 @@ function MenuPreviewStub() {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <IconToolsKitchen2 size={18} color="var(--color-brand)" />
         <h2 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
-          Menu
+          {t("menu")}
         </h2>
       </div>
       <div
@@ -424,7 +422,7 @@ function MenuPreviewStub() {
       >
         <IconPhoto size={36} color="var(--text-tertiary)" />
         <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, textAlign: "center" }}>
-          Menu coming soon — download JChat to see the full menu in-app.
+          {t("menuSoon")}
         </p>
         {/* TODO: replace stub with real menu items when Task 3.1 menu data is available */}
       </div>
@@ -433,6 +431,7 @@ function MenuPreviewStub() {
 }
 
 function DownloadCTA({ businessName }: { businessName: string }) {
+  const t = useTranslations("businessPage");
   // TODO: replace placeholder URLs with real App Store / Google Play production links
   const APP_STORE_URL = "https://apps.apple.com/app/jchat/id000000000"; // TODO: real App Store link
   const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jchat.app"; // TODO: real Play Store link
@@ -467,7 +466,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           lineHeight: 1.5,
         }}
       >
-        Download JChat to enter the chat room, see live offers, and connect with this venue.
+        {t("downloadBody")}
       </p>
       <div
         style={{
@@ -498,7 +497,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           }}
         >
           <IconBrandAppstore size={20} />
-          Download on the App Store
+          {t("appStore")}
         </a>
         <a
           href={PLAY_STORE_URL}
@@ -522,7 +521,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           }}
         >
           <IconBrandGooglePlay size={20} />
-          Get it on Google Play
+          {t("googlePlay")}
         </a>
       </div>
     </div>
@@ -534,6 +533,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
 // ---------------------------------------------------------------------------
 
 function NotFoundState({ slug }: { slug: string }) {
+  const t = useTranslations("businessPage");
   return (
     <div
       style={{
@@ -555,10 +555,10 @@ function NotFoundState({ slug }: { slug: string }) {
             marginBottom: 8,
           }}
         >
-          Venue not found
+          {t("notFoundTitle")}
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          We couldn&apos;t find a business at{" "}
+          {t("notFoundBefore")}{" "}
           <code
             style={{
               background: "var(--bg-surface)",
@@ -569,7 +569,7 @@ function NotFoundState({ slug }: { slug: string }) {
           >
             /b/{slug}
           </code>
-          . It may have moved or the link could be incorrect.
+          {t("notFoundAfter")}
         </p>
       </div>
     </div>
@@ -581,6 +581,7 @@ function NotFoundState({ slug }: { slug: string }) {
 // ---------------------------------------------------------------------------
 
 export default async function BusinessPreviewPage({ params }: PageProps) {
+  const t = await getTranslations("businessPage");
   const { slug } = await params;
   const biz = await getBusiness(slug);
 
@@ -724,7 +725,7 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
                 margin: "0 0 12px",
               }}
             >
-              Chat Rooms
+              {t("chatRooms")}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {biz.rooms.map((room) => (

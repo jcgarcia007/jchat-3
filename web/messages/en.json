@@ -3413,5 +3413,47 @@
       "jchatFoot": "Location-based social",
       "tabposFoot": "A solution by Otunity Labs"
     }
+  },
+  "nearbyPage": {
+    "title": "Nearby Businesses",
+    "subtitle": "Browse and join venues on JChat.",
+    "searchPlaceholder": "Search venues…",
+    "clearSearch": "Clear search",
+    "selectCity": "Select city",
+    "allCities": "All cities",
+    "unknownCity": "Unknown",
+    "open": "Open",
+    "closed": "Closed",
+    "rooms": "{count, plural, one {# room} other {# rooms}}",
+    "active": "{count} active",
+    "results": "{count, plural, =0 {No venues found} one {# venue} other {# venues}}",
+    "inCity": "in {city}",
+    "emptyTitle": "No venues available",
+    "emptyBody": "Check back soon — more venues are joining JChat.",
+    "noResultsTitle": "No results found",
+    "noResultsBody": "Try a different search, category, or city."
+  },
+  "businessPage": {
+    "coverPhoto": "Cover photo for {name}",
+    "hours": "Hours",
+    "closed": "Closed",
+    "days": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
+    },
+    "menu": "Menu",
+    "menuSoon": "Menu coming soon — download JChat to see the full menu in-app.",
+    "downloadBody": "Download JChat to enter the chat room, see live offers, and connect with this venue.",
+    "appStore": "Download on the App Store",
+    "googlePlay": "Get it on Google Play",
+    "notFoundTitle": "Venue not found",
+    "notFoundBefore": "We couldn't find a business at",
+    "notFoundAfter": ". It may have moved or the link could be incorrect.",
+    "chatRooms": "Chat Rooms"
   }
 }

@@ -36,6 +36,7 @@ import {
   IconX,
   IconChevronDown,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
@@ -204,9 +205,13 @@ function isOpenNow(hours: Hours | null): boolean {
   return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
 }
 
+/** Sentinels (never shown): the visible text comes from i18n. */
+const ALL_CITIES = "__all__";
+const UNKNOWN_CITY = "__unknown__";
+
 /** Extract a city name from address string ("123 Main St, Miami, FL" → "Miami") */
 function extractCity(address: string | null): string {
-  if (!address) return "Unknown";
+  if (!address) return UNKNOWN_CITY;
   const parts = address.split(",");
   if (parts.length >= 2) {
     return parts[parts.length - 2].trim();
@@ -271,6 +276,7 @@ async function fetchBusinesses(): Promise<BusinessRow[]> {
 // ---------------------------------------------------------------------------
 
 function OpenBadge({ open }: { open: boolean }) {
+  const t = useTranslations("nearbyPage");
   return (
     <span
       style={{
@@ -287,12 +293,13 @@ function OpenBadge({ open }: { open: boolean }) {
         lineHeight: "18px",
       }}
     >
-      {open ? "Open" : "Closed"}
+      {open ? t("open") : t("closed")}
     </span>
   );
 }
 
 function BusinessCard({ item }: { item: BusinessRow }) {
+  const t = useTranslations("nearbyPage");
   const open = isOpenNow(item.hours);
 
   return (
@@ -422,23 +429,19 @@ function BusinessCard({ item }: { item: BusinessRow }) {
                 strokeWidth={2}
               />
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                {item.room_count}{" "}
-                {item.room_count === 1 ? "room" : "rooms"}
+                {t("rooms", { count: item.room_count })}
               </span>
             </div>
 
-            {/* Active users */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <IconUsers
-                size={12}
-                color="var(--text-tertiary)"
-                strokeWidth={2}
-              />
-              {/* TODO(presence): replace 0 with live active counts */}
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                {item.active_users} active
-              </span>
-            </div>
+            {/* Active users: hidden until presence counts are real (item.active_users is always 0 today). */}
+            {item.active_users > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <IconUsers size={12} color="var(--text-tertiary)" strokeWidth={2} />
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                  {t("active", { count: item.active_users })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -451,11 +454,12 @@ function BusinessCard({ item }: { item: BusinessRow }) {
 // ---------------------------------------------------------------------------
 
 export default function NearbyPage() {
+  const t = useTranslations("nearbyPage");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedCity, setSelectedCity] = useState<string>("All cities");
+  const [selectedCity, setSelectedCity] = useState<string>(ALL_CITIES);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -472,11 +476,14 @@ export default function NearbyPage() {
     };
   }, []);
 
+  const cityLabel = (city: string): string =>
+    city === ALL_CITIES ? t("allCities") : city === UNKNOWN_CITY ? t("unknownCity") : city;
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const cities = useMemo<string[]>(() => {
     const set = new Set(businesses.map((b) => b.city));
-    return ["All cities", ...Array.from(set).sort()];
+    return [ALL_CITIES, ...Array.from(set).sort()];
   }, [businesses]);
 
   const categories = useMemo<string[]>(() => {
@@ -494,7 +501,7 @@ export default function NearbyPage() {
       const matchesCategory =
         !selectedCategory || b.category === selectedCategory;
       const matchesCity =
-        selectedCity === "All cities" || b.city === selectedCity;
+        selectedCity === ALL_CITIES || b.city === selectedCity;
       return matchesSearch && matchesCategory && matchesCity;
     });
   }, [businesses, searchQuery, selectedCategory, selectedCity]);
@@ -556,7 +563,7 @@ export default function NearbyPage() {
                 letterSpacing: -0.4,
               }}
             >
-              Nearby Businesses
+              {t("title")}
             </h1>
           </div>
           <p
@@ -566,7 +573,7 @@ export default function NearbyPage() {
               margin: 0,
             }}
           >
-            Browse and join venues on JChat.
+            {t("subtitle")}
           </p>
         </div>
 
@@ -609,7 +616,7 @@ export default function NearbyPage() {
               />
               <input
                 type="text"
-                placeholder="Search venues…"
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -633,7 +640,7 @@ export default function NearbyPage() {
                     display: "flex",
                     alignItems: "center",
                   }}
-                  aria-label="Clear search"
+                  aria-label={t("clearSearch")}
                 >
                   <IconX
                     size={14}
@@ -675,7 +682,7 @@ export default function NearbyPage() {
                   appearance: "none",
                   paddingRight: 20,
                 }}
-                aria-label="Select city"
+                aria-label={t("selectCity")}
               >
                 {cities.map((city) => (
                   <option
@@ -683,7 +690,7 @@ export default function NearbyPage() {
                     value={city}
                     style={{ background: "var(--bg-surface)" }}
                   >
-                    {city}
+                    {cityLabel(city)}
                   </option>
                 ))}
               </select>
@@ -743,10 +750,8 @@ export default function NearbyPage() {
               marginBottom: 14,
             }}
           >
-            {filtered.length === 0
-              ? "No venues found"
-              : `${filtered.length} venue${filtered.length === 1 ? "" : "s"}`}
-            {selectedCity !== "All cities" && ` in ${selectedCity}`}
+            {t("results", { count: filtered.length })}
+            {selectedCity !== ALL_CITIES && ` ${t("inCity", { city: cityLabel(selectedCity) })}`}
           </div>
         )}
 
@@ -815,9 +820,7 @@ export default function NearbyPage() {
                   marginBottom: 8,
                 }}
               >
-                {businesses.length === 0
-                  ? "No venues available"
-                  : "No results found"}
+                {businesses.length === 0 ? t("emptyTitle") : t("noResultsTitle")}
               </div>
               <div
                 style={{
@@ -827,9 +830,7 @@ export default function NearbyPage() {
                   maxWidth: 320,
                 }}
               >
-                {businesses.length === 0
-                  ? "Check back soon — more venues are joining JChat."
-                  : "Try a different search, category, or city."}
+                {businesses.length === 0 ? t("emptyBody") : t("noResultsBody")}
               </div>
             </div>
           </div>
