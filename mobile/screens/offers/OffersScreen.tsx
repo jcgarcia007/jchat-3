@@ -1,6 +1,7 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -12,11 +13,12 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconArrowLeft, IconSpeakerphone } from '@tabler/icons-react-native';
+import { IconArrowLeft, IconMapPin, IconSpeakerphone } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 
 import MegaphoneOfferCard from '../../components/megaphone/MegaphoneOfferCard';
 import MegaphonePostCard from '../../components/megaphone/MegaphonePostCard';
+import RadiusSheet from '../../components/megaphone/RadiusSheet';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import {
@@ -26,8 +28,14 @@ import {
   type MegaphoneItem,
 } from '../../services/megaphone';
 import { likePost, unlikePost } from '../../services/posts';
+import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { useThemeColors } from '../../theme/colors';
-import { DEFAULT_FEED_RADIUS_MILES, formatRadius } from '../../utils/distanceUnits';
+import {
+  DEFAULT_FEED_RADIUS_MILES,
+  formatRadius,
+  isFeedRadiusMiles,
+  type FeedRadiusMiles,
+} from '../../utils/distanceUnits';
 
 type OffersNavigation = NativeStackNavigationProp<MainStackParamList, 'Offers'>;
 
@@ -43,7 +51,10 @@ export default function OffersScreen() {
   const translation = useTranslation('offers');
   const commonTranslation = useTranslation('common');
 
-  const radiusMiles = DEFAULT_FEED_RADIUS_MILES;
+  // null until the saved preference is read, so the feed loads once with the right radius.
+  const [savedRadius, setSavedRadius] = useState<FeedRadiusMiles | null>(null);
+  const [radiusSheetOpen, setRadiusSheetOpen] = useState(false);
+  const radiusMiles = savedRadius ?? DEFAULT_FEED_RADIUS_MILES;
   const [items, setItems] = useState<MegaphoneItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,11 +91,43 @@ export default function OffersScreen() {
     }
   }, [radiusMiles]);
 
+  // B.1: read the saved radius (default 50 when missing or on any failure).
+  useEffect(() => {
+    let active = true;
+    const done = (radius: FeedRadiusMiles) => { if (active) setSavedRadius(radius); };
+    if (!user?.id) {
+      done(DEFAULT_FEED_RADIUS_MILES);
+      return () => { active = false; };
+    }
+    loadUserSettings(user.id)
+      .then((settings) => done(isFeedRadiusMiles(settings.feedRadiusMiles) ? settings.feedRadiusMiles : DEFAULT_FEED_RADIUS_MILES))
+      .catch(() => done(DEFAULT_FEED_RADIUS_MILES));
+    return () => { active = false; };
+  }, [user?.id]);
+
+  // B.2: save the new radius (rolls back with an alert if it fails); the feed reloads.
+  const selectRadius = useCallback(async (next: FeedRadiusMiles) => {
+    setRadiusSheetOpen(false);
+    if (next === radiusMiles) return;
+    const previous = radiusMiles;
+    lastLoadedAtRef.current = 0; // force the reload for the new radius
+    setSavedRadius(next);
+    try {
+      await updateMySettings({ feedRadiusMiles: next });
+    } catch (error) {
+      console.warn('[megaphone] radius save error:', error);
+      lastLoadedAtRef.current = 0;
+      setSavedRadius(previous);
+      Alert.alert(translation.t('radiusSaveErrorTitle'), translation.t('radiusSaveErrorMessage'));
+    }
+  }, [radiusMiles, translation]);
+
   useFocusEffect(
     useCallback(() => {
+      if (savedRadius === null) return;
       if (Date.now() - lastLoadedAtRef.current < REFOCUS_STALE_MS) return;
       void loadFirst().finally(() => setLoading(false));
-    }, [loadFirst]),
+    }, [loadFirst, savedRadius]),
   );
 
   const refresh = useCallback(async () => {
@@ -178,7 +221,24 @@ export default function OffersScreen() {
           <IconArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{translation.t('title')}</Text>
+        <Pressable
+          accessibilityLabel={translation.t('radiusChipA11y', { radius: formatRadius(radiusMiles) })}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => setRadiusSheetOpen(true)}
+          style={[styles.radiusChip, { backgroundColor: colors.brandLight }]}
+        >
+          <IconMapPin size={15} color={colors.brand} strokeWidth={2.2} />
+          <Text style={[styles.radiusChipText, { color: colors.brand }]}>{formatRadius(radiusMiles)}</Text>
+        </Pressable>
       </View>
+
+      <RadiusSheet
+        onClose={() => setRadiusSheetOpen(false)}
+        onSelect={(miles) => { void selectRadius(miles); }}
+        value={radiusMiles}
+        visible={radiusSheetOpen}
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -231,6 +291,8 @@ const styles = StyleSheet.create({
   },
   backButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', marginLeft: 4 },
+  radiusChip: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 4, paddingHorizontal: 12, paddingVertical: 7 },
+  radiusChipText: { fontSize: 13, fontWeight: '700' },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   list: { gap: 12, padding: 16, paddingBottom: 36 },
   emptyList: { flexGrow: 1 },

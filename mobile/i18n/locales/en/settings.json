@@ -30,7 +30,10 @@
     "biometricLockSub": "Ask for biometrics when opening the app",
     "appearanceDark": "Dark",
     "appearanceLight": "Light",
-    "appearanceSystem": "System"
+    "appearanceSystem": "System",
+    "sectionFeed": "News",
+    "feedRadius": "News radius",
+    "feedRadiusSub": "How far to look for offers and posts from nearby businesses"
   },
   "changePassword": {
     "currentPassword": "Current password",

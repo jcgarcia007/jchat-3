@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from './supabase';
 import type { AppearancePreference } from '../theme/appearance';
+import { isFeedRadiusMiles, type FeedRadiusMiles } from '../utils/distanceUnits';
 
 export type ProximityMode = 'all' | 'favorites' | 'visited' | 'off';
 export type UserLanguage = 'en' | 'es';
@@ -9,11 +10,13 @@ export interface UserSettings {
   proximityMode: ProximityMode;
   language: UserLanguage;
   appearance: AppearancePreference;
+  /** Megaphone search radius. Always stored in miles. */
+  feedRadiusMiles: FeedRadiusMiles;
 }
 
 export type SettingsPatch = Partial<Pick<
   UserSettings,
-  'notifWork' | 'notifSocial' | 'proximityMode' | 'appearance'
+  'notifWork' | 'notifSocial' | 'proximityMode' | 'appearance' | 'feedRadiusMiles'
 >>;
 
 function isProximityMode(value: unknown): value is ProximityMode {
@@ -45,6 +48,7 @@ export async function loadUserSettings(userId: string): Promise<Partial<UserSett
     notifSocial: typeof dbSettings.notifSocial === 'boolean' ? dbSettings.notifSocial : undefined,
     proximityMode: isProximityMode(dbSettings.proximityMode) ? dbSettings.proximityMode : undefined,
     appearance: isAppearancePreference(dbSettings.appearance) ? dbSettings.appearance : undefined,
+    feedRadiusMiles: isFeedRadiusMiles(dbSettings.feedRadiusMiles) ? dbSettings.feedRadiusMiles : undefined,
   };
 }
 

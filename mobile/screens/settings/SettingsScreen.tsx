@@ -50,6 +50,7 @@ import {
   IconLanguage,
   IconLock,
   IconMoon,
+  IconSpeakerphone,
   IconShield,
   IconTrash,
   IconUser,
@@ -73,6 +74,12 @@ import {
 } from '../../services/biometric';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { posMyBusinesses } from '../../services/pos';
+import {
+  DEFAULT_FEED_RADIUS_MILES,
+  FEED_RADIUS_OPTIONS,
+  formatRadius,
+  isFeedRadiusMiles,
+} from '../../utils/distanceUnits';
 import { getUserById } from '../../services/users';
 import {
   loadUserSettings,
@@ -94,6 +101,7 @@ function defaultSettings(): UserSettings {
     proximityMode: 'all',
     language: i18n.language?.startsWith('es') ? 'es' : 'en',
     appearance: 'system',
+    feedRadiusMiles: DEFAULT_FEED_RADIUS_MILES,
   };
 }
 
@@ -244,6 +252,8 @@ export default function SettingsScreen() {
       .then((remote) => {
         setSettings((prev) => {
           const next = { ...prev, ...remote };
+          // loadUserSettings reports a missing radius as undefined: keep the default.
+          if (!isFeedRadiusMiles(next.feedRadiusMiles)) next.feedRadiusMiles = DEFAULT_FEED_RADIUS_MILES;
           settingsRef.current = next;
           return next;
         });
@@ -463,6 +473,12 @@ export default function SettingsScreen() {
     system: t('main.appearanceSystem'),
   };
 
+  // ── Feed radius options (picker values are strings; stored value is miles) ──
+  const RADIUS_OPTIONS = FEED_RADIUS_OPTIONS.map(String);
+  const RADIUS_LABELS: Record<string, string> = Object.fromEntries(
+    FEED_RADIUS_OPTIONS.map((miles) => [String(miles), formatRadius(miles)]),
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: c.bgBase }]}>
@@ -637,6 +653,36 @@ export default function SettingsScreen() {
                 void patch({ appearance: v });
               }}
               labelMap={APPEARANCE_LABELS}
+            />
+          </View>
+        </View>
+
+        {/* Spacer */}
+        <View style={styles.sectionGap} />
+
+        {/* ── 4b. NEWS FEED RADIUS ─────────────────────────────────────────── */}
+        <SectionHeader label={t('main.sectionFeed')} />
+
+        <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
+          <View style={styles.row}>
+            <View style={styles.rowIcon}>
+              <IconSpeakerphone size={20} color={c.brand} strokeWidth={2} />
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.feedRadius')}</Text>
+              <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
+                {t('main.feedRadiusSub')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pickerPad}>
+            <SegmentedPicker<string>
+              options={RADIUS_OPTIONS}
+              value={String(settings.feedRadiusMiles)}
+              onChange={(v) => {
+                void patch({ feedRadiusMiles: Number(v) as typeof settings.feedRadiusMiles });
+              }}
+              labelMap={RADIUS_LABELS}
             />
           </View>
         </View>

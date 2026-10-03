@@ -30,7 +30,10 @@
     "biometricLockSub": "Pedir biometría al abrir la app",
     "appearanceDark": "Oscuro",
     "appearanceLight": "Claro",
-    "appearanceSystem": "Sistema"
+    "appearanceSystem": "Sistema",
+    "sectionFeed": "Novedades",
+    "feedRadius": "Radio de novedades",
+    "feedRadiusSub": "Hasta dónde buscar ofertas y publicaciones de negocios cercanos"
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",

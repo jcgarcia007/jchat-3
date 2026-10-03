@@ -11,5 +11,10 @@
   "likeA11y": "Like",
   "commentsA11y": "Comments",
   "emptyNearTitle": "Nothing new within {{radius}}",
-  "emptyNearSubtitle": "Try a larger radius to see more offers and posts."
+  "emptyNearSubtitle": "Try a larger radius to see more offers and posts.",
+  "radiusChipA11y": "Change radius, currently {{radius}}",
+  "radiusSheetTitle": "News radius",
+  "radiusSheetSubtitle": "Show offers and posts from businesses within:",
+  "radiusSaveErrorTitle": "Couldn't save",
+  "radiusSaveErrorMessage": "Your radius wasn't changed. Please try again."
 }

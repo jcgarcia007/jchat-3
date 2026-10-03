@@ -11,5 +11,10 @@
   "likeA11y": "Me gusta",
   "commentsA11y": "Comentarios",
   "emptyNearTitle": "No hay novedades en {{radius}}",
-  "emptyNearSubtitle": "Prueba con un radio mayor para ver más ofertas y publicaciones."
+  "emptyNearSubtitle": "Prueba con un radio mayor para ver más ofertas y publicaciones.",
+  "radiusChipA11y": "Cambiar radio, actualmente {{radius}}",
+  "radiusSheetTitle": "Radio de novedades",
+  "radiusSheetSubtitle": "Mostrar ofertas y publicaciones de negocios dentro de:",
+  "radiusSaveErrorTitle": "No se pudo guardar",
+  "radiusSaveErrorMessage": "Tu radio no se cambió. Inténtalo de nuevo."
 }
