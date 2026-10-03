@@ -7,10 +7,11 @@
  * and "Llamar al mesero" service_calls insert with cooldown.
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { IconSend, IconArrowLeft, IconLoader2, IconCamera, IconToolsKitchen2, IconBell, IconHeart, IconX, IconPlus } from "@tabler/icons-react";
+import { IconSend, IconArrowLeft, IconLoader2, IconCamera, IconToolsKitchen2, IconBell, IconX, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -80,12 +81,18 @@ function isIncognito(msg: ChatMessage): boolean {
   return msg.metadata.incognito === true;
 }
 
-function senderName(msg: ChatMessage, profiles: Record<string, SenderProfile>): string {
+/** Translated fallbacks for people without a name (resolved by the component). */
+interface NameLabels {
+  anonymous: string;
+  user: string;
+}
+
+function senderName(msg: ChatMessage, profiles: Record<string, SenderProfile>, labels: NameLabels): string {
   if (isIncognito(msg)) {
     const nick = msg.metadata.nickname;
-    return "🎭 " + (typeof nick === "string" && nick.trim() ? nick.trim() : "Anónimo");
+    return "🎭 " + (typeof nick === "string" && nick.trim() ? nick.trim() : labels.anonymous);
   }
-  return profiles[msg.user_id]?.name ?? "Usuario";
+  return profiles[msg.user_id]?.name ?? labels.user;
 }
 
 function formatTime(iso: string): string {
@@ -106,7 +113,7 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function buildPresentUsers(state: Record<string, unknown[]>): PresenceUser[] {
+function buildPresentUsers(state: Record<string, unknown[]>, labels: NameLabels): PresenceUser[] {
   const seen = new Set<string>();
   const result: PresenceUser[] = [];
   for (const presences of Object.values(state)) {
@@ -124,8 +131,8 @@ function buildPresentUsers(state: Record<string, unknown[]>): PresenceUser[] {
       result.push({
         userId: p.user_id,
         displayName: incognito
-          ? (p.nickname?.trim() || "Anónimo")
-          : (p.display_name?.trim() || "Usuario"),
+          ? (p.nickname?.trim() || labels.anonymous)
+          : (p.display_name?.trim() || labels.user),
         avatarUrl: incognito ? null : (p.avatar_url ?? null),
         isIncognito: incognito,
       });
@@ -147,6 +154,7 @@ async function subscribePresence(
   userId: string,
   payload: PresencePayload,
   onState: (roomId: string, users: PresenceUser[]) => void,
+  labels: NameLabels,
 ): Promise<RealtimeChannel> {
   const name = `presence:${roomId}`;
   const stale = supabase
@@ -158,7 +166,7 @@ async function subscribePresence(
 
   const ch = supabase.channel(name, { config: { presence: { key: userId } } });
   const sync = () =>
-    onState(roomId, buildPresentUsers(ch.presenceState() as Record<string, unknown[]>));
+    onState(roomId, buildPresentUsers(ch.presenceState() as Record<string, unknown[]>, labels));
   ch.on("presence", { event: "sync" }, sync)
     .on("presence", { event: "join" }, sync)
     .on("presence", { event: "leave" }, sync)
@@ -181,6 +189,9 @@ interface Props {
 }
 
 export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
+  const t = useTranslations("chatRoom");
+  const nameLabelsRef = useRef<NameLabels>({ anonymous: t("anonymous"), user: t("user") });
+  nameLabelsRef.current = { anonymous: t("anonymous"), user: t("user") };
   const router = useRouter();
   // The room being viewed. Starts at the QR-resolved room (prop) and changes
   // in-place as the user taps sub-chats — no page reload.
@@ -267,7 +278,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   // The "online" bar shows the presence of the room currently on screen.
   const presentUsers: PresenceUser[] = isSupabaseConfigured
     ? (presenceByRoom[activeRoomId] ?? [])
-    : [{ userId, displayName: "Tú (demo)", avatarUrl: null, isIncognito: false }];
+    : [{ userId, displayName: t("demoYou"), avatarUrl: null, isIncognito: false }];
 
   // Header menu icon: same routing logic as RoomHub for consistency.
   const menuIsExternal = menuEnabled && menuMode === "external" && !!externalMenuUrl;
@@ -568,13 +579,13 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     const channels: RealtimeChannel[] = [];
 
     void (async () => {
-      const main = await subscribePresence(mainRoomId, userId, presencePayload, onState);
+      const main = await subscribePresence(mainRoomId, userId, presencePayload, onState, nameLabelsRef.current);
       if (cancelled) { void supabase.removeChannel(main); return; }
       mainPresenceRef.current = main;
       channels.push(main);
 
       if (anchorRoomId !== mainRoomId) {
-        const anchor = await subscribePresence(anchorRoomId, userId, presencePayload, onState);
+        const anchor = await subscribePresence(anchorRoomId, userId, presencePayload, onState, nameLabelsRef.current);
         if (cancelled) { void supabase.removeChannel(anchor); return; }
         anchorPresenceRef.current = anchor;
         channels.push(anchor);
@@ -606,7 +617,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     let ch: RealtimeChannel | null = null;
 
     void (async () => {
-      const c = await subscribePresence(visitedRoomId, userId, presencePayload, onState);
+      const c = await subscribePresence(visitedRoomId, userId, presencePayload, onState, nameLabelsRef.current);
       if (cancelled) { void supabase.removeChannel(c); return; }
       ch = c;
       visitedPresenceRef.current = c;
@@ -641,7 +652,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     setSending(false);
 
     if (error) {
-      setSendError("No se pudo enviar. Intenta de nuevo.");
+      setSendError(t("sendError"));
       return;
     }
 
@@ -707,8 +718,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       const msg = (error as { message?: string }).message ?? "";
       setPasswordError(
         msg.includes("locked_out")
-          ? "Demasiados intentos, intenta en unos minutos."
-          : "No se pudo verificar. Intenta de nuevo."
+          ? t("passwordLocked")
+          : t("passwordVerifyError")
       );
       return;
     }
@@ -722,7 +733,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       return;
     }
 
-    setPasswordError("Contraseña incorrecta");
+    setPasswordError(t("passwordWrong"));
   }
 
   // ── Waiter cooldown countdown ─────────────────────────────────────────────────
@@ -807,7 +818,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     }
 
     setWaiterState("error");
-    setWaiterError("No se pudo enviar la llamada. Intenta de nuevo.");
+    setWaiterError(t("waiterSendError"));
   }
 
   // ── Photo upload + send ────────────────────────────────────────────────────────
@@ -818,11 +829,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setSendError("Solo se pueden enviar imágenes.");
+      setSendError(t("onlyImages"));
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setSendError("La imagen no puede superar los 10 MB.");
+      setSendError(t("imageTooBig"));
       return;
     }
 
@@ -883,7 +894,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         requestAnimationFrame(() => scrollToBottom("smooth")),
       );
     } catch {
-      setSendError("No se pudo enviar la imagen. Intenta de nuevo.");
+      setSendError(t("imageSendError"));
     } finally {
       setUploading(false);
     }
@@ -945,7 +956,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         }}
       >
         <IconLoader2 size={32} className="spin" />
-        <span style={{ fontSize: 14 }}>Cargando sala…</span>
+        <span style={{ fontSize: 14 }}>{t("loadingRoom")}</span>
       </div>
     );
   }
@@ -977,7 +988,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           <div style={{ fontSize: 40 }}>🔒</div>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
-              Sin acceso a esta sala
+              {t("noAccessTitle")}
             </h2>
             <p
               style={{
@@ -987,8 +998,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 lineHeight: 1.5,
               }}
             >
-              No tienes una membresía vigente. Escanea el código QR del lugar
-              para entrar.
+              {t("noAccessBody")}
             </p>
           </div>
           <Link
@@ -1006,7 +1016,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               textDecoration: "none",
             }}
           >
-            Volver a la entrada
+            {t("backToEntry")}
           </Link>
         </div>
       </div>
@@ -1024,7 +1034,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         }}
       >
         <p style={{ color: "var(--color-danger)", fontSize: 14 }}>
-          Error al cargar los mensajes. Recarga la página.
+          {t("loadMessagesError")}
         </p>
       </div>
     );
@@ -1037,7 +1047,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
       <div style={s.header}>
         <Link
           href={`/c/${token}`}
-          aria-label="Volver"
+          aria-label={t("back")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -1085,7 +1095,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           <button
             type="button"
             onClick={handleHeaderMenu}
-            aria-label="Menú"
+            aria-label={t("menu")}
             style={{
               marginLeft: "auto",
               flexShrink: 0,
@@ -1184,7 +1194,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               whiteSpace: "nowrap",
             }}
           >
-            Conectando…
+            {t("connecting")}
           </span>
         ) : (
           <>
@@ -1237,7 +1247,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 marginLeft: 4,
               }}
             >
-              {presentUsers.length} en línea
+              {t("online", { count: presentUsers.length })}
             </span>
           </>
         )}
@@ -1257,7 +1267,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               fontSize: 14,
             }}
           >
-            Sé el primero en escribir algo 👋
+            {t("beFirst")}
           </div>
         )}
 
@@ -1290,7 +1300,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           const imgH = typeof msg.metadata?.height === "number" ? msg.metadata.height : undefined;
           // Avatar for OTHERS' messages (own messages carry no avatar, mobile parity).
           const senderAvatar = incognito ? null : (profiles[msg.user_id]?.avatarUrl ?? null);
-          const senderInitial = senderName(msg, profiles).replace("🎭 ", "").charAt(0).toUpperCase();
+          const senderInitial = senderName(msg, profiles, nameLabelsRef.current).replace("🎭 ", "").charAt(0).toUpperCase();
 
           return (
             <div
@@ -1361,7 +1371,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       opacity: incognito ? 0.65 : 1,
                     }}
                   >
-                    {senderName(msg, profiles)}
+                    {senderName(msg, profiles, nameLabelsRef.current)}
                   </span>
                   {/* CRITICAL: badge NEVER renders for incognito messages */}
                   {authorRole === "owner" && (
@@ -1376,7 +1386,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Dueño
+                      {t("owner")}
                     </span>
                   )}
                   {authorRole === "staff" && (
@@ -1391,7 +1401,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Staff
+                      {t("staff")}
                     </span>
                   )}
                 </div>
@@ -1412,7 +1422,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={msg.media_url!}
-                    alt="Imagen enviada"
+                    alt={t("imageSent")}
                     onLoad={() => {
                       // Safety net for legacy photos with no stored dims: while
                       // the list is still settling on entry and the user hasn't
@@ -1602,7 +1612,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               >
                 <IconToolsKitchen2 size={24} style={{ color: theme.accent }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
-                  Menú
+                  {t("menu")}
                 </span>
               </button>
 
@@ -1634,36 +1644,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               >
                 <IconBell size={24} style={{ color: theme.accent }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
-                  {waiterState === "cooldown" ? `${cooldownSecsLeft}s` : "Servicio"}
+                  {waiterState === "cooldown" ? `${cooldownSecsLeft}s` : t("service")}
                 </span>
               </button>
 
-              {/* Match — disabled, coming soon */}
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 62,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 4,
-                  padding: "12px 8px",
-                  borderRadius: 14,
-                  border: `1px solid ${theme.border}`,
-                  background: theme.bubbleInBg,
-                  opacity: 0.72,
-                  cursor: "default",
-                }}
-              >
-                <IconHeart size={24} style={{ color: theme.accent }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: theme.bubbleInText, whiteSpace: "nowrap" }}>
-                  Match
-                </span>
-                <span style={{ fontSize: 9, color: theme.bubbleInText, opacity: 0.55, marginTop: -2 }}>
-                  pronto
-                </span>
-              </div>
             </div>
           )}
 
@@ -1671,8 +1655,8 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           <button
             type="button"
             onClick={() => setShowAttachPanel((v) => !v)}
-            aria-label={showAttachPanel ? "Cerrar opciones" : "Adjuntar"}
-            title={showAttachPanel ? "Cerrar" : "Adjuntar foto o llamar al mesero"}
+            aria-label={showAttachPanel ? t("closeOptions") : t("attach")}
+            title={showAttachPanel ? t("close") : t("attachTitle")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1697,7 +1681,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Escribe un mensaje…"
+          placeholder={t("messagePlaceholder")}
           rows={1}
           style={{
             flex: 1,
@@ -1721,7 +1705,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         <button
           onClick={() => void handleSend()}
           disabled={!inputText.trim() || sending || uploading}
-          aria-label="Enviar"
+          aria-label={t("send")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -1751,7 +1735,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Contraseña de ${passwordRoom.name}`}
+          aria-label={t("passwordOf", { name: passwordRoom.name })}
           style={{
             position: "absolute",
             inset: 0,
@@ -1783,13 +1767,13 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             </div>
 
             <p style={{ margin: 0, fontSize: 13, color: theme.bubbleInText, opacity: 0.6 }}>
-              Esta sala está protegida. Ingresa la contraseña para entrar.
+              {t("roomProtected")}
             </p>
 
             <input
               type="password"
               autoFocus
-              placeholder="Contraseña"
+              placeholder={t("password")}
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1847,7 +1831,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Llamar al mesero"
+          aria-label={t("callWaiter")}
           style={{
             position: "absolute",
             inset: 0,
@@ -1884,12 +1868,12 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <IconBell size={20} style={{ color: theme.accent }} />
                 <span style={{ fontSize: 16, fontWeight: 700, color: theme.bubbleInText }}>
-                  Llamar al mesero
+                  {t("callWaiter")}
                 </span>
               </div>
               <button
                 onClick={() => setShowWaiterSheet(false)}
-                aria-label="Cerrar"
+                aria-label={t("close")}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -1923,7 +1907,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   fontWeight: 600,
                 }}
               >
-                ✓ El mesero fue notificado
+                ✓ {t("waiterNotified")}
               </div>
             )}
 
@@ -1955,11 +1939,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       opacity: 0.6,
                     }}
                   >
-                    Mesa (opcional)
+                    {t("tableLabel")}
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. 5, barra, terraza…"
+                    placeholder={t("tablePlaceholder")}
                     value={waiterTableLabel}
                     onChange={(e) => setWaiterTableLabel(e.target.value)}
                     maxLength={40}
@@ -1985,10 +1969,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                       opacity: 0.6,
                     }}
                   >
-                    Nota (opcional)
+                    {t("noteLabel")}
                   </label>
                   <textarea
-                    placeholder="Ej. Traer la cuenta, más agua…"
+                    placeholder={t("notePlaceholder")}
                     value={waiterNotes}
                     onChange={(e) => setWaiterNotes(e.target.value)}
                     rows={2}
@@ -2030,9 +2014,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   {waiterState === "sending" && (
                     <IconLoader2 size={18} className="spin" />
                   )}
-                  {waiterState === "sending"
-                    ? "Notificando…"
-                    : "Llamar al mesero"}
+                  {waiterState === "sending" ? t("notifying") : t("callWaiter")}
                 </button>
               </>
             )}
@@ -2047,6 +2029,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
 // ── Fullscreen image lightbox (portal to <body>, over the app shell) ──────────
 function Lightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
+  const t = useTranslations("chatRoom");
   const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
@@ -2095,7 +2078,7 @@ function Lightbox({ url, onClose }: { url: string | null; onClose: () => void })
         {/* Close button — top-right corner of the image, high-contrast over any photo. */}
         <button
           onClick={onClose}
-          aria-label="Cerrar"
+          aria-label={t("close")}
           style={{
             position: "absolute",
             top: 8,
@@ -2120,7 +2103,7 @@ function Lightbox({ url, onClose }: { url: string | null; onClose: () => void })
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}
-          alt="Imagen ampliada"
+          alt={t("imageEnlarged")}
           onDoubleClick={(e) => {
             e.stopPropagation();
             setZoomed((z) => !z);

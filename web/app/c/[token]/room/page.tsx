@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/server";
 import { requireAgeConfirmed } from "@/lib/age";
 import { ChatRoom } from "./ChatRoom";
+import { getTranslations } from "next-intl/server";
 
 interface ResolvedRoom {
   room_id: string;
@@ -28,6 +29,7 @@ export default async function RoomPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const t = await getTranslations("qrEntry");
 
   // Demo mode — no real backend
   if (!isSupabaseConfigured) {
@@ -114,7 +116,7 @@ export default async function RoomPage({
           </span>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>
-              QR inválido
+              {t("invalidTitle")}
             </h1>
             <p
               style={{
@@ -124,7 +126,7 @@ export default async function RoomPage({
                 lineHeight: 1.5,
               }}
             >
-              Este código QR no está asociado a ninguna sala activa.
+              {t("invalidBodyShort")}
             </p>
           </div>
         </div>

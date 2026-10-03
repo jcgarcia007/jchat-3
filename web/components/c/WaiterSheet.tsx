@@ -10,6 +10,7 @@
  * chat-theme colors. Consolidate when ChatRoom is next touched significantly.
  */
 
+import { useTranslations } from "next-intl";
 import { useState, useRef, useEffect } from "react";
 import { IconBell, IconLoader2, IconX } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -26,6 +27,7 @@ export interface WaiterSheetProps {
 }
 
 export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheetProps) {
+  const t = useTranslations("waiterSheet");
   const [tableLabel, setTableLabel] = useState("");
   const [notes, setNotes] = useState("");
   const [state, setState] = useState<WaiterState>("idle");
@@ -89,14 +91,14 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
       return;
     }
     setState("error");
-    setErrorMsg("No se pudo enviar. Intenta de nuevo.");
+    setErrorMsg(t("sendError"));
   }
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Llamar al mesero"
+      aria-label={t("title")}
       style={{
         position: "fixed",
         inset: 0,
@@ -125,12 +127,12 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <IconBell size={20} style={{ color: "var(--color-brand)" }} />
             <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
-              Llamar al mesero
+              {t("title")}
             </span>
           </div>
           <button
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t("close")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -159,7 +161,7 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
               fontWeight: 600,
             }}
           >
-            ⏱ Espera {cooldownSecs}s antes de enviar otra llamada.
+            ⏱ {t("cooldown", { seconds: cooldownSecs })}
           </div>
         )}
 
@@ -177,7 +179,7 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
               fontWeight: 600,
             }}
           >
-            ✓ El mesero fue notificado
+            ✓ {t("notified")}
           </div>
         )}
 
@@ -200,11 +202,11 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-                Mesa (opcional)
+                {t("tableLabel")}
               </label>
               <input
                 type="text"
-                placeholder="Ej. 5, barra, terraza…"
+                placeholder={t("tablePlaceholder")}
                 value={tableLabel}
                 onChange={(e) => setTableLabel(e.target.value)}
                 maxLength={40}
@@ -223,10 +225,10 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-                Nota (opcional)
+                {t("noteLabel")}
               </label>
               <textarea
-                placeholder="Ej. Traer la cuenta, más agua…"
+                placeholder={t("notePlaceholder")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
@@ -265,7 +267,7 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
               }}
             >
               {state === "sending" && <IconLoader2 size={18} className="spin" />}
-              {state === "sending" ? "Notificando…" : "Llamar al mesero"}
+              {state === "sending" ? t("sending") : t("title")}
             </button>
           </>
         )}
