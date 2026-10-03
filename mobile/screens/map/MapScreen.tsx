@@ -368,11 +368,23 @@ export default function MapScreen() {
         {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
         <View style={styles.zoomRow} pointerEvents="box-none">
           <View style={[styles.zoomControls, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-            <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(1)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.zoomBtn}
+              onPress={() => void handleZoom(1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('mapScreen.zoomInA11y')}
+            >
               <IconPlus size={20} color={c.textSecondary} strokeWidth={1.75} />
             </TouchableOpacity>
             <View style={[styles.zoomDivider, { backgroundColor: c.borderSubtle }]} />
-            <TouchableOpacity style={styles.zoomBtn} onPress={() => void handleZoom(-1)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.zoomBtn}
+              onPress={() => void handleZoom(-1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('mapScreen.zoomOutA11y')}
+            >
               <IconMinus size={20} color={c.textSecondary} strokeWidth={1.75} />
             </TouchableOpacity>
           </View>
@@ -406,6 +418,9 @@ export default function MapScreen() {
                 style={[styles.styleBtn, isActive && { backgroundColor: palette.brandLight }, idx < STYLE_OPTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle }]}
                 onPress={() => setMapVariant(variant)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={t('mapScreen.mapStyleA11y', { style: styleLabels[variant] })}
               >
                 <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
                 <Text style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
@@ -420,7 +435,12 @@ export default function MapScreen() {
         <View style={styles.sheetBackdrop}>
           <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
           <View style={[styles.sheetBody, { backgroundColor: c.bgBase }]}>
-            <TouchableOpacity style={styles.sheetClose} onPress={() => setSelected(null)}>
+            <TouchableOpacity
+              style={styles.sheetClose}
+              onPress={() => setSelected(null)}
+              accessibilityRole="button"
+              accessibilityLabel={t('mapScreen.closeSheetA11y')}
+            >
               <IconX size={22} color={c.textSecondary} />
             </TouchableOpacity>
             {selected && (
@@ -470,7 +490,7 @@ const styles = StyleSheet.create({
   },
   styleBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
   styleBtnLabel: { fontSize: 13, fontWeight: '500' },
-  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: palette.scrim },
   sheetDismiss: { flex: 1 },
   sheetBody: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 24, maxHeight: '85%' },
   sheetClose: { alignSelf: 'flex-end', padding: 12 },

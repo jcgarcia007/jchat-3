@@ -266,7 +266,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
           accessibilityRole="button"
           accessibilityLabel={t('filterPanel.advancedFiltersA11y')}
         >
-          <IconAdjustmentsHorizontal size={15} color={active ? '#ffffff' : c.textSecondary} />
+          <IconAdjustmentsHorizontal size={15} color={active ? palette.bgSurfaceLight : c.textSecondary} />
         </Pressable>
       </View>
 
@@ -409,7 +409,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                       accessibilityState={{ checked: sel, disabled: !hasLocation }}
                       accessibilityLabel={distanceLabel(km)}
                     >
-                      <Text style={[styles.segmentedLabel, { color: sel ? '#ffffff' : c.textPrimary }]}>
+                      <Text style={[styles.segmentedLabel, { color: sel ? palette.bgSurfaceLight : c.textPrimary }]}>
                         {distanceLabel(km)}
                       </Text>
                     </TouchableOpacity>
@@ -452,7 +452,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                   style={[
                     styles.toggleThumb,
                     {
-                      backgroundColor: '#ffffff',
+                      backgroundColor: palette.bgSurfaceLight,
                       transform: [{ translateX: draft.openNow ? 18 : 2 }],
                     },
                   ]}
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#000000',
+    backgroundColor: palette.scrim,
   },
 
   // Sheet
@@ -714,6 +714,6 @@ const styles = StyleSheet.create({
   footerApplyLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
   },
 });

@@ -7,7 +7,7 @@
  * All data is passed via props — no Supabase calls inside this component.
  *
  * Design constraints:
- *   - No hardcoded hex EXCEPT the small CARD_COLORS block below (design-system
+ *   - No hardcoded hex; CARD_COLORS below maps design-system accents to tokens (design-system
  *     accent values that are not global tokens).
  *   - Dark + light mode via useThemeColors().
  *   - Icons: @tabler/icons-react-native only.
@@ -45,12 +45,10 @@ import {
   type HoursMap,
 } from '../../utils/hours';
 
-// ── Design-System accent hexes not covered by global tokens ──────────────────
-// These exact values come from JCHAT_3.0_DESIGN_SYSTEM.docx Section 11 and
-// cannot be expressed as tokens — keep them here, not scattered in JSX/styles.
+// ── Design-System accents (DS §11), taken from the global tokens ─────────────
 const CARD_COLORS = {
-  starGold: '#FFCC00',     // star rating fill (DS §11 "Stars in #FFCC00")
-  openGreen: '#34C759',    // open badge green dot + today highlight (DS §11)
+  starGold: palette.heatMild,   // star rating fill
+  openGreen: palette.heatCool,  // open badge green dot + today highlight
 } as const;
 
 // ── Hours type ────────────────────────────────────────────────────────────────
@@ -295,7 +293,7 @@ export default function BusinessPreviewCard({
                     <Text
                       style={[
                         styles.dayCircleLabel,
-                        { color: isToday ? '#ffffff' : c.textSecondary },
+                        { color: isToday ? palette.bgSurfaceLight : c.textSecondary },
                       ]}
                     >
                       {dayLabels[idx].charAt(0)}
@@ -388,7 +386,7 @@ export default function BusinessPreviewCard({
                       styles.roomChip,
                       {
                         backgroundColor: room.accentColor
-                          ? room.accentColor + '22' // ~13% opacity tint
+                          ? hexToRgba(room.accentColor, 0.13) // ~13% opacity tint of the room accent
                           : c.bgElevated,
                         borderColor: room.accentColor ?? c.borderSubtle,
                       },
@@ -418,7 +416,7 @@ export default function BusinessPreviewCard({
             accessibilityRole="button"
             accessibilityLabel={t('businessPreviewCard.enterChatA11y')}
           >
-            <Text style={[styles.btnPrimaryLabel, { color: '#ffffff' }]}>
+            <Text style={[styles.btnPrimaryLabel, { color: palette.bgSurfaceLight }]}>
               {t('businessPreviewCard.enterChatButton')}
             </Text>
           </TouchableOpacity>

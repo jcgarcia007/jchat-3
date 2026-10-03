@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Subtle shadow so pin lifts off the map
-    shadowColor: '#000',
+    shadowColor: palette.bgBase,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 3,
@@ -292,11 +292,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // Border so it stays readable on any pin color
     borderWidth: 1,
-    borderColor: '#ffffff',
+    borderColor: palette.bgSurfaceLight,
   },
 
   badgeText: {
-    color: '#ffffff',
+    color: palette.bgSurfaceLight,
     fontWeight: '700',
     letterSpacing: -0.2,
     // fontSize applied inline

@@ -8,7 +8,11 @@
     "locationDenied": "Location is off for JChat, so distances and the radius filter are unavailable.",
     "openSettings": "Open Settings",
     "loadError": "Couldn't load places.",
-    "retry": "Tap to retry"
+    "retry": "Tap to retry",
+    "zoomInA11y": "Zoom in",
+    "zoomOutA11y": "Zoom out",
+    "mapStyleA11y": "Map style: {{style}}",
+    "closeSheetA11y": "Close"
   },
   "messagesA11y": "Messages, {{count}} unread",
   "nearbyTitle": "Near you",

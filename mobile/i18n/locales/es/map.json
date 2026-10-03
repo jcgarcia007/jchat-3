@@ -8,7 +8,11 @@
     "locationDenied": "La ubicación está desactivada para JChat, así que no hay distancias ni filtro por radio.",
     "openSettings": "Abrir Ajustes",
     "loadError": "No se pudieron cargar los lugares.",
-    "retry": "Toca para reintentar"
+    "retry": "Toca para reintentar",
+    "zoomInA11y": "Acercar",
+    "zoomOutA11y": "Alejar",
+    "mapStyleA11y": "Estilo de mapa: {{style}}",
+    "closeSheetA11y": "Cerrar"
   },
   "messagesA11y": "Mensajes, {{count}} sin leer",
   "nearbyTitle": "Cerca de ti",
