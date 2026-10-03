@@ -59,19 +59,6 @@ export interface FollowRow {
   created_at: string;
 }
 
-/**
- * Describes the relationship state between the current user and a target user.
- *
- * NOTE: The `follows` table has no `status` / pending column (001_initial_schema.sql).
- * Pending follow requests are modelled by inserting into `follow_requests`
- * — see TODO below. Until that table exists, `isPending` is always false at runtime.
- *
- * TODO(schema): add follow_requests table with columns:
- *   id uuid, requester_id uuid references users(id), target_id uuid references users(id),
- *   created_at timestamptz, unique(requester_id, target_id)
- */
-export type FollowState = 'following' | 'pending' | 'none';
-
 /** Mirrors the `blocks` table */
 export interface BlockRow {
   id: string;
@@ -135,24 +122,6 @@ export async function getPublicProfile(
 }
 
 // ── Follow / Unfollow ───────────────────────────────────────────────────────
-
-/**
- * Follow a user (direct follow — assumes the target account is public).
- * Inserts a row into `follows` (follower_id = current user, following_id = targetId).
- * Uses upsert to be idempotent — silently succeeds if already following.
- */
-export async function followUser(
-  currentUserId: string,
-  targetId: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('follows')
-    .upsert(
-      { follower_id: currentUserId, following_id: targetId },
-      { onConflict: 'follower_id,following_id' },
-    );
-  if (error) throw error;
-}
 
 /**
  * Unfollow a user.
@@ -223,29 +192,9 @@ export async function canViewProfile(viewerId: string, targetId: string): Promis
   return data === true;
 }
 
-/** Get the number of followers for a given user. */
-export async function getFollowerCount(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('follows')
-    .select('id', { count: 'exact', head: true })
-    .eq('following_id', userId);
-  if (error) throw error;
-  return count ?? 0;
-}
-
-/** Get the number of accounts a given user is following. */
-export async function getFollowingCount(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('follows')
-    .select('id', { count: 'exact', head: true })
-    .eq('follower_id', userId);
-  if (error) throw error;
-  return count ?? 0;
-}
-
-// Follow requests + block/unblock moved to services/follows.ts and
-// services/blocks.ts (RPC-backed, migration 040). See requestOrFollow /
-// acceptRequest / rejectRequest / cancelRequest and blockUser / unblockUser there.
+// Following is NEVER an insert from the app: use requestOrFollow / acceptRequest /
+// rejectRequest / cancelRequest (services/follows.ts) and blockUser / unblockUser
+// (services/blocks.ts), which are RPC-backed (migrations 040, 178, 180, 181).
 
 // ── Reports ─────────────────────────────────────────────────────────────────
 

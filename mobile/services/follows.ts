@@ -4,8 +4,9 @@
  * RPC-backed (migration 040_social_privacy_base): request_or_follow,
  * accept_follow_request and remove_follower run SECURITY DEFINER server-side
  * (they enforce block checks, public/private branching, and cross-user inserts
- * the plain RLS can't allow). reject/cancel/list go through RLS-guarded table
- * access. Basic followUser/unfollowUser/isFollowing/counts stay in users.ts.
+ * the plain RLS can't allow). reject_follow_request (migration 180) deletes a request I
+ * received; cancel and the lists go through RLS-guarded table access. unfollowUser and
+ * isFollowing stay in users.ts; the app NEVER inserts into `follows` directly.
  *
  * USER DISCOVERY NOTE: there is NO global user search (spec). Users surface only
  * from room member lists and existing relationships — these list helpers operate
