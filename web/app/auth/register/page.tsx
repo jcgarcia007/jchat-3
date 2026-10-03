@@ -30,6 +30,7 @@ import {
   IconBrandApple,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { confirmAge, deleteMyAccount } from "@/lib/account";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
@@ -118,7 +119,9 @@ function passwordStrength(pw: string): Strength | null {
 }
 
 function ageFromDob(dob: string): number {
-  const d = new Date(dob);
+  // Parse YYYY-MM-DD as a LOCAL date (new Date(str) is UTC and can be off by a day).
+  const [y, mo, da] = dob.split("-").map(Number);
+  const d = new Date(y, mo - 1, da);
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();
   const m = now.getMonth() - d.getMonth();
@@ -511,7 +514,7 @@ function RegisterStep2Form({
         </div>
         {dob !== "" && !is18 && (
           <div style={{ fontSize: 11, color: "var(--color-danger)", marginBottom: 14 }}>
-            You must be at least 18 years old to register.
+            You don't meet the requirements to use JChat.
           </div>
         )}
 
@@ -794,6 +797,21 @@ export default function RegisterPage() {
       setLoading(false);
       setError("Account created but no session was returned. Try signing in.");
       return;
+    }
+
+    // 18+ (server-side): the DOB already asked here goes to confirm_age right after the
+    // session exists. Only the birth year is stored; the full date is never persisted.
+    // No session yet (email confirmation ON) → the age gate asks at first sign-in.
+    if (signUpData.session) {
+      const ageResult = await confirmAge(dob);
+      if (ageResult === "underage") {
+        await deleteMyAccount();
+        await supabase.auth.signOut();
+        setLoading(false);
+        setError("You don't meet the requirements to use JChat.");
+        return;
+      }
+      // "error": the account exists without confirmation → the gate will ask next time.
     }
 
     // The handle_new_auth_user trigger already created the row, with a username

@@ -52,6 +52,9 @@ import {
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { confirmAge } from '../../services/age';
+import { deleteMyAccount } from '../../services/account';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
@@ -131,11 +134,14 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   const { t } = useTranslation('auth');
   // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
   const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
+  const { holdAgeGate, refreshAge, signOut } = useAuth();
   const { name = '', email = '', password = '' } = route.params ?? {};
 
   // ── Date of birth ──────────────────────────────────────────────────────────
-  const defaultDob = new Date(2000, 0, 1);
-  const [dob, setDob] = useState<Date>(defaultDob);
+  // No default value: `dob` stays null until the user picks a date. The full date is
+  // only sent to rpc confirm_age (server stores the year only) — never persisted here.
+  const [dob, setDob] = useState<Date | null>(null);
+  const [pickerValue, setPickerValue] = useState<Date>(() => new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dobTouched, setDobTouched] = useState(false);
 
@@ -162,7 +168,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // Derived errors (only after touch or submit attempt)
   // ---------------------------------------------------------------------------
   const dobError: string | null =
-    dobTouched && !isAtLeast18(dob)
+    dobTouched && dob && !isAtLeast18(dob)
       ? t('register.dobError')
       : null;
 
@@ -233,8 +239,12 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         setShowDatePicker(false);
       }
       if (event.type === 'set' && selectedDate) {
-        setDob(selectedDate);
-        setDobTouched(true);
+        setPickerValue(selectedDate);
+        // Android's dialog commits on OK; the iOS spinner commits on "Done".
+        if (Platform.OS === 'android') {
+          setDob(selectedDate);
+          setDobTouched(true);
+        }
       }
     },
     [],
@@ -261,6 +271,10 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
     setTermsTouched(true);
 
     // ── Client-side validation ────────────────────────────────────────────
+    if (!dob) {
+      Alert.alert(t('register.dobLabel'), t('register.dobPlaceholder'));
+      return;
+    }
     if (!isAtLeast18(dob)) {
       Alert.alert(
         t('register.alerts.ageTitle'),
@@ -347,6 +361,8 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         display_name: name.trim() || null,
         language,
       };
+      // Keep the 18+ gate from flashing while we confirm the age we already asked for.
+      holdAgeGate(true);
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -385,6 +401,23 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         return;
       }
 
+      // ── 1b. 18+ confirmation (server-side) ────────────────────────────────
+      // The DOB asked in this form goes to rpc confirm_age right after the session
+      // exists. Only the birth year is stored; the full date is never persisted.
+      // If it fails (network), the age gate asks again — the account never enters
+      // the app unconfirmed.
+      if (dob) {
+        const ageResult = await confirmAge(dob);
+        if (ageResult === 'underage') {
+          await deleteMyAccount();
+          await signOut().catch(() => null);
+          Alert.alert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));
+          setSubmitting(false);
+          return;
+        }
+        if (ageResult === 'ok') await refreshAge();
+      }
+
       // ── 2. Insert profile into `users` table ──────────────────────────────
       // The handle_new_auth_user trigger already created the row, with a username
       // DERIVED from the email — not the one the user chose in this form. Apply the
@@ -415,8 +448,10 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       const message = err instanceof Error ? err.message : t('register.alerts.unexpectedError');
       Alert.alert(t('register.alerts.errorTitle'), message);
       setSubmitting(false);
+    } finally {
+      holdAgeGate(false);
     }
-  }, [dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t, navigation]);
+  }, [holdAgeGate, refreshAge, signOut, dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t, navigation]);
 
   // ---------------------------------------------------------------------------
   // Computed values for rendering
@@ -487,13 +522,13 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                 style={[
                   styles.selectorText,
                   {
-                    color: dobTouched ? c.textPrimary : c.textTertiary,
+                    color: dob ? c.textPrimary : c.textTertiary,
                     marginLeft: 8,
                     flex: 1,
                   },
                 ]}
               >
-                {dobTouched ? formatDate(dob) : t('register.dobPlaceholder')}
+                {dob ? formatDate(dob) : t('register.dobPlaceholder')}
               </Text>
             </TouchableOpacity>
             {dobError ? (
@@ -512,7 +547,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               ]}
             >
               <DateTimePicker
-                value={dob}
+                value={pickerValue}
                 mode="date"
                 display="spinner"
                 maximumDate={maxDate}
@@ -521,7 +556,11 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               />
               <TouchableOpacity
                 style={[styles.iosDoneButton, { borderTopColor: inputBorder }]}
-                onPress={() => setShowDatePicker(false)}
+                onPress={() => {
+                  setDob(pickerValue);
+                  setDobTouched(true);
+                  setShowDatePicker(false);
+                }}
               >
                 <Text style={[styles.iosDoneText, { color: palette.brand }]}>
                   {t('register.dobDone')}
@@ -533,7 +572,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           {/* Android: modal picker — shown imperatively */}
           {showDatePicker && Platform.OS === 'android' && (
             <DateTimePicker
-              value={dob}
+              value={pickerValue}
               mode="date"
               display="default"
               maximumDate={maxDate}

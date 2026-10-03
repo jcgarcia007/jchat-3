@@ -247,14 +247,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session?.user?.id]);
 
   const refreshAge = useCallback(async () => {
-    const userId = session?.user?.id;
+    // Read the CURRENT session (callers may hold a closure from before sign-in).
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user?.id;
     if (!userId) return;
     const confirmed = await fetchAgeConfirmed(userId);
     setAgeState({
       userId,
       status: confirmed === null ? 'error' : confirmed ? 'confirmed' : 'required',
     });
-  }, [session?.user?.id]);
+  }, []);
 
   // Read the 18+ confirmation whenever the signed-in user changes (email, Google,
   // Apple and pre-existing accounts all go through here).
