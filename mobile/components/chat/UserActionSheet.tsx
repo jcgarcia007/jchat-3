@@ -7,13 +7,12 @@
  *
  * ── Role-based option sets ────────────────────────────────────────────────────
  *
- * Regular user (6 options):
+ * Regular user (5 options):
  *   1. View Profile
  *   2. Send DM
  *   3. Follow / Add Friend
- *   4. Mute (personal — hides their messages in YOUR feed, no room effect)
- *   5. Report
- *   6. Block (personal — hides user from your own view; does NOT expel them)
+ *   4. Report
+ *   5. Block (personal — hides user from your own view; does NOT expel them)
  *
  * Owner only for now (all 6 + 4 extras = 10 options; staff moderation is TODO(staff-moderation)):
  *   7.  Warn user                 → logAction 'warn'
@@ -52,7 +51,6 @@ import {
 import {
   IconAlertTriangle,
   IconBan,
-  IconBell,
   IconBellOff,
   IconCheck,
   IconClock,
@@ -344,17 +342,6 @@ export function UserActionSheet({
     });
   }, [user, run, targetUserId, targetName, onClose]);
 
-  const handlePersonalMute = useCallback(() => {
-    // Personal mute: hide user's messages in the viewer's own feed only.
-    // This is a local preference — no room_mutes row is written.
-    // TODO(schema): add user_personal_mutes table and write a row here.
-    Alert.alert(
-      t('userAction.mutedTitle', { name: targetName }),
-      t('userAction.personalMuteMessage'),
-    );
-    onClose();
-  }, [targetName, onClose]);
-
   const handleReport = useCallback(() => {
     onClose();
     onReport(targetUserId, targetName);
@@ -559,18 +546,10 @@ export function UserActionSheet({
                 loading={loadingAction === 'follow'}
               />
 
-              {/* 4. Mute (personal) */}
-              <ActionRow
-                c={c}
-                icon={<IconBell size={20} color={c.textSecondary} />}
-                label={t('userAction.mute')}
-                onPress={handlePersonalMute}
-              />
-
               {/* Divider before destructive personal actions */}
               <View style={s.divider} />
 
-              {/* 5. Report */}
+              {/* 4. Report */}
               <ActionRow
                 c={c}
                 icon={<IconFlag size={20} color={palette.danger} />}
@@ -580,7 +559,7 @@ export function UserActionSheet({
                 loading={loadingAction === 'report'}
               />
 
-              {/* 6. Block (personal) */}
+              {/* 5. Block (personal) */}
               <ActionRow
                 c={c}
                 icon={<IconUserOff size={20} color={palette.danger} />}

@@ -78,9 +78,7 @@
     "deleteErrorTitle": "Deletion failed",
     "deleteErrorMessage": "We couldn't delete your account. Please try again.",
     "biometricUnavailableTitle": "Biometrics unavailable",
-    "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first.",
-    "comingSoonTitle": "Coming soon",
-    "changePasswordSoon": "Password change is not yet available."
+    "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first."
   },
   "workMode": {
     "title": "Work Mode",
@@ -107,9 +105,7 @@
     "errorNoPin": "No PIN set. Please set a PIN first.",
     "errorLocked": "Account is locked. Contact your manager.",
     "errorDb": "Something went wrong. Please try again.",
-    "errorNotConfigured": "Service unavailable.",
-    "posComingSoon": "POS Terminal — Coming Soon",
-    "posComingSoonSub": "The full waiter POS will be available in a future update."
+    "errorNotConfigured": "Service unavailable."
   },
   "pos": {
     "tablesTitle": "Tables",

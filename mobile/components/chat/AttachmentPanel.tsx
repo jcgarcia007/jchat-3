@@ -2,12 +2,11 @@
  * JChat 3.0 — AttachmentPanel (Task 2.4, restructured)
  *
  * Expands from the "+" button in ChatInput.
- * Buttons (in order): Photo · Menú · Servicio · Match · Offer*
+ * Buttons (in order): Photo · Menú · Servicio · Offer*
  *
  * Photo    — expo-image-picker (MediaTypeOptions.Images)
  * Menú     — opens the business menu (calls onMenu, wired in ChatRoomScreen)
  * Servicio — calls service alert / waiter call (calls onServiceCall — Tanda C)
- * Match    — DISABLED / coming soon, no-op (renders faded with "pronto" badge)
  * Offer*   — gated by canCreateOffer (offers_manage permission); calls onOffer
  *
  * Props:
@@ -33,7 +32,6 @@ import {
   IconCamera,
   IconToolsKitchen2,
   IconBell,
-  IconHeart,
   IconTag,
 } from '@tabler/icons-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -206,26 +204,6 @@ export function AttachmentPanel({
           onPress={handleServiceCall}
         />
 
-        {/* Match — disabled / coming soon */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('attachment.matchA11y')}
-          accessibilityState={{ disabled: true }}
-          onPress={() => Alert.alert(t('attachment.matchComingSoonTitle'), t('attachment.matchComingSoonMessage'))}
-          style={[
-            optStyles.btn,
-            { backgroundColor: theme.inputBg, borderColor: theme.border, opacity: 0.4 },
-          ]}
-        >
-          <IconHeart size={24} color={theme.accent} />
-          <Text style={[optStyles.label, { color: theme.bubbleInText }]}>
-            {t('attachment.match')}
-          </Text>
-          <Text style={[panelStyles.pronto, { color: theme.accent }]}>
-            {t('attachment.soon')}
-          </Text>
-        </Pressable>
-
         {/* Offer — visible only to users with offers_manage permission */}
         {canCreateOffer && (
           <OptionButton
@@ -252,11 +230,5 @@ const panelStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  pronto: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    marginTop: -2,
   },
 });

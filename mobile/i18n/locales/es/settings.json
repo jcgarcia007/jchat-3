@@ -78,9 +78,7 @@
     "deleteErrorTitle": "Error al eliminar",
     "deleteErrorMessage": "No pudimos eliminar tu cuenta. Inténtalo de nuevo.",
     "biometricUnavailableTitle": "Biometría no disponible",
-    "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
-    "comingSoonTitle": "Próximamente",
-    "changePasswordSoon": "El cambio de contraseña aún no está disponible."
+    "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo."
   },
   "workMode": {
     "title": "Modo Trabajo",
@@ -107,9 +105,7 @@
     "errorNoPin": "No hay PIN configurado. Configura un PIN primero.",
     "errorLocked": "Cuenta bloqueada. Contacta con tu manager.",
     "errorDb": "Algo salió mal. Inténtalo de nuevo.",
-    "errorNotConfigured": "Servicio no disponible.",
-    "posComingSoon": "Terminal POS — Próximamente",
-    "posComingSoonSub": "El POS completo para meseros estará disponible en una próxima actualización."
+    "errorNotConfigured": "Servicio no disponible."
   },
   "pos": {
     "tablesTitle": "Mesas",
