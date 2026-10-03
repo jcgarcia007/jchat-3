@@ -6,7 +6,12 @@
  * PaymentIntent/SetupIntent — it only receives a client_secret.
  *
  * Actions (POST { action, ...params }):
- *   ensure_customer | create_payment_intent | create_setup_intent
+ *   ensure_customer | quote_order | create_payment_intent | create_setup_intent
+ *   (+ waiter/tab actions below)
+ *
+ * quote_order prices an order exactly like create_payment_intent but creates nothing; the app
+ * shows its answer and sends back expected_total_cents, so create_payment_intent answers
+ * 409 { code: 'TOTAL_CHANGED' } instead of charging a different amount.
  *
  * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  *   EXPO_PUBLIC_STRIPE_PK (returned to client). See README.md.
@@ -16,8 +21,8 @@
  *   verified authUserId — never body.user_id. create_payment_intent also
  *   recalculates all order amounts from the DB. The client-supplied
  *   total/subtotal/tax/discount are ignored; only tip_cents comes from the client
- *   (validated + capped at 200% of server subtotal). discount_cents is forced to 0
- *   until a promo-code table exists (TODO: Task 3.5).
+ *   (validated + capped at 200% of server subtotal). discount_cents is always 0
+ *   (the app has no discounts). Tax: effective_tax_rate (business → state table → none).
  *
  * NOTE: user email is read from auth.users via the admin API (public.users has
  * no email column).
@@ -29,7 +34,8 @@ import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts"
 import {
   priceLinesFromDb,
   computeTaxCents,
-  TAX_FALLBACK,
+  computeQuoteHash,
+  getEffectiveTaxRate,
   type PriceableItem,
 } from "../_shared/pricing.ts";
 
@@ -120,6 +126,164 @@ async function handleEnsureCustomer(authUserId: string): Promise<Response> {
 }
 
 
+/** Everything an order quote / payment is built from — all of it server-owned. */
+interface Quote {
+  businessId: string;
+  business: { id: string; stripe_account_id: string | null };
+  items: CartItem[];
+  lineUnitCents: number[];
+  resolvedOptions: Record<string, unknown>[];
+  names: string[];
+  subtotalCents: number;
+  taxRate: number;
+  taxSource: string;
+  taxCents: number;
+  tipCents: number;
+  discountCents: number;
+  totalCents: number;
+}
+
+function quoteBreakdown(q: Quote) {
+  return {
+    subtotalCents: q.subtotalCents,
+    taxCents: q.taxCents,
+    taxRate: q.taxRate,
+    taxSource: q.taxSource,
+    tipCents: q.tipCents,
+    discountCents: q.discountCents,
+    totalCents: q.totalCents,
+  };
+}
+
+/**
+ * Validate the order body and re-price it from the DB: items (exists / same business /
+ * available / modifier rules), tax (effective_tax_rate: business → state → none), tip
+ * (the only client amount, capped at 200% of the server subtotal) and total. Shared by
+ * quote_order and create_payment_intent so both always agree. Returns a Response on failure.
+ */
+async function buildQuote(
+  db: ReturnType<typeof getAdminClient>,
+  payload: OrderPayload,
+): Promise<Quote | Response> {
+  const { business_id, order_type, items } = payload;
+  // tip_cents is the only client-supplied amount we accept; all others are recalculated.
+  const clientTipCents = typeof payload.tip_cents === "number" ? payload.tip_cents : 0;
+
+  if (!business_id) return errorResponse("order.business_id is required");
+  if (!order_type || !["table", "counter", "gift"].includes(order_type)) {
+    return errorResponse("order.order_type must be table, counter, or gift");
+  }
+
+  // Guard: non-empty cart
+  if (!Array.isArray(items) || items.length === 0) return errorResponse("Cart is empty");
+
+  // Validate per-line structure before any DB call
+  for (const it of items) {
+    if (typeof it.menu_item_id !== "string" || !it.menu_item_id) {
+      return errorResponse("Each item must have a menu_item_id");
+    }
+    if (!Number.isInteger(it.qty) || it.qty < 1) {
+      return errorResponse(`Invalid qty for item ${it.menu_item_id}`);
+    }
+  }
+
+  // ── Business (Stripe Connect account + gating state) ──────────────────────
+  const { data: business, error: bizErr } = await db
+    .from("businesses")
+    .select("id, stripe_account_id, status, stripe_charges_enabled")
+    .eq("id", business_id)
+    .maybeSingle();
+  if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
+  if (!business) return errorResponse("Business not found", 404);
+
+  // Connect preconditions (gates only — amount recalculation is unchanged): the business
+  // must be able to LEGITIMATELY receive this money before anything is quoted or charged.
+  const gate = businessChargeGate(business as {
+    stripe_account_id: string | null;
+    status: string | null;
+    stripe_charges_enabled: boolean | null;
+  });
+  if (gate) return errorResponse(gate.error, gate.status);
+
+  // ── Validate items + server-side recalculation (P0-2 + FIX #6 modifiers) ──
+  const priced = await priceLinesFromDb(db, business_id, items, { enforceModifierRules: true });
+  if ("error" in priced) {
+    return jsonResponse({ error: priced.error, ...(priced.code ? { code: priced.code } : {}) }, priced.status ?? 400);
+  }
+
+  // ── Tax: ONE rule (business rate → state table → none). Never an invented rate. ──
+  const tax = await getEffectiveTaxRate(db, business_id);
+  if ("error" in tax) return errorResponse(tax.error, 500);
+  const taxCents = computeTaxCents(priced.subtotalCents, tax.rate);
+
+  // Tip: validate non-negative integer, capped at 200% of server subtotal.
+  const maxTipCents = priced.subtotalCents * 2;
+  if (!Number.isInteger(clientTipCents) || clientTipCents < 0 || clientTipCents > maxTipCents) {
+    return errorResponse(`tip_cents out of range (0–${maxTipCents})`);
+  }
+
+  // The app has no discounts (MVP): the discount is always 0.
+  const discountCents = 0;
+
+  const totalCents = priced.subtotalCents + taxCents + clientTipCents - discountCents;
+  if (totalCents < 50) return errorResponse("Total is below Stripe minimum ($0.50)");
+
+  return {
+    businessId: business_id,
+    business: business as { id: string; stripe_account_id: string | null },
+    items,
+    lineUnitCents: priced.lineUnitCents,
+    resolvedOptions: priced.resolvedOptions,
+    names: priced.names,
+    subtotalCents: priced.subtotalCents,
+    taxRate: tax.rate,
+    taxSource: tax.source,
+    taxCents,
+    tipCents: clientTipCents,
+    discountCents,
+    totalCents,
+  };
+}
+
+/**
+ * quote_order — same body and validation as create_payment_intent, but creates NOTHING
+ * (no PaymentIntent, no pending cart). The app shows exactly what comes back, and uses
+ * quote_hash as the payment idempotency key.
+ */
+async function handleQuoteOrder(body: Record<string, unknown>): Promise<Response> {
+  const payload = body.order as OrderPayload | undefined;
+  if (!payload) return errorResponse("order payload is required");
+  const q = await buildQuote(getAdminClient(), payload);
+  if (q instanceof Response) return q;
+
+  const lines = q.items.map((it, idx) => ({
+    menu_item_id: it.menu_item_id,
+    name: q.names[idx],
+    qty: it.qty,
+    unit_cents: q.lineUnitCents[idx],
+    line_cents: q.lineUnitCents[idx] * it.qty,
+    options: q.resolvedOptions[idx],
+  }));
+  const quote_hash = await computeQuoteHash({
+    businessId: q.businessId,
+    lines,
+    taxCents: q.taxCents,
+    tipCents: q.tipCents,
+    totalCents: q.totalCents,
+  });
+
+  return jsonResponse({
+    lines,
+    subtotal_cents: q.subtotalCents,
+    tax_cents: q.taxCents,
+    tax_rate: q.taxRate,
+    tax_source: q.taxSource,
+    tip_cents: q.tipCents,
+    total_cents: q.totalCents,
+    quote_hash,
+  });
+}
+
 /**
  * authUserId: JWT-verified caller identity from Deno.serve — never use body.user_id
  * for authentication or DB lookups. body.user_id is kept as a trace field only.
@@ -128,7 +292,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const payload = body.order as OrderPayload | undefined;
   if (!payload) return errorResponse("order payload is required");
 
-  const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label, items } = payload;
+  const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label } = payload;
   // Sanitize free-text table label (never trust the client; Stripe metadata is length-capped).
   const tableLabel = typeof table_label === "string"
     ? table_label.trim().slice(0, 40) || null
@@ -150,30 +314,31 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // path as email/phone → metadata → webhook → orders.contact_name (max 60).
   const contactName = rawName ? rawName.slice(0, 60) : null;
 
-  // tip_cents is the only client-supplied amount we accept; all others are recalculated.
-  const clientTipCents = typeof payload.tip_cents === "number" ? payload.tip_cents : 0;
   // Retain client's user_id as trace for debugging; never used for auth or DB ops.
   const traceUserId = typeof payload.user_id === "string" ? payload.user_id : authUserId;
 
-  if (!business_id) return errorResponse("order.business_id is required");
-  if (!order_type || !["table", "counter", "gift"].includes(order_type)) {
-    return errorResponse("order.order_type must be table, counter, or gift");
-  }
-
-  // Guard: non-empty cart
-  if (!Array.isArray(items) || items.length === 0) return errorResponse("Cart is empty");
-
-  // Validate per-line structure before any DB call
-  for (const it of items) {
-    if (typeof it.menu_item_id !== "string" || !it.menu_item_id) {
-      return errorResponse("Each item must have a menu_item_id");
-    }
-    if (!Number.isInteger(it.qty) || it.qty < 1) {
-      return errorResponse(`Invalid qty for item ${it.menu_item_id}`);
-    }
-  }
-
   const db = getAdminClient();
+
+  // ── Re-price everything server-side (items, tax, tip, total) ──────────────
+  const q = await buildQuote(db, payload);
+  if (q instanceof Response) return q;
+  const {
+    items, lineUnitCents, resolvedOptions,
+    subtotalCents: serverSubtotalCents, taxCents: serverTaxCents,
+    tipCents: clientTipCents, discountCents: serverDiscountCents, totalCents: serverTotalCents,
+  } = q;
+  const stripeAccountId = q.business.stripe_account_id;
+
+  // The total the customer SAW (from quote_order). If prices, availability or tax changed
+  // in between, do NOT charge: the app re-quotes and asks again.
+  const expectedRaw = body.expected_total_cents ?? (payload as unknown as Record<string, unknown>).expected_total_cents;
+  if (typeof expectedRaw === "number" && expectedRaw !== serverTotalCents) {
+    return jsonResponse(
+      { error: "The total changed", code: "TOTAL_CHANGED", serverTotalCents, breakdown: quoteBreakdown(q) },
+      409,
+    );
+  }
+
   const stripe = getStripe();
 
   // ── Fetch authenticated user (for Stripe customer) ────────────────────────
@@ -196,62 +361,9 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     await db.from("users").update({ stripe_customer_id: customerId }).eq("id", authUserId);
   }
 
-  // ── Fetch business (tax_rate + Stripe Connect account + gating state) ─────
-  const { data: business, error: bizErr } = await db
-    .from("businesses")
-    .select("id, stripe_account_id, tax_rate, status, stripe_charges_enabled")
-    .eq("id", business_id)
-    .maybeSingle();
-  if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
-  if (!business) return errorResponse("Business not found", 404);
-  const stripeAccountId = business.stripe_account_id as string | null;
-
-  // ── Connect preconditions (gates only — amount recalculation is unchanged) ──
-  // Verify the business may LEGITIMATELY receive this money before creating any
-  // PaymentIntent. Missing any gate previously meant either the money silently
-  // landed in the platform account (no destination) or the charge failed at the
-  // register. All return 409 (conflict with the business's current state).
-  //
-  // Shared gate (verified → Connect account → onboarding finished). Same errors,
-  // now reused by the tab-settlement flow too.
-  const gate = businessChargeGate(business as {
-    stripe_account_id: string | null;
-    status: string | null;
-    stripe_charges_enabled: boolean | null;
-  });
-  if (gate) {
-    return errorResponse(gate.error, gate.status);
-  }
-
-  // ── Validate items + server-side recalculation (P0-2 + FIX #6 modifiers) ──
-  // Extracted to priceLinesFromDb so the waiter-order action reuses the exact
-  // same calculator. Behaviour and error strings are unchanged.
-  const priced = await priceLinesFromDb(db, business_id, items);
-  if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
-  const { lineUnitCents, resolvedOptions, subtotalCents: serverSubtotalCents } = priced;
-
-  const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
-  const serverTaxCents = computeTaxCents(serverSubtotalCents, taxRate);
-
-  // Tip: validate non-negative integer, capped at 200% of server subtotal.
-  const maxTipCents = serverSubtotalCents * 2;
-  if (!Number.isInteger(clientTipCents) || clientTipCents < 0 || clientTipCents > maxTipCents) {
-    return errorResponse(`tip_cents out of range (0–${maxTipCents})`);
-  }
-
-  // No promo table to validate against; discount is always 0 for now.
-  // TODO(Task 3.5): implement promo code validation and remove this override.
-  const serverDiscountCents = 0;
-
-  const serverTotalCents = serverSubtotalCents + serverTaxCents + clientTipCents - serverDiscountCents;
-  if (serverTotalCents < 50) return errorResponse("Total is below Stripe minimum ($0.50)");
-
   // ── Build metadata with server-calculated values ───────────────────────────
-  // stripe-webhook reads these fields from paymentIntent.metadata and writes
-  // them verbatim to the orders row. By populating them here from server values,
-  // the webhook stays correct without any changes.
-  // item `p` uses the DB line unit (base + modifiers) so the webhook writes a
-  // trustworthy order_items.price_cents snapshot — not the client's price.
+  // stripe-webhook creates the order from pending_order_carts (below); metadata only
+  // carries the order header. item `p` is the DB line unit (base + modifiers).
   const itemsMeta = JSON.stringify(
     items.map((it, idx) => ({
       m: it.menu_item_id,
@@ -293,7 +405,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     subtotal_cents: String(serverSubtotalCents),       // server-recalculated
     tax_cents:      String(serverTaxCents),            // server-recalculated
     tip_cents:      String(clientTipCents),            // client-supplied, validated
-    discount_cents: String(serverDiscountCents),       // = "0" until promo system
+    discount_cents: String(serverDiscountCents),       // always "0" (no discounts)
     total_cents:    String(serverTotalCents),          // server-recalculated
     items:          itemsMeta.slice(0, 490),
   };
@@ -310,11 +422,10 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // Only logged when body.user_id differs from JWT — aids debugging.
   if (traceUserId !== authUserId) metadata.client_user_id = traceUserId;
 
-  // ── Idempotency key (unique per payment ATTEMPT) ───────────────────────────
-  // A key derived from the cart (user+business+total+items) is deterministic, so a
-  // customer repeating an identical order reuses it with different params (e.g. a new
-  // table_label) → Stripe 400. The client sends a fresh key per attempt; we namespace
-  // it with the JWT-verified user so one client can't collide with another's key.
+  // ── Idempotency key ────────────────────────────────────────────────────────
+  // The app sends ONE key per quote (q_<quote_hash>), so a retry of the same order
+  // reuses the same PaymentIntent. We namespace it with the JWT-verified user so one
+  // client can't collide with another's key.
   const rawKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
   const safeKey = /^[A-Za-z0-9_-]{8,64}$/.test(rawKey) ? rawKey : null;
   const idempotencyKey = `pi:${authUserId}:${safeKey ?? crypto.randomUUID()}`;
@@ -326,7 +437,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   );
 
   // Destination-charge routing via the shared helper (stripeAccountId is set —
-  // businessChargeGate guaranteed it above). amount is the SERVER total.
+  // businessChargeGate guaranteed it in buildQuote). amount is the SERVER total.
   const piParams = buildConnectPiParams({
     amountCents: serverTotalCents, // server-calculated; client total_cents is ignored
     currency: "usd",
@@ -339,8 +450,9 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const paymentIntent = await stripe.paymentIntents.create(piParams, { idempotencyKey });
   const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
 
-  // Persist the SERVER-RESOLVED cart keyed by the PaymentIntent. The webhook reads this
-  // instead of the size-capped Stripe metadata (which truncates once modifiers exist).
+  // Persist the SERVER-RESOLVED cart keyed by the PaymentIntent. stripe-webhook builds the
+  // order from THIS row (Stripe metadata is size-capped), so a failure here must stop the
+  // payment: cancel the intent we just made and answer 500.
   const { error: cartErr } = await db.from("pending_order_carts").upsert({
     payment_intent_id: paymentIntent.id,
     business_id,
@@ -354,25 +466,22 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
     })),
   });
   if (cartErr) {
-    console.error("[payments] failed to persist pending cart:", cartErr);
-    // Don't fail the payment: the webhook falls back to metadata.
+    console.error("[payments] failed to persist pending cart:", cartErr.message, "pi:", paymentIntent.id);
+    try {
+      await stripe.paymentIntents.cancel(paymentIntent.id);
+    } catch (cancelErr) {
+      console.error("[payments] could not cancel PaymentIntent after cart failure:", paymentIntent.id, cancelErr);
+    }
+    return errorResponse("Could not save the order. Please try again.", 500);
   }
 
-  // serverTotalCents + breakdown are returned for future UX reconciliation.
-  // The client currently ignores these fields; a follow-up can use them to
-  // update the checkout screen if the server total differs from the client estimate.
   return jsonResponse({
     clientSecret:   paymentIntent.client_secret,
     ephemeralKey:   ephemeralKey.secret,
     customer:       customerId,
     publishableKey,
     serverTotalCents,
-    serverBreakdown: {
-      subtotalCents:  serverSubtotalCents,
-      taxCents:       serverTaxCents,
-      tipCents:       clientTipCents,
-      discountCents:  serverDiscountCents,
-    },
+    serverBreakdown: quoteBreakdown(q),
   });
 }
 
@@ -474,16 +583,10 @@ async function handleCreateWaiterOrder(
   if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
   const { lineUnitCents, resolvedOptions, subtotalCents } = priced;
 
-  // Tax uses the business rate, same rule as the payment flow. No tip, no discount.
-  const { data: business, error: bizErr } = await db
-    .from("businesses")
-    .select("id, tax_rate")
-    .eq("id", tab.business_id)
-    .maybeSingle();
-  if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
-  if (!business) return errorResponse("Business not found", 404);
-  const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
-  const taxCents = computeTaxCents(subtotalCents, taxRate);
+  // Tax: the same single rule as the payment flow (business → state table → none). No tip, no discount.
+  const tax = await getEffectiveTaxRate(db, tab.business_id as string);
+  if ("error" in tax) return errorResponse(tax.error, 500);
+  const taxCents = computeTaxCents(subtotalCents, tax.rate);
   const totalCents = subtotalCents + taxCents;
 
   // ── Write: order first, then its items ────────────────────────────────────
@@ -689,14 +792,9 @@ async function handleUpdateWaiterOrderItem(
   if (freshErr) return errorResponse(`DB error: ${freshErr.message}`, 500);
   const lines = freshLines ?? [];
 
-  const { data: business } = await db
-    .from("businesses")
-    .select("tax_rate")
-    .eq("id", order.business_id)
-    .maybeSingle();
-  const taxRate = (business as { tax_rate?: number | null } | null)?.tax_rate != null
-    ? Number((business as { tax_rate: number }).tax_rate)
-    : TAX_FALLBACK;
+  const tax = await getEffectiveTaxRate(db, order.business_id as string);
+  if ("error" in tax) return errorResponse(tax.error, 500);
+  const taxRate = tax.rate;
 
   let subtotalCents = 0;
   for (const l of lines) subtotalCents += (l.price_cents as number) * (l.qty as number);
@@ -884,6 +982,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     switch (action) {
       case "ensure_customer":       return await handleEnsureCustomer(authUserId);
+      case "quote_order":           return await handleQuoteOrder(body);
       case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId);
       case "create_setup_intent":   return await handleCreateSetupIntent(authUserId);
       // Waiter takes an order at a table — no payment. Needs the caller-scoped

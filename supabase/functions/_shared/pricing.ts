@@ -15,8 +15,56 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4
 // deno-lint-ignore no-explicit-any
 type Db = SupabaseClient<any, "public", any>;
 
-// 8% fallback when businesses.tax_rate IS NULL — matches the client default.
+/**
+ * @deprecated The invented 8% default. `payments` no longer uses it (it asks
+ * effective_tax_rate instead: business rate → state table → none). It stays exported
+ * ONLY because guest-pay still imports it; do not use it in new code.
+ */
 export const TAX_FALLBACK = 0.08;
+
+export type TaxSource = "business" | "state" | "none";
+
+/**
+ * THE tax rate of a business: public.effective_tax_rate(p_business_id) (migration 184) —
+ * businesses.tax_rate, else the US state table by businesses.state, else 0 with source
+ * 'none'. Never an invented rate. Returns { error } (caller answers 500) if the DB can't say.
+ */
+export async function getEffectiveTaxRate(
+  db: Db,
+  businessId: string,
+): Promise<{ rate: number; source: TaxSource } | { error: string }> {
+  const { data, error } = await db.rpc("effective_tax_rate", { p_business_id: businessId });
+  if (error) return { error: `DB error resolving tax rate: ${error.message}` };
+  const row = (Array.isArray(data) ? data[0] : data) as { rate?: number | string; source?: string } | null;
+  if (!row) return { error: "Business not found for tax rate" };
+  const source: TaxSource = row.source === "business" || row.source === "state" ? row.source : "none";
+  return { rate: Number(row.rate ?? 0), source };
+}
+
+/**
+ * Stable fingerprint of a quote: sha256 (base64url, first 32 chars) of the business, the
+ * re-priced lines and the money fields. The app uses it as the payment idempotency key, so
+ * it only changes when the quote changes.
+ */
+export async function computeQuoteHash(parts: {
+  businessId: string;
+  lines: Array<{ menu_item_id: string; qty: number; unit_cents: number; options: unknown }>;
+  taxCents: number;
+  tipCents: number;
+  totalCents: number;
+}): Promise<string> {
+  const canonical = JSON.stringify([
+    parts.businessId,
+    parts.lines.map((l) => [l.menu_item_id, l.qty, l.unit_cents, l.options]),
+    parts.taxCents,
+    parts.tipCents,
+    parts.totalCents,
+  ]);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  let binary = "";
+  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "").slice(0, 32);
+}
 
 /**
  * THE tax rounding. Every flow must round identically — two roundings of the same
@@ -97,6 +145,44 @@ function resolveGroupModifierCents(
   return { cents, labels };
 }
 
+/**
+ * Enforce the item's modifier-group rules on what the client selected:
+ *  - a group with min_select >= 1 is REQUIRED (it must be chosen with at least that many);
+ *  - the number of choices respects min_select / max_select (a 'single' group allows 1);
+ *  - a choice can't repeat inside a 'single' group, and a group can't be listed twice.
+ * Returns an error text, or null when valid.
+ */
+function validateGroupSelections(
+  itemName: string,
+  // deno-lint-ignore no-explicit-any
+  groups: Map<string, any>,
+  selections: unknown,
+): string | null {
+  const picked = Array.isArray(selections) ? selections : [];
+  const counts = new Map<string, number>();
+  for (const sel of picked) {
+    const gid = typeof sel?.g === "string" ? sel.g : null;
+    if (!gid || !groups.has(gid)) continue; // unknown groups are rejected by resolveGroupModifierCents
+    if (counts.has(gid)) return `Modifier group listed twice for "${itemName}"`;
+    const group = groups.get(gid);
+    const chosen = (Array.isArray(sel.c) ? sel.c : []).filter((c: unknown) => typeof c === "string");
+    if (group.type === "single" && new Set(chosen).size !== chosen.length) {
+      return `Choice repeated in single group "${group.label}" for "${itemName}"`;
+    }
+    counts.set(gid, chosen.length);
+  }
+  for (const [gid, group] of groups) {
+    const min = Number(group.min_select ?? 0);
+    const rawMax = Number(group.max_select ?? 1);
+    let max = Number.isFinite(rawMax) && rawMax > 0 ? rawMax : Infinity;
+    if (group.type === "single") max = Math.min(max, 1);
+    const count = counts.get(gid) ?? 0;
+    if (min >= 1 && count < min) return `Required options missing in "${group.label}" for "${itemName}"`;
+    if (count > max) return `Too many options in "${group.label}" for "${itemName}" (max ${max})`;
+  }
+  return null;
+}
+
 /** Minimum shape a line needs to be priced. */
 export interface PriceableItem {
   menu_item_id: string;
@@ -111,6 +197,15 @@ export interface PricedLines {
   resolvedOptions: Record<string, unknown>[];
   /** Sum of lineUnitCents[i] * items[i].qty. */
   subtotalCents: number;
+  /** DB item names, index-aligned with items[] (what the app shows; never the client's). */
+  names: string[];
+}
+
+/** Error shape: `code` lets the client tell modifier problems apart (e.g. 'MODIFIERS_INVALID'). */
+export interface PricingError {
+  error: string;
+  status?: number;
+  code?: "MODIFIERS_INVALID";
 }
 
 /**
@@ -122,7 +217,14 @@ export async function priceLinesFromDb(
   db: Db,
   businessId: string,
   items: PriceableItem[],
-): Promise<PricedLines | { error: string; status?: number }> {
+  /**
+   * enforceModifierRules: also require groups with min_select >= 1 and respect min/max
+   * select. ON for the customer checkout (payments quote / payment intent). OFF by default so
+   * the other flows that share this module (POS waiter orders, guest-pay, guest-tab) keep
+   * their behavior until they opt in.
+   */
+  opts: { enforceModifierRules?: boolean } = {},
+): Promise<PricedLines | PricingError> {
   // De-duplicate IDs for the IN query; duplicates in items[] are intentional
   // (same dish added twice → two cart lines) and summed in recalculation below.
   const itemIds = [...new Set(items.map((it) => it.menu_item_id))];
@@ -146,7 +248,7 @@ export async function priceLinesFromDb(
   // never from the client.
   const { data: mimgRows, error: mgErr } = await db
     .from("menu_item_modifier_groups")
-    .select("menu_item_id, modifier_groups(id, label, choices)")
+    .select("menu_item_id, modifier_groups(id, label, type, min_select, max_select, choices)")
     .in("menu_item_id", itemIds);
   if (mgErr) return { error: `DB error fetching modifier groups: ${mgErr.message}`, status: 500 };
 
@@ -169,14 +271,23 @@ export async function priceLinesFromDb(
   for (const it of items) {
     const row = dbMap.get(it.menu_item_id)!;
     const legacy = resolveModifierCents(row, it.options, row.name as string);
-    if ("error" in legacy) return { error: legacy.error };
+    if ("error" in legacy) return { error: legacy.error, code: "MODIFIERS_INVALID" };
+    const modifierSelections = (it.options as Record<string, unknown> | undefined)?.modifiers;
     const mods = resolveGroupModifierCents(
       it.menu_item_id,
       row.name as string,
-      (it.options as Record<string, unknown> | undefined)?.modifiers,
+      modifierSelections,
       groupsByItem,
     );
-    if ("error" in mods) return { error: mods.error };
+    if ("error" in mods) return { error: mods.error, code: "MODIFIERS_INVALID" };
+    if (opts.enforceModifierRules) {
+      const groupError = validateGroupSelections(
+        row.name as string,
+        groupsByItem.get(it.menu_item_id) ?? new Map(),
+        modifierSelections,
+      );
+      if (groupError) return { error: groupError, code: "MODIFIERS_INVALID" };
+    }
 
     lineUnitCents.push((row.price_cents as number) + legacy.cents + mods.cents);
 
@@ -189,5 +300,6 @@ export async function priceLinesFromDb(
   }
 
   const subtotalCents = items.reduce((sum, it, idx) => sum + lineUnitCents[idx] * it.qty, 0);
-  return { lineUnitCents, resolvedOptions, subtotalCents };
+  const names = items.map((it) => dbMap.get(it.menu_item_id)!.name as string);
+  return { lineUnitCents, resolvedOptions, subtotalCents, names };
 }
