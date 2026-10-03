@@ -19,8 +19,14 @@
  *                                   across versions (could arrive empty → silent skip). The flat
  *                                   Refund object (id/status/metadata) is version-robust. (D-49.)
  *
- * Deploy:
- *   supabase functions deploy stripe-webhook
+ * Deploy (this function and `payments` ship together — the webhook calls create_paid_order and
+ * reads the cart that `payments` now always saves):
+ *   supabase functions deploy payments --project-ref klfsgcfoahdtkojyqspd
+ *   supabase functions deploy stripe-webhook --project-ref klfsgcfoahdtkojyqspd
+ *
+ * payment_intent.succeeded builds the order through the create_paid_order RPC (order + items
+ * in ONE transaction, service role). A failure answers 500 so Stripe retries; this function no
+ * longer inserts into orders / order_items by hand.
  *
  * Two webhook endpoints, one function: Connect events (account.updated) are only
  * delivered by a "Connected accounts"-scoped Stripe endpoint, which is a SEPARATE
@@ -275,7 +281,7 @@ async function handlePaymentSucceeded(
 
   const db = getAdminClient();
 
-  // 1. Guard: check if we already processed this PaymentIntent (idempotency)
+  // 1. Idempotency: an order already exists for this PaymentIntent → nothing to do (200).
   const { data: existing } = await db
     .from("orders")
     .select("id")
@@ -289,14 +295,68 @@ async function handlePaymentSucceeded(
     return;
   }
 
-  // 2. Insert order row
-  const { data: order, error: orderErr } = await db
-    .from("orders")
-    .insert({
+  // 2. The cart. Prefer the server-resolved cart payments saved for this PaymentIntent (no
+  // size limit). The packed Stripe metadata is only a fallback when NO cart row exists
+  // (PaymentIntents from before pending_order_carts, and the guest flow).
+  const { data: pendingCart, error: cartErr } = await db
+    .from("pending_order_carts")
+    .select("items")
+    .eq("payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+  if (cartErr) {
+    // Can't tell what was bought: fail so Stripe retries instead of creating a wrong order.
+    console.error(`[stripe-webhook] could not read pending cart for PI ${paymentIntent.id}:`, cartErr.message);
+    throw cartErr;
+  }
+
+  type ResolvedItem = {
+    menu_item_id: string; qty: number; price_cents: number;
+    options?: Record<string, unknown>; special_instructions?: string | null;
+  };
+
+  const orderItems = pendingCart?.items
+    ? (pendingCart.items as ResolvedItem[]).map((it) => ({
+        menu_item_id: it.menu_item_id,
+        qty: it.qty,
+        price_cents: it.price_cents,
+        options: it.options ?? {},
+        special_instructions: it.special_instructions ?? null,
+      }))
+    : items.map((it) => ({            // legacy / guest metadata path
+        menu_item_id: it.m,
+        qty: it.q,
+        price_cents: it.p,
+        options: it.o ?? {},
+        special_instructions: it.s ?? null,
+      }));
+
+  if (orderItems.length === 0) {
+    // Retrying can never fix a payment with no recoverable cart: record it for manual handling
+    // (orphan_payments) instead of looping 500s, and never create an empty order.
+    console.error(`[stripe-webhook] no items recoverable for PI ${paymentIntent.id}`);
+    await recordOrphanPayment(paymentIntent, businessId, "no cart items recoverable");
+    return;
+  }
+
+  // 3. Amount check: what Stripe collected must equal the total the server computed.
+  // A mismatch is created as 'disputed' so staff and the customer see it needs attention.
+  const amountMismatch = paymentIntent.amount !== totalCents;
+  if (amountMismatch) {
+    console.error(
+      `[stripe-webhook] amount mismatch for PI ${paymentIntent.id}: stripe=${paymentIntent.amount} expected=${totalCents}`,
+    );
+  }
+
+  // 4. Create the order AND its items in ONE transaction (create_paid_order, service role).
+  const takenBy = tableId
+    ? ((await db.rpc("resolve_table_waiter_for_attribution", { p_table_id: tableId })).data as string | null)
+    : null; // F6 D-14: attribute Stripe orders to the assigned waiter when there is a table
+  const { data: created, error: createErr } = await db.rpc("create_paid_order", {
+    p_order: {
       business_id: businessId,
       user_id: userId ?? null, // guest order → NULL (080 made orders.user_id nullable)
       room_id: roomId,
-      status: "confirmed",
+      status: amountMismatch ? "disputed" : "confirmed",
       order_type: orderType,
       gift_recipient_id: giftRecipientId,
       subtotal_cents: subtotalCents,
@@ -308,79 +368,33 @@ async function handlePaymentSucceeded(
       special_instructions: specialInstructions,
       table_label: tableLabel,
       table_id: tableId,
-      // F6 D-14: attribute Stripe orders to the assigned waiter when there is a table.
-      taken_by: tableId ? ((await db.rpc("resolve_table_waiter_for_attribution", { p_table_id: tableId })).data as string | null) : null,
+      taken_by: takenBy,
       contact_email: contactEmail,
       contact_phone: contactPhone,
       contact_name: contactName,
       stripe_pi_id: paymentIntent.id,
       source: "customer_stripe", // F3 D-24: identifica órdenes de cliente para el puente de comandas
-      status_updated_at: new Date().toISOString(),
-      // An order born from a payment IS paid — stamp paid_at (078). The waiter
-      // path will create orders WITHOUT this and stamp it later at checkout.
-      paid_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
+      // An order born from a payment IS paid (paid_at defaults to now() in the function).
+    },
+    p_items: orderItems,
+  });
 
-  if (orderErr) {
-    // FIX #8: unique partial index on orders.stripe_pi_id. A concurrent delivery
-    // already inserted this order (won the race past the SELECT-guard above).
-    // Treat as already-processed → return cleanly instead of throwing a 500.
-    if ((orderErr as { code?: string }).code === "23505") {
-      console.log(
-        `[stripe-webhook] order already exists (unique PI ${paymentIntent.id}) — skipping`,
-      );
+  if (createErr) {
+    // Unique index on orders.stripe_pi_id: a concurrent delivery already created it.
+    if ((createErr as { code?: string }).code === "23505") {
+      console.log(`[stripe-webhook] order already exists (unique PI ${paymentIntent.id}) — skipping`);
       return;
     }
-    console.error(`[stripe-webhook] failed to insert order for PI ${paymentIntent.id}:`, orderErr);
-    throw orderErr;
+    // Anything else: do NOT answer 200 — throw so Stripe retries. Log the PI id and the error
+    // only (no contact data).
+    console.error(
+      `[stripe-webhook] create_paid_order failed for PI ${paymentIntent.id}: ${createErr.code ?? ""} ${createErr.message}`,
+    );
+    throw createErr;
   }
 
-  const orderId = (order as { id: string }).id;
-
-  // 3. Insert order_items rows.
-  // Prefer the server-resolved cart (no size limit). Fall back to the packed metadata
-  // for PaymentIntents created before pending_order_carts existed.
-  const { data: pendingCart } = await db
-    .from("pending_order_carts")
-    .select("items")
-    .eq("payment_intent_id", paymentIntent.id)
-    .maybeSingle();
-
-  type ResolvedItem = {
-    menu_item_id: string; qty: number; price_cents: number;
-    options?: Record<string, unknown>; special_instructions?: string | null;
-  };
-
-  const rowsToInsert = pendingCart?.items
-    ? (pendingCart.items as ResolvedItem[]).map((it) => ({
-        order_id: orderId,
-        menu_item_id: it.menu_item_id,
-        qty: it.qty,
-        price_cents: it.price_cents,
-        options: it.options ?? {},
-        special_instructions: it.special_instructions ?? null,
-        item_status: "pending",
-      }))
-    : items.map((it) => ({            // legacy metadata path (unchanged)
-        order_id: orderId,
-        menu_item_id: it.m,
-        qty: it.q,
-        price_cents: it.p,
-        options: it.o ?? {},
-        special_instructions: it.s ?? null,
-        item_status: "pending",
-      }));
-
-  if (rowsToInsert.length > 0) {
-    const { error: itemsErr } = await db.from("order_items").insert(rowsToInsert);
-    if (itemsErr) {
-      console.error(`[stripe-webhook] failed to insert order_items for order ${orderId}:`, itemsErr);
-      // Order row was inserted — partial state. Log but don't throw so webhook returns 200.
-      // KDS will show an order with no items; staff can manually add them.
-    }
-  }
+  const createdRow = (Array.isArray(created) ? created[0] : created) as { id: string; order_number: number } | null;
+  const orderId = createdRow?.id ?? "unknown";
 
   // Clean up the pending cart (idempotent; log-only on failure).
   if (pendingCart) {
