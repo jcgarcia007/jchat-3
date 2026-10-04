@@ -29,6 +29,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import type { TFn } from "@/lib/tabSemantics";
+import { parseOrderNotice } from "@/lib/orderNotice";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,9 @@ interface ServiceCall {
   updated_at: string;
   /** Set for calls made WITHOUT an account (user_id is null) — migration 198. */
   guest_device_id?: string | null;
+  /** Order notices (migration 200, type 'order'): the paid order and who sent it. */
+  order_id?: string | null;
+  user_id?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,6 +61,7 @@ function elapsed(iso: string, t: TFn): string {
 
 function typeLabel(type: string, t: TFn): string {
   if (type === "waiter") return t("tabKindWaiter");
+  if (type === "order")  return t("serviceTypeOrder");
   if (type === "bill")   return t("serviceTypeBill");
   if (type === "help")   return t("serviceTypeHelp");
   return t("serviceTypeOther");
@@ -101,6 +106,7 @@ export default function ServicePage() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [, forceTick] = useState(0);
+  const [customerNames, setCustomerNames] = useState<Map<string, string>>(new Map());
 
   const businessIdRef = useRef<string | null>(null);
   const channelRef    = useRef<RealtimeChannel | null>(null);
@@ -111,13 +117,27 @@ export default function ServicePage() {
   const loadCalls = useCallback(async (bizId: string) => {
     const { data, error: err } = await supabase
       .from("service_calls")
-      .select("id, status, type, table_label, notes, created_at, updated_at, guest_device_id")
+      .select("id, status, type, table_label, notes, created_at, updated_at, guest_device_id, order_id, user_id")
       .eq("business_id", bizId)
       .in("status", ["pending", "acknowledged"])
       .order("created_at", { ascending: false });
     if (err) throw err;
     // service_calls.guest_device_id (migration 198) is not in the generated types yet → via unknown.
-    setCalls((data ?? []) as unknown as ServiceCall[]);
+    const rows = (data ?? []) as unknown as ServiceCall[];
+    setCalls(rows);
+    // Customer names for order notices (public_profiles — never email).
+    const ids = [...new Set(rows.filter((r) => r.type === "order" && r.user_id).map((r) => r.user_id as string))];
+    if (ids.length > 0) {
+      const { data: profs } = await supabase.from("public_profiles").select("id, username, display_name").in("id", ids);
+      setCustomerNames(
+        new Map(
+          ((profs ?? []) as { id: string; username: string; display_name: string | null }[]).map((p) => [
+            p.id,
+            p.display_name ?? p.username,
+          ]),
+        ),
+      );
+    }
   }, []);
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
@@ -219,7 +239,9 @@ export default function ServicePage() {
 
   // Discreet help requests (type 'help', from Match) go first; newest first within each group.
   const orderedCalls = [...calls].sort((a, b) => {
-    const priority = Number(b.type === "help") - Number(a.type === "help");
+    // help (Match) first, then order notices, then table calls.
+    const rank = (c: ServiceCall) => (c.type === "help" ? 2 : c.type === "order" ? 1 : 0);
+    const priority = rank(b) - rank(a);
     return priority !== 0 ? priority : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
@@ -269,7 +291,7 @@ export default function ServicePage() {
           {orderedCalls.map((call) => (
             <li
               key={call.id}
-              className={`service-card service-card--${call.status}${call.type === "help" ? " service-card--help" : ""}`}
+              className={`service-card service-card--${call.status}${call.type === "help" ? " service-card--help" : ""}${call.type === "order" ? " service-card--order" : ""}`}
             >
               <div className="service-card-top">
                 <div className="service-card-left">
@@ -286,23 +308,48 @@ export default function ServicePage() {
                 </div>
               </div>
 
-              {call.table_label && (
-                <p className="service-table">
-                  {call.guest_device_id ? (
-                    <strong>{t("serviceGuestTable", { table: call.table_label })}</strong>
-                  ) : (
+              {call.type === "order" ? (
+                (() => {
+                  const n = parseOrderNotice(call.notes);
+                  const kindLabel =
+                    n.kind === "on_my_way" ? t("serviceOrderOnMyWay")
+                    : n.kind === "arrived" ? t("serviceOrderArrived")
+                    : n.kind === "question" ? t("serviceOrderQuestion", { text: n.text ?? "" })
+                    : n.text ?? "";
+                  const name = call.user_id ? customerNames.get(call.user_id) : undefined;
+                  return (
                     <>
-                      <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                      <p className="service-table">
+                        <strong>
+                          {n.orderNumber ? t("serviceOrderTitle", { n: n.orderNumber }) : t("serviceTypeOrder")}
+                        </strong>
+                        {kindLabel ? ` · ${kindLabel}` : ""}
+                      </p>
+                      {name && <p className="service-notes">{t("serviceOrderCustomer", { name })}</p>}
+                      {call.table_label && <p className="service-notes">{t("serviceTableLabel")} {call.table_label}</p>}
                     </>
+                  );
+                })()
+              ) : (
+                <>
+                  {call.table_label && (
+                    <p className="service-table">
+                      {call.guest_device_id ? (
+                        <strong>{t("serviceGuestTable", { table: call.table_label })}</strong>
+                      ) : (
+                        <>
+                          <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                        </>
+                      )}
+                    </p>
                   )}
-                </p>
-              )}
-              {!call.table_label && (
-                <p className="service-table service-table--none">{t("serviceNoTable")}</p>
-              )}
-
-              {call.notes && (
-                <p className="service-notes">{call.notes}</p>
+                  {!call.table_label && (
+                    <p className="service-table service-table--none">{t("serviceNoTable")}</p>
+                  )}
+                  {call.notes && (
+                    <p className="service-notes">{call.notes}</p>
+                  )}
+                </>
               )}
 
               <div className="service-actions">
@@ -452,6 +499,10 @@ export default function ServicePage() {
         .service-card.service-card--help {
           border-left: 4px solid var(--color-danger);
           background: color-mix(in srgb, var(--color-danger) 8%, var(--db-surface));
+        }
+        .service-card.service-card--order {
+          border-left: 4px solid var(--color-warning);
+          background: color-mix(in srgb, var(--color-warning) 8%, var(--db-surface));
         }
         .service-type--help {
           color: var(--color-danger);
