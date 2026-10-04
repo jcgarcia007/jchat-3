@@ -69,13 +69,11 @@
     "button": "Juegos",
     "buttonA11y": "Abrir juegos",
     "rowA11y": "Juegos disponibles en este local",
-    "matchName": "Match",
-    "verifyingShort": "Verificando…"
+    "matchName": "Match"
   },
   "presence": {
-    "verifying": "Verificando que estás en el local…",
     "scanQr": "Escanear el QR del local",
-    "verifyingHint": "Tarda unos minutos. Escanear el QR del local activa Match al instante.",
+    "mocked": "No pudimos confirmar tu ubicación. Escanea el QR del local para usar Match.",
     "active": "Estás en el local",
     "error": "No pudimos verificar tu presencia. Lo intentaremos de nuevo en breve.",
     "denied": {

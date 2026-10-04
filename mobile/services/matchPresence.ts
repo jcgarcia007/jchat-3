@@ -125,7 +125,8 @@ export async function runMatchCheckIn(
       businessId,
       roomId,
       status: result.status,
-      reason: result.status === 'denied' ? (result.reason ?? 'unavailable') : null,
+      // 'pending' only happens with reason 'mocked_location' (migration 196); keep it for the UI.
+      reason: result.status === 'denied' ? (result.reason ?? 'unavailable') : (result.reason ?? null),
       expiresAt: result.expires_at ?? null,
       method: result.method ?? null,
       error: false,

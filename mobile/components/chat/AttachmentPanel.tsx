@@ -208,7 +208,8 @@ export function AttachmentPanel({
   if (!visible) return null;
 
   // Match status line under the Match button: verifying (+ QR option) or a translated denial.
-  const verifying = presence.status === 'idle' || presence.status === 'checking' || presence.status === 'pending';
+  // Match activates instantly; 'pending' only with a mocked location → scan the venue QR.
+  const pending = presence.status === 'pending';
   const denied = presence.status === 'denied';
   const deniedText = denied
     ? tm(presence.reason ? `presence.denied.${presence.reason}` : 'presence.denied.default', {
@@ -279,10 +280,10 @@ export function AttachmentPanel({
               />
             ))}
           </View>
-          {verifying && (
+          {pending && (
             <View style={panelStyles.statusRow}>
               <Text style={[panelStyles.statusText, { color: theme.tabInactive }]}>
-                {tm('presence.verifying')}
+                {tm('presence.mocked')}
               </Text>
               <Pressable
                 onPress={handleScanQr}

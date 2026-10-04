@@ -73,11 +73,14 @@ export default function MatchHomeScreen() {
   }, [navigation, params.businessId, params.businessName]);
 
   const denied = presence.status === 'denied';
-  const verifying = presence.status === 'idle' || presence.status === 'checking' || presence.status === 'pending';
+  // Match activates instantly with the chat's GPS reading: 'checking' is just the call in flight.
+  const checking = presence.status === 'idle' || presence.status === 'checking';
+  // 'pending' only with a mocked location → the venue QR is the way in.
+  const pending = presence.status === 'pending';
   const deniedKey = denied
     ? (presence.reason && `presence.denied.${presence.reason}`) || 'presence.denied.default'
     : null;
-  const showQrButton = verifying || (denied && !!presence.reason && QR_CAN_HELP.has(presence.reason));
+  const showQrButton = pending || (denied && !!presence.reason && QR_CAN_HELP.has(presence.reason));
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -124,11 +127,15 @@ export default function MatchHomeScreen() {
       </View>
 
       <View style={styles.body}>
-        {verifying && (
+        {checking && (
           <View style={styles.block}>
             <ActivityIndicator color={c.brand} />
-            <Text style={[styles.message, { color: c.textPrimary }]}>{t('presence.verifying')}</Text>
-            <Text style={[styles.hint, { color: c.textSecondary }]}>{t('presence.verifyingHint')}</Text>
+          </View>
+        )}
+
+        {pending && (
+          <View style={styles.block}>
+            <Text style={[styles.message, { color: c.textPrimary }]}>{t('presence.mocked')}</Text>
           </View>
         )}
 

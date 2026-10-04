@@ -69,13 +69,11 @@
     "button": "Games",
     "buttonA11y": "Open games",
     "rowA11y": "Games available at this venue",
-    "matchName": "Match",
-    "verifyingShort": "Checking…"
+    "matchName": "Match"
   },
   "presence": {
-    "verifying": "Checking that you're at the venue…",
     "scanQr": "Scan the venue's QR",
-    "verifyingHint": "This takes a few minutes. Scanning the venue's QR activates Match right away.",
+    "mocked": "We couldn't confirm your location. Scan the venue's QR to use Match.",
     "active": "You're at the venue",
     "error": "Couldn't verify your presence. We'll try again shortly.",
     "denied": {
