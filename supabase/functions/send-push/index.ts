@@ -340,6 +340,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       dmSenderName = nonEmptyString(sender?.display_name) ?? nonEmptyString(sender?.username);
       dmBody = typeof record.body === "string" ? record.body : null;
       type = "dm";
+      notificationId = record.id; // DMs have no notifications row: the message id identifies the push
       payload = { conversation_id: record.conversation_id };
     }
 
@@ -376,8 +377,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
       content = matchContent(type, payload, language, level, name, notificationId);
     } else if (type === "dm") {
       const level = previewLevel(settings.pushPreviewDm, "full");
+      // Neutral text, but the payload keeps conversation_id so tapping the push opens the chat.
+      const dmDiscreet = (): PushContent => {
+        const base = discreetContent(type, {}, language === "en", notificationId);
+        return {
+          ...base,
+          data: { type, payload: { ...base.data.payload, conversation_id: payload.conversation_id } },
+        };
+      };
       if (level === "discreet") {
-        content = discreetContent(type, {}, language === "en");
+        content = dmDiscreet();
       } else if (level === "name") {
         const name = nonEmptyString(dmSenderName);
         content = name
@@ -386,7 +395,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
             body: language === "en" ? `${name} sent you a message` : `${name} te escribió`,
             data: { type, payload },
           }
-          : discreetContent(type, {}, language === "en");
+          : dmDiscreet();
       } else {
         content = localizedContent(type, payload, language, dmBody, dmSenderName);
       }
