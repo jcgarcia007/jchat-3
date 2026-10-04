@@ -20,6 +20,7 @@ import {
   IconHeart,
   IconMessage,
   IconMessage2,
+  IconStar,
   IconUserPlus,
   type Icon,
 } from '@tabler/icons-react-native';
@@ -28,9 +29,11 @@ import { useTranslation } from 'react-i18next';
 import ConversationList from '../../components/dms/ConversationList';
 import SwipeToDelete from '../../components/common/SwipeToDelete';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useMatchNotificationLabels } from '../../hooks/useMatchNotificationLabels';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import type { ConversationPreview } from '../../services/dms';
 import {
+  isMatchNotificationType,
   isSocialNotificationType,
   routeForNotification,
   type NotificationRow,
@@ -48,6 +51,10 @@ const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   like: IconHeart,
   comment: IconMessage2,
   work_alert: IconBell,
+  match_like: IconHeart,
+  match_super: IconStar,
+  match_match: IconHeart,
+  match_new_people: IconHeart,
 };
 
 function actorName(payload: Record<string, unknown> | null, fallback: string): string {
@@ -68,9 +75,20 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { notifications, markRead, refresh, remove } = useNotifications({ passive: true });
 
+  const matchLabels = useMatchNotificationLabels(notifications);
   const socialNotifications = useMemo(
-    () => notifications.filter((notification) => isSocialNotificationType(notification.type)),
-    [notifications],
+    () => notifications.filter((notification) => {
+      if (!isSocialNotificationType(notification.type)) return false;
+      // Hide Match rows of venues where the owner has switched Match off.
+      if (isMatchNotificationType(notification.type)) {
+        const businessId = notification.payload?.business_id;
+        if (typeof businessId === 'string' && matchLabels.enabledBusinesses && !matchLabels.enabledBusinesses.has(businessId)) {
+          return false;
+        }
+      }
+      return true;
+    }),
+    [notifications, matchLabels.enabledBusinesses],
   );
   const clearSurface = `${colors.bgSurface}00`;
 
@@ -105,15 +123,31 @@ export default function MessagesScreen() {
     if (!route) return;
     if (route.screen === 'DMs') navigation.navigate('DMs', route.params);
     else if (route.screen === 'UserProfile') navigation.navigate('UserProfile', route.params);
+    else if (route.screen === 'MatchActivity') navigation.navigate('MatchActivity', route.params);
+    else if (route.screen === 'MatchHome') navigation.navigate('MatchHome', route.params);
     else navigation.navigate('PostDetail', route.params);
   }, [markRead, navigation]);
 
   const notificationText = useCallback((notification: NotificationRow) => {
     if (!isSocialNotificationType(notification.type)) return '';
+    if (isMatchNotificationType(notification.type)) {
+      const userId = notification.payload?.from_user_id ?? notification.payload?.other_user_id;
+      const businessId = notification.payload?.business_id;
+      const key = {
+        match_like: 'matchLike',
+        match_super: 'matchSuper',
+        match_match: 'matchMatch',
+        match_new_people: 'matchNewPeople',
+      }[notification.type as 'match_like' | 'match_super' | 'match_match' | 'match_new_people'];
+      return translation.t(`messages.notif.${key}`, {
+        name: (typeof userId === 'string' && matchLabels.userNames[userId]) || translation.t('messages.someone'),
+        business: (typeof businessId === 'string' && matchLabels.businessNames[businessId]) || '',
+      });
+    }
     return translation.t(`messages.notif.${notification.type === 'work_alert' ? 'workAlert' : notification.type}`, {
       name: actorName(notification.payload, translation.t('messages.someone')),
     });
-  }, [translation]);
+  }, [translation, matchLabels]);
 
   const removeNotification = useCallback((id: string) => {
     void remove(id).catch(() => {

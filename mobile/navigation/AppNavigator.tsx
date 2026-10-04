@@ -179,6 +179,8 @@ function navigateNotificationRoute(route: NotificationRoute): void {
   if (!navigationRef.isReady()) return;
   if (route.screen === 'DMs') navigationRef.navigate('DMs', route.params);
   else if (route.screen === 'UserProfile') navigationRef.navigate('UserProfile', route.params);
+  else if (route.screen === 'MatchActivity') navigationRef.navigate('MatchActivity', route.params);
+  else if (route.screen === 'MatchHome') navigationRef.navigate('MatchHome', route.params);
   else navigationRef.navigate('PostDetail', route.params);
 }
 

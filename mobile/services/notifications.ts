@@ -30,6 +30,7 @@ import {
   IconBriefcase,
   IconHeart,
   IconMessageCircle,
+  IconStar,
   IconUserPlus,
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
@@ -48,7 +49,22 @@ export type NotificationType =
   | 'follower'
   | 'like'
   | 'comment'
-  | 'work_alert';
+  | 'work_alert'
+  | 'match_like'
+  | 'match_super'
+  | 'match_match'
+  | 'match_new_people';
+
+export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'match_like',
+  'match_super',
+  'match_match',
+  'match_new_people',
+];
+
+export function isMatchNotificationType(value: unknown): value is NotificationType {
+  return typeof value === 'string' && MATCH_NOTIFICATION_TYPES.includes(value as NotificationType);
+}
 
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
@@ -56,6 +72,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'like',
   'comment',
   'work_alert',
+  ...MATCH_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -98,11 +115,13 @@ export type NotificationRoute =
   | {
       screen: 'DMs';
       params:
-        | { screen: 'DMChat'; params: { conversationId: string } }
+        | { screen: 'DMChat'; params: { conversationId: string; otherUserId?: string } }
         | { screen: 'DMInbox' };
     }
   | { screen: 'UserProfile'; params: { userId: string } }
-  | { screen: 'PostDetail'; params: { postId: string } };
+  | { screen: 'PostDetail'; params: { postId: string } }
+  | { screen: 'MatchActivity'; params: { businessId: string; tab: 'likes' | 'likedMe' | 'matches' } }
+  | { screen: 'MatchHome'; params: { businessId: string } };
 
 // ── Push permission & token registration ──────────────────────────────────────
 
@@ -202,6 +221,14 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
 
     case 'comment':
       return { icon: IconBell, accent: palette.brand };
+
+    case 'match_like':
+    case 'match_match':
+    case 'match_new_people':
+      return { icon: IconHeart, accent: palette.brand };
+
+    case 'match_super':
+      return { icon: IconStar, accent: palette.brand };
   }
 }
 
@@ -328,5 +355,52 @@ export function routeForNotification(
 
     case 'work_alert':
       return null;
+
+    case 'match_like':
+    case 'match_super': {
+      const businessId = typeof payload?.business_id === 'string' ? payload.business_id : null;
+      return businessId ? { screen: 'MatchActivity', params: { businessId, tab: 'likedMe' } } : null;
+    }
+
+    case 'match_match': {
+      if (typeof payload?.conversation_id === 'string' && payload.conversation_id) {
+        const otherUserId = typeof payload.other_user_id === 'string' ? payload.other_user_id : undefined;
+        return {
+          screen: 'DMs',
+          params: { screen: 'DMChat', params: { conversationId: payload.conversation_id, otherUserId } },
+        };
+      }
+      const businessId = typeof payload?.business_id === 'string' ? payload.business_id : null;
+      return businessId ? { screen: 'MatchActivity', params: { businessId, tab: 'matches' } } : null;
+    }
+
+    case 'match_new_people': {
+      const businessId = typeof payload?.business_id === 'string' ? payload.business_id : null;
+      return businessId ? { screen: 'MatchHome', params: { businessId } } : null;
+    }
   }
+}
+
+/**
+ * Like routeForNotification, but for a PUSH tap: a discreet Match push only carries
+ * { type, notification_id, business_id }, so the detail (who, which conversation) is read from
+ * the notification row itself. Falls back to the push payload if the row can't be read.
+ */
+export async function resolveNotificationRoute(
+  type: NotificationType,
+  payload: Record<string, unknown> | null,
+): Promise<NotificationRoute | null> {
+  const notificationId = payload?.notification_id;
+  if (isMatchNotificationType(type) && typeof notificationId === 'string' && isSupabaseConfigured) {
+    const { data } = await supabase
+      .from('notifications')
+      .select('payload')
+      .eq('id', notificationId)
+      .maybeSingle();
+    const stored = data?.payload;
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      return routeForNotification(type, { ...payload, ...(stored as Record<string, unknown>) });
+    }
+  }
+  return routeForNotification(type, payload);
 }

@@ -28,7 +28,7 @@ import {
   deleteNotification,
   listNotifications,
   markNotificationRead,
-  routeForNotification,
+  resolveNotificationRoute,
   isSocialNotificationType,
   type NotificationRow,
   type NotificationType,
@@ -190,7 +190,9 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       void Notifications.getLastNotificationResponseAsync()
         .then((response) => {
           if (cancelled || !response) return;
-          setPendingRoute(routeFromNotificationResponse(response));
+          void routeFromNotificationResponse(response).then((route) => {
+            if (!cancelled) setPendingRoute(route);
+          });
         })
         .catch(() => {});
 
@@ -204,7 +206,9 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       responseSubRef.current = Notifications.addNotificationResponseReceivedListener(
         (response) => {
           if (cancelled) return;
-          setPendingRoute(routeFromNotificationResponse(response));
+          void routeFromNotificationResponse(response).then((route) => {
+            if (!cancelled) setPendingRoute(route);
+          });
         },
       );
     }
@@ -295,6 +299,10 @@ const VALID_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set([
   'like',
   'comment',
   'work_alert',
+  'match_like',
+  'match_super',
+  'match_match',
+  'match_new_people',
 ] as const);
 
 function isValidNotificationType(value: unknown): value is NotificationType {
@@ -304,9 +312,9 @@ function isValidNotificationType(value: unknown): value is NotificationType {
   );
 }
 
-function routeFromNotificationResponse(
+async function routeFromNotificationResponse(
   response: Notifications.NotificationResponse,
-): NotificationRoute | null {
+): Promise<NotificationRoute | null> {
   const data = response.notification.request.content.data;
   const rawType = data?.type;
   const rawPayload = data?.payload;
@@ -314,6 +322,6 @@ function routeFromNotificationResponse(
     ? rawPayload as Record<string, unknown>
     : null;
   return isValidNotificationType(rawType)
-    ? routeForNotification(rawType, payload)
+    ? resolveNotificationRoute(rawType, payload)
     : null;
 }

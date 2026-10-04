@@ -28,7 +28,11 @@
       "like": "{{name}} liked your post",
       "comment": "{{name}} commented on your post",
       "dm": "{{name}} sent you a message",
-      "workAlert": "You have a new work alert"
+      "workAlert": "You have a new work alert",
+      "matchLike": "{{name}} liked you on Match",
+      "matchSuper": "{{name}} sent you a Super Like",
+      "matchMatch": "It's a match with {{name}}!",
+      "matchNewPeople": "New people joined Match at {{business}}"
     }
   },
   "dmChat": {
