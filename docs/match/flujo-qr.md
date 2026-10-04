@@ -62,7 +62,7 @@ Objetivo: **un solo QR por sala que sirva a todos**: con la app instalada abre l
 1. Resuelve el token con `resolve_room_qr` (anon-callable).
 2. Si no hay sesión o falta confirmar la edad: guarda el token pendiente (AsyncStorage) y, al terminar login/edad, continúa. Hoy los enlaces profundos se pierden al cambiar de navegador por estado de auth.
 3. Con sesión: `join_room_via_qr(token)` (membresía 24 h) → navega a `ChatRoom` con un parámetro `qrToken`.
-4. `ChatRoom` con `qrToken`: la puerta de entrada usa el QR como prueba de presencia (en vez de GPS) y, si Match está activo en el local y el usuario participa, llama `match_check_in(p_business_id, p_qr_token)` → **activo al instante, método `qr`**.
+4. `ChatRoom` con `qrToken`: el chat se abre por membresía de 24 h (el QR reemplaza a la geocerca **solo para el chat**). Match **no** se activa solo por el QR: ver decisiones en el §5 (siempre exige una lectura de ubicación dentro del radio; el QR solo destraba el caso de ubicación simulada).
 
 ### 2.3 Hub web sin cuenta (`/c/{token}`)
 
@@ -81,17 +81,18 @@ Hoy el chat web es el `ChatRoom.tsx` de Next. Llevarlo al cliente Expo Web exige
 
 ### 2.5 Escaneo → sesión de local + Match con `qr`
 
-- Servidor: `match_check_in(p_qr_token)` acepta el token de **cualquier sala activa del negocio** (migración 189) y fija `method = 'qr'` (la 196 mantiene el método en latidos posteriores).
-- Cliente: el escáner interno (`MatchQrScanner`) ya envía el token; con enlaces universales el mismo token llega por la cámara del sistema → mismo camino (`QrEntry`).
+- Estado actual del servidor (migraciones 189/196, **a cambiar por Planning según el §5**): `match_check_in(p_qr_token)` acepta el token de **cualquier sala activa del negocio** y fija `method = 'qr'`; hoy el QR por sí solo activa Match al instante.
+- Decisión (§5): el QR por sí solo **no** activa Match. Match exige una lectura de ubicación dentro del radio; el QR solo destraba el caso `mocked_location` (Android) si además la lectura cae dentro del radio.
+- Cliente: el escáner interno (`MatchQrScanner`) ya envía el token junto con la lectura de ubicación; con enlaces universales el mismo token llega por la cámara del sistema → mismo camino (`QrEntry`).
 
 ---
 
 ## 3. Riesgos y decisiones abiertas
 
-1. **QR como llave remota.** El token concede membresía 24 h y activación de Match instantánea **sin GPS**. Quien fotografíe el QR (o vea el enlace) podría activar presencia desde lejos. Opciones: rotación diaria del token desde el dashboard, token firmado de corta vida mostrado en pantalla, o exigir además una lectura de ubicación dentro del radio cuando exista.
-2. **Geocerca de la app con entrada por QR.** El latido (`useGeofenceGate`) expulsa tras la gracia si no estás en el radio; con entrada por QR sin GPS habría que decidir si el latido solo informa para Match o si se pide ubicación igualmente.
+1. ~~QR como llave remota.~~ **Resuelto en el §5** para Match: el QR solo ya no activa Match (exige ubicación dentro del radio). Riesgo residual aceptado: quien fotografíe el QR puede obtener membresía de chat de 24 h (comportamiento actual; el chat no depende de la ubicación). Sigue disponible la rotación diaria del token como mejora futura.
+2. ~~Geocerca con entrada por QR.~~ **Resuelto en el §5:** el latido no expulsa del chat a quien entró por QR; solo controla Match.
 3. **Servicio sin cuenta = superficie de abuso.** Mitigación: hCaptcha, límite por dispositivo/IP y aviso de "pedido de ayuda discreta" sin datos personales.
-4. **Datos que necesito de Juan:** Apple Team ID, huellas SHA-256 de Android (subida y Play), y confirmar que `jchat.cloud` es el dominio definitivo para QR.
+4. **Datos que necesito de Juan:** Apple Team ID, huellas SHA-256 de Android (subida y Play), y confirmar que `jchat.cloud` es el dominio definitivo para QR (**pendiente de confirmación**, ver §5).
 5. **QR ya impresos** con `jchat-3.vercel.app`: mantener redirección permanente.
 
 ## 4. Fases propuestas (estimación relativa)
@@ -104,3 +105,17 @@ Hoy el chat web es el `ChatRoom.tsx` de Next. Llevarlo al cliente Expo Web exige
 | Q3 | Enlaces universales: `.well-known`, `associatedDomains`, `intentFilters`, `linking`, `QrEntry`, token pendiente tras login, build nuevo | L |
 | Q4 | Entrada por QR en `ChatRoom` + `match_check_in` con `qr` + decisión del punto 3.2 | M |
 | Q5 | (Opcional) Expo Web como cliente de chat | XL |
+
+---
+
+## 5. Decisiones de Juan/Planning (anotadas)
+
+1. **Match exige SIEMPRE una lectura de ubicación dentro del radio, también entrando por QR.** El QR solo no activa Match. El QR destraba el caso de **ubicación simulada (Android)** si además la lectura cae dentro del radio. *Planning ajustará `match_check_in` en la base* (hoy, según 189/196, el QR activa al instante y la ubicación simulada deja `pending`).
+2. **Entrada por QR sin ubicación:** el **chat sí** (membresía de 24 h actual); **Match no**. El **latido de geocerca no expulsa del chat** a quien entró por QR; **solo controla Match**.
+3. **Dominio único de los QR: `jchat.cloud`** (*pendiente de confirmación de Juan*). Implica fijar `NEXT_PUBLIC_SITE_URL` y redirigir `jchat-3.vercel.app/c/*`.
+4. **Enlaces universales** (`associatedDomains`, App Links, `.well-known`): **van en el build del cambio de cuentas a Otunity Labs** (no antes).
+
+### Efecto en las fases (§4)
+- **Q3** (enlaces universales) queda ligada al build de Otunity Labs.
+- **Q4** cambia: la entrada por QR abre el chat sin ubicación; Match sigue pidiendo lectura dentro del radio. La app ya envía la lectura de ubicación con cada check-in (`useMatchPresence`), por lo que el cambio es sobre todo de servidor; en cliente el estado `mocked_location` ya muestra el botón del escáner.
+- Hay que ajustar el cliente cuando Planning cambie la regla: hoy la app trata `pending` como "escanea el QR", lo que seguirá siendo cierto solo con ubicación simulada.
