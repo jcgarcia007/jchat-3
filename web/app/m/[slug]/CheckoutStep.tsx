@@ -98,6 +98,8 @@ export function CheckoutStep({
   const [phase, setPhase] = useState<Phase>("checking");
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
   const [error, setError] = useState<string>("");
+  // Golden rule refusal (outside_venue / pickup_disabled): shown as such, never as a failed payment.
+  const [venueRefused, setVenueRefused] = useState(false);
   const [intent, setIntent] = useState<IntentResult | null>(null);
   // Name the order is served under — from the pickup screen (presetName). May be
   // empty (optional). Used only for the on-screen receipt.
@@ -112,6 +114,7 @@ export function CheckoutStep({
 
   const createIntent = useCallback(async () => {
     setError("");
+    setVenueRefused(false);
     setPhase("creating");
     // Fresh idempotency key per attempt (server namespaces it with the JWT).
     const idempotencyKey =
@@ -162,6 +165,7 @@ export function CheckoutStep({
       const venueKey = venueErrorKey(venueCode);
       if (venueKey) {
         onVenueError?.(venueCode as string);
+        setVenueRefused(true);
         setError(tv(venueKey, { business: business.name }));
       } else {
         setError(await readFunctionError(fnErr));
@@ -195,6 +199,7 @@ export function CheckoutStep({
   // "Reintentar" fetches a brand-new token.
   const createGuestIntent = useCallback(async () => {
     setError("");
+    setVenueRefused(false);
     setPhase("creating");
 
     const cap = await captchaRef.current?.getToken();
@@ -234,6 +239,7 @@ export function CheckoutStep({
       const venueKey = venueErrorKey(venueCode);
       if (venueKey) {
         onVenueError?.(venueCode as string);
+        setVenueRefused(true);
         setError(tv(venueKey, { business: business.name }));
         setPhase("error");
         return;
@@ -369,7 +375,26 @@ export function CheckoutStep({
         </div>
       )}
 
-      {phase === "error" && (
+      {phase === "error" && venueRefused && (
+        <div role="alert" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{tv("orderNeedsVenue", { business: business.name })}</div>
+          <Muted>{error}</Muted>
+          <button
+            type="button"
+            onClick={() => {
+              // Re-reads the location (the menu asks the browser again) and returns to the order, where
+              // "pick-up" is offered only if the venue allows it.
+              onVenueError?.("outside_venue");
+              onBack();
+            }}
+            style={primaryBtn}
+          >
+            {tv("allowRetry")}
+          </button>
+          <button type="button" onClick={onBack} style={linkBtn}>{t("backToOrder")}</button>
+        </div>
+      )}
+      {phase === "error" && !venueRefused && (
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#b91c1c" }}>{t("paymentFailedTitle")}</div>
           <Muted>{error || t("tryAgain")}</Muted>

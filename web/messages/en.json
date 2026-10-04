@@ -3655,6 +3655,8 @@
     "tableOrder": "View menu and order",
     "viewOnlyNotice": "You can only view the menu from outside {business}",
     "understood": "Got it",
+    "orderNeedsVenue": "To order you need to be at {business}",
+    "allowRetry": "Allow location / Retry",
     "outsideVenueGeneric": "To do this you need to be at the venue"
   }
 }
