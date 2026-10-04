@@ -21,6 +21,8 @@
     "customizeA11y": "Customize {{name}}"
   },
   "menu": {
+    "viewOnlyNotice": "You can only view the menu from outside {{business}}",
+    "viewOnlyTitle": "View only",
     "menuFallback": "Menu",
     "loadError": "Could not load the menu. Please try again.",
     "cartA11y_one": "Shopping cart, {{count}} item",

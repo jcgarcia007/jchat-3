@@ -29,8 +29,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useVenueAccess } from '../../hooks/useVenueAccess';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -84,7 +86,7 @@ const BADGE_LABEL_KEYS: Record<NonNullable<MenuItem['badge']>, BadgeLabelKey> = 
 // coupling this file to AppNavigator (per spec: "use useNavigation() + useRoute()
 // generically; accept the item via route params { item: MenuItem }").
 
-type ProductDetailRouteParams = { item: MenuItem };
+type ProductDetailRouteParams = { item: MenuItem; businessName?: string };
 type ProductDetailRoute = RouteProp<Record<string, ProductDetailRouteParams>, string>;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -94,7 +96,8 @@ export default function ProductDetailScreen() {
   const { t } = useTranslation('pos');
   const navigation = useNavigation();
   const route = useRoute<ProductDetailRoute>();
-  const { addLine } = useCart();
+  const { addLine, businessId: cartBusinessId } = useCart();
+  const { viewOnly } = useVenueAccess(cartBusinessId);
 
   // The item is passed via route params.
   const item = (route.params as ProductDetailRouteParams).item;
@@ -242,6 +245,12 @@ export default function ProductDetailScreen() {
 
   const handleAddToCart = useCallback(() => {
     if (!canAddToCart) return;
+    if (viewOnly) {
+      // Golden rule: outside the area with pick-up off the menu is view-only.
+      const business = (route.params as ProductDetailRouteParams).businessName ?? t('menu.menuFallback');
+      Alert.alert(t('menu.viewOnlyTitle'), t('menu.viewOnlyNotice', { business }));
+      return;
+    }
 
     const extras = Array.from(selectedExtras)
       .map((label) => extrasMap.get(label))
@@ -268,6 +277,9 @@ export default function ProductDetailScreen() {
     navigation.goBack();
   }, [
     canAddToCart,
+    viewOnly,
+    route.params,
+    t,
     selectedExtras,
     extrasMap,
     modifierGroups,

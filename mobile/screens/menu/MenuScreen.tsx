@@ -43,6 +43,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useVenueAccess } from '../../hooks/useVenueAccess';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -277,6 +278,7 @@ export default function MenuScreen() {
   const cart = useCart();
 
   const { businessId, roomId = null, businessName: routeBusinessName, slug } = route.params;
+  const { viewOnly } = useVenueAccess(businessId);
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -393,7 +395,7 @@ export default function MenuScreen() {
 
   const handleOpenDetail = useCallback(
     (item: MenuItem) => {
-      navigation.navigate('ProductDetail', { item });
+      navigation.navigate('ProductDetail', { item, businessName });
     },
     [navigation],
   );
@@ -455,6 +457,14 @@ export default function MenuScreen() {
 
       {/* ── Search bar ── */}
       <View style={[styles.searchContainer, { backgroundColor: c.bgSurface }]}>
+        {viewOnly ? (
+          <View style={[styles.viewOnlyBanner, { backgroundColor: c.bgElevated }]} accessibilityRole="alert">
+            <Text style={[styles.viewOnlyText, { color: c.textSecondary }]}>
+              {t('menu.viewOnlyNotice', { business: businessName || t('menu.menuFallback') })}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={[styles.searchBar, { backgroundColor: c.bgElevated }]}>
           <IconSearch size={16} color={c.textTertiary} strokeWidth={2} />
           <TextInput
@@ -525,6 +535,8 @@ export default function MenuScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  viewOnlyBanner: { marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+  viewOnlyText: { fontSize: 13, lineHeight: 18 },
   root: {
     flex: 1,
   },

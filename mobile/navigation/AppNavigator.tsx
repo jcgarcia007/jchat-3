@@ -114,7 +114,7 @@ export type MainStackParamList = {
   };
   /** Temporary WebView prototype — shows /m/[slug] for design validation. */
   MenuWebPreview: { slug: string; businessName?: string; businessId: string; roomId?: string };
-  ProductDetail: { item: MenuItem };
+  ProductDetail: { item: MenuItem; businessName?: string };
   Cart: undefined;
   Checkout: undefined;
   PaymentSuccess: {
