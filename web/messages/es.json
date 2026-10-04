@@ -3657,6 +3657,10 @@
     "understood": "Entendido",
     "orderNeedsVenue": "Para pedir necesitas estar en {business}",
     "allowRetry": "Permitir ubicación / Reintentar",
+    "notAtTitle": "No estás en {business}",
+    "notAtBody": "Acércate para entrar al chat.",
+    "viewMenuAndPickup": "Ver menú y pedir para recoger",
+    "notNow": "Ahora no",
     "outsideVenueGeneric": "Para esto necesitas estar en el local"
   }
 }

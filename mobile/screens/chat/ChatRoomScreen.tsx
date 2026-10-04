@@ -45,7 +45,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { IconX } from '@tabler/icons-react-native';
+import { IconMapPin, IconX } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -1299,36 +1299,40 @@ export default function ChatRoomScreen() {
               {/* Drag handle */}
               <View style={[gateStyles.handle, { backgroundColor: themeColors.borderSubtle }]} />
 
-              {/* Business name / room title */}
-              <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
-                {business?.icon_emoji ?? '🏪'}{' '}
-                {business?.name ?? t('chatRoom.chatRoomFallback')}
-              </Text>
-              <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
-                {t('chatRoom.gateSubtitle')}
-              </Text>
+              {!gateRefused && (
+                <>
+                  {/* Business name / room title */}
+                  <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
+                    {business?.icon_emoji ?? '🏪'}{' '}
+                    {business?.name ?? t('chatRoom.chatRoomFallback')}
+                  </Text>
+                  <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
+                    {t('chatRoom.gateSubtitle')}
+                  </Text>
 
-              {/* Match entry notice — only where the owner enabled Match (fase D1) */}
-              {matchAvailable && (
-                <MatchEntryNotice
-                  businessName={business?.name ?? t('chatRoom.chatRoomFallback')}
-                  full={matchNoticeFull}
-                  games={matchGames}
-                  gamesEnabled={gamesEnabled}
-                  onGamesEnabledChange={handleGamesEnabledChange}
-                  matchOptIn={matchOptInValue}
-                  onMatchOptInChange={setMatchOptInValue}
-                  language={matchLanguage}
-                />
-              )}
+                  {/* Match entry notice — only where the owner enabled Match (fase D1) */}
+                  {matchAvailable && (
+                    <MatchEntryNotice
+                      businessName={business?.name ?? t('chatRoom.chatRoomFallback')}
+                      full={matchNoticeFull}
+                      games={matchGames}
+                      gamesEnabled={gamesEnabled}
+                      onGamesEnabledChange={handleGamesEnabledChange}
+                      matchOptIn={matchOptInValue}
+                      onMatchOptInChange={setMatchOptInValue}
+                      language={matchLanguage}
+                    />
+                  )}
 
-              {/* IncognitoToggle */}
-              {INCOGNITO_ENABLED && (
-                <IncognitoToggle
-                  value={incognitoState}
-                  onChange={setIncognitoState}
-                  error={incognitoError}
-                />
+                  {/* IncognitoToggle */}
+                  {INCOGNITO_ENABLED && (
+                    <IncognitoToggle
+                      value={incognitoState}
+                      onChange={setIncognitoState}
+                      error={incognitoError}
+                    />
+                  )}
+                </>
               )}
 
               {/* Enter button — or the geofence gate status/retry (épica geocerca Fase 3.2).
@@ -1362,45 +1366,40 @@ export default function ChatRoomScreen() {
               )}
 
               {gateRefused && (
-                <View style={gateStyles.geoStatus}>
-                  <Text style={[gateStyles.geoStatusText, { color: themeColors.danger }]}>
+                <View style={gateStyles.outsideWrap}>
+                  <View style={[gateStyles.outsideIcon, { backgroundColor: themeColors.bgElevated }]}>
+                    <IconMapPin size={30} color={themeColors.brand} strokeWidth={2} />
+                  </View>
+                  <Text style={[gateStyles.outsideTitle, { color: themeColors.textPrimary }]}>
+                    {t('chatRoom.geoOutsideTitle', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
+                  </Text>
+                  <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
                     {geoGate.gateStatus === 'permission_denied'
-                      ? t('chatRoom.geoPermissionNeeded', { business: business?.name ?? '' })
+                      ? t('chatRoom.geoPermissionNeeded')
                       : geoGate.gateStatus === 'outside_radius'
-                        ? t('chatRoom.geoOutsideRadius', {
-                            business: business?.name ?? '',
-                            distance: formatDistanceM(geoGate.outsideDistanceM ?? 0),
-                          })
-                        : t('chatRoom.geoUnavailable', { business: business?.name ?? '' })}
+                        ? t('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
+                        : t('chatRoom.geoUnavailable')}
                   </Text>
-                  <Pressable
-                    onPress={handleEnter}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [
-                      gateStyles.enterBtn,
-                      { backgroundColor: themeColors.brand },
-                      pressed && gateStyles.enterBtnPressed,
-                    ]}
-                  >
-                    <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
-                      {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
-                    </Text>
-                  </Pressable>
-                  <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
-                    {outsidePickup ? t('chatRoom.geoRestrictedPickup') : t('chatRoom.geoRestrictedMenu')}
-                  </Text>
-                  <Pressable
-                    onPress={handleMenuPress}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [
-                      gateStyles.enterBtn,
-                      { backgroundColor: themeColors.bgElevated, opacity: pressed ? 0.85 : 1 },
-                    ]}
-                  >
-                    <Text style={[gateStyles.enterBtnLabel, { color: themeColors.textPrimary }]}>
-                      {outsidePickup ? t('chatRoom.geoMenuAndPickup') : t('chatRoom.geoViewMenu')}
-                    </Text>
-                  </Pressable>
+                  <View style={gateStyles.outsideButtons}>
+                    <Pressable
+                      onPress={handleEnter}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brand, opacity: pressed ? 0.82 : 1 }]}
+                    >
+                      <Text style={[gateStyles.outsideBtnLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleMenuPress}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [gateStyles.outsideBtn, { borderWidth: 1, borderColor: themeColors.borderSubtle, opacity: pressed ? 0.82 : 1 }]}
+                    >
+                      <Text style={[gateStyles.outsideBtnLabel, { color: themeColors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {outsidePickup ? t('chatRoom.geoMenuAndPickup') : t('chatRoom.geoViewMenu')}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
 
@@ -1412,7 +1411,7 @@ export default function ChatRoomScreen() {
                 style={gateStyles.cancelWrap}
               >
                 <Text style={[gateStyles.cancelText, { color: themeColors.textSecondary }]}>
-                  {matchAvailable ? t('entry.notNow', { ns: 'match' }) : t('actions.cancel', { ns: 'common' })}
+                  {matchAvailable || gateRefused ? t('entry.notNow', { ns: 'match' }) : t('actions.cancel', { ns: 'common' })}
                 </Text>
               </Pressable>
             </View>
@@ -1716,6 +1715,13 @@ export default function ChatRoomScreen() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const gateStyles = StyleSheet.create({
+  outsideWrap: { alignItems: 'center', gap: 12, paddingTop: 8 },
+  outsideIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  outsideTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  outsideBody: { fontSize: 15, lineHeight: 21, textAlign: 'center', marginBottom: 4 },
+  outsideButtons: { alignSelf: 'stretch', gap: 12 },
+  outsideBtn: { alignSelf: 'stretch', minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  outsideBtnLabel: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
   safeArea: {
     flex: 1,
   },

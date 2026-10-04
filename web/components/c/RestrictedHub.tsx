@@ -10,7 +10,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { IconMapPinOff, IconShoppingBag, IconToolsKitchen2, IconRefresh } from "@tabler/icons-react";
+import { IconMapPin } from "@tabler/icons-react";
 import type { LocationFailure } from "@/lib/venueLocation";
 
 interface Props {
@@ -25,18 +25,20 @@ interface Props {
   onRetry: () => void;
 }
 
-const row: React.CSSProperties = {
+const btn: React.CSSProperties = {
   width: "100%",
+  minHeight: 52,
+  boxSizing: "border-box",
   display: "flex",
   alignItems: "center",
-  gap: 14,
-  padding: "15px 18px",
+  justifyContent: "center",
+  padding: "0 16px",
   borderRadius: 14,
-  fontSize: 15,
-  fontWeight: 600,
+  fontSize: 16,
+  fontWeight: 700,
   textDecoration: "none",
-  textAlign: "left",
-  border: "none",
+  textAlign: "center",
+  whiteSpace: "nowrap",
   cursor: "pointer",
 };
 
@@ -44,70 +46,55 @@ export function RestrictedHub({ businessName, menuHref, menuExternal, pickupEnab
   const t = useTranslations("venue");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }} role="status">
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "var(--bg-elevated)",
-            color: "var(--color-warning)",
-            flexShrink: 0,
-          }}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }} role="status">
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 64,
+          height: 64,
+          borderRadius: "50%",
+          background: "var(--bg-elevated)",
+          color: "var(--color-brand)",
+        }}
+      >
+        <IconMapPin size={30} />
+      </span>
+      <p style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{t("notAtTitle", { business: businessName })}</p>
+      <p style={{ margin: "0 0 4px", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+        {locationFailure ? t(`location.${locationFailure}`) : t("notAtBody")}
+      </p>
+
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{ ...btn, border: "none", background: "var(--color-brand)", color: "var(--on-brand)" }}
         >
-          <IconMapPinOff size={20} />
-        </span>
-        <div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t("restrictedTitle", { business: businessName })}</p>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-            {locationFailure ? t(`location.${locationFailure}`) : t("restrictedBody")}
-          </p>
-        </div>
+          {locationFailure === "denied" ? t("allowLocation") : t("retry")}
+        </button>
+
+        {menuHref ? (
+          <a
+            href={menuHref}
+            {...(menuExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            style={{ ...btn, background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border-subtle)" }}
+          >
+            {pickupEnabled ? t("viewMenuAndPickup") : t("viewMenu")}
+          </a>
+        ) : null}
       </div>
 
       <button
         type="button"
-        onClick={onRetry}
-        style={{ ...row, background: "var(--color-brand)", color: "var(--on-brand)", justifyContent: "center" }}
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
+        }}
+        style={{ border: "none", background: "transparent", color: "var(--text-secondary)", fontSize: 15, cursor: "pointer", padding: 8 }}
       >
-        <IconRefresh size={18} />
-        {locationFailure === "denied" ? t("allowLocation") : t("retry")}
+        {t("notNow")}
       </button>
-
-      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {t("whatYouCanDo")}
-      </p>
-
-      {menuHref ? (
-        <a
-          href={menuHref}
-          {...(menuExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          style={{ ...row, background: "var(--color-brand-light)", color: "var(--color-brand)", border: "1px solid rgb(var(--color-brand-rgb) / 0.3)" }}
-        >
-          <IconToolsKitchen2 size={20} />
-          <span style={{ flex: 1 }}>{t("viewMenu")}</span>
-        </a>
-      ) : null}
-
-      {menuHref && pickupEnabled ? (
-        <a
-          href={menuHref}
-          style={{ ...row, background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)" }}
-        >
-          <IconShoppingBag size={20} />
-          <span style={{ flex: 1 }}>{t("orderPickup")}</span>
-        </a>
-      ) : null}
-
-      {menuHref && !pickupEnabled ? (
-        <p style={{ margin: 0, fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
-          {t("pickupDisabled", { business: businessName })}
-        </p>
-      ) : null}
     </div>
   );
 }

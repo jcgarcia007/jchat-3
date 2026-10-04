@@ -1097,7 +1097,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             fontWeight: 600,
           }}
         >
-          <span style={{ flex: 1 }}>{tv("restrictedTitle", { business: businessName })}</span>
+          <span style={{ flex: 1 }}>{tv("notAtTitle", { business: businessName })}</span>
           <button
             type="button"
             onClick={() => void verifyPresence()}
