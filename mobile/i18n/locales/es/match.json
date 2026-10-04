@@ -165,5 +165,23 @@
     "skip": "Omitir por ahora",
     "loadError": "No se pudieron cargar los intereses. Inténtalo de nuevo.",
     "saveError": "No se pudieron guardar tus intereses. Inténtalo de nuevo."
+  },
+  "deck": {
+    "like": "ME GUSTA",
+    "nope": "PASO",
+    "superLike": "SUPER LIKE",
+    "likeButton": "Me gusta",
+    "pass": "Pasar",
+    "undo": "Deshacer",
+    "endTitle": "Ya viste a todos dentro de este negocio",
+    "endHint": "Vuelve más tarde: puede llegar gente nueva.",
+    "notifyNewPeople": "Avisarme cuando entre gente nueva",
+    "errors": {
+      "generic": "No se pudo completar. Inténtalo de nuevo.",
+      "not_present": "Match necesita que estés en el local.",
+      "not_in_same_venue": "Esa persona ya no está en este local.",
+      "super_like_quota": "Te quedaste sin Super Likes por hoy.",
+      "already_swiped": "Ya respondiste a esa persona."
+    }
   }
 }

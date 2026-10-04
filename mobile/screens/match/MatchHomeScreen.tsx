@@ -21,6 +21,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
+import { MatchDeckSection } from '../../components/match/MatchDeckSection';
 import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useAuth } from '../../context/AuthContext';
@@ -127,10 +128,12 @@ export default function MatchHomeScreen() {
         )}
 
         {presence.status === 'active' && (
-          <View style={styles.block}>
-            <Text style={[styles.message, { color: c.textPrimary }]}>{t('presence.active')}</Text>
-            <Text style={[styles.hint, { color: c.textSecondary }]}>{t('home.placeholder')}</Text>
-          </View>
+          <MatchDeckSection
+            businessId={params.businessId}
+            // D4 replaces these two with the profile screen and "It's a match!".
+            onMatch={() => undefined}
+            onOpenProfile={() => undefined}
+          />
         )}
 
         {presence.error && !denied && (
@@ -166,7 +169,7 @@ const styles = StyleSheet.create({
   },
   iconBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 18, fontWeight: '700' },
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, gap: 20 },
   block: { alignItems: 'center', gap: 12 },
   message: { fontSize: 17, fontWeight: '600', textAlign: 'center', lineHeight: 24 },
   hint: { fontSize: 14, textAlign: 'center', lineHeight: 20 },

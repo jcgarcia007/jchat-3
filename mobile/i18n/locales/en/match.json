@@ -165,5 +165,23 @@
     "skip": "Skip for now",
     "loadError": "Couldn't load the interests. Try again.",
     "saveError": "Couldn't save your interests. Try again."
+  },
+  "deck": {
+    "like": "LIKE",
+    "nope": "NOPE",
+    "superLike": "SUPER LIKE",
+    "likeButton": "Like",
+    "pass": "Pass",
+    "undo": "Undo",
+    "endTitle": "You've seen everyone at this venue",
+    "endHint": "Come back later: new people may arrive.",
+    "notifyNewPeople": "Tell me when new people arrive",
+    "errors": {
+      "generic": "Couldn't complete that. Try again.",
+      "not_present": "Match needs you to be at the venue.",
+      "not_in_same_venue": "That person is no longer at this venue.",
+      "super_like_quota": "You're out of Super Likes for today.",
+      "already_swiped": "You already answered that person."
+    }
   }
 }
