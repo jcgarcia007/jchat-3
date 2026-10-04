@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { MatchDeck } from './MatchDeck';
+import { MatchStateView } from './MatchStateView';
 import {
   getMatchActivity,
   getMatchDeck,
@@ -25,7 +26,7 @@ import {
   matchUndoLast,
 } from '../../services/matchDeck';
 import type { SwipeAction, SwipeResult } from '../../services/matchDeck';
-import { fetchInterests, interestName, signedPhotoUrls } from '../../services/matchProfile';
+import { fetchInterests, fetchMyMatchPhotos, interestName, signedPhotoUrls } from '../../services/matchProfile';
 import type { MatchCard } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 
@@ -35,9 +36,21 @@ interface MatchDeckSectionProps {
   onMatch: (card: MatchCard, result: SwipeResult) => void;
   /** Tap on a card (D4 opens the profile). */
   onOpenProfile: (card: MatchCard) => void;
+  /** Primary action of the empty states: back to the venue's chat room. */
+  onBackToChat: () => void;
+  onOpenActivity: () => void;
+  /** Opens "My Match profile" (no approved photo yet). */
+  onUploadPhoto: () => void;
 }
 
-export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDeckSectionProps) {
+export function MatchDeckSection({
+  businessId,
+  onMatch,
+  onOpenProfile,
+  onBackToChat,
+  onOpenActivity,
+  onUploadPhoto,
+}: MatchDeckSectionProps) {
   const c = useThemeColors();
   const { t, i18n } = useTranslation('match');
   const { user } = useAuth();
@@ -49,6 +62,8 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
   const [superLeft, setSuperLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  // null = unknown yet (don't block); false = no approved photo → can't appear in the deck.
+  const [hasApprovedPhoto, setHasApprovedPhoto] = useState<boolean | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [notifyNewPeople, setNotifyNewPeople] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
@@ -71,11 +86,15 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
   const load = useCallback(async () => {
     setLoadError(false);
     try {
-      const [deck, catalog, activity] = await Promise.all([
+      const [deck, catalog, activity, approved] = await Promise.all([
         getMatchDeck(businessId, 20),
         fetchInterests(),
         getMatchActivity(businessId),
+        user?.id
+          ? fetchMyMatchPhotos(user.id).then((photos) => photos.some((p) => p.status === 'approved')).catch(() => true)
+          : Promise.resolve(true),
       ]);
+      setHasApprovedPhoto(approved);
       const urls = await signedPhotoUrls(deck.flatMap((card) => card.photos.slice(0, 1)));
       setCards(deck);
       setPhotoUrls(urls);
@@ -88,7 +107,7 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
     } finally {
       setLoading(false);
     }
-  }, [businessId, language, showNotice, t]);
+  }, [businessId, language, showNotice, t, user?.id]);
 
   // First load + the "new people" preference.
   useEffect(() => {
@@ -151,10 +170,14 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
     [showNotice, t],
   );
 
+  // End of deck: centered, primary "Back to chat", secondary "My activity", keeps the new-people switch.
   const endContent = (
-    <View style={styles.end}>
-      <Text style={[styles.endTitle, { color: c.textPrimary }]}>{t('deck.endTitle')}</Text>
-      <Text style={[styles.endHint, { color: c.textSecondary }]}>{t('deck.endHint')}</Text>
+    <MatchStateView
+      title={t('deck.endTitle')}
+      message={t('deck.endHint')}
+      primary={{ label: t('states.backToChat'), onPress: onBackToChat }}
+      secondary={{ label: t('states.viewActivity'), onPress: onOpenActivity }}
+    >
       <View style={[styles.endSwitchRow, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
         <Text style={[styles.endSwitchLabel, { color: c.textPrimary }]}>{t('deck.notifyNewPeople')}</Text>
         <Switch
@@ -165,7 +188,7 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
           accessibilityLabel={t('deck.notifyNewPeople')}
         />
       </View>
-    </View>
+    </MatchStateView>
   );
 
   if (loading) {
@@ -176,6 +199,17 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
     );
   }
 
+  if (hasApprovedPhoto === false) {
+    return (
+      <MatchStateView
+        title={t('states.noPhotoTitle')}
+        message={t('profile.photos.needApproved')}
+        primary={{ label: t('states.uploadPhoto'), onPress: onUploadPhoto }}
+        secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
+      />
+    );
+  }
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -183,7 +217,11 @@ export function MatchDeckSection({ businessId, onMatch, onOpenProfile }: MatchDe
       showsVerticalScrollIndicator={false}
     >
       {loadError && cards.length === 0 ? (
-        <Text style={[styles.endHint, { color: c.textSecondary }]}>{t('deck.errors.generic')}</Text>
+        <MatchStateView
+          message={notice ?? t('deck.errors.generic')}
+          primary={{ label: t('states.retry'), onPress: () => void load() }}
+          secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
+        />
       ) : (
         <MatchDeck
           key={deckKey}
@@ -210,9 +248,6 @@ const styles = StyleSheet.create({
   scroll: { alignSelf: 'stretch' },
   content: { alignItems: 'center', gap: 12, paddingVertical: 8 },
   center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  end: { alignItems: 'center', gap: 12, paddingHorizontal: 16 },
-  endTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  endHint: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   endSwitchRow: {
     flexDirection: 'row',
     alignItems: 'center',

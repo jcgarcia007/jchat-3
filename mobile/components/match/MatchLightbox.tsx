@@ -9,6 +9,7 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconX } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -21,6 +22,7 @@ interface MatchLightboxProps {
 
 export function MatchLightbox({ url, onClose }: MatchLightboxProps) {
   const { t } = useTranslation('match');
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={url != null} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable
@@ -35,7 +37,7 @@ export function MatchLightbox({ url, onClose }: MatchLightboxProps) {
             <Image source={{ uri: url }} style={styles.photo} contentFit="contain" />
           </Pressable>
         ) : null}
-        <View style={styles.closeCircle} pointerEvents="none">
+        <View style={[styles.closeCircle, { top: insets.top + 12 }]} pointerEvents="none">
           <IconX size={22} color={palette.onImage} strokeWidth={2.5} />
         </View>
       </Pressable>

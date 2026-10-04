@@ -15,6 +15,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
@@ -33,6 +34,7 @@ const DEBOUNCE_MS = 1500;
 export function MatchQrScanner({ visible, onToken, onClose }: MatchQrScannerProps) {
   const c = useThemeColors();
   const { t } = useTranslation('match');
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [invalid, setInvalid] = useState(false);
   const lastRef = useRef<{ raw: string; ts: number } | null>(null);
@@ -101,7 +103,7 @@ export function MatchQrScanner({ visible, onToken, onClose }: MatchQrScannerProp
             accessibilityRole="button"
             accessibilityLabel={t('scanner.close')}
             hitSlop={12}
-            style={styles.closeButton}
+            style={[styles.closeButton, { top: insets.top + 12 }]}
           >
             <View style={styles.closeCircle}>
               <IconX size={22} color={palette.onImage} strokeWidth={2.5} />

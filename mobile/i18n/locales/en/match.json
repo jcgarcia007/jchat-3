@@ -296,5 +296,12 @@
     "deleteMatchBody": "The match and its chat will be removed. Nobody is notified.",
     "deleteMatchA11y": "Delete match with {{name}}",
     "openChatA11y": "Open chat with {{name}}"
+  },
+  "states": {
+    "backToChat": "Back to chat",
+    "viewActivity": "View my activity",
+    "uploadPhoto": "Upload a photo",
+    "retry": "Try again",
+    "noPhotoTitle": "Add a photo to appear"
   }
 }

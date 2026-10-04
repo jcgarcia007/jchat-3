@@ -10,7 +10,8 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { MatchDeckSection } from '../../components/match/MatchDeckSection';
+import { MatchStateView } from '../../components/match/MatchStateView';
 import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useAuth } from '../../context/AuthContext';
@@ -72,6 +74,9 @@ export default function MatchHomeScreen() {
     });
   }, [navigation, params.businessId, params.businessName]);
 
+  // The venue chat sits right below this screen in the stack.
+  const backToChat = useCallback(() => navigation.goBack(), [navigation]);
+
   const denied = presence.status === 'denied';
   // Match activates instantly with the chat's GPS reading: 'checking' is just the call in flight.
   const checking = presence.status === 'idle' || presence.status === 'checking';
@@ -80,7 +85,7 @@ export default function MatchHomeScreen() {
   const deniedKey = denied
     ? (presence.reason && `presence.denied.${presence.reason}`) || 'presence.denied.default'
     : null;
-  const showQrButton = pending || (denied && !!presence.reason && QR_CAN_HELP.has(presence.reason));
+  const showQrButton = (denied && !!presence.reason && QR_CAN_HELP.has(presence.reason));
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -133,16 +138,25 @@ export default function MatchHomeScreen() {
           </View>
         )}
 
+        {/* Mocked location → the venue QR is the way in; otherwise a clear next step */}
         {pending && (
-          <View style={styles.block}>
-            <Text style={[styles.message, { color: c.textPrimary }]}>{t('presence.mocked')}</Text>
-          </View>
+          <MatchStateView
+            message={t('presence.mocked')}
+            primary={{ label: t('presence.scanQr'), onPress: () => setScannerOpen(true), icon: <IconQrcode size={20} color={palette.onBrand} /> }}
+            secondary={{ label: t('states.backToChat'), onPress: backToChat }}
+          />
         )}
 
         {denied && deniedKey && (
-          <View style={styles.block}>
-            <Text style={[styles.message, { color: c.textPrimary }]}>{t(deniedKey)}</Text>
-          </View>
+          <MatchStateView
+            message={t(deniedKey)}
+            primary={
+              showQrButton
+                ? { label: t('presence.scanQr'), onPress: () => setScannerOpen(true), icon: <IconQrcode size={20} color={palette.onBrand} /> }
+                : { label: t('states.backToChat'), onPress: backToChat }
+            }
+            secondary={showQrButton ? { label: t('states.backToChat'), onPress: backToChat } : undefined}
+          />
         )}
 
         {presence.status === 'active' && (
@@ -157,6 +171,11 @@ export default function MatchHomeScreen() {
                 matchId: result.match_id,
               })
             }
+            onBackToChat={backToChat}
+            onOpenActivity={() =>
+              navigation.navigate('MatchActivity', { businessId: params.businessId, businessName: params.businessName })
+            }
+            onUploadPhoto={() => navigation.navigate('MatchMyProfile')}
             onOpenProfile={(card) =>
               navigation.navigate('MatchProfile', {
                 businessId: params.businessId,
@@ -172,16 +191,6 @@ export default function MatchHomeScreen() {
           <Text style={[styles.hint, { color: c.warning }]}>{t('presence.error')}</Text>
         )}
 
-        {showQrButton && (
-          <Pressable
-            onPress={() => setScannerOpen(true)}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.qrBtn, { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <IconQrcode size={20} color={palette.onBrand} />
-            <Text style={[styles.qrBtnText, { color: palette.onBrand }]}>{t('presence.scanQr')}</Text>
-          </Pressable>
-        )}
       </View>
 
       <MatchQrScanner visible={scannerOpen} onToken={handleToken} onClose={() => setScannerOpen(false)} />
