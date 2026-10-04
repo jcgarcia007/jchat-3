@@ -3,10 +3,22 @@
     "title": "Antes de entrar",
     "shortTitle": "Juegos en {{business}}",
     "points": {
-      "here": "Solo te ven en Match las personas que están aquí contigo.",
-      "erased": "Todo lo de Match se borra cuando sales del local, salvo que se sigan mutuamente.",
-      "screenshots": "Las capturas de pantalla existen: otros pueden guardar lo que compartes.",
-      "help": "Puedes pedir ayuda discreta al local en cualquier momento."
+      "here": {
+        "title": "Solo te ven quienes están aquí",
+        "body": "Únicamente las personas dentro de este local que entraron al chat."
+      },
+      "erased": {
+        "title": "Match se borra al salir",
+        "body": "Likes, matches y chats desaparecen, salvo con quien se sigan mutuamente."
+      },
+      "screenshots": {
+        "title": "Las capturas existen",
+        "body": "Nadie puede impedir una captura de pantalla. Comparte con cuidado."
+      },
+      "help": {
+        "title": "¿Algo no está bien?",
+        "body": "Pide ayuda al personal del local desde la app, sin que nadie más lo vea."
+      }
     },
     "gamesTitle": "Juegos",
     "gamesGlobal": "Participar en juegos",
@@ -16,25 +28,34 @@
     "hideGuide": "Ocultar guía de seguridad",
     "guideTitle": "Guía rápida de seguridad",
     "guide": {
-      "public": {
-        "title": "Primero, en público",
-        "body": "Habla en el chat del local y quédate donde haya más gente. Avisa a un amigo dónde estás."
+      "visible": {
+        "title": "Qué ven los demás",
+        "i1": "Tu nombre, fotos, intereses y bio.",
+        "i2": "Nunca tu ubicación exacta, tu edad exacta ni tus datos de contacto."
       },
-      "share": {
-        "title": "Comparte poco",
-        "body": "No compartas tu dirección, tu trabajo, datos financieros ni códigos. Nadie aquí los necesita."
+      "erased": {
+        "title": "Qué se borra y qué no",
+        "i1": "Tu actividad de Match se borra al salir del local.",
+        "i2": "Lo que escribes en el chat del local queda visible para los demás.",
+        "i3": "Los reportes y bloqueos se guardan para proteger a la comunidad."
       },
-      "pressure": {
-        "title": "Puedes decir que no",
-        "body": "Pasa, ignora o bloquea a quien te presione. No le debes una respuesta a nadie."
+      "care": {
+        "title": "Cómo cuidarte",
+        "i1": "Conversa en JChat antes de dar tu número o tus redes.",
+        "i2": "No compartas tu dirección, tu trabajo ni datos bancarios.",
+        "i3": "Cuida tu bebida y quédate en zonas con gente.",
+        "i4": "Avisa a un amigo con quién estás."
       },
-      "report": {
-        "title": "Reporta y bloquea",
-        "body": "Usa el menú ⋯ de cualquier perfil para reportar o bloquear. Los reportes llegan al local y al equipo de JChat."
+      "wrong": {
+        "title": "Si algo sale mal",
+        "i1": "Bloquea o reporta desde el perfil o el chat.",
+        "i2": "\"Pedir ayuda al local\" avisa al personal de inmediato.",
+        "i3": "En una emergencia, llama al 911."
       },
-      "help": {
-        "title": "Pide ayuda al local",
-        "body": "Desde el menú ⋯ puedes avisar al personal de forma discreta. Nadie más lo verá."
+      "data": {
+        "title": "Tus datos",
+        "i1": "El borrado es inmediato en JChat; las copias de seguridad se eliminan solas en pocos días.",
+        "i2": "Más detalles en la Política de privacidad."
       }
     },
     "terms": "Términos",

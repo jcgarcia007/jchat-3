@@ -3,10 +3,22 @@
     "title": "Before you enter",
     "shortTitle": "Games at {{business}}",
     "points": {
-      "here": "Only people who are here with you can see you in Match.",
-      "erased": "Everything in Match is erased when you leave the venue, unless you both follow each other.",
-      "screenshots": "Screenshots exist: others can capture what you share.",
-      "help": "You can ask the venue for discreet help at any time."
+      "here": {
+        "title": "Only people here can see you",
+        "body": "Only the people inside this venue who joined the chat."
+      },
+      "erased": {
+        "title": "Match is erased when you leave",
+        "body": "Likes, matches and chats disappear, except with whoever you follow each other."
+      },
+      "screenshots": {
+        "title": "Screenshots exist",
+        "body": "Nobody can prevent a screenshot. Share with care."
+      },
+      "help": {
+        "title": "Something not right?",
+        "body": "Ask the venue staff for help from the app, without anyone else seeing it."
+      }
     },
     "gamesTitle": "Games",
     "gamesGlobal": "Take part in games",
@@ -16,25 +28,34 @@
     "hideGuide": "Hide safety guide",
     "guideTitle": "Quick safety guide",
     "guide": {
-      "public": {
-        "title": "Meet in public first",
-        "body": "Talk in the venue's chat and meet where there are other people. Tell a friend where you are."
+      "visible": {
+        "title": "What others see",
+        "i1": "Your name, photos, interests and bio.",
+        "i2": "Never your exact location, your exact age or your contact details."
       },
-      "share": {
-        "title": "Share little",
-        "body": "Don't share your address, workplace, financial details or codes. Nobody here needs them."
+      "erased": {
+        "title": "What is erased and what is not",
+        "i1": "Your Match activity is erased when you leave the venue.",
+        "i2": "What you write in the venue chat stays visible to everyone.",
+        "i3": "Reports and blocks are kept to protect the community."
       },
-      "pressure": {
-        "title": "You can say no",
-        "body": "Pass, ignore or block anyone who pressures you. You never owe anyone a reply."
+      "care": {
+        "title": "How to look after yourself",
+        "i1": "Talk on JChat before giving your number or social accounts.",
+        "i2": "Don't share your address, workplace or bank details.",
+        "i3": "Watch your drink and stay in busy areas.",
+        "i4": "Tell a friend who you are with."
       },
-      "report": {
-        "title": "Report and block",
-        "body": "Use the ⋯ menu on any profile to report or block. Reports reach the venue and the JChat team."
+      "wrong": {
+        "title": "If something goes wrong",
+        "i1": "Block or report from the profile or the chat.",
+        "i2": "\"Ask the venue for help\" alerts the staff right away.",
+        "i3": "In an emergency, call 911."
       },
-      "help": {
-        "title": "Ask the venue for help",
-        "body": "From the ⋯ menu you can alert the staff discreetly. Nobody else will see it."
+      "data": {
+        "title": "Your data",
+        "i1": "Deletion is immediate on JChat; backups are removed automatically within a few days.",
+        "i2": "More details in the Privacy Policy."
       }
     },
     "terms": "Terms",

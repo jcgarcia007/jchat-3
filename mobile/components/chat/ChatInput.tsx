@@ -144,6 +144,43 @@ export function ChatInput({
     }
   }, [onSendPhoto]);
 
+  // Where "Games" replaced "Photo" in the panel, the camera button offers Camera / Gallery so
+  // sending from the gallery isn't lost.
+  const handleGallery = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('input.cameraPermissionTitle'), t('input.cameraPermissionMessage'));
+        return;
+      }
+      // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.85,
+        legacy: true,
+      });
+      const uri = !result.canceled ? result.assets[0]?.uri : undefined;
+      if (uri) onSendPhoto(uri);
+    } catch (err) {
+      console.error('[ChatInput] launchImageLibraryAsync failed:', err);
+      Alert.alert(t('input.cameraErrorTitle'), t('input.cameraErrorMessage'));
+    }
+  }, [onSendPhoto, t]);
+
+  const handleCameraPress = useCallback(() => {
+    if (!gamesAvailable) {
+      void handleCamera();
+      return;
+    }
+    setAttachmentOpen(false);
+    Alert.alert(t('input.sourceTitle'), undefined, [
+      { text: t('input.sourceCamera'), onPress: () => void handleCamera() },
+      { text: t('input.sourceGallery'), onPress: () => void handleGallery() },
+      { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+    ]);
+  }, [gamesAvailable, handleCamera, handleGallery, t]);
+
   const handleMicPress = useCallback(() => {
     setAttachmentOpen(false);
     setRecordingVoice(true);
@@ -234,7 +271,7 @@ export function ChatInput({
 
         {/* Camera — quick photo without opening panel */}
         <Pressable
-          onPress={() => void handleCamera()}
+          onPress={handleCameraPress}
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel={t('input.takePhoto')}

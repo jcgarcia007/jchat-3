@@ -21,7 +21,14 @@ import type { GameRow } from '../../services/match';
 const TERMS_URL = 'https://jchat.cloud/terms';
 const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
-const GUIDE_SECTIONS = ['public', 'share', 'pressure', 'report', 'help'] as const;
+/** Safety guide: section key → number of bullet items (texts in match.json entry.guide). */
+const GUIDE_SECTIONS = [
+  { key: 'visible', count: 2 },
+  { key: 'erased', count: 3 },
+  { key: 'care', count: 4 },
+  { key: 'wrong', count: 3 },
+  { key: 'data', count: 2 },
+] as const;
 
 interface MatchEntryNoticeProps {
   businessName: string;
@@ -103,16 +110,18 @@ export function MatchEntryNotice({
         {full ? t('entry.title') : t('entry.shortTitle', { business: businessName })}
       </Text>
 
-      {full && (
-        <View style={styles.points}>
-          {points.map(({ key, Icon }) => (
-            <View key={key} style={styles.pointRow}>
-              <Icon size={20} color={c.brand} />
-              <Text style={[styles.pointText, { color: c.textPrimary }]}>{t(`entry.points.${key}`)}</Text>
+      {/* Key points: always visible */}
+      <View style={styles.points}>
+        {points.map(({ key, Icon }) => (
+          <View key={key} style={styles.pointRow}>
+            <Icon size={20} color={c.brand} />
+            <View style={styles.pointTexts}>
+              <Text style={[styles.pointTitle, { color: c.textPrimary }]}>{t(`entry.points.${key}.title`)}</Text>
+              <Text style={[styles.pointText, { color: c.textSecondary }]}>{t(`entry.points.${key}.body`)}</Text>
             </View>
-          ))}
-        </View>
-      )}
+          </View>
+        ))}
+      </View>
 
       {/* Switches: global + one per catalog game */}
       <View style={[styles.switchBlock, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
@@ -155,14 +164,22 @@ export function MatchEntryNotice({
         <View style={[styles.guideBox, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
           <Text style={[styles.guideTitle, { color: c.textPrimary }]}>{t('entry.guideTitle')}</Text>
           <ScrollView nestedScrollEnabled style={styles.guideScroll} showsVerticalScrollIndicator>
-            {GUIDE_SECTIONS.map((section) => (
-              <View key={section} style={styles.guideSection}>
+            {GUIDE_SECTIONS.map(({ key, count }) => (
+              <View key={key} style={styles.guideSection}>
                 <Text style={[styles.guideSectionTitle, { color: c.textPrimary }]}>
-                  {t(`entry.guide.${section}.title`)}
+                  {t(`entry.guide.${key}.title`)}
                 </Text>
-                <Text style={[styles.guideSectionBody, { color: c.textSecondary }]}>
-                  {t(`entry.guide.${section}.body`)}
-                </Text>
+                {Array.from({ length: count }, (_, i) => `i${i + 1}`).map((item) => (
+                  <Text
+                    key={item}
+                    style={[styles.guideSectionBody, { color: c.textSecondary }]}
+                    accessibilityRole={key === 'data' && item === 'i2' ? 'link' : undefined}
+                    onPress={key === 'data' && item === 'i2' ? () => void Linking.openURL(PRIVACY_URL) : undefined}
+                  >
+                    {'• '}
+                    {t(`entry.guide.${key}.${item}`)}
+                  </Text>
+                ))}
               </View>
             ))}
           </ScrollView>
@@ -197,7 +214,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
   points: { gap: 10 },
   pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  pointText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  pointTexts: { flex: 1, gap: 1 },
+  pointTitle: { fontSize: 14, fontWeight: '700' },
+  pointText: { fontSize: 13, lineHeight: 18 },
   switchBlock: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14 },
   switchRow: {
     flexDirection: 'row',

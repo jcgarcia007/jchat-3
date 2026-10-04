@@ -24,7 +24,10 @@
     "cameraPermissionTitle": "Permiso requerido",
     "cameraPermissionMessage": "Permite el acceso a la cámara para tomar fotos en el chat.",
     "cameraErrorTitle": "Cámara no disponible",
-    "cameraErrorMessage": "No se pudo abrir la cámara. Verifica los permisos."
+    "cameraErrorMessage": "No se pudo abrir la cámara. Verifica los permisos.",
+    "sourceTitle": "Enviar una foto",
+    "sourceCamera": "Cámara",
+    "sourceGallery": "Galería"
   },
   "attachment": {
     "photo": "Foto",
