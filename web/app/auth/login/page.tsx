@@ -41,7 +41,11 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
-    oauthError === "oauth_failed" ? te("oauthFailed") : null
+    oauthError === "oauth_failed"
+      ? te("oauthFailed")
+      : searchParams.get("expired") === "1"
+        ? te("sessionExpired")
+        : null
   );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);

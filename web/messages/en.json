@@ -3322,6 +3322,7 @@
     "network": "Couldn't connect. Check your internet connection and try again.",
     "notConfigured": "Sign-in is unavailable right now.",
     "captchaFailed": "We couldn't verify you're human. Please try again.",
+    "sessionExpired": "Your session expired. Please sign in again.",
     "oauthFailed": "Google sign-in failed. Please try again.",
     "noSession": "Your account was created but you aren't signed in yet. Try signing in.",
     "notEligible": "You don't meet the requirements to use JChat.",

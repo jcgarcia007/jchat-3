@@ -325,7 +325,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLocked(false);
     setJustSignedIn(false);
     setAgeHold(false);
-    await supabase.auth.signOut();
+    // 'local': signing out here must NOT close the session on the user's other devices.
+    await supabase.auth.signOut({ scope: 'local' });
   }, [session?.user?.id]);
 
   const ageStatus: AgeStatus = bypass && !session

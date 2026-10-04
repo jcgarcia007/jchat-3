@@ -1,5 +1,6 @@
 {
   "generic": "Algo salió mal. Inténtalo de nuevo.",
+  "sessionExpired": "Tu sesión expiró. Vuelve a iniciar sesión.",
   "network": "No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.",
   "auth": {
     "invalid_credentials": "Correo o contraseña incorrectos.",

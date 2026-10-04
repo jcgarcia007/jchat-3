@@ -3322,6 +3322,7 @@
     "network": "No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.",
     "notConfigured": "El inicio de sesión no está disponible por ahora.",
     "captchaFailed": "No pudimos verificar que eres humano. Inténtalo de nuevo.",
+    "sessionExpired": "Tu sesión expiró. Vuelve a iniciar sesión.",
     "oauthFailed": "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
     "noSession": "Tu cuenta se creó pero aún no has iniciado sesión. Intenta iniciar sesión.",
     "notEligible": "No cumples los requisitos para usar JChat.",

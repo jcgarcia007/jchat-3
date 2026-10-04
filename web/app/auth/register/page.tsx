@@ -780,7 +780,7 @@ export default function RegisterPage() {
       const ageResult = await confirmAge(dob);
       if (ageResult === "underage") {
         await deleteMyAccount();
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
         setLoading(false);
         setError(te("notEligible"));
         return;

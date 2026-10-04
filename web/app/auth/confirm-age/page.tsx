@@ -97,7 +97,7 @@ function ConfirmAgeInner() {
     }
     if (result === "underage") {
       await deleteMyAccount();
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       setPhase("underage");
       return;
     }
@@ -257,7 +257,7 @@ function ConfirmAgeInner() {
       <button
         type="button"
         onClick={async () => {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: "local" });
           router.replace("/auth/login");
         }}
         style={{ ...secondary, marginTop: 10, border: "none", color: "var(--text-tertiary)", fontWeight: 500 }}

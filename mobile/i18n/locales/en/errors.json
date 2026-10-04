@@ -1,5 +1,6 @@
 {
   "generic": "Something went wrong. Please try again.",
+  "sessionExpired": "Your session expired. Please sign in again.",
   "network": "Couldn't connect. Check your internet connection and try again.",
   "auth": {
     "invalid_credentials": "Incorrect email or password.",
