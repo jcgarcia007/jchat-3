@@ -1,0 +1,35 @@
+/* ============================================================
+   JChat 3.0 — Public site palette (landing "/" and "/pricing").
+   Single definition of the --land-* tokens (they used to be
+   duplicated inside both pages). Light / peach palette, fixed:
+   it does not follow data-theme.
+   ============================================================ */
+
+:root {
+  --land-peach:       #FF8A65;
+  --land-peach-2:     #FFAB91;
+  --land-peach-dark:  #FF7043;
+  --land-peach-glow:  rgb(var(--land-peach-rgb) / .20);
+  --land-mint:        #5EEAD4;
+  --land-mint-glow:   rgb(var(--land-mint-rgb) / .18);
+  --land-sky:         #93C5FD;
+  --land-sky-glow:    rgb(var(--land-sky-rgb) / .22);
+  --land-lavender:    #C4B5FD;
+  --land-teal:        #0EA5A0;
+  --land-blue:        #3B82F6;
+  --land-rose:        #F43F5E;
+  --land-bg:          #FAFAFA;
+  --land-text:        #111827;
+  --land-sub:         #4B5563;
+  --land-muted:       #9CA3AF;
+  --land-glass:       rgb(var(--white-rgb) / .80);
+  --land-border-v:    rgb(var(--land-peach-rgb) / .30);
+  --land-border-c:    rgb(var(--land-sky-rgb) / .38);
+  --land-shadow:      0 8px 40px rgb(var(--ink-rgb) / .09);
+
+  /* Channels for alpha variants: rgb(var(--land-peach-rgb) / .3) */
+  --land-peach-rgb:      255 138 101;
+  --land-peach-dark-rgb: 255 112 67;
+  --land-mint-rgb:       94 234 212;
+  --land-sky-rgb:        147 197 253;
+}

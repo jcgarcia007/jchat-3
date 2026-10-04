@@ -75,3 +75,31 @@
      light elevated surface so hover/divider chips stay coherent. */
   --bg-overlay: var(--bg-elevated-light);
 }
+
+/* ============================================================
+   Derived tokens (Lote 10C) — theme-independent.
+   *-rgb hold the channels so alpha variants are written
+   `rgb(var(--color-brand-rgb) / .14)` (no rgba() literals in components).
+   --gray-* is the cool-gray scale used by the legal pages and the
+   public site; values are fixed (not theme-driven).
+   ============================================================ */
+:root {
+  --color-brand-rgb: 92 124 250;
+  --color-danger-rgb: 239 68 68;
+  --color-success-rgb: 29 158 117;
+  --ink-rgb: 0 0 0;
+  --white-rgb: 255 255 255;
+
+  /* Text / icon on a brand-filled surface. */
+  --on-brand: #ffffff;
+
+  --gray-900: #111827;
+  --gray-700: #374151;
+  --gray-600: #4b5563;
+  --gray-500: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-300: #d1d5db;
+  --gray-200: #e5e7eb;
+  --gray-100: #f3f4f6;
+  --gray-50: #f9fafb;
+}

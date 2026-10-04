@@ -1,6 +1,8 @@
 @import "tailwindcss";
 /* All color tokens live here (Design System Section 1). Single source of truth. */
 @import "../styles/tokens.css";
+/* Public site palette (--land-*): landing and pricing. */
+@import "../styles/landing.css";
 /* Dashboard theme tokens (Task 0.3 — Design System Section 5). */
 @import "../styles/themes/dashboard.css";
 /* Tab POS brand skin for /auth/* when served from dashboard.tabpos.cloud
