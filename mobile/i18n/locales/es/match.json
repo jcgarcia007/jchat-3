@@ -133,6 +133,37 @@
       "deleteConfirmTitle": "¿Borrar esta foto?",
       "deleteConfirmBody": "Se quitará de tu tarjeta de Match.",
       "tileA11y": "Foto {{position}}, {{status}}"
+    },
+    "interests": {
+      "title": "Intereses",
+      "empty": "Aún no has elegido intereses.",
+      "edit": "Editar intereses"
+    },
+    "settings": {
+      "title": "Ajustes de Match",
+      "ageTitle": "Rango de edad",
+      "ageHint": "Solo aparecen en tu mazo las personas de este rango, y tú en el suyo. Las edades nunca se muestran.",
+      "ageDefault": "Por defecto ves personas cercanas a tu edad (±1 año).",
+      "ageCustomize": "Personalizar rango",
+      "ageMin": "Desde",
+      "ageMax": "Hasta",
+      "ageDecrease": "Disminuir",
+      "ageIncrease": "Aumentar",
+      "newPeople": "Avisarme cuando entre gente nueva",
+      "newPeopleHint": "Una notificación genérica cuando entra gente nueva a Match en un local donde ya viste todas las tarjetas.",
+      "saveError": "No se pudo guardar el ajuste. Inténtalo de nuevo."
     }
+  },
+  "interests": {
+    "title": "Tus intereses",
+    "intro": "Elige al menos {{min}} cosas que te gusten. Ayudan a mostrarte personas con las que tienes algo en común.",
+    "pickMore_one": "Elige {{count}} más",
+    "pickMore_other": "Elige {{count}} más",
+    "selected_one": "{{count}} elegido",
+    "selected_other": "{{count}} elegidos",
+    "save": "Guardar",
+    "skip": "Omitir por ahora",
+    "loadError": "No se pudieron cargar los intereses. Inténtalo de nuevo.",
+    "saveError": "No se pudieron guardar tus intereses. Inténtalo de nuevo."
   }
 }

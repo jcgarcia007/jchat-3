@@ -133,6 +133,37 @@
       "deleteConfirmTitle": "Delete this photo?",
       "deleteConfirmBody": "It will be removed from your Match card.",
       "tileA11y": "Photo {{position}}, {{status}}"
+    },
+    "interests": {
+      "title": "Interests",
+      "empty": "You have not picked any interests yet.",
+      "edit": "Edit interests"
+    },
+    "settings": {
+      "title": "Match settings",
+      "ageTitle": "Age range",
+      "ageHint": "Only people in this range appear in your deck, and you appear in theirs. Ages are never shown.",
+      "ageDefault": "By default you see people close to your age (±1 year).",
+      "ageCustomize": "Customize range",
+      "ageMin": "From",
+      "ageMax": "To",
+      "ageDecrease": "Decrease",
+      "ageIncrease": "Increase",
+      "newPeople": "Tell me when new people arrive",
+      "newPeopleHint": "A generic notification when new people join Match at a venue where you have run out of cards.",
+      "saveError": "Couldn't save the setting. Try again."
     }
+  },
+  "interests": {
+    "title": "Your interests",
+    "intro": "Pick at least {{min}} things you like. They help show you people you have things in common with.",
+    "pickMore_one": "Pick {{count}} more",
+    "pickMore_other": "Pick {{count}} more",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "save": "Save",
+    "skip": "Skip for now",
+    "loadError": "Couldn't load the interests. Try again.",
+    "saveError": "Couldn't save your interests. Try again."
   }
 }

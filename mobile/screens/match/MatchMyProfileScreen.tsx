@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
   useWindowDimensions,
@@ -23,7 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconPlus, IconUserCircle } from '@tabler/icons-react-native';
+import { IconArrowLeft, IconMinus, IconPlus, IconUserCircle } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
@@ -44,9 +45,12 @@ import {
   reorderMatchPhotos,
 } from '../../services/matchProfile';
 import type { MatchCard as MatchCardData, MatchPhoto } from '../../services/matchTypes';
+import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchMyProfile'>;
 
+const MIN_AGE = 18;
+const MAX_AGE = 99;
 const COLUMNS = 3;
 const GAP = 8;
 const SIDE_PADDING = 20;
@@ -65,18 +69,26 @@ export default function MatchMyProfileScreen() {
   const [interestNames, setInterestNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Match settings (users.settings): age range is custom only once the user sets it.
+  const [ageMin, setAgeMin] = useState<number | null>(null);
+  const [ageMax, setAgeMax] = useState<number | null>(null);
+  const [notifyNewPeople, setNotifyNewPeople] = useState(false);
 
   const tile = (width - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
   const load = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const [p, ph, keys, catalog] = await Promise.all([
+      const [p, ph, keys, catalog, settings] = await Promise.all([
         getPublicProfile(user.id),
         fetchMyMatchPhotos(user.id),
         fetchMyInterestKeys(user.id),
         fetchInterests(),
+        loadUserSettings(user.id),
       ]);
+      setAgeMin(settings.matchAgeMin ?? null);
+      setAgeMax(settings.matchAgeMax ?? null);
+      setNotifyNewPeople(settings.matchNotifyNewPeople ?? false);
       setProfile(p);
       setPhotos(ph);
       setInterestKeys(keys);
@@ -209,6 +221,44 @@ export default function MatchMyProfileScreen() {
     [photos.length, move, run, t],
   );
 
+  /** Optimistic settings write; on failure reload the real values and tell the user. */
+  const saveSetting = useCallback(
+    (patch: Parameters<typeof updateMySettings>[0]) => {
+      void updateMySettings(patch).catch(() => {
+        Alert.alert(t('profile.settings.saveError'));
+        void load();
+      });
+    },
+    [load, t],
+  );
+
+  const changeAge = useCallback(
+    (which: 'min' | 'max', delta: number) => {
+      const min = ageMin ?? MIN_AGE;
+      const max = ageMax ?? MAX_AGE;
+      const nextMin = which === 'min' ? Math.min(Math.max(min + delta, MIN_AGE), max) : min;
+      const nextMax = which === 'max' ? Math.max(Math.min(max + delta, MAX_AGE), min) : max;
+      setAgeMin(nextMin);
+      setAgeMax(nextMax);
+      saveSetting({ matchAgeMin: nextMin, matchAgeMax: nextMax });
+    },
+    [ageMin, ageMax, saveSetting],
+  );
+
+  const customizeAge = useCallback(() => {
+    setAgeMin(MIN_AGE);
+    setAgeMax(MAX_AGE);
+    saveSetting({ matchAgeMin: MIN_AGE, matchAgeMax: MAX_AGE });
+  }, [saveSetting]);
+
+  const toggleNotify = useCallback(
+    (value: boolean) => {
+      setNotifyNewPeople(value);
+      saveSetting({ matchNotifyNewPeople: value });
+    },
+    [saveSetting],
+  );
+
   const statusColor = (status: MatchPhoto['status']) =>
     status === 'approved' ? c.success : status === 'rejected' ? c.danger : c.warning;
 
@@ -317,6 +367,94 @@ export default function MatchMyProfileScreen() {
               <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.photos.useProfilePhoto')}</Text>
             </Pressable>
           ) : null}
+
+          {/* Interests */}
+          <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('profile.interests.title')}</Text>
+          {interestKeys.length === 0 ? (
+            <Text style={[styles.hint, { color: c.textSecondary }]}>{t('profile.interests.empty')}</Text>
+          ) : (
+            <View style={styles.chipsRow}>
+              {interestKeys.map((key) => (
+                <View key={key} style={[styles.interestChip, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
+                  <Text style={[styles.interestChipText, { color: c.textPrimary }]}>{interestNames[key] ?? key}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <Pressable
+            onPress={() => navigation.navigate('MatchInterests', {})}
+            accessibilityRole="button"
+            style={[styles.secondaryBtn, { borderColor: c.brand }]}
+          >
+            <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.interests.edit')}</Text>
+          </Pressable>
+
+          {/* Settings: age range + new-people notification */}
+          <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('profile.settings.title')}</Text>
+          <View style={[styles.settingsCard, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
+            <Text style={[styles.settingLabel, { color: c.textPrimary }]}>{t('profile.settings.ageTitle')}</Text>
+            <Text style={[styles.hint, { color: c.textSecondary }]}>{t('profile.settings.ageHint')}</Text>
+            {ageMin == null || ageMax == null ? (
+              <>
+                <Text style={[styles.hint, { color: c.textSecondary }]}>{t('profile.settings.ageDefault')}</Text>
+                <Pressable
+                  onPress={customizeAge}
+                  accessibilityRole="button"
+                  style={[styles.secondaryBtn, { borderColor: c.brand }]}
+                >
+                  <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.settings.ageCustomize')}</Text>
+                </Pressable>
+              </>
+            ) : (
+              (['min', 'max'] as const).map((which) => {
+                const value = which === 'min' ? ageMin : ageMax;
+                return (
+                  <View key={which} style={styles.stepperRow}>
+                    <Text style={[styles.stepperLabel, { color: c.textPrimary }]}>
+                      {which === 'min' ? t('profile.settings.ageMin') : t('profile.settings.ageMax')}
+                    </Text>
+                    <View style={styles.stepper}>
+                      <Pressable
+                        onPress={() => changeAge(which, -1)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${t('profile.settings.ageDecrease')} ${which === 'min' ? t('profile.settings.ageMin') : t('profile.settings.ageMax')}`}
+                        style={[styles.stepBtn, { borderColor: c.borderSubtle }]}
+                      >
+                        <IconMinus size={18} color={c.textPrimary} />
+                      </Pressable>
+                      <Text style={[styles.stepValue, { color: c.textPrimary }]} accessibilityLiveRegion="polite">
+                        {value}
+                      </Text>
+                      <Pressable
+                        onPress={() => changeAge(which, 1)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${t('profile.settings.ageIncrease')} ${which === 'min' ? t('profile.settings.ageMin') : t('profile.settings.ageMax')}`}
+                        style={[styles.stepBtn, { borderColor: c.borderSubtle }]}
+                      >
+                        <IconPlus size={18} color={c.textPrimary} />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          <View style={[styles.settingsCard, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchTexts}>
+                <Text style={[styles.settingLabel, { color: c.textPrimary }]}>{t('profile.settings.newPeople')}</Text>
+                <Text style={[styles.hint, { color: c.textSecondary }]}>{t('profile.settings.newPeopleHint')}</Text>
+              </View>
+              <Switch
+                value={notifyNewPeople}
+                onValueChange={toggleNotify}
+                trackColor={{ false: c.borderSubtle, true: c.brand }}
+                thumbColor={palette.onBrand}
+                accessibilityLabel={t('profile.settings.newPeople')}
+              />
+            </View>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -366,4 +504,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   secondaryBtnText: { fontSize: 15, fontWeight: '600' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  interestChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  interestChipText: { fontSize: 13, fontWeight: '600' },
+  settingsCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 10 },
+  settingLabel: { fontSize: 15, fontWeight: '600' },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stepperLabel: { fontSize: 15 },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepValue: { fontSize: 18, fontWeight: '700', minWidth: 32, textAlign: 'center' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  switchTexts: { flex: 1, gap: 2 },
 });

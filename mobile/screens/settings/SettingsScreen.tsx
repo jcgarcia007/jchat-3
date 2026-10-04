@@ -42,6 +42,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
+  IconEyeOff,
   IconBriefcase,
   IconChevronLeft,
   IconChevronRight,
@@ -83,6 +84,7 @@ import {
   updateMyLanguage,
   updateMySettings,
   type UserLanguage,
+  type PushPreview,
   type UserSettings,
 } from '../../services/userSettings';
 
@@ -447,6 +449,13 @@ export default function SettingsScreen() {
   // TODO(geofence): Restore the proximityMode control when geofencing ships.
 
   // ── Language options ───────────────────────────────────────────────────────
+  const PREVIEW_OPTIONS: PushPreview[] = ['full', 'name', 'discreet'];
+  const PREVIEW_LABELS: Record<PushPreview, string> = {
+    full: t('main.previewLevel.full'),
+    name: t('main.previewLevel.name'),
+    discreet: t('main.previewLevel.discreet'),
+  };
+
   const LANGUAGE_OPTIONS: UserLanguage[] = ['en', 'es'];
   const LANGUAGE_LABELS: Record<UserLanguage, string> = {
     en: 'English',
@@ -598,6 +607,40 @@ export default function SettingsScreen() {
             />
           }
         />
+
+        <SectionDivider />
+
+        {/* Lock-screen preview levels: Match and direct messages */}
+        {([
+          { key: 'pushPreviewMatch', label: 'main.previewMatch', sub: 'main.previewMatchSub' },
+          { key: 'pushPreviewDm', label: 'main.previewDm', sub: 'main.previewDmSub' },
+        ] as const).map(({ key, label, sub }) => (
+          <View key={key} style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
+            <View style={styles.row}>
+              <View style={styles.rowIcon}>
+                <IconEyeOff size={20} color={c.brand} strokeWidth={2} />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t(label)}</Text>
+                <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>{t(sub)}</Text>
+              </View>
+            </View>
+            <View style={styles.pickerPad}>
+              <SegmentedPicker<PushPreview>
+                options={PREVIEW_OPTIONS}
+                value={settings[key]}
+                onChange={(v) => void patch({ [key]: v })}
+                labelMap={PREVIEW_LABELS}
+              />
+            </View>
+            <Text style={[styles.rowSublabel, { color: c.textSecondary, paddingHorizontal: 16, paddingBottom: 12 }]}>
+              {t(`main.previewHint.${settings[key]}`)}
+            </Text>
+          </View>
+        ))}
+        <Text style={[styles.rowSublabel, { color: c.textTertiary, paddingHorizontal: 16, paddingTop: 8 }]}>
+          {t('main.previewBrandNote')}
+        </Text>
 
         {/* Spacer */}
         <View style={styles.sectionGap} />

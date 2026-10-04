@@ -65,6 +65,7 @@ import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
 import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
 import MatchHomeScreen from '../screens/match/MatchHomeScreen';
 import MatchMyProfileScreen from '../screens/match/MatchMyProfileScreen';
+import MatchInterestsScreen from '../screens/match/MatchInterestsScreen';
 import type { MenuItem } from '../services/menu';
 
 export type AuthStackParamList = {
@@ -130,6 +131,8 @@ export type MainStackParamList = {
   MatchHome: { businessId: string; businessName?: string };
   /** "Mi perfil del deck": my Match card, photos, interests and settings. */
   MatchMyProfile: undefined;
+  /** Interests quiz/editor. firstTime shows "skip". */
+  MatchInterests: { firstTime?: boolean } | undefined;
 };
 
 type RecoveryStackParamList = { ResetPassword: undefined };
@@ -266,6 +269,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="MyOrders" component={MyOrdersScreen} />
           <MainStack.Screen name="MatchHome" component={MatchHomeScreen} />
           <MainStack.Screen name="MatchMyProfile" component={MatchMyProfileScreen} />
+          <MainStack.Screen name="MatchInterests" component={MatchInterestsScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

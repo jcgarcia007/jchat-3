@@ -116,6 +116,25 @@ export async function markMatchNoticeSeen(businessId: string): Promise<void> {
   }
 }
 
+const INTERESTS_SKIPPED_KEY = 'match.interestsQuizSkipped';
+
+/** True when the user skipped the first-time interests quiz (don't nag again). */
+export async function hasSkippedInterestsQuiz(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(INTERESTS_SKIPPED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export async function markInterestsQuizSkipped(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(INTERESTS_SKIPPED_KEY, '1');
+  } catch {
+    // best effort
+  }
+}
+
 /** The per-venue "Match" switch of the entry notice. Defaults to ON (Match activates on entry). */
 export async function getMatchOptIn(businessId: string): Promise<boolean> {
   try {

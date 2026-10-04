@@ -35,7 +35,22 @@
     "feedRadius": "News radius",
     "feedRadiusSub": "How far to look for offers and posts from nearby businesses",
     "myOrders": "My orders",
-    "myOrdersSub": "Track your orders and see their status"
+    "myOrdersSub": "Track your orders and see their status",
+    "previewMatch": "Match preview",
+    "previewMatchSub": "What a Match notification shows on your lock screen.",
+    "previewDm": "Message preview",
+    "previewDmSub": "What a direct message notification shows on your lock screen.",
+    "previewLevel": {
+      "full": "Full",
+      "name": "Name only",
+      "discreet": "Discreet"
+    },
+    "previewHint": {
+      "full": "Shows the name and the message.",
+      "name": "Shows who it is, without the message.",
+      "discreet": "Shows only \"You have something new on JChat\"."
+    },
+    "previewBrandNote": "The name \"JChat\" is always visible on the notification."
   },
   "changePassword": {
     "currentPassword": "Current password",

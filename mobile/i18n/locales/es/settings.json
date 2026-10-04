@@ -35,7 +35,22 @@
     "feedRadius": "Radio de novedades",
     "feedRadiusSub": "Hasta dónde buscar ofertas y publicaciones de negocios cercanos",
     "myOrders": "Mis pedidos",
-    "myOrdersSub": "Sigue tus pedidos y su estado"
+    "myOrdersSub": "Sigue tus pedidos y su estado",
+    "previewMatch": "Vista previa de Match",
+    "previewMatchSub": "Lo que muestra en la pantalla bloqueada una notificación de Match.",
+    "previewDm": "Vista previa de mensajes",
+    "previewDmSub": "Lo que muestra en la pantalla bloqueada una notificación de mensaje directo.",
+    "previewLevel": {
+      "full": "Completa",
+      "name": "Solo nombre",
+      "discreet": "Discreta"
+    },
+    "previewHint": {
+      "full": "Muestra el nombre y el mensaje.",
+      "name": "Muestra quién es, sin el mensaje.",
+      "discreet": "Solo muestra \"Tienes una novedad en JChat\"."
+    },
+    "previewBrandNote": "El nombre \"JChat\" siempre se ve en la notificación."
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",

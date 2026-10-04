@@ -9,9 +9,9 @@
  * mounted underneath this screen, so check-ins keep running while Match is open.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,9 @@ import { palette } from '../../theme/tokens';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
+import { useAuth } from '../../context/AuthContext';
+import { fetchMyInterestKeys } from '../../services/matchProfile';
+import { hasSkippedInterestsQuiz } from '../../services/match';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchHome'>;
 
@@ -36,6 +39,21 @@ export default function MatchHomeScreen() {
   const { params } = useRoute<RouteProp<MainStackParamList, 'MatchHome'>>();
   const presence = useMatchPresenceState();
   const [scannerOpen, setScannerOpen] = useState(false);
+  const { user } = useAuth();
+  const quizOfferedRef = useRef(false);
+
+  // First time in Match without interests → offer the quiz once per visit (unless skipped before).
+  useFocusEffect(
+    useCallback(() => {
+      if (presence.status !== 'active' || !user?.id || quizOfferedRef.current) return;
+      quizOfferedRef.current = true;
+      void Promise.all([fetchMyInterestKeys(user.id), hasSkippedInterestsQuiz()])
+        .then(([keys, skipped]) => {
+          if (keys.length === 0 && !skipped) navigation.navigate('MatchInterests', { firstTime: true });
+        })
+        .catch(() => undefined);
+    }, [presence.status, user?.id, navigation]),
+  );
 
   const handleToken = useCallback((token: string) => {
     setScannerOpen(false);
