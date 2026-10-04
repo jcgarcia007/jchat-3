@@ -27,6 +27,7 @@ import {
   IconPhoto,
   IconMenu2,
   IconHeart,
+  IconShoppingBag,
   IconPalette,
   IconCurrencyDollar,
   IconCalendarTime,
@@ -75,6 +76,8 @@ interface BusinessRow {
   dashboard_theme_id?: number;
   dashboard_palette_id?: number | null;
   table_subchats_enabled: boolean;
+  /** Golden rule: allow pick-up orders from outside the venue area (default off). */
+  pickup_enabled?: boolean;
   kds_settings: Record<string, unknown> | null;
   /** D-01 (Tab POS F1): stripe = cobros por Stripe · external = cobro propio del dueño. */
   pos_payment_mode: PosPaymentMode;
@@ -612,6 +615,10 @@ export default function ConfigurationPage() {
   const [tableSubchatsEnabled, setTableSubchatsEnabled] = useState(false);
   const [savingSubchats, setSavingSubchats] = useState(false);
 
+  // ── Pickup orders (golden rule): outside the area only pick-up exists, and only if this is on ──
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [savingPickup, setSavingPickup] = useState(false);
+
   // ── Section 9b: Customer order-status visibility ───────────────────────────
   const [kdsSettings, setKdsSettings] = useState<Record<string, unknown>>({});
   const [customerStatusEnabled, setCustomerStatusEnabled] = useState(false);
@@ -663,14 +670,15 @@ export default function ConfigurationPage() {
       const { data: biz } = await supabase
         .from("businesses")
         .select(
-          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled, kds_settings, pos_payment_mode"
+          "id, name, description, category, address, phone, website, hours, cover_url, icon_url, icon_emoji, gallery_urls, logo_url, menu_enabled, tips_enabled, tip_percentages, payout_frequency, dashboard_theme_id, dashboard_palette_id, table_subchats_enabled, pickup_enabled, kds_settings, pos_payment_mode"
         )
         .eq("id", res.business.id)
         .maybeSingle();
 
       if (!biz) { setLoadingBiz(false); return; }
 
-      const b = biz as BusinessRow;
+      // businesses.pickup_enabled (migration 197) is not in the generated types yet → via unknown.
+      const b = biz as unknown as BusinessRow;
       setBusinessId(b.id);
       setName(b.name ?? "");
       setDescription(b.description ?? "");
@@ -688,6 +696,7 @@ export default function ConfigurationPage() {
       setTipPercentages(b.tip_percentages ?? [15, 18, 20]);
       setPayoutFrequency(b.payout_frequency ?? "weekly");
       setTableSubchatsEnabled(b.table_subchats_enabled ?? false);
+      setPickupEnabled(b.pickup_enabled ?? false);
       setPosPaymentMode(b.pos_payment_mode === "external" ? "external" : "stripe");
       const rawKds = (b.kds_settings as Record<string, unknown> | null) ?? {};
       setKdsSettings(rawKds);
@@ -926,6 +935,15 @@ export default function ConfigurationPage() {
       setSavingSubchats,
       { table_subchats_enabled: v },
       v ? t("configurationSubchatsEnabledSuccess") : t("configurationSubchatsDisabledSuccess")
+    );
+  };
+
+  const handleTogglePickup = async (v: boolean) => {
+    setPickupEnabled(v);
+    await withSave(
+      setSavingPickup,
+      { pickup_enabled: v },
+      v ? t("configurationPickupEnabledSuccess") : t("configurationPickupDisabledSuccess")
     );
   };
 
@@ -1965,6 +1983,28 @@ export default function ConfigurationPage() {
             </div>
           );
         })()}
+      </Section>
+
+      {/* ── 5d2. Pickup orders (golden rule) ───────────────────────────────── */}
+      <Section
+        icon={<IconShoppingBag size={18} color="var(--db-accent)" />}
+        title={t("configurationPickupSectionTitle")}
+        subtitle={t("configurationPickupSectionSubtitle")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <Toggle
+            checked={pickupEnabled}
+            onChange={(v) => void handleTogglePickup(v)}
+            label={t("configurationPickupEnabledLabel")}
+            disabled={noSupabase || noBiz || savingPickup}
+          />
+          {savingPickup && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
+        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
+          {t("configurationPickupHelp")}
+        </p>
       </Section>
 
       {/* ── 5e. Match ───────────────────────────────────────────────────────── */}

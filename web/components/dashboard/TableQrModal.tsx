@@ -7,8 +7,10 @@
  */
 
 import { useEffect, useState } from "react";
+import { untypedDb } from "@/lib/untypedDb"; // regenerate_table_code is not in the generated types
+import { resolveActiveBusiness } from "@/lib/business";
 import { useTranslations } from "next-intl";
-import { IconX, IconDownload, IconCopy, IconCheck, IconPrinter, IconMessageCircle } from "@tabler/icons-react";
+import { IconX, IconDownload, IconCopy, IconCheck, IconPrinter, IconMessageCircle, IconRefresh } from "@tabler/icons-react";
 import {
   tableQrUrl,
   generateQrSvg,
@@ -21,6 +23,8 @@ export interface QrTable {
   id: string;
   label: string;
   qr_token: string;
+  /** 4-char readable code, unique per business (migration 199). */
+  short_code?: string | null;
   room_id: string | null;
 }
 
@@ -29,6 +33,34 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
   const url = tableQrUrl(table.qr_token);
   const [svg, setSvg] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  // Readable address: jchat.cloud/{slug}/{label}-{code} (until the subdomain phase).
+  const [code, setCode] = useState<string | null>(table.short_code ?? null);
+  const [slug, setSlug] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void resolveActiveBusiness().then((res) => {
+      if (active && res.ok) setSlug(res.business.slug);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const readableLabel = table.label.replace(/^(mesa|table|t)\s*/i, "").trim() || table.label;
+  const readableAddress = code && slug ? `jchat.cloud/${slug}/${encodeURIComponent(readableLabel)}-${code}` : null;
+
+  async function regenerate() {
+    if (regenerating) return;
+    setRegenerating(true);
+    setRegenError(false);
+    const { data, error } = await untypedDb.rpc("regenerate_table_code", { p_table_id: table.id });
+    if (error || typeof data !== "string") setRegenError(true);
+    else setCode(data);
+    setRegenerating(false);
+  }
 
   useEffect(() => {
     let active = true;
@@ -103,6 +135,21 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
           style={{ background: "#ffffff", borderRadius: "12px", padding: "16px", display: "flex", justifyContent: "center" }}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
+
+        {readableAddress && (
+          <div style={{ fontSize: "13px", color: "var(--db-text-secondary)", wordBreak: "break-all" }}>
+            {t("tablesQrReadableAddress")}: <strong style={{ color: "var(--db-text-primary)" }}>{readableAddress}</strong>
+          </div>
+        )}
+        {code && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <button type="button" onClick={() => void regenerate()} disabled={regenerating} style={btn}>
+              <IconRefresh size={15} /> {regenerating ? t("tablesQrRegenerating") : t("tablesQrRegenerate")}
+            </button>
+            <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{t("tablesQrRegenerateHint")}</span>
+            {regenError && <span role="alert" style={{ fontSize: "12px", color: "var(--color-danger)" }}>{t("tablesQrRegenerateError")}</span>}
+          </div>
+        )}
 
         {table.room_id && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--db-text-secondary)" }}>

@@ -40,6 +40,8 @@ interface ServiceCall {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** Set for calls made WITHOUT an account (user_id is null) — migration 198. */
+  guest_device_id?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -109,12 +111,13 @@ export default function ServicePage() {
   const loadCalls = useCallback(async (bizId: string) => {
     const { data, error: err } = await supabase
       .from("service_calls")
-      .select("id, status, type, table_label, notes, created_at, updated_at")
+      .select("id, status, type, table_label, notes, created_at, updated_at, guest_device_id")
       .eq("business_id", bizId)
       .in("status", ["pending", "acknowledged"])
       .order("created_at", { ascending: false });
     if (err) throw err;
-    setCalls((data ?? []) as ServiceCall[]);
+    // service_calls.guest_device_id (migration 198) is not in the generated types yet → via unknown.
+    setCalls((data ?? []) as unknown as ServiceCall[]);
   }, []);
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
@@ -285,7 +288,13 @@ export default function ServicePage() {
 
               {call.table_label && (
                 <p className="service-table">
-                  <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                  {call.guest_device_id ? (
+                    <strong>{t("serviceGuestTable", { table: call.table_label })}</strong>
+                  ) : (
+                    <>
+                      <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                    </>
+                  )}
                 </p>
               )}
               {!call.table_label && (

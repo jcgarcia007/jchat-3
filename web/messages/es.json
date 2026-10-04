@@ -2389,7 +2389,19 @@
     "matchFilterAll": "Todos",
     "matchResolvedToast": "Reporte marcado como resuelto.",
     "matchDismissedToast": "Reporte descartado.",
-    "matchReportStatus_reviewing": "En revisión"
+    "matchReportStatus_reviewing": "En revisión",
+    "configurationPickupSectionTitle": "Pedidos para recoger",
+    "configurationPickupSectionSubtitle": "Permite pedir para recoger a personas que NO están en tu local.",
+    "configurationPickupEnabledLabel": "Pedidos para recoger",
+    "configurationPickupHelp": "Apagado por defecto. Fuera del área de tu local los clientes solo pueden ver el menú; con esto activo también pueden pedir para recoger. Pedidos a la mesa, regalos, el mesero y el chat siempre exigen estar dentro.",
+    "configurationPickupEnabledSuccess": "Pedidos para recoger activados.",
+    "configurationPickupDisabledSuccess": "Pedidos para recoger desactivados.",
+    "serviceGuestTable": "Invitado · {table}",
+    "tablesQrReadableAddress": "Dirección legible",
+    "tablesQrRegenerate": "Regenerar código",
+    "tablesQrRegenerating": "Regenerando…",
+    "tablesQrRegenerateHint": "Úsalo si alguien abusa de la dirección de la mesa. El QR impreso sigue funcionando.",
+    "tablesQrRegenerateError": "No se pudo regenerar el código. Inténtalo de nuevo."
   },
   "superAdmin": {
     "shell": {

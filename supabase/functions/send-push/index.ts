@@ -188,6 +188,11 @@ function localizedContent(
         body = tableLabel ? `${base} · ${tableLabel}` : base;
       } else if (kind === "match_report") {
         body = english ? "New report on Match" : "Nuevo reporte en Match";
+      } else if (kind === "service_abuse") {
+        // Golden rule (migration 198): many waiter calls refused from outside the venue.
+        body = english
+          ? "Several waiter calls were blocked from outside your venue"
+          : "Se bloquearon varias llamadas al mesero hechas desde fuera de tu local";
       }
       return {
         title: english ? "Work alert" : "Alerta de trabajo",

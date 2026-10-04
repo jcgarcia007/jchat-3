@@ -2389,7 +2389,19 @@
     "matchFilterAll": "All",
     "matchResolvedToast": "Report marked as resolved.",
     "matchDismissedToast": "Report dismissed.",
-    "matchReportStatus_reviewing": "In review"
+    "matchReportStatus_reviewing": "In review",
+    "configurationPickupSectionTitle": "Pickup orders",
+    "configurationPickupSectionSubtitle": "Let people who are NOT at your venue order for pick-up.",
+    "configurationPickupEnabledLabel": "Pickup orders",
+    "configurationPickupHelp": "Off by default. Outside your venue area customers can only view the menu; with this on they can also order for pick-up. Table orders, gifts, the waiter and the chat always require being inside.",
+    "configurationPickupEnabledSuccess": "Pickup orders enabled.",
+    "configurationPickupDisabledSuccess": "Pickup orders disabled.",
+    "serviceGuestTable": "Guest · {table}",
+    "tablesQrReadableAddress": "Readable address",
+    "tablesQrRegenerate": "Regenerate code",
+    "tablesQrRegenerating": "Regenerating…",
+    "tablesQrRegenerateHint": "Use it if someone is abusing the table address. The printed QR keeps working.",
+    "tablesQrRegenerateError": "Couldn't regenerate the code. Try again."
   },
   "superAdmin": {
     "shell": {

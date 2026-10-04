@@ -169,7 +169,7 @@ export default function TablesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tables")
-      .select("id, label, floor, seats, sort, is_active, qr_token, room_id, is_reserved, reserved_note, reserved_until, party_size, combined_into")
+      .select("id, label, floor, seats, sort, is_active, qr_token, short_code, room_id, is_reserved, reserved_note, reserved_until, party_size, combined_into")
       .eq("business_id", activeId)
       .order("floor", { ascending: true })
       .order("sort", { ascending: true })
@@ -181,7 +181,8 @@ export default function TablesPage() {
       setLoading(false);
       return;
     }
-    setRows((data ?? []) as TableRow[]);
+    // tables.short_code (migration 199) is not in the generated types yet → via unknown.
+    setRows((data ?? []) as unknown as TableRow[]);
     setLoadError(false);
     setLoading(false);
   }, [activeId]);
@@ -647,7 +648,7 @@ export default function TablesPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setQrTable({ id: r.id, label: r.label, qr_token: r.qr_token, room_id: r.room_id })}
+                            onClick={() => setQrTable({ id: r.id, label: r.label, qr_token: r.qr_token, short_code: (r as { short_code?: string | null }).short_code ?? null, room_id: r.room_id })}
                             aria-label={t("tablesQrAria", { label: r.label })}
                             title={t("tablesQrAria", { label: r.label })}
                             style={ICON_BTN}
