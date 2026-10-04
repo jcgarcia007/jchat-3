@@ -89,10 +89,50 @@
   "home": {
     "title": "Match",
     "placeholder": "El mazo llega en la siguiente actualización.",
-    "back": "Atrás"
+    "back": "Atrás",
+    "myProfile": "Mi perfil de Match"
   },
   "menu": {
     "title": "Opciones",
     "cancel": "Cerrar"
+  },
+  "card": {
+    "unknownName": "Alguien",
+    "a11y": "{{name}}, tarjeta de Match",
+    "superLikedMe": "SUPER LIKE",
+    "verified": "Verificado"
+  },
+  "profile": {
+    "title": "Mi perfil de Match",
+    "loadError": "No se pudo cargar tu perfil. Inténtalo de nuevo.",
+    "previewTitle": "Así te ven los demás",
+    "previewHint": "Tu tarjeta muestra tu primera foto aprobada, tu nombre y tus intereses. Tu edad nunca se muestra.",
+    "photos": {
+      "title": "Fotos",
+      "hint": "Hasta {{max}} fotos. Cada una se revisa antes de aparecer.",
+      "add": "Añadir una foto",
+      "fromGallery": "Elegir de la galería",
+      "fromCamera": "Hacer una foto",
+      "useProfilePhoto": "Usar mi foto de perfil",
+      "status": {
+        "pending": "En revisión",
+        "approved": "Aprobada",
+        "rejected": "Rechazada"
+      },
+      "rejectedReason": "No cumple las normas",
+      "needApproved": "Necesitas al menos una foto aprobada para aparecer en Match.",
+      "limit": "Ya tienes el máximo de fotos.",
+      "permission": "Permite el acceso en los ajustes para añadir fotos.",
+      "uploadError": "No se pudo subir la foto. Inténtalo de nuevo.",
+      "deleteError": "No se pudo borrar la foto. Inténtalo de nuevo.",
+      "reorderError": "No se pudo guardar el nuevo orden. Inténtalo de nuevo.",
+      "menuTitle": "Foto",
+      "moveLeft": "Mover antes",
+      "moveRight": "Mover después",
+      "delete": "Borrar",
+      "deleteConfirmTitle": "¿Borrar esta foto?",
+      "deleteConfirmBody": "Se quitará de tu tarjeta de Match.",
+      "tileA11y": "Foto {{position}}, {{status}}"
+    }
   }
 }

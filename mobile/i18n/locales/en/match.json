@@ -89,10 +89,50 @@
   "home": {
     "title": "Match",
     "placeholder": "The deck arrives in the next update.",
-    "back": "Back"
+    "back": "Back",
+    "myProfile": "My Match profile"
   },
   "menu": {
     "title": "Options",
     "cancel": "Close"
+  },
+  "card": {
+    "unknownName": "Someone",
+    "a11y": "{{name}}, Match card",
+    "superLikedMe": "SUPER LIKE",
+    "verified": "Verified"
+  },
+  "profile": {
+    "title": "My Match profile",
+    "loadError": "Couldn't load your profile. Try again.",
+    "previewTitle": "This is how others see you",
+    "previewHint": "Your card shows your first approved photo, your name and your interests. Your age is never shown.",
+    "photos": {
+      "title": "Photos",
+      "hint": "Up to {{max}} photos. Each one is reviewed before it appears.",
+      "add": "Add a photo",
+      "fromGallery": "Choose from gallery",
+      "fromCamera": "Take a photo",
+      "useProfilePhoto": "Use my profile photo",
+      "status": {
+        "pending": "In review",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "rejectedReason": "Doesn't meet the rules",
+      "needApproved": "You need at least one approved photo to appear in Match.",
+      "limit": "You already have the maximum number of photos.",
+      "permission": "Allow access in your settings to add photos.",
+      "uploadError": "Couldn't upload the photo. Try again.",
+      "deleteError": "Couldn't delete the photo. Try again.",
+      "reorderError": "Couldn't save the new order. Try again.",
+      "menuTitle": "Photo",
+      "moveLeft": "Move earlier",
+      "moveRight": "Move later",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this photo?",
+      "deleteConfirmBody": "It will be removed from your Match card.",
+      "tileA11y": "Photo {{position}}, {{status}}"
+    }
   }
 }
