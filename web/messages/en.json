@@ -3616,5 +3616,31 @@
     "notifying": "Notifying…",
     "imageEnlarged": "Enlarged image",
     "beFirst": "Be the first to write something 👋"
+  },
+  "venue": {
+    "restrictedTitle": "We couldn't confirm you're at {business}",
+    "restrictedBody": "Away from the venue you can only view the menu and, if the venue allows it, order for pick-up.",
+    "location": {
+      "denied": "Location is blocked in your browser. Allow it to enter the chat, call the waiter or order to your table.",
+      "unavailable": "We couldn't read your location. Check that location is on and try again.",
+      "timeout": "Reading your location took too long. Try again.",
+      "unsupported": "This browser can't share its location."
+    },
+    "allowLocation": "Allow location",
+    "retry": "Retry",
+    "locating": "Confirming your location…",
+    "whatYouCanDo": "What you can do",
+    "viewMenu": "View menu",
+    "orderPickup": "Order for pick-up",
+    "pickupDisabled": "{business} isn't accepting pick-up orders right now",
+    "outsideVenue": "To do this you need to be at {business}",
+    "callAlreadyOpen": "We already told the staff. Wait for them to attend you.",
+    "blocked24h": "You can't call the service right now.",
+    "callWaiter": "Call the waiter",
+    "signInChat": "Sign in to enter the chat",
+    "chatNeedsAccount": "To enter the chat you need an account, to be at {business} and your age confirmed.",
+    "tableTitle": "Table {table}",
+    "tableOrder": "View menu and order",
+    "outsideVenueGeneric": "To do this you need to be at the venue"
   }
 }

@@ -38,6 +38,7 @@ export default async function TableQrPage({
 
   let resolved: ResolvedTable | null = null;
   let hasSession = false;
+  let business: { id: string; name: string } | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createSupabaseServerClient();
@@ -47,9 +48,17 @@ export default async function TableQrPage({
     ]);
     resolved = (data as ResolvedTable[] | null)?.[0] ?? null;
     hasSession = !!auth.user;
+    if (resolved) {
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("id, name")
+        .eq("slug", resolved.business_slug)
+        .maybeSingle();
+      business = (biz as { id: string; name: string } | null) ?? null;
+    }
   }
 
-  if (!resolved) {
+  if (!resolved || !business) {
     return (
       <div style={shell}>
         <div style={card}>
@@ -75,6 +84,8 @@ export default async function TableQrPage({
       token={token}
       tableLabel={resolved.table_label}
       businessSlug={resolved.business_slug}
+      businessId={business.id}
+      businessName={business.name}
       roomQrToken={resolved.room_qr_token}
       hasSession={hasSession}
     />

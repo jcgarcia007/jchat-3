@@ -8,7 +8,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   IconMessageCircle2,
   IconQrcode,
@@ -138,8 +137,6 @@ export default async function QREntryPage({
   }
 
   // ── Valid QR — Welcome screen ────────────────────────────────────────────────
-  const loginUrl = `/auth/login?next=${encodeURIComponent(`/c/${token}`)}`;
-
   return (
     <div style={shell}>
       <div style={card}>
@@ -209,80 +206,16 @@ export default async function QREntryPage({
           </div>
         </div>
 
-        {/* Access info — only shown pre-login */}
-        {!hasSession && (
-          <div>
-            <p
-              style={{
-                fontSize: 14,
-                color: "var(--text-primary)",
-                margin: "0 0 4px",
-                lineHeight: 1.5,
-              }}
-            >
-              {t("enteringBefore")}{" "}
-              <strong>{room.business_name}</strong>
-              {" — "}
-              <strong>{room.room_name}</strong>.
-            </p>
-            {room.is_sub_room && (
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  margin: 0,
-                  lineHeight: 1.5,
-                }}
-              >
-                {t("alsoMainRoom")}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* CTA */}
-        {hasSession ? (
-          <RoomHub
-            token={token}
-            roomId={room.room_id}
-            businessId={room.business_id}
-            isSubRoom={room.is_sub_room}
-            userId={userId}
-          />
-        ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 10 }}
-          >
-            <Link
-              href={loginUrl}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "13px 16px",
-                borderRadius: 12,
-                background: "var(--color-brand)",
-                color: "var(--on-brand)",
-                fontSize: 15,
-                fontWeight: 600,
-                textDecoration: "none",
-                textAlign: "center",
-              }}
-            >
-              {t("signInToEnter")}
-            </Link>
-            <p
-              style={{
-                fontSize: 12,
-                color: "var(--text-tertiary)",
-                textAlign: "center",
-                margin: 0,
-              }}
-            >
-              {t("needAccount")}
-            </p>
-          </div>
-        )}
+        {/* Hub: location first (golden rule); works with and without an account */}
+        <RoomHub
+          token={token}
+          roomId={room.room_id}
+          businessId={room.business_id}
+          businessName={room.business_name}
+          isSubRoom={room.is_sub_room}
+          userId={userId}
+          hasSession={hasSession}
+        />
 
         <div style={{ textAlign: "center" }}>
           <LanguageSwitcher />

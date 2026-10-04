@@ -3616,5 +3616,31 @@
     "notifying": "Notificando…",
     "imageEnlarged": "Imagen ampliada",
     "beFirst": "Sé el primero en escribir algo 👋"
+  },
+  "venue": {
+    "restrictedTitle": "No pudimos confirmar que estés en {business}",
+    "restrictedBody": "Fuera del local solo puedes ver el menú y, si el local lo permite, pedir para recoger.",
+    "location": {
+      "denied": "La ubicación está bloqueada en tu navegador. Permítela para entrar al chat, llamar al mesero o pedir a la mesa.",
+      "unavailable": "No pudimos leer tu ubicación. Comprueba que esté activada e inténtalo de nuevo.",
+      "timeout": "Leer tu ubicación tardó demasiado. Inténtalo de nuevo.",
+      "unsupported": "Este navegador no puede compartir su ubicación."
+    },
+    "allowLocation": "Permitir ubicación",
+    "retry": "Reintentar",
+    "locating": "Confirmando tu ubicación…",
+    "whatYouCanDo": "Lo que sí puedes hacer",
+    "viewMenu": "Ver menú",
+    "orderPickup": "Pedir para recoger",
+    "pickupDisabled": "{business} no acepta pedidos para recoger por ahora",
+    "outsideVenue": "Para esto necesitas estar en {business}",
+    "callAlreadyOpen": "Ya avisamos al personal. Espera a que te atiendan.",
+    "blocked24h": "No puedes llamar al servicio por ahora.",
+    "callWaiter": "Llamar al mesero",
+    "signInChat": "Iniciar sesión para entrar al chat",
+    "chatNeedsAccount": "Para entrar al chat necesitas cuenta, estar en {business} y tener la edad confirmada.",
+    "tableTitle": "Mesa {table}",
+    "tableOrder": "Ver menú y pedir",
+    "outsideVenueGeneric": "Para esto necesitas estar en el local"
   }
 }

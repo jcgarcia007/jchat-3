@@ -28,6 +28,7 @@ export interface WaiterSheetProps {
 
 export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheetProps) {
   const t = useTranslations("waiterSheet");
+  const tv = useTranslations("venue");
   const [tableLabel, setTableLabel] = useState("");
   const [notes, setNotes] = useState("");
   const [state, setState] = useState<WaiterState>("idle");
@@ -84,6 +85,12 @@ export function WaiterSheet({ roomId, businessId, userId, onClose }: WaiterSheet
     }
 
     const msg = (error as { message?: string }).message ?? "";
+    if (msg.includes("outside_venue")) {
+      // Golden rule (trigger on service_calls): no venue presence → the call is refused.
+      setState("error");
+      setErrorMsg(tv("outsideVenueGeneric"));
+      return;
+    }
     if (msg.includes("service_call_cooldown")) {
       setState("cooldown");
       startCooldown();

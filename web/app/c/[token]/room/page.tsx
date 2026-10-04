@@ -134,6 +134,17 @@ export default async function RoomPage({
     );
   }
 
+  // Golden rule: the chat needs a live venue presence (created by join_room_via_qr WITH coordinates).
+  // Staff are exempt. Without presence the hub asks for the location again (membership alone is not enough).
+  const db = supabase as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown }>;
+  };
+  const [{ data: present }, { data: staff }] = await Promise.all([
+    db.rpc("venue_presence_ok", { p_business_id: room.business_id, p_user_id: authData.user.id }),
+    db.rpc("is_venue_staff", { p_business_id: room.business_id, p_user_id: authData.user.id }),
+  ]);
+  if (present !== true && staff !== true) redirect(`/c/${token}`);
+
   return (
     <ChatRoom
       token={token}
