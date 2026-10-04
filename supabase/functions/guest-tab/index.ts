@@ -13,6 +13,7 @@
  *   add_order_no_code  { table_qr_token, device_id, fingerprint, captcha_token,
  *                        idempotency_key, items[], contact_name?, notes? }   — F4
  *   order_status       { session_token } | { table_qr_token, device_id }    — F4
+ *   request_service    { table_qr_token, device_id, captcha_token, lat, lng, notes? } — golden rule
  *
  * Errores: { error: { code, message, retry_after_s?, blocked_until? } } con HTTP 4xx.
  * El campo `code` es estable en mayúsculas — el cliente traduce por code.
@@ -1497,6 +1498,65 @@ async function handleCancelPayment(body: Record<string, unknown>): Promise<Respo
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
+// ─── Golden rule: guest "call the waiter" (migration 198, guest_request_service) ───────────────
+//
+//   request_service { table_qr_token, device_id, captcha_token, lat, lng, notes? }
+//
+// No account: hCaptcha here, then the database decides everything (location inside the venue, device
+// blocks after repeated outside attempts, ONE open call per table, abuse alert to the owner).
+// Errors: OUTSIDE_VENUE · CALL_ALREADY_OPEN · BLOCKED_24H · INVALID_QR · DEVICE_REQUIRED.
+
+const GUEST_SERVICE_ERRORS: Record<string, { code: string; status: number; message: string }> = {
+  device_required:   { code: "DEVICE_REQUIRED",   status: 400, message: "Dispositivo requerido" },
+  invalid_qr:        { code: "INVALID_QR",        status: 404, message: "Código de mesa no válido" },
+  blocked_24h:       { code: "BLOCKED_24H",       status: 429, message: "Dispositivo bloqueado por 24 h" },
+  outside_venue:     { code: "OUTSIDE_VENUE",     status: 403, message: "Fuera del área del local" },
+  call_already_open: { code: "CALL_ALREADY_OPEN", status: 409, message: "Ya hay una llamada abierta en esta mesa" },
+};
+
+async function handleRequestService(body: Record<string, unknown>, req: Request): Promise<Response> {
+  const { table_qr_token, device_id, captcha_token, lat, lng, notes } = body as {
+    table_qr_token?: string;
+    device_id?:      string;
+    captcha_token?:  string;
+    lat?:            unknown;
+    lng?:            unknown;
+    notes?:          unknown;
+  };
+
+  if (!table_qr_token || typeof table_qr_token !== "string")
+    return errResponse("VALIDATION", "table_qr_token requerido", 400);
+  if (!device_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(device_id))
+    return errResponse("VALIDATION", "device_id debe ser UUID v4", 400);
+  if (!captcha_token || typeof captcha_token !== "string")
+    return errResponse("VALIDATION", "captcha_token requerido", 400);
+  // Coordinates are mandatory: without them the server can't place the person inside the venue.
+  if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng))
+    return errResponse("OUTSIDE_VENUE", "Ubicación requerida", 403);
+
+  if (!(await verifyCaptcha(captcha_token, getClientIp(req))))
+    return errResponse("CAPTCHA_FAILED", "Verificación de seguridad fallida", 403);
+
+  const { data, error } = await getAdminClient().rpc("guest_request_service", {
+    p_table_token: table_qr_token,
+    p_lat: lat,
+    p_lng: lng,
+    p_device_id: device_id,
+    p_notes: typeof notes === "string" && notes.trim() ? notes.trim().slice(0, 200) : null,
+  });
+  if (error || !data) {
+    console.error("[guest-tab] guest_request_service failed:", error?.message ?? "no data");
+    return errResponse("INTERNAL", "No se pudo avisar al personal", 500);
+  }
+
+  const result = data as { ok: boolean; id?: string; table_label?: string; error?: string };
+  if (result.ok) return jsonResponse({ ok: true, id: result.id, table_label: result.table_label });
+
+  const mapped = GUEST_SERVICE_ERRORS[result.error ?? ""];
+  if (!mapped) return errResponse("INTERNAL", "No se pudo avisar al personal", 500);
+  return errResponse(mapped.code, mapped.message, mapped.status);
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST")   return errResponse("METHOD_NOT_ALLOWED", "Método no permitido", 405);
@@ -1520,6 +1580,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     case "create_payment":    return handleCreatePayment(body);         // F5
     case "confirm_payment":   return handleConfirmPayment(body);        // F5
     case "cancel_payment":    return handleCancelPayment(body);         // F5
+    case "request_service":   return handleRequestService(body, req);   // golden rule: guest waiter call
     default:
       return errResponse("UNKNOWN_ACTION", `Acción desconocida: ${action ?? "(vacía)"}`, 400);
   }

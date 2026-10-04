@@ -27,6 +27,7 @@ import Stripe from "npm:stripe@16.2.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 import { priceLinesFromDb, computeTaxCents, TAX_FALLBACK } from "../_shared/pricing.ts";
+import { finiteCoord, venueOrderGate } from "../_shared/venue.ts";
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -144,6 +145,13 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   }
 
   const db = getAdminClient();
+
+  // Golden rule (guests): only the coordinates can prove presence. Outside the area only pick-up,
+  // and only if the owner enabled it; reject BEFORE any PaymentIntent exists.
+  const venueLat = finiteCoord(order.lat);
+  const venueLng = finiteCoord(order.lng);
+  const venueGate = await venueOrderGate(db, businessId, orderType, venueLat, venueLng);
+  if (venueGate) return jsonResponse({ error: venueGate.message, code: venueGate.code }, 403);
   const stripe = getStripe();
 
   // ── Guard 3: business exists + can charge (shared gate, same errors) ───────
@@ -201,6 +209,7 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   if (contactName) metadata.contact_name = contactName;
   if (contactEmail) metadata.contact_email = contactEmail;
   if (tableLabel) metadata.table_label = tableLabel;
+  if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
   if (resolvedTableId) metadata.table_id = resolvedTableId;
 
   const piParams = buildConnectPiParams({

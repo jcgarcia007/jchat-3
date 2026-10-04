@@ -31,6 +31,7 @@
 import Stripe from "npm:stripe@16.2.0";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
+import { finiteCoord, venueOrderGate } from "../_shared/venue.ts";
 import {
   priceLinesFromDb,
   computeTaxCents,
@@ -103,7 +104,7 @@ async function verifyCaller(
 }
 
 interface CartItem { menu_item_id: string; name: string; qty: number; price_cents: number; options?: Record<string, unknown>; special_instructions?: string | null; }
-interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; table_label?: string | null; table_qr_token?: string | null; items: CartItem[]; }
+interface OrderPayload { business_id: string; user_id: string; room_id?: string | null; order_type: "table" | "counter" | "gift"; gift_recipient_id?: string | null; subtotal_cents: number; tax_cents: number; tip_cents: number; discount_cents: number; total_cents: number; promo_code?: string | null; special_instructions?: string | null; table_label?: string | null; table_qr_token?: string | null; lat?: number | null; lng?: number | null; items: CartItem[]; }
 
 /** Email lives in auth.users, not public.users — fetch via the admin API. */
 async function userEmail(db: ReturnType<typeof getAdminClient>, userId: string): Promise<string | undefined> {
@@ -250,9 +251,12 @@ async function buildQuote(
  * (no PaymentIntent, no pending cart). The app shows exactly what comes back, and uses
  * quote_hash as the payment idempotency key.
  */
-async function handleQuoteOrder(body: Record<string, unknown>): Promise<Response> {
+async function handleQuoteOrder(body: Record<string, unknown>, userClient: UserClient): Promise<Response> {
   const payload = body.order as OrderPayload | undefined;
   if (!payload) return errorResponse("order payload is required");
+  // Golden rule: reject early (same codes as create_paid_order) so nobody sees a price they can't pay.
+  const gate = await venueOrderGate(userClient, payload.business_id, payload.order_type, finiteCoord(payload.lat), finiteCoord(payload.lng));
+  if (gate) return jsonResponse({ error: gate.message, code: gate.code }, 403);
   const q = await buildQuote(getAdminClient(), payload);
   if (q instanceof Response) return q;
 
@@ -288,9 +292,14 @@ async function handleQuoteOrder(body: Record<string, unknown>): Promise<Response
  * authUserId: JWT-verified caller identity from Deno.serve — never use body.user_id
  * for authentication or DB lookups. body.user_id is kept as a trace field only.
  */
-async function handleCreatePaymentIntent(body: Record<string, unknown>, authUserId: string): Promise<Response> {
+async function handleCreatePaymentIntent(body: Record<string, unknown>, authUserId: string, userClient: UserClient): Promise<Response> {
   const payload = body.order as OrderPayload | undefined;
   if (!payload) return errorResponse("order payload is required");
+  // Golden rule (account flow: the account's venue presence counts, coordinates are the fallback).
+  const venueLat = finiteCoord(payload.lat);
+  const venueLng = finiteCoord(payload.lng);
+  const gate = await venueOrderGate(userClient, payload.business_id, payload.order_type, venueLat, venueLng);
+  if (gate) return jsonResponse({ error: gate.message, code: gate.code }, 403);
 
   const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label } = payload;
   // Sanitize free-text table label (never trust the client; Stripe metadata is length-capped).
@@ -415,6 +424,8 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
   if (tableLabel)           metadata.table_label = tableLabel;
   if (resolvedTableId)      metadata.table_id = resolvedTableId;
+  // Coordinates travel to the webhook so create_paid_order can re-verify even if the 10-min presence lapsed.
+  if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
   if (contactEmail)         metadata.contact_email = contactEmail;
   if (contactPhone)         metadata.contact_phone = contactPhone;
   if (contactName)          metadata.contact_name = contactName;
@@ -982,8 +993,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     switch (action) {
       case "ensure_customer":       return await handleEnsureCustomer(authUserId);
-      case "quote_order":           return await handleQuoteOrder(body);
-      case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId);
+      case "quote_order":           return await handleQuoteOrder(body, auth.userClient);
+      case "create_payment_intent": return await handleCreatePaymentIntent(body, authUserId, auth.userClient);
       case "create_setup_intent":   return await handleCreateSetupIntent(authUserId);
       // Waiter takes an order at a table — no payment. Needs the caller-scoped
       // client so is_waiter_of_table() is evaluated as the caller.

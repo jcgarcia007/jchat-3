@@ -246,6 +246,9 @@ async function handlePaymentSucceeded(
   const promoCode = meta.promo_code ?? null;
   const specialInstructions = meta.special_instructions ?? null;
   const tableLabel = meta.table_label ?? null;
+  // Golden rule (migration 198): the client coordinates captured at payment time.
+  const venueLat = meta.lat != null && Number.isFinite(Number(meta.lat)) ? Number(meta.lat) : null;
+  const venueLng = meta.lng != null && Number.isFinite(Number(meta.lng)) ? Number(meta.lng) : null;
   // C2: real table id, resolved server-side by the payments EF (null for counter/
   // mobile/legacy orders that carry no table_qr_token).
   const tableId = meta.table_id ?? null;
@@ -367,6 +370,8 @@ async function handlePaymentSucceeded(
       promo_code: promoCode,
       special_instructions: specialInstructions,
       table_label: tableLabel,
+      lat: venueLat,
+      lng: venueLng,
       table_id: tableId,
       taken_by: takenBy,
       contact_email: contactEmail,
