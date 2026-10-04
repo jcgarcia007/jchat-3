@@ -63,6 +63,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { initAndPresentPaymentSheet, quoteOrder, QuoteError } from '../../services/stripe';
 import { fetchVenueAccess, readVenueCoords } from '../../services/venueAccess';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { OrderItemInput, OrderQuote, OrderRequest } from '../../services/stripe';
 import { getOrderByPaymentIntent } from '../../services/orders';
 import type { PaidOrderSummary } from '../../services/orders';
@@ -79,9 +80,17 @@ type TipPreset = 10 | 15 | 20 | 'custom';
 type QuoteState =
   | { status: 'loading'; quote: OrderQuote | null }
   | { status: 'ready'; quote: OrderQuote }
-  | { status: 'error'; message: string; quote: OrderQuote | null; offerPickup?: boolean };
+  | { status: 'error'; message: string; quote: OrderQuote | null }
+  // Golden rule: the server says this order type isn't allowed from where the person is.
+  | { status: 'venue'; quote: null; pickupAvailable: boolean };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+/** outside_venue / pickup_disabled from the quote or payment call (code or message, any case). */
+function isVenueRefusal(error: unknown): boolean {
+  const e = error as { code?: unknown; message?: unknown } | null;
+  return [e?.code, e?.message].some((v) => typeof v === 'string' && /^(outside_venue|pickup_disabled)$/i.test(v));
+}
 
 const TIP_PRESETS: TipPreset[] = [10, 15, 20, 'custom'];
 
@@ -415,35 +424,68 @@ export default function CheckoutScreen() {
   useEffect(() => {
     if (!businessId || lines.length === 0) return;
     const quoteId = ++quoteSeqRef.current;
-    setQuoteState((previous) => ({ status: 'loading', quote: previous.quote }));
+    const stale = () => quoteId !== quoteSeqRef.current || !mountedRef.current;
+    setQuoteState((previous) => (previous.status === 'venue' ? { status: 'loading', quote: null } : { status: 'loading', quote: previous.quote }));
     const timer = setTimeout(() => {
-      quoteOrder(buildRequest())
-        .then((fresh) => {
-          if (quoteId === quoteSeqRef.current && mountedRef.current) {
-            setQuoteState({ status: 'ready', quote: fresh });
+      void (async () => {
+        // Golden rule, client side: ask the server first what this person may order from here, so the
+        // refusal is shown as such (never as a "check your connection" error). A failed check is not a
+        // verdict: we go on and the quote (which applies the same gate) decides.
+        try {
+          const access = await fetchVenueAccess(businessId, await readVenueCoords());
+          if (stale()) return;
+          if (!access.failed && !access.allowedTypes.includes(orderType)) {
+            setQuoteState({ status: 'venue', quote: null, pickupAvailable: access.allowedTypes.includes('counter') });
+            return;
           }
-        })
-        .catch((error: unknown) => {
-          if (quoteId !== quoteSeqRef.current || !mountedRef.current) return;
+        } catch {
+          // fall through to the quote
+        }
+        try {
+          const fresh = await quoteOrder(buildRequest());
+          if (!stale()) setQuoteState({ status: 'ready', quote: fresh });
+        } catch (error: unknown) {
+          if (stale()) return;
           console.warn('[checkout] quote failed:', error);
+          if (isVenueRefusal(error)) {
+            // The quote's own gate refused: re-read what is allowed to know if pick-up exists.
+            const access = await fetchVenueAccess(businessId, await readVenueCoords()).catch(() => null);
+            if (stale()) return;
+            setQuoteState({ status: 'venue', quote: null, pickupAvailable: access?.allowedTypes.includes('counter') === true });
+            return;
+          }
           const message = toUserMessage(error, 'pos:checkout.quoteError');
           setQuoteState((previous) => ({ status: 'error', message, quote: previous.quote }));
-          // Golden rule: outside the venue a table order is never a dry rejection — if the owner
-          // allows pick-up, offer it (the server answers who may do what).
-          if (error instanceof QuoteError && error.code?.toLowerCase() === 'outside_venue' && orderType !== 'counter') {
-            void readVenueCoords()
-              .then((coords) => fetchVenueAccess(businessId, coords))
-              .then((access) => {
-                if (quoteId !== quoteSeqRef.current || !mountedRef.current || !access.pickupEnabled) return;
-                setQuoteState((previous) => (previous.status === 'error' ? { ...previous, offerPickup: true } : previous));
-              });
-          }
-        });
+        }
+      })();
     }, QUOTE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // buildRequest already depends on every input of the request; itemsKey/nonce re-trigger it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, lines.length, itemsKey, tipCents, orderType, giftRecipientId, tableLabel, roomId, quoteNonce]);
+
+  // Business name for the golden-rule copy ("To order you need to be at {business}").
+  const [businessName, setBusinessName] = useState('');
+  useEffect(() => {
+    if (!businessId || !isSupabaseConfigured) return;
+    let alive = true;
+    void supabase
+      .from('businesses')
+      .select('name')
+      .eq('id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (alive && data?.name) setBusinessName(data.name);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [businessId]);
+
+  /** "Allow location / Retry": re-reads the location (prompting if needed) and asks the server again. */
+  const handleVenueRetry = useCallback(() => {
+    void readVenueCoords(true).then(() => setQuoteNonce((n) => n + 1));
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -548,6 +590,12 @@ export default function CheckoutScreen() {
 
       if (!result.ok) {
         if (result.code === 'Canceled') return; // user closed the sheet — not an error
+        if (isVenueRefusal({ code: result.code, message: result.message })) {
+          // Golden rule at payment time: nothing was charged; show the venue state instead of an error.
+          attemptRef.current = null;
+          setQuoteNonce((n) => n + 1);
+          return;
+        }
         if (result.code === 'TotalChanged') {
           const b = result.breakdown;
           Alert.alert(
@@ -660,6 +708,11 @@ export default function CheckoutScreen() {
   }
 
   const quoteLoading = quoteState.status === 'loading';
+  // The item summary never depends on the quote: server prices when we have them, the cart otherwise.
+  const summaryRows = quote
+    ? quote.lines.map((l, idx) => ({ key: `${l.menu_item_id}:${idx}`, qty: l.qty, name: l.name, cents: l.line_cents }))
+    : lines.map((l) => ({ key: l.lineId, qty: l.qty, name: l.item.name, cents: l.unitPriceCents * l.qty }));
+  const venueBlocked = quoteState.status === 'venue';
   const payDisabled = processing || quoteState.status !== 'ready';
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -711,34 +764,24 @@ export default function CheckoutScreen() {
               </Pressable>
             </View>
 
-            {quote ? (
-              quote.lines.map((line, idx) => (
-                <View
-                  key={`${line.menu_item_id}:${idx}`}
-                  style={[
-                    styles.summaryRow,
-                    idx < quote.lines.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle },
-                    quoteLoading && { opacity: 0.5 },
-                  ]}
-                >
-                  <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
-                    <Text style={[styles.qtyBadgeText, { color: palette.brand }]}>
-                      {line.qty}
-                    </Text>
-                  </View>
-                  <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
-                    {line.name}
-                  </Text>
-                  <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]}>
-                    {formatCents(line.line_cents)}
-                  </Text>
+            {summaryRows.map((row, idx) => (
+              <View
+                key={row.key}
+                style={[
+                  styles.summaryRow,
+                  idx < summaryRows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle },
+                  quoteLoading && { opacity: 0.5 },
+                ]}
+              >
+                <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
+                  <Text style={[styles.qtyBadgeText, { color: palette.brand }]}>{row.qty}</Text>
                 </View>
-              ))
-            ) : (
-              <View style={styles.quotePlaceholder}>
-                {quoteState.status === 'error' ? null : <ActivityIndicator color={palette.brand} />}
+                <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
+                  {row.name}
+                </Text>
+                <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]}>{formatCents(row.cents)}</Text>
               </View>
-            )}
+            ))}
 
             {/* Order type badge */}
             <View style={[styles.orderTypeBadge, { backgroundColor: c.bgElevated }]}>
@@ -873,13 +916,28 @@ export default function CheckoutScreen() {
                 >
                   <Text style={styles.quoteRetryText}>{t('checkout.quoteRetry')}</Text>
                 </Pressable>
-                {quoteState.offerPickup ? (
+              </View>
+            ) : null}
+
+            {quoteState.status === 'venue' ? (
+              <View style={styles.quoteErrorBox} accessibilityRole="alert">
+                <Text style={[styles.quoteErrorText, { color: c.textPrimary, fontWeight: '700' }]}>
+                  {t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') })}
+                </Text>
+                <Pressable
+                  onPress={handleVenueRetry}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={styles.quoteRetryText}>{t('checkout.venueRetry')}</Text>
+                </Pressable>
+                {quoteState.pickupAvailable && orderType !== 'counter' ? (
                   <Pressable
                     onPress={() => setOrderType('counter')}
                     accessibilityRole="button"
-                    style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                    style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: c.bgElevated, opacity: pressed ? 0.85 : 1 }]}
                   >
-                    <Text style={styles.quoteRetryText}>{t('checkout.orderPickup')}</Text>
+                    <Text style={[styles.quoteRetryText, { color: c.textPrimary }]}>{t('checkout.orderPickup')}</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -913,7 +971,7 @@ export default function CheckoutScreen() {
                 <ActivityIndicator color={palette.bgSurfaceLight} size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {quote ? t('checkout.payButton', { amount: formatCents(quote.total_cents) }) : t('checkout.payWaiting')}
+                  {quote ? t('checkout.payButton', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') }) : t('checkout.payWaiting')}
                 </Text>
               )}
             </Pressable>

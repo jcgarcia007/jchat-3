@@ -20,6 +20,8 @@ export interface VenueAccess {
   inside: boolean;
   pickupEnabled: boolean;
   allowedTypes: VenueOrderType[];
+  /** The check itself failed (network/server) — NOT a verdict; callers must not treat it as "outside". */
+  failed?: boolean;
 }
 
 /** Fails closed: nothing allowed. */
@@ -66,7 +68,7 @@ export async function fetchVenueAccess(businessId: string, coords: Coords | null
     p_lng: coords?.lng ?? null,
   } as never);
   const d = data as { inside?: unknown; pickup_enabled?: unknown; allowed_types?: unknown } | null;
-  if (error || !d) return NO_VENUE_ACCESS;
+  if (error || !d) return { ...NO_VENUE_ACCESS, failed: true };
   return {
     inside: d.inside === true,
     pickupEnabled: d.pickup_enabled === true,
