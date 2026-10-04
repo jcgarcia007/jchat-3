@@ -209,3 +209,31 @@ export function subscribeOrder(
     void supabase.removeChannel(channel);
   };
 }
+
+
+// ── Order notices (migration 200) ─────────────────────────────────────────────
+
+export type OrderNoticeKind = 'on_my_way' | 'arrived' | 'question';
+
+/** Stable error codes of order_notify_staff that have a translated message. */
+export type OrderNoticeError = 'notice_cooldown' | 'notice_limit' | 'order_closed' | 'not_your_order' | 'other';
+
+/**
+ * "Avisar al local" about an ALREADY PAID order (any order type, no location needed). Only the order's
+ * owner can send it; the server enforces the cooldown/limits. Never throws: returns the error code.
+ */
+export async function notifyOrderStaff(
+  orderId: string,
+  kind: OrderNoticeKind,
+  note?: string,
+): Promise<{ ok: true } | { ok: false; error: OrderNoticeError }> {
+  const { error } = await supabase.rpc('order_notify_staff' as never, {
+    p_order_id: orderId,
+    p_kind: kind,
+    p_note: note?.trim() || null,
+  } as never);
+  if (!error) return { ok: true };
+  const message = String((error as { message?: unknown }).message ?? '');
+  const known = (['notice_cooldown', 'notice_limit', 'order_closed', 'not_your_order'] as const).find((c) => message.includes(c));
+  return { ok: false, error: known ?? 'other' };
+}

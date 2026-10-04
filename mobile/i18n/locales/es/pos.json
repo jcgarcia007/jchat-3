@@ -198,7 +198,7 @@
     "tip": "Propina",
     "discount": "Descuento",
     "callServiceA11y": "Llamar al personal",
-    "callStaff": "Llamar al personal",
+    "callStaff": "Llamar al mesero",
     "backToChat": "Volver al chat",
     "sheetTitle": "Llamar al personal",
     "sheetBody": "Se avisará a un miembro del personal y acudirá a tu mesa.",
@@ -223,6 +223,21 @@
       "disputed": "En revisión",
       "awaitingApproval": "Esperando aprobación",
       "rejected": "Rechazado"
+    },
+    "noticeBtn": "Avisar al local",
+    "noticeOnMyWay": "Voy en camino",
+    "noticeArrived": "Ya llegué al local",
+    "noticeQuestion": "Tengo una pregunta sobre mi pedido",
+    "noticeQuestionPlaceholder": "Escribe tu pregunta (máx. 200 caracteres)",
+    "noticeSend": "Enviar",
+    "noticeSent": "Avisamos al local",
+    "waiterOutside": "Para llamar al mesero necesitas estar en el local.",
+    "noticeErr": {
+      "notice_cooldown": "Ya avisamos al local. Puedes enviar otro aviso en unos minutos.",
+      "notice_limit": "Ya enviaste varios avisos sobre este pedido.",
+      "order_closed": "Este pedido ya no admite avisos.",
+      "not_your_order": "No pudimos enviar el aviso. Inténtalo de nuevo.",
+      "other": "No pudimos enviar el aviso. Inténtalo de nuevo."
     }
   },
   "comandaCustomer": "Cliente",

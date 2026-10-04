@@ -36,6 +36,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -66,6 +67,7 @@ import type { OrderRow, OrderItemRow, OrderStatus } from '../../services/orders'
 import { formatCents } from '../../utils/currency';
 import { RatingPrompt } from '../../components/reviews/RatingPrompt';
 import { toUserMessage } from '../../utils/errors';
+import { notifyOrderStaff, type OrderNoticeKind } from '../../services/orders';
 
 // ── Route / Navigation types ──────────────────────────────────────────────────
 
@@ -185,6 +187,11 @@ export default function OrderTrackingScreen(): React.ReactElement {
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [showServiceSheet, setShowServiceSheet] = useState(false);
   const [serviceCallLoading, setServiceCallLoading] = useState(false);
+  // "Avisar al local" (migration 200): notice about an already paid order.
+  const [showNoticeSheet, setShowNoticeSheet] = useState(false);
+  const [noticeQuestion, setNoticeQuestion] = useState(false);
+  const [noticeText, setNoticeText] = useState('');
+  const [noticeSending, setNoticeSending] = useState(false);
   const [ratingDone, setRatingDone] = useState(false);
 
   const [loadError, setLoadError] = useState(false);
@@ -302,12 +309,36 @@ export default function OrderTrackingScreen(): React.ReactElement {
       setShowServiceSheet(false);
       Alert.alert(t('tracking.staffNotifiedTitle'), t('tracking.staffNotifiedMessage'));
     } catch (err) {
-      const msg = toUserMessage(err, 'pos:tracking.genericError');
+      // Golden rule: the waiter call needs the venue presence; outside it is explained, not "generic".
+      const outside = /outside_venue/.test(String((err as { message?: unknown } | null)?.message ?? ''));
+      const msg = outside ? t('tracking.waiterOutside') : toUserMessage(err, 'pos:tracking.genericError');
       Alert.alert(t('shared.errorTitle'), msg);
     } finally {
       setServiceCallLoading(false);
     }
   }, [order, user, t]);
+
+  const closeNoticeSheet = useCallback(() => {
+    setShowNoticeSheet(false);
+    setNoticeQuestion(false);
+    setNoticeText('');
+  }, []);
+
+  const sendNotice = useCallback(
+    async (kind: OrderNoticeKind, note?: string) => {
+      if (!order || noticeSending) return;
+      setNoticeSending(true);
+      const result = await notifyOrderStaff(order.id, kind, note);
+      setNoticeSending(false);
+      if (result.ok) {
+        closeNoticeSheet();
+        Alert.alert(t('tracking.noticeSent'));
+        return;
+      }
+      Alert.alert(t('shared.errorTitle'), t(`tracking.noticeErr.${result.error}`));
+    },
+    [order, noticeSending, closeNoticeSheet, t],
+  );
 
   // ── Styles
   const styles = useMemo(() => makeStyles(c), [c]);
@@ -598,16 +629,28 @@ export default function OrderTrackingScreen(): React.ReactElement {
 
       {/* ── Bottom actions ── */}
       <View style={styles.bottomBar}>
-        {/* Service call button */}
+        {/* "Avisar al local": notice about a PAID order (replaces the generic staff call) */}
         {showStepper && !isDelivered && (
           <Pressable
-            onPress={() => setShowServiceSheet(true)}
+            onPress={() => setShowNoticeSheet(true)}
             style={styles.serviceBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('tracking.noticeBtn')}
+          >
+            <IconBellRinging size={20} color={c.bgSurface} />
+            <Text style={styles.serviceBtnLabel}>{t('tracking.noticeBtn')}</Text>
+          </Pressable>
+        )}
+
+        {/* Table orders keep "Call the waiter" apart (golden rule: needs the venue presence) */}
+        {showStepper && !isDelivered && order.order_type === 'table' && (
+          <Pressable
+            onPress={() => setShowServiceSheet(true)}
+            style={styles.chatBtn}
             accessibilityRole="button"
             accessibilityLabel={t('tracking.callServiceA11y')}
           >
-            <IconBellRinging size={20} color={c.bgSurface} />
-            <Text style={styles.serviceBtnLabel}>{t('tracking.callStaff')}</Text>
+            <Text style={styles.chatBtnLabel}>{t('tracking.callStaff')}</Text>
           </Pressable>
         )}
 
@@ -623,6 +666,77 @@ export default function OrderTrackingScreen(): React.ReactElement {
           </Pressable>
         ) : null}
       </View>
+
+      {/* ── "Avisar al local" sheet ── */}
+      <Modal visible={showNoticeSheet} transparent animationType="slide" onRequestClose={closeNoticeSheet}>
+        <Pressable style={styles.sheetOverlay} onPress={closeNoticeSheet} accessibilityRole="none" />
+        <View style={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>{t('tracking.noticeBtn')}</Text>
+
+          {!noticeQuestion ? (
+            <>
+              {order.order_type === 'counter' && (
+                <>
+                  <Pressable
+                    onPress={() => void sendNotice('on_my_way')}
+                    disabled={noticeSending}
+                    style={[styles.noticeOption, noticeSending && styles.sheetBtnDisabled]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.noticeOptionLabel}>{t('tracking.noticeOnMyWay')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void sendNotice('arrived')}
+                    disabled={noticeSending}
+                    style={[styles.noticeOption, noticeSending && styles.sheetBtnDisabled]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.noticeOptionLabel}>{t('tracking.noticeArrived')}</Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable
+                onPress={() => setNoticeQuestion(true)}
+                disabled={noticeSending}
+                style={styles.noticeOption}
+                accessibilityRole="button"
+              >
+                <Text style={styles.noticeOptionLabel}>{t('tracking.noticeQuestion')}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <TextInput
+                value={noticeText}
+                onChangeText={setNoticeText}
+                maxLength={200}
+                multiline
+                placeholder={t('tracking.noticeQuestionPlaceholder')}
+                placeholderTextColor={c.textTertiary}
+                style={styles.noticeInput}
+                accessibilityLabel={t('tracking.noticeQuestion')}
+              />
+              <Pressable
+                onPress={() => void sendNotice('question', noticeText)}
+                disabled={noticeSending || noticeText.trim().length === 0}
+                style={[styles.sheetConfirmBtn, (noticeSending || noticeText.trim().length === 0) && styles.sheetBtnDisabled]}
+                accessibilityRole="button"
+              >
+                {noticeSending ? (
+                  <ActivityIndicator size="small" color={c.bgSurface} />
+                ) : (
+                  <Text style={styles.sheetConfirmLabel}>{t('tracking.noticeSend')}</Text>
+                )}
+              </Pressable>
+            </>
+          )}
+
+          <Pressable onPress={closeNoticeSheet} style={styles.sheetCancelBtn} accessibilityRole="button">
+            <Text style={styles.sheetCancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       {/* ── Service call bottom sheet (Modal) ── */}
       <Modal
@@ -918,6 +1032,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
     // ── Bottom bar
     bottomBar: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: 10,
       padding: 16,
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -926,6 +1041,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
     },
     serviceBtn: {
       flex: 1,
+      minWidth: '45%',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -941,6 +1057,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
     },
     chatBtn: {
       flex: 1,
+      minWidth: '45%',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: c.bgElevated,
@@ -1021,6 +1138,31 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       fontSize: 15,
       fontWeight: '600',
       color: c.bgSurface,
+    },
+    noticeOption: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 52,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+      paddingHorizontal: 16,
+    },
+    noticeOptionLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: c.textPrimary,
+      textAlign: 'center',
+    },
+    noticeInput: {
+      minHeight: 88,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+      padding: 12,
+      fontSize: 15,
+      color: c.textPrimary,
+      textAlignVertical: 'top',
     },
     sheetCancelBtn: {
       alignItems: 'center',

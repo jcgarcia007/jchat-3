@@ -198,7 +198,7 @@
     "tip": "Tip",
     "discount": "Discount",
     "callServiceA11y": "Call for service",
-    "callStaff": "Call Staff",
+    "callStaff": "Call the waiter",
     "backToChat": "Back to Chat",
     "sheetTitle": "Call for Staff Assistance",
     "sheetBody": "A staff member will be notified and will come to your table.",
@@ -223,6 +223,21 @@
       "disputed": "Under review",
       "awaitingApproval": "Waiting for approval",
       "rejected": "Rejected"
+    },
+    "noticeBtn": "Let the venue know",
+    "noticeOnMyWay": "I'm on my way",
+    "noticeArrived": "I've arrived at the venue",
+    "noticeQuestion": "I have a question about my order",
+    "noticeQuestionPlaceholder": "Write your question (max. 200 characters)",
+    "noticeSend": "Send",
+    "noticeSent": "We let the venue know",
+    "waiterOutside": "To call the waiter you need to be at the venue.",
+    "noticeErr": {
+      "notice_cooldown": "We already let the venue know. You can send another notice in a few minutes.",
+      "notice_limit": "You've already sent several notices about this order.",
+      "order_closed": "This order no longer accepts notices.",
+      "not_your_order": "We couldn't send the notice. Please try again.",
+      "other": "We couldn't send the notice. Please try again."
     }
   },
   "comandaCustomer": "Customer",
