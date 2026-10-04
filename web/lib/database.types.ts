@@ -3933,6 +3933,8 @@ export type Database = {
           settings: Json
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          terms_accepted_at: string | null
+          terms_version: string | null
           updated_at: string
           username: string
         }
@@ -4081,7 +4083,10 @@ export type Database = {
           image_url: string | null
         }[]
       }
-      confirm_age: { Args: { p_birth_date: string }; Returns: Json }
+      confirm_age: {
+        Args: { p_birth_date: string; p_terms_version?: string }
+        Returns: Json
+      }
       check_geofence_and_join_room: {
         Args: { _lat: number; _lng: number; _room_id: string }
         Returns: {

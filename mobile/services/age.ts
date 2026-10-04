@@ -7,6 +7,7 @@
  */
 
 import { supabase } from './supabase';
+import { TERMS_VERSION } from '../constants/terms';
 
 export type ConfirmAgeResult = 'ok' | 'underage' | 'error';
 
@@ -27,6 +28,7 @@ export async function confirmAge(birthDate: Date): Promise<ConfirmAgeResult> {
   try {
     const { data, error } = await supabase.rpc('confirm_age', {
       p_birth_date: toIsoDate(birthDate),
+      p_terms_version: TERMS_VERSION,
     });
     if (error) return 'error';
     const res = data as { ok?: boolean; reason?: string } | null;

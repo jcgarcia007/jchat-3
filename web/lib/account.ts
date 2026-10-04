@@ -6,6 +6,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { TERMS_VERSION } from "@/lib/terms";
 
 /** true only when the server confirmed the deletion. Never throws. */
 export async function deleteMyAccount(): Promise<boolean> {
@@ -35,7 +36,10 @@ export type ConfirmAgeResult = "ok" | "underage" | "error";
 /** Sends the picked date (YYYY-MM-DD) to rpc confirm_age. The date is never stored client-side. */
 export async function confirmAge(isoDate: string): Promise<ConfirmAgeResult> {
   try {
-    const { data, error } = await supabase.rpc("confirm_age", { p_birth_date: isoDate });
+    const { data, error } = await supabase.rpc("confirm_age", {
+      p_birth_date: isoDate,
+      p_terms_version: TERMS_VERSION,
+    });
     if (error) return "error";
     const res = data as { ok?: boolean; reason?: string } | null;
     if (res?.ok === true) return "ok";
