@@ -46,6 +46,8 @@ export interface DmConversationRow {
   created_at: string;
   hidden_at_a: string | null;
   hidden_at_b: string | null;
+  /** Non-null while this is an ephemeral Match chat (the venue it lives in). */
+  ephemeral_business_id?: string | null;
 }
 
 export interface DmMessageRow {
@@ -70,6 +72,8 @@ export interface ConversationPreview {
   lastMessageAt: string | null;
   /** Messages sent TO currentUser that have no read_at. */
   unreadCount: number;
+  /** Venue name when this is an ephemeral Match chat (list shows "Match · {name}"), else null. */
+  matchBusinessName?: string | null;
 }
 
 export interface SendMessageInput {
@@ -120,7 +124,7 @@ export async function listConversations(
   // 1 — fetch conversations where userId is user_a or user_b
   const { data: convos, error: convErr } = await supabase
     .from('dm_conversations')
-    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
+    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b, ephemeral_business_id')
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order('last_message_at', { ascending: false, nullsFirst: false });
 
@@ -149,6 +153,14 @@ export async function listConversations(
   const userMap = new Map<string, DmParticipant>(
     ((usersData ?? []) as DmParticipant[]).map((u) => [u.id, u]),
   );
+
+  // Venue names for ephemeral Match chats (best effort: the tag falls back to plain "Match").
+  const venueIds = [...new Set(rows.map((r) => r.ephemeral_business_id).filter((id): id is string => !!id))];
+  const venueNames = new Map<string, string>();
+  if (venueIds.length > 0) {
+    const { data: venues } = await supabase.from('businesses').select('id, name').in('id', venueIds);
+    for (const v of (venues ?? []) as { id: string; name: string }[]) venueNames.set(v.id, v.name);
+  }
 
   // 4 — for each conversation fetch last message + unread count
   const previews: ConversationPreview[] = await Promise.all(
@@ -193,6 +205,7 @@ export async function listConversations(
         lastMessageBody: lastMsg?.body ?? null,
         lastMessageAt: lastMsg?.created_at ?? c.last_message_at,
         unreadCount: unreadCount ?? 0,
+        matchBusinessName: c.ephemeral_business_id ? (venueNames.get(c.ephemeral_business_id) ?? '') : null,
       };
     }),
   );

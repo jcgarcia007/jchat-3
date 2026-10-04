@@ -237,5 +237,15 @@
     "helpSent": "Listo, avisamos al personal",
     "helpSentBody": "Alguien del local se acercará. Quédate donde haya más gente.",
     "error": "No se pudo completar. Inténtalo de nuevo."
+  },
+  "chat": {
+    "banner": "Este chat se borra al salir de {{business}} · Síganse mutuamente para conservarlo",
+    "follow": "Seguir",
+    "following": "Siguiendo",
+    "requested": "Solicitado",
+    "waitingPlaceholder": "Enviaste el primer mensaje. Espera su respuesta.",
+    "waitingBody": "Ya enviaste el primer mensaje. Espera su respuesta para escribir de nuevo.",
+    "listTag": "Match · {{business}}",
+    "listTagShort": "Match"
   }
 }

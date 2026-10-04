@@ -48,6 +48,7 @@ import {
   IconArrowLeft,
   IconCheck,
   IconChecks,
+  IconDots,
   IconMicrophone,
   IconPhoto,
   IconSend,
@@ -72,6 +73,11 @@ import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
 import { isDmVoicePath } from '../../utils/mediaUrl';
 import { toUserMessage } from '../../utils/errors';
+import { useFollowSystem } from '../../hooks/useFollowSystem';
+import { useMatchSafety } from '../../components/match/MatchSafety';
+import { getChatMeta, isAwaitingReplyError } from '../../services/matchChat';
+import type { ChatMeta } from '../../services/matchChat';
+import { getMatchPresence } from '../../services/matchPresence';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -207,6 +213,7 @@ export default function DMChatScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('social');
   const { t: tc } = useTranslation('common');
+  const { t: tm } = useTranslation('match');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
@@ -219,6 +226,35 @@ export default function DMChatScreen() {
   const [text, setText] = useState(route.params.prefill ?? '');
   const [sending, setSending] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+
+  // ── Ephemeral Match chat (Fase D5) ───────────────────────────────────────────
+  const [meta, setMeta] = useState<ChatMeta | null>(null);
+  const loadMeta = useCallback(async () => {
+    if (!user) return;
+    setMeta(await getChatMeta(conversationId, user.id));
+  }, [conversationId, user]);
+
+  useEffect(() => {
+    void loadMeta();
+  }, [loadMeta]);
+
+  const isEphemeral = meta?.ephemeralBusinessId != null;
+  // Real follow state with the other person; a mutual follow makes the chat permanent server-side.
+  const follow = useFollowSystem(isEphemeral ? meta?.otherUserId : null);
+  useEffect(() => {
+    if (isEphemeral && !follow.loading) void loadMeta(); // relation changed → ephemeral flag may be gone
+  }, [follow.relation, follow.loading, isEphemeral, loadMeta]);
+
+  const safety = useMatchSafety({
+    businessId: meta?.ephemeralBusinessId ?? '',
+    roomId: getMatchPresence().roomId,
+    targetUserId: meta?.otherUserId ?? null,
+    targetName: meta?.otherName ?? '',
+    onBlocked: () => navigation.goBack(),
+  });
+
+  // The first sender must wait for a reply (server rule); I'm waiting when I sent the first message.
+  const waitingForReply = isEphemeral && meta?.awaitingReply === true && meta?.firstSenderId === user?.id;
 
   // ── Fetch messages ──────────────────────────────────────────────────────────
 
@@ -264,6 +300,12 @@ export default function DMChatScreen() {
         (payload) => {
           const newMsg = payload.new as DmMessageRow;
           setMessages((prev) => [newMsg, ...prev]);
+          // Their reply frees me; my first message puts me in "waiting" (ephemeral chats only).
+          setMeta((m) => {
+            if (!m || m.ephemeralBusinessId == null) return m;
+            if (newMsg.sender_id !== user.id) return { ...m, awaitingReply: false };
+            return m.firstSenderId == null ? { ...m, firstSenderId: user.id, awaitingReply: true } : m;
+          });
 
           // If the message is from the other user, mark it read immediately
           if (newMsg.sender_id !== user.id) {
@@ -293,12 +335,17 @@ export default function DMChatScreen() {
       await sendMessage({ conversationId, senderId: user.id, body });
     } catch (err) {
       console.warn('[DMChat] send error', err);
-      Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendTextError'));
+      if (isAwaitingReplyError(err)) {
+        setMeta((m) => (m ? { ...m, firstSenderId: user.id, awaitingReply: true } : m));
+        Alert.alert(t('dmChat.errorTitle'), tm('chat.waitingBody'));
+      } else {
+        Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendTextError'));
+      }
       setText(body); // restore on failure
     } finally {
       setSending(false);
     }
-  }, [user, text, sending, conversationId, t]);
+  }, [user, text, sending, conversationId, t, tm]);
 
   // ── Pick & send photo ───────────────────────────────────────────────────────
 
@@ -395,10 +442,45 @@ export default function DMChatScreen() {
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
-          {/* TODO: load other user's display_name here */}
-          {t('dmChat.title')}
+          {meta?.otherName ?? t('dmChat.title')}
         </Text>
+        {isEphemeral && (
+          <>
+            <Pressable
+              onPress={() => void follow.follow()}
+              disabled={follow.relation !== 'none' || follow.busy || follow.loading}
+              accessibilityRole="button"
+              style={[styles.followBtn, { borderColor: palette.brand, backgroundColor: follow.relation === 'none' ? palette.brand : 'transparent' }]}
+            >
+              <Text style={[styles.followBtnText, { color: follow.relation === 'none' ? palette.onBrand : palette.brand }]}>
+                {follow.relation === 'following'
+                  ? tm('chat.following')
+                  : follow.relation === 'requested'
+                    ? tm('chat.requested')
+                    : tm('chat.follow')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={safety.openMenu}
+              accessibilityRole="button"
+              accessibilityLabel={tm('safety.menuTitle')}
+              hitSlop={10}
+              style={styles.moreBtn}
+            >
+              <IconDots size={22} color={c.textPrimary} />
+            </Pressable>
+          </>
+        )}
       </View>
+
+      {/* Permanent banner while the chat only exists inside the venue */}
+      {isEphemeral && (
+        <View style={[styles.ephemeralBanner, { backgroundColor: c.bgElevated, borderBottomColor: c.borderSubtle }]}>
+          <Text style={[styles.ephemeralBannerText, { color: c.textSecondary }]}>
+            {tm('chat.banner', { business: meta?.businessName ?? '' })}
+          </Text>
+        </View>
+      )}
 
       {/* Messages */}
       {loading ? (
@@ -454,6 +536,7 @@ export default function DMChatScreen() {
         <TouchableOpacity
           style={styles.composerIconBtn}
           onPress={handlePickPhoto}
+          disabled={waitingForReply}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <IconPhoto size={22} color={c.textSecondary} strokeWidth={2} />
@@ -463,6 +546,7 @@ export default function DMChatScreen() {
         <TouchableOpacity
           style={styles.composerIconBtn}
           onPress={() => setRecordingVoice(true)}
+          disabled={waitingForReply}
           accessibilityRole="button"
           accessibilityLabel={tc('voice.record')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -480,8 +564,9 @@ export default function DMChatScreen() {
               borderColor: c.borderSubtle,
             },
           ]}
-          placeholder={t('dmChat.placeholder')}
+          placeholder={waitingForReply ? tm('chat.waitingPlaceholder') : t('dmChat.placeholder')}
           placeholderTextColor={c.textTertiary}
+          editable={!waitingForReply}
           value={text}
           onChangeText={setText}
           multiline
@@ -500,7 +585,7 @@ export default function DMChatScreen() {
             },
           ]}
           onPress={handleSendText}
-          disabled={text.trim().length === 0 || sending}
+          disabled={text.trim().length === 0 || sending || waitingForReply}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <IconSend
@@ -511,6 +596,7 @@ export default function DMChatScreen() {
         </TouchableOpacity>
       </View>
       )}
+      {safety.sheets}
     </KeyboardAvoidingView>
   );
 }
@@ -531,6 +617,19 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: 12,
   },
+  followBtn: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  followBtnText: { fontSize: 13, fontWeight: '700' },
+  moreBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  ephemeralBanner: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  ephemeralBannerText: { fontSize: 12, lineHeight: 17, textAlign: 'center' },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',

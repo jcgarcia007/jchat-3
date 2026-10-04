@@ -49,7 +49,7 @@ function ConversationRow({
 }) {
   const colors = useThemeColors();
   const translation = useTranslation('social');
-  const { otherUser, lastMessageBody, lastMessageAt, unreadCount } = conversation;
+  const { otherUser, lastMessageBody, lastMessageAt, unreadCount, matchBusinessName } = conversation;
   const hasUnread = unreadCount > 0;
 
   return (
@@ -81,6 +81,13 @@ function ConversationRow({
             {formatSocialTime(lastMessageAt, translation.i18n.language, translation.t)}
           </Text>
         </View>
+        {matchBusinessName != null && (
+          <Text numberOfLines={1} style={[styles.matchTag, { color: colors.brand }]}>
+            {matchBusinessName
+              ? translation.t('chat.listTag', { ns: 'match', business: matchBusinessName })
+              : translation.t('chat.listTagShort', { ns: 'match' })}
+          </Text>
+        )}
         <View style={styles.rowBottom}>
           <Text
             numberOfLines={1}
@@ -245,6 +252,7 @@ const styles = StyleSheet.create({
   rowContent: { flex: 1 },
   rowTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
   rowName: { flex: 1, fontSize: 16, marginRight: 8 },
+  matchTag: { fontSize: 12, fontWeight: '600', marginBottom: 2 },
   rowTime: { fontSize: 12 },
   rowBottom: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   rowPreview: { flex: 1, fontSize: 14, marginRight: 8 },

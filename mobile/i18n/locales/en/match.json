@@ -237,5 +237,15 @@
     "helpSent": "Done, we let the staff know",
     "helpSentBody": "Someone from the venue will come to you. Stay where there are other people.",
     "error": "Couldn't complete that. Try again."
+  },
+  "chat": {
+    "banner": "This chat is deleted when you leave {{business}} · Follow each other to keep it",
+    "follow": "Follow",
+    "following": "Following",
+    "requested": "Requested",
+    "waitingPlaceholder": "You sent the first message. Wait for their reply.",
+    "waitingBody": "You already sent the first message. Wait for their reply to write again.",
+    "listTag": "Match · {{business}}",
+    "listTagShort": "Match"
   }
 }
