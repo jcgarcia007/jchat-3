@@ -246,7 +246,8 @@ async function handlePaymentSucceeded(
   const promoCode = meta.promo_code ?? null;
   const specialInstructions = meta.special_instructions ?? null;
   const tableLabel = meta.table_label ?? null;
-  // Golden rule (migration 198): the client coordinates captured at payment time.
+  // Client coordinates captured at payment time — traceability only: the golden rule was already applied
+  // before charging (venueOrderGate); create_paid_order never rejects a paid order (migration 198c).
   const venueLat = meta.lat != null && Number.isFinite(Number(meta.lat)) ? Number(meta.lat) : null;
   const venueLng = meta.lng != null && Number.isFinite(Number(meta.lng)) ? Number(meta.lng) : null;
   // C2: real table id, resolved server-side by the payments EF (null for counter/

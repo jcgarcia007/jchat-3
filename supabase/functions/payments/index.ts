@@ -424,7 +424,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
   if (tableLabel)           metadata.table_label = tableLabel;
   if (resolvedTableId)      metadata.table_id = resolvedTableId;
-  // Coordinates travel to the webhook so create_paid_order can re-verify even if the 10-min presence lapsed.
+  // Coordinates travel to the webhook as traceability only (the rule is applied here, before charging).
   if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
   if (contactEmail)         metadata.contact_email = contactEmail;
   if (contactPhone)         metadata.contact_phone = contactPhone;

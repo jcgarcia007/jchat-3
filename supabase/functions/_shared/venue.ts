@@ -3,8 +3,9 @@
  *
  * Inside the venue (server-verified): everything. Outside: only "counter" (pick-up) and only if
  * businesses.pickup_enabled. The verdict is the database's (venue_order_access); the functions only
- * forward the client's coordinates and reject EARLY (at quote / PaymentIntent creation) with the same
- * error codes create_paid_order uses, so nobody is charged for an order the webhook would refuse.
+ * forward the client's coordinates and reject at quote / PaymentIntent creation. This is the ONLY place the
+ * rule lives: create_paid_order (service_role only, migration 198c) never re-applies it, because an order
+ * that was already charged is never rejected.
  */
 
 // deno-lint-ignore no-explicit-any
