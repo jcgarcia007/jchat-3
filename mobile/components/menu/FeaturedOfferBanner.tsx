@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#ffffff',
+    color: palette.onBrand,
     letterSpacing: 0.8,
   },
   title: {

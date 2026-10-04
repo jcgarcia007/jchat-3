@@ -51,6 +51,7 @@ import { addEmployee, EMPLOYEE_ROLES } from '../../services/employees';
 import type { EmployeeRole } from '../../services/employees';
 import { toUserMessage } from '../../utils/errors';
 import type { ThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -331,7 +332,7 @@ function makeStyles(c: ThemeColors) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     avoidingView: {
       flex: 1,

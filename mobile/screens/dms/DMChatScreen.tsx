@@ -100,7 +100,7 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
 
   // Bubble colors mirror chatThemes "default" style
   const bubbleOutBg = palette.brand;
-  const bubbleOutText = '#ffffff';
+  const bubbleOutText = palette.onBrand;
   const bubbleInBg = c.bgElevated;
   const bubbleInText = c.textPrimary;
 
@@ -177,7 +177,7 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
           <Text
             style={[
               styles.bubbleTime,
-              { color: isOwn ? 'rgba(255,255,255,0.7)' : c.textTertiary },
+              { color: isOwn ? palette.onImageMuted : c.textTertiary },
             ]}
           >
             {formatTime(message.created_at)}
@@ -188,10 +188,10 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
             <View style={styles.readReceipt}>
               {message.read_at ? (
                 // Double check = read
-                <IconChecks size={14} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+                <IconChecks size={14} color={palette.onImageStrong} strokeWidth={2} />
               ) : (
                 // Single check = delivered/sent
-                <IconCheck size={14} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                <IconCheck size={14} color={palette.onImageMuted} strokeWidth={2} />
               )}
             </View>
           )}
@@ -505,7 +505,7 @@ export default function DMChatScreen() {
         >
           <IconSend
             size={18}
-            color={text.trim().length > 0 ? '#ffffff' : c.textTertiary}
+            color={text.trim().length > 0 ? palette.onBrand : c.textTertiary}
             strokeWidth={2}
           />
         </TouchableOpacity>

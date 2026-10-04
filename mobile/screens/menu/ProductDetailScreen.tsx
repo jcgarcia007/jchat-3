@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: palette.scrimMedium,
     alignItems: 'center',
     justifyContent: 'center',
   },

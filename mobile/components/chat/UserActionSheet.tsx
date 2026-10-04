@@ -641,7 +641,7 @@ function makeStyles(c: ThemeColors) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     sheet: {
       position: 'absolute',

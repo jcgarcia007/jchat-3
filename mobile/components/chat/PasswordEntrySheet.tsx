@@ -52,6 +52,7 @@ import {
   MAX_ATTEMPTS,
 } from '../../services/roomAccess';
 import type { ThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -364,7 +365,7 @@ function makeStyles(c: ThemeColors) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     avoidingView: {
       flex: 1,

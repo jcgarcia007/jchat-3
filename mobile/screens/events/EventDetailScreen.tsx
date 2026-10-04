@@ -213,7 +213,7 @@ export default function EventDetailScreen({
               ]}
               activeOpacity={0.8}
             >
-              <IconDoor size={18} color="#ffffff" />
+              <IconDoor size={18} color={palette.onImage} />
               <Text style={styles.joinButtonText}>{t('joinChatButton')}</Text>
             </TouchableOpacity>
           )}
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     padding: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: palette.scrimSoft,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   joinButtonText: {
-    color: '#ffffff',
+    color: palette.onImage,
     fontSize: 15,
     fontWeight: '700',
   },

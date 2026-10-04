@@ -54,6 +54,7 @@ import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
+import { palette } from '../../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -297,7 +298,7 @@ function modalStyles(c: ThemeColors, theme: ChatTheme) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.50)',
+      backgroundColor: palette.scrimMedium,
     },
     sheet: {
       position: 'absolute',

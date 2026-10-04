@@ -23,13 +23,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { IconStar, IconStarFilled } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 
 // ── Local color block ──────────────────────────────────────────────────────
 // No exact token in tokens.ts for gold star color — design spec calls for
 // #FFCC00. See JCHAT_3.0_DESIGN_SYSTEM.docx · Section 2.
 const REVIEW_COLORS = {
   /** Star fill color. Design spec: #FFCC00. No palette token for this value. */
-  starGold: '#FFCC00',
+  starGold: palette.ratingStar,
 } as const;
 
 // ── Props ──────────────────────────────────────────────────────────────────

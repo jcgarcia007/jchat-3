@@ -60,6 +60,7 @@ import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
+import { palette } from '../../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -599,7 +600,7 @@ function makeStyles(c: ThemeColors) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     avoidingView: {
       flex: 1,

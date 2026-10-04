@@ -46,6 +46,7 @@ import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
+import { palette } from '../../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -469,10 +470,10 @@ export function PinMessageSheet({
             ]}
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={palette.onBrand} />
             ) : (
               <>
-                <IconPin size={18} color="#ffffff" />
+                <IconPin size={18} color={palette.onBrand} />
                 <Text style={s.saveBtnLabel}>
                   {t('pin.pinButton')}
                 </Text>
@@ -494,7 +495,7 @@ function makeStyles(c: ThemeColors, theme: ChatTheme) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     sheet: {
       position: 'absolute',
@@ -591,7 +592,7 @@ function makeStyles(c: ThemeColors, theme: ChatTheme) {
       marginTop: 4,
     },
     saveBtnLabel: {
-      color: '#ffffff',
+      color: palette.onBrand,
       fontSize: 16,
       fontWeight: '700',
     },

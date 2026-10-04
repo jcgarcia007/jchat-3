@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   // Android text modal.
   textModalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: palette.scrimMedium,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,

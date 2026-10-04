@@ -974,7 +974,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
     // ── Service call sheet
     sheetOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: palette.scrimMedium,
     },
     sheet: {
       backgroundColor: c.bgSurface,

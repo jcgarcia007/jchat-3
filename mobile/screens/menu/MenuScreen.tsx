@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   cartBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#ffffff',
+    color: palette.onBrand,
   },
   // Search
   searchContainer: {

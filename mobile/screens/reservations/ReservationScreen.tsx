@@ -658,7 +658,7 @@ export default function ReservationScreen({
                 },
               ]}
             >
-              {wantsWaitlist && <IconCheck size={12} color="#fff" />}
+              {wantsWaitlist && <IconCheck size={12} color={palette.onBrand} />}
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -708,7 +708,7 @@ export default function ReservationScreen({
             ]}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={palette.onBrand} size="small" />
             ) : (
               <Text style={styles.submitBtnText}>
                 {slotFull && wantsWaitlist
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   submitBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   doneBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '700',
   },

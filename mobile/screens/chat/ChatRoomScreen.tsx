@@ -91,6 +91,7 @@ import { reportUser } from '../../services/users';
 import { ReportReasonSheet, type ReportReason } from '../../components/chat/ReportReasonSheet';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { palette } from '../../theme/tokens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1435,14 +1436,14 @@ export default function ChatRoomScreen() {
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                backgroundColor: palette.scrimMedium,
                 borderWidth: 2,
-                borderColor: 'rgba(255,255,255,0.5)',
+                borderColor: palette.onImageFaint,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <IconX size={20} color="#fff" />
+              <IconX size={20} color={palette.onImage} />
             </Pressable>
           </View>
         )}
@@ -1552,7 +1553,7 @@ const gateStyles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: palette.scrimMedium,
   },
   sheet: {
     borderTopLeftRadius: 20,

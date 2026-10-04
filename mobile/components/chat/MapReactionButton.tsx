@@ -48,6 +48,7 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { sendMapReaction } from '../../services/mapReactions';
 import { useTranslation } from 'react-i18next';
+import { palette } from '../../theme/tokens';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       borderWidth: 1,
       borderColor: c.borderSubtle,
       // Shadow (iOS).
-      shadowColor: '#000000',
+      shadowColor: palette.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.18,
       shadowRadius: 6,

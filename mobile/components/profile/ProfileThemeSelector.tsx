@@ -30,6 +30,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_THEMES, ProfileTheme } from '../../theme/profileThemes';
+import { palette } from '../../theme/tokens';
 
 // ─── Layout constants (numbers only — no colors here) ────────────────────────
 const COLUMNS = 3;
@@ -99,7 +100,7 @@ function ThemeCard({ theme, isSelected, onPress }: ThemeCardProps): React.JSX.El
       <View style={[styles.statsStrip, { backgroundColor: theme.statsBg, borderTopColor: theme.statsBorder }]}>
         {/* Name line */}
         <Text
-          style={[styles.nameText, { color: theme.nameColor === '#ffffff' ? theme.statsValColor : theme.nameColor }]}
+          style={[styles.nameText, { color: theme.nameColor.toLowerCase() === palette.onBrand.toLowerCase() ? theme.statsValColor : theme.nameColor }]}
           numberOfLines={1}
         >
           {theme.name}

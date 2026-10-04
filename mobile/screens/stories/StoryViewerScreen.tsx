@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   },
   dimOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: palette.scrimSoft,
   },
 
   // Progress bars
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 2.5,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: palette.onImageFaint,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timeAgo: {
-    color: 'rgba(255,255,255,0.7)',
+    color: palette.onImageMuted,
     fontSize: 12,
   },
   closeBtn: {
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textOverlayBubble: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: palette.scrimMedium,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,

@@ -157,7 +157,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
             accessibilityRole="button"
             accessibilityLabel={t('productRow.addToCartA11y', { name: item.name })}
           >
-            <IconPlus size={18} color="#ffffff" strokeWidth={2.5} />
+            <IconPlus size={18} color={palette.onBrand} strokeWidth={2.5} />
           </Pressable>
         </View>
       </Pressable>
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,

@@ -46,7 +46,7 @@ export function CartBar({ onPress }: CartBarProps) {
         {/* Left: cart icon + count badge */}
         <View style={styles.leftGroup}>
           <View style={styles.badgeWrapper}>
-            <IconShoppingCart size={20} color="#ffffff" strokeWidth={2} />
+            <IconShoppingCart size={20} color={palette.onBrand} strokeWidth={2} />
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{itemCount > 99 ? '99+' : String(itemCount)}</Text>
             </View>
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -8,
-    backgroundColor: '#ffffff',
+    backgroundColor: palette.onBrand,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: palette.onBrand,
     letterSpacing: 0.2,
   },
   total: {
@@ -115,6 +115,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 15,
     fontWeight: '700',
-    color: '#ffffff',
+    color: palette.onBrand,
   },
 });

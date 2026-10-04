@@ -43,6 +43,7 @@ import { supabase } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { palette } from '../../theme/tokens';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -357,7 +358,7 @@ function makeStyles(c: ThemeColors) {
   return StyleSheet.create({
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: palette.scrimMedium,
     },
     avoidingView: {
       flex: 1,

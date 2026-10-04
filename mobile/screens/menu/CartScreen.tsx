@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   browseButtonText: {
-    color: '#ffffff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
