@@ -4,7 +4,8 @@
  *
  * The login is fixed artwork: nothing here follows light/dark mode (see theme/ticket.ts).
  * With `entrance` the ticket rises from below the screen with a slight bounce; "Reduce motion"
- * skips it. `onEntranceDone` fires once the ticket is in place (or immediately without animation).
+ * skips it. `onContentReady` fires CONTENT_START_MS after the ticket starts rising (while it is still
+ * moving), or immediately without animation.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -28,6 +29,12 @@ import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { LanguagePill } from './LanguagePill';
 import { TICKET_PADDING } from './ticketLayout';
 
+// ── Entrance timing (tweak here) ──────────────────────────────────────────────
+/** Firm spring: the ticket settles in ≈ 600 ms with very little bounce. */
+const TICKET_SPRING = { stiffness: 95, damping: 15, mass: 1 } as const;
+/** The content starts to appear this long after the ticket starts rising (it is still moving). */
+const CONTENT_START_MS = 350;
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const LOGIN_PHOTO = require('../../assets/images/login-bg.jpg') as number;
 
@@ -38,8 +45,8 @@ export interface TicketShellProps {
   overlap?: number;
   /** Rise-from-below entrance (login only). */
   entrance?: boolean;
-  /** Called once the ticket is in place; `reduceMotion` tells whether the entrance was skipped. */
-  onEntranceDone?: (reduceMotion: boolean) => void;
+  /** Time to start the content cascade; `reduceMotion` tells whether the entrance was skipped. */
+  onContentReady?: (reduceMotion: boolean) => void;
   /** Top-left control over the photo (e.g. the Back button). */
   leftSlot?: React.ReactNode;
   children?: React.ReactNode;
@@ -74,7 +81,7 @@ export function TicketShell({
   photoFraction = 0.47,
   overlap = 64,
   entrance = false,
-  onEntranceDone,
+  onContentReady,
   leftSlot,
   children,
 }: TicketShellProps) {
@@ -84,8 +91,8 @@ export function TicketShell({
   const photoHeight = Math.round(height * photoFraction);
   const translateY = useRef(new Animated.Value(entrance ? height : 0)).current;
   const doneRef = useRef(false);
-  const doneCallbackRef = useRef(onEntranceDone);
-  doneCallbackRef.current = onEntranceDone;
+  const doneCallbackRef = useRef(onContentReady);
+  doneCallbackRef.current = onContentReady;
 
   useEffect(() => {
     const finish = (reduceMotion: boolean) => {
@@ -103,18 +110,17 @@ export function TicketShell({
       finish(true);
       return undefined;
     }
-    // ≈ 1 s with a slight overshoot.
     const spring = Animated.spring(translateY, {
       toValue: 0,
-      stiffness: 70,
-      damping: 11,
-      mass: 1,
+      ...TICKET_SPRING,
       useNativeDriver: true,
     });
-    spring.start(({ finished }) => {
-      if (finished) finish(false);
-    });
-    return () => spring.stop();
+    spring.start();
+    const contentTimer = setTimeout(() => finish(false), CONTENT_START_MS);
+    return () => {
+      clearTimeout(contentTimer);
+      spring.stop();
+    };
   }, [entrance, reduce, translateY]);
 
   return (

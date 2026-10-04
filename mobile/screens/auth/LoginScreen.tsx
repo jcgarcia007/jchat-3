@@ -50,9 +50,10 @@ export default function LoginScreen() {
   const { t } = useTranslation('auth');
   const fontsReady = useLoginFonts();
   const [oauthBusy, setOauthBusy] = useState(false);
-  // Entrance: the ticket rises, then six blocks fade in one after another; the title sweeps in.
+  // Entrance: the ticket rises and, while it is still moving, six blocks fade in one after another
+  // (timings live in TicketShell / TicketReveal); the title sweeps in.
   const cascade = useTicketCascade(6, 1);
-  const handleLanded = useCallback(
+  const handleContentReady = useCallback(
     (reduceMotion: boolean) => (reduceMotion ? cascade.showAll() : cascade.start()),
     [cascade],
   );
@@ -131,7 +132,7 @@ export default function LoginScreen() {
   if (!fontsReady) return <TicketPlaceholder />;
 
   return (
-    <TicketShell entrance onEntranceDone={handleLanded}>
+    <TicketShell entrance onContentReady={handleContentReady}>
       <Animated.View style={cascade.blockStyle(0)}>
         <TicketHeader />
       </Animated.View>

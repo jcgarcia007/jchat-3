@@ -1,7 +1,7 @@
 /**
  * Cascade + title reveal used by the login entrance animation.
  *
- *  - `useTicketCascade(count)` gives each block an opacity 0→1 / 8 px rise, ~90 ms apart.
+ *  - `useTicketCascade(count)` gives each block an opacity 0→1 / 8 px rise, STAGGER_MS apart.
  *  - `TicketTitle` can sweep in left→right: a paper-colored band (expo-linear-gradient) slides over
  *    the text and uncovers it (no masked-view / Reanimated needed).
  */
@@ -13,10 +13,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ticket } from '../../theme/ticket';
 import { loginFont } from '../../theme/loginFonts';
 
-const STAGGER_MS = 90;
-const BLOCK_MS = 320;
+// ── Timing (tweak here) ───────────────────────────────────────────────────────
+/** Delay between one block starting and the next. */
+const STAGGER_MS = 50;
+/** Each block: opacity 0→1 and RISE_PX px upward over this long. */
+const BLOCK_MS = 250;
 const RISE_PX = 8;
-const REVEAL_MS = 720;
+/** Title sweep (gradient band) duration. */
+const REVEAL_MS = 450;
 const BAND_WIDTH = 72;
 
 export interface TicketCascade {
