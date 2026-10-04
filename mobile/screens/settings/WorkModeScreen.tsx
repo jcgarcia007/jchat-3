@@ -336,7 +336,7 @@ export default function WorkModeScreen() {
           accessibilityRole="button"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={palette.onBrand} />
           ) : (
             <Text style={styles.pinConfirmLabel}>{t('workMode.pinConfirm')}</Text>
           )}
@@ -421,9 +421,9 @@ export default function WorkModeScreen() {
               }
             >
               {b.has_pin ? (
-                <IconLock size={15} color="#fff" strokeWidth={2} />
+                <IconLock size={15} color={palette.onBrand} strokeWidth={2} />
               ) : (
-                <IconKeyboard size={15} color="#fff" strokeWidth={2} />
+                <IconKeyboard size={15} color={palette.onBrand} strokeWidth={2} />
               )}
               <Text style={styles.cardActionLabel}>
                 {b.has_pin ? t('workMode.accessButton') : t('workMode.setPinButton')}
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
 
   cardActionLabel: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   },
 
   pinConfirmLabel: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '600',
   },

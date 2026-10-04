@@ -1122,7 +1122,7 @@ export default function PosTableHub(): React.ReactElement {
                     onPress={() => void handlePrintCode()}
                     accessibilityRole="button"
                   >
-                    <IconPrinter size={14} color="#fff" strokeWidth={1.8} />
+                    <IconPrinter size={14} color={palette.onBrand} strokeWidth={1.8} />
                     <Text style={styles.codeActionLabel}>
                       {t('pos.tableCode.print')}
                     </Text>
@@ -1175,8 +1175,8 @@ export default function PosTableHub(): React.ReactElement {
                   accessibilityRole="button"
                 >
                   {sessionLoading
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <IconKey size={14} color="#fff" strokeWidth={1.8} />
+                    ? <ActivityIndicator size="small" color={palette.onBrand} />
+                    : <IconKey size={14} color={palette.onBrand} strokeWidth={1.8} />
                   }
                   <Text style={styles.codeOpenLabel}>
                     {t('pos.tableCode.openAndGenerate')}
@@ -1209,7 +1209,7 @@ export default function PosTableHub(): React.ReactElement {
                   style={[
                     styles.tableRectLabel,
                     {
-                      color: seatHasDraft(null) ? '#fff' : c.textTertiary,
+                      color: seatHasDraft(null) ? palette.onBrand : c.textTertiary,
                     },
                   ]}
                 >
@@ -1241,7 +1241,7 @@ export default function PosTableHub(): React.ReactElement {
                       style={[
                         styles.seatNumber,
                         {
-                          color: hasDraftForSeat ? '#fff' : c.textPrimary,
+                          color: hasDraftForSeat ? palette.onBrand : c.textPrimary,
                         },
                       ]}
                     >
@@ -1276,7 +1276,7 @@ export default function PosTableHub(): React.ReactElement {
                 <Text
                   style={[
                     styles.filterChipText,
-                    { color: selectedOrderId === null ? '#fff' : c.textSecondary },
+                    { color: selectedOrderId === null ? palette.onBrand : c.textSecondary },
                   ]}
                 >
                   {t('pos.filterAll')}
@@ -1302,7 +1302,7 @@ export default function PosTableHub(): React.ReactElement {
                     <Text
                       style={[
                         styles.filterChipText,
-                        { color: isActive ? '#fff' : c.textSecondary },
+                        { color: isActive ? palette.onBrand : c.textSecondary },
                       ]}
                     >
                       {t('pos.filterOrderN', { n: idx + 1 })}
@@ -1340,7 +1340,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
                     {voidingOrderId === actionOrderId ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={palette.onBrand} size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
                         {t('pos.voidOrderCancelBtn')}
@@ -1363,7 +1363,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
                     {voidingOrderId === actionOrderId ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={palette.onBrand} size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
                         {t('pos.voidOrderEditBtn')}
@@ -1578,12 +1578,12 @@ export default function PosTableHub(): React.ReactElement {
           accessibilityState={{ disabled: !hasDraft || submitting }}
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={palette.onBrand} size="small" />
           ) : (
             <Text
               style={[
                 styles.actionBtnText,
-                { color: hasDraft && !submitting ? '#fff' : c.textTertiary },
+                { color: hasDraft && !submitting ? palette.onBrand : c.textTertiary },
               ]}
             >
               {t('pos.hubBtnKitchen')}
@@ -1604,7 +1604,7 @@ export default function PosTableHub(): React.ReactElement {
           accessibilityLabel={t('pos.hubSplitBill')}
           accessibilityState={{ disabled: !hasSent }}
         >
-          <Text style={[styles.actionBtnText, { color: hasSent ? '#fff' : c.textTertiary }]}>
+          <Text style={[styles.actionBtnText, { color: hasSent ? palette.onBrand : c.textTertiary }]}>
             {t('pos.hubBtnSplit')}
           </Text>
         </Pressable>
@@ -1624,7 +1624,7 @@ export default function PosTableHub(): React.ReactElement {
           <Text
             style={[
               styles.actionBtnText,
-              { color: hasSent ? '#fff' : c.textTertiary },
+              { color: hasSent ? palette.onBrand : c.textTertiary },
             ]}
           >
             {t('pos.cobrar')}
@@ -1837,7 +1837,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orderActionBtnDisabled: { opacity: 0.45 },
-  orderActionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  orderActionBtnText: { color: palette.onBrand, fontSize: 13, fontWeight: '600' },
   orderInPrepText: { fontSize: 13, fontStyle: 'italic', flex: 1, textAlign: 'center' },
 
   // ── Action bar ────────────────────────────────────────────────────────────
@@ -1899,7 +1899,7 @@ const styles = StyleSheet.create({
   // ── Combine picker modal ─────────────────────────────────────────────────────
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: palette.scrimMedium,
   },
   modalSheet: {
     borderTopLeftRadius: 20,
@@ -1977,7 +1977,7 @@ const styles = StyleSheet.create({
   codeActionLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: palette.onBrand,
   },
   codeEmpty: {
     fontSize: 13,
@@ -1996,6 +1996,6 @@ const styles = StyleSheet.create({
   codeOpenLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: palette.onBrand,
   },
 });

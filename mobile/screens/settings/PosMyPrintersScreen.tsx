@@ -50,6 +50,7 @@ import { buildTableCodeTicketEscPos } from '../../services/escpos';
 import { fetchStaffPrinters, type NetworkPrinter } from '../../services/printer';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { toUserMessage } from '../../utils/errors';
+import { palette } from '../../theme/tokens';
 
 type PosMyPrintersRoute = RouteProp<PosStackParamList, 'PosMyPrinters'>;
 
@@ -264,7 +265,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
                 style={[s.widthChip, selectedWidth === w && { backgroundColor: colors.brand }]}
                 onPress={() => setSelectedWidth(w)}
               >
-                <Text style={[s.widthChipText, selectedWidth === w && { color: '#fff' }]}>
+                <Text style={[s.widthChipText, selectedWidth === w && { color: palette.onBrand }]}>
                   {w} mm
                 </Text>
               </Pressable>
@@ -518,7 +519,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: 10,
       alignItems: 'center',
     },
-    primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    primaryBtnText: { color: palette.onBrand, fontSize: 15, fontWeight: '600' },
     cancelRow:      { marginTop: 12, alignItems: 'center' },
     cancelText:     { fontSize: 14, fontWeight: '500' },
   });

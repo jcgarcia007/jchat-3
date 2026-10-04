@@ -42,6 +42,7 @@ import {
   printToBluetooth,
   type BtPrinterRecord,
 } from '../../services/btPrinter';
+import { palette } from '../../theme/tokens';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -286,7 +287,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     },
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
+      backgroundColor: palette.scrimMedium,
     },
     sheet: {
       backgroundColor: colors.bgSurface,
@@ -316,8 +317,8 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       paddingVertical: 2,
       borderRadius: 4,
     },
-    chipBt:   { backgroundColor: '#7C3AED22' },
-    chipNet:  { backgroundColor: '#1D9E7522' },
+    chipBt:   { backgroundColor: palette.brandPurpleTint },
+    chipNet:  { backgroundColor: palette.successTint },
     chipText: { fontSize: 10, fontWeight: '700' },
     printerLabel: {
       fontSize: 15,

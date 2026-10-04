@@ -14,7 +14,7 @@
  * Props (route): businessId, tableId? (pre-filtro), tableLabel?
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,8 @@ import type { RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCheck, IconEdit, IconX, IconAlertTriangle } from '@tabler/icons-react-native';
 import { supabase } from '../../services/supabase';
+import { palette } from '../../theme/tokens';
+import { useThemeColors, type ThemeColors } from '../../theme/colors';
 import {
   posAwaitingOrders,
   posApproveOrder,
@@ -50,6 +52,8 @@ type ProcessingState = { orderId: string; action: 'approve' | 'edit' | 'reject' 
 
 export default function PosApprovalScreen(): React.ReactElement {
   const { t }       = useTranslation('settings');
+  const c           = useThemeColors();
+  const styles      = useMemo(() => createStyles(c), [c]);
   const navigation  = useNavigation<PosApprovalNav>();
   const route       = useRoute<PosApprovalRoute>();
   const { businessId, tableId, tableLabel } = route.params;
@@ -221,7 +225,7 @@ export default function PosApprovalScreen(): React.ReactElement {
   const renderItem = useCallback(({ item }: { item: PosAwaitingOrder }) => {
     const isProcessing = processing?.orderId === item.order_id;
     const strikes      = item.device_strikes ?? 0;
-    const strikeColor  = strikes > 0 ? '#f59e0b' : '#6b7280';
+    const strikeColor  = strikes > 0 ? palette.warning : c.textSecondary;
     const subtotal     = item.subtotal_cents ?? 0;
 
     return (
@@ -291,8 +295,8 @@ export default function PosApprovalScreen(): React.ReactElement {
               onPress={() => handleReject(item)}
               accessibilityLabel={t('pos.approval.reject')}
             >
-              <IconX size={16} color="#ef4444" />
-              <Text style={[styles.actionText, { color: '#ef4444' }]}>
+              <IconX size={16} color={palette.danger} />
+              <Text style={[styles.actionText, { color: palette.danger }]}>
                 {t('pos.approval.reject')}
               </Text>
             </TouchableOpacity>
@@ -302,8 +306,8 @@ export default function PosApprovalScreen(): React.ReactElement {
               onPress={() => handleEdit(item)}
               accessibilityLabel={t('pos.approval.edit')}
             >
-              <IconEdit size={16} color="#f59e0b" />
-              <Text style={[styles.actionText, { color: '#f59e0b' }]}>
+              <IconEdit size={16} color={palette.warning} />
+              <Text style={[styles.actionText, { color: palette.warning }]}>
                 {t('pos.approval.edit')}
               </Text>
             </TouchableOpacity>
@@ -313,8 +317,8 @@ export default function PosApprovalScreen(): React.ReactElement {
               onPress={() => void handleApprove(item)}
               accessibilityLabel={t('pos.approval.approve')}
             >
-              <IconCheck size={16} color="#fff" />
-              <Text style={[styles.actionText, { color: '#fff' }]}>
+              <IconCheck size={16} color={palette.onBrand} />
+              <Text style={[styles.actionText, { color: palette.onBrand }]}>
                 {t('pos.approval.approve')}
               </Text>
             </TouchableOpacity>
@@ -339,7 +343,7 @@ export default function PosApprovalScreen(): React.ReactElement {
           style={styles.backBtn}
           accessibilityLabel={t('workMode.pinCancel')}
         >
-          <IconArrowLeft size={22} color="#111" />
+          <IconArrowLeft size={22} color={c.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
@@ -364,10 +368,10 @@ export default function PosApprovalScreen(): React.ReactElement {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f5f7',
+    backgroundColor: c.bgBase,
   },
   header: {
     flexDirection: 'row',
@@ -375,9 +379,9 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: c.bgSurface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: c.borderSubtle,
   },
   backBtn: {
     padding: 4,
@@ -386,7 +390,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
     flex: 1,
   },
   list: {
@@ -400,13 +404,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-    color: '#9ca3af',
+    color: c.textTertiary,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: c.bgSurface,
     borderRadius: 12,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -421,11 +425,11 @@ const styles = StyleSheet.create({
   tableLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
   },
   contactName: {
     fontSize: 13,
-    color: '#6b7280',
+    color: c.textSecondary,
     marginTop: 2,
   },
   strikesBadge: {
@@ -448,29 +452,29 @@ const styles = StyleSheet.create({
   itemQty: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: c.textSecondary,
     width: 28,
   },
   itemName: {
     fontSize: 14,
-    color: '#111',
+    color: c.textPrimary,
     fontWeight: '600',
   },
   modifierText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: c.textSecondary,
     marginTop: 1,
   },
   noteText: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: c.textTertiary,
     fontStyle: 'italic',
     marginTop: 2,
   },
   total: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
     textAlign: 'right',
     marginBottom: 12,
   },
@@ -489,16 +493,16 @@ const styles = StyleSheet.create({
   },
   rejectBtn: {
     borderWidth: 1,
-    borderColor: '#fca5a5',
-    backgroundColor: '#fef2f2',
+    borderColor: palette.dangerBorder,
+    backgroundColor: palette.dangerTint,
   },
   editBtn: {
     borderWidth: 1,
-    borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
+    borderColor: palette.warningBorder,
+    backgroundColor: palette.warningTint,
   },
   approveBtn: {
-    backgroundColor: '#1D9E75',
+    backgroundColor: palette.success,
   },
   actionText: {
     fontSize: 13,

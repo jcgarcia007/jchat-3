@@ -933,7 +933,7 @@ export default function PosSplitScreen(): React.ReactElement {
         />
         <View style={styles.successOverlay}>
           {/* Checkmark + amount */}
-          <View style={[styles.successIconWrap, { backgroundColor: '#1D9E7522' }]}>
+          <View style={[styles.successIconWrap, { backgroundColor: palette.successTint }]}>
             <IconCheck size={36} color={c.success} strokeWidth={2.5} />
           </View>
           <Text style={[styles.successTitle, { color: c.textPrimary }]}>
@@ -966,9 +966,9 @@ export default function PosSplitScreen(): React.ReactElement {
                 accessibilityLabel={t('pos.printBtn')}
               >
                 {printStatus[lastSuccessKey] === 'printing' ? (
-                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                  <ActivityIndicator color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
                 ) : (
-                  <IconPrinter size={20} color="#fff" strokeWidth={2} style={{ marginRight: 8 }} />
+                  <IconPrinter size={20} color={palette.onBrand} strokeWidth={2} style={{ marginRight: 8 }} />
                 )}
                 <Text style={styles.printBtnText}>
                   {printStatus[lastSuccessKey] === 'printing'
@@ -1370,7 +1370,7 @@ export default function PosSplitScreen(): React.ReactElement {
               accessibilityRole="button"
             >
               {splitting ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={palette.onBrand} size="small" />
               ) : (
                 <Text style={styles.createBtnText}>{t('pos.splitCreateBtn')}</Text>
               )}
@@ -1441,12 +1441,12 @@ export default function PosSplitScreen(): React.ReactElement {
                           accessibilityState={{ disabled: !canPay }}
                         >
                           {isThisPaying && isProcessing ? (
-                            <ActivityIndicator color="#fff" size="small" />
+                            <ActivityIndicator color={palette.onBrand} size="small" />
                           ) : (
                             <Text
                               style={[
                                 styles.accountPayBtnText,
-                                { color: canPay ? '#fff' : c.textTertiary },
+                                { color: canPay ? palette.onBrand : c.textTertiary },
                               ]}
                             >
                               {t('pos.splitCharge')}
@@ -1701,12 +1701,12 @@ export default function PosSplitScreen(): React.ReactElement {
                             accessibilityState={{ disabled: !canCharge }}
                           >
                             {isCharging ? (
-                              <ActivityIndicator color="#fff" size="small" />
+                              <ActivityIndicator color={palette.onBrand} size="small" />
                             ) : (
                               <Text
                                 style={[
                                   styles.chargeBtnText,
-                                  { color: canCharge ? '#fff' : c.textTertiary },
+                                  { color: canCharge ? palette.onBrand : c.textTertiary },
                                 ]}
                               >
                                 {t('pos.splitCharge')}
@@ -1794,7 +1794,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
-  unavailableBackText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  unavailableBackText: { color: palette.onBrand, fontSize: 16, fontWeight: '600' },
 
   // ── Reader banner ────────────────────────────────────────────────────────────
   readerBanner: {
@@ -1864,7 +1864,7 @@ const styles = StyleSheet.create({
   // ── Shared: split error + create button ──────────────────────────────────────
   splitError: { fontSize: 14, textAlign: 'center' },
   createBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  createBtnText: { color: palette.onBrand, fontSize: 16, fontWeight: '600' },
 
   // ── Items method builder ──────────────────────────────────────────────────────
   subAccountCard: {
@@ -2034,7 +2034,7 @@ const styles = StyleSheet.create({
     minWidth: 220,
   },
   printBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
@@ -2096,13 +2096,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tipConfirmBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   tipConfirmBtnSub: {
-    color: 'rgba(255,255,255,0.75)',
+    color: palette.onImageMuted,
     fontSize: 12,
     fontWeight: '500',
   },

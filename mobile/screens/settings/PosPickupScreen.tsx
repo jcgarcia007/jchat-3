@@ -260,10 +260,10 @@ export default function PosPickupScreen() {
                 accessibilityLabel={t('pos.pickupDelivered')}
               >
                 {isDelivering ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={palette.onBrand} />
                 ) : (
                   <>
-                    <IconCheck size={12} color="#fff" strokeWidth={2.5} />
+                    <IconCheck size={12} color={palette.onBrand} strokeWidth={2.5} />
                     <Text style={styles.deliverBtnText}>{t('pos.pickupDelivered')}</Text>
                   </>
                 )}
@@ -355,7 +355,7 @@ export default function PosPickupScreen() {
           <Text
             style={[
               styles.filterBtnText,
-              { color: !showOnlyReady ? '#fff' : c.textSecondary },
+              { color: !showOnlyReady ? palette.onBrand : c.textSecondary },
             ]}
           >
             {t('pos.pickupFilterAll')}
@@ -374,7 +374,7 @@ export default function PosPickupScreen() {
           <Text
             style={[
               styles.filterBtnText,
-              { color: showOnlyReady ? '#fff' : c.textSecondary },
+              { color: showOnlyReady ? palette.onBrand : c.textSecondary },
             ]}
           >
             {t('pos.pickupFilterReady')}
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 10,
   },
-  readyBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  readyBadgeText: { color: palette.onBrand, fontSize: 12, fontWeight: '700' },
 
   // ── Filter bar ──────────────────────────────────────────────────────────────
   filterBar: {
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 36,
   },
-  deliverBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  deliverBtnText: { color: palette.onBrand, fontSize: 12, fontWeight: '700' },
 
   // ── Loading / empty ─────────────────────────────────────────────────────────
   center: {

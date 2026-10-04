@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 
 // ─── Tip presets ──────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ export default function PosTipPicker({
                 <Text
                   style={[
                     styles.presetPct,
-                    { color: isActive ? '#fff' : c.textPrimary },
+                    { color: isActive ? palette.onBrand : c.textPrimary },
                   ]}
                 >
                   {pct}%
@@ -136,7 +137,7 @@ export default function PosTipPicker({
                 <Text
                   style={[
                     styles.presetAmt,
-                    { color: isActive ? 'rgba(255,255,255,0.85)' : c.textSecondary },
+                    { color: isActive ? palette.onImageStrong : c.textSecondary },
                   ]}
                 >
                   {formatCents(tipAmt)}
@@ -185,7 +186,7 @@ export default function PosTipPicker({
                 <Text
                   style={[
                     styles.modeBtnText,
-                    { color: customMode === 'pct' ? '#fff' : c.textSecondary },
+                    { color: customMode === 'pct' ? palette.onBrand : c.textSecondary },
                   ]}
                 >
                   %
@@ -205,7 +206,7 @@ export default function PosTipPicker({
                 <Text
                   style={[
                     styles.modeBtnText,
-                    { color: customMode === 'amt' ? '#fff' : c.textSecondary },
+                    { color: customMode === 'amt' ? palette.onBrand : c.textSecondary },
                   ]}
                 >
                   $

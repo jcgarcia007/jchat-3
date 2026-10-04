@@ -646,7 +646,7 @@ export default function PosCheckoutScreen() {
           >
             {phase === 'success' ? (
               <View style={[styles.successIcon, { backgroundColor: c.success }]}>
-                <IconCheck size={20} color="#fff" strokeWidth={3} />
+                <IconCheck size={20} color={palette.onBrand} strokeWidth={3} />
               </View>
             ) : (
               <ActivityIndicator color={c.brand} style={{ marginRight: 10 }} />
@@ -719,7 +719,7 @@ export default function PosCheckoutScreen() {
                 : t('pos.cobrar')
             }
           >
-            <IconCreditCard size={20} color="#fff" strokeWidth={2} />
+            <IconCreditCard size={20} color={palette.onBrand} strokeWidth={2} />
             <Text style={styles.chargeBtnText}>
               {hasTab
                 ? t('pos.chargeButton', { amount: formatCents(tabAmountCents!) })
@@ -748,9 +748,9 @@ export default function PosCheckoutScreen() {
                   accessibilityLabel={isExternal ? t('pos.voucher.reprint') : t('pos.printBtn')}
                 >
                   {printStatus === 'printing' ? (
-                    <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                    <ActivityIndicator color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
                   ) : (
-                    <IconPrinter size={20} color="#fff" strokeWidth={2} style={{ marginRight: 8 }} />
+                    <IconPrinter size={20} color={palette.onBrand} strokeWidth={2} style={{ marginRight: 8 }} />
                   )}
                   <Text style={styles.printBtnText}>
                     {printStatus === 'printing'
@@ -802,7 +802,7 @@ export default function PosCheckoutScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('pos.externalPayCash')}
             >
-              <IconCash size={20} color="#fff" strokeWidth={2} />
+              <IconCash size={20} color={palette.onBrand} strokeWidth={2} />
               <View style={styles.extMethodBtnLabels}>
                 <Text style={styles.extMethodBtnText}>{t('pos.externalPayCash')}</Text>
                 <Text style={styles.extMethodBtnSub}>
@@ -824,7 +824,7 @@ export default function PosCheckoutScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('pos.externalPayCard')}
             >
-              <IconCreditCard size={20} color="#fff" strokeWidth={2} />
+              <IconCreditCard size={20} color={palette.onBrand} strokeWidth={2} />
               <View style={styles.extMethodBtnLabels}>
                 <Text style={styles.extMethodBtnText}>{t('pos.externalPayCard')}</Text>
                 <Text style={styles.extMethodBtnSub}>
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 28,
   },
-  unavailableBackText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  unavailableBackText: { color: palette.onBrand, fontSize: 15, fontWeight: '600' },
 
   // ── Footer ─────────────────────────────────────────────────────────────────────
   footer: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   chargeBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.2,
@@ -1069,13 +1069,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tipConfirmBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   tipConfirmBtnSub: {
-    color: 'rgba(255,255,255,0.75)',
+    color: palette.onImageMuted,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -1094,13 +1094,13 @@ const styles = StyleSheet.create({
   },
   extMethodBtnLabels: { flex: 1 },
   extMethodBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   extMethodBtnSub: {
-    color: 'rgba(255,255,255,0.75)',
+    color: palette.onImageMuted,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 1,
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   printBtnText: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,

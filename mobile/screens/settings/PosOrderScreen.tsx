@@ -137,7 +137,7 @@ function TabPill({
       <Text
         style={[
           styles.tabPillText,
-          { color: active ? '#fff' : c.textSecondary },
+          { color: active ? palette.onBrand : c.textSecondary },
         ]}
       >
         {label}
@@ -487,7 +487,7 @@ function ModifierSheet({
                           ]}
                         >
                           {isSelected && (
-                            <IconCheck size={11} color="#fff" strokeWidth={3} />
+                            <IconCheck size={11} color={palette.onBrand} strokeWidth={3} />
                           )}
                         </View>
                       ) : (
@@ -541,7 +541,7 @@ function ModifierSheet({
         <Text
           style={[
             styles.modAddBtnText,
-            { color: canAdd && !loading ? '#fff' : c.textTertiary },
+            { color: canAdd && !loading ? palette.onBrand : c.textTertiary },
           ]}
         >
           {t('pos.modAdd')}
@@ -968,7 +968,7 @@ export default function PosOrderScreen() {
             accessibilityState={{ disabled: modeParam === 'submit' && submitting }}
           >
             {modeParam === 'submit' && submitting ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={palette.onBrand} size="small" />
             ) : (
               <Text style={styles.submitBtnText}>
                 {modeParam === 'draft' ? t('pos.draftDone') : t('pos.submitButton')}
@@ -1080,10 +1080,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 18,
     paddingBottom: 10,
-    backgroundColor: 'rgba(0,0,0,0.52)',
+    backgroundColor: palette.scrimMedium,
   },
   cardName: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 17,
@@ -1095,7 +1095,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardPrice: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1208,13 +1208,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  submitBtnText: { color: palette.onBrand, fontSize: 15, fontWeight: '700' },
 
   // ── Modifier modal overlay ───────────────────────────────────────────────────
   modOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: palette.scrimMedium,
   },
   modBackdrop: { flex: 1 },
 

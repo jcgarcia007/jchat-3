@@ -557,5 +557,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ordersBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  ordersBadgeText: { color: palette.onBrand, fontSize: 9, fontWeight: '700' },
 });

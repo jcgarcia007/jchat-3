@@ -258,7 +258,7 @@ function PlanCard({
               color: isCurrentPlan
                 ? c.textSecondary
                 : highlighted
-                ? '#fff'
+                ? palette.onBrand
                 : c.textSecondary,
             },
           ]}
@@ -266,7 +266,7 @@ function PlanCard({
           {ctaLabel}
         </Text>
         {comingSoonLabel && !isCurrentPlan && (
-          <Text style={[styles.ctaBadge, { color: highlighted ? 'rgba(255,255,255,0.7)' : c.textTertiary }]}>
+          <Text style={[styles.ctaBadge, { color: highlighted ? palette.onImageMuted : c.textTertiary }]}>
             {' · '}{comingSoonLabel}
           </Text>
         )}

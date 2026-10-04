@@ -59,6 +59,7 @@ import {
 } from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import BarcodeScanner from '../../components/pos/BarcodeScanner';
+import { palette } from '../../theme/tokens';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ function AdjustSheet({ item, businessId, onDone, onClose }: AdjustSheetProps) {
               <Text
                 style={[
                   styles.modeChipText,
-                  { color: mode === m ? '#fff' : c.textSecondary },
+                  { color: mode === m ? palette.onBrand : c.textSecondary },
                 ]}
               >
                 {modeLabel[m]}
@@ -637,7 +638,7 @@ export default function PosInventoryScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('scanBtn')}
         >
-          <IconBarcode size={26} color="#fff" strokeWidth={2} />
+          <IconBarcode size={26} color={palette.onBrand} strokeWidth={2} />
           <Text style={styles.fabText}>{t('scanBtn')}</Text>
         </Pressable>
       ) : null}
@@ -797,17 +798,17 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 18,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 6,
   },
-  fabText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  fabText: { color: palette.onBrand, fontSize: 17, fontWeight: '700' },
 
   // ── Sheet modal ────────────────────────────────────────────────────────────────
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: palette.scrimMedium,
     justifyContent: 'flex-end',
   },
   modalSheetWrapper: { maxHeight: '92%' },
@@ -896,7 +897,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  applyBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  applyBtnText: { color: palette.onBrand, fontSize: 17, fontWeight: '700' },
 
   // ── Link sheet ────────────────────────────────────────────────────────────────
   linkCodeText: { fontSize: 13, marginTop: 4 },

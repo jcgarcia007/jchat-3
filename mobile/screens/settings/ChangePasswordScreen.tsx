@@ -249,7 +249,7 @@ export default function ChangePasswordScreen() {
             accessibilityLabel={t('changePassword.saveA11y')}
           >
             {loading
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={palette.onBrand} />
               : <Text style={styles.saveBtnText}>{t('changePassword.saveButton')}</Text>
             }
           </TouchableOpacity>
@@ -287,5 +287,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: palette.onBrand, fontSize: 16, fontWeight: '700' },
 });

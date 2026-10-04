@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -143,10 +144,10 @@ export default function BarcodeScanner({
           <View style={styles.sideShade} />
           <View style={styles.guideFrame}>
             {/* Corner marks */}
-            <View style={[styles.corner, styles.cornerTL, { borderColor: '#fff' }]} />
-            <View style={[styles.corner, styles.cornerTR, { borderColor: '#fff' }]} />
-            <View style={[styles.corner, styles.cornerBL, { borderColor: '#fff' }]} />
-            <View style={[styles.corner, styles.cornerBR, { borderColor: '#fff' }]} />
+            <View style={[styles.corner, styles.cornerTL, { borderColor: palette.onImage }]} />
+            <View style={[styles.corner, styles.cornerTR, { borderColor: palette.onImage }]} />
+            <View style={[styles.corner, styles.cornerBL, { borderColor: palette.onImage }]} />
+            <View style={[styles.corner, styles.cornerBR, { borderColor: palette.onImage }]} />
           </View>
           <View style={styles.sideShade} />
         </View>
@@ -172,7 +173,7 @@ export default function BarcodeScanner({
         hitSlop={12}
       >
         <View style={styles.closeCircle}>
-          <IconX size={22} color="#fff" strokeWidth={2.5} />
+          <IconX size={22} color={palette.onImage} strokeWidth={2.5} />
         </View>
       </Pressable>
     </View>
@@ -205,22 +206,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     marginTop: 8,
   },
-  permissionBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  permissionBtnText: { color: palette.onImage, fontWeight: '700', fontSize: 16 },
   permissionDismiss: { paddingVertical: 8 },
   permissionDismissText: { fontSize: 15 },
 
   // ── Camera container ─────────────────────────────────────────────────────────
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: palette.shadow },
 
   // ── Overlay ──────────────────────────────────────────────────────────────────
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  overlayDark: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)' },
+  overlayDark: { flex: 1, backgroundColor: palette.scrimMedium },
 
   middleRow: {
     flexDirection: 'row',
     height: GUIDE_H,
   },
-  sideShade: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)' },
+  sideShade: { flex: 1, backgroundColor: palette.scrimMedium },
 
   guideFrame: {
     width: GUIDE_W,
@@ -235,16 +236,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   guideText: {
-    color: '#fff',
+    color: palette.onImage,
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.2,
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: palette.scrimMedium,
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 1 },
   },
   scanFlash: {
-    color: '#5C7CFA',
+    color: palette.brand,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 1,
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: palette.scrimMedium,
     alignItems: 'center',
     justifyContent: 'center',
   },
