@@ -5,8 +5,8 @@ import { IconMessageCircle2, IconMapPin, IconReceipt2 } from "@tabler/icons-reac
  * Split-screen shell for auth pages.
  * Left panel: brand identity — light pastel/peach gradient, animated blobs (md+).
  * Right column: form content — data-theme="light" activates the Design System's
- *   light token set automatically (tokens.css §1.3). Only --color-brand and
- *   --bg-overlay are additionally overridden here for the auth context.
+ *   light token set automatically (tokens.css §1.3). Only --bg-overlay is
+ *   additionally overridden here (the brand color is the global indigo).
  * Login / register pages are NOT modified — all visual changes come from
  * the token overrides cascading through the CSS custom property system.
  * Brand skin: under data-brand="tabpos" (root layout, by request host)
@@ -38,14 +38,11 @@ export default function AuthSplitLayout({
          * .auth-col overrides applied ON TOP of data-theme="light" tokens.
          * Selector specificity (0,2,0) beats [data-theme="light"] (0,1,0).
          *
-         * --color-brand  → peach/coral instead of brand indigo
          * --bg-overlay   → translucent dark instead of #f2f2f7 (light elevated)
          *                  so card box-shadow reads as a real shadow, not white.
          */
         .auth-col[data-theme="light"] {
-          --color-brand:      #FF8A65;
-          --color-brand-dark: #FF7043;
-          --bg-overlay:       rgba(0,0,0,.08);
+          --bg-overlay:       rgb(var(--ink-rgb) / .08);
         }
 
         /*
@@ -61,8 +58,8 @@ export default function AuthSplitLayout({
         .auth-col input:focus,
         .auth-col select:focus {
           outline: none;
-          border-color: #FF8A65 !important;
-          box-shadow: 0 0 0 3px rgba(255,138,101,.18) !important;
+          border-color: var(--land-peach) !important;
+          box-shadow: 0 0 0 3px rgb(var(--land-peach-rgb) / .18) !important;
         }
       `}</style>
 
@@ -85,8 +82,8 @@ export default function AuthSplitLayout({
             padding: "48px 40px",
             /* Pastel gradient: peach → mint → sky — mirrors the landing page */
             background:
-              "linear-gradient(145deg, #FFF5F2 0%, #FFF0EB 35%, #F0FDF9 70%, #EFF6FF 100%)",
-            color: "#111827",
+              "linear-gradient(145deg, var(--land-tint-peach) 0%, var(--land-tint-peach-2) 35%, var(--land-tint-mint) 70%, var(--land-tint-sky) 100%)",
+            color: "var(--gray-900)",
             position: "relative",
             overflow: "hidden",
           }}
@@ -101,7 +98,7 @@ export default function AuthSplitLayout({
               width: 280,
               height: 280,
               borderRadius: "50%",
-              background: "rgba(255,138,101,.16)",
+              background: "rgb(var(--land-peach-rgb) / .16)",
               filter: "blur(64px)",
               animation: "auth-ba 9s ease-in-out infinite",
               zIndex: 0,
@@ -118,7 +115,7 @@ export default function AuthSplitLayout({
               width: 240,
               height: 240,
               borderRadius: "50%",
-              background: "rgba(94,234,212,.14)",
+              background: "rgb(var(--land-mint-rgb) / .14)",
               filter: "blur(54px)",
               animation: "auth-bb 11s ease-in-out infinite",
               zIndex: 0,
@@ -135,7 +132,7 @@ export default function AuthSplitLayout({
               width: 160,
               height: 160,
               borderRadius: "50%",
-              background: "rgba(147,197,253,.16)",
+              background: "rgb(var(--land-sky-rgb) / .16)",
               filter: "blur(44px)",
               zIndex: 0,
               pointerEvents: "none",
@@ -161,12 +158,12 @@ export default function AuthSplitLayout({
                 width: 44,
                 height: 44,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #FF8A65, #FF7043)",
-                boxShadow: "0 4px 18px rgba(255,112,67,.32)",
+                background: "linear-gradient(135deg, var(--land-peach), var(--land-peach-dark))",
+                boxShadow: "0 4px 18px rgb(var(--land-peach-dark-rgb) / .32)",
                 flexShrink: 0,
               }}
             >
-              <IconMessageCircle2 className="brand-jchat" size={24} color="#fff" />
+              <IconMessageCircle2 className="brand-jchat" size={24} color="var(--on-brand)" />
               <IconReceipt2 className="brand-tabpos" size={24} />
             </span>
             <span
@@ -175,7 +172,7 @@ export default function AuthSplitLayout({
                 fontSize: 22,
                 fontWeight: 800,
                 letterSpacing: "-0.5px",
-                color: "#111827",
+                color: "var(--gray-900)",
               }}
             >
               <span className="brand-jchat">JChat</span>
@@ -192,7 +189,7 @@ export default function AuthSplitLayout({
                 lineHeight: 1.15,
                 letterSpacing: "-0.5px",
                 margin: "0 0 16px",
-                color: "#111827",
+                color: "var(--gray-900)",
               }}
             >
               <span className="brand-jchat">
@@ -212,7 +209,7 @@ export default function AuthSplitLayout({
               style={{
                 fontSize: 16,
                 lineHeight: 1.65,
-                color: "#4B5563",
+                color: "var(--gray-600)",
                 margin: 0,
                 maxWidth: 300,
               }}
@@ -237,7 +234,7 @@ export default function AuthSplitLayout({
               display: "flex",
               alignItems: "center",
               gap: 7,
-              color: "#9CA3AF",
+              color: "var(--gray-400)",
               fontSize: 13,
               position: "relative",
               zIndex: 1,

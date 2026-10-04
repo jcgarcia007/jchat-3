@@ -70,7 +70,7 @@ const primaryBtn: React.CSSProperties = {
   borderRadius: 10,
   border: "none",
   background: "var(--color-brand)",
-  color: "#fff",
+  color: "var(--on-brand)",
   fontSize: 14,
   fontWeight: 600,
   display: "flex",
@@ -137,7 +137,7 @@ function ErrorAlert({ message }: { message: string }) {
         padding: "10px 12px",
         marginBottom: 16,
         borderRadius: 10,
-        background: "rgba(239,68,68,0.12)",
+        background: "rgb(var(--color-danger-rgb) / 0.12)",
         border: "1px solid var(--color-danger)",
         fontSize: 13,
       }}
@@ -163,7 +163,7 @@ function CardHeader() {
           height: 36,
           borderRadius: 10,
           background: "var(--color-brand)",
-          color: "#fff",
+          color: "var(--on-brand)",
         }}
       >
         <IconMessageCircle2 className="brand-jchat" size={20} />

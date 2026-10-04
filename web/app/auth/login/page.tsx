@@ -152,7 +152,7 @@ function LoginForm() {
             height: 36,
             borderRadius: 10,
             background: "var(--color-brand)",
-            color: "#fff",
+            color: "var(--on-brand)",
           }}
         >
           <IconMessageCircle2 className="brand-jchat" size={20} />
@@ -185,7 +185,7 @@ function LoginForm() {
             padding: "10px 12px",
             marginBottom: 16,
             borderRadius: 10,
-            background: "rgba(239,68,68,0.12)",
+            background: "rgb(var(--color-danger-rgb) / 0.12)",
             border: "1px solid var(--color-danger)",
             fontSize: 13,
           }}
@@ -258,7 +258,7 @@ function LoginForm() {
             borderRadius: 10,
             border: "none",
             background: "var(--color-brand)",
-            color: "#fff",
+            color: "var(--on-brand)",
             fontSize: 14,
             fontWeight: 600,
             cursor: loading ? "default" : "pointer",

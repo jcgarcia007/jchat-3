@@ -137,7 +137,7 @@ export default function WelcomePage() {
             height: 30,
             borderRadius: 9,
             background: "var(--color-brand)",
-            color: "#fff",
+            color: "var(--on-brand)",
           }}
         >
           <IconMessageCircle2 size={17} />
@@ -181,7 +181,7 @@ export default function WelcomePage() {
             borderRadius: 10,
             border: "none",
             background: "var(--color-brand)",
-            color: "#fff",
+            color: "var(--on-brand)",
             fontSize: 14,
             fontWeight: 600,
             display: "flex",

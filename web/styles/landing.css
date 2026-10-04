@@ -19,6 +19,11 @@
   --land-blue:        #3B82F6;
   --land-rose:        #F43F5E;
   --land-bg:          #FAFAFA;
+  /* Pastel tints of the auth side panel gradient. */
+  --land-tint-peach:   #FFF5F2;
+  --land-tint-peach-2: #FFF0EB;
+  --land-tint-mint:    #F0FDF9;
+  --land-tint-sky:     #EFF6FF;
   --land-text:        #111827;
   --land-sub:         #4B5563;
   --land-muted:       #9CA3AF;
