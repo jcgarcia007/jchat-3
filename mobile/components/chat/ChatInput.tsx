@@ -54,6 +54,11 @@ export interface ChatInputProps {
   onOfferPress?: () => void;
   /** Forwarded to AttachmentPanel — hides Offer button when false. */
   canCreateOffer?: boolean;
+  /** Match (D1) — forwarded to AttachmentPanel. */
+  gamesAvailable?: boolean;
+  games?: { key: string; name: string }[];
+  onGamePress?: (key: string) => void;
+  onScanQr?: () => void;
   disabled?: boolean;
 }
 
@@ -68,6 +73,10 @@ export function ChatInput({
   onServiceCall,
   onOfferPress,
   canCreateOffer = false,
+  gamesAvailable = false,
+  games,
+  onGamePress,
+  onScanQr,
   disabled = false,
 }: ChatInputProps) {
   const { t } = useTranslation('chat');
@@ -165,6 +174,10 @@ export function ChatInput({
         onOffer={onOfferPress}
         onClose={handleCloseAttachment}
         canCreateOffer={canCreateOffer}
+        gamesAvailable={gamesAvailable}
+        games={games}
+        onGamePress={onGamePress}
+        onScanQr={onScanQr}
       />
 
       {/* Input bar — replaced by the voice recorder while recording */}

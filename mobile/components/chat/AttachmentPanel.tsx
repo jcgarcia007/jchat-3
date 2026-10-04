@@ -20,7 +20,7 @@
  *   canCreateOffer  — hides Offer button when false (offers_manage permission gate)
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -33,10 +33,14 @@ import {
   IconToolsKitchen2,
   IconBell,
   IconTag,
+  IconDeviceGamepad2,
+  IconHeart,
+  IconQrcode,
 } from '@tabler/icons-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { useMatchPresenceState } from '../../services/matchPresence';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -50,6 +54,13 @@ export interface AttachmentPanelProps {
   onClose: () => void;
   /** Gate: show Offer button only when the current user has offers_manage permission. */
   canCreateOffer: boolean;
+  /** Match (D1): when true, "Games" replaces "Photo" (the input bar keeps its camera button). */
+  gamesAvailable?: boolean;
+  /** Catalog games to list in the games row (today only Match), already localized. */
+  games?: { key: string; name: string }[];
+  onGamePress?: (key: string) => void;
+  /** Opens the venue QR scanner (shown while Match presence is still being verified). */
+  onScanQr?: () => void;
 }
 
 // ── Option button ──────────────────────────────────────────────────────────────
@@ -113,8 +124,15 @@ export function AttachmentPanel({
   onOffer,
   onClose,
   canCreateOffer,
+  gamesAvailable = false,
+  games = [],
+  onGamePress,
+  onScanQr,
 }: AttachmentPanelProps) {
   const { t } = useTranslation('chat');
+  const { t: tm } = useTranslation('match');
+  const presence = useMatchPresenceState();
+  const [gamesOpen, setGamesOpen] = useState(false);
   const handlePhoto = useCallback(async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -174,19 +192,50 @@ export function AttachmentPanel({
     // TODO(Task 2.6): open CreateOfferSheet
   }, [onOffer, onClose]);
 
+  const handleGame = useCallback(
+    (key: string) => {
+      onClose();
+      onGamePress?.(key);
+    },
+    [onGamePress, onClose],
+  );
+
+  const handleScanQr = useCallback(() => {
+    onClose();
+    onScanQr?.();
+  }, [onScanQr, onClose]);
+
   if (!visible) return null;
+
+  // Match status line under the Match button: verifying (+ QR option) or a translated denial.
+  const verifying = presence.status === 'idle' || presence.status === 'checking' || presence.status === 'pending';
+  const denied = presence.status === 'denied';
+  const deniedText = denied
+    ? tm(presence.reason ? `presence.denied.${presence.reason}` : 'presence.denied.default', {
+        defaultValue: tm('presence.denied.default'),
+      })
+    : null;
 
   return (
     <View style={[panelStyles.container, { backgroundColor: theme.topBg, borderTopColor: theme.border }]}>
       <View style={panelStyles.row}>
 
-        {/* Photo */}
-        <OptionButton
-          theme={theme}
-          icon={<IconCamera size={24} color={theme.accent} />}
-          label={t('attachment.photo')}
-          onPress={handlePhoto}
-        />
+        {/* Games (Match available) replaces Photo; the input bar keeps its camera button */}
+        {gamesAvailable ? (
+          <OptionButton
+            theme={theme}
+            icon={<IconDeviceGamepad2 size={24} color={theme.accent} />}
+            label={tm('games.button')}
+            onPress={() => setGamesOpen((v) => !v)}
+          />
+        ) : (
+          <OptionButton
+            theme={theme}
+            icon={<IconCamera size={24} color={theme.accent} />}
+            label={t('attachment.photo')}
+            onPress={handlePhoto}
+          />
+        )}
 
         {/* Menú */}
         <OptionButton
@@ -215,6 +264,41 @@ export function AttachmentPanel({
         )}
 
       </View>
+
+      {/* Games row — only the catalog games (today Match) */}
+      {gamesAvailable && gamesOpen && (
+        <View style={panelStyles.gamesBlock} accessibilityLabel={tm('games.rowA11y')}>
+          <View style={panelStyles.row}>
+            {games.map((game) => (
+              <OptionButton
+                key={game.key}
+                theme={theme}
+                icon={<IconHeart size={24} color={theme.accent} />}
+                label={game.name}
+                onPress={() => handleGame(game.key)}
+              />
+            ))}
+          </View>
+          {verifying && (
+            <View style={panelStyles.statusRow}>
+              <Text style={[panelStyles.statusText, { color: theme.tabInactive }]}>
+                {tm('presence.verifying')}
+              </Text>
+              <Pressable
+                onPress={handleScanQr}
+                accessibilityRole="button"
+                style={[panelStyles.qrBtn, { borderColor: theme.accent }]}
+              >
+                <IconQrcode size={16} color={theme.accent} />
+                <Text style={[panelStyles.qrText, { color: theme.accent }]}>{tm('presence.scanQr')}</Text>
+              </Pressable>
+            </View>
+          )}
+          {deniedText && (
+            <Text style={[panelStyles.statusText, { color: theme.tabInactive }]}>{deniedText}</Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -231,4 +315,18 @@ const panelStyles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  gamesBlock: { marginTop: 10, gap: 8 },
+  statusRow: { gap: 8 },
+  statusText: { fontSize: 13, lineHeight: 18 },
+  qrBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  qrText: { fontSize: 13, fontWeight: '600' },
 });

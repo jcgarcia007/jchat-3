@@ -43,7 +43,8 @@
     "peopleHere_one": "{{count}} persona aquí",
     "peopleHere_other": "{{count}} personas aquí",
     "userTapA11y": "Ver opciones de {{name}}",
-    "myOrders": "Mis pedidos"
+    "myOrders": "Mis pedidos",
+    "moreOptions": "Más opciones"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — protegido con contraseña"

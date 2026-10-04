@@ -8,6 +8,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { matchCheckIn } from './match';
 
 export type MatchPresenceStatus = 'idle' | 'checking' | 'active' | 'pending' | 'denied';
 
@@ -65,4 +66,79 @@ function subscribe(listener: () => void): () => void {
 
 export function useMatchPresenceState(): MatchPresenceState {
   return useSyncExternalStore(subscribe, getMatchPresence, getMatchPresence);
+}
+
+// ── Check-in runner (shared by the chat heartbeat and any Match screen) ──────────────────
+
+/** GPS reading used by the next check-in (the chat's geofence gate publishes it). */
+export interface MatchReading {
+  lat: number;
+  lng: number;
+  mocked: boolean;
+}
+
+let latestReading: MatchReading | null = null;
+let inFlight = false;
+
+export function setMatchReading(reading: MatchReading | null): void {
+  latestReading = reading;
+}
+
+/**
+ * Calls match_check_in for the venue and mirrors the answer into the store. With `qrToken` the
+ * server activates presence instantly. Returns true when presence is 'active'. Never throws.
+ */
+export async function runMatchCheckIn(
+  businessId: string,
+  roomId: string,
+  qrToken?: string,
+): Promise<boolean> {
+  if (inFlight) return false;
+  inFlight = true;
+  const previous = state;
+  const sameVenue = previous.businessId === businessId;
+  setMatchPresence({
+    businessId,
+    roomId,
+    // Keep showing 'active' while a heartbeat renews; show 'checking' otherwise.
+    status: sameVenue && previous.status === 'active' ? 'active' : 'checking',
+    error: false,
+  });
+  try {
+    const result = await matchCheckIn({
+      businessId,
+      lat: latestReading?.lat,
+      lng: latestReading?.lng,
+      qrToken,
+      mocked: latestReading?.mocked === true,
+    });
+    setMatchPresence({
+      businessId,
+      roomId,
+      status: result.status,
+      reason: result.status === 'denied' ? (result.reason ?? 'unavailable') : null,
+      expiresAt: result.expires_at ?? null,
+      method: result.method ?? null,
+      error: false,
+    });
+    return result.status === 'active';
+  } catch {
+    // Network/server hiccup: keep the previous status, flag the error, retry next heartbeat.
+    setMatchPresence({
+      businessId,
+      roomId,
+      status: sameVenue ? previous.status : 'pending',
+      error: true,
+    });
+    return false;
+  } finally {
+    inFlight = false;
+  }
+}
+
+/** Activates presence at the current venue with a scanned venue QR token. */
+export function matchCheckInWithQr(qrToken: string): Promise<boolean> {
+  const { businessId, roomId } = state;
+  if (!businessId || !roomId) return Promise.resolve(false);
+  return runMatchCheckIn(businessId, roomId, qrToken);
 }

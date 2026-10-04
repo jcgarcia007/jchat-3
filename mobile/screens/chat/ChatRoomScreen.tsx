@@ -59,6 +59,9 @@ import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../..
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
 import { MatchEntryNotice } from '../../components/match/MatchEntryNotice';
+import { MatchQrScanner } from '../../components/match/MatchQrScanner';
+import { matchCheckInWithQr } from '../../services/matchPresence';
+import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
   fetchGames,
@@ -371,12 +374,53 @@ export default function ChatRoomScreen() {
 
   // The owner has no geofence reading (the gate skips them), so they don't join Match.
   const matchActive = matchAvailable && gamesEnabled && matchOptInValue;
-  const matchPresence = useMatchPresence({
+  useMatchPresence({
     businessId: matchBusinessId,
     roomId: rootRoomId,
     enabled: !entryVisible && matchActive && !isOwner,
     reading: geoGate.lastCoords,
   });
+
+  // Games panel / ⋯ menu / QR (Fase D1). Hidden for the owner (no geofence reading → not in Match).
+  const [qrScannerVisible, setQrScannerVisible] = useState(false);
+  const gamesAvailable = matchActive && !isOwner;
+  const panelGames = useMemo(
+    () =>
+      matchGames
+        .filter((g) => g.key === 'match')
+        .map((g) => ({ key: g.key, name: matchLanguage === 'es' ? g.name_es : g.name_en })),
+    [matchGames, matchLanguage],
+  );
+
+  const handleGamePress = useCallback(
+    (key: string) => {
+      if (key !== 'match' || !matchBusinessId) return;
+      navigation.navigate('MatchHome', { businessId: matchBusinessId, businessName: business?.name });
+    },
+    [navigation, matchBusinessId, business?.name],
+  );
+
+  const handleQrToken = useCallback((token: string) => {
+    setQrScannerVisible(false);
+    void matchCheckInWithQr(token);
+  }, []);
+
+  const handleMoreOptions = useCallback(() => {
+    if (!matchBusinessId) return;
+    Alert.alert(business?.name ?? '', undefined, [
+      {
+        text: i18n.t('leave.button', { ns: 'match' }),
+        style: 'destructive',
+        onPress: () =>
+          confirmLeaveVenue({
+            businessId: matchBusinessId,
+            businessName: business?.name ?? '',
+            onLeft: () => navigation.goBack(),
+          }),
+      },
+      { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
+    ]);
+  }, [matchBusinessId, business?.name, navigation, i18n]);
 
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
@@ -1380,6 +1424,7 @@ export default function ChatRoomScreen() {
         onBack={handleBack}
         onMenuPress={handleMenuPress}
         onOrdersPress={() => navigation.navigate('MyOrders')}
+        onMorePress={gamesAvailable ? handleMoreOptions : undefined}
         onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}
@@ -1477,8 +1522,19 @@ export default function ChatRoomScreen() {
           onServiceCall={handleServiceCall}
           onOfferPress={() => setOfferVisible(true)}
           canCreateOffer={chatPermissions.offers_manage}
+          gamesAvailable={gamesAvailable}
+          games={panelGames}
+          onGamePress={handleGamePress}
+          onScanQr={() => setQrScannerVisible(true)}
         />
       </KeyboardAvoidingView>
+
+      {/* ── Match venue QR scanner (instant presence) ────────────────────── */}
+      <MatchQrScanner
+        visible={qrScannerVisible}
+        onToken={handleQrToken}
+        onClose={() => setQrScannerVisible(false)}
+      />
 
       {/* ── Password entry sheet ─────────────────────────────────────────── */}
       {pendingProtectedRoom && (

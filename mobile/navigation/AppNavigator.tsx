@@ -63,6 +63,7 @@ import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
 import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
 import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
+import MatchHomeScreen from '../screens/match/MatchHomeScreen';
 import type { MenuItem } from '../services/menu';
 
 export type AuthStackParamList = {
@@ -124,6 +125,8 @@ export type MainStackParamList = {
   OrderTracking: { orderId: string; roomId?: string };
   /** The signed-in user's own orders. */
   MyOrders: undefined;
+  /** Match (JChat's venue game): entry/home screen. Presence state comes from the shared store. */
+  MatchHome: { businessId: string; businessName?: string };
 };
 
 type RecoveryStackParamList = { ResetPassword: undefined };
@@ -258,6 +261,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
           <MainStack.Screen name="MyOrders" component={MyOrdersScreen} />
+          <MainStack.Screen name="MatchHome" component={MatchHomeScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

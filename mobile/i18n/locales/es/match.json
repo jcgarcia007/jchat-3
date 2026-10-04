@@ -48,7 +48,8 @@
     "button": "Juegos",
     "buttonA11y": "Abrir juegos",
     "rowA11y": "Juegos disponibles en este local",
-    "matchName": "Match"
+    "matchName": "Match",
+    "verifyingShort": "Verificando…"
   },
   "presence": {
     "verifying": "Verificando que estás en el local…",
@@ -87,6 +88,11 @@
   },
   "home": {
     "title": "Match",
-    "placeholder": "El mazo llega en la siguiente actualización."
+    "placeholder": "El mazo llega en la siguiente actualización.",
+    "back": "Atrás"
+  },
+  "menu": {
+    "title": "Opciones",
+    "cancel": "Cerrar"
   }
 }

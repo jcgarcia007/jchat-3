@@ -33,6 +33,7 @@ import {
 } from 'react-native';
 import {
   IconArrowLeft,
+  IconDots,
   IconMenuDeep,
   IconReceipt,
   IconUser,
@@ -70,6 +71,8 @@ export interface ChatTopBarProps {
   onMenuPress: () => void;
   /** Opens the user's own orders. Optional: the button only shows when provided. */
   onOrdersPress?: () => void;
+  /** Opens the ⋯ options menu (Match: leave the venue). The button only shows when provided. */
+  onMorePress?: () => void;
   onUserPress: (userId: string, displayName: string, anchor: UserAnchor) => void;
   children?: React.ReactNode;
 }
@@ -155,6 +158,7 @@ export function ChatTopBar({
   onBack,
   onMenuPress,
   onOrdersPress,
+  onMorePress,
   onUserPress,
   children,
 }: ChatTopBarProps) {
@@ -216,6 +220,18 @@ export function ChatTopBar({
             </Pressable>
           </View>
         )}
+
+        {onMorePress ? (
+          <Pressable
+            onPress={onMorePress}
+            accessibilityRole="button"
+            accessibilityLabel={t('topBar.moreOptions')}
+            hitSlop={10}
+            style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
+          >
+            <IconDots size={22} color={theme.tabActive} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* ── SubRoomTabs slot ─────────────────────────────────────────────── */}

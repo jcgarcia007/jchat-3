@@ -48,7 +48,8 @@
     "button": "Games",
     "buttonA11y": "Open games",
     "rowA11y": "Games available at this venue",
-    "matchName": "Match"
+    "matchName": "Match",
+    "verifyingShort": "Checking…"
   },
   "presence": {
     "verifying": "Checking that you're at the venue…",
@@ -87,6 +88,11 @@
   },
   "home": {
     "title": "Match",
-    "placeholder": "The deck arrives in the next update."
+    "placeholder": "The deck arrives in the next update.",
+    "back": "Back"
+  },
+  "menu": {
+    "title": "Options",
+    "cancel": "Close"
   }
 }
