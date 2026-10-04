@@ -183,5 +183,59 @@
       "super_like_quota": "Te quedaste sin Super Likes por hoy.",
       "already_swiped": "Ya respondiste a esa persona."
     }
+  },
+  "lightbox": {
+    "close": "Cerrar foto"
+  },
+  "profileView": {
+    "unavailable": "Esta persona ya no está disponible.",
+    "photoA11y": "Foto de {{name}}",
+    "fullProfile": "Ver perfil completo en JChat"
+  },
+  "itsAMatch": {
+    "title": "¡Es un match!",
+    "subtitle": "A {{name}} y a ti se gustaron mutuamente.",
+    "follow": "Seguir a {{name}}",
+    "following": "Siguiendo",
+    "requested": "Solicitud de seguimiento enviada",
+    "followHint": "Si se siguen mutuamente, este chat se queda cuando salgan del local.",
+    "icebreakers": "Rompe el hielo",
+    "icebreaker": {
+      "drinking": "¿Qué estás tomando?",
+      "firstTime": "¿Primera vez aquí?",
+      "whatBroughtYou": "¿Qué te trajo a {{business}} hoy?"
+    },
+    "placeholder": "Escribe un mensaje…",
+    "sendMessage": "Enviar mensaje",
+    "keepExploring": "Seguir explorando"
+  },
+  "safety": {
+    "menuTitle": "Opciones",
+    "report": "Reportar",
+    "block": "Bloquear",
+    "help": "Pedir ayuda al local",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "send": "Enviar reporte",
+    "blockTitle": "¿Bloquear a {{name}}?",
+    "blockBody": "Desaparecerá de tu mazo, matches y chats, y tú del suyo.",
+    "reportTitle": "Reportar a esta persona",
+    "detailsPlaceholder": "Añade detalles (opcional)",
+    "reasons": {
+      "harassment": "Acoso",
+      "explicit": "Contenido explícito",
+      "minor": "Sospecho que es menor",
+      "scam": "Estafa",
+      "other": "Otro motivo"
+    },
+    "reportThanks": "Gracias, lo revisaremos",
+    "reportThanksBody": "Tu reporte llega al local y al equipo de JChat.",
+    "helpTitle": "Pedir ayuda al local",
+    "helpBody": "Avisaremos al personal del local sin que nadie más lo vea.",
+    "helpWherePlaceholder": "Mesa o zona (opcional)",
+    "helpSend": "Pedir ayuda",
+    "helpSent": "Listo, avisamos al personal",
+    "helpSentBody": "Alguien del local se acercará. Quédate donde haya más gente.",
+    "error": "No se pudo completar. Inténtalo de nuevo."
   }
 }

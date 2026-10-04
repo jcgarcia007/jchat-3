@@ -130,9 +130,23 @@ export default function MatchHomeScreen() {
         {presence.status === 'active' && (
           <MatchDeckSection
             businessId={params.businessId}
-            // D4 replaces these two with the profile screen and "It's a match!".
-            onMatch={() => undefined}
-            onOpenProfile={() => undefined}
+            onMatch={(card, result) =>
+              navigation.navigate('MatchItsAMatch', {
+                businessId: params.businessId,
+                businessName: params.businessName,
+                other: card,
+                conversationId: result.conversation_id,
+                matchId: result.match_id,
+              })
+            }
+            onOpenProfile={(card) =>
+              navigation.navigate('MatchProfile', {
+                businessId: params.businessId,
+                userId: card.id,
+                businessName: params.businessName,
+                card,
+              })
+            }
           />
         )}
 

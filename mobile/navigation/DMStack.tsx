@@ -22,6 +22,8 @@ export type DMStackParamList = {
     conversationId: string;
     /** Optional: used to load the partner's profile on first open. */
     otherUserId?: string;
+    /** Text to pre-fill in the message field (Match icebreakers). Never sent automatically. */
+    prefill?: string;
   };
 };
 

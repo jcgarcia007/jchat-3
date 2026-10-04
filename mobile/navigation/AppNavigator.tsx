@@ -66,6 +66,9 @@ import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
 import MatchHomeScreen from '../screens/match/MatchHomeScreen';
 import MatchMyProfileScreen from '../screens/match/MatchMyProfileScreen';
 import MatchInterestsScreen from '../screens/match/MatchInterestsScreen';
+import MatchProfileScreen from '../screens/match/MatchProfileScreen';
+import MatchItsAMatchScreen from '../screens/match/MatchItsAMatchScreen';
+import type { MatchCard } from '../services/matchTypes';
 import type { MenuItem } from '../services/menu';
 
 export type AuthStackParamList = {
@@ -133,6 +136,16 @@ export type MainStackParamList = {
   MatchMyProfile: undefined;
   /** Interests quiz/editor. firstTime shows "skip". */
   MatchInterests: { firstTime?: boolean } | undefined;
+  /** Another person's Match profile. `card` (optional) paints instantly while the profile refreshes. */
+  MatchProfile: { businessId: string; userId: string; businessName?: string; card?: MatchCard };
+  /** "It's a match!" — `other` is the matched person, conversationId the ephemeral DM. */
+  MatchItsAMatch: {
+    businessId: string;
+    businessName?: string;
+    other: MatchCard;
+    conversationId: string | null;
+    matchId: string | null;
+  };
 };
 
 type RecoveryStackParamList = { ResetPassword: undefined };
@@ -270,6 +283,8 @@ export default function AppNavigator() {
           <MainStack.Screen name="MatchHome" component={MatchHomeScreen} />
           <MainStack.Screen name="MatchMyProfile" component={MatchMyProfileScreen} />
           <MainStack.Screen name="MatchInterests" component={MatchInterestsScreen} />
+          <MainStack.Screen name="MatchProfile" component={MatchProfileScreen} />
+          <MainStack.Screen name="MatchItsAMatch" component={MatchItsAMatchScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

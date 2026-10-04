@@ -183,5 +183,59 @@
       "super_like_quota": "You're out of Super Likes for today.",
       "already_swiped": "You already answered that person."
     }
+  },
+  "lightbox": {
+    "close": "Close photo"
+  },
+  "profileView": {
+    "unavailable": "This person is no longer available.",
+    "photoA11y": "Photo of {{name}}",
+    "fullProfile": "See full profile on JChat"
+  },
+  "itsAMatch": {
+    "title": "It's a match!",
+    "subtitle": "You and {{name}} liked each other.",
+    "follow": "Follow {{name}}",
+    "following": "Following",
+    "requested": "Follow request sent",
+    "followHint": "If you follow each other, this chat stays after you leave the venue.",
+    "icebreakers": "Break the ice",
+    "icebreaker": {
+      "drinking": "What are you drinking?",
+      "firstTime": "First time here?",
+      "whatBroughtYou": "What brought you to {{business}} today?"
+    },
+    "placeholder": "Write a message…",
+    "sendMessage": "Send message",
+    "keepExploring": "Keep exploring"
+  },
+  "safety": {
+    "menuTitle": "Options",
+    "report": "Report",
+    "block": "Block",
+    "help": "Ask the venue for help",
+    "cancel": "Cancel",
+    "close": "Close",
+    "send": "Send report",
+    "blockTitle": "Block {{name}}?",
+    "blockBody": "They will disappear from your deck, matches and chats, and you from theirs.",
+    "reportTitle": "Report this person",
+    "detailsPlaceholder": "Add details (optional)",
+    "reasons": {
+      "harassment": "Harassment",
+      "explicit": "Explicit content",
+      "minor": "I suspect they are a minor",
+      "scam": "Scam",
+      "other": "Something else"
+    },
+    "reportThanks": "Thank you, we'll review it",
+    "reportThanksBody": "Your report reaches the venue and the JChat team.",
+    "helpTitle": "Ask the venue for help",
+    "helpBody": "We'll alert the venue staff without anyone else seeing it.",
+    "helpWherePlaceholder": "Table or area (optional)",
+    "helpSend": "Ask for help",
+    "helpSent": "Done, we let the staff know",
+    "helpSentBody": "Someone from the venue will come to you. Stay where there are other people.",
+    "error": "Couldn't complete that. Try again."
   }
 }

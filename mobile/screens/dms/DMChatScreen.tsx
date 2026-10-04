@@ -216,7 +216,7 @@ export default function DMChatScreen() {
 
   const [messages, setMessages] = useState<DmMessageRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(route.params.prefill ?? '');
   const [sending, setSending] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
