@@ -56,6 +56,7 @@ function elapsed(iso: string, t: TFn): string {
 function typeLabel(type: string, t: TFn): string {
   if (type === "waiter") return t("tabKindWaiter");
   if (type === "bill")   return t("serviceTypeBill");
+  if (type === "help")   return t("serviceTypeHelp");
   return t("serviceTypeOther");
 }
 
@@ -213,6 +214,12 @@ export default function ServicePage() {
 
   if (needsRegister) return <NoBusinessCTA />;
 
+  // Discreet help requests (type 'help', from Match) go first; newest first within each group.
+  const orderedCalls = [...calls].sort((a, b) => {
+    const priority = Number(b.type === "help") - Number(a.type === "help");
+    return priority !== 0 ? priority : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   return (
     <div className="service-page">
       <div className="service-header">
@@ -256,14 +263,19 @@ export default function ServicePage() {
         </div>
       ) : (
         <ul className="service-list">
-          {calls.map((call) => (
-            <li key={call.id} className={`service-card service-card--${call.status}`}>
+          {orderedCalls.map((call) => (
+            <li
+              key={call.id}
+              className={`service-card service-card--${call.status}${call.type === "help" ? " service-card--help" : ""}`}
+            >
               <div className="service-card-top">
                 <div className="service-card-left">
                   <span className={`service-badge service-badge--${call.status}`}>
                     {statusLabel(call.status, t)}
                   </span>
-                  <span className="service-type">{typeLabel(call.type, t)}</span>
+                  <span className={`service-type${call.type === "help" ? " service-type--help" : ""}`}>
+                    {typeLabel(call.type, t)}
+                  </span>
                 </div>
                 <div className="service-card-time">
                   <IconClock size={13} />
@@ -427,6 +439,14 @@ export default function ServicePage() {
         }
         .service-card--acknowledged {
           border-left: 4px solid var(--db-success);
+        }
+        .service-card.service-card--help {
+          border-left: 4px solid var(--color-danger);
+          background: color-mix(in srgb, var(--color-danger) 8%, var(--db-surface));
+        }
+        .service-type--help {
+          color: var(--color-danger);
+          font-weight: 700;
         }
         .service-card-top {
           display: flex;

@@ -2381,7 +2381,8 @@
     "matchKickedOn": "Removed on {date}",
     "matchReportStatus_pending": "Pending",
     "matchReportStatus_dismissed": "Dismissed",
-    "matchReportStatus_resolved": "Resolved"
+    "matchReportStatus_resolved": "Resolved",
+    "serviceTypeHelp": "Discreet help request"
   },
   "superAdmin": {
     "shell": {

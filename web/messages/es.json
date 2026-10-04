@@ -2381,7 +2381,8 @@
     "matchKickedOn": "Expulsado el {date}",
     "matchReportStatus_pending": "Pendiente",
     "matchReportStatus_dismissed": "Descartado",
-    "matchReportStatus_resolved": "Resuelto"
+    "matchReportStatus_resolved": "Resuelto",
+    "serviceTypeHelp": "Ayuda discreta"
   },
   "superAdmin": {
     "shell": {
