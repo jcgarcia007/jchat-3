@@ -109,7 +109,7 @@ export default async function RoomPage({
               height: 44,
               borderRadius: 12,
               background: "var(--color-danger)",
-              color: "#fff",
+              color: "var(--on-brand)",
             }}
           >
             <IconQrcode size={24} />

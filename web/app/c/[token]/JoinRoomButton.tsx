@@ -100,7 +100,7 @@ export function JoinRoomButton({ token }: Props) {
         style={{
           ...btnBase,
           background: "var(--color-brand)",
-          color: "#fff",
+          color: "var(--on-brand)",
           opacity: state === "loading" ? 0.7 : 1,
         }}
       >

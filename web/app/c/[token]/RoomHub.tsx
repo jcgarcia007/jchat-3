@@ -144,7 +144,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
         style={{
           padding: "12px 14px",
           borderRadius: 12,
-          background: "rgba(239,68,68,0.1)",
+          background: "rgb(var(--color-danger-rgb) / 0.1)",
           border: "1px solid var(--color-danger)",
           color: "var(--color-danger)",
           fontSize: 13,
@@ -217,7 +217,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               ...btnBase,
               background: "var(--color-brand-light)",
               color: "var(--color-brand)",
-              border: "1px solid rgba(92,124,250,0.3)",
+              border: "1px solid rgb(var(--color-brand-rgb) / 0.3)",
               textDecoration: "none",
             }}
           >
@@ -230,7 +230,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
                 height: 36,
                 borderRadius: 10,
                 background: "var(--color-brand)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 flexShrink: 0,
               }}
             >
@@ -246,7 +246,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               ...btnBase,
               background: "var(--color-brand-light)",
               color: "var(--color-brand)",
-              border: "1px solid rgba(92,124,250,0.3)",
+              border: "1px solid rgb(var(--color-brand-rgb) / 0.3)",
               textDecoration: "none",
             }}
           >
@@ -259,7 +259,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
                 height: 36,
                 borderRadius: 10,
                 background: "var(--color-brand)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 flexShrink: 0,
               }}
             >
@@ -275,7 +275,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               ...btnBase,
               background: "var(--color-brand-light)",
               color: "var(--color-brand)",
-              border: "1px solid rgba(92,124,250,0.3)",
+              border: "1px solid rgb(var(--color-brand-rgb) / 0.3)",
               opacity: 0.6,
               cursor: "not-allowed",
             }}
@@ -289,7 +289,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
                 height: 36,
                 borderRadius: 10,
                 background: "var(--color-brand)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 flexShrink: 0,
               }}
             >
@@ -303,7 +303,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
                 padding: "3px 10px",
                 borderRadius: 20,
                 background: "var(--color-brand)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 whiteSpace: "nowrap",
               }}
             >
@@ -348,7 +348,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
           style={{
             ...btnBase,
             background: "var(--color-brand)",
-            color: "#fff",
+            color: "var(--on-brand)",
           }}
         >
           <span
@@ -359,7 +359,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
               width: 36,
               height: 36,
               borderRadius: 10,
-              background: "rgba(255,255,255,0.18)",
+              background: "rgb(var(--white-rgb) / 0.18)",
               flexShrink: 0,
             }}
           >

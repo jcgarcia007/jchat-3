@@ -78,7 +78,7 @@ export default async function QREntryPage({
     border: "1px solid var(--border-subtle)",
     borderRadius: 20,
     padding: "28px 24px",
-    boxShadow: "0 4px 32px rgba(0,0,0,0.18)",
+    boxShadow: "0 4px 32px rgb(var(--ink-rgb) / 0.18)",
     display: "flex",
     flexDirection: "column",
     gap: 20,
@@ -99,7 +99,7 @@ export default async function QREntryPage({
                 height: 40,
                 borderRadius: 12,
                 background: "var(--color-danger)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 flexShrink: 0,
               }}
             >
@@ -154,7 +154,7 @@ export default async function QREntryPage({
               height: 40,
               borderRadius: 12,
               background: "var(--color-brand)",
-              color: "#fff",
+              color: "var(--on-brand)",
               flexShrink: 0,
             }}
           >
@@ -262,7 +262,7 @@ export default async function QREntryPage({
                 padding: "13px 16px",
                 borderRadius: 12,
                 background: "var(--color-brand)",
-                color: "#fff",
+                color: "var(--on-brand)",
                 fontSize: 15,
                 fontWeight: 600,
                 textDecoration: "none",

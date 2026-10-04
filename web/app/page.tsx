@@ -109,7 +109,7 @@ function PhoneHero({ youLabel }: { youLabel: string }) {
         position:"absolute", top:"50%", left:"50%",
         transform:"translate(-50%,-50%)",
         width:"340px", height:"340px", borderRadius:"50%",
-        background:"radial-gradient(circle,rgba(255,138,101,.18) 0%,transparent 70%)",
+        background:"radial-gradient(circle,rgb(var(--land-peach-rgb) / .18) 0%,transparent 70%)",
         filter:"blur(40px)", zIndex:1, pointerEvents:"none",
       }}/>
 
@@ -137,24 +137,24 @@ function PhoneHero({ youLabel }: { youLabel: string }) {
               fill="none"
             >
               {/* Fondo */}
-              <rect width="100" height="100" fill="#F9FAFB"/>
+              <rect width="100" height="100" fill="var(--gray-50)"/>
               {/* Cuadrícula de calles */}
-              <line x1="20" y1="0"   x2="20"  y2="100" stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
-              <line x1="40" y1="0"   x2="40"  y2="100" stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
-              <line x1="60" y1="0"   x2="60"  y2="100" stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
-              <line x1="80" y1="0"   x2="80"  y2="100" stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
-              <line x1="0"  y1="25"  x2="100" y2="25"  stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
-              <line x1="0"  y1="50"  x2="100" y2="50"  stroke="rgba(0,0,0,.09)" strokeWidth=".9"/>
-              <line x1="0"  y1="75"  x2="100" y2="75"  stroke="rgba(0,0,0,.06)" strokeWidth=".7"/>
+              <line x1="20" y1="0"   x2="20"  y2="100" stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
+              <line x1="40" y1="0"   x2="40"  y2="100" stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
+              <line x1="60" y1="0"   x2="60"  y2="100" stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
+              <line x1="80" y1="0"   x2="80"  y2="100" stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
+              <line x1="0"  y1="25"  x2="100" y2="25"  stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
+              <line x1="0"  y1="50"  x2="100" y2="50"  stroke="rgb(var(--ink-rgb) / .09)" strokeWidth=".9"/>
+              <line x1="0"  y1="75"  x2="100" y2="75"  stroke="rgb(var(--ink-rgb) / .06)" strokeWidth=".7"/>
               {/* Manzanas */}
-              <rect x="22" y="27" width="16" height="21" rx="2" fill="rgba(0,0,0,.04)"/>
-              <rect x="42" y="27" width="16" height="21" rx="2" fill="rgba(0,0,0,.035)"/>
-              <rect x="62" y="27" width="16" height="21" rx="2" fill="rgba(0,0,0,.04)"/>
-              <rect x="22" y="52" width="16" height="21" rx="2" fill="rgba(0,0,0,.03)"/>
-              <rect x="62" y="52" width="16" height="21" rx="2" fill="rgba(0,0,0,.04)"/>
+              <rect x="22" y="27" width="16" height="21" rx="2" fill="rgb(var(--ink-rgb) / .04)"/>
+              <rect x="42" y="27" width="16" height="21" rx="2" fill="rgb(var(--ink-rgb) / .035)"/>
+              <rect x="62" y="27" width="16" height="21" rx="2" fill="rgb(var(--ink-rgb) / .04)"/>
+              <rect x="22" y="52" width="16" height="21" rx="2" fill="rgb(var(--ink-rgb) / .03)"/>
+              <rect x="62" y="52" width="16" height="21" rx="2" fill="rgb(var(--ink-rgb) / .04)"/>
               {/* Radio circles (durazno) */}
-              <circle cx="50" cy="50" r="22" stroke="rgba(255,138,101,.30)" strokeWidth="1"   strokeDasharray="3 6"  fill="rgba(255,138,101,.06)"/>
-              <circle cx="50" cy="50" r="36" stroke="rgba(255,138,101,.14)" strokeWidth=".8"  strokeDasharray="2 8"  fill="none"/>
+              <circle cx="50" cy="50" r="22" stroke="rgb(var(--land-peach-rgb) / .30)" strokeWidth="1"   strokeDasharray="3 6"  fill="rgb(var(--land-peach-rgb) / .06)"/>
+              <circle cx="50" cy="50" r="36" stroke="rgb(var(--land-peach-rgb) / .14)" strokeWidth=".8"  strokeDasharray="2 8"  fill="none"/>
             </svg>
             {/* Venue pins */}
             {MAP_VENUES.map((v,i) => (
@@ -254,32 +254,14 @@ export default function LandingPage() {
   return (
     <>
       <style>{`
-        /* ── Landing design tokens: paleta CLARA, durazno protagonista ─── */
-        :root {
-          --land-peach:      #FF8A65;
-          --land-peach-2:    #FFAB91;
-          --land-peach-glow: rgba(255,138,101,.20);
-          --land-mint:       #5EEAD4;
-          --land-mint-glow:  rgba(94,234,212,.18);
-          --land-sky:        #93C5FD;
-          --land-sky-glow:   rgba(147,197,253,.22);
-          --land-lavender:   #C4B5FD;
-          --land-bg:         #FAFAFA;
-          --land-text:       #111827;
-          --land-sub:        #4B5563;
-          --land-muted:      #9CA3AF;
-          --land-glass:      rgba(255,255,255,.80);
-          --land-border-v:   rgba(255,138,101,.30);
-          --land-border-c:   rgba(147,197,253,.38);
-          --land-shadow:     0 8px 40px rgba(0,0,0,.09);
-        }
+        /* --land-* tokens live in styles/landing.css (single definition). */
 
         /* ── Display font ──────────────────────────────────────────────── */
         .sg { font-family:var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif; }
 
         /* ── Gradient text (durazno → rose → brand) ────────────────────── */
         .gtext {
-          background: linear-gradient(135deg, var(--land-peach) 0%, #F43F5E 45%, var(--color-brand) 90%);
+          background: linear-gradient(135deg, var(--land-peach) 0%, var(--land-rose) 45%, var(--color-brand) 90%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -304,17 +286,17 @@ export default function LandingPage() {
           transform:translate(-50%,-50%); z-index:2;
         }
         .phone-frame {
-          width:220px; height:440px; background:#fff;
-          border-radius:36px; border:5px solid #E5E7EB;
-          box-shadow:0 32px 80px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.04);
+          width:220px; height:440px; background:rgb(var(--white-rgb));
+          border-radius:36px; border:5px solid var(--gray-200);
+          box-shadow:0 32px 80px rgb(var(--ink-rgb) / .14), 0 0 0 1px rgb(var(--ink-rgb) / .04);
           overflow:hidden; position:relative; display:flex; flex-direction:column;
         }
         .phone-notch {
           position:absolute; top:10px; left:50%; transform:translateX(-50%);
-          width:80px; height:22px; background:#E5E7EB; border-radius:11px; z-index:10;
+          width:80px; height:22px; background:var(--gray-200); border-radius:11px; z-index:10;
         }
         .phone-screen {
-          flex:1; background:#F9FAFB; position:relative;
+          flex:1; background:var(--gray-50); position:relative;
           overflow:hidden; margin-top:40px; margin-bottom:28px;
         }
         .phone-status {
@@ -324,7 +306,7 @@ export default function LandingPage() {
         }
         .phone-home {
           position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-          width:60px; height:4px; background:#D1D5DB; border-radius:2px;
+          width:60px; height:4px; background:var(--gray-300); border-radius:2px;
         }
 
         /* ── Map venue pins ────────────────────────────────────────────── */
@@ -341,8 +323,8 @@ export default function LandingPage() {
         .map-dot {
           position:absolute; top:0; left:0;
           transform:translate(-50%,-50%); border-radius:50%;
-          border:1.5px solid rgba(255,255,255,.9);
-          box-shadow:0 2px 8px rgba(0,0,0,.12);
+          border:1.5px solid rgb(var(--white-rgb) / .9);
+          box-shadow:0 2px 8px rgb(var(--ink-rgb) / .12);
         }
         .map-you-wrap {
           position:absolute; top:50%; left:50%;
@@ -352,15 +334,15 @@ export default function LandingPage() {
         .map-you {
           width:14px; height:14px; border-radius:50%;
           background:var(--color-brand);
-          border:2.5px solid #fff;
-          box-shadow:0 0 0 4px rgba(92,124,250,.25), 0 2px 8px rgba(0,0,0,.18);
+          border:2.5px solid rgb(var(--white-rgb));
+          box-shadow:0 0 0 4px rgb(var(--color-brand-rgb) / .25), 0 2px 8px rgb(var(--ink-rgb) / .18);
         }
         .map-you-label {
-          background:var(--color-brand); color:#fff;
+          background:var(--color-brand); color:rgb(var(--white-rgb));
           font-size:7px; font-weight:700;
           padding:2px 6px; border-radius:6px;
           white-space:nowrap;
-          box-shadow:0 2px 8px rgba(92,124,250,.30);
+          box-shadow:0 2px 8px rgb(var(--color-brand-rgb) / .30);
         }
 
         /* ── Floating glass cards ──────────────────────────────────────── */
@@ -391,30 +373,30 @@ export default function LandingPage() {
         .btn-peach {
           display:inline-flex; align-items:center; gap:8px;
           padding:14px 28px;
-          background:linear-gradient(135deg, var(--land-peach) 0%, #FF7043 100%);
-          color:#fff !important; font-size:15px; font-weight:700;
+          background:linear-gradient(135deg, var(--land-peach) 0%, var(--land-peach-dark) 100%);
+          color:var(--on-brand) !important; font-size:15px; font-weight:700;
           border:none; border-radius:14px; cursor:pointer; text-decoration:none;
-          box-shadow:0 6px 24px var(--land-peach-glow), 0 2px 8px rgba(0,0,0,.08);
+          box-shadow:0 6px 24px var(--land-peach-glow), 0 2px 8px rgb(var(--ink-rgb) / .08);
           transition:box-shadow .2s;
         }
-        .btn-peach:hover { box-shadow:0 10px 36px rgba(255,112,67,.38), 0 2px 8px rgba(0,0,0,.10); }
+        .btn-peach:hover { box-shadow:0 10px 36px rgb(var(--land-peach-dark-rgb) / .38), 0 2px 8px rgb(var(--ink-rgb) / .10); }
         .btn-ghost {
           display:inline-flex; align-items:center; gap:8px;
           padding:14px 28px; background:transparent;
           color:var(--land-text) !important; font-size:15px; font-weight:600;
-          border:1.5px solid rgba(0,0,0,.14); border-radius:14px;
+          border:1.5px solid rgb(var(--ink-rgb) / .14); border-radius:14px;
           cursor:pointer; text-decoration:none; transition:border-color .15s, background .15s;
         }
-        .btn-ghost:hover { border-color:rgba(0,0,0,.26); background:rgba(0,0,0,.03); }
+        .btn-ghost:hover { border-color:rgb(var(--ink-rgb) / .26); background:rgb(var(--ink-rgb) / .03); }
 
         /* ── How it works cards ────────────────────────────────────────── */
         .hiw-card {
           background:var(--land-glass);
           backdrop-filter:blur(20px);
           -webkit-backdrop-filter:blur(20px);
-          border:1px solid rgba(0,0,0,.07);
+          border:1px solid rgb(var(--ink-rgb) / .07);
           border-radius:22px; padding:28px 24px;
-          box-shadow:0 4px 24px rgba(0,0,0,.06);
+          box-shadow:0 4px 24px rgb(var(--ink-rgb) / .06);
           transition:box-shadow .2s;
         }
         .hiw-num {
@@ -424,17 +406,17 @@ export default function LandingPage() {
           font-family:var(--font-grotesk), 'Space Grotesk', sans-serif;
         }
         .hiw-n1 { background:var(--land-peach-glow); color:var(--land-peach); }
-        .hiw-n2 { background:var(--land-mint-glow);  color:#0EA5A0; }
-        .hiw-n3 { background:var(--land-sky-glow);   color:#3B82F6; }
+        .hiw-n2 { background:var(--land-mint-glow);  color:var(--land-teal); }
+        .hiw-n3 { background:var(--land-sky-glow);   color:var(--land-blue); }
 
         /* ── Groups Pro ────────────────────────────────────────────────── */
         .groups-glass {
           background:var(--land-glass);
           backdrop-filter:blur(24px);
           -webkit-backdrop-filter:blur(24px);
-          border:1px solid rgba(0,0,0,.07);
+          border:1px solid rgb(var(--ink-rgb) / .07);
           border-radius:24px; padding:32px;
-          box-shadow:0 8px 40px rgba(0,0,0,.07);
+          box-shadow:0 8px 40px rgb(var(--ink-rgb) / .07);
         }
         .gfeat-dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0; }
 
@@ -443,9 +425,9 @@ export default function LandingPage() {
           background:var(--land-glass);
           backdrop-filter:blur(20px);
           -webkit-backdrop-filter:blur(20px);
-          border:1px solid rgba(0,0,0,.07);
+          border:1px solid rgb(var(--ink-rgb) / .07);
           border-radius:22px; padding:28px 24px;
-          box-shadow:0 4px 24px rgba(0,0,0,.06);
+          box-shadow:0 4px 24px rgb(var(--ink-rgb) / .06);
         }
         .soc-icon {
           width:48px; height:48px; border-radius:14px;
@@ -455,7 +437,7 @@ export default function LandingPage() {
 
         /* ── Footer ────────────────────────────────────────────────────── */
         .land-foot {
-          border-top:1px solid rgba(0,0,0,.07);
+          border-top:1px solid rgb(var(--ink-rgb) / .07);
           padding:32px 24px;
           display:flex; justify-content:space-between; align-items:center;
           font-size:13px; color:var(--land-muted);
@@ -487,27 +469,27 @@ export default function LandingPage() {
         <div aria-hidden="true" style={{ position:"fixed", inset:0, zIndex:0, overflow:"hidden", pointerEvents:"none" }}>
           <div style={{
             position:"absolute", borderRadius:"50%", width:"580px", height:"580px",
-            background:"radial-gradient(circle,rgba(255,171,145,.42) 0%,transparent 70%)",
+            background:"radial-gradient(circle,rgb(var(--land-peach-2-rgb) / .42) 0%,transparent 70%)",
             filter:"blur(90px)", top:"-8%", right:"0%",
             animation: prefersReduced ? undefined : "ld-da 30s ease-in-out infinite",
           }}/>
           <div style={{
             position:"absolute", borderRadius:"50%", width:"480px", height:"480px",
-            background:"radial-gradient(circle,rgba(94,234,212,.28) 0%,transparent 70%)",
+            background:"radial-gradient(circle,rgb(var(--land-mint-rgb) / .28) 0%,transparent 70%)",
             filter:"blur(100px)", bottom:"8%", left:"-6%",
             animation: prefersReduced ? undefined : "ld-db 38s ease-in-out infinite",
             animationDelay:"-14s",
           }}/>
           <div style={{
             position:"absolute", borderRadius:"50%", width:"380px", height:"380px",
-            background:"radial-gradient(circle,rgba(147,197,253,.30) 0%,transparent 70%)",
+            background:"radial-gradient(circle,rgb(var(--land-sky-rgb) / .30) 0%,transparent 70%)",
             filter:"blur(80px)", top:"40%", right:"18%",
             animation: prefersReduced ? undefined : "ld-dc 32s ease-in-out infinite",
             animationDelay:"-8s",
           }}/>
           <div style={{
             position:"absolute", borderRadius:"50%", width:"300px", height:"300px",
-            background:"radial-gradient(circle,rgba(196,181,253,.22) 0%,transparent 70%)",
+            background:"radial-gradient(circle,rgb(var(--land-lavender-rgb) / .22) 0%,transparent 70%)",
             filter:"blur(80px)", top:"16%", left:"22%",
             animation: prefersReduced ? undefined : "ld-dd 44s ease-in-out infinite",
             animationDelay:"-21s",
@@ -611,8 +593,8 @@ export default function LandingPage() {
               key={ri}
               style={{
                 marginBottom: ri === 0 ? "8px" : 0,
-                mask:"linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)",
-                WebkitMask:"linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)",
+                mask:"linear-gradient(90deg,transparent,rgb(var(--ink-rgb)) 14%,rgb(var(--ink-rgb)) 86%,transparent)",
+                WebkitMask:"linear-gradient(90deg,transparent,rgb(var(--ink-rgb)) 14%,rgb(var(--ink-rgb)) 86%,transparent)",
               }}
             >
               <div className={`mq-track ${cls as string}`}>
@@ -633,7 +615,7 @@ export default function LandingPage() {
           >
             <motion.p variants={fadeUp} style={{
               fontSize:"12px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:".10em", color:"#0EA5A0", marginBottom:"12px",
+              letterSpacing:".10em", color:"var(--land-teal)", marginBottom:"12px",
               fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
             }}>
               {t("howItWorks.label")}
@@ -694,7 +676,7 @@ export default function LandingPage() {
               <motion.div variants={fadeUp} style={{
                 display:"inline-flex", alignItems:"center", gap:"6px",
                 background:"var(--land-peach-glow)",
-                border:"1px solid rgba(255,138,101,.30)",
+                border:"1px solid rgb(var(--land-peach-rgb) / .30)",
                 color:"var(--land-peach)", fontSize:"12px", fontWeight:700,
                 padding:"5px 14px", borderRadius:"99px", marginBottom:"20px",
               }}>
@@ -807,9 +789,9 @@ export default function LandingPage() {
             style={{
               background:"var(--land-glass)",
               backdropFilter:"blur(32px)", WebkitBackdropFilter:"blur(32px)",
-              border:"1px solid rgba(0,0,0,.07)",
+              border:"1px solid rgb(var(--ink-rgb) / .07)",
               borderRadius:"28px", padding:"72px 48px",
-              textAlign:"center", boxShadow:"0 12px 64px rgba(0,0,0,.08)",
+              textAlign:"center", boxShadow:"0 12px 64px rgb(var(--ink-rgb) / .08)",
             }}
           >
             <h2 className="sg" style={{

@@ -286,8 +286,8 @@ function OpenBadge({ open }: { open: boolean }) {
         fontSize: 11,
         fontWeight: 600,
         background: open
-          ? "rgba(29,158,117,0.15)"
-          : "rgba(239,68,68,0.15)",
+          ? "rgb(var(--color-success-rgb) / 0.15)"
+          : "rgb(var(--color-danger-rgb) / 0.15)",
         color: open ? "var(--color-success)" : "var(--color-danger)",
         flexShrink: 0,
         lineHeight: "18px",

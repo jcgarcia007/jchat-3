@@ -300,37 +300,22 @@ export default function PricingPage() {
   return (
     <>
     <style>{`
-      /* ── Pricing: paleta CLARA / durazno — mismos tokens que la landing ── */
-      :root {
-        --land-peach:       #FF8A65;
-        --land-peach-2:     #FFAB91;
-        --land-peach-glow:  rgba(255,138,101,.20);
-        --land-mint:        #5EEAD4;
-        --land-mint-glow:   rgba(94,234,212,.18);
-        --land-sky:         #93C5FD;
-        --land-sky-glow:    rgba(147,197,253,.22);
-        --land-bg:          #FAFAFA;
-        --land-text:        #111827;
-        --land-sub:         #4B5563;
-        --land-muted:       #9CA3AF;
-        --land-glass:       rgba(255,255,255,.80);
-        --land-shadow:      0 8px 40px rgba(0,0,0,.09);
-      }
+        /* --land-* tokens live in styles/landing.css (single definition). */
 
       /* Display font */
       .sg { font-family:var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif; }
 
       /* Featured badge pulse (peach) */
       @keyframes pr-badge-glow {
-        0%,100%{ box-shadow:0 0 0 2px rgba(255,138,101,.28); }
-        50%    { box-shadow:0 0 0 6px rgba(255,138,101,.09); }
+        0%,100%{ box-shadow:0 0 0 2px rgb(var(--land-peach-rgb) / .28); }
+        50%    { box-shadow:0 0 0 6px rgb(var(--land-peach-rgb) / .09); }
       }
       .pr-badge-pulse { animation:pr-badge-glow 2.8s ease-in-out infinite; }
 
       /* Popular badge pulse (brand) */
       @keyframes pr-pop-glow {
-        0%,100%{ box-shadow:0 0 0 2px rgba(92,124,250,.22); }
-        50%    { box-shadow:0 0 0 6px rgba(92,124,250,.07); }
+        0%,100%{ box-shadow:0 0 0 2px rgb(var(--color-brand-rgb) / .22); }
+        50%    { box-shadow:0 0 0 6px rgb(var(--color-brand-rgb) / .07); }
       }
       .pr-pop-pulse { animation:pr-pop-glow 2.8s ease-in-out infinite; }
 
@@ -354,13 +339,13 @@ export default function PricingPage() {
       <div aria-hidden="true" style={{ position:"fixed", inset:0, zIndex:0, overflow:"hidden", pointerEvents:"none" }}>
         <div style={{
           position:"absolute", borderRadius:"50%", width:"500px", height:"500px",
-          background:"radial-gradient(circle,rgba(255,171,145,.36) 0%,transparent 70%)",
+          background:"radial-gradient(circle,rgb(var(--land-peach-2-rgb) / .36) 0%,transparent 70%)",
           filter:"blur(90px)", top:"-8%", right:"0",
           animation:"pr-da 30s ease-in-out infinite",
         }}/>
         <div style={{
           position:"absolute", borderRadius:"50%", width:"420px", height:"420px",
-          background:"radial-gradient(circle,rgba(94,234,212,.24) 0%,transparent 70%)",
+          background:"radial-gradient(circle,rgb(var(--land-mint-rgb) / .24) 0%,transparent 70%)",
           filter:"blur(100px)", bottom:"5%", left:"-5%",
           animation:"pr-db 38s ease-in-out infinite", animationDelay:"-14s",
         }}/>
@@ -423,26 +408,26 @@ export default function PricingPage() {
                     : { y:-4, boxShadow:"0 18px 48px rgba(0,0,0,.10)" }
                   }
                   style={{
-                    background: isFeatured ? "rgba(255,255,255,.92)" : "var(--land-glass)",
+                    background: isFeatured ? "rgb(var(--white-rgb) / .92)" : "var(--land-glass)",
                     backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
                     border: isFeatured
-                      ? "1px solid rgba(255,138,101,.35)"
-                      : "1px solid rgba(0,0,0,.07)",
+                      ? "1px solid rgb(var(--land-peach-rgb) / .35)"
+                      : "1px solid rgb(var(--ink-rgb) / .07)",
                     borderRadius:"16px",
                     padding: isFeatured ? "24px" : "22px",
                     display:"flex", flexDirection:"column", gap:"12px", position:"relative",
-                    boxShadow:"0 4px 20px rgba(0,0,0,.06)",
+                    boxShadow:"0 4px 20px rgb(var(--ink-rgb) / .06)",
                   }}
                 >
                   {/* Featured badge */}
                   {isFeatured && (
                     <div style={{
                       position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
-                      background:"linear-gradient(135deg,var(--land-peach),#FF7043)",
-                      color:"#fff", fontSize:"10px", fontWeight:800,
+                      background:"linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))",
+                      color:"var(--on-brand)", fontSize:"10px", fontWeight:800,
                       letterSpacing:".08em", textTransform:"uppercase",
                       padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
-                      boxShadow:"0 4px 14px rgba(255,112,67,.35)",
+                      boxShadow:"0 4px 14px rgb(var(--land-peach-dark-rgb) / .35)",
                     }}>
                       {t("social.featuredBadge")}
                     </div>
@@ -475,11 +460,11 @@ export default function PricingPage() {
                       marginTop:"auto", display:"flex", alignItems:"center",
                       justifyContent:"center", gap:"6px", padding:"10px 16px",
                       borderRadius:"8px",
-                      border: plan.cta === "register" ? "none" : "1px solid rgba(0,0,0,.12)",
+                      border: plan.cta === "register" ? "none" : "1px solid rgb(var(--ink-rgb) / .12)",
                       background: plan.cta === "register"
-                        ? "linear-gradient(135deg,var(--land-peach),#FF7043)"
-                        : "rgba(0,0,0,.04)",
-                      color: plan.cta === "register" ? "#fff" : "var(--land-sub)",
+                        ? "linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))"
+                        : "rgb(var(--ink-rgb) / .04)",
+                      color: plan.cta === "register" ? "var(--on-brand)" : "var(--land-sub)",
                       fontSize:"13px", fontWeight:600,
                       cursor: plan.cta === "soon" ? "not-allowed" : "pointer",
                       opacity: plan.cta === "soon" ? 0.45 : 1,
@@ -498,7 +483,7 @@ export default function PricingPage() {
           initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }}
           style={{ maxWidth:"820px", margin:"0 auto 64px", display:"flex", alignItems:"center", gap:"16px" }}
         >
-          <div style={{ flex:1, height:"1px", background:"rgba(0,0,0,.08)" }}/>
+          <div style={{ flex:1, height:"1px", background:"rgb(var(--ink-rgb) / .08)" }}/>
           <span style={{
             fontSize:"10px", fontWeight:700, textTransform:"uppercase",
             letterSpacing:".12em", color:"var(--land-muted)", whiteSpace:"nowrap",
@@ -506,7 +491,7 @@ export default function PricingPage() {
           }}>
             Venue POS
           </span>
-          <div style={{ flex:1, height:"1px", background:"rgba(0,0,0,.08)" }}/>
+          <div style={{ flex:1, height:"1px", background:"rgb(var(--ink-rgb) / .08)" }}/>
         </motion.div>
 
         {/* ══════════════════════════════════════════════════════
@@ -522,7 +507,7 @@ export default function PricingPage() {
           >
             <motion.p variants={fadeUp} style={{
               fontSize:"11px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:".1em", color:"#0EA5A0",
+              letterSpacing:".1em", color:"var(--land-teal)",
               marginBottom:"12px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
             }}>
               Venue POS
@@ -555,8 +540,8 @@ export default function PricingPage() {
           <div style={{
             maxWidth:"820px", margin:"0 auto 20px",
             background:"var(--land-glass)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
-            border:"1px solid rgba(0,0,0,.08)", borderRadius:"14px", padding:"18px 20px",
-            boxShadow:"0 4px 20px rgba(0,0,0,.06)",
+            border:"1px solid rgb(var(--ink-rgb) / .08)", borderRadius:"14px", padding:"18px 20px",
+            boxShadow:"0 4px 20px rgb(var(--ink-rgb) / .06)",
           }}>
             <div style={{ fontSize:"14px", fontWeight:700, marginBottom:"8px", color:"var(--land-text)" }}>
               {t("business.consentTitle")}
@@ -596,15 +581,15 @@ export default function PricingPage() {
                     : { y:-4, boxShadow:"0 18px 48px rgba(0,0,0,.10)" }
                   }
                   style={{
-                    background: isPopular ? "rgba(255,255,255,.96)" : "var(--land-glass)",
+                    background: isPopular ? "rgb(var(--white-rgb) / .96)" : "var(--land-glass)",
                     backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
                     border: isPopular
-                      ? "1px solid rgba(92,124,250,.32)"
-                      : "1px solid rgba(0,0,0,.07)",
+                      ? "1px solid rgb(var(--color-brand-rgb) / .32)"
+                      : "1px solid rgb(var(--ink-rgb) / .07)",
                     borderRadius:"16px",
                     padding: isPopular ? "24px" : "22px",
                     display:"flex", flexDirection:"column", gap:"12px", position:"relative",
-                    boxShadow:"0 4px 20px rgba(0,0,0,.06)",
+                    boxShadow:"0 4px 20px rgb(var(--ink-rgb) / .06)",
                   }}
                 >
                   {/* Most popular badge */}
@@ -612,10 +597,10 @@ export default function PricingPage() {
                     <div style={{
                       position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
                       background:"linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
-                      color:"#fff", fontSize:"10px", fontWeight:800,
+                      color:"var(--on-brand)", fontSize:"10px", fontWeight:800,
                       letterSpacing:".08em", textTransform:"uppercase",
                       padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
-                      boxShadow:"0 4px 16px rgba(92,124,250,.38)",
+                      boxShadow:"0 4px 16px rgb(var(--color-brand-rgb) / .38)",
                     }}>
                       {t("business.popularBadge")}
                     </div>
@@ -655,13 +640,13 @@ export default function PricingPage() {
                       marginTop:"auto", display:"flex", alignItems:"center",
                       justifyContent:"center", gap:"6px", padding:"10px 16px",
                       borderRadius:"8px",
-                      border: plan.cta === "checkout" ? "none" : "1px solid rgba(0,0,0,.12)",
+                      border: plan.cta === "checkout" ? "none" : "1px solid rgb(var(--ink-rgb) / .12)",
                       background: plan.cta === "checkout"
                         ? isPopular
                           ? "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))"
-                          : "linear-gradient(135deg,var(--land-peach),#FF7043)"
-                        : "rgba(0,0,0,.04)",
-                      color: plan.cta === "checkout" ? "#fff" : "var(--land-sub)",
+                          : "linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))"
+                        : "rgb(var(--ink-rgb) / .04)",
+                      color: plan.cta === "checkout" ? "var(--on-brand)" : "var(--land-sub)",
                       fontSize:"13px", fontWeight:600,
                       cursor: busy ? "wait" : needsConsent ? "not-allowed" : "pointer",
                       opacity: busy ? 0.7 : needsConsent ? 0.45 : 1,
@@ -695,8 +680,8 @@ export default function PricingPage() {
             style={{
               maxWidth:"560px", margin:"32px auto 0",
               background:"var(--land-glass)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-              border:"1px solid rgba(0,0,0,.08)", borderRadius:"14px", padding:"22px",
-              boxShadow:"0 4px 24px rgba(0,0,0,.07)",
+              border:"1px solid rgb(var(--ink-rgb) / .08)", borderRadius:"14px", padding:"22px",
+              boxShadow:"0 4px 24px rgb(var(--ink-rgb) / .07)",
             }}
           >
             <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"6px" }}>
@@ -720,7 +705,7 @@ export default function PricingPage() {
                 maxLength={12}
                 style={{
                   flex:"1 1 200px", padding:"10px 12px", borderRadius:"8px",
-                  border:"1px solid rgba(0,0,0,.12)", background:"#fff",
+                  border:"1px solid rgb(var(--ink-rgb) / .12)", background:"rgb(var(--white-rgb))",
                   color:"var(--land-text)", fontSize:"14px",
                   fontFamily:"var(--font-mono, monospace)", letterSpacing:"1px",
                 }}
@@ -731,8 +716,8 @@ export default function PricingPage() {
                 style={{
                   display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
                   padding:"10px 18px", borderRadius:"8px", border:"none",
-                  background:"linear-gradient(135deg,var(--land-peach),#FF7043)",
-                  color:"#fff", fontSize:"13px", fontWeight:600,
+                  background:"linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))",
+                  color:"var(--on-brand)", fontSize:"13px", fontWeight:600,
                   cursor: promoChecking ? "wait" : "pointer",
                   opacity: promoChecking || promoCode.trim().length === 0 ? 0.6 : 1,
                 }}

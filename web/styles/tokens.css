@@ -89,6 +89,9 @@
   --color-success-rgb: 29 158 117;
   --ink-rgb: 0 0 0;
   --white-rgb: 255 255 255;
+  --color-gold-rgb: 217 119 6;
+  /* Dark base (#0f0f11) as channels, for fades over photos that stay dark in any theme. */
+  --bg-base-dark-rgb: 15 15 17;
 
   /* Text / icon on a brand-filled surface. */
   --on-brand: #ffffff;

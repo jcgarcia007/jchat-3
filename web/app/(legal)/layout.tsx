@@ -10,16 +10,16 @@ export default async function LegalLayout({ children }: { children: React.ReactN
       style={{
         colorScheme: "light",
         minHeight: "100vh",
-        background: "#FAFAFA",
-        color: "#111827",
+        background: "var(--land-bg)",
+        color: "var(--gray-900)",
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
       {/* Header */}
       <header
         style={{
-          borderBottom: "1px solid #E5E7EB",
-          background: "#FFFFFF",
+          borderBottom: "1px solid var(--gray-200)",
+          background: "rgb(var(--white-rgb))",
           position: "sticky",
           top: 0,
           zIndex: 10,
@@ -40,7 +40,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             style={{
               fontWeight: 800,
               fontSize: "20px",
-              color: "#5C7CFA",
+              color: "var(--color-brand)",
               textDecoration: "none",
               letterSpacing: "-0.5px",
             }}
@@ -63,7 +63,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
       </main>
 
       {/* Footer */}
-      <footer style={{ borderTop: "1px solid #E5E7EB", background: "#FFFFFF" }}>
+      <footer style={{ borderTop: "1px solid var(--gray-200)", background: "rgb(var(--white-rgb))" }}>
         <div
           style={{
             maxWidth: "760px",
@@ -75,17 +75,17 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             flexWrap: "wrap",
             gap: "12px",
             fontSize: "13px",
-            color: "#6B7280",
+            color: "var(--gray-500)",
           }}
         >
           <nav style={{ display: "flex", gap: "20px" }}>
-            <Link href="/privacy" style={{ color: "#6B7280", textDecoration: "none" }}>
+            <Link href="/privacy" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Privacidad" : "Privacy"}
             </Link>
-            <Link href="/terms" style={{ color: "#6B7280", textDecoration: "none" }}>
+            <Link href="/terms" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Términos" : "Terms"}
             </Link>
-            <Link href="/support" style={{ color: "#6B7280", textDecoration: "none" }}>
+            <Link href="/support" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Soporte" : "Support"}
             </Link>
           </nav>

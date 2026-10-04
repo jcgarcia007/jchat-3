@@ -244,7 +244,7 @@ function CoverPhoto({ url, name }: { url: string | null; name: string }) {
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(to bottom, transparent 40%, rgba(15,15,17,0.85) 100%)",
+            "linear-gradient(to bottom, transparent 40%, rgb(var(--bg-base-dark-rgb) / 0.85) 100%)",
         }}
       />
     </div>
@@ -461,7 +461,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
       <p
         style={{
           fontSize: 13,
-          color: "rgba(255,255,255,0.8)",
+          color: "rgb(var(--white-rgb) / 0.8)",
           margin: "0 0 24px",
           lineHeight: 1.5,
         }}
@@ -507,9 +507,9 @@ function DownloadCTA({ businessName }: { businessName: string }) {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            background: "rgba(255,255,255,0.15)",
+            background: "rgb(var(--white-rgb) / 0.15)",
             color: "var(--bg-surface-light)",
-            border: "1px solid rgba(255,255,255,0.3)",
+            border: "1px solid rgb(var(--white-rgb) / 0.3)",
             borderRadius: 12,
             padding: "12px 24px",
             fontWeight: 600,
@@ -653,7 +653,7 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
               justifyContent: "center",
               fontSize: 36,
               flexShrink: 0,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+              boxShadow: "0 4px 16px rgb(var(--ink-rgb) / 0.4)",
             }}
           >
             {biz.icon_emoji ?? "🏪"}

@@ -1010,7 +1010,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
               padding: "12px 16px",
               borderRadius: 12,
               background: "var(--color-brand)",
-              color: "#fff",
+              color: "var(--on-brand)",
               fontSize: 14,
               fontWeight: 600,
               textDecoration: "none",
@@ -1381,7 +1381,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                         fontWeight: 700,
                         padding: "1px 5px",
                         borderRadius: 4,
-                        background: "rgba(217,119,6,0.15)",
+                        background: "rgb(var(--color-gold-rgb) / 0.15)",
                         color: "var(--color-gold)",
                         whiteSpace: "nowrap",
                       }}
@@ -1548,7 +1548,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 flexDirection: "row",
                 flexWrap: "nowrap",
                 gap: 8,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                boxShadow: "0 8px 24px rgb(var(--ink-rgb) / 0.35)",
                 zIndex: 20,
               }}
             >
@@ -1739,7 +1739,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(0,0,0,0.55)",
+            background: "rgb(var(--ink-rgb) / 0.55)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
@@ -1835,7 +1835,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(0,0,0,0.55)",
+            background: "rgb(var(--ink-rgb) / 0.55)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
@@ -1901,7 +1901,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                   gap: 10,
                   padding: "12px 14px",
                   borderRadius: 12,
-                  background: "rgba(29,158,117,0.12)",
+                  background: "rgb(var(--color-success-rgb) / 0.12)",
                   color: "var(--color-success)",
                   fontSize: 14,
                   fontWeight: 600,
@@ -1917,7 +1917,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  background: "rgba(239,68,68,0.1)",
+                  background: "rgb(var(--color-danger-rgb) / 0.1)",
                   border: "1px solid var(--color-danger)",
                   color: "var(--color-danger)",
                   fontSize: 13,
@@ -2061,7 +2061,7 @@ function Lightbox({ url, onClose }: { url: string | null; onClose: () => void })
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.9)",
+        background: "rgb(var(--ink-rgb) / 0.9)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -2087,14 +2087,14 @@ function Lightbox({ url, onClose }: { url: string | null; onClose: () => void })
             width: 36,
             height: 36,
             borderRadius: 999,
-            border: "2px solid rgba(255,255,255,0.5)",
-            background: "rgba(0,0,0,0.6)",
-            color: "#fff",
+            border: "2px solid rgb(var(--white-rgb) / 0.5)",
+            background: "rgb(var(--ink-rgb) / 0.6)",
+            color: "var(--on-brand)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            boxShadow: "0 2px 8px rgb(var(--ink-rgb) / 0.5)",
           }}
         >
           <IconX size={20} />

@@ -1,17 +1,17 @@
 /** Política de privacidad — Español. Página pública: sin var(--*), solo hex fijos. */
 
-const LINK: React.CSSProperties = { color: "#5C7CFA", textDecoration: "underline" };
-const H2: React.CSSProperties = { fontSize: "18px", fontWeight: 700, marginTop: "36px", marginBottom: "10px", color: "#111827" };
-const P: React.CSSProperties = { lineHeight: "1.7", marginTop: "0", marginBottom: "14px", color: "#374151" };
-const UL: React.CSSProperties = { paddingLeft: "20px", lineHeight: "1.7", color: "#374151", marginBottom: "14px" };
+const LINK: React.CSSProperties = { color: "var(--color-brand)", textDecoration: "underline" };
+const H2: React.CSSProperties = { fontSize: "18px", fontWeight: 700, marginTop: "36px", marginBottom: "10px", color: "var(--gray-900)" };
+const P: React.CSSProperties = { lineHeight: "1.7", marginTop: "0", marginBottom: "14px", color: "var(--gray-700)" };
+const UL: React.CSSProperties = { paddingLeft: "20px", lineHeight: "1.7", color: "var(--gray-700)", marginBottom: "14px" };
 
 export function PrivacyES() {
   return (
     <>
-      <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#111827", marginBottom: "6px", letterSpacing: "-0.5px" }}>
+      <h1 style={{ fontSize: "28px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "6px", letterSpacing: "-0.5px" }}>
         Política de privacidad
       </h1>
-      <p style={{ color: "#6B7280", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
+      <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
         Última actualización: 21 de septiembre de 2026
       </p>
 
@@ -26,14 +26,14 @@ export function PrivacyES() {
       {/* Tabla de contenido */}
       <nav
         style={{
-          background: "#F3F4F6",
+          background: "var(--gray-100)",
           borderRadius: "10px",
           padding: "20px 24px",
           marginBottom: "40px",
           fontSize: "14px",
         }}
       >
-        <p style={{ fontWeight: 700, marginTop: 0, marginBottom: "10px", color: "#111827" }}>Contenido</p>
+        <p style={{ fontWeight: 700, marginTop: 0, marginBottom: "10px", color: "var(--gray-900)" }}>Contenido</p>
         <ol style={{ paddingLeft: "18px", margin: 0, lineHeight: "2" }}>
           <li><a href="#who-this-applies" style={LINK}>A quién aplica</a></li>
           <li><a href="#information-we-collect" style={LINK}>Información que recopilamos</a></li>
