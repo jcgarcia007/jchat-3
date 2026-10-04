@@ -8,10 +8,11 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { resolveActiveBusiness } from "@/lib/business";
+import { resolveActiveBusiness, isBusinessOwner } from "@/lib/business";
 import {
   NAV_MODULES,
   CONFIG_MODULE,
+  MATCH_PAGE,
   isNavPageActive,
   type NavPage,
   type NavModule,
@@ -28,6 +29,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
   const [servicePending, setServicePending] = useState(0);
+  const [isOwner, setIsOwner] = useState(false);
   const [activeBiz, setActiveBiz] = useState<{ name: string; logo_url: string | null } | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -61,6 +63,9 @@ export function Sidebar() {
         if (!active || !res.ok) return;
         const businessId = res.business.id;
         if (active) setActiveBiz({ name: res.business.name, logo_url: res.business.logo_url });
+        void isBusinessOwner(businessId).then((owner) => {
+          if (active) setIsOwner(owner);
+        }).catch(() => {});
         await countPending(businessId);
         channelRef.current = supabase
           .channel(`sidebar-service-${businessId}`)
@@ -82,6 +87,11 @@ export function Sidebar() {
       if (channelRef.current) void supabase.removeChannel(channelRef.current);
     };
   }, []);
+
+  // Match is owner-only: appended to the chat module only when owner_id = current user.
+  function withOwnerPages(module: NavModule): NavModule {
+    return isOwner && module.id === "chat" ? { ...module, pages: [...module.pages, MATCH_PAGE] } : module;
+  }
 
   function renderPage(page: NavPage) {
     const Icon = page.icon;
@@ -264,7 +274,7 @@ export function Sidebar() {
         </div>
       )}
 
-      {[...NAV_MODULES, CONFIG_MODULE].map(renderGroup)}
+      {[...NAV_MODULES.map(withOwnerPages), CONFIG_MODULE].map(renderGroup)}
 
       {showAdmin && (
         <>

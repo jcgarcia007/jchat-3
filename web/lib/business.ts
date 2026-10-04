@@ -26,6 +26,24 @@ export type BusinessResolution =
   | { ok: true; business: ActiveBusiness }
   | { ok: false; reason: "demo" | "unauthenticated" | "no_business" | "error"; message: string };
 
+/**
+ * True when the signed-in user is businesses.owner_id of `businessId`.
+ * Used to gate owner-only dashboard pieces (e.g. Match); RLS/RPCs enforce it server-side too.
+ */
+export async function isBusinessOwner(businessId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("businesses")
+    .select("owner_id")
+    .eq("id", businessId)
+    .maybeSingle();
+  return data?.owner_id === user.id;
+}
+
 export async function resolveActiveBusiness(): Promise<BusinessResolution> {
   if (!isSupabaseConfigured) {
     return { ok: false, reason: "demo", message: "Supabase not configured (demo mode)." };

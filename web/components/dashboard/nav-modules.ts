@@ -40,6 +40,7 @@ import {
   IconBuildingStore,
   IconTerminal2,
   IconPrinter,
+  IconHeart,
 } from "@tabler/icons-react";
 
 export type NavIcon = React.ComponentType<{ size?: number; stroke?: number }>;
@@ -132,6 +133,10 @@ export const NAV_MODULES: NavModule[] = [
     ],
   },
 ];
+
+// Owner-only page: the Sidebar appends it to the "chat" module when the signed-in user is
+// businesses.owner_id of the active business (not part of NAV_MODULES on purpose).
+export const MATCH_PAGE: NavPage = { labelKey: "railMatch", href: "/dashboard/match", icon: IconHeart };
 
 // Configuration lives apart, pinned to the bottom of the rail (engranaje).
 export const CONFIG_MODULE: NavModule = {
