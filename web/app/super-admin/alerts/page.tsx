@@ -27,6 +27,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import MatchPhotosReview from "@/components/super-admin/MatchPhotosReview";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ interface ReportItem {
   reason: string | null;
   status: string | null;
   created_at: string;
+  /** Venue context for Match reports (migration 192). */
+  business_id?: string | null;
 }
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
@@ -131,6 +134,8 @@ export default function SuperAdminAlertsPage() {
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
+  const [businessNames, setBusinessNames] = useState<Record<string, string>>({});
+  const [reportFilter, setReportFilter] = useState<"all" | "match">("all");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -163,7 +168,7 @@ export default function SuperAdminAlertsPage() {
           .limit(20),
         supabase
           .from("reports")
-          .select("id, reporter_id, reported_user_id, content_type, content_id, reason, status, created_at")
+          .select("id, reporter_id, reported_user_id, content_type, content_id, reason, status, created_at, business_id")
           .eq("status", "pending")
           .order("created_at", { ascending: false })
           .limit(30),
@@ -171,7 +176,16 @@ export default function SuperAdminAlertsPage() {
 
       setSecurityLogs((logs ?? []) as SecurityLog[]);
       setFailedPayments((subs ?? []) as FailedPayment[]);
-      setReports((rpts ?? []) as ReportItem[]);
+      // reports.business_id (migration 192) is not in the generated types yet → go through unknown.
+      const reportRows = (rpts ?? []) as unknown as ReportItem[];
+      setReports(reportRows);
+
+      // Venue names for Match reports (best effort: the id is shown if the lookup fails).
+      const businessIds = [...new Set(reportRows.map((r) => r.business_id).filter((id): id is string => !!id))];
+      if (businessIds.length > 0) {
+        const { data: biz } = await supabase.from("businesses").select("id, name").in("id", businessIds);
+        setBusinessNames(Object.fromEntries((biz ?? []).map((b) => [b.id as string, b.name as string])));
+      }
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : ta("unknownErrorFallback"));
     } finally {
@@ -203,6 +217,8 @@ export default function SuperAdminAlertsPage() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  const visibleReports = reportFilter === "match" ? reports.filter((r) => r.content_type === "match") : reports;
 
   const totalAlerts = securityLogs.length + failedPayments.length + reports.length;
 
@@ -252,6 +268,8 @@ export default function SuperAdminAlertsPage() {
 
       {!loading && (
         <>
+          <MatchPhotosReview onToast={setSuccessMsg} />
+
           {totalAlerts === 0 && (
             <div
               style={{
@@ -394,7 +412,27 @@ export default function SuperAdminAlertsPage() {
               icon={IconFlag}
               iconColor="var(--color-brand-purple)"
             >
-              {reports.map((r, idx) => (
+              <div style={{ display: "flex", gap: "8px", padding: "10px 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
+                {(["all", "match"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    aria-pressed={reportFilter === f}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "999px",
+                      border: "1px solid var(--border-subtle)",
+                      background: reportFilter === f ? "var(--color-brand)" : "transparent",
+                      color: reportFilter === f ? "var(--on-brand)" : "var(--text-secondary)",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {f === "all" ? ta("reportsFilterAll") : ta("reportsFilterMatch")}
+                  </button>
+                ))}
+              </div>
+              {visibleReports.map((r, idx) => (
                 <div
                   key={r.id}
                   style={{
@@ -402,7 +440,7 @@ export default function SuperAdminAlertsPage() {
                     alignItems: "flex-start",
                     gap: "12px",
                     padding: "14px 16px",
-                    borderBottom: idx === reports.length - 1 ? "none" : "1px solid var(--border-subtle)",
+                    borderBottom: idx === visibleReports.length - 1 ? "none" : "1px solid var(--border-subtle)",
                     background: "var(--bg-surface)",
                     flexWrap: "wrap",
                     rowGap: "8px",
@@ -410,11 +448,29 @@ export default function SuperAdminAlertsPage() {
                 >
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "3px" }}>
+                      {r.content_type === "match" && (
+                        <span
+                          style={{
+                            marginRight: "6px",
+                            padding: "1px 6px",
+                            borderRadius: "999px",
+                            background: "var(--color-brand-light)",
+                            color: "var(--color-brand)",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {ta("matchReportLabel")}
+                        </span>
+                      )}
                       {r.reason ?? ta("noReasonProvided")}
                     </div>
                     <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
                       {formatRelativeTime(r.created_at, t, { granularity: "time" })}
-                      {r.content_type && ` · ${r.content_type}: ${r.content_id?.slice(0, 10) ?? "—"}`}
+                      {r.content_type === "match"
+                        ? r.business_id
+                          ? ` · ${ta("matchReportBusiness", { name: businessNames[r.business_id] ?? r.business_id.slice(0, 8) })}`
+                          : ""
+                        : r.content_type && ` · ${r.content_type}: ${r.content_id?.slice(0, 10) ?? "—"}`}
                     </div>
                   </div>
                   <button
