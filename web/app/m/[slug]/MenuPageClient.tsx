@@ -13,6 +13,13 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
+import {
+  fetchVenueOrderAccess,
+  requestPosition,
+  type LocationFailure,
+  type VenueOrderAccess,
+  type VenuePosition,
+} from "@/lib/venueLocation";
 // F3: sesión de invitado + sheet de elección de cobro
 import CheckoutChoiceSheet from "./CheckoutChoiceSheet";
 import TabCodeSheet from "./TabCodeSheet";
@@ -965,6 +972,7 @@ function PickupSheet({
   cartItems,
   initialTableNumber,
   initialName,
+  tableAllowed,
   onBack,
   onConfirm,
 }: {
@@ -972,11 +980,13 @@ function PickupSheet({
   cartItems: CartItem[];
   initialTableNumber: string;
   initialName: string;
+  /** Golden rule: outside the venue only pick-up exists — no table option. */
+  tableAllowed: boolean;
   onBack: () => void;
   onConfirm: (type: PickupType, tableNumber: string, name: string) => void;
 }) {
   const t = useTranslations("menu");
-  const [pickupType, setPickupType] = useState<PickupType>("table");
+  const [pickupType, setPickupType] = useState<PickupType>(tableAllowed ? "table" : "counter");
   const [tableNumber, setTableNumber] = useState(initialTableNumber);
   const [name, setName] = useState(initialName);
   // Si el nombre del perfil llega DESPUÉS de montar esta hoja, rellénalo —
@@ -1050,7 +1060,7 @@ function PickupSheet({
                   desc: t("pickupCounterDesc"),
                 },
               ] as const
-            ).map(({ type, label, desc }) => {
+            ).filter(({ type }) => tableAllowed || type !== "table").map(({ type, label, desc }) => {
               const active = pickupType === type;
               return (
                 <button
@@ -1647,6 +1657,57 @@ export default function MenuPageClient({
   // table via its token (resolved server-side in the payments EF).
   const [tableCtx, setTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
 
+  // ── Golden rule (migrations 197–199): what may this person do here? The SERVER decides from the
+  // coordinates (inside → everything; outside → only pick-up, and only if the owner enabled it).
+  // App mode (webview inside the native app) is left to the server-side checks.
+  const [venue, setVenue] = useState<{
+    status: "loading" | "ready";
+    access: VenueOrderAccess | null;
+    pos: VenuePosition | null;
+    failure: LocationFailure | null;
+  }>({ status: "loading", access: null, pos: null, failure: null });
+  const [orderBlockedNotice, setOrderBlockedNotice] = useState(false);
+  const tv = useTranslations("venue");
+
+  const refreshVenue = useCallback(
+    async (fresh: boolean) => {
+      if (isAppMode) return;
+      const position = await requestPosition({ useCache: !fresh });
+      if (!position.ok) {
+        const access = await fetchVenueOrderAccess(business.id, null);
+        setVenue({ status: "ready", access, pos: null, failure: position.reason });
+        return;
+      }
+      const access = await fetchVenueOrderAccess(business.id, position.pos);
+      setVenue({ status: "ready", access, pos: position.pos, failure: null });
+    },
+    [business.id, isAppMode],
+  );
+  useEffect(() => {
+    void refreshVenue(false);
+  }, [refreshVenue]);
+
+  const venueReady = venue.status === "ready" && venue.access !== null;
+  const allowedTypes = venue.access?.allowed_types ?? [];
+  /** Nothing can be ordered (outside the area with pick-up off) → view-only menu. */
+  const viewOnly = !isAppMode && venueReady && allowedTypes.length === 0;
+  /** A table order is possible (inside the area) — while loading we don't block. */
+  const tableAllowed = isAppMode || !venueReady || allowedTypes.includes("table");
+  const venueOutside = !isAppMode && venueReady && !venue.access!.inside;
+
+  // Outside the area there is no table: drop any stale table context and force pick-up.
+  useEffect(() => {
+    if (!venueOutside) return;
+    setTableCtx(null);
+    setPickupType("counter");
+    setPickupTable("");
+    try {
+      sessionStorage.removeItem(TABLE_CONTEXT_KEY);
+    } catch {
+      // non-fatal
+    }
+  }, [venueOutside]);
+
   // F3: sesión de invitado (en sessionStorage vía guestTabSession.ts)
   const [guestSession, setGuestSession] = useState<import("@/lib/guestTabSession").GuestTabSession | null>(null);
   // Resultado del último add_order exitoso (para mostrar TabOrderConfirmation)
@@ -1911,13 +1972,18 @@ export default function MenuPageClient({
 
   const handleItemAdd = useCallback(
     (item: PublicMenuItem) => {
+      if (viewOnly) {
+        // Outside the area with pick-up off: the menu is view-only.
+        setOrderBlockedNotice(true);
+        return;
+      }
       if (item.groups.length > 0) {
         setCustomizerItem(item);
       } else {
         addToCart(item, null, [], 1);
       }
     },
-    [addToCart]
+    [addToCart, viewOnly]
   );
 
   const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);
@@ -1955,6 +2021,42 @@ export default function MenuPageClient({
           paddingBottom: 16,
         }}
       >
+      {/* Golden rule: outside the area (or without location) the menu is limited — say why and offer retry. */}
+      {venueOutside && (
+        <div
+          role="status"
+          style={{
+            margin: "10px 12px 0",
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-primary)",
+            fontSize: 13,
+            lineHeight: 1.5,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <strong>{tv("restrictedTitle", { business: business.name })}</strong>
+          <span style={{ color: "var(--text-secondary)" }}>
+            {venue.failure ? tv(`location.${venue.failure}`) : tv("restrictedBody")}
+          </span>
+          {viewOnly && <span style={{ color: "var(--text-secondary)" }}>{tv("pickupDisabled", { business: business.name })}</span>}
+          <button
+            type="button"
+            onClick={() => void refreshVenue(true)}
+            style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            {venue.failure === "denied" ? tv("allowLocation") : tv("retry")}
+          </button>
+          {orderBlockedNotice && viewOnly && (
+            <span role="alert" style={{ color: "var(--color-danger)" }}>{tv("pickupDisabled", { business: business.name })}</span>
+          )}
+        </div>
+      )}
+
       {tableCtx && (
         <div
           style={{
@@ -2116,6 +2218,7 @@ export default function MenuPageClient({
           cartItems={cartItems}
           initialTableNumber={tableCtx ? tableCtx.tableLabel : pickupTable}
           initialName={profileName}
+          tableAllowed={tableAllowed}
           onBack={() => setStep("cart")}
           onConfirm={(type, table, name) => {
             setPickupType(type);
@@ -2273,6 +2376,8 @@ export default function MenuPageClient({
           tableLabel={tableCtx ? tableCtx.tableLabel : pickupTable}
           tableQrToken={tableCtx?.token ?? null}
           presetName={pickupName}
+          venuePos={venue.pos}
+          onVenueError={() => void refreshVenue(true)}
           onBack={() => setStep("choice")}
           onDone={() => {
             setCartItems([]);

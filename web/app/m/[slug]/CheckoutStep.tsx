@@ -24,6 +24,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { buildOrderOptions } from "@/lib/orderOptions";
 import { readFunctionError } from "@/lib/functionError";
+import { readFunctionErrorCode, venueErrorKey } from "@/lib/venueLocation";
 import { formatCents } from "@/lib/currency";
 import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import type { MenuItemOption, ModifierChoice } from "./page";
@@ -73,6 +74,8 @@ export function CheckoutStep({
   tableLabel,
   tableQrToken = null,
   presetName = "",
+  venuePos = null,
+  onVenueError,
   onBack,
   onDone,
 }: {
@@ -82,10 +85,15 @@ export function CheckoutStep({
   tableLabel: string;
   tableQrToken?: string | null;
   presetName?: string;
+  /** Browser position forwarded to the server (golden rule). */
+  venuePos?: { lat: number; lng: number } | null;
+  /** Called on outside_venue / pickup_disabled so the menu can re-read what is allowed. */
+  onVenueError?: (code: string) => void;
   onBack: () => void;
   onDone: () => void;
 }) {
   const t = useTranslations("checkout");
+  const tv = useTranslations("venue");
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("checking");
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
@@ -119,6 +127,8 @@ export function CheckoutStep({
       order_type: pickupType === "table" ? "table" : "counter",
       table_label: tableLabel.trim() || null, // informative; real link is via table_qr_token
       table_qr_token: tableQrToken, // C2: opaque token, resolved to a table_id server-side
+      lat: venuePos?.lat ?? null, // golden rule: the server decides inside/outside from these
+      lng: venuePos?.lng ?? null,
       contact_name: contactName || null, // optional served-under name (from pickup)
       gift_recipient_id: null,
       subtotal_cents: clientSubtotal, // ignored by server
@@ -148,7 +158,14 @@ export function CheckoutStep({
     });
 
     if (fnErr) {
-      setError(await readFunctionError(fnErr));
+      const venueCode = await readFunctionErrorCode(fnErr);
+      const venueKey = venueErrorKey(venueCode);
+      if (venueKey) {
+        onVenueError?.(venueCode as string);
+        setError(tv(venueKey, { business: business.name }));
+      } else {
+        setError(await readFunctionError(fnErr));
+      }
       setPhase("error");
       return;
     }
@@ -170,7 +187,7 @@ export function CheckoutStep({
       breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, t]);
+  }, [business.id, business.name, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, venuePos, onVenueError, tv, t]);
 
   // Guest path (no session, D-64): invisible hCaptcha + the PUBLIC guest-pay EF.
   // Name is OPTIONAL (guest-pay v2). Prices from the server; nothing trusted.
@@ -193,6 +210,8 @@ export function CheckoutStep({
       order_type: pickupType === "table" ? "table" : "counter",
       table_label: tableLabel.trim() || null,
       table_qr_token: tableQrToken,
+      lat: venuePos?.lat ?? null, // golden rule: the only proof of presence for a guest
+      lng: venuePos?.lng ?? null,
       items: cartItems.map((ci) => ({
         menu_item_id: ci.itemId,
         qty: ci.quantity,
@@ -211,6 +230,14 @@ export function CheckoutStep({
     });
 
     if (fnErr) {
+      const venueCode = await readFunctionErrorCode(fnErr);
+      const venueKey = venueErrorKey(venueCode);
+      if (venueKey) {
+        onVenueError?.(venueCode as string);
+        setError(tv(venueKey, { business: business.name }));
+        setPhase("error");
+        return;
+      }
       const raw = await readFunctionError(fnErr);
       const msg = /verific|captcha|persona/i.test(raw) ? t("errorCaptchaFailed") : raw;
       setError(msg);
@@ -234,7 +261,7 @@ export function CheckoutStep({
       breakdown: res.serverBreakdown ?? null,
     });
     setPhase("pay");
-  }, [business.id, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, t]);
+  }, [business.id, business.name, cartItems, clientSubtotal, contactName, pickupType, tableLabel, tableQrToken, venuePos, onVenueError, tv, t]);
 
   // Entry point: route to the right EF by session. Also the "Reintentar" target.
   const startPayment = useCallback(async () => {
