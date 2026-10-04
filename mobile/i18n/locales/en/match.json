@@ -90,7 +90,8 @@
     "title": "Match",
     "placeholder": "The deck arrives in the next update.",
     "back": "Back",
-    "myProfile": "My Match profile"
+    "myProfile": "My Match profile",
+    "myActivity": "My activity"
   },
   "menu": {
     "title": "Options",
@@ -247,5 +248,32 @@
     "waitingBody": "You already sent the first message. Wait for their reply to write again.",
     "listTag": "Match · {{business}}",
     "listTagShort": "Match"
+  },
+  "activity": {
+    "title": "My activity",
+    "loadError": "Couldn't load your activity. Try again.",
+    "actionError": "Couldn't complete that. Try again.",
+    "tabs": {
+      "likes": "My likes",
+      "likedMe": "Liked me",
+      "matches": "Matches"
+    },
+    "empty": {
+      "likes": "You haven't liked anyone here yet.",
+      "likedMe": "Nobody has liked you yet. Keep exploring!",
+      "matches": "No matches yet."
+    },
+    "openProfile": "Open {{name}}'s profile",
+    "delete": "Delete",
+    "deleteLikeTitle": "Delete this like?",
+    "deleteLikeBody": "If it led to a match, that match is deleted too — silently.",
+    "deleteLikeA11y": "Delete like for {{name}}",
+    "clearAll": "Delete all",
+    "clearAllTitle": "Delete all your likes?",
+    "clearAllBody": "Your likes here will be deleted, along with any matches they created. Nobody is notified.",
+    "deleteMatchTitle": "Delete this match?",
+    "deleteMatchBody": "The match and its chat will be removed. Nobody is notified.",
+    "deleteMatchA11y": "Delete match with {{name}}",
+    "openChatA11y": "Open chat with {{name}}"
   }
 }

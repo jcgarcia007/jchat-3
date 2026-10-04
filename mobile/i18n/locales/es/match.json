@@ -90,7 +90,8 @@
     "title": "Match",
     "placeholder": "El mazo llega en la siguiente actualización.",
     "back": "Atrás",
-    "myProfile": "Mi perfil de Match"
+    "myProfile": "Mi perfil de Match",
+    "myActivity": "Mi actividad"
   },
   "menu": {
     "title": "Opciones",
@@ -247,5 +248,32 @@
     "waitingBody": "Ya enviaste el primer mensaje. Espera su respuesta para escribir de nuevo.",
     "listTag": "Match · {{business}}",
     "listTagShort": "Match"
+  },
+  "activity": {
+    "title": "Mi actividad",
+    "loadError": "No se pudo cargar tu actividad. Inténtalo de nuevo.",
+    "actionError": "No se pudo completar. Inténtalo de nuevo.",
+    "tabs": {
+      "likes": "Mis likes",
+      "likedMe": "Les gusté",
+      "matches": "Matches"
+    },
+    "empty": {
+      "likes": "Aún no le has dado like a nadie aquí.",
+      "likedMe": "Nadie te ha dado like todavía. ¡Sigue explorando!",
+      "matches": "Aún no tienes matches."
+    },
+    "openProfile": "Abrir el perfil de {{name}}",
+    "delete": "Borrar",
+    "deleteLikeTitle": "¿Borrar este like?",
+    "deleteLikeBody": "Si generó un match, ese match también se borra, en silencio.",
+    "deleteLikeA11y": "Borrar el like a {{name}}",
+    "clearAll": "Borrar todos",
+    "clearAllTitle": "¿Borrar todos tus likes?",
+    "clearAllBody": "Se borrarán tus likes aquí y los matches que generaron. No se avisa a nadie.",
+    "deleteMatchTitle": "¿Borrar este match?",
+    "deleteMatchBody": "Se quitará el match y su chat. No se avisa a nadie.",
+    "deleteMatchA11y": "Borrar el match con {{name}}",
+    "openChatA11y": "Abrir el chat con {{name}}"
   }
 }

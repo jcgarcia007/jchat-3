@@ -68,6 +68,7 @@ import MatchMyProfileScreen from '../screens/match/MatchMyProfileScreen';
 import MatchInterestsScreen from '../screens/match/MatchInterestsScreen';
 import MatchProfileScreen from '../screens/match/MatchProfileScreen';
 import MatchItsAMatchScreen from '../screens/match/MatchItsAMatchScreen';
+import MatchActivityScreen from '../screens/match/MatchActivityScreen';
 import type { MatchCard } from '../services/matchTypes';
 import type { MenuItem } from '../services/menu';
 
@@ -138,6 +139,8 @@ export type MainStackParamList = {
   MatchInterests: { firstTime?: boolean } | undefined;
   /** Another person's Match profile. `card` (optional) paints instantly while the profile refreshes. */
   MatchProfile: { businessId: string; userId: string; businessName?: string; card?: MatchCard };
+  /** "My activity": My likes / Liked me / Matches. */
+  MatchActivity: { businessId: string; businessName?: string; tab?: 'likes' | 'likedMe' | 'matches' };
   /** "It's a match!" — `other` is the matched person, conversationId the ephemeral DM. */
   MatchItsAMatch: {
     businessId: string;
@@ -285,6 +288,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="MatchInterests" component={MatchInterestsScreen} />
           <MainStack.Screen name="MatchProfile" component={MatchProfileScreen} />
           <MainStack.Screen name="MatchItsAMatch" component={MatchItsAMatchScreen} />
+          <MainStack.Screen name="MatchActivity" component={MatchActivityScreen} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

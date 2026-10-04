@@ -15,7 +15,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconLogout, IconQrcode, IconUserCircle } from '@tabler/icons-react-native';
+import { IconArrowLeft, IconHeartHandshake, IconLogout, IconQrcode, IconUserCircle } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
@@ -92,6 +92,15 @@ export default function MatchHomeScreen() {
         <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header">
           {t('home.title')}
         </Text>
+        <Pressable
+          onPress={() => navigation.navigate('MatchActivity', { businessId: params.businessId, businessName: params.businessName })}
+          accessibilityRole="button"
+          accessibilityLabel={t('home.myActivity')}
+          hitSlop={10}
+          style={styles.iconBtn}
+        >
+          <IconHeartHandshake size={22} color={c.textPrimary} />
+        </Pressable>
         <Pressable
           onPress={() => navigation.navigate('MatchMyProfile')}
           accessibilityRole="button"
