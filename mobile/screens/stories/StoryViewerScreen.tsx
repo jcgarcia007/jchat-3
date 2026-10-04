@@ -33,12 +33,12 @@ import {
   Modal,
   PanResponder,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   IconChevronLeft,
   IconEye,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   progressRow: {
     flexDirection: 'row',
     paddingHorizontal: 8,
-    paddingTop: Platform.OS === 'android' ? 36 : 8,
+    paddingTop: 8, // status-bar inset comes from SafeAreaView (safe-area-context)
     gap: 4,
   },
   progressTrack: {
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 12,
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'android' ? 20 : 8,
+    paddingBottom: 8, // nav-bar inset comes from SafeAreaView (safe-area-context)
   },
   viewersBtn: {
     flexDirection: 'row',

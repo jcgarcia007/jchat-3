@@ -14,7 +14,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -29,7 +28,7 @@ import {
   IconShieldCheck,
   IconUser,
 } from '@tabler/icons-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -94,7 +93,7 @@ export default function PricingScreen() {
         style={[
           styles.header,
           {
-            paddingTop: Platform.OS === 'android' ? insets.top + 8 : 12,
+            paddingTop: 12, // top inset comes from SafeAreaView (safe-area-context)
             backgroundColor: c.bgBase,
             borderBottomColor: c.borderSubtle,
           },
