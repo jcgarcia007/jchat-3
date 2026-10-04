@@ -1,0 +1,9 @@
+{
+  "name": "jchat-match-test-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Seed/cleanup of test profiles for JChat Match (run by hand; needs a service-role key in the environment).",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.44.4"
+  }
+}
