@@ -2348,7 +2348,13 @@
     "postsPermissionError": "No tienes permiso para publicar en este negocio.",
     "postsNotAuthenticatedError": "No has iniciado sesión.",
     "postsSupabaseNotConfiguredError": "Supabase no está configurado.",
-    "railPublicaciones": "Publicaciones"
+    "railPublicaciones": "Publicaciones",
+    "configurationMatchSectionTitle": "Match",
+    "configurationMatchSectionSubtitle": "Match es un juego dentro del chat de tu local: quienes están físicamente aquí pueden descubrirse con tarjetas, hacer match y chatear. Viene apagado por defecto.",
+    "configurationMatchEnabledLabel": "Permitir Match en mi local",
+    "configurationMatchHelp": "Solo participan quienes entran a tu chat y deciden unirse a Match. Puedes expulsar a cualquiera de Match, y recibes sus reportes y las solicitudes de ayuda discreta en la sección Match.",
+    "configurationMatchEnabledSuccess": "Match activado en tu local.",
+    "configurationMatchDisabledSuccess": "Match desactivado en tu local."
   },
   "superAdmin": {
     "shell": {

@@ -2348,7 +2348,13 @@
     "postsPermissionError": "You don't have permission to post for this business.",
     "postsNotAuthenticatedError": "Not authenticated.",
     "postsSupabaseNotConfiguredError": "Supabase is not configured.",
-    "railPublicaciones": "Posts"
+    "railPublicaciones": "Posts",
+    "configurationMatchSectionTitle": "Match",
+    "configurationMatchSectionSubtitle": "Match is a game inside your venue's chat: people who are physically here can discover each other with swipe cards, match and chat. It is off by default.",
+    "configurationMatchEnabledLabel": "Allow Match at my venue",
+    "configurationMatchHelp": "Only people who enter your chat and choose to join Match take part. You can remove anyone from Match, and you receive their reports and discreet help requests from the Match section.",
+    "configurationMatchEnabledSuccess": "Match enabled at your venue.",
+    "configurationMatchDisabledSuccess": "Match disabled at your venue."
   },
   "superAdmin": {
     "shell": {

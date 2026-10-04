@@ -26,6 +26,7 @@ import {
   IconMessageCircle,
   IconPhoto,
   IconMenu2,
+  IconHeart,
   IconPalette,
   IconCurrencyDollar,
   IconCalendarTime,
@@ -44,6 +45,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
+import { untypedDb } from "@/lib/untypedDb";
 import { DASHBOARD_THEMES, DASHBOARD_PALETTES } from "@/hooks/useDashboardTheme";
 import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeProvider";
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
@@ -614,6 +616,9 @@ export default function ConfigurationPage() {
   const [kdsSettings, setKdsSettings] = useState<Record<string, unknown>>({});
   const [customerStatusEnabled, setCustomerStatusEnabled] = useState(false);
   const [savingCustomerStatus, setSavingCustomerStatus] = useState(false);
+  // Match (business_games.game_key = 'match'); off by default when there is no row.
+  const [matchEnabled, setMatchEnabled] = useState(false);
+  const [savingMatch, setSavingMatch] = useState(false);
   const [posPaymentMode, setPosPaymentMode] = useState<PosPaymentMode>("stripe");
   const [savingPaymentMode, setSavingPaymentMode] = useState(false);
 
@@ -701,6 +706,14 @@ export default function ConfigurationPage() {
         vibration: rawAlerts.service_call?.vibration ?? DEFAULT_SC_ALERT.vibration,
         tone:     (rawAlerts.service_call?.tone      as AlertTone) ?? DEFAULT_SC_ALERT.tone,
       });
+      // business_games is not in the generated types yet → untyped client (lib/untypedDb.ts).
+      const { data: matchRow } = await untypedDb
+        .from("business_games")
+        .select("enabled")
+        .eq("business_id", b.id)
+        .eq("game_key", "match")
+        .maybeSingle();
+      setMatchEnabled(matchRow?.enabled === true);
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
       setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
@@ -928,6 +941,29 @@ export default function ConfigurationPage() {
         ? t("configurationCustomerStatusEnabledSuccess")
         : t("configurationCustomerStatusDisabledSuccess")
     );
+  };
+
+  // Match: upsert on (business_id, game_key); RLS restricts writes to the owner. Rolls back on error.
+  const handleToggleMatch = async (v: boolean) => {
+    if (!businessId || savingMatch) return;
+    const previous = matchEnabled;
+    setMatchEnabled(v);
+    setSavingMatch(true);
+    setError(null);
+    setSuccess(null);
+    const { error: upsertErr } = await untypedDb
+      .from("business_games")
+      .upsert(
+        { business_id: businessId, game_key: "match", enabled: v, updated_at: new Date().toISOString() },
+        { onConflict: "business_id,game_key" },
+      );
+    if (upsertErr) {
+      setMatchEnabled(previous);
+      setError(upsertErr.message);
+    } else {
+      setSuccess(v ? t("configurationMatchEnabledSuccess") : t("configurationMatchDisabledSuccess"));
+    }
+    setSavingMatch(false);
   };
 
   // D-01: guardado optimista con rollback al valor previo si la BD rechaza.
@@ -1929,6 +1965,28 @@ export default function ConfigurationPage() {
             </div>
           );
         })()}
+      </Section>
+
+      {/* ── 5e. Match ───────────────────────────────────────────────────────── */}
+      <Section
+        icon={<IconHeart size={18} color="var(--db-accent)" />}
+        title={t("configurationMatchSectionTitle")}
+        subtitle={t("configurationMatchSectionSubtitle")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <Toggle
+            checked={matchEnabled}
+            onChange={(v) => void handleToggleMatch(v)}
+            label={t("configurationMatchEnabledLabel")}
+            disabled={noSupabase || noBiz || savingMatch}
+          />
+          {savingMatch && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
+        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
+          {t("configurationMatchHelp")}
+        </p>
       </Section>
 
       {/* ── 6. Dashboard Theme + Palette ────────────────────────────────────── */}
