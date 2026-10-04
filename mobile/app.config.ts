@@ -89,6 +89,7 @@ const config: ExpoConfig = {
         androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_KEY ?? '',
       },
     ],
+    'expo-image',
     [
       'expo-image-picker',
       {

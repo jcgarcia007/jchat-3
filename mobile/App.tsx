@@ -12,6 +12,8 @@
 
 import './i18n'; // must be first — initialises i18next before any component renders
 import React, { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import StripeRoot from './components/StripeRoot';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -60,13 +62,20 @@ export default function App() {
   if (!appearanceReady) return null;
 
   return (
-    <StripeRoot>
-      <AuthProvider>
-        <AuthenticatedAppearanceBridge />
-        <CartProvider>
-          <AppNavigator />
-        </CartProvider>
-      </AuthProvider>
-    </StripeRoot>
+    // Outermost: required by react-native-gesture-handler (Match swipe deck).
+    <GestureHandlerRootView style={styles.root}>
+      <StripeRoot>
+        <AuthProvider>
+          <AuthenticatedAppearanceBridge />
+          <CartProvider>
+            <AppNavigator />
+          </CartProvider>
+        </AuthProvider>
+      </StripeRoot>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
