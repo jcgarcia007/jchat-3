@@ -33,9 +33,6 @@ import { hasSkippedInterestsQuiz } from '../../services/match';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchHome'>;
 
-/** Deny reasons for which scanning the venue QR can still unlock Match. */
-const QR_CAN_HELP = new Set(['invalid_qr', 'location_required', 'outside_radius', 'impossible_travel', 'no_geofence']);
-
 export default function MatchHomeScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('match');
@@ -80,12 +77,12 @@ export default function MatchHomeScreen() {
   const denied = presence.status === 'denied';
   // Match activates instantly with the chat's GPS reading: 'checking' is just the call in flight.
   const checking = presence.status === 'idle' || presence.status === 'checking';
-  // 'pending' only with a mocked location → the venue QR is the way in.
+  // 'pending' only with a mocked location → the venue QR is the way in (the QR never replaces the
+  // location: outside the area the server answers 'not_in_venue' and Match stays closed).
   const pending = presence.status === 'pending';
   const deniedKey = denied
     ? (presence.reason && `presence.denied.${presence.reason}`) || 'presence.denied.default'
     : null;
-  const showQrButton = (denied && !!presence.reason && QR_CAN_HELP.has(presence.reason));
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -150,12 +147,7 @@ export default function MatchHomeScreen() {
         {denied && deniedKey && (
           <MatchStateView
             message={t(deniedKey)}
-            primary={
-              showQrButton
-                ? { label: t('presence.scanQr'), onPress: () => setScannerOpen(true), icon: <IconQrcode size={20} color={palette.onBrand} /> }
-                : { label: t('states.backToChat'), onPress: backToChat }
-            }
-            secondary={showQrButton ? { label: t('states.backToChat'), onPress: backToChat } : undefined}
+            primary={{ label: t('states.backToChat'), onPress: backToChat }}
           />
         )}
 

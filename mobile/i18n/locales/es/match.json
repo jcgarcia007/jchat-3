@@ -84,6 +84,7 @@
       "invalid_qr": "Ese QR no pertenece a este local.",
       "location_required": "Activa la ubicación para verificar que estás en el local.",
       "no_geofence": "Este local aún no puede verificar presencia.",
+      "not_in_venue": "No estás en este negocio ahora mismo. Match solo funciona dentro.",
       "outside_radius": "Parece que estás fuera del local.",
       "impossible_travel": "No pudimos verificar tu ubicación. Inténtalo de nuevo en unos minutos.",
       "default": "Match no está disponible ahora mismo."

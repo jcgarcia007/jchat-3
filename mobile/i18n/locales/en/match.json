@@ -84,6 +84,7 @@
       "invalid_qr": "That QR doesn't belong to this venue.",
       "location_required": "Turn on location to verify you're at the venue.",
       "no_geofence": "This venue can't verify presence yet.",
+      "not_in_venue": "You're not at this venue right now. Match only works inside it.",
       "outside_radius": "You seem to be outside the venue.",
       "impossible_travel": "We couldn't verify your location. Try again in a few minutes.",
       "default": "Match isn't available right now."

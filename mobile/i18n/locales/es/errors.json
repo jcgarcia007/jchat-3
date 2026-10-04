@@ -37,6 +37,8 @@
     "REVIEW_RATE_LIMIT": "Solo puedes reseñar este negocio una vez cada 7 días.",
     "REVIEW_FAILED": "No pudimos guardar tu reseña. Inténtalo de nuevo.",
     "INSUFFICIENT_POINTS": "Puntos insuficientes. Tienes {{have}} y necesitas {{need}}.",
+    "outside_venue": "No pudimos confirmar que estés en el negocio. Aún puedes pedir para recoger si el negocio lo ofrece.",
+    "pickup_disabled": "Este negocio no acepta pedidos para recoger por ahora.",
     "NO_QUOTE": "No pudimos obtener el total del pedido. Inténtalo de nuevo.",
     "PAYMENT_CANCELLED": "Pago cancelado.",
     "PAYMENT_FAILED": "No se pudo completar el pago. Inténtalo de nuevo.",

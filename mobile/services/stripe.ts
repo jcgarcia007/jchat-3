@@ -27,6 +27,7 @@ import {
   initStripe,
 } from '@stripe/stripe-react-native';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { readVenueCoords } from './venueAccess';
 import { AppError, toUserMessage } from '../utils/errors';
 import { palette } from '../theme/tokens';
 
@@ -212,9 +213,15 @@ class PaymentsFunctionError extends Error {
 
 // ── order body / quote ────────────────────────────────────────────────────────
 
-/** camelCase → snake_case body for the Edge Function. No prices, names or totals go out. */
-function toOrderBody(order: OrderRequest, userId?: string) {
+/**
+ * camelCase → snake_case body for the Edge Function. No prices, names or totals go out.
+ * Golden rule: the device coordinates travel with the order so the SERVER decides whether the person
+ * is inside the venue (without permission they are simply omitted → the server treats it as outside).
+ */
+async function toOrderBody(order: OrderRequest, userId?: string) {
+  const coords = await readVenueCoords();
   return {
+    ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
     business_id: order.businessId,
     ...(userId ? { user_id: userId } : {}),
     room_id: order.roomId ?? null,
@@ -247,7 +254,7 @@ export class QuoteError extends Error {
 export async function quoteOrder(order: OrderRequest): Promise<OrderQuote> {
   if (!isSupabaseConfigured) throw new QuoteError('Supabase is not configured.', null);
   const { data, error } = await supabase.functions.invoke<OrderQuote>('payments', {
-    body: { action: 'quote_order', order: toOrderBody(order) },
+    body: { action: 'quote_order', order: await toOrderBody(order) },
   });
   if (error) {
     const { status, message, code } = await readFunctionError(error);
@@ -277,7 +284,7 @@ export async function fetchPaymentSheetParams(
       action: 'create_payment_intent',
       idempotency_key: order.idempotencyKey ?? null,
       expected_total_cents: order.expectedTotalCents ?? null,
-      order: toOrderBody(order, order.userId),
+      order: await toOrderBody(order, order.userId),
     },
   });
 

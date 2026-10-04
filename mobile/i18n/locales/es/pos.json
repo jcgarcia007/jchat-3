@@ -130,6 +130,7 @@
     "payButton": "Pagar {{amount}} con Face ID",
     "securedByStripe": "Protegido por Stripe",
     "quoteError": "No pudimos obtener el precio exacto. Revisa tu conexión e inténtalo de nuevo.",
+    "orderPickup": "Pedir para recoger",
     "quoteRetry": "Reintentar",
     "taxLabelRate": "Impuesto ({{rate}}%)",
     "taxNotConfigured": "El negocio no tiene impuestos configurados.",

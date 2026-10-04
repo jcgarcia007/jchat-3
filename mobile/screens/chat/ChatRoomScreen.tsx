@@ -60,6 +60,7 @@ import { uploadImage } from '../../services/storage';
 import { MatchEntryNotice } from '../../components/match/MatchEntryNotice';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
+import { fetchVenueAccess } from '../../services/venueAccess';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
@@ -772,6 +773,22 @@ export default function ChatRoomScreen() {
     navigation.goBack();
   }, [navigation]);
 
+  // Golden rule: when the entry gate refuses (outside / no location), the person still gets the menu
+  // and — only if the owner enabled it — pick-up orders. The server tells us whether pick-up exists.
+  const gateRefused = geoGate.gateStatus !== 'idle' && geoGate.gateStatus !== 'checking';
+  const [outsidePickup, setOutsidePickup] = useState(false);
+  const refusedBusinessId = room?.business_id ?? null;
+  useEffect(() => {
+    if (!gateRefused || !refusedBusinessId) return;
+    let alive = true;
+    void fetchVenueAccess(refusedBusinessId, null).then((access) => {
+      if (alive) setOutsidePickup(access.pickupEnabled);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [gateRefused, refusedBusinessId]);
+
   const handleMenuPress = useCallback(() => {
     if (!business || !room) return;
     if (menuMode === 'web' && businessSlug) {
@@ -1344,7 +1361,7 @@ export default function ChatRoomScreen() {
                 </View>
               )}
 
-              {geoGate.gateStatus !== 'idle' && geoGate.gateStatus !== 'checking' && (
+              {gateRefused && (
                 <View style={gateStyles.geoStatus}>
                   <Text style={[gateStyles.geoStatusText, { color: themeColors.danger }]}>
                     {geoGate.gateStatus === 'permission_denied'
@@ -1354,7 +1371,7 @@ export default function ChatRoomScreen() {
                             business: business?.name ?? '',
                             distance: formatDistanceM(geoGate.outsideDistanceM ?? 0),
                           })
-                        : t('chatRoom.geoUnavailable')}
+                        : t('chatRoom.geoUnavailable', { business: business?.name ?? '' })}
                   </Text>
                   <Pressable
                     onPress={handleEnter}
@@ -1366,7 +1383,22 @@ export default function ChatRoomScreen() {
                     ]}
                   >
                     <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
-                      {t('chatRoom.geoRetry')}
+                      {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
+                    </Text>
+                  </Pressable>
+                  <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
+                    {outsidePickup ? t('chatRoom.geoRestrictedPickup') : t('chatRoom.geoRestrictedMenu')}
+                  </Text>
+                  <Pressable
+                    onPress={handleMenuPress}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      gateStyles.enterBtn,
+                      { backgroundColor: themeColors.bgElevated, opacity: pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    <Text style={[gateStyles.enterBtnLabel, { color: themeColors.textPrimary }]}>
+                      {outsidePickup ? t('chatRoom.geoMenuAndPickup') : t('chatRoom.geoViewMenu')}
                     </Text>
                   </Pressable>
                 </View>

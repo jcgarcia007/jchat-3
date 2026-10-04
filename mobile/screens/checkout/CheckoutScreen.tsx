@@ -61,7 +61,8 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { initAndPresentPaymentSheet, quoteOrder } from '../../services/stripe';
+import { initAndPresentPaymentSheet, quoteOrder, QuoteError } from '../../services/stripe';
+import { fetchVenueAccess, readVenueCoords } from '../../services/venueAccess';
 import type { OrderItemInput, OrderQuote, OrderRequest } from '../../services/stripe';
 import { getOrderByPaymentIntent } from '../../services/orders';
 import type { PaidOrderSummary } from '../../services/orders';
@@ -78,7 +79,7 @@ type TipPreset = 10 | 15 | 20 | 'custom';
 type QuoteState =
   | { status: 'loading'; quote: OrderQuote | null }
   | { status: 'ready'; quote: OrderQuote }
-  | { status: 'error'; message: string; quote: OrderQuote | null };
+  | { status: 'error'; message: string; quote: OrderQuote | null; offerPickup?: boolean };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -332,6 +333,7 @@ export default function CheckoutScreen() {
     businessId,
     roomId,
     clear,
+    setOrderType,
   } = cart;
 
   // ── Local state ──────────────────────────────────────────────────────────────
@@ -426,6 +428,16 @@ export default function CheckoutScreen() {
           console.warn('[checkout] quote failed:', error);
           const message = toUserMessage(error, 'pos:checkout.quoteError');
           setQuoteState((previous) => ({ status: 'error', message, quote: previous.quote }));
+          // Golden rule: outside the venue a table order is never a dry rejection — if the owner
+          // allows pick-up, offer it (the server answers who may do what).
+          if (error instanceof QuoteError && error.code?.toLowerCase() === 'outside_venue' && orderType !== 'counter') {
+            void readVenueCoords()
+              .then((coords) => fetchVenueAccess(businessId, coords))
+              .then((access) => {
+                if (quoteId !== quoteSeqRef.current || !mountedRef.current || !access.pickupEnabled) return;
+                setQuoteState((previous) => (previous.status === 'error' ? { ...previous, offerPickup: true } : previous));
+              });
+          }
         });
     }, QUOTE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -861,6 +873,15 @@ export default function CheckoutScreen() {
                 >
                   <Text style={styles.quoteRetryText}>{t('checkout.quoteRetry')}</Text>
                 </Pressable>
+                {quoteState.offerPickup ? (
+                  <Pressable
+                    onPress={() => setOrderType('counter')}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <Text style={styles.quoteRetryText}>{t('checkout.orderPickup')}</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>
