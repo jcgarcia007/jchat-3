@@ -49,6 +49,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authenticateAsync } from 'expo-local-authentication';
+import { canUseBiometrics, isBiometricEnabled } from '../../services/biometric';
 
 import {
   IconArrowLeft,
@@ -550,26 +551,36 @@ export default function CheckoutScreen() {
     setProcessing(true);
     try {
       // ── Biometric authentication ────────────────────────────────────────────
-      let bioResult: { success: boolean };
+      // Only when the user turned it on in Settings AND the device can do it (hardware + an enrolled
+      // face/fingerprint). Otherwise (off, no hardware, nothing enrolled) go straight to Stripe.
+      // If it IS required and the scan is cancelled or fails, we never pay and offer "Retry".
+      let bioRequired = false;
       try {
-        bioResult = await authenticateAsync({
-          promptMessage: t('checkout.bioPrompt', { amount: formatCents(current.total_cents) }),
-          fallbackLabel: t('checkout.bioFallback'),
-          cancelLabel: t('actions.cancel', { ns: 'common' }),
-          disableDeviceFallback: false,
-        });
+        bioRequired = (await isBiometricEnabled()) && (await canUseBiometrics());
       } catch {
-        // Device doesn't support biometrics — go straight to Stripe
-        bioResult = { success: true };
+        bioRequired = false;
       }
+      if (bioRequired) {
+        let bioResult: { success: boolean };
+        try {
+          bioResult = await authenticateAsync({
+            promptMessage: t('checkout.bioPrompt', { amount: formatCents(current.total_cents) }),
+            fallbackLabel: t('checkout.bioFallback'),
+            cancelLabel: t('actions.cancel', { ns: 'common' }),
+            disableDeviceFallback: false,
+          });
+        } catch {
+          bioResult = { success: false };
+        }
 
-      if (!bioResult.success) {
-        // Cancelled, locked out, not enrolled…: never pay, and say so (no silent exit).
-        Alert.alert(t('checkout.bioFailedTitle'), t('checkout.bioFailedMessage'), [
-          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-          { text: t('checkout.tryAgain'), onPress: () => { void handlePay(); } },
-        ]);
-        return;
+        if (!bioResult.success) {
+          // Cancelled or locked out: never pay, and say so (no silent exit).
+          Alert.alert(t('checkout.bioFailedTitle'), t('checkout.bioFailedMessage'), [
+            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+            { text: t('checkout.tryAgain'), onPress: () => { void handlePay(); } },
+          ]);
+          return;
+        }
       }
 
       // ── Present Stripe PaymentSheet ─────────────────────────────────────────

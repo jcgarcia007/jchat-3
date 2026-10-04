@@ -245,6 +245,8 @@ export default function SettingsScreen() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   // Biometric app-lock (M2) — device-local opt-in, independent of user settings.
   const [biometricOn, setBiometricOn] = useState(false);
+  // The device has biometric hardware AND an enrolled face/fingerprint (otherwise the switch is disabled).
+  const [biometricAvailable, setBiometricAvailable] = useState(true);
   // POS Work Mode — show item only when user has at least one pos_access business.
   const [hasPosAccess, setHasPosAccess] = useState(false);
 
@@ -281,6 +283,13 @@ export default function SettingsScreen() {
         if (mounted) setBiometricOn(on);
       })
       .catch(() => null);
+    canUseBiometrics()
+      .then((ok) => {
+        if (mounted) setBiometricAvailable(ok);
+      })
+      .catch(() => {
+        if (mounted) setBiometricAvailable(false);
+      });
     return () => {
       mounted = false;
     };
@@ -766,10 +775,11 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={<IconFingerprint size={20} color={c.brand} strokeWidth={2} />}
           label={t('main.biometricLock')}
-          sublabel={t('main.biometricLockSub')}
+          sublabel={biometricAvailable || biometricOn ? t('main.biometricLockSub') : t('main.biometricLockUnavailable')}
           right={
             <Switch
               value={biometricOn}
+              disabled={!biometricAvailable && !biometricOn}
               onValueChange={(v) => {
                 void handleToggleBiometric(v);
               }}
