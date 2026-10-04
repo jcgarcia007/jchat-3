@@ -2382,7 +2382,14 @@
     "matchReportStatus_pending": "Pendiente",
     "matchReportStatus_dismissed": "Descartado",
     "matchReportStatus_resolved": "Resuelto",
-    "serviceTypeHelp": "Ayuda discreta"
+    "serviceTypeHelp": "Ayuda discreta",
+    "matchResolveButton": "Marcar resuelto",
+    "matchDismissButton": "Descartar",
+    "matchFilterPending": "Pendientes",
+    "matchFilterAll": "Todos",
+    "matchResolvedToast": "Reporte marcado como resuelto.",
+    "matchDismissedToast": "Reporte descartado.",
+    "matchReportStatus_reviewing": "En revisión"
   },
   "superAdmin": {
     "shell": {

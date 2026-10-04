@@ -2382,7 +2382,14 @@
     "matchReportStatus_pending": "Pending",
     "matchReportStatus_dismissed": "Dismissed",
     "matchReportStatus_resolved": "Resolved",
-    "serviceTypeHelp": "Discreet help request"
+    "serviceTypeHelp": "Discreet help request",
+    "matchResolveButton": "Mark resolved",
+    "matchDismissButton": "Dismiss",
+    "matchFilterPending": "Pending",
+    "matchFilterAll": "All",
+    "matchResolvedToast": "Report marked as resolved.",
+    "matchDismissedToast": "Report dismissed.",
+    "matchReportStatus_reviewing": "In review"
   },
   "superAdmin": {
     "shell": {

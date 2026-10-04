@@ -5,6 +5,8 @@
  *   (RLS reports_read_owner, migration 192). Shows reason, date, status and the reported person's
  *   visible name (public_profiles — never email).
  * - "Remove from Match" → rpc match_kick(p_business_id, p_user_id = reports.reported_user_id, p_reason), with confirmation.
+ * - Pending reports can be marked resolved / dismissed → rpc match_resolve_report(p_report_id, 'resolved' | 'dismissed').
+ *   Filter Pending (default) / All. match_kick already resolves that person's pending reports, so kick reloads the list.
  * - List of removed people (match_kicks) with "Undo removal" → rpc match_unkick.
  *
  * Owner gate: if the signed-in user is not businesses.owner_id of the active business → /dashboard.
@@ -17,7 +19,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { IconHeart, IconLoader2, IconAlertCircle, IconBan, IconCheck } from "@tabler/icons-react";
+import { IconHeart, IconLoader2, IconAlertCircle, IconBan, IconCheck, IconX } from "@tabler/icons-react";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, isBusinessOwner } from "@/lib/business";
 import { untypedDb } from "@/lib/untypedDb";
@@ -47,7 +49,9 @@ interface ConfirmTarget {
   name: string;
 }
 
-const REPORT_STATUSES = ["pending", "dismissed", "resolved"];
+const REPORT_STATUSES = ["pending", "reviewing", "dismissed", "resolved"];
+/** Statuses that still need the owner's attention (migration 194 resolves both on kick). */
+const OPEN_STATUSES = ["pending", "reviewing"];
 
 export default function DashboardMatchPage() {
   const t = useTranslations("dashboardCommon");
@@ -63,6 +67,7 @@ export default function DashboardMatchPage() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmTarget | null>(null);
   const [reason, setReason] = useState("");
+  const [filter, setFilter] = useState<"pending" | "all">("pending");
 
   const displayName = useCallback(
     (userId: string | null): string => {
@@ -170,6 +175,23 @@ export default function DashboardMatchPage() {
     setBusy(false);
   }
 
+  async function resolveReport(reportId: string, status: "resolved" | "dismissed") {
+    if (!businessId) return;
+    setBusy(true);
+    setError(null);
+    const { error: rpcErr } = await untypedDb.rpc("match_resolve_report", {
+      p_report_id: reportId,
+      p_status: status,
+    });
+    if (rpcErr) {
+      setError(t("matchActionError"));
+    } else {
+      setToast(status === "resolved" ? t("matchResolvedToast") : t("matchDismissedToast"));
+      await loadData(businessId);
+    }
+    setBusy(false);
+  }
+
   async function unkick(userId: string) {
     if (!businessId) return;
     setBusy(true);
@@ -188,6 +210,8 @@ export default function DashboardMatchPage() {
   }
 
   const kickedIds = new Set(kicks.map((k) => k.user_id));
+  const isOpen = (r: MatchReport) => !!r.status && OPEN_STATUSES.includes(r.status);
+  const visibleReports = filter === "pending" ? reports.filter(isOpen) : reports;
 
   const card: React.CSSProperties = {
     background: "var(--db-surface)",
@@ -278,13 +302,34 @@ export default function DashboardMatchPage() {
       <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--db-text-primary)", margin: "0 0 10px" }}>
         {t("matchReportsTitle")}
       </h2>
-      {reports.length === 0 ? (
+      <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+        {(["pending", "all"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
+            style={{
+              padding: "4px 12px",
+              borderRadius: "999px",
+              border: "1px solid var(--db-border)",
+              background: filter === f ? "var(--db-accent)" : "transparent",
+              color: filter === f ? "var(--on-brand)" : "var(--db-text-secondary)",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {f === "pending" ? t("matchFilterPending") : t("matchFilterAll")}
+          </button>
+        ))}
+      </div>
+      {visibleReports.length === 0 ? (
         <p style={{ fontSize: "13px", color: "var(--db-text-tertiary)", margin: "0 0 24px" }}>
           {t("matchReportsEmpty")}
         </p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: "10px" }}>
-          {reports.map((r) => {
+          {visibleReports.map((r) => {
             const alreadyKicked = r.reported_user_id ? kickedIds.has(r.reported_user_id) : false;
             const statusKey = r.status && REPORT_STATUSES.includes(r.status) ? `matchReportStatus_${r.status}` : null;
             return (
@@ -301,23 +346,37 @@ export default function DashboardMatchPage() {
                 <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: "0 0 10px" }}>
                   {r.reason ?? t("matchNoReason")}
                 </p>
-                {r.reported_user_id && (
-                  alreadyKicked ? (
-                    <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{t("matchAlreadyKicked")}</span>
-                  ) : (
-                    <button
-                      disabled={busy}
-                      onClick={() => {
-                        setReason("");
-                        setConfirm({ userId: r.reported_user_id as string, name: displayName(r.reported_user_id) });
-                      }}
-                      style={{ ...smallButton, borderColor: "var(--color-danger)", color: "var(--color-danger)" }}
-                    >
-                      <IconBan size={14} />
-                      {t("matchKickButton")}
-                    </button>
-                  )
-                )}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  {r.reported_user_id && (
+                    alreadyKicked ? (
+                      <span style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{t("matchAlreadyKicked")}</span>
+                    ) : (
+                      <button
+                        disabled={busy}
+                        onClick={() => {
+                          setReason("");
+                          setConfirm({ userId: r.reported_user_id as string, name: displayName(r.reported_user_id) });
+                        }}
+                        style={{ ...smallButton, borderColor: "var(--color-danger)", color: "var(--color-danger)" }}
+                      >
+                        <IconBan size={14} />
+                        {t("matchKickButton")}
+                      </button>
+                    )
+                  )}
+                  {isOpen(r) && (
+                    <>
+                      <button disabled={busy} onClick={() => void resolveReport(r.id, "resolved")} style={smallButton}>
+                        <IconCheck size={14} />
+                        {t("matchResolveButton")}
+                      </button>
+                      <button disabled={busy} onClick={() => void resolveReport(r.id, "dismissed")} style={smallButton}>
+                        <IconX size={14} />
+                        {t("matchDismissButton")}
+                      </button>
+                    </>
+                  )}
+                </div>
               </li>
             );
           })}
