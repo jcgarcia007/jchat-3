@@ -33,6 +33,7 @@ import { palette } from '../../theme/tokens';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import { fetchMyMatchPhotos, signedPhotoUrls } from '../../services/matchProfile';
 import { cardName } from '../../services/matchTypes';
+import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchItsAMatch'>;
 
@@ -45,6 +46,7 @@ export default function MatchItsAMatchScreen() {
   const { params } = useRoute<RouteProp<MainStackParamList, 'MatchItsAMatch'>>();
   const { user } = useAuth();
   const { other } = params;
+  useRequireMatchPresence(params.businessId, 'active');
   const follow = useFollowSystem(other.id);
 
   const [myPhoto, setMyPhoto] = useState<string | null>(null);

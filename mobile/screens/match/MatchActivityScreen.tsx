@@ -37,6 +37,7 @@ import {
 import type { MatchActivity } from '../../services/matchDeck';
 import { signedPhotoUrls } from '../../services/matchProfile';
 import { cardName } from '../../services/matchTypes';
+import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 import type { MatchCard } from '../../services/matchTypes';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchActivity'>;
@@ -62,6 +63,7 @@ export default function MatchActivityScreen() {
   const { t } = useTranslation('match');
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<RouteProp<MainStackParamList, 'MatchActivity'>>();
+  useRequireMatchPresence(params.businessId, 'active');
 
   const [tab, setTab] = useState<Tab>(params.tab ?? 'likes');
   const [activity, setActivity] = useState<MatchActivity | null>(null);

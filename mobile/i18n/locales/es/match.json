@@ -68,7 +68,9 @@
       "outside_radius": "Parece que estás fuera del local.",
       "impossible_travel": "No pudimos verificar tu ubicación. Inténtalo de nuevo en unos minutos.",
       "default": "Match no está disponible ahora mismo."
-    }
+    },
+    "requiredTitle": "Match",
+    "required": "Match solo funciona mientras estás en el local. Abre el chat del local para usarlo."
   },
   "scanner": {
     "title": "Escanea el QR del local",

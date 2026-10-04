@@ -25,6 +25,7 @@ import { MatchDeckSection } from '../../components/match/MatchDeckSection';
 import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useAuth } from '../../context/AuthContext';
+import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 import { fetchMyInterestKeys } from '../../services/matchProfile';
 import { hasSkippedInterestsQuiz } from '../../services/match';
 
@@ -39,6 +40,7 @@ export default function MatchHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<RouteProp<MainStackParamList, 'MatchHome'>>();
   const presence = useMatchPresenceState();
+  useRequireMatchPresence(params.businessId, 'present');
   const [scannerOpen, setScannerOpen] = useState(false);
   const { user } = useAuth();
   const quizOfferedRef = useRef(false);

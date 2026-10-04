@@ -77,6 +77,15 @@ export interface MatchReading {
   mocked: boolean;
 }
 
+/**
+ * The chat started feeding the heartbeat for this venue: from now on the presence is "being
+ * verified" (not idle), so Match screens opened right away don't mistake it for "no heartbeat".
+ */
+export function markMatchHeartbeat(businessId: string, roomId: string): void {
+  if (state.businessId === businessId && state.status !== 'idle') return;
+  setMatchPresence({ businessId, roomId, status: 'checking', reason: null, error: false });
+}
+
 let latestReading: MatchReading | null = null;
 let inFlight = false;
 

@@ -68,7 +68,9 @@
       "outside_radius": "You seem to be outside the venue.",
       "impossible_travel": "We couldn't verify your location. Try again in a few minutes.",
       "default": "Match isn't available right now."
-    }
+    },
+    "requiredTitle": "Match",
+    "required": "Match only works while you're at the venue. Open the venue's chat to use it."
   },
   "scanner": {
     "title": "Scan the venue's QR",

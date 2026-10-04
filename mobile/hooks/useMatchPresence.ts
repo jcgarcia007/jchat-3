@@ -13,7 +13,7 @@
 
 import { useEffect } from 'react';
 import type { GeoReading } from '../screens/chat/useGeofenceGate';
-import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
+import { markMatchHeartbeat, resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 
 interface UseMatchPresenceArgs {
   businessId: string | null;
@@ -40,7 +40,8 @@ export function useMatchPresence({ businessId, roomId, enabled, reading }: UseMa
   // Not enabled (opted out / Match off / left): clear the shared state.
   useEffect(() => {
     if (!enabled) resetMatchPresence();
-  }, [enabled]);
+    else if (businessId) markMatchHeartbeat(businessId, roomId);
+  }, [enabled, businessId, roomId]);
 
   // Unmount of the chat → no heartbeat anymore.
   useEffect(

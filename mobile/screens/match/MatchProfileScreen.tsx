@@ -42,6 +42,7 @@ import { fetchInterests, interestName, signedPhotoUrls } from '../../services/ma
 import { cardName } from '../../services/matchTypes';
 import type { MatchCard } from '../../services/matchTypes';
 import { getMatchPresence } from '../../services/matchPresence';
+import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchProfile'>;
 
@@ -51,6 +52,7 @@ export default function MatchProfileScreen() {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<RouteProp<MainStackParamList, 'MatchProfile'>>();
   const language: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
+  useRequireMatchPresence(params.businessId, 'active');
 
   const [card, setCard] = useState<MatchCard | null>(params.card ?? null);
   const [loading, setLoading] = useState(!params.card);
