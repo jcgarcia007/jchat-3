@@ -108,14 +108,25 @@ Hoy el chat web es el `ChatRoom.tsx` de Next. Llevarlo al cliente Expo Web exige
 
 ---
 
-## 5. Decisiones de Juan/Planning (anotadas)
+## 5. Decisiones FINALES (Juan/Planning)
 
-1. **Match exige SIEMPRE una lectura de ubicación dentro del radio, también entrando por QR.** El QR solo no activa Match. El QR destraba el caso de **ubicación simulada (Android)** si además la lectura cae dentro del radio. *Planning ajustará `match_check_in` en la base* (hoy, según 189/196, el QR activa al instante y la ubicación simulada deja `pending`).
-2. **Entrada por QR sin ubicación:** el **chat sí** (membresía de 24 h actual); **Match no**. El **latido de geocerca no expulsa del chat** a quien entró por QR; **solo controla Match**.
-3. **Dominio único de los QR: `jchat.cloud`** (*pendiente de confirmación de Juan*). Implica fijar `NEXT_PUBLIC_SITE_URL` y redirigir `jchat-3.vercel.app/c/*`.
-4. **Enlaces universales** (`associatedDomains`, App Links, `.well-known`): **van en el build del cambio de cuentas a Otunity Labs** (no antes).
+> Sustituyen a la versión anterior de este apartado y a cualquier afirmación en contra de §2–§4 (en particular: **el QR ya no exime la ubicación del chat**).
 
-### Efecto en las fases (§4)
-- **Q3** (enlaces universales) queda ligada al build de Otunity Labs.
-- **Q4** cambia: la entrada por QR abre el chat sin ubicación; Match sigue pidiendo lectura dentro del radio. La app ya envía la lectura de ubicación con cada check-in (`useMatchPresence`), por lo que el cambio es sobre todo de servidor; en cliente el estado `mocked_location` ya muestra el botón del escáner.
-- Hay que ajustar el cliente cuando Planning cambie la regla: hoy la app trata `pending` como "escanea el QR", lo que seguirá siendo cierto solo con ubicación simulada.
+### Regla de oro (iOS, Android y web; con cuenta o sin cuenta)
+- **DENTRO del área del local** (ubicación verificada **en el servidor**): todo.
+- **FUERA del área o sin permiso de ubicación:** SOLO ver el menú y pedir para recoger (si `businesses.pickup_enabled`). Sin chat, sin llamar al mesero, sin pedidos a la mesa, sin Match ni regalos. Con `pickup_enabled` apagado y fuera del área: solo ver el menú, sin botón de pedir.
+- **La verificación es del servidor;** la app y la web solo mandan coordenadas. "Fuera" nunca es un rechazo seco: se muestra "No pudimos confirmar que estés en {negocio}", el botón **Permitir ubicación / Reintentar** y lo que sí se puede hacer.
+
+### Decisiones
+1. **(a) Regla de oro como arriba, también por QR.** El QR **no** exime la ubicación: escanear resuelve la sala, pero el acceso al chat pasa por la misma verificación de ubicación del servidor. Fuera del área, el QR lleva a la pantalla de solo menú/recoger.
+2. **(b) Match** se activa cuando el servidor ve la entrada al chat con ubicación (`venue_presence_ok`). El escáner de QR de Match queda solo para el caso `mocked_location` (Android): el QR destraba la ubicación simulada **si además** la lectura cae dentro del radio. *Planning ajusta `match_check_in` en la base.*
+3. **(c) Pedidos para recoger** = interruptor del dueño (`businesses.pickup_enabled`, "Pedidos para recoger" en Configuración).
+4. **(d) Mesero sin cuenta:** ubicación obligatoria; **1 llamada abierta por mesa/dispositivo**; **bloqueo de 24 h al dispositivo** en caso de abuso; **aviso al dueño** (notificación `work_alert` con `kind: 'service_abuse'`). Con cuenta sigue el flujo actual (también sujeto a la regla de oro).
+5. **(e) Dominio único: `jchat.cloud` — confirmado.** Formato final de los QR en la fase 4: `barxzx.jchat.cloud/5-k3f9`. Mientras tanto, el host del QR se fija a `https://jchat.cloud` (nunca `window.location.origin` ni `vercel.app`) y se redirige `jchat-3.vercel.app/c/*`.
+6. **(f) Enlaces universales** (`associatedDomains`, App Links, `.well-known`) **van en el build del cambio de cuentas a Otunity Labs**, no antes.
+
+### Efecto sobre lo propuesto en §2–§4
+- §2.2 punto 4: la entrada por QR **no** abre el chat sin ubicación; aplica la regla de oro.
+- §2.3 (hub web): se pide la ubicación del navegador **antes** del hub; dentro → hub completo; fuera o sin permiso → hub reducido (Menú + "Pedir para recoger" si `pickup_enabled` + texto de la regla + "Permitir ubicación"). Entrar al chat exige dentro + cuenta + edad. `join_room_via_qr` pasa a recibir coordenadas.
+- §3 puntos 1 y 2: **resueltos** (el QR no es llave remota para el chat ni para Match; el latido de geocerca controla chat y Match).
+- §4: **Q3** ligada al build de Otunity Labs; **Q4** pasa a ser "misma verificación de ubicación en la entrada por QR"; **Q2** (mesero sin cuenta) incluye ubicación, 1 llamada abierta, bloqueo de 24 h y aviso al dueño.
