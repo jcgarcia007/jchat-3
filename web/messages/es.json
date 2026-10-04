@@ -3653,6 +3653,8 @@
     "chatNeedsAccount": "Para entrar al chat necesitas cuenta, estar en {business} y tener la edad confirmada.",
     "tableTitle": "Mesa {table}",
     "tableOrder": "Ver menú y pedir",
+    "viewOnlyNotice": "Solo puedes ver el menú desde fuera de {business}",
+    "understood": "Entendido",
     "outsideVenueGeneric": "Para esto necesitas estar en el local"
   }
 }

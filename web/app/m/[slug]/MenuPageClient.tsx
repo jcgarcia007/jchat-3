@@ -1905,6 +1905,12 @@ export default function MenuPageClient({
       groupSelections: GroupSelection[] = [],
       notes?: string
     ) => {
+      if (viewOnly) {
+        // Central guard: whatever template/customizer calls this, a view-only menu never adds.
+        setCustomizerItem(null);
+        setOrderBlockedNotice(true);
+        return;
+      }
       const lineTotalCents =
         groupSelections.length > 0
           ? calcLineFromGroups(item.price_cents, groupSelections, qty)
@@ -1926,7 +1932,7 @@ export default function MenuPageClient({
       ]);
       setCustomizerItem(null);
     },
-    []
+    [viewOnly]
   );
 
   const updateQty = useCallback((cartId: string, delta: number) => {
@@ -2051,9 +2057,31 @@ export default function MenuPageClient({
           >
             {venue.failure === "denied" ? tv("allowLocation") : tv("retry")}
           </button>
-          {orderBlockedNotice && viewOnly && (
-            <span role="alert" style={{ color: "var(--color-danger)" }}>{tv("pickupDisabled", { business: business.name })}</span>
-          )}
+        </div>
+      )}
+
+      {orderBlockedNotice && viewOnly && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          onClick={() => setOrderBlockedNotice(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(0,0,0,0.5)" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 360, background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}>
+              {tv("viewOnlyNotice", { business: business.name })}
+            </p>
+            <button
+              type="button"
+              onClick={() => setOrderBlockedNotice(false)}
+              style={{ padding: "10px 14px", borderRadius: 10, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            >
+              {tv("understood")}
+            </button>
+          </div>
         </div>
       )}
 

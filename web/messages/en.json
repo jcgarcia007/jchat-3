@@ -3653,6 +3653,8 @@
     "chatNeedsAccount": "To enter the chat you need an account, to be at {business} and your age confirmed.",
     "tableTitle": "Table {table}",
     "tableOrder": "View menu and order",
+    "viewOnlyNotice": "You can only view the menu from outside {business}",
+    "understood": "Got it",
     "outsideVenueGeneric": "To do this you need to be at the venue"
   }
 }
