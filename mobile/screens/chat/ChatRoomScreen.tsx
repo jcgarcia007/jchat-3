@@ -58,6 +58,19 @@ import { useGeofenceGate, formatDistanceM, formatGraceCountdown } from './useGeo
 import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
+import { MatchEntryNotice } from '../../components/match/MatchEntryNotice';
+import { useMatchPresence } from '../../hooks/useMatchPresence';
+import {
+  fetchGames,
+  getMatchOptIn,
+  hasSeenMatchNotice,
+  isMatchEnabledForBusiness,
+  markMatchNoticeSeen,
+  matchLeaveVenue,
+  setMatchOptIn,
+} from '../../services/match';
+import type { GameRow } from '../../services/match';
+import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { useAuth } from '../../context/AuthContext';
 import { getChatTheme } from '../../theme/chatThemes';
 import { useThemeColors } from '../../theme/colors';
@@ -195,7 +208,8 @@ export default function ChatRoomScreen() {
   const navigation = useNavigation<ChatRoomNav>();
   const { user } = useAuth();
   const themeColors = useThemeColors();
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
+  const matchLanguage: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
 
   const rootRoomId = route.params.id;
 
@@ -314,6 +328,54 @@ export default function ChatRoomScreen() {
     isOwner,
     entered: !entryVisible,
     onExpelled: handleExpelled,
+  });
+
+  // ── Match (Fase D1): availability, entry-notice state and presence heartbeat ──────────────
+  const matchBusinessId = room?.business_id ?? null;
+  const [matchAvailable, setMatchAvailable] = useState(false);
+  const [matchGames, setMatchGames] = useState<GameRow[]>([]);
+  const [gamesEnabled, setGamesEnabled] = useState(true);
+  const [matchOptInValue, setMatchOptInValue] = useState(true);
+  const [matchNoticeFull, setMatchNoticeFull] = useState(true);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !matchBusinessId || !user?.id) return;
+    let alive = true;
+    void Promise.all([
+      isMatchEnabledForBusiness(matchBusinessId),
+      fetchGames(),
+      loadUserSettings(user.id),
+      hasSeenMatchNotice(matchBusinessId),
+      getMatchOptIn(matchBusinessId),
+    ])
+      .then(([available, games, settings, seen, optIn]) => {
+        if (!alive) return;
+        setMatchAvailable(available);
+        setMatchGames(games);
+        setGamesEnabled(settings.gamesEnabled ?? true);
+        setMatchNoticeFull(!seen);
+        setMatchOptInValue(optIn);
+      })
+      .catch(() => {
+        if (alive) setMatchAvailable(false); // fail closed: no Match UI if we can't confirm
+      });
+    return () => {
+      alive = false;
+    };
+  }, [matchBusinessId, user?.id]);
+
+  const handleGamesEnabledChange = useCallback((value: boolean) => {
+    setGamesEnabled(value);
+    updateMySettings({ gamesEnabled: value }).catch(() => setGamesEnabled(!value));
+  }, []);
+
+  // The owner has no geofence reading (the gate skips them), so they don't join Match.
+  const matchActive = matchAvailable && gamesEnabled && matchOptInValue;
+  const matchPresence = useMatchPresence({
+    businessId: matchBusinessId,
+    roomId: rootRoomId,
+    enabled: !entryVisible && matchActive && !isOwner,
+    reading: geoGate.lastCoords,
   });
 
   // The online row shows the room on screen; demo mode falls back to demo users.
@@ -654,8 +716,14 @@ export default function ChatRoomScreen() {
     if (!granted) return; // stays on the entry gate; geoGate.gateStatus drives the message shown
     // Incognito is hidden (INCOGNITO_ENABLED): any stored choice counts as off.
     setEnteredIncognito(INCOGNITO_ENABLED ? incognitoState : null);
+    if (matchBusinessId && matchAvailable) {
+      void markMatchNoticeSeen(matchBusinessId);
+      void setMatchOptIn(matchBusinessId, matchOptInValue);
+      // Switching Match off at the entry notice = leaving the venue's Match (same RPC; idempotent).
+      if (!matchOptInValue || !gamesEnabled) void matchLeaveVenue(matchBusinessId).catch(() => undefined);
+    }
     setEntryVisible(false);
-  }, [incognitoState, t, geoGate, initialLoading]);
+  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -1180,6 +1248,20 @@ export default function ChatRoomScreen() {
                 {t('chatRoom.gateSubtitle')}
               </Text>
 
+              {/* Match entry notice — only where the owner enabled Match (fase D1) */}
+              {matchAvailable && (
+                <MatchEntryNotice
+                  businessName={business?.name ?? t('chatRoom.chatRoomFallback')}
+                  full={matchNoticeFull}
+                  games={matchGames}
+                  gamesEnabled={gamesEnabled}
+                  onGamesEnabledChange={handleGamesEnabledChange}
+                  matchOptIn={matchOptInValue}
+                  onMatchOptInChange={setMatchOptInValue}
+                  language={matchLanguage}
+                />
+              )}
+
               {/* IncognitoToggle */}
               {INCOGNITO_ENABLED && (
                 <IncognitoToggle
@@ -1205,7 +1287,7 @@ export default function ChatRoomScreen() {
                   ]}
                 >
                   <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
-                    {t('chatRoom.enterRoom')}
+                    {matchAvailable ? t('entry.enter', { ns: 'match' }) : t('chatRoom.enterRoom')}
                   </Text>
                 </Pressable>
               )}
@@ -1255,7 +1337,7 @@ export default function ChatRoomScreen() {
                 style={gateStyles.cancelWrap}
               >
                 <Text style={[gateStyles.cancelText, { color: themeColors.textSecondary }]}>
-                  {t('actions.cancel', { ns: 'common' })}
+                  {matchAvailable ? t('entry.notNow', { ns: 'match' }) : t('actions.cancel', { ns: 'common' })}
                 </Text>
               </Pressable>
             </View>
@@ -1563,6 +1645,7 @@ const gateStyles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 48,
     gap: 16,
+    maxHeight: '92%',
   },
   handle: {
     width: 36,

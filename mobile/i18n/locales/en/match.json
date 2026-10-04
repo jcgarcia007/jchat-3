@@ -1,0 +1,92 @@
+{
+  "entry": {
+    "title": "Before you enter",
+    "shortTitle": "Games at {{business}}",
+    "points": {
+      "here": "Only people who are here with you can see you in Match.",
+      "erased": "Everything in Match is erased when you leave the venue, unless you both follow each other.",
+      "screenshots": "Screenshots exist: others can capture what you share.",
+      "help": "You can ask the venue for discreet help at any time."
+    },
+    "gamesTitle": "Games",
+    "gamesGlobal": "Take part in games",
+    "gamesGlobalHint": "Turn this off to disappear from every game in every venue.",
+    "gameSwitchHint": "Appear in {{game}} while you are here.",
+    "seeGuide": "See safety guide",
+    "hideGuide": "Hide safety guide",
+    "guideTitle": "Quick safety guide",
+    "guide": {
+      "public": {
+        "title": "Meet in public first",
+        "body": "Talk in the venue's chat and meet where there are other people. Tell a friend where you are."
+      },
+      "share": {
+        "title": "Share little",
+        "body": "Don't share your address, workplace, financial details or codes. Nobody here needs them."
+      },
+      "pressure": {
+        "title": "You can say no",
+        "body": "Pass, ignore or block anyone who pressures you. You never owe anyone a reply."
+      },
+      "report": {
+        "title": "Report and block",
+        "body": "Use the ⋯ menu on any profile to report or block. Reports reach the venue and the JChat team."
+      },
+      "help": {
+        "title": "Ask the venue for help",
+        "body": "From the ⋯ menu you can alert the staff discreetly. Nobody else will see it."
+      }
+    },
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "legalPrefix": "By entering you accept our",
+    "legalAnd": "and",
+    "notNow": "Not now",
+    "enter": "Enter the chat"
+  },
+  "games": {
+    "button": "Games",
+    "buttonA11y": "Open games",
+    "rowA11y": "Games available at this venue",
+    "matchName": "Match"
+  },
+  "presence": {
+    "verifying": "Checking that you're at the venue…",
+    "scanQr": "Scan the venue's QR",
+    "verifyingHint": "This takes a few minutes. Scanning the venue's QR activates Match right away.",
+    "active": "You're at the venue",
+    "error": "Couldn't verify your presence. We'll try again shortly.",
+    "denied": {
+      "unavailable": "Match isn't available for you at this venue.",
+      "age_not_confirmed": "Confirm your age in the app to use Match.",
+      "games_disabled": "Games are turned off in your settings.",
+      "match_disabled": "This venue hasn't enabled Match.",
+      "invalid_qr": "That QR doesn't belong to this venue.",
+      "location_required": "Turn on location to verify you're at the venue.",
+      "no_geofence": "This venue can't verify presence yet.",
+      "outside_radius": "You seem to be outside the venue.",
+      "impossible_travel": "We couldn't verify your location. Try again in a few minutes.",
+      "default": "Match isn't available right now."
+    }
+  },
+  "scanner": {
+    "title": "Scan the venue's QR",
+    "hint": "Point the camera at the QR code displayed in the venue.",
+    "permissionNeeded": "Camera access is needed to scan the QR.",
+    "grant": "Allow camera",
+    "close": "Close",
+    "invalid": "That doesn't look like a venue QR code."
+  },
+  "leave": {
+    "button": "Leave the venue",
+    "title": "Leave {{business}}?",
+    "body": "Everything you did in Match here (likes, matches and chats) will be deleted. Followed people stay.",
+    "confirm": "Leave",
+    "cancel": "Stay",
+    "error": "Couldn't leave right now. Try again."
+  },
+  "home": {
+    "title": "Match",
+    "placeholder": "The deck arrives in the next update."
+  }
+}

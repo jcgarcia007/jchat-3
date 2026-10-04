@@ -99,6 +99,13 @@ function defaultSettings(): UserSettings {
     language: i18n.language?.startsWith('es') ? 'es' : 'en',
     appearance: 'system',
     feedRadiusMiles: DEFAULT_FEED_RADIUS_MILES,
+    // Match defaults mirror the server (migration 189).
+    gamesEnabled: true,
+    pushPreviewMatch: 'discreet',
+    pushPreviewDm: 'full',
+    matchNotifyNewPeople: false,
+    matchAgeMin: 18,
+    matchAgeMax: 99,
   };
 }
 

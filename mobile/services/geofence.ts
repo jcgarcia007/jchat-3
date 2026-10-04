@@ -41,6 +41,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface Coords {
   lat: number;
   lng: number;
+  /** Android only: the OS flagged this reading as a mock location (Match anti-spoofing). */
+  mocked?: boolean;
 }
 
 /**
@@ -206,6 +208,7 @@ export async function getCurrentPosition(): Promise<Coords> {
   return {
     lat: location.coords.latitude,
     lng: location.coords.longitude,
+    mocked: location.mocked,
   };
 }
 

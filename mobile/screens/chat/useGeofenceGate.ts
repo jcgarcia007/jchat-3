@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { requestForegroundPermission, getCurrentPosition } from '../../services/geofence';
+import { requestForegroundPermission, getCurrentPosition, type Coords } from '../../services/geofence';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min while open+foreground
 const GRACE_DURATION_MS = 2 * 60 * 1000; // §3.3 of the design doc: warn, then 2 min to return
@@ -71,7 +71,10 @@ interface GeoCheckResult {
  * "Degrade with security, not permissiveness": any unexpected failure here
  * falls through to `unavailable` (no access), never a silent grant.
  */
-async function runGeoCheck(roomId: string): Promise<GeoCheckResult> {
+async function runGeoCheck(
+  roomId: string,
+  onReading?: (coords: Coords) => void,
+): Promise<GeoCheckResult> {
   try {
     let permitted: boolean;
     try {
@@ -83,12 +86,13 @@ async function runGeoCheck(roomId: string): Promise<GeoCheckResult> {
       return { granted: false, reason: 'permission_denied', distanceM: null };
     }
 
-    let coords: { lat: number; lng: number };
+    let coords: Coords;
     try {
       coords = await getCurrentPosition();
     } catch {
       return { granted: false, reason: 'position_error', distanceM: null };
     }
+    onReading?.(coords); // the single GPS read of this check is shared (Match presence reuses it)
 
     const { data, error } = await supabase.rpc('check_geofence_and_join_room', {
       _room_id: roomId,
@@ -132,6 +136,18 @@ interface UseGeofenceGateResult {
   graceWarningVisible: boolean;
   /** Seconds left in the grace period, for an optional countdown display. */
   graceSecondsLeft: number | null;
+  /** The reading used by the most recent geofence check (same GPS read), or null before the first. */
+  lastCoords: GeoReading | null;
+  /** True when that reading was flagged as a mock location (Android). */
+  lastMocked: boolean;
+}
+
+/** A GPS reading shared with Match presence. `readAt` (ms epoch) changes on every reading. */
+export interface GeoReading {
+  lat: number;
+  lng: number;
+  mocked: boolean;
+  readAt: number;
 }
 
 export function useGeofenceGate({
@@ -144,6 +160,7 @@ export function useGeofenceGate({
   const [outsideDistanceM, setOutsideDistanceM] = useState<number | null>(null);
   const [graceWarningVisible, setGraceWarningVisible] = useState(false);
   const [graceSecondsLeft, setGraceSecondsLeft] = useState<number | null>(null);
+  const [lastCoords, setLastCoords] = useState<GeoReading | null>(null);
 
   const roomIdRef = useRef(roomId);
   roomIdRef.current = roomId;
@@ -154,6 +171,10 @@ export function useGeofenceGate({
   const graceRecheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const graceCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const graceDeadlineRef = useRef<number | null>(null);
+
+  const handleReading = useCallback((c: Coords) => {
+    setLastCoords({ lat: c.lat, lng: c.lng, mocked: c.mocked === true, readAt: Date.now() });
+  }, []);
 
   const clearGrace = useCallback(() => {
     if (graceRecheckIntervalRef.current) {
@@ -183,7 +204,7 @@ export function useGeofenceGate({
    */
   const performBackgroundCheck = useCallback(async () => {
     if (AppState.currentState !== 'active') return; // never read GPS while backgrounded
-    const result = await runGeoCheck(roomIdRef.current);
+    const result = await runGeoCheck(roomIdRef.current, handleReading);
 
     if (result.granted) {
       if (graceDeadlineRef.current != null) clearGrace(); // was in grace, back inside → cancel
@@ -218,7 +239,7 @@ export function useGeofenceGate({
     // while already inside: don't escalate to expulsion on a single blip — try
     // again next tick. The server-side geo-presence TTL (10 min) is the real
     // backstop if the client keeps failing silently.
-  }, [clearGrace, clearHeartbeat]);
+  }, [clearGrace, clearHeartbeat, handleReading]);
 
   const checkAndEnter = useCallback(async (): Promise<boolean> => {
     if (!isSupabaseConfigured || isOwner) {
@@ -227,7 +248,7 @@ export function useGeofenceGate({
     }
     setGateStatus('checking');
     setOutsideDistanceM(null);
-    const result = await runGeoCheck(roomIdRef.current);
+    const result = await runGeoCheck(roomIdRef.current, handleReading);
     if (result.granted) {
       setGateStatus('idle');
       return true;
@@ -235,7 +256,7 @@ export function useGeofenceGate({
     setGateStatus(result.reason as GeoGateStatus);
     setOutsideDistanceM(result.distanceM);
     return false;
-  }, [isOwner]);
+  }, [isOwner, handleReading]);
 
   // ── Heartbeat: only while entered, non-owner, chat mounted + foreground ────
   useEffect(() => {
@@ -262,5 +283,13 @@ export function useGeofenceGate({
     };
   }, [entered, isOwner, performBackgroundCheck, clearHeartbeat, clearGrace]);
 
-  return { checkAndEnter, gateStatus, outsideDistanceM, graceWarningVisible, graceSecondsLeft };
+  return {
+    checkAndEnter,
+    gateStatus,
+    outsideDistanceM,
+    graceWarningVisible,
+    graceSecondsLeft,
+    lastCoords,
+    lastMocked: lastCoords?.mocked === true,
+  };
 }

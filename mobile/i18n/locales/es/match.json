@@ -1,0 +1,92 @@
+{
+  "entry": {
+    "title": "Antes de entrar",
+    "shortTitle": "Juegos en {{business}}",
+    "points": {
+      "here": "Solo te ven en Match las personas que están aquí contigo.",
+      "erased": "Todo lo de Match se borra cuando sales del local, salvo que se sigan mutuamente.",
+      "screenshots": "Las capturas de pantalla existen: otros pueden guardar lo que compartes.",
+      "help": "Puedes pedir ayuda discreta al local en cualquier momento."
+    },
+    "gamesTitle": "Juegos",
+    "gamesGlobal": "Participar en juegos",
+    "gamesGlobalHint": "Apágalo para desaparecer de todos los juegos en todos los locales.",
+    "gameSwitchHint": "Aparecer en {{game}} mientras estés aquí.",
+    "seeGuide": "Ver guía de seguridad",
+    "hideGuide": "Ocultar guía de seguridad",
+    "guideTitle": "Guía rápida de seguridad",
+    "guide": {
+      "public": {
+        "title": "Primero, en público",
+        "body": "Habla en el chat del local y quédate donde haya más gente. Avisa a un amigo dónde estás."
+      },
+      "share": {
+        "title": "Comparte poco",
+        "body": "No compartas tu dirección, tu trabajo, datos financieros ni códigos. Nadie aquí los necesita."
+      },
+      "pressure": {
+        "title": "Puedes decir que no",
+        "body": "Pasa, ignora o bloquea a quien te presione. No le debes una respuesta a nadie."
+      },
+      "report": {
+        "title": "Reporta y bloquea",
+        "body": "Usa el menú ⋯ de cualquier perfil para reportar o bloquear. Los reportes llegan al local y al equipo de JChat."
+      },
+      "help": {
+        "title": "Pide ayuda al local",
+        "body": "Desde el menú ⋯ puedes avisar al personal de forma discreta. Nadie más lo verá."
+      }
+    },
+    "terms": "Términos",
+    "privacy": "Privacidad",
+    "legalPrefix": "Al entrar aceptas nuestros",
+    "legalAnd": "y",
+    "notNow": "Ahora no",
+    "enter": "Entrar al chat"
+  },
+  "games": {
+    "button": "Juegos",
+    "buttonA11y": "Abrir juegos",
+    "rowA11y": "Juegos disponibles en este local",
+    "matchName": "Match"
+  },
+  "presence": {
+    "verifying": "Verificando que estás en el local…",
+    "scanQr": "Escanear el QR del local",
+    "verifyingHint": "Tarda unos minutos. Escanear el QR del local activa Match al instante.",
+    "active": "Estás en el local",
+    "error": "No pudimos verificar tu presencia. Lo intentaremos de nuevo en breve.",
+    "denied": {
+      "unavailable": "Match no está disponible para ti en este local.",
+      "age_not_confirmed": "Confirma tu edad en la app para usar Match.",
+      "games_disabled": "Los juegos están desactivados en tus ajustes.",
+      "match_disabled": "Este local no ha activado Match.",
+      "invalid_qr": "Ese QR no pertenece a este local.",
+      "location_required": "Activa la ubicación para verificar que estás en el local.",
+      "no_geofence": "Este local aún no puede verificar presencia.",
+      "outside_radius": "Parece que estás fuera del local.",
+      "impossible_travel": "No pudimos verificar tu ubicación. Inténtalo de nuevo en unos minutos.",
+      "default": "Match no está disponible ahora mismo."
+    }
+  },
+  "scanner": {
+    "title": "Escanea el QR del local",
+    "hint": "Apunta la cámara al código QR que hay en el local.",
+    "permissionNeeded": "Se necesita acceso a la cámara para escanear el QR.",
+    "grant": "Permitir cámara",
+    "close": "Cerrar",
+    "invalid": "Eso no parece un QR de local."
+  },
+  "leave": {
+    "button": "Salir del local",
+    "title": "¿Salir de {{business}}?",
+    "body": "Se borrará todo lo que hiciste en Match aquí (likes, matches y chats). Las personas que sigues se quedan.",
+    "confirm": "Salir",
+    "cancel": "Quedarme",
+    "error": "No se pudo salir ahora mismo. Inténtalo de nuevo."
+  },
+  "home": {
+    "title": "Match",
+    "placeholder": "El mazo llega en la siguiente actualización."
+  }
+}

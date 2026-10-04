@@ -4,6 +4,8 @@ import { isFeedRadiusMiles, type FeedRadiusMiles } from '../utils/distanceUnits'
 
 export type ProximityMode = 'all' | 'favorites' | 'visited' | 'off';
 export type UserLanguage = 'en' | 'es';
+/** Lock-screen push preview level: full = name + text, name = name only, discreet = neutral. */
+export type PushPreview = 'full' | 'name' | 'discreet';
 export interface UserSettings {
   notifWork: boolean;
   notifSocial: boolean;
@@ -12,15 +14,35 @@ export interface UserSettings {
   appearance: AppearancePreference;
   /** Megaphone search radius. Always stored in miles. */
   feedRadiusMiles: FeedRadiusMiles;
+  /** Match / games (migration 189). Server default: true. */
+  gamesEnabled: boolean;
+  /** Server default: 'discreet'. */
+  pushPreviewMatch: PushPreview;
+  /** Server default: 'full'. */
+  pushPreviewDm: PushPreview;
+  matchNotifyNewPeople: boolean;
+  /** Age filter bounds, 18–99 (never shown as anyone's age). */
+  matchAgeMin: number;
+  matchAgeMax: number;
 }
 
 export type SettingsPatch = Partial<Pick<
   UserSettings,
-  'notifWork' | 'notifSocial' | 'proximityMode' | 'appearance' | 'feedRadiusMiles'
+  | 'notifWork' | 'notifSocial' | 'proximityMode' | 'appearance' | 'feedRadiusMiles'
+  | 'gamesEnabled' | 'pushPreviewMatch' | 'pushPreviewDm' | 'matchNotifyNewPeople'
+  | 'matchAgeMin' | 'matchAgeMax'
 >>;
 
 function isProximityMode(value: unknown): value is ProximityMode {
   return value === 'all' || value === 'favorites' || value === 'visited' || value === 'off';
+}
+
+function isPushPreview(value: unknown): value is PushPreview {
+  return value === 'full' || value === 'name' || value === 'discreet';
+}
+
+function isAge(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 18 && value <= 99;
 }
 
 function isAppearancePreference(value: unknown): value is AppearancePreference {
@@ -49,6 +71,12 @@ export async function loadUserSettings(userId: string): Promise<Partial<UserSett
     proximityMode: isProximityMode(dbSettings.proximityMode) ? dbSettings.proximityMode : undefined,
     appearance: isAppearancePreference(dbSettings.appearance) ? dbSettings.appearance : undefined,
     feedRadiusMiles: isFeedRadiusMiles(dbSettings.feedRadiusMiles) ? dbSettings.feedRadiusMiles : undefined,
+    gamesEnabled: typeof dbSettings.gamesEnabled === 'boolean' ? dbSettings.gamesEnabled : undefined,
+    pushPreviewMatch: isPushPreview(dbSettings.pushPreviewMatch) ? dbSettings.pushPreviewMatch : undefined,
+    pushPreviewDm: isPushPreview(dbSettings.pushPreviewDm) ? dbSettings.pushPreviewDm : undefined,
+    matchNotifyNewPeople: typeof dbSettings.matchNotifyNewPeople === 'boolean' ? dbSettings.matchNotifyNewPeople : undefined,
+    matchAgeMin: isAge(dbSettings.matchAgeMin) ? dbSettings.matchAgeMin : undefined,
+    matchAgeMax: isAge(dbSettings.matchAgeMax) ? dbSettings.matchAgeMax : undefined,
   };
 }
 
