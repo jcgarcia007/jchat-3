@@ -45,7 +45,7 @@ export default function BiometricEnrollSheet({
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: c.bgSurface }]}>
           <View style={[styles.iconCircle, { backgroundColor: palette.brand }]}>
-            <Icon size={32} color="#fff" strokeWidth={1.8} />
+            <Icon size={32} color={palette.onBrand} strokeWidth={1.8} />
           </View>
 
           <Text style={[styles.title, { color: c.textPrimary }]}>
@@ -83,7 +83,7 @@ export default function BiometricEnrollSheet({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: palette.scrimMedium,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryLabel: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '600',
   },

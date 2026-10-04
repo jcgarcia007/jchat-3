@@ -28,13 +28,13 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 // (useThemeColors() resolves dark text in light mode → invisible here).
 // ---------------------------------------------------------------------------
 const WELCOME_COLORS = {
-  gradientStart: '#060810',   // splash gradient top
-  gradientEnd:   '#0d1030',   // splash gradient bottom
-  ghostBorder:   'rgba(255,255,255,0.28)', // ghost button border — visible on the dark gradient
-  dotInactive:   '#2a2d4a',   // inactive nav dot
-  textOnDark:    '#f5f5f7',   // title + ghost label — always light on the fixed dark gradient
-  textSecondaryOnDark: 'rgba(255,255,255,0.72)', // subtitle — fixed light, never a theme token
-  onBrand:       '#ffffff',   // text on the brand-fill primary button
+  gradientStart: palette.brandArtBase,   // splash gradient top
+  gradientEnd:   palette.brandArtMid,   // splash gradient bottom
+  ghostBorder:   palette.onImageFaint, // ghost button border — visible on the dark gradient
+  dotInactive:   palette.brandArtLine,   // inactive nav dot
+  textOnDark:    palette.textPrimary,   // title + ghost label — always light on the fixed dark gradient
+  textSecondaryOnDark: palette.onImageMuted, // subtitle — fixed light, never a theme token
+  onBrand:       palette.onBrand,   // text on the brand-fill primary button
 } as const;
 
 type WelcomeNav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;

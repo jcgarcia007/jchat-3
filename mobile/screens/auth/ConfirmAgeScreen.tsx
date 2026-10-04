@@ -44,8 +44,8 @@ const TERMS_URL = 'https://jchat.cloud/terms';
 const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
 const LOCAL_COLORS = {
-  onBrand: '#FFFFFF',
-  checkboxBorder: 'rgba(128,128,128,0.5)',
+  onBrand: palette.onBrand,
+  checkboxBorder: palette.neutralBorder,
 } as const;
 
 export default function ConfirmAgeScreen() {

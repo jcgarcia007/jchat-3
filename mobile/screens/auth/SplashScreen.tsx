@@ -37,25 +37,25 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 // ---------------------------------------------------------------------------
 const SPLASH_COLORS = {
   /** Main canvas — deeper than bgBase to feel truly cinematic */
-  canvasBg: '#060810',
+  canvasBg: palette.brandArtBase,
   /** Top gradient stop — same as canvas */
-  gradientTop: '#060810',
+  gradientTop: palette.brandArtBase,
   /** Mid gradient stop — dark navy with a touch of blue */
-  gradientMid: '#080d1a',
+  gradientMid: palette.brandArtDeepA,
   /** Bottom gradient stop — slight purple tint */
-  gradientBottom: '#0a0814',
+  gradientBottom: palette.brandArtDeepB,
   /** City map block fill */
-  mapBlock: '#0d1120',
+  mapBlock: palette.brandArtDeepC,
   /** City map road fill */
-  mapRoad: '#111827',
+  mapRoad: palette.brandArtSlate,
   /** Map heatmap — warm zone (brand-tinted) */
-  heatA: 'rgba(92,124,250,0.18)',  // brand tint
+  heatA: palette.brandArtGlowBrand,  // brand tint
   /** Map heatmap — secondary zone (purple tint) */
-  heatB: 'rgba(124,58,237,0.12)', // brandPurple tint
+  heatB: palette.brandArtGlowPurple, // brandPurple tint
   /** Map heatmap — accent zone (success tint) */
-  heatC: 'rgba(29,158,117,0.10)', // success tint
+  heatC: palette.brandArtGlowSuccess, // success tint
   /** Subtle map-pin color on the map layer */
-  mapPinDim: 'rgba(92,124,250,0.45)',
+  mapPinDim: palette.brandArtGlowBrandStrong,
 } as const;
 
 // ---------------------------------------------------------------------------

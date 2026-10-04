@@ -45,22 +45,22 @@ import {
 // ---------------------------------------------------------------------------
 const ONBOARDING_COLORS = {
   /** Main canvas — same deep dark as Splash */
-  canvasBg: '#060810',
+  canvasBg: palette.brandArtBase,
   /** Gradient top stop */
-  gradientTop: '#060810',
+  gradientTop: palette.brandArtBase,
   /** Gradient bottom stop — dark navy tint */
-  gradientBottom: '#0d1030',
+  gradientBottom: palette.brandArtMid,
   /**
    * Step 3 accent (Chat screen) — a warm orange-red that distinguishes this
    * step from Brand (#5C7CFA) and Success (#1D9E75). No token equivalent.
    */
-  accent3: '#D85A30',
+  accent3: palette.brandArtCoral,
   /**
    * Text on the fixed dark canvas — fixed light values, never theme tokens
    * (a token that resolves dark in light mode would be invisible here).
    */
-  textOnDark: '#F5F5F7',
-  textSecondaryOnDark: 'rgba(255,255,255,0.72)',
+  textOnDark: palette.textPrimary,
+  textSecondaryOnDark: palette.onImageMuted,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#ffffff',
+    color: palette.onBrand,
     // NOTE: this #ffffff is literally "white text on a colored button" — not a
     // surface color token. Matches palette usage in other auth screens.
     letterSpacing: 0.1,

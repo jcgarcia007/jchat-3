@@ -41,6 +41,7 @@ import {
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { brandLogos } from '../../theme/brandLogos';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
@@ -50,11 +51,11 @@ import type { AuthStackParamList } from '../../navigation/AppNavigator';
 // Screen-local color constants — only values not in palette/tokens
 // ---------------------------------------------------------------------------
 const LOCAL_COLORS = {
-  dividerLine: 'rgba(128,128,128,0.25)',  // neutral separator line
-  socialIconGoogle: '#EA4335',             // Google brand red
-  socialIconApple: '#000000',              // Apple logo black (light mode)
-  socialIconAppleDark: '#FFFFFF',          // Apple logo white (dark mode)
-  onBrand: '#FFFFFF',                      // text on filled brand button
+  dividerLine: palette.neutralLine,  // neutral separator line
+  socialIconGoogle: brandLogos.googleRed,  // Google brand red (third-party: theme/brandLogos.ts)
+  socialIconApple: brandLogos.appleBlack,        // Apple logo black (light mode)
+  socialIconAppleDark: brandLogos.appleWhite,    // Apple logo white (dark mode)
+  onBrand: palette.onBrand,                      // text on filled brand button
 } as const;
 
 type RegisterStep1Nav = NativeStackNavigationProp<AuthStackParamList, 'RegisterStep1'>;

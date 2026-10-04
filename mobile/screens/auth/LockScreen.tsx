@@ -73,7 +73,7 @@ export default function LockScreen() {
           accessibilityLabel={t('lock.unlockButton')}
         >
           {attempting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={palette.onBrand} />
           ) : (
             <Text style={styles.unlockLabel}>{t('lock.unlockButton')}</Text>
           )}
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   unlockLabel: {
-    color: '#fff',
+    color: palette.onBrand,
     fontSize: 16,
     fontWeight: '600',
   },

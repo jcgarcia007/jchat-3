@@ -64,10 +64,10 @@ import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 // Screen-local color constants — only values not already in palette/tokens
 // ---------------------------------------------------------------------------
 const LOCAL_COLORS = {
-  onBrand: '#FFFFFF',            // text on filled brand button
-  dividerLine: 'rgba(128,128,128,0.25)',
-  checkboxBorder: 'rgba(128,128,128,0.5)',
-  overlayBackdrop: 'rgba(0,0,0,0.6)',
+  onBrand: palette.onBrand,            // text on filled brand button
+  dividerLine: palette.neutralLine,
+  checkboxBorder: palette.neutralBorder,
+  overlayBackdrop: palette.scrimMedium,
 } as const;
 
 // ---------------------------------------------------------------------------
