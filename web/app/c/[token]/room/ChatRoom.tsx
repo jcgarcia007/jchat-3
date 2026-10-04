@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 import { getChatTheme } from "@/lib/chatThemes";
+import { requestPosition } from "@/lib/venueLocation";
 
 const WAITER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -190,6 +191,7 @@ interface Props {
 
 export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
   const t = useTranslations("chatRoom");
+  const tv = useTranslations("venue");
   const nameLabelsRef = useRef<NameLabels>({ anonymous: t("anonymous"), user: t("user") });
   nameLabelsRef.current = { anonymous: t("anonymous"), user: t("user") };
   const router = useRouter();
@@ -303,6 +305,44 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
     const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
     if (distanceFromBottom > 300) userScrolledUpRef.current = true;
   }, []);
+
+  // Golden rule: venue presence lapses after 10 min, so while the room is open the location is
+  // re-verified every 5 min (and when the tab comes back to the foreground) with join_room_via_qr.
+  // Outside → a banner, never an abrupt expulsion; "Retry" re-checks on demand.
+  const [outsideVenue, setOutsideVenue] = useState(false);
+  const verifyPresence = useCallback(async () => {
+    if (!isSupabaseConfigured || roomId === "demo-room") return;
+    const position = await requestPosition({ useCache: false });
+    if (!position.ok) {
+      setOutsideVenue(true);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.rpc("join_room_via_qr", {
+        token,
+        p_lat: position.pos.lat,
+        p_lng: position.pos.lng,
+      } as never);
+      const row = (Array.isArray(data) ? data[0] : data) as { access_granted?: boolean } | null;
+      // A network error keeps the previous state: only the server's verdict flips it.
+      if (!error) setOutsideVenue(row?.access_granted !== true);
+    } catch {
+      // keep the previous state
+    }
+  }, [token, roomId]);
+
+  useEffect(() => {
+    const HEARTBEAT_MS = 5 * 60 * 1000;
+    const timer = window.setInterval(() => void verifyPresence(), HEARTBEAT_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void verifyPresence();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [verifyPresence]);
 
   useEffect(() => {
     profilesRef.current = profiles;
@@ -1043,6 +1083,30 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   // ── Chat UI ───────────────────────────────────────────────────────────────────
   return (
     <div style={s.wrap}>
+      {outsideVenue && (
+        <div
+          role="status"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 14px",
+            background: "var(--color-warning)",
+            color: "var(--on-brand)",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ flex: 1 }}>{tv("restrictedTitle", { business: businessName })}</span>
+          <button
+            type="button"
+            onClick={() => void verifyPresence()}
+            style={{ border: "1px solid currentColor", background: "transparent", color: "inherit", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+          >
+            {tv("retry")}
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div style={s.header}>
         <Link
