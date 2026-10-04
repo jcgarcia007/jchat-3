@@ -23,16 +23,19 @@ import { jsPDF } from "jspdf";
 // ─── URL helper ───────────────────────────────────────────────────────────────
 
 /**
+ * Host baked into every printed QR. FIXED to the production domain: never
+ * window.location.origin (a QR generated from a preview/other domain would be
+ * printed with that domain) and never vercel.app (universal links and the
+ * single entry door need one verified domain).
+ */
+export const QR_HOST = "https://jchat.cloud";
+
+/**
  * Canonical deep-link URL for a chat room via its QR token.
  * Uses /c/{qrToken} — the scheme implemented in Fase 1 (migration 026).
  */
-export function roomQrUrl(qrToken: string, origin?: string): string {
-  const base =
-    origin ??
-    (typeof window !== "undefined"
-      ? window.location.origin
-      : "https://jchat-3.vercel.app");
-  return `${base}/c/${qrToken}`;
+export function roomQrUrl(qrToken: string): string {
+  return `${QR_HOST}/c/${qrToken}`;
 }
 
 /**
@@ -40,13 +43,8 @@ export function roomQrUrl(qrToken: string, origin?: string): string {
  * (public entry, migration 073). Scanning identifies the table for ordering
  * and, if the table has a subchat, also joins that sub-room.
  */
-export function tableQrUrl(qrToken: string, origin?: string): string {
-  const base =
-    origin ??
-    (typeof window !== "undefined"
-      ? window.location.origin
-      : "https://jchat-3.vercel.app");
-  return `${base}/t/${qrToken}`;
+export function tableQrUrl(qrToken: string): string {
+  return `${QR_HOST}/t/${qrToken}`;
 }
 
 // ─── QR generation options ────────────────────────────────────────────────────

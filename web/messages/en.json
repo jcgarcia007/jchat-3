@@ -3548,7 +3548,10 @@
     "alsoMainRoomHub": "You also have access to the venue's main room.",
     "whatToDo": "What do you want to do?",
     "callService": "Call service",
-    "invalidBodyShort": "This QR code isn't linked to any active room."
+    "invalidBodyShort": "This QR code isn't linked to any active room.",
+    "verifyingAccess": "Checking access…",
+    "menu": "Menu",
+    "soon": "soon"
   },
   "tableEntry": {
     "unavailableTitle": "This table isn't available",

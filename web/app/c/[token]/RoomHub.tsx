@@ -132,7 +132,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
         }}
       >
         <IconLoader2 size={18} className="spin" />
-        Verificando acceso…
+        {t("verifyingAccess")}
       </div>
     );
   }
@@ -236,7 +236,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
             >
               <IconToolsKitchen2 size={20} />
             </span>
-            <span style={{ flex: 1 }}>Menú</span>
+            <span style={{ flex: 1 }}>{t("menu")}</span>
             <span style={{ fontSize: 11, color: "var(--color-brand)", opacity: 0.7 }}>↗</span>
           </a>
         ) : menuIsWeb ? (
@@ -265,7 +265,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
             >
               <IconToolsKitchen2 size={20} />
             </span>
-            <span style={{ flex: 1 }}>Menú</span>
+            <span style={{ flex: 1 }}>{t("menu")}</span>
           </a>
         ) : (
           <button
@@ -295,7 +295,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
             >
               <IconToolsKitchen2 size={20} />
             </span>
-            <span style={{ flex: 1 }}>Menú</span>
+            <span style={{ flex: 1 }}>{t("menu")}</span>
             <span
               style={{
                 fontSize: 10,
@@ -307,7 +307,7 @@ export function RoomHub({ token, roomId, businessId, isSubRoom, userId }: Props)
                 whiteSpace: "nowrap",
               }}
             >
-              pronto
+              {t("soon")}
             </span>
           </button>
         )}

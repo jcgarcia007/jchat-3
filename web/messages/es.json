@@ -3548,7 +3548,10 @@
     "alsoMainRoomHub": "También tienes acceso a la sala principal del lugar.",
     "whatToDo": "¿Qué quieres hacer?",
     "callService": "Llamar al servicio",
-    "invalidBodyShort": "Este código QR no está asociado a ninguna sala activa."
+    "invalidBodyShort": "Este código QR no está asociado a ninguna sala activa.",
+    "verifyingAccess": "Verificando acceso…",
+    "menu": "Menú",
+    "soon": "pronto"
   },
   "tableEntry": {
     "unavailableTitle": "Esta mesa no está disponible",
