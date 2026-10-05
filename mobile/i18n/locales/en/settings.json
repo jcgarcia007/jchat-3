@@ -403,7 +403,20 @@
     "tipPlus": "+{{tip}} tip",
     "optionsAvailableA11y": ", options available",
     "tipPercentA11y": "Tip as a percentage",
-    "tipDollarA11y": "Tip as an amount"
+    "tipDollarA11y": "Tip as an amount",
+    "serviceAlert": {
+      "table": "Table {{table}}",
+      "order": "Order #{{n}}",
+      "orderNoNumber": "Order notice",
+      "onMyWay": "On my way",
+      "arrived": "Has arrived at the venue",
+      "question": "Question: {{text}}",
+      "help": "Discreet help",
+      "waiter": "Waiter call",
+      "guest": "Guest",
+      "generic": "Service call",
+      "dismissHint": "Tap to dismiss"
+    }
   },
   "privacy": {
     "bannerText": "Your real-time location is never shared — this cannot be changed.",

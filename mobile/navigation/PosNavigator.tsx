@@ -16,7 +16,7 @@
  * ever leave the server.
  */
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createNativeStackNavigator,
   type NativeStackNavigationOptions,
@@ -30,7 +30,8 @@ import {
 
 import { getConnectionTokenSecret } from '../services/terminal';
 import { PosDraftProvider } from '../contexts/PosDraftContext';
-import { usePosAlerts } from '../hooks/usePosAlerts';
+import { usePosAlerts, type PosServiceCallRow } from '../hooks/usePosAlerts';
+import { PosServiceCallBanner } from '../components/pos/PosServiceCallBanner';
 import { useComandaPrintBridge } from '../hooks/useComandaPrintBridge';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosTableHubScreen from '../screens/settings/PosTableHub';
@@ -125,9 +126,16 @@ export type PosStackParamList = {
  * or a service call is inserted for this business.
  * Rendered inside PosDraftProvider so it shares the provider tree lifetime.
  */
-function PosAlertsInit({ businessId }: { businessId: string }): null {
-  usePosAlerts(businessId);
-  return null;
+function PosAlertsInit({ businessId }: { businessId: string }): React.ReactElement | null {
+  const [call, setCall] = useState<{ row: PosServiceCallRow; key: number } | null>(null);
+  const seq = useRef(0);
+  const dismiss = useCallback(() => setCall(null), []);
+  usePosAlerts(businessId, (row) => {
+    seq.current += 1;
+    setCall({ row, key: seq.current });
+  });
+  // Besides the beep/vibration, a visible banner says WHAT was called (6 s, tap to dismiss).
+  return call ? <PosServiceCallBanner key={call.key} row={call.row} onDismiss={dismiss} /> : null;
 }
 
 /** Puente de impresión de comandas de cliente (D-24, F3). */

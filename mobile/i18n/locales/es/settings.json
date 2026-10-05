@@ -403,7 +403,20 @@
     "tipPlus": "+{{tip}} propina",
     "optionsAvailableA11y": ", con opciones",
     "tipPercentA11y": "Propina en porcentaje",
-    "tipDollarA11y": "Propina en monto"
+    "tipDollarA11y": "Propina en monto",
+    "serviceAlert": {
+      "table": "Mesa {{table}}",
+      "order": "Pedido #{{n}}",
+      "orderNoNumber": "Aviso de pedido",
+      "onMyWay": "Voy en camino",
+      "arrived": "Ya llegué al local",
+      "question": "Pregunta: {{text}}",
+      "help": "Ayuda discreta",
+      "waiter": "Llamada al mesero",
+      "guest": "Invitado",
+      "generic": "Llamada de servicio",
+      "dismissHint": "Toca para cerrar"
+    }
   },
   "privacy": {
     "bannerText": "Tu ubicación en tiempo real nunca se comparte — esto no se puede cambiar.",

@@ -52,7 +52,19 @@ const VIBRATE_APPROVAL     = [0, 150, 80, 150, 80, 150, 80, 150]; // ~860 ms tot
  * Mount this inside the POS navigator (or any component that lives exactly as
  * long as Work Mode is active). Pass the business the employee is logged in to.
  */
-export function usePosAlerts(businessId: string): void {
+/** The service_calls row of a freshly inserted call (Realtime payload.new). */
+export interface PosServiceCallRow {
+  type?: string | null;
+  notes?: string | null;
+  table_label?: string | null;
+  guest_device_id?: string | null;
+}
+
+export function usePosAlerts(businessId: string, onServiceCall?: (row: PosServiceCallRow) => void): void {
+  // Ref so the subscription isn't recreated when the callback identity changes.
+  const onServiceCallRef = useRef(onServiceCall);
+  onServiceCallRef.current = onServiceCall;
+
   // Keep alerts config in a ref so the Realtime callbacks always see the
   // latest value without needing to re-subscribe when the config changes.
   const alertsRef = useRef<PosAlertsConfig | null>(null);
@@ -154,8 +166,9 @@ export function usePosAlerts(businessId: string): void {
           table: 'service_calls',
           filter: `business_id=eq.${businessId}`,
         },
-        () => {
+        (payload) => {
           triggerAlert('service_call');
+          onServiceCallRef.current?.(payload.new as PosServiceCallRow);
         },
       )
       .subscribe();
