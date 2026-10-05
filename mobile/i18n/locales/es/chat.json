@@ -312,5 +312,21 @@
     "blocked": "No puedes enviar mensajes a este usuario.",
     "nobody": "Este usuario no acepta mensajes directos.",
     "notFollower": "Debes seguir a este usuario para enviarle un mensaje."
+  },
+  "venueSession": {
+    "here": "Estás en {{business}}",
+    "messages_one": "{{count}} mensaje",
+    "messages_other": "{{count}} mensajes",
+    "likes_one": "{{count}} like",
+    "likes_other": "{{count}} likes",
+    "back": "Volver",
+    "backA11y": "Volver al chat de {{business}}",
+    "switchTitle": "¿Cambiar a {{business}}?",
+    "switchBody": "Saldrás de {{current}}.",
+    "switchKeep": "Quedarme",
+    "switchConfirm": "Cambiar",
+    "leave": "Salir del local",
+    "leaveConfirmTitle": "¿Salir del local?",
+    "leaveConfirmBody": "Dejarás de estar en {{business}} y perderás tu lugar en el chat y en Match."
   }
 }

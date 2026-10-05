@@ -29,6 +29,7 @@ import {
   hasLocalOnboardingCompletion,
 } from '../services/onboarding';
 import BottomTabs from './tabs/BottomTabs';
+import { VenueSessionBar } from '../components/venue/VenueSessionBar';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -175,6 +176,9 @@ const linking: LinkingOptions<MainStackParamList> = {
 
 const navigationRef = createNavigationContainerRef<MainStackParamList>();
 
+/** Leaf route names of the bottom tabs (the venue bar sits above the tab bar). */
+const TAB_ROUTE_NAMES = new Set(['Map', 'Nearby', 'Messages', 'Profile']);
+
 function navigateNotificationRoute(route: NotificationRoute): void {
   if (!navigationRef.isReady()) return;
   if (route.screen === 'DMs') navigationRef.navigate('DMs', route.params);
@@ -203,6 +207,7 @@ function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady
 export default function AppNavigator() {
   const { isAuthenticated, locked, isRecovering, user, ageStatus } = useAuth();
   const [navigationReady, setNavigationReady] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState<string | null>(null);
   const notificationsEnabled = isAuthenticated && !locked && !isRecovering && ageStatus === 'confirmed';
   const onboardingCheckedUserRef = useRef<string | null>(null);
 
@@ -235,7 +240,11 @@ export default function AppNavigator() {
     <>
     <NavigationContainer
       linking={linking}
-      onReady={() => setNavigationReady(true)}
+      onReady={() => {
+        setNavigationReady(true);
+        setCurrentRoute(navigationRef.getCurrentRoute()?.name ?? null);
+      }}
+      onStateChange={() => setCurrentRoute(navigationRef.getCurrentRoute()?.name ?? null)}
       ref={navigationRef}
     >
       {isAuthenticated && isRecovering ? (
@@ -300,6 +309,10 @@ export default function AppNavigator() {
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
     {notificationsEnabled && <BiometricEnrollGate />}
+    {/* Venue session bar: above the tab bar while the user is "in a venue" (tab screens only). */}
+    {notificationsEnabled && currentRoute !== null && TAB_ROUTE_NAMES.has(currentRoute) ? (
+      <VenueSessionBar onOpenChat={(id) => navigationRef.isReady() && navigationRef.navigate('ChatRoom', { id })} />
+    ) : null}
     </>
   );
 }

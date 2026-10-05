@@ -312,5 +312,21 @@
     "blocked": "You can't message this user.",
     "nobody": "This user doesn't accept direct messages.",
     "notFollower": "You need to follow this user to message them."
+  },
+  "venueSession": {
+    "here": "You're at {{business}}",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "likes_one": "{{count}} like",
+    "likes_other": "{{count}} likes",
+    "back": "Back",
+    "backA11y": "Back to the {{business}} chat",
+    "switchTitle": "Switch to {{business}}?",
+    "switchBody": "You'll leave {{current}}.",
+    "switchKeep": "Stay",
+    "switchConfirm": "Switch",
+    "leave": "Leave the venue",
+    "leaveConfirmTitle": "Leave the venue?",
+    "leaveConfirmBody": "You'll stop being in {{business}} and lose your spot in the chat and Match."
   }
 }

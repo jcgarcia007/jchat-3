@@ -59,7 +59,7 @@ interface GeoRpcRow {
   reason: string;
 }
 
-interface GeoCheckResult {
+export interface GeoCheckResult {
   granted: boolean;
   reason: GeoGateStatus | 'granted';
   distanceM: number | null;
@@ -71,7 +71,7 @@ interface GeoCheckResult {
  * "Degrade with security, not permissiveness": any unexpected failure here
  * falls through to `unavailable` (no access), never a silent grant.
  */
-async function runGeoCheck(
+export async function runGeoCheck(
   roomId: string,
   onReading?: (coords: Coords) => void,
 ): Promise<GeoCheckResult> {
@@ -172,7 +172,9 @@ export function useGeofenceGate({
   const graceCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const graceDeadlineRef = useRef<number | null>(null);
 
+  const hadReadingRef = useRef(false);
   const handleReading = useCallback((c: Coords) => {
+    hadReadingRef.current = true;
     setLastCoords({ lat: c.lat, lng: c.lng, mocked: c.mocked === true, readAt: Date.now() });
   }, []);
 
@@ -265,6 +267,10 @@ export function useGeofenceGate({
     heartbeatIntervalRef.current = setInterval(() => {
       void performBackgroundCheck();
     }, HEARTBEAT_INTERVAL_MS);
+
+    // Re-opening the chat of an ongoing venue session skips the entry gate: there is no reading from
+    // this mount yet, so take one now (it also feeds the Match check-in).
+    if (!hadReadingRef.current) void performBackgroundCheck();
 
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {

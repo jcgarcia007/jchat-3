@@ -43,12 +43,6 @@ export function useMatchPresence({ businessId, roomId, enabled, reading }: UseMa
     else if (businessId) markMatchHeartbeat(businessId, roomId);
   }, [enabled, businessId, roomId]);
 
-  // Unmount of the chat → no heartbeat anymore.
-  useEffect(
-    () => () => {
-      resetMatchPresence();
-      setMatchReading(null);
-    },
-    [],
-  );
+  // No cleanup on unmount: the venue session (context/VenueSessionContext) keeps the presence alive
+  // while the chat is minimized and resets the store when the session ends.
 }

@@ -62,7 +62,7 @@ import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
-import { confirmLeaveVenue } from '../../utils/matchLeave';
+import { useVenueSession } from '../../context/VenueSessionContext';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
   fetchGames,
@@ -220,7 +220,9 @@ export default function ChatRoomScreen() {
   // ── State ──────────────────────────────────────────────────────────────────
 
   // Pre-entry incognito gate
-  const [entryVisible, setEntryVisible] = useState(true);
+  // The entry notice shows once per venue session: re-opening a minimized chat skips it.
+  const venue = useVenueSession();
+  const [entryVisible, setEntryVisible] = useState(() => venue.session?.roomId !== rootRoomId);
   const [incognitoState, setIncognitoState] = useState<IncognitoState>({ enabled: false, nickname: '' });
   const [incognitoError, setIncognitoError] = useState<string | undefined>(undefined);
   /** Locked after entering — cannot change mid-session. */
@@ -324,8 +326,9 @@ export default function ChatRoomScreen() {
 
   const handleExpelled = useCallback(() => {
     Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
+    venue.endSession('user'); // already told the user above
     navigation.goBack();
-  }, [t, business, navigation]);
+  }, [t, business, navigation, venue]);
 
   const geoGate = useGeofenceGate({
     roomId: rootRoomId,
@@ -382,6 +385,18 @@ export default function ChatRoomScreen() {
     reading: geoGate.lastCoords,
   });
 
+  // The venue session owns the heartbeat while the chat is minimized; tell it when the chat is open.
+  const sessionRoomId = venue.session?.roomId ?? null;
+  const { setChatMounted, setMatchActive } = venue;
+  useEffect(() => {
+    if (entryVisible || sessionRoomId !== rootRoomId) return;
+    setChatMounted(true);
+    return () => setChatMounted(false);
+  }, [entryVisible, sessionRoomId, rootRoomId, setChatMounted]);
+  useEffect(() => {
+    if (sessionRoomId === rootRoomId) setMatchActive(matchActive);
+  }, [matchActive, sessionRoomId, rootRoomId, setMatchActive]);
+
   // Games panel / ⋯ menu / QR (Fase D1). Hidden for the owner (no geofence reading → not in Match).
   const [qrScannerVisible, setQrScannerVisible] = useState(false);
   const gamesAvailable = matchActive && !isOwner;
@@ -406,22 +421,31 @@ export default function ChatRoomScreen() {
     void matchCheckInWithQr(token);
   }, []);
 
+  // ⋯ → "Salir del local": the only way (besides leaving the area) to end the venue session.
   const handleMoreOptions = useCallback(() => {
-    if (!matchBusinessId) return;
     Alert.alert(business?.name ?? '', undefined, [
       {
-        text: i18n.t('leave.button', { ns: 'match' }),
+        text: t('venueSession.leave'),
         style: 'destructive',
         onPress: () =>
-          confirmLeaveVenue({
-            businessId: matchBusinessId,
-            businessName: business?.name ?? '',
-            onLeft: () => navigation.goBack(),
-          }),
+          Alert.alert(
+            t('venueSession.leaveConfirmTitle'),
+            t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }),
+            [
+              { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
+              {
+                text: t('venueSession.leave'),
+                style: 'destructive',
+                onPress: () => {
+                  void venue.leaveVenue().then(() => navigation.goBack());
+                },
+              },
+            ],
+          ),
       },
       { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
     ]);
-  }, [matchBusinessId, business?.name, navigation, i18n]);
+  }, [business?.name, navigation, i18n, t, venue]);
 
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
@@ -767,8 +791,18 @@ export default function ChatRoomScreen() {
       // Switching Match off at the entry notice = leaving the venue's Match (same RPC; idempotent).
       if (!matchOptInValue || !gamesEnabled) void matchLeaveVenue(matchBusinessId).catch(() => undefined);
     }
+    // Start the venue session (one venue at a time: may ask "Switch to …?"). Owners don't have one.
+    if (!isOwner && matchBusinessId) {
+      const started = await venue.startSession({
+        businessId: matchBusinessId,
+        businessName: business?.name ?? '',
+        roomId: rootRoomId,
+        matchActive: matchAvailable && gamesEnabled && matchOptInValue,
+      });
+      if (!started) return; // declined to switch: stay at the gate
+    }
     setEntryVisible(false);
-  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled]);
+  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled, isOwner, venue, business?.name, rootRoomId]);
 
   // "Not now" / back: never return into the order flow (it would loop with the order screens).
   const handleBack = useCallback(() => {
@@ -1456,7 +1490,7 @@ export default function ChatRoomScreen() {
         onBack={handleBack}
         onMenuPress={handleMenuPress}
         onOrdersPress={() => navigation.navigate('MyOrders')}
-        onMorePress={gamesAvailable ? handleMoreOptions : undefined}
+        onMorePress={!isOwner && !entryVisible ? handleMoreOptions : undefined}
         onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}

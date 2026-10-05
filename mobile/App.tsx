@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import StripeRoot from './components/StripeRoot';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { VenueSessionProvider } from './context/VenueSessionContext';
 import AppNavigator from './navigation/AppNavigator';
 import { applyAppearance, loadStoredAppearance } from './theme/appearance';
 import { loadUserSettings } from './services/userSettings';
@@ -68,7 +69,9 @@ export default function App() {
         <AuthProvider>
           <AuthenticatedAppearanceBridge />
           <CartProvider>
-            <AppNavigator />
+            <VenueSessionProvider>
+              <AppNavigator />
+            </VenueSessionProvider>
           </CartProvider>
         </AuthProvider>
       </StripeRoot>
