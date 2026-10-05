@@ -14,6 +14,7 @@ import './i18n'; // must be first — initialises i18next before any component r
 import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import StripeRoot from './components/StripeRoot';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -65,16 +66,19 @@ export default function App() {
   return (
     // Outermost: required by react-native-gesture-handler (Match swipe deck).
     <GestureHandlerRootView style={styles.root}>
-      <StripeRoot>
-        <AuthProvider>
-          <AuthenticatedAppearanceBridge />
-          <CartProvider>
-            <VenueSessionProvider>
-              <AppNavigator />
-            </VenueSessionProvider>
-          </CartProvider>
-        </AuthProvider>
-      </StripeRoot>
+      {/* The only SafeAreaProvider: components outside the NavigationContainer (VenueSessionBar) need it. */}
+      <SafeAreaProvider>
+        <StripeRoot>
+          <AuthProvider>
+            <AuthenticatedAppearanceBridge />
+            <CartProvider>
+              <VenueSessionProvider>
+                <AppNavigator />
+              </VenueSessionProvider>
+            </CartProvider>
+          </AuthProvider>
+        </StripeRoot>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
