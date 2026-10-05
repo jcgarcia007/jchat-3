@@ -38,6 +38,9 @@ const PUSH_TYPES = [
   "match_super",
   "match_match",
   "match_new_people",
+  "order_status",
+  "gift_offer",
+  "gift_response",
 ] as const;
 type PushType = typeof PUSH_TYPES[number];
 type Language = "en" | "es";
@@ -48,6 +51,10 @@ const MATCH_TYPES: readonly PushType[] = ["match_like", "match_super", "match_ma
 
 function isMatchType(type: PushType): boolean {
   return MATCH_TYPES.includes(type);
+}
+
+function isGiftType(type: PushType): boolean {
+  return type === "gift_offer" || type === "gift_response";
 }
 
 function previewLevel(value: unknown, fallback: PreviewLevel): PreviewLevel {
@@ -200,8 +207,41 @@ function localizedContent(
         data: { type, payload },
       };
     }
+    case "order_status": {
+      // Transactional: always shown, never preview-gated. The payload keeps the ids a tap needs.
+      const n = payload.order_number ?? "";
+      const status = nonEmptyString(payload.status) ?? "";
+      const toTable = payload.order_type === "table";
+      let body: string;
+      if (status === "preparing") {
+        body = english ? `They're preparing your order #${n}` : `Están preparando tu pedido #${n}`;
+      } else if (status === "ready") {
+        body = toTable
+          ? (english ? `Your order #${n} is on its way to your table` : `Tu pedido #${n} va en camino a tu mesa`)
+          : (english ? `Your order #${n} is ready. Pick it up at the counter` : `Tu pedido #${n} está listo. Recógelo en el mostrador`);
+      } else if (status === "delivered") {
+        body = english ? `Your order #${n} was delivered` : `Tu pedido #${n} fue entregado`;
+      } else if (status === "cancelled") {
+        body = english ? `Your order #${n} was cancelled` : `Tu pedido #${n} fue cancelado`;
+      } else {
+        body = english ? `Update on your order #${n}` : `Novedad en tu pedido #${n}`;
+      }
+      return {
+        title: nonEmptyString(payload.business_name) ?? "JChat",
+        body,
+        data: {
+          type,
+          payload: {
+            order_id: payload.order_id,
+            order_number: payload.order_number,
+            business_id: payload.business_id,
+            status: payload.status,
+          },
+        },
+      };
+    }
     default:
-      // match_* types are built by matchContent(); this keeps the switch exhaustive.
+      // match_* and gift_* types are built by matchContent()/giftContent(); keeps the switch exhaustive.
       return discreetContent(type, payload, english);
   }
 }
@@ -224,6 +264,63 @@ function discreetContent(
     body: english ? DISCREET_BODY.en : DISCREET_BODY.es,
     data: { type, payload: minimal },
   };
+}
+
+/**
+ * Gift push content (migration 202). Same preview rules as Match: at level 'discreet' (or without a
+ * resolvable name) the text is neutral. Either way data.payload keeps the ids a tap needs
+ * (conversation_id → the 1:1 chat that holds the gift card). "Paid" names nobody, so it is the same
+ * at every level.
+ */
+function giftContent(
+  type: PushType,
+  payload: Record<string, unknown>,
+  language: Language,
+  level: PreviewLevel,
+  name: string | null,
+  businessName: string | null,
+  notificationId: string | null,
+): PushContent {
+  const english = language === "en";
+  const data = {
+    type,
+    payload: {
+      ...(notificationId ? { notification_id: notificationId } : {}),
+      gift_offer_id: payload.gift_offer_id,
+      conversation_id: payload.conversation_id,
+      business_id: payload.business_id,
+    },
+  };
+  const neutral: PushContent = {
+    title: "JChat",
+    body: english ? DISCREET_BODY.en : DISCREET_BODY.es,
+    data,
+  };
+
+  if (type === "gift_response" && payload.result === "paid") {
+    return {
+      title: "JChat",
+      body: english ? "Your gift is paid and on its way" : "Tu regalo ya está pagado y va en camino",
+      data,
+    };
+  }
+  if (level === "discreet" || !name) return neutral;
+
+  let body: string;
+  if (type === "gift_offer") {
+    body = businessName
+      ? (english ? `${name} sent you a gift at ${businessName}` : `${name} te envió un regalo en ${businessName}`)
+      : (english ? `${name} sent you a gift` : `${name} te envió un regalo`);
+  } else if (payload.result === "accepted") {
+    body = english ? `${name} accepted your gift` : `${name} aceptó tu regalo`;
+  } else if (payload.result === "declined") {
+    body = english ? `${name} didn't accept your gift` : `${name} no aceptó tu regalo`;
+  } else if (payload.result === "expired") {
+    body = english ? `Your gift for ${name} expired` : `Tu regalo para ${name} venció`;
+  } else {
+    return neutral;
+  }
+  return { title: "JChat", body, data };
 }
 
 /**
@@ -361,7 +458,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const settings = isObject(recipient?.settings) ? recipient.settings : {};
     const isSocial = type === "dm" || type === "follower" || type === "like" || type === "comment" ||
-      isMatchType(type);
+      isMatchType(type) || isGiftType(type);
     if (isSocial && settings.notifSocial === false) return noContent();
     if (type === "work_alert" && settings.notifWork === false) return noContent();
 
@@ -380,6 +477,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
       }
       content = matchContent(type, payload, language, level, name, notificationId);
+    } else if (isGiftType(type)) {
+      const level = previewLevel(settings.pushPreviewMatch, "discreet");
+      // Offer: the sender's name; response: the person who answered (accepted/declined/expired).
+      const otherUserId = nonEmptyString(type === "gift_offer" ? payload.from_user_id : payload.to_user_id);
+      let name: string | null = null;
+      let businessName: string | null = null;
+      if (level !== "discreet" && otherUserId) {
+        try {
+          name = await resolveDisplayName(admin, otherUserId);
+          const businessId = nonEmptyString(payload.business_id);
+          if (type === "gift_offer" && businessId) {
+            const { data: business } = await admin.from("businesses").select("name").eq("id", businessId).maybeSingle();
+            businessName = nonEmptyString(business?.name);
+          }
+        } catch {
+          name = null;
+        }
+      }
+      content = giftContent(type, payload, language, level, name, businessName, notificationId);
     } else if (type === "dm") {
       const level = previewLevel(settings.pushPreviewDm, "full");
       // Neutral text, but the payload keeps conversation_id so tapping the push opens the chat.
