@@ -214,10 +214,145 @@ async function handlePosGuestSucceeded(
   console.log(`[stripe-webhook] pos_guest: applied payment=${posPaymentId} pi=${paymentIntent.id} tip=${tipCents}`);
 }
 
+// ── Gift handlers (migration 202) ─────────────────────────────────────────────
+// A gift's PaymentIntent is created with capture_method 'manual' by payments/gift_hold:
+//   confirm → requires_capture  → amount_capturable_updated → mark_held (card + DM + notification)
+//   recipient accepts → gift-worker captures → payment_intent.succeeded → the ORDER is created here
+//   decline / expiry → gift-worker cancels the PaymentIntent (nothing is ever charged).
+// Rules: these branches run BEFORE the generic order path (which would mint an empty/phantom order);
+// an event whose offer can't be found THROWS so Stripe retries; the order is created only on
+// payment_intent.succeeded and only while the offer is 'accepted'.
+
+interface GiftOfferRow {
+  id: string;
+  business_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  status: string;
+  subtotal_cents: number | null;
+  tax_cents: number | null;
+  total_cents: number | null;
+  table_label: string | null;
+  table_details: string | null;
+  order_id: string | null;
+}
+
+async function findGiftOffer(db: ReturnType<typeof getAdminClient>, piId: string): Promise<GiftOfferRow> {
+  const { data, error } = await db
+    .from("gift_offers")
+    .select("id, business_id, from_user_id, to_user_id, status, subtotal_cents, tax_cents, total_cents, table_label, table_details, order_id")
+    .eq("stripe_pi_id", piId)
+    .maybeSingle();
+  if (error) throw error;
+  // Not found → throw: Stripe retries instead of us inventing an order (or silently dropping the event).
+  if (!data) throw new Error(`gift offer not found for PaymentIntent ${piId}`);
+  return data as GiftOfferRow;
+}
+
+/** payment_intent.amount_capturable_updated: the card is on hold → create the card in the chat. */
+async function handleGiftHeld(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+  const db = getAdminClient();
+  await findGiftOffer(db, paymentIntent.id); // throws if missing
+  if (paymentIntent.status !== "requires_capture") return;
+  const { error } = await db.rpc("gift_offer_mark_held", { p_stripe_pi_id: paymentIntent.id });
+  if (error) throw error;
+  console.log(`[stripe-webhook] gift held: pi=${paymentIntent.id}`);
+}
+
+/** payment_intent.succeeded (after the capture): create the paid order, then mark the offer paid. */
+async function handleGiftPaid(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+  const db = getAdminClient();
+  const offer = await findGiftOffer(db, paymentIntent.id);
+  if (offer.status === "paid") return; // already processed (idempotent)
+  if (offer.status !== "accepted") {
+    // Never create an order for an offer that wasn't accepted: throw so Stripe retries.
+    throw new Error(`gift offer ${offer.id} is '${offer.status}', expected 'accepted' (pi ${paymentIntent.id})`);
+  }
+
+  // Idempotency: the order may exist already (a previous attempt failed after creating it).
+  const { data: existing, error: existingErr } = await db
+    .from("orders")
+    .select("id")
+    .eq("stripe_pi_id", paymentIntent.id)
+    .maybeSingle();
+  if (existingErr) throw existingErr;
+  let orderId = (existing as { id: string } | null)?.id ?? null;
+
+  let pendingCartExists = false;
+  if (!orderId) {
+    const { data: cart, error: cartErr } = await db
+      .from("pending_order_carts")
+      .select("items")
+      .eq("payment_intent_id", paymentIntent.id)
+      .maybeSingle();
+    if (cartErr) throw cartErr;
+    const items = (cart?.items ?? []) as Array<{
+      menu_item_id: string; qty: number; price_cents: number; options?: unknown; special_instructions?: string | null;
+    }>;
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error(`gift cart missing for PaymentIntent ${paymentIntent.id}`); // retry, never an empty order
+    }
+    pendingCartExists = true;
+
+    const total = offer.total_cents ?? 0;
+    const amountMismatch = paymentIntent.amount !== total;
+    const { data: created, error: createErr } = await db.rpc("create_paid_order", {
+      p_order: {
+        business_id: offer.business_id,
+        user_id: offer.from_user_id, // the giver pays and owns the order
+        room_id: null,
+        status: amountMismatch ? "disputed" : "confirmed",
+        order_type: "gift",
+        gift_recipient_id: offer.to_user_id,
+        subtotal_cents: offer.subtotal_cents ?? 0,
+        tax_cents: offer.tax_cents ?? 0,
+        tip_cents: 0,
+        discount_cents: 0,
+        total_cents: total,
+        special_instructions: offer.table_details, // where to bring it (the recipient's details)
+        table_label: offer.table_label,
+        stripe_pi_id: paymentIntent.id,
+        source: "customer_stripe",
+      },
+      p_items: items.map((it) => ({
+        menu_item_id: it.menu_item_id,
+        qty: it.qty,
+        price_cents: it.price_cents,
+        options: it.options ?? {},
+        special_instructions: it.special_instructions ?? null,
+      })),
+    });
+    if (createErr) {
+      if (createErr.code !== "23505") throw createErr; // anything but "already created" → retry
+      const { data: dup } = await db.from("orders").select("id").eq("stripe_pi_id", paymentIntent.id).maybeSingle();
+      orderId = (dup as { id: string } | null)?.id ?? null;
+    } else {
+      const row = (Array.isArray(created) ? created[0] : created) as { id: string } | null;
+      orderId = row?.id ?? null;
+    }
+  }
+  if (!orderId) throw new Error(`gift order id unknown for PaymentIntent ${paymentIntent.id}`);
+
+  const { error: paidErr } = await db.rpc("gift_offer_mark_paid", { p_stripe_pi_id: paymentIntent.id, p_order_id: orderId });
+  if (paidErr) throw paidErr;
+
+  if (pendingCartExists) {
+    const { error: delErr } = await db.from("pending_order_carts").delete().eq("payment_intent_id", paymentIntent.id);
+    if (delErr) console.warn("[stripe-webhook] failed to delete gift pending cart:", delErr);
+  }
+  console.log(`[stripe-webhook] gift order created: order=${orderId} offer=${offer.id} pi=${paymentIntent.id}`);
+}
+
 async function handlePaymentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
   const meta = paymentIntent.metadata ?? {};
+
+  // Gift: BEFORE every other path (the generic one would build an order from metadata/cart).
+  if (meta.payment_kind === "gift") {
+    await handleGiftPaid(paymentIntent);
+    return;
+  }
 
   // ⚠️ MINE #1 — a TAB SETTLEMENT must NEVER create an order. Branch FIRST, before
   // any orders insert. Without this discriminator, a tab payment would mint a
@@ -533,6 +668,15 @@ async function handlePaymentFailed(
 ): Promise<void> {
   const meta = paymentIntent.metadata ?? {};
 
+  // Gift: the hold/confirmation failed → the offer is marked failed (no order exists).
+  if (meta.payment_kind === "gift") {
+    const db = getAdminClient();
+    const { error } = await db.rpc("gift_offer_mark_failed", { p_stripe_pi_id: paymentIntent.id });
+    if (error) throw error;
+    console.warn(`[stripe-webhook] gift payment failed: pi=${paymentIntent.id}`);
+    return;
+  }
+
   // A tab settlement that failed: mark the payment 'failed', NEVER touch the orders
   // (they stay unpaid, the tab stays open, the waiter can retry).
   if (meta.payment_kind === "tab_settlement") {
@@ -646,6 +790,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case "payment_intent.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
         break;
+
+      // Manual capture: the card is on hold. Only gifts use manual capture today.
+      case "payment_intent.amount_capturable_updated": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        if (pi.metadata?.payment_kind === "gift") await handleGiftHeld(pi);
+        else console.log(`[stripe-webhook] amount_capturable_updated ignored (not a gift): pi=${pi.id}`);
+        break;
+      }
 
       case "account.updated":
         await handleAccountUpdated(event.data.object as Stripe.Account);

@@ -47,6 +47,10 @@ verify_jwt = false
 [functions.send-push]
 verify_jwt = false
 
+# Gift worker: invoked by pg_net (migration 202) with x-push-secret, not a user JWT. Captures/cancels the held PaymentIntent.
+[functions.gift-worker]
+verify_jwt = false
+
 # Match photo moderation: invoked by pg_net (migration 193) with x-push-secret, not a user JWT.
 [functions.moderate-match-photo]
 verify_jwt = false

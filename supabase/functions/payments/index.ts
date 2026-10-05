@@ -973,6 +973,200 @@ async function handleCreateTabPayment(
   });
 }
 
+// ── gift_hold ────────────────────────────────────────────────────────────────
+// Gift between users inside a venue (migration 202). The sender's card is only HELD here
+// (capture_method 'manual'); it is captured by the gift-worker when the recipient accepts and
+// cancelled when they decline / the offer expires. Everything below is decided by the SERVER:
+//   • the offer must belong to the authenticated caller and be a 'draft' (a retry is allowed only
+//     while the previous, still-unconfirmed PaymentIntent of the SAME offer exists);
+//   • gift_available (both present in the venue, no block) must still be true, asked AS THE CALLER;
+//   • the amount is re-priced from gift_offers.items + pricing.ts — no amount comes from the client;
+//   • the Stripe idempotency key is derived from the offer id.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function handleGiftHold(body: Record<string, unknown>, authUserId: string, userClient: UserClient): Promise<Response> {
+  const offerId = typeof body.gift_offer_id === "string" ? body.gift_offer_id.trim() : "";
+  if (!UUID_RE.test(offerId)) return errorResponse("gift_offer_id is required");
+
+  const db = getAdminClient();
+  const { data: offer, error: offerErr } = await db
+    .from("gift_offers")
+    .select("id, business_id, from_user_id, to_user_id, items, status, stripe_pi_id")
+    .eq("id", offerId)
+    .maybeSingle();
+  if (offerErr) return errorResponse(`DB error: ${offerErr.message}`, 500);
+  // Not found and "not yours" look the same: nothing about other people's offers is revealed.
+  if (!offer || offer.from_user_id !== authUserId) return jsonResponse({ error: "gift_not_found", code: "gift_not_found" }, 404);
+
+  const stripe = getStripe();
+  const { data: user, error: userErr } = await db
+    .from("users")
+    .select("id, display_name, stripe_customer_id")
+    .eq("id", authUserId)
+    .maybeSingle();
+  if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
+  if (!user) return errorResponse("User not found", 404);
+
+  let customerId = user.stripe_customer_id as string | null;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: await userEmail(db, authUserId),
+      name: user.display_name ?? undefined,
+      metadata: { supabase_user_id: authUserId },
+    });
+    customerId = customer.id;
+    await db.from("users").update({ stripe_customer_id: customerId }).eq("id", authUserId);
+  }
+
+  const publishableKey = Deno.env.get("EXPO_PUBLIC_STRIPE_PK") ?? "";
+
+  // Retry of the SAME offer: the PaymentIntent already exists. Reuse it only while it can still be
+  // confirmed; its amount was fixed by the server when it was created.
+  if (offer.status === "awaiting_payment" && offer.stripe_pi_id) {
+    const existing = await stripe.paymentIntents.retrieve(offer.stripe_pi_id as string);
+    const reusable = ["requires_payment_method", "requires_confirmation", "requires_action"].includes(existing.status);
+    if (!reusable || existing.metadata?.gift_offer_id !== offerId || existing.metadata?.user_id !== authUserId) {
+      return jsonResponse({ error: "gift_not_open", code: "gift_not_open" }, 409);
+    }
+    const ephemeral = await stripe.ephemeralKeys.create({ customer: customerId }, { apiVersion: "2024-06-20" });
+    return jsonResponse({
+      clientSecret: existing.client_secret,
+      ephemeralKey: ephemeral.secret,
+      customer: customerId,
+      publishableKey,
+      serverTotalCents: existing.amount,
+    });
+  }
+  if (offer.status !== "draft") return jsonResponse({ error: "gift_not_open", code: "gift_not_open" }, 409);
+
+  // Both people must still be present in the venue (and not blocked), asked as the caller.
+  const { data: available, error: availErr } = await userClient.rpc("gift_available", {
+    p_business_id: offer.business_id,
+    p_other_user_id: offer.to_user_id,
+  });
+  if (availErr || available !== true) return jsonResponse({ error: "gift_unavailable", code: "gift_unavailable" }, 403);
+
+  // ── Business gate + re-pricing from the stored offer (never from the client) ──
+  const { data: business, error: bizErr } = await db
+    .from("businesses")
+    .select("id, stripe_account_id, status, stripe_charges_enabled")
+    .eq("id", offer.business_id)
+    .maybeSingle();
+  if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
+  if (!business) return errorResponse("Business not found", 404);
+  const chargeGate = businessChargeGate(business as {
+    stripe_account_id: string | null;
+    status: string | null;
+    stripe_charges_enabled: boolean | null;
+  });
+  if (chargeGate) return errorResponse(chargeGate.error, chargeGate.status);
+
+  const rawItems = Array.isArray(offer.items) ? (offer.items as { menu_item_id?: unknown; qty?: unknown }[]) : [];
+  const items: PriceableItem[] = rawItems.map((it) => ({
+    menu_item_id: String(it.menu_item_id ?? ""),
+    qty: Number(it.qty),
+  }));
+  if (items.length === 0 || items.some((it) => !it.menu_item_id || !Number.isInteger(it.qty) || it.qty < 1)) {
+    return jsonResponse({ error: "invalid_items", code: "invalid_items" }, 400);
+  }
+  const priced = await priceLinesFromDb(db, offer.business_id as string, items);
+  if ("error" in priced) return jsonResponse({ error: priced.error }, priced.status ?? 400);
+  const tax = await getEffectiveTaxRate(db, offer.business_id as string);
+  if ("error" in tax) return errorResponse(tax.error, 500);
+  const subtotalCents = priced.subtotalCents;
+  const taxCents = computeTaxCents(subtotalCents, tax.rate);
+  const totalCents = subtotalCents + taxCents; // no tip on gifts
+  if (totalCents < 50) return errorResponse("Total is below Stripe minimum ($0.50)");
+
+  const metadata: Record<string, string> = {
+    payment_kind: "gift",
+    gift_offer_id: offerId,
+    business_id: offer.business_id as string,
+    user_id: authUserId, // the giver (JWT-verified)
+    gift_recipient_id: offer.to_user_id as string,
+    order_type: "gift",
+    subtotal_cents: String(subtotalCents),
+    tax_cents: String(taxCents),
+    tip_cents: "0",
+    discount_cents: "0",
+    total_cents: String(totalCents),
+  };
+
+  const ephemeralKey = await stripe.ephemeralKeys.create({ customer: customerId }, { apiVersion: "2024-06-20" });
+  const piParams = {
+    ...buildConnectPiParams({
+      amountCents: totalCents,
+      currency: "usd",
+      metadata,
+      stripeAccountId: business.stripe_account_id as string,
+      customer: customerId,
+    }),
+    capture_method: "manual" as const, // HOLD only: captured by gift-worker on accept
+  };
+  let paymentIntent: Stripe.PaymentIntent;
+  try {
+    paymentIntent = await stripe.paymentIntents.create(piParams, { idempotencyKey: `gift:${offerId}` });
+  } catch (err) {
+    // Same offer, different parameters (e.g. the tax rate changed after a failed first attempt).
+    if ((err as { type?: string })?.type === "StripeIdempotencyError") {
+      return jsonResponse({ error: "gift_retry_later", code: "gift_retry_later" }, 409);
+    }
+    throw err;
+  }
+
+  // The server-priced cart, keyed by the PaymentIntent: stripe-webhook builds the order from it.
+  const { error: cartErr } = await db.from("pending_order_carts").upsert({
+    payment_intent_id: paymentIntent.id,
+    business_id: offer.business_id,
+    user_id: authUserId,
+    items: items.map((it, idx) => ({
+      menu_item_id: it.menu_item_id,
+      qty: it.qty,
+      price_cents: priced.lineUnitCents[idx],
+      options: priced.resolvedOptions[idx],
+      special_instructions: null,
+    })),
+  });
+  const cancelAndFail = async (message: string, status: number, code?: string) => {
+    try {
+      await stripe.paymentIntents.cancel(paymentIntent.id);
+    } catch (cancelErr) {
+      console.error("[payments] gift_hold: could not cancel PaymentIntent", paymentIntent.id, cancelErr);
+    }
+    return jsonResponse({ error: message, ...(code ? { code } : {}) }, status);
+  };
+  if (cartErr) {
+    console.error("[payments] gift_hold: failed to persist cart:", cartErr.message, "pi:", paymentIntent.id);
+    return await cancelAndFail("Could not save the gift. Please try again.", 500);
+  }
+
+  const { error: holdErr } = await db.rpc("gift_offer_set_hold", {
+    p_offer_id: offerId,
+    p_stripe_pi_id: paymentIntent.id,
+    p_subtotal: subtotalCents,
+    p_tax: taxCents,
+    p_total: totalCents,
+  });
+  if (holdErr) {
+    console.error("[payments] gift_hold: gift_offer_set_hold failed:", holdErr.message, "pi:", paymentIntent.id);
+    return await cancelAndFail("Could not save the gift. Please try again.", 500);
+  }
+  // set_hold only moves draft/awaiting_payment: confirm it took THIS PaymentIntent.
+  const { data: after } = await db.from("gift_offers").select("status, stripe_pi_id").eq("id", offerId).maybeSingle();
+  if (!after || after.stripe_pi_id !== paymentIntent.id || after.status !== "awaiting_payment") {
+    return await cancelAndFail("gift_not_open", 409, "gift_not_open");
+  }
+
+  return jsonResponse({
+    clientSecret: paymentIntent.client_secret,
+    ephemeralKey: ephemeralKey.secret,
+    customer: customerId,
+    publishableKey,
+    serverTotalCents: totalCents,
+    serverBreakdown: { subtotalCents, taxCents, taxRate: tax.rate, taxSource: tax.source, tipCents: 0, discountCents: 0, totalCents },
+  });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
@@ -1007,6 +1201,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // the permission as the caller. The public card page (tab-pay EF) creates the PI.
       case "create_tab_payment":
         return await handleCreateTabPayment(body, authUserId, auth.userClient);
+      // Gift between users: the sender's card is only HELD (manual capture); see handleGiftHold.
+      case "gift_hold":
+        return await handleGiftHold(body, authUserId, auth.userClient);
       default: return errorResponse(`Unknown action: ${action ?? "(none)"}`);
     }
   } catch (err) {
