@@ -29,7 +29,7 @@ import {
   hasLocalOnboardingCompletion,
 } from '../services/onboarding';
 import BottomTabs from './tabs/BottomTabs';
-import { VenueSessionBar } from '../components/venue/VenueSessionBar';
+import { HomeStatusBar } from '../components/venue/HomeStatusBar';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -311,9 +311,14 @@ export default function AppNavigator() {
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
     {notificationsEnabled && <BiometricEnrollGate />}
-    {/* Venue session bar: above the tab bar while the user is "in a venue" (tab screens only). */}
-    {notificationsEnabled && currentRoute !== null && TAB_ROUTE_NAMES.has(currentRoute) ? (
-      <VenueSessionBar onOpenChat={(id) => navigationRef.isReady() && navigationRef.navigate('ChatRoom', { id })} />
+    {/* Venue session + order in progress: one bar above the tab bar (tab screens only). */}
+    {notificationsEnabled ? (
+      <HomeStatusBar
+        visible={currentRoute !== null && TAB_ROUTE_NAMES.has(currentRoute)}
+        onOpenChat={(id) => navigationRef.isReady() && navigationRef.navigate('ChatRoom', { id })}
+        onOpenOrder={(orderId) => navigationRef.isReady() && navigationRef.navigate('OrderTracking', { orderId })}
+        onOpenOrders={() => navigationRef.isReady() && navigationRef.navigate('MyOrders')}
+      />
     ) : null}
     </>
   );

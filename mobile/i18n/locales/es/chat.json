@@ -328,7 +328,12 @@
     "switchConfirm": "Cambiar",
     "leave": "Salir del local",
     "leaveConfirmTitle": "¿Salir del local?",
-    "leaveConfirmBody": "Dejarás de estar en {{business}} y perderás tu lugar en el chat y en Match."
+    "leaveConfirmBody": "Dejarás de estar en {{business}} y perderás tu lugar en el chat y en Match.",
+    "order": "Pedido #{{n}} · {{status}}",
+    "orders_one": "{{count}} pedido en curso",
+    "orders_other": "{{count}} pedidos en curso",
+    "view": "Ver",
+    "viewA11y": "Ver mi pedido"
   },
   "notificationsSheet": {
     "title": "Notificaciones",

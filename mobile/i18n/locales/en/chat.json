@@ -328,7 +328,12 @@
     "switchConfirm": "Switch",
     "leave": "Leave the venue",
     "leaveConfirmTitle": "Leave the venue?",
-    "leaveConfirmBody": "You'll stop being in {{business}} and lose your spot in the chat and Match."
+    "leaveConfirmBody": "You'll stop being in {{business}} and lose your spot in the chat and Match.",
+    "order": "Order #{{n}} · {{status}}",
+    "orders_one": "{{count}} order in progress",
+    "orders_other": "{{count}} orders in progress",
+    "view": "View",
+    "viewA11y": "View my order"
   },
   "notificationsSheet": {
     "title": "Notifications",

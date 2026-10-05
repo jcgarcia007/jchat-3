@@ -237,3 +237,25 @@ export async function notifyOrderStaff(
   const known = (['notice_cooldown', 'notice_limit', 'order_closed', 'not_your_order'] as const).find((c) => message.includes(c));
   return { ok: false, error: known ?? 'other' };
 }
+
+
+// ── Orders in progress (migration 201) ────────────────────────────────────────
+
+export interface ActiveOrder {
+  id: string;
+  order_number: number;
+  business_id: string;
+  business_name: string | null;
+  status: string;
+  order_type: 'table' | 'counter' | 'gift';
+  table_label: string | null;
+  status_updated_at: string | null;
+  created_at: string;
+}
+
+/** My orders not yet delivered (last 12 h; "ready" hides after 3 h). Server-filtered by auth.uid(). */
+export async function myActiveOrders(): Promise<ActiveOrder[]> {
+  const { data, error } = await supabase.rpc('my_active_orders' as never);
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []) as ActiveOrder[];
+}
