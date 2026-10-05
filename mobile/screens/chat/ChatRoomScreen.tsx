@@ -65,6 +65,8 @@ import { goBackOrHome } from '../../utils/navFlow';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
 import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
+import { GiftSheet } from '../../components/gift/GiftSheet';
+import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { useNotifications } from '../../hooks/useNotifications';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
@@ -428,9 +430,14 @@ export default function ChatRoomScreen() {
 
   // 🔔 notifications sheet + ⋯ options sheet (replace the old native Alert).
   const [bellOpen, setBellOpen] = useState(false);
+  // 🎁 Gift (from the quick card / user sheet): only offered while both are present at the venue.
+  const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const { notifications: allNotifications, unreadCount, markRead: markNotificationRead } = useNotifications({ passive: true });
   const { visible: visibleNotifications, textFor: notificationTextFor } = useNotificationPresenter(allNotifications);
+
+  const quickGift = useGiftAvailable(quickCard.visible ? quickCard.userId : null);
+  const sheetGift = useGiftAvailable(userSheet.visible ? userSheet.userId : null);
 
   const handleOpenNotificationRoute = useCallback(
     (route: NotificationRoute) =>
@@ -1679,6 +1686,11 @@ export default function ChatRoomScreen() {
           handleCloseUserSheet();
           void handleStartDM(userId);
         }}
+        giftAvailable={sheetGift.available}
+        onSendGift={(userId, userName) => {
+          handleCloseUserSheet();
+          setGiftTarget({ id: userId, name: userName });
+        }}
         onRemove={(userId) => {
           // Optimistically hide; presence sync catches up when they leave.
           setHiddenUserIds((prev) => new Set(prev).add(userId));
@@ -1701,6 +1713,12 @@ export default function ChatRoomScreen() {
         onOpenFull={(userId, userName) => {
           handleCloseQuickCard();
           setUserSheet({ visible: true, userId, userName });
+        }}
+        viewerIsOwner={viewerRole !== 'user'}
+        giftAvailable={quickGift.available}
+        onSendGift={(userId, userName) => {
+          handleCloseQuickCard();
+          setGiftTarget({ id: userId, name: userName });
         }}
         onReport={handleStartReport}
         onClose={handleCloseQuickCard}
@@ -1746,6 +1764,18 @@ export default function ChatRoomScreen() {
         }}
       />
 
+      {giftTarget && room?.business_id ? (
+        <GiftSheet
+          visible
+          onClose={() => setGiftTarget(null)}
+          businessId={room.business_id}
+          recipient={giftTarget}
+          onSent={() => {
+            setGiftTarget(null);
+            Alert.alert(t('gift.sentTitle'), t('gift.sentBody'));
+          }}
+        />
+      ) : null}
       <ChatNotificationsSheet
         visible={bellOpen}
         onClose={() => setBellOpen(false)}

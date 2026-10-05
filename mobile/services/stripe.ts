@@ -317,74 +317,79 @@ export async function fetchPaymentSheetParams(
  * On failure returns { ok: false, code, message } so the checkout screen can
  * present a failure bottom sheet without crashing.
  */
+/** Initializes and presents the PaymentSheet for already-fetched params (shared by orders and gifts). */
+async function presentSheetForParams(params: PaymentSheetParams): Promise<StripeResult> {
+  // The PaymentIntent id is the part of the client secret before "_secret".
+  const paymentIntentId = params.clientSecret.split('_secret')[0];
+
+  // Initialize Stripe with the publishable key from the server response
+  // (allows the key to come from env without baking it into the bundle at build time)
+  await initStripe({
+    publishableKey: params.publishableKey,
+    merchantIdentifier: 'merchant.com.jchat.app',
+    // TODO(paypal): add urlScheme if PayPal redirect flow is enabled
+  });
+
+  const { error: initError } = await initPaymentSheet({
+    merchantDisplayName: 'JChat',
+    customerId: params.customer,
+    customerEphemeralKeySecret: params.ephemeralKey,
+    paymentIntentClientSecret: params.clientSecret,
+    // Allow saving the card for future purchases
+    setupIntentClientSecret: undefined, // Not needed when using PI; ephemeral key handles saved methods
+    allowsDelayedPaymentMethods: false,
+    // Apple Pay
+    applePay: {
+      merchantCountryCode: 'US',
+    },
+    // Google Pay
+    googlePay: {
+      merchantCountryCode: 'US',
+      testEnv: __DEV__,
+    },
+    // Appearance — uses the JChat brand color token
+    appearance: {
+      colors: {
+        primary: palette.brand,
+      },
+    },
+    returnURL: 'jchat://stripe-return',
+  });
+
+  if (initError) {
+    console.error('[stripe] initPaymentSheet error:', initError);
+    return {
+      ok: false,
+      code: initError.code,
+      message: toUserMessage(initError, 'errors:app.PAYMENT_FAILED'),
+    };
+  }
+
+  const { error: presentError } = await presentPaymentSheet();
+
+  if (presentError) {
+    if (presentError.code === 'Canceled') {
+      // User dismissed the sheet — not an error, just a cancel
+      return { ok: false, code: 'Canceled', message: toUserMessage(new AppError('PAYMENT_CANCELLED')) };
+    }
+    console.error('[stripe] presentPaymentSheet error:', presentError);
+    return {
+      ok: false,
+      code: presentError.code,
+      message: toUserMessage(presentError, 'errors:app.PAYMENT_FAILED'),
+    };
+  }
+
+  // Sheet was confirmed — payment succeeded. The server webhook will create the order.
+  return { ok: true, paymentIntentId };
+}
+
 export async function initAndPresentPaymentSheet(
   order: OrderPayload,
 ): Promise<StripeResult> {
   try {
     const params = await fetchPaymentSheetParams(order);
-    // The PaymentIntent id is the part of the client secret before "_secret".
-    const paymentIntentId = params.clientSecret.split('_secret')[0];
-
-    // Initialize Stripe with the publishable key from the server response
-    // (allows the key to come from env without baking it into the bundle at build time)
-    await initStripe({
-      publishableKey: params.publishableKey,
-      merchantIdentifier: 'merchant.com.jchat.app',
-      // TODO(paypal): add urlScheme if PayPal redirect flow is enabled
-    });
-
-    const { error: initError } = await initPaymentSheet({
-      merchantDisplayName: 'JChat',
-      customerId: params.customer,
-      customerEphemeralKeySecret: params.ephemeralKey,
-      paymentIntentClientSecret: params.clientSecret,
-      // Allow saving the card for future purchases
-      setupIntentClientSecret: undefined, // Not needed when using PI; ephemeral key handles saved methods
-      allowsDelayedPaymentMethods: false,
-      // Apple Pay
-      applePay: {
-        merchantCountryCode: 'US',
-      },
-      // Google Pay
-      googlePay: {
-        merchantCountryCode: 'US',
-        testEnv: __DEV__,
-      },
-      // Appearance — uses the JChat brand color token
-      appearance: {
-        colors: {
-          primary: palette.brand,
-        },
-      },
-      returnURL: 'jchat://stripe-return',
-    });
-
-    if (initError) {
-      console.error('[stripe] initPaymentSheet error:', initError);
-      return {
-        ok: false,
-        code: initError.code,
-        message: toUserMessage(initError, 'errors:app.PAYMENT_FAILED'),
-      };
-    }
-
-    const { error: presentError } = await presentPaymentSheet();
-
-    if (presentError) {
-      if (presentError.code === 'Canceled') {
-        // User dismissed the sheet — not an error, just a cancel
-        return { ok: false, code: 'Canceled', message: toUserMessage(new AppError('PAYMENT_CANCELLED')) };
-      }
-      console.error('[stripe] presentPaymentSheet error:', presentError);
-      return {
-        ok: false,
-        code: presentError.code,
-        message: toUserMessage(presentError, 'errors:app.PAYMENT_FAILED'),
-      };
-    }
-
-    // Sheet was confirmed — payment succeeded. The server webhook will create the order.
-    return { ok: true, paymentIntentId };
+    return await presentSheetForParams(params);
   } catch (err) {
     if (err instanceof PaymentsFunctionError) {
       // 409 TOTAL_CHANGED = the price moved since the quote: nothing was charged, re-quote.
@@ -488,5 +493,35 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
     const message = toUserMessage(err, 'errors:app.CARD_SAVE_FAILED');
     console.error('[stripe] saveCard error:', err);
     return { ok: false, code: 'UnexpectedError', message };
+  }
+}
+
+
+// ── Gift hold ─────────────────────────────────────────────────────────────────
+
+/**
+ * Gift: asks the server to HOLD (not charge) the sender's card for an offer and presents the
+ * PaymentSheet. The server re-prices the offer itself (payments / gift_hold): nothing about the
+ * amount comes from here. On `ok` the card is on hold (the offer then becomes 'held' via the webhook
+ * and the card appears in the chat); the charge only happens if the recipient accepts.
+ */
+export async function holdGiftPayment(giftOfferId: string): Promise<StripeResult> {
+  if (!isSupabaseConfigured) {
+    return { ok: false, code: 'NotConfigured', message: toUserMessage(new AppError('NOT_CONFIGURED')) };
+  }
+  try {
+    const { data, error } = await supabase.functions.invoke<PaymentSheetParams>('payments', {
+      body: { action: 'gift_hold', gift_offer_id: giftOfferId },
+    });
+    if (error) {
+      const { status, message, code } = await readFunctionError(error);
+      console.error('[stripe] gift_hold failed:', status, code, message);
+      return { ok: false, code: code ?? 'ServerError', message };
+    }
+    if (!data?.clientSecret) return { ok: false, code: 'ServerError', message: toUserMessage(new AppError('PAYMENT_FAILED')) };
+    return await presentSheetForParams(data);
+  } catch (err) {
+    console.error('[stripe] gift hold unexpected error:', err);
+    return { ok: false, code: 'UnexpectedError', message: toUserMessage(err, 'errors:app.PAYMENT_FAILED') };
   }
 }

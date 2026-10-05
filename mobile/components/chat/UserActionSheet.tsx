@@ -55,6 +55,7 @@ import {
   IconCheck,
   IconClock,
   IconFlag,
+  IconGift,
   IconMessage,
   IconShield,
   IconUser,
@@ -104,6 +105,9 @@ export interface UserActionSheetProps {
   onViewProfile: (userId: string) => void;
   /** Open a direct-message conversation with the target user. */
   onDM: (userId: string) => void;
+  /** A gift can be sent to this person right now (server verdict): shows "Send gift" after "Send direct message". */
+  giftAvailable?: boolean;
+  onSendGift?: (userId: string, userName: string) => void;
   /**
    * Called after "Remove from room" so the parent can evict the user from the
    * live Realtime channel.
@@ -273,6 +277,8 @@ export function UserActionSheet({
   viewerRole,
   onViewProfile,
   onDM,
+  giftAvailable = false,
+  onSendGift,
   onRemove,
   onBanned,
   onReport,
@@ -535,6 +541,16 @@ export function UserActionSheet({
                 label={t('userAction.sendDM')}
                 onPress={handleDM}
               />
+
+              {/* 2b. Send gift — only while both are present at the venue (server verdict) */}
+              {giftAvailable && onSendGift ? (
+                <ActionRow
+                  c={c}
+                  icon={<IconGift size={20} color={c.textSecondary} />}
+                  label={t('userAction.sendGift')}
+                  onPress={() => onSendGift(targetUserId, targetName)}
+                />
+              ) : null}
 
               {/* 3. Follow / Add Friend */}
               <ActionRow

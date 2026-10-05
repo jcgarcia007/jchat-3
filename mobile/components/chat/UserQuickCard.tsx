@@ -28,6 +28,7 @@ import {
   IconMessage,
   IconUserPlus,
   IconBell,
+  IconGift,
   IconFlag,
   IconBan,
 } from '@tabler/icons-react-native';
@@ -52,6 +53,11 @@ interface UserQuickCardProps {
   onViewProfile: (userId: string) => void;
   onDM: (userId: string) => void;
   onOpenFull: (userId: string, userName: string) => void;
+  /** The viewer is the venue owner/staff: the 'Mute' cell becomes 'Moderate'. */
+  viewerIsOwner?: boolean;
+  /** A gift can be sent to this person right now (server verdict): the 'Mute' cell becomes 'Gift'. */
+  giftAvailable?: boolean;
+  onSendGift?: (userId: string, userName: string) => void;
   /** Report flow lives at screen level (reason picker); the card just hands the target over. */
   onReport: (userId: string, userName: string) => void;
   onClose: () => void;
@@ -97,6 +103,9 @@ export default function UserQuickCard({
   onViewProfile,
   onDM,
   onOpenFull,
+  viewerIsOwner = false,
+  giftAvailable = false,
+  onSendGift,
   onReport,
   onClose,
 }: UserQuickCardProps) {
@@ -216,9 +225,16 @@ export default function UserQuickCard({
 
             {/* Row 2 */}
             <View style={[styles.gridRow, { borderTopColor: c.borderSubtle }]}>
-              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.mute')}
-                icon={<IconBell size={18} color={c.textPrimary} strokeWidth={1.8} />}
-                onPress={() => onOpenFull(targetUserId, targetName)} />
+              {!viewerIsOwner && giftAvailable && onSendGift ? (
+                // Regular users: "Gift" replaces "Mute" (only while both are present at the venue).
+                <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.gift')}
+                  icon={<IconGift size={18} color={c.textPrimary} strokeWidth={1.8} />}
+                  onPress={() => onSendGift(targetUserId, targetName)} />
+              ) : (
+                <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={viewerIsOwner ? t('quickCard.moderate') : t('quickCard.mute')}
+                  icon={<IconBell size={18} color={c.textPrimary} strokeWidth={1.8} />}
+                  onPress={() => onOpenFull(targetUserId, targetName)} />
+              )}
               <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.report')}
                 icon={<IconFlag size={18} color={c.danger} strokeWidth={1.8} />} onPress={handleReport} />
               <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.block')} last

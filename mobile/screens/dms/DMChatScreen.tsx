@@ -39,7 +39,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -49,6 +49,7 @@ import {
   IconCheck,
   IconChecks,
   IconDots,
+  IconGift,
   IconMicrophone,
   IconPhoto,
   IconSend,
@@ -68,6 +69,9 @@ import {
 } from '../../services/dms';
 import type { DMStackParamList } from '../../navigation/DMStack';
 import { VoiceBubble } from '../../components/common/VoiceBubble';
+import { GiftCard } from '../../components/gift/GiftCard';
+import { GiftSheet } from '../../components/gift/GiftSheet';
+import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
@@ -128,6 +132,9 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
       .catch(() => { if (alive) setMediaUri(null); });
     return () => { alive = false; };
   }, [message.media_url]);
+
+  // A gift card replaces the bubble (the 🎁 body is just a fallback for older clients).
+  if (message.gift_offer_id) return <GiftCard offerId={message.gift_offer_id} />;
 
   return (
     <View
@@ -214,6 +221,7 @@ export default function DMChatScreen() {
   const { t } = useTranslation('social');
   const { t: tc } = useTranslation('common');
   const { t: tm } = useTranslation('match');
+  const { t: tg } = useTranslation('chat');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
@@ -239,6 +247,12 @@ export default function DMChatScreen() {
   }, [loadMeta]);
 
   const isEphemeral = meta?.ephemeralBusinessId != null;
+
+  // 🎁: only while both of us are present at my current venue (server verdict, re-asked on focus).
+  const [giftTick, setGiftTick] = useState(0);
+  useFocusEffect(useCallback(() => setGiftTick((n) => n + 1), []));
+  const { available: giftAvailable, businessId: giftBusinessId } = useGiftAvailable(meta?.otherUserId, giftTick);
+  const [giftOpen, setGiftOpen] = useState(false);
   // Real follow state with the other person; a mutual follow makes the chat permanent server-side.
   const follow = useFollowSystem(isEphemeral ? meta?.otherUserId : null);
   useEffect(() => {
@@ -444,6 +458,16 @@ export default function DMChatScreen() {
         <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
           {meta?.otherName ?? t('dmChat.title')}
         </Text>
+        {giftAvailable && giftBusinessId && meta?.otherUserId ? (
+          <Pressable
+            onPress={() => setGiftOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={tg('gift.buttonA11y', { name: meta.otherName ?? '' })}
+            style={styles.giftBtn}
+          >
+            <IconGift size={22} color={palette.brand} strokeWidth={2} />
+          </Pressable>
+        ) : null}
         {isEphemeral && (
           <>
             <Pressable
@@ -597,6 +621,19 @@ export default function DMChatScreen() {
       </View>
       )}
       {safety.sheets}
+      {giftBusinessId && meta?.otherUserId ? (
+        <GiftSheet
+          visible={giftOpen}
+          onClose={() => setGiftOpen(false)}
+          businessId={giftBusinessId}
+          recipient={{ id: meta.otherUserId, name: meta.otherName ?? '' }}
+          conversationId={conversationId}
+          onSent={() => {
+            setGiftOpen(false);
+            Alert.alert(tg('gift.sentTitle'), tg('gift.sentBody'));
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -630,6 +667,7 @@ const styles = StyleSheet.create({
   moreBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   ephemeralBanner: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   ephemeralBannerText: { fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  giftBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',

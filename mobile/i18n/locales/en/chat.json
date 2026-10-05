@@ -12,7 +12,9 @@
     "reportConfirm": "Report {{name}} to moderators?",
     "blockConfirm": "Block {{name}}? You won't see each other's messages.",
     "errorTitle": "Something went wrong",
-    "errorMsg": "Please try again."
+    "errorMsg": "Please try again.",
+    "gift": "Gift",
+    "moderate": "Moderate"
   },
   "input": {
     "placeholder": "Message…",
@@ -207,7 +209,8 @@
     "banTitle": "Ban {{name}}?",
     "banMessage": "They will be banned from this business and won't be able to enter any of its rooms.",
     "banConfirm": "Ban",
-    "noPermission": "You don't have permission to do this."
+    "noPermission": "You don't have permission to do this.",
+    "sendGift": "🎁 Send gift"
   },
   "pin": {
     "timer1h": "1 hour",
@@ -350,5 +353,58 @@
     "askHelp": "Ask the venue for help",
     "ownerSettings": "Owner settings",
     "close": "Close"
+  },
+  "gift": {
+    "title": "Gift for {{name}}",
+    "hint": "Choose what to send. Your card is only held now; it is charged only if they accept.",
+    "emptyMenu": "This venue has no items available to gift.",
+    "idRequired": "Requires ID 21+",
+    "less": "Remove one {{name}}",
+    "more": "Add one {{name}}",
+    "notePlaceholder": "Add a note (optional)",
+    "send": "Send gift · {{count}} items · {{amount}} + tax",
+    "holdNote": "Not charged until they accept. If they don't, the hold is released.",
+    "close": "Close",
+    "errorTitle": "Couldn't send the gift",
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "gift_unavailable": "You and this person need to be at the venue to send a gift.",
+      "invalid_items": "Some items are no longer available.",
+      "gift_rate_limit": "You've sent several gifts recently. Try again later.",
+      "gift_pending": "You already have a gift waiting for this person.",
+      "gift_not_open": "This gift can't be paid anymore.",
+      "gift_retry_later": "Try again in a moment.",
+      "gift_expired": "This gift expired.",
+      "not_your_gift": "This gift isn't yours.",
+      "not_in_venue": "You need to be at the venue to accept.",
+      "table_required": "Enter your table number."
+    },
+    "buttonA11y": "Send a gift to {{name}}",
+    "sentTitle": "Gift on its way",
+    "sentBody": "Your card is on hold. They have 15 minutes to accept; you are charged only if they do."
+  },
+  "giftCard": {
+    "nItems_one": "{{count}} item",
+    "nItems_other": "{{count}} items",
+    "unavailable": "This gift isn't available.",
+    "sent": "You sent a gift · {{title}}",
+    "received": "{{name}} sent you a gift · {{title}}",
+    "waitingSender": "Waiting for an answer · not charged yet",
+    "waitingRecipient": "Answer within {{time}}",
+    "accepted": "Accepted · being prepared",
+    "paid": "Paid",
+    "declined": "Not accepted",
+    "expired": "Expired",
+    "cancelled": "Cancelled",
+    "details": "View details",
+    "detailsTitle": "Gift details",
+    "note": "Note",
+    "decline": "No, thanks",
+    "accept": "Accept",
+    "tableTitle": "Which table are you at?",
+    "tablePlaceholder": "Table number",
+    "detailsPlaceholder": "Details to find you (optional)",
+    "idNotice": "Some items require showing ID (21+) when delivered.",
+    "confirmAccept": "Accept gift"
   }
 }

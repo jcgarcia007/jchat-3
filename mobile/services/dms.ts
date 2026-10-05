@@ -62,6 +62,8 @@ export interface DmMessageRow {
   voice_duration_s: number | null;
   read_at: string | null;
   created_at: string;
+  /** Set when the message is a gift card (migration 202): the offer it represents. */
+  gift_offer_id?: string | null;
 }
 
 /** Enriched conversation item for the inbox list. */

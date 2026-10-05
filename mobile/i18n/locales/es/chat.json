@@ -12,7 +12,9 @@
     "reportConfirm": "¿Reportar a {{name}} a los moderadores?",
     "blockConfirm": "¿Bloquear a {{name}}? Dejarán de verse los mensajes.",
     "errorTitle": "Algo salió mal",
-    "errorMsg": "Inténtalo de nuevo."
+    "errorMsg": "Inténtalo de nuevo.",
+    "gift": "Regalo",
+    "moderate": "Moderar"
   },
   "input": {
     "placeholder": "Mensaje…",
@@ -207,7 +209,8 @@
     "banTitle": "¿Bloquear a {{name}}?",
     "banMessage": "Se les baneará de este negocio y no podrán entrar en ninguna de sus salas.",
     "banConfirm": "Banear",
-    "noPermission": "No tienes permiso para hacer esto."
+    "noPermission": "No tienes permiso para hacer esto.",
+    "sendGift": "🎁 Enviar regalo"
   },
   "pin": {
     "timer1h": "1 hora",
@@ -350,5 +353,58 @@
     "askHelp": "Pedir ayuda al local",
     "ownerSettings": "Ajustes del dueño",
     "close": "Cerrar"
+  },
+  "gift": {
+    "title": "Regalo para {{name}}",
+    "hint": "Elige qué enviar. Tu tarjeta solo queda retenida ahora; se cobra únicamente si aceptan.",
+    "emptyMenu": "Este local no tiene artículos disponibles para regalar.",
+    "idRequired": "Requiere ID 21+",
+    "less": "Quitar un {{name}}",
+    "more": "Añadir un {{name}}",
+    "notePlaceholder": "Añade una nota (opcional)",
+    "send": "Enviar regalo · {{count}} artículos · {{amount}} + imp.",
+    "holdNote": "No se cobra hasta que acepten. Si no aceptan, se libera la retención.",
+    "close": "Cerrar",
+    "errorTitle": "No pudimos enviar el regalo",
+    "errors": {
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "gift_unavailable": "Tú y esta persona tienen que estar en el local para enviar un regalo.",
+      "invalid_items": "Algunos artículos ya no están disponibles.",
+      "gift_rate_limit": "Enviaste varios regalos hace poco. Inténtalo más tarde.",
+      "gift_pending": "Ya tienes un regalo esperando para esta persona.",
+      "gift_not_open": "Este regalo ya no se puede pagar.",
+      "gift_retry_later": "Inténtalo de nuevo en un momento.",
+      "gift_expired": "Este regalo venció.",
+      "not_your_gift": "Este regalo no es tuyo.",
+      "not_in_venue": "Necesitas estar en el local para aceptar.",
+      "table_required": "Escribe tu número de mesa."
+    },
+    "buttonA11y": "Enviar un regalo a {{name}}",
+    "sentTitle": "Regalo en camino",
+    "sentBody": "Tu tarjeta está retenida. Tienen 15 minutos para aceptar; solo se te cobra si aceptan."
+  },
+  "giftCard": {
+    "nItems_one": "{{count}} artículo",
+    "nItems_other": "{{count}} artículos",
+    "unavailable": "Este regalo no está disponible.",
+    "sent": "Enviaste un regalo · {{title}}",
+    "received": "{{name}} te envió un regalo · {{title}}",
+    "waitingSender": "Esperando respuesta · aún no se cobra",
+    "waitingRecipient": "Responde en {{time}}",
+    "accepted": "Aceptado · preparando",
+    "paid": "Pagado",
+    "declined": "No aceptado",
+    "expired": "Venció",
+    "cancelled": "Cancelado",
+    "details": "Ver detalles",
+    "detailsTitle": "Detalles del regalo",
+    "note": "Nota",
+    "decline": "No, gracias",
+    "accept": "Aceptar",
+    "tableTitle": "¿Cuál es tu mesa?",
+    "tablePlaceholder": "Número de mesa",
+    "detailsPlaceholder": "Detalles para encontrarte (opcional)",
+    "idNotice": "Algunos artículos requieren mostrar ID (21+) al entregarse.",
+    "confirmAccept": "Aceptar regalo"
   }
 }
