@@ -1,0 +1,26 @@
+# From the tabs: Nearby → "Enter" on the venue → accept the entry notice → wait for the chat
+# (the chat shows the "Open menu" button once it is loaded).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: dismiss-logbox.yaml
+- tapOn: "Nearby|Cerca.*"
+- extendedWaitUntil:
+    visible: "${VENUE}"
+    timeout: 30000
+- tapOn:
+    text: "Enter|Entrar"
+    below: "${VENUE}"
+- runFlow:
+    when:
+      visible: "Enter the chat|Entrar al chat"
+    commands:
+      - tapOn: "Enter the chat|Entrar al chat"
+- extendedWaitUntil:
+    visible: "Open menu|Abrir menú|Dismiss"
+    timeout: 90000
+- runFlow: dismiss-logbox.yaml
+- extendedWaitUntil:
+    visible: "Open menu|Abrir menú"
+    timeout: 30000

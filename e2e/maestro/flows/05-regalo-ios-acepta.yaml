@@ -1,0 +1,28 @@
+# location: 26.083048,-80.223725
+# 05 (RECIPIENT, iPhone account "test1"): sees the gift card in the 1:1 chat and ACCEPTS it with table 12.
+# Run on the iPhone after 05-regalo.yaml:  maestro --udid <sim> test flows/05-regalo-ios-acepta.yaml
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  TABLE: "12"
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Messages|Mensajes"
+- tapOn: ".*test.*"
+- extendedWaitUntil:
+    visible: ".*sent you a gift.*|.*te envió un regalo.*"
+    timeout: 60000
+- takeScreenshot: 01-tarjeta-regalo
+- tapOn: "Accept|Aceptar"
+- extendedWaitUntil:
+    visible: "Which table are you at\\?|¿Cuál es tu mesa\\?"
+    timeout: 15000
+- tapOn: "Table number|Número de mesa"
+- inputText: ${TABLE}
+- tapOn: "Accept gift|Aceptar regalo"
+- extendedWaitUntil:
+    visible: "Accepted.*|Aceptado.*"
+    timeout: 30000
+- takeScreenshot: 02-aceptado

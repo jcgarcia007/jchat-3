@@ -1,0 +1,24 @@
+# location: 26.083048,-80.223725
+# 01 — Venue session: enter the chat inside the area → back (minimize) → the "You're at …" bar → Back
+# reopens the chat with NO entry notice. Ends by leaving the venue (⋯ → Leave the venue).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- takeScreenshot: 01-chat-dentro
+- tapOn: "Go back|Volver"
+- extendedWaitUntil:
+    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    timeout: 15000
+- takeScreenshot: 02-barra-estas-en
+- tapOn: "Back|Volver"
+- extendedWaitUntil:
+    visible: "Open menu|Abrir menú"
+    timeout: 15000
+- assertNotVisible: "Enter the chat|Entrar al chat"
+- takeScreenshot: 03-chat-sin-aviso
+- runFlow: ../helpers/leave-venue.yaml
+- takeScreenshot: 04-tras-salir

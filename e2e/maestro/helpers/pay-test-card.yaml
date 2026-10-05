@@ -1,0 +1,22 @@
+# Stripe PaymentSheet (TEST mode): fills the published test card and pays. The "Pay" button is not
+# exposed to the accessibility tree by the sheet, so it is tapped by position.
+appId: com.juangarciacruz.jchatapp
+env:
+  CARD_NUMBER: "4242424242424242"
+  CARD_EXPIRY: "1234"
+  CARD_CVC: "123"
+  CARD_ZIP: "12345"
+---
+- extendedWaitUntil:
+    visible: "Card"
+    timeout: 60000
+- tapOn: "Card"
+- tapOn: "Card number"
+- inputText: ${CARD_NUMBER}
+- inputText: ${CARD_EXPIRY}
+- inputText: ${CARD_CVC}
+- inputText: ${CARD_ZIP}
+# With the numeric keyboard still open (hideKeyboard is unreliable in the Stripe sheet) the sheet is
+# expanded and "Pay" sits at ~58% of the screen height.
+- tapOn:
+    point: "50%,58%"

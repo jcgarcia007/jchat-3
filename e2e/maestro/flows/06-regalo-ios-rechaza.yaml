@@ -1,0 +1,20 @@
+# location: 26.083048,-80.223725
+# 06 (RECIPIENT, iPhone account "test1"): sees the gift card and taps "No, thanks".
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Messages|Mensajes"
+- tapOn: ".*test.*"
+- extendedWaitUntil:
+    visible: ".*sent you a gift.*|.*te envió un regalo.*"
+    timeout: 60000
+- takeScreenshot: 01-tarjeta-regalo
+- tapOn: "No, thanks|No, gracias"
+- extendedWaitUntil:
+    visible: "Not accepted|No aceptado"
+    timeout: 30000
+- takeScreenshot: 02-rechazado

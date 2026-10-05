@@ -1,0 +1,14 @@
+# Dev builds show React Native's red LogBox over the app when something logs an error; it blocks every
+# selector. Dismisses it (up to twice) if it is showing. Safe to call anywhere.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"

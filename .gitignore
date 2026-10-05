@@ -64,3 +64,6 @@ generar-jwt.mjs
 gallery/
 scripts/test-*.ts
 .backup-claude-*/
+
+# Maestro e2e outputs (screenshots, logs)
+e2e/out/

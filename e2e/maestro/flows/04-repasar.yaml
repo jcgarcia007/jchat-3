@@ -1,0 +1,40 @@
+# location: 26.083048,-80.223725
+# 04 — Match: pass everyone in the deck until the end → "Review the people I passed (N)".
+# Needs other people present at the venue (e.g. the iPhone account) and a build that includes the
+# native modules of reanimated / gesture-handler / worklets (the swipe deck).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Open attachment panel|Abrir panel de adjuntos"
+- tapOn: "Games|Juegos"
+- tapOn: "Match"
+- extendedWaitUntil:
+    visible: "Pass|Pasar|You've seen everyone.*|Ya viste a todos.*"
+    timeout: 60000
+- takeScreenshot: 01-mazo
+# The test venue has many seeded profiles (@seed_N): pass up to 40 cards; once the deck is over
+# the "Pass" button is gone and the remaining taps are skipped.
+- repeat:
+    times: 40
+    commands:
+      - tapOn:
+          text: "Pass|Pasar"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible: "You've seen everyone.*|Ya viste a todos.*"
+    timeout: 30000
+- assertVisible: "Review the people I passed.*|Repasar a los que pasé.*"
+- assertVisible: "Back to chat|Volver al chat"
+- assertVisible: "View my activity|Ver mi actividad"
+- takeScreenshot: 02-fin-del-mazo
+- tapOn: "Review the people I passed.*|Repasar a los que pasé.*"
+- extendedWaitUntil:
+    visible: "People I passed|Los que pasé"
+    timeout: 15000
+- takeScreenshot: 03-repaso

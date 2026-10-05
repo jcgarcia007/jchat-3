@@ -1,0 +1,29 @@
+# location: 26.2,-80.223725
+# 02 — Outside the area: the entry says "You're not at …", offers "Allow location / Retry" and the
+# menu (and pick-up if the venue allows it). No chat, no waiter.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Nearby|Cerca.*"
+- extendedWaitUntil:
+    visible: "${VENUE}"
+    timeout: 30000
+- tapOn:
+    text: "Enter|Entrar"
+    below: "${VENUE}"
+- tapOn: "Enter the chat|Entrar al chat"
+- extendedWaitUntil:
+    visible: "You're not at.*|No estás en.*"
+    timeout: 90000
+- assertVisible: "Retry|Allow location|Reintentar|Permitir ubicación"
+- assertVisible: "View menu.*|Ver menú.*"
+- assertNotVisible: "Open menu|Abrir menú"
+- takeScreenshot: 01-fuera-del-area
+- tapOn: "View menu.*|Ver menú.*"
+- extendedWaitUntil:
+    visible: "${VENUE}"
+    timeout: 30000
+- takeScreenshot: 02-menu-fuera

@@ -1,0 +1,14 @@
+# Ends the venue session from the chat (⋯ → Leave the venue → confirm) so the next flow starts clean.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: dismiss-logbox.yaml
+- runFlow:
+    when:
+      visible: "More options|Más opciones"
+    commands:
+      - tapOn: "More options|Más opciones"
+      - tapOn: "Leave the venue|Salir del local"
+      - tapOn: "Leave the venue|Salir del local"
+- extendedWaitUntil:
+    visible: "Nearby|Cerca.*"
+    timeout: 20000

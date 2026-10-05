@@ -1,0 +1,19 @@
+# Signs in ONLY if the Welcome screen is showing. Credentials come from the environment
+# (MAESTRO_TEST_EMAIL / MAESTRO_TEST_PASSWORD) — never write them in this repo.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow:
+    when:
+      visible: "Log in|Iniciar sesión"
+    commands:
+      - tapOn: "Log in|Iniciar sesión"
+      - tapOn: "Continue with email|Continuar con correo.*"
+      - tapOn: "Email address|Correo electrónico.*"
+      - inputText: ${MAESTRO_TEST_EMAIL}
+      - tapOn: "Password|Contraseña"
+      - inputText: ${MAESTRO_TEST_PASSWORD}
+      - hideKeyboard
+      - tapOn: "Sign in|Iniciar sesión"
+      - extendedWaitUntil:
+          visible: "Nearby|Cerca.*"
+          timeout: 60000

@@ -1,0 +1,52 @@
+# location: 26.083048,-80.223725
+# 03 — Table order INSIDE the area (Stripe TEST card) → "Payment confirmed" → back to the tabs →
+# the bar shows "Order #N · status" (or "N orders in progress" when there are several).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  ITEM: Burger Angus
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Open menu|Abrir menú"
+- extendedWaitUntil:
+    visible: "${ITEM}"
+    timeout: 60000
+# The web menu's "+" has no text: with the menu scrolled to the top, Burger Angus's "+" is at ~(73%, 40%).
+- tapOn:
+    point: "73%,40%"
+- extendedWaitUntil:
+    visible: "Add to order.*|Añadir al pedido.*"
+    timeout: 15000
+- tapOn: "Add to order.*|Añadir al pedido.*"
+- tapOn: "Cart.*|Carrito.*"
+- tapOn: "Continue|Continuar"
+- extendedWaitUntil:
+    visible: "Pay .*"
+    timeout: 60000
+- takeScreenshot: 01-checkout
+- tapOn: "Pay .*"
+- runFlow: ../helpers/pay-test-card.yaml
+- extendedWaitUntil:
+    visible: "Payment confirmed!|¡Pago confirmado!"
+    timeout: 180000
+- takeScreenshot: 02-pago-confirmado
+- runFlow:
+    when:
+      visible: "Not now|Ahora no"
+    commands:
+      - tapOn: "Not now|Ahora no"
+- tapOn: "View order|Ver pedido"
+- extendedWaitUntil:
+    visible: ".*Your order.*|.*Tu pedido.*"
+    timeout: 30000
+- takeScreenshot: 03-seguimiento
+- tapOn: "Go back|Volver"
+- extendedWaitUntil:
+    visible: "Order #.*|Pedido #.*|.* orders in progress|.* pedidos en curso"
+    timeout: 30000
+- takeScreenshot: 04-barra-pedido
+# Clean up: reopen the chat from the bar and leave the venue so the next flow starts fresh.
+- tapOn: "Back|Volver"
+- runFlow: ../helpers/leave-venue.yaml

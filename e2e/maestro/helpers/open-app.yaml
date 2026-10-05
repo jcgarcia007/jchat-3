@@ -1,0 +1,25 @@
+# Opens the JChat DEVELOPMENT BUILD pointing at Metro and waits for the tabs.
+# Env (all optional): METRO_HOST (default 192.168.1.227), METRO_PORT (default 8081).
+appId: com.juangarciacruz.jchatapp
+env:
+  METRO_HOST: 192.168.1.227
+  METRO_PORT: 8081
+---
+# The dev build sometimes stays on a blank screen / "Loading from …" after a (re)start: retry the open.
+- retry:
+    maxRetries: 3
+    commands:
+      - stopApp
+      - openLink: "exp+jchat://expo-development-client/?url=http%3A%2F%2F${METRO_HOST}%3A${METRO_PORT}"
+      - extendedWaitUntil:
+          visible: "Nearby|Cerca.*|Dismiss"
+          timeout: 70000
+# React Native's red LogBox overlay (dev builds) must never block the flow.
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible: "Nearby|Cerca.*"
+    timeout: 30000

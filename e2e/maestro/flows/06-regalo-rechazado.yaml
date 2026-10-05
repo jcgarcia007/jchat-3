@@ -1,0 +1,32 @@
+# location: 26.083048,-80.223725
+# 06 — Gift REJECTED (SENDER): same as 05; on the iPhone run 06-regalo-ios-rechaza.yaml (taps "No, thanks").
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  RECIPIENT: test1
+  GIFT_ITEM_1: Tacos al Pastor
+  GIFT_ITEM_2: Pizza de Trufa
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "View ${RECIPIENT}.*options|Ver opciones de ${RECIPIENT}.*"
+- extendedWaitUntil:
+    visible: "Gift|Regalo"
+    timeout: 20000
+- takeScreenshot: 01-tarjeta-rapida
+- tapOn: "Gift|Regalo"
+- extendedWaitUntil:
+    visible: "Gift for.*|Regalo para.*"
+    timeout: 30000
+- tapOn: "Add one ${GIFT_ITEM_1}|Añadir un ${GIFT_ITEM_1}"
+- tapOn: "Add one ${GIFT_ITEM_2}|Añadir un ${GIFT_ITEM_2}"
+- assertVisible: "Send gift · 2 items.*|Enviar regalo · 2 artículos.*"
+- takeScreenshot: 02-hoja-regalo
+- tapOn: "Send gift.*|Enviar regalo.*"
+- runFlow: ../helpers/pay-test-card.yaml
+- extendedWaitUntil:
+    visible: "Gift on its way|Regalo en camino"
+    timeout: 180000
+- takeScreenshot: 03-regalo-enviado
+- tapOn: "OK"
