@@ -61,6 +61,7 @@ import { MatchEntryNotice } from '../../components/match/MatchEntryNotice';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
+import { goBackOrHome } from '../../utils/navFlow';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
@@ -769,8 +770,9 @@ export default function ChatRoomScreen() {
     setEntryVisible(false);
   }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled]);
 
+  // "Not now" / back: never return into the order flow (it would loop with the order screens).
   const handleBack = useCallback(() => {
-    navigation.goBack();
+    goBackOrHome(navigation);
   }, [navigation]);
 
   // Golden rule: when the entry gate refuses (outside / no location), the person still gets the menu

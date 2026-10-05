@@ -238,7 +238,8 @@
       "order_closed": "Este pedido ya no admite avisos.",
       "not_your_order": "No pudimos enviar el aviso. Inténtalo de nuevo.",
       "other": "No pudimos enviar el aviso. Inténtalo de nuevo."
-    }
+    },
+    "backToHome": "Volver al inicio"
   },
   "comandaCustomer": "Cliente",
   "errors": {

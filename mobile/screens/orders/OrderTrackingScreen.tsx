@@ -68,6 +68,8 @@ import { formatCents } from '../../utils/currency';
 import { RatingPrompt } from '../../components/reviews/RatingPrompt';
 import { toUserMessage } from '../../utils/errors';
 import { notifyOrderStaff, type OrderNoticeKind } from '../../services/orders';
+import { fetchVenueAccess, readVenueCoords } from '../../services/venueAccess';
+import { goBackOrHome, resetToTabs } from '../../utils/navFlow';
 
 // ── Route / Navigation types ──────────────────────────────────────────────────
 
@@ -284,9 +286,32 @@ export default function OrderTrackingScreen(): React.ReactElement {
       // Cast navigation to accept ChatRoom with generic id param
       (navigation as NativeStackNavigationProp<{ ChatRoom: { id: string }; [k: string]: object | undefined }>).navigate('ChatRoom', { id: roomId });
     } else {
-      navigation.goBack();
+      resetToTabs(navigation);
     }
   }, [navigation, roomId]);
+
+  // Arrow / Android back: to wherever we came from (My orders, Tabs); never into the order flow or the chat.
+  const handleBack = useCallback(() => goBackOrHome(navigation), [navigation]);
+  const handleGoHome = useCallback(() => resetToTabs(navigation), [navigation]);
+
+  // "Back to chat" only makes sense if the person is at the venue (server verdict, not a guess).
+  const [canReturnToChat, setCanReturnToChat] = useState(false);
+  const orderBusinessId = order?.business_id ?? null;
+  useEffect(() => {
+    if (!orderBusinessId || !roomId) {
+      setCanReturnToChat(false);
+      return;
+    }
+    let alive = true;
+    void readVenueCoords()
+      .then((coords) => fetchVenueAccess(orderBusinessId, coords))
+      .then((access) => {
+        if (alive) setCanReturnToChat(access.inside);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [orderBusinessId, roomId]);
 
   // ── Service call
   const handleServiceCall = useCallback(async () => {
@@ -363,7 +388,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             <Text style={styles.backBtnLabel}>{t('tracking.retry')}</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Pressable onPress={handleBack} style={styles.backBtn}>
           <Text style={styles.backBtnLabel}>{t('shared.goBack')}</Text>
         </Pressable>
       </SafeAreaView>
@@ -384,10 +409,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
       {/* ── Header ── */}
       <View style={styles.header}>
         <Pressable
-          onPress={handleBackToChat}
+          onPress={handleBack}
           style={styles.headerBack}
           accessibilityRole="button"
-          accessibilityLabel={t('tracking.backToChatA11y')}
+          accessibilityLabel={t('shared.goBack')}
         >
           <IconArrowLeft size={22} color={c.textPrimary} />
         </Pressable>
@@ -654,17 +679,26 @@ export default function OrderTrackingScreen(): React.ReactElement {
           </Pressable>
         )}
 
-        {/* Back to chat */}
-        {roomId ? (
+        {/* Secondary: back to the chat only with an active venue presence; otherwise home */}
+        {canReturnToChat ? (
           <Pressable
             onPress={handleBackToChat}
-            style={[styles.chatBtn, !(showStepper && !isDelivered) && styles.chatBtnFull]}
+            style={styles.chatBtn}
             accessibilityRole="button"
             accessibilityLabel={t('tracking.backToChatA11y')}
           >
-            <Text style={styles.chatBtnLabel}>{t('tracking.backToChat')}</Text>
+            <Text style={styles.chatBtnLabel} numberOfLines={1}>{t('tracking.backToChat')}</Text>
           </Pressable>
-        ) : null}
+        ) : (
+          <Pressable
+            onPress={handleGoHome}
+            style={styles.chatBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('tracking.backToHome')}
+          >
+            <Text style={styles.chatBtnLabel} numberOfLines={1}>{t('tracking.backToHome')}</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* ── "Avisar al local" sheet ── */}
@@ -1031,17 +1065,16 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
 
     // ── Bottom bar
     bottomBar: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
+      flexDirection: 'column',
+      gap: 12,
       padding: 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderSubtle,
       backgroundColor: c.bgBase,
     },
     serviceBtn: {
-      flex: 1,
-      minWidth: '45%',
+      alignSelf: 'stretch',
+      minHeight: 52,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1056,23 +1089,21 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       color: c.bgSurface,
     },
     chatBtn: {
-      flex: 1,
-      minWidth: '45%',
+      alignSelf: 'stretch',
+      minHeight: 52,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: c.bgElevated,
+      backgroundColor: 'transparent',
       borderRadius: 12,
-      paddingVertical: 14,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
       borderColor: c.borderSubtle,
-    },
-    chatBtnFull: {
-      flex: 2,
+      paddingHorizontal: 16,
     },
     chatBtnLabel: {
       fontSize: 15,
-      fontWeight: '500',
+      fontWeight: '600',
       color: c.textPrimary,
+      textAlign: 'center',
     },
 
     // ── Generic button

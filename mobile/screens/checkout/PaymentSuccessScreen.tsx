@@ -35,6 +35,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { resetToTabs, resetToTabsThen } from '../../utils/navFlow';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconCheck } from '@tabler/icons-react-native';
@@ -155,14 +156,14 @@ export default function PaymentSuccessScreen() {
         { id: roomId },
       );
     } else {
-      navigation.goBack();
+      resetToTabs(navigation);
     }
   }, [navigation, roomId]);
 
   const handleViewOrder = useCallback(() => {
-    const stack = navigation as NativeStackNavigationProp<MainStackParamList>;
-    if (orderId) stack.navigate('OrderTracking', { orderId, roomId });
-    else stack.navigate('MyOrders');
+    // Reset to [Tabs, OrderTracking]: back from the order goes home, never to the checkout or the chat.
+    if (orderId) resetToTabsThen(navigation, 'OrderTracking', { orderId, roomId });
+    else resetToTabsThen(navigation, 'MyOrders');
   }, [navigation, orderId, roomId]);
 
   // ── Styles (dynamic) ─────────────────────────────────────────────────────────

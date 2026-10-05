@@ -238,7 +238,8 @@
       "order_closed": "This order no longer accepts notices.",
       "not_your_order": "We couldn't send the notice. Please try again.",
       "other": "We couldn't send the notice. Please try again."
-    }
+    },
+    "backToHome": "Back to home"
   },
   "comandaCustomer": "Customer",
   "errors": {

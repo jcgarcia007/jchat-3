@@ -71,6 +71,7 @@ import type { PaidOrderSummary } from '../../services/orders';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { toUserMessage } from '../../utils/errors';
+import { resetToTabsThen } from '../../utils/navFlow';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -636,7 +637,8 @@ export default function CheckoutScreen() {
       clear();
       if (!mountedRef.current) return;
       if (order) {
-        navigation.replace('PaymentSuccess', {
+        // Reset the stack to [Tabs, PaymentSuccess]: back never returns to the checkout or the chat.
+        resetToTabsThen(navigation, 'PaymentSuccess', {
           orderId: order.id,
           orderNumber: order.order_number ?? undefined,
           businessName: order.business_name ?? undefined,
@@ -645,7 +647,7 @@ export default function CheckoutScreen() {
         });
       } else {
         // Paid but the order isn't visible yet: say so honestly, with a way to find it later.
-        navigation.replace('PaymentSuccess', {
+        resetToTabsThen(navigation, 'PaymentSuccess', {
           orderType,
           roomId: roomId ?? undefined,
           processing: true,
