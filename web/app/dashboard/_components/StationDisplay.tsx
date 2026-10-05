@@ -34,7 +34,6 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
-import { setOrderDelivered } from "@/lib/orderDelivery";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -438,9 +437,9 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
   }
 
   /**
-   * "Delivered" on a ready item: the item is done (set_item_status 'done') and, when it was the last
-   * open item of its order on this station, the whole order is marked delivered for the customer
-   * (staff_set_order_status) — the customer gets "Your order #N was delivered".
+   * "Delivered" on a ready item: only the item is marked 'done'. The database decides when the whole
+   * order is delivered (trigger trg_order_auto_delivered: every item of every station is done) and
+   * then notifies the customer.
    */
   async function deliverItem(item: StationItem) {
     setUpdatingId(item.id);
@@ -456,11 +455,6 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         { p_order_item_id: item.id, p_status: "done" },
       );
       if (rpcErr) throw rpcErr;
-      const othersOpen = items.some((i) => i.order_id === item.order_id && i.id !== item.id);
-      if (!othersOpen) {
-        const orderErr = await setOrderDelivered(item.order_id);
-        if (orderErr) throw new Error(orderErr);
-      }
       if (bizIdRef.current) await loadItems(bizIdRef.current);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("kdsUpdateOrderError"));

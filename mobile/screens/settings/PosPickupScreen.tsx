@@ -46,7 +46,6 @@ import { supabase, isSupabaseConfigured, channelTopic } from '../../services/sup
 import {
   posPickupBoard,
   posSetItemStatus,
-  posSetOrderDelivered,
   type PosPickupItem,
 } from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
@@ -184,18 +183,13 @@ export default function PosPickupScreen() {
       void loadBoard();
       Alert.alert(t('pos.pickupErrDeliver'));
     } else {
-      // Last open item of its order on the board → the whole order is delivered: tell the customer.
-      const othersOpen = items.some((i) => i.order_id === item.order_id && i.order_item_id !== item.order_item_id);
-      if (!othersOpen) {
-        const delivered = await posSetOrderDelivered(item.order_id);
-        if (!delivered.ok) Alert.alert(t('pos.pickupErrDeliver'));
-      }
+      // The database marks the whole order delivered once every item is done (trg_order_auto_delivered).
       // Sync in background to pick up any other changes
       void loadBoard();
     }
 
     setDeliveringId(null);
-  }, [deliveringId, items, loadBoard, t]);
+  }, [deliveringId, loadBoard, t]);
 
   // ── Status badge color ────────────────────────────────────────────────────
 

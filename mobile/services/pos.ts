@@ -1082,24 +1082,6 @@ export async function posSetItemStatus(
   return { ok: true };
 }
 
-// ─── posSetOrderDelivered ─────────────────────────────────────────────────────
-
-/**
- * Marks a whole order as delivered for the customer (migration 201: staff_set_order_status). The
- * database sends the customer "Your order #N was delivered". Only venue staff may call it.
- */
-export async function posSetOrderDelivered(orderId: string): Promise<PosSetItemStatusResult> {
-  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
-  // staff_set_order_status (migration 201) is not in the generated types.
-  const { error } = await supabase.rpc('staff_set_order_status' as never, { p_order_id: orderId, p_status: 'delivered' } as never);
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes('not_staff') || msg.includes('not_authenticated')) return { ok: false, reason: 'no_access' };
-    return { ok: false, reason: 'db_error' };
-  }
-  return { ok: true };
-}
-
 // ─── Inventory types ──────────────────────────────────────────────────────────
 
 /** Row returned when listing menu items for the inventory screen. */
