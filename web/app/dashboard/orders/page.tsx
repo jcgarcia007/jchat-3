@@ -41,6 +41,8 @@ interface Order {
   created_at: string;
   eta_minutes: number | null;
   customer: string;
+  /** Gift orders (order_type 'gift'): who receives it and where to bring it. */
+  gift?: { to: string; table: string | null; details: string | null };
   items: OrderItem[];
 }
 
@@ -122,16 +124,21 @@ export default function OrdersPage() {
   async function loadOrders(bizId: string) {
     const { data: ordersData, error: ordErr } = await supabase
       .from("orders")
-      .select("id, status, order_type, total_cents, created_at, eta_minutes, user_id")
+      .select("id, status, order_type, total_cents, created_at, eta_minutes, user_id, gift_recipient_id, table_label, special_instructions")
       .eq("business_id", bizId)
       .order("created_at", { ascending: false })
       .limit(200);
     if (ordErr) throw ordErr;
 
-    const base = (ordersData ?? []) as (Omit<Order, "items" | "customer"> & { user_id: string | null })[];
+    const base = (ordersData ?? []) as unknown as (Omit<Order, "items" | "customer" | "gift"> & {
+      user_id: string | null;
+      gift_recipient_id: string | null;
+      table_label: string | null;
+      special_instructions: string | null;
+    })[];
 
     // Customer names
-    const userIds = Array.from(new Set(base.map((o) => o.user_id).filter(Boolean))) as string[];
+    const userIds = Array.from(new Set(base.flatMap((o) => [o.user_id, o.gift_recipient_id]).filter(Boolean))) as string[];
     const nameById: Record<string, string> = {};
     if (userIds.length > 0) {
       const { data: users } = await supabase.from("public_profiles").select("id, display_name, username").in("id", userIds);
@@ -171,6 +178,9 @@ export default function OrdersPage() {
         created_at: o.created_at,
         eta_minutes: o.eta_minutes,
         customer: o.user_id ? nameById[o.user_id] ?? t("ordersColumnCustomer") : t("ordersGuestFallback"),
+        gift: o.order_type === "gift"
+          ? { to: o.gift_recipient_id ? nameById[o.gift_recipient_id] ?? t("ordersColumnCustomer") : t("ordersColumnCustomer"), table: o.table_label, details: o.special_instructions }
+          : undefined,
         items: itemsByOrder[o.id] ?? [],
       })),
     );
@@ -336,7 +346,9 @@ export default function OrdersPage() {
                   <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>#{o.id.slice(0, 6)}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                     <IconUser size={14} color="var(--db-text-tertiary)" />
-                    <span style={{ fontSize: "13px", color: "var(--db-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.customer}</span>
+                    <span style={{ fontSize: "13px", color: "var(--db-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {o.gift ? t("orderGiftLine", { from: o.customer, to: o.gift.to }) : o.customer}
+                    </span>
                   </span>
                   <span>
                     <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, background: meta.bg, color: meta.color }}>{meta.label}</span>
@@ -381,6 +393,12 @@ export default function OrdersPage() {
                           <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{money(it.price_cents * it.qty)}</span>
                         </div>
                       ))
+                    )}
+                    {o.gift && (o.gift.table || o.gift.details) && (
+                      <p style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                        {o.gift.table ? t("orderGiftTable", { table: o.gift.table }) : ""}
+                        {o.gift.details ? ` — ${o.gift.details}` : ""}
+                      </p>
                     )}
                     {["pending", "confirmed", "preparing"].includes(o.status) && (
                       <button

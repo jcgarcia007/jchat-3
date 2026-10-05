@@ -55,6 +55,8 @@ interface StationItem {
   id: string;
   order_id: string;
   table_label: string | null;
+  /** Gift orders: who sends it, who receives it and the details to find them. */
+  gift?: { from: string; to: string; details: string | null } | null;
   item_name: string;
   qty: number;
   modifier_labels: string[];
@@ -70,6 +72,10 @@ interface StationItem {
 interface RawOrderRow {
   id: string;
   table_label: string | null;
+  order_type: string | null;
+  user_id: string | null;
+  gift_recipient_id: string | null;
+  special_instructions: string | null;
 }
 
 interface RawItemRow {
@@ -246,7 +252,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
       // Step 1 — open orders
       const { data: ordersData, error: ordErr } = await supabase
         .from("orders")
-        .select("id, table_label")
+        .select("id, table_label, order_type, user_id, gift_recipient_id, special_instructions")
         .eq("business_id", bid)
         .is("paid_at", null)
         .is("canceled_at", null)
@@ -255,8 +261,27 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         .neq("approval_status" as any, "awaiting");
       if (ordErr) throw ordErr;
 
-      const orderMap = new Map<string, string | null>(
-        ((ordersData ?? []) as RawOrderRow[]).map((o) => [o.id, o.table_label]),
+      const orderRows = (ordersData ?? []) as unknown as RawOrderRow[];
+      const orderMap = new Map<string, string | null>(orderRows.map((o) => [o.id, o.table_label]));
+      // Gift orders: resolve both names (public_profiles — never email).
+      const giftRows = orderRows.filter((o) => o.order_type === "gift");
+      const giftNames = new Map<string, string>();
+      if (giftRows.length > 0) {
+        const ids = [...new Set(giftRows.flatMap((o) => [o.user_id, o.gift_recipient_id]).filter(Boolean))] as string[];
+        const { data: profs } = await supabase.from("public_profiles").select("id, display_name, username").in("id", ids);
+        for (const p of (profs ?? []) as { id: string; display_name: string | null; username: string | null }[]) {
+          giftNames.set(p.id, p.display_name ?? (p.username ? `@${p.username}` : "—"));
+        }
+      }
+      const giftByOrder = new Map<string, { from: string; to: string; details: string | null }>(
+        giftRows.map((o) => [
+          o.id,
+          {
+            from: (o.user_id && giftNames.get(o.user_id)) || "—",
+            to: (o.gift_recipient_id && giftNames.get(o.gift_recipient_id)) || "—",
+            details: o.special_instructions,
+          },
+        ]),
       );
       const orderIds = [...orderMap.keys()];
       if (orderIds.length === 0) {
@@ -287,6 +312,7 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
           id: raw.id,
           order_id: raw.order_id,
           table_label: orderMap.get(raw.order_id) ?? null,
+          gift: giftByOrder.get(raw.order_id) ?? null,
           item_name: mi.name,
           qty: raw.qty,
           modifier_labels: flattenModifiers(raw.options),
@@ -666,6 +692,14 @@ function ItemCard({
         transition: "border-color 0.6s ease, background 0.6s ease",
       }}
     >
+      {/* Gift orders: who sends it, who receives it, and where to bring it */}
+      {item.gift && (
+        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--db-accent)", marginBottom: "6px" }}>
+          {t("kdsGiftLine", { from: item.gift.from, to: item.gift.to })}
+          {item.gift.details ? <span style={{ fontWeight: 500, color: "var(--db-text-secondary)" }}> — {item.gift.details}</span> : null}
+        </div>
+      )}
+
       {/* Table label + elapsed */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--db-text-primary)" }}>
