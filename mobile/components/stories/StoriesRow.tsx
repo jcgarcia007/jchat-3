@@ -52,7 +52,7 @@ import { IconPlus } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
   getActiveStories,
   createStory,
@@ -122,7 +122,7 @@ export default function StoriesRow({
     if (!isSupabaseConfigured) return;
 
     const channel = supabase
-      .channel('stories_realtime_row')
+      .channel(channelTopic('stories_realtime_row'))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'stories' },

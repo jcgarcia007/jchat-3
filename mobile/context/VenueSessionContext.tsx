@@ -23,7 +23,7 @@ import React, {
 import { Alert, AppState } from 'react-native';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
-import { supabase, isSupabaseConfigured } from '../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
 import { runGeoCheck } from '../screens/chat/useGeofenceGate';
 import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 import { getMatchActivity } from '../services/matchDeck';
@@ -236,7 +236,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       const ids = ((data ?? []) as { id: string }[]).map((r) => r.id).slice(0, 100);
       if (!alive || ids.length === 0) return;
       channel = supabase
-        .channel(`venue-session-msgs:${businessId}:${Date.now()}`)
+        .channel(channelTopic(`venue-session:msgs:${businessId}`))
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=in.(${ids.join(',')})` },
@@ -264,7 +264,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       })
       .catch(() => undefined);
     const channel = supabase
-      .channel(`venue-session-likes:${businessId}:${Date.now()}`)
+      .channel(channelTopic(`venue-session:likes:${userId}:${businessId}`))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },

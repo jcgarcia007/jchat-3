@@ -21,7 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
-import { supabase, isSupabaseConfigured } from '../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
   registerForPushNotifications,
@@ -216,7 +216,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     // 5. Supabase Realtime subscription for the notifications table.
     if (isSupabaseConfigured) {
       const channel = supabase
-        .channel(`notifications:${passive ? 'passive' : 'active'}:user:${userId}`)
+        .channel(channelTopic(`notifications:${passive ? 'passive' : 'active'}:user:${userId}`))
         .on(
           'postgres_changes',
           {

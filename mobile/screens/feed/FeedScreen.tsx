@@ -39,7 +39,7 @@ import { IconUsers } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
   listFeed,
   likePost,
@@ -132,7 +132,7 @@ export default function FeedScreen() {
     if (!isSupabaseConfigured || !user?.id) return;
 
     const channel = supabase
-      .channel('post_likes_feed')
+      .channel(channelTopic('post_likes_feed'))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'post_likes' },

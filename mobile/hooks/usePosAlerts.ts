@@ -23,7 +23,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Vibration } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
-import { supabase } from '../services/supabase';
+import { supabase, channelTopic } from '../services/supabase';
 import { posKdsSettings } from '../services/pos';
 import type { PosAlertsConfig } from '../services/pos';
 
@@ -139,7 +139,7 @@ export function usePosAlerts(businessId: string, onServiceCall?: (row: PosServic
     // business, so no server-side filter is needed here. We check the status
     // transition in the callback.
     const readyCh = supabase
-      .channel(`pos-alerts-ready-${businessId}`)
+      .channel(channelTopic(`pos-alerts-ready-${businessId}`))
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
@@ -157,7 +157,7 @@ export function usePosAlerts(businessId: string, onServiceCall?: (row: PosServic
     // Filter server-side by business_id so we only receive calls for this
     // business (RLS adds an additional auth gate on top).
     const scCh = supabase
-      .channel(`pos-alerts-sc-${businessId}`)
+      .channel(channelTopic(`pos-alerts-sc-${businessId}`))
       .on(
         'postgres_changes',
         {
@@ -177,7 +177,7 @@ export function usePosAlerts(businessId: string, onServiceCall?: (row: PosServic
     // Fires when a customer places an order without a code (approval_status='awaiting').
     // Filter by business_id server-side; check approval_status in the callback.
     const approvalCh = supabase
-      .channel(`pos-alerts-approval-${businessId}`)
+      .channel(channelTopic(`pos-alerts-approval-${businessId}`))
       .on(
         'postgres_changes',
         {

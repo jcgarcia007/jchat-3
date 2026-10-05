@@ -34,7 +34,7 @@ import {
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ export default function EventsScreen({
     if (!isSupabaseConfigured) return;
 
     channelRef.current = supabase
-      .channel('events-list')
+      .channel(channelTopic('events-list'))
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'events' },

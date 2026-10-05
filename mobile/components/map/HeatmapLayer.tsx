@@ -37,7 +37,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Circle } from 'react-native-maps';
-import { supabase } from '../../services/supabase';
+import { supabase, channelTopic } from '../../services/supabase';
 import { palette } from '../../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ export default function HeatmapLayer({ businesses: propBusinesses }: HeatmapLaye
     // Supabase Realtime — listen for any change to businesses.active_count.
     // We re-fetch on INSERT / UPDATE / DELETE so the circles stay current.
     const channel = supabase
-      .channel('heatmap_businesses')
+      .channel(channelTopic('heatmap_businesses'))
       .on(
         'postgres_changes',
         {

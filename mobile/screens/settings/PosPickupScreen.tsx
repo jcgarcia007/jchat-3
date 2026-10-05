@@ -42,7 +42,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
   posPickupBoard,
   posSetItemStatus,
@@ -114,7 +114,7 @@ export default function PosPickupScreen() {
       if (!isSupabaseConfigured) return undefined;
 
       const itemsChannel = supabase
-        .channel('pos-pickup-items-rt')
+        .channel(channelTopic('pos-pickup-items-rt'))
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'order_items' },
@@ -123,7 +123,7 @@ export default function PosPickupScreen() {
         .subscribe();
 
       const ordersChannel = supabase
-        .channel('pos-pickup-orders-rt')
+        .channel(channelTopic('pos-pickup-orders-rt'))
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'orders' },

@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getTotalUnread, subscribeToDmUnreadInvalidation } from '../services/dms';
 import { getUnreadSocialNotificationCount } from '../services/notifications';
-import { isSupabaseConfigured, supabase } from '../services/supabase';
+import { isSupabaseConfigured, supabase, channelTopic } from '../services/supabase';
 
 export function useUnreadBadge(): boolean {
   const { user } = useAuth();
@@ -41,13 +41,13 @@ export function useUnreadBadge(): boolean {
     };
 
     const dmChannel = supabase
-      .channel(`tab_badge_dm_${user.id}`)
+      .channel(channelTopic(`tab_badge_dm_${user.id}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_messages' }, () => {
         void refresh();
       })
       .subscribe();
     const notificationChannel = supabase
-      .channel(`tab_badge_notifications_${user.id}`)
+      .channel(channelTopic(`tab_badge_notifications_${user.id}`))
       .on(
         'postgres_changes',
         {

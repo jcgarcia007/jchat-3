@@ -57,7 +57,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
   listMessages,
   markRead,
@@ -288,7 +288,7 @@ export default function DMChatScreen() {
     if (!isSupabaseConfigured || !user) return;
 
     const channel = supabase
-      .channel(`dm_chat_${conversationId}`)
+      .channel(channelTopic(`dm_chat_${conversationId}`))
       .on(
         'postgres_changes',
         {

@@ -30,7 +30,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCheck, IconEdit, IconX, IconAlertTriangle } from '@tabler/icons-react-native';
-import { supabase } from '../../services/supabase';
+import { supabase, channelTopic } from '../../services/supabase';
 import { palette } from '../../theme/tokens';
 import { useThemeColors, type ThemeColors } from '../../theme/colors';
 import {
@@ -88,7 +88,7 @@ export default function PosApprovalScreen(): React.ReactElement {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`pos-approval-screen-${businessId}`)
+      .channel(channelTopic(`pos-approval-screen-${businessId}`))
       .on(
         'postgres_changes',
         {

@@ -57,7 +57,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
   posTablesOverview,
   posTableItems,
@@ -298,7 +298,7 @@ export default function PosTableHub(): React.ReactElement {
     };
 
     const channel = supabase
-      .channel(`pos-hub-rt-${tableId}`)
+      .channel(channelTopic(`pos-hub-rt-${tableId}`))
       // Item-level updates (item_status: e.g. item marked ready individually)
       .on(
         'postgres_changes',

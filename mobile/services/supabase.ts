@@ -109,3 +109,14 @@ supabase.functions.invoke = (async (name: string, options?: Parameters<typeof ra
   await expireSession();
   return result;
 }) as typeof supabase.functions.invoke;
+
+/**
+ * Unique realtime topic per subscription. supabase.channel(name) returns the EXISTING channel when the
+ * name is already in use, and calling .on() on a channel that was already subscribe()d throws
+ * ("cannot add `postgres_changes` callbacks … after `subscribe()`"). Two screens/hooks listening to the
+ * same table (or a quick unmount → mount) must therefore never share a topic. Do NOT use this for
+ * broadcast/presence topics that sender and receivers must agree on (e.g. `room:{id}`).
+ */
+export function channelTopic(base: string): string {
+  return `${base}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}

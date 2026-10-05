@@ -46,7 +46,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ export default function ReservationScreen({
     if (!isSupabaseConfigured || !businessId) return;
 
     channelRef.current = supabase
-      .channel(`reservation-slot-check-${businessId}`)
+      .channel(channelTopic(`reservation-slot-check-${businessId}`))
       .on(
         'postgres_changes',
         {

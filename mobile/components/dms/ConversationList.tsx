@@ -19,7 +19,7 @@ import {
   listConversations,
   type ConversationPreview,
 } from '../../services/dms';
-import { isSupabaseConfigured, supabase } from '../../services/supabase';
+import { isSupabaseConfigured, supabase, channelTopic } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
@@ -143,7 +143,7 @@ export default function ConversationList({
   useEffect(() => {
     if (!isSupabaseConfigured || !user?.id) return;
     const channel = supabase
-      .channel(`conversation_list_${user.id}`)
+      .channel(channelTopic(`conversation_list_${user.id}`))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, () => {
         void load();
       })

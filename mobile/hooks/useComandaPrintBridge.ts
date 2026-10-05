@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { supabase } from '../services/supabase';
+import { supabase, channelTopic } from '../services/supabase';
 import { printKitchenTickets } from '../services/printer';
 import i18n from '../i18n';
 
@@ -137,7 +137,7 @@ export function useComandaPrintBridge(businessId: string): void {
 
     try {
       const channel = supabase
-        .channel(`pos-comanda-bridge-${businessId}`)
+        .channel(channelTopic(`pos-comanda-bridge-${businessId}`))
         .on(
           'postgres_changes',
           {
