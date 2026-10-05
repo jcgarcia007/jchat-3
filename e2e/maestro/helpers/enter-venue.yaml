@@ -14,9 +14,9 @@ env:
     below: "${VENUE}"
 - runFlow:
     when:
-      visible: "Enter the chat|Entrar al chat"
+      visible: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"
     commands:
-      - tapOn: "Enter the chat|Entrar al chat"
+      - tapOn: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"
 - extendedWaitUntil:
     visible: "Open menu|Abrir menú|Dismiss"
     timeout: 90000

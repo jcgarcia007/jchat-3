@@ -14,7 +14,7 @@ env:
 - tapOn:
     text: "Enter|Entrar"
     below: "${VENUE}"
-- tapOn: "Enter the chat|Entrar al chat"
+- tapOn: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"
 - extendedWaitUntil:
     visible: "You're not at.*|No estás en.*"
     timeout: 90000

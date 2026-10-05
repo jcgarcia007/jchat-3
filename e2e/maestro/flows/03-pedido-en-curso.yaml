@@ -48,5 +48,5 @@ env:
     timeout: 30000
 - takeScreenshot: 04-barra-pedido
 # Clean up: reopen the chat from the bar and leave the venue so the next flow starts fresh.
-- tapOn: "Back|Volver"
+- tapOn: "Back|Volver|Back to the .* chat|Volver al chat de .*"
 - runFlow: ../helpers/leave-venue.yaml

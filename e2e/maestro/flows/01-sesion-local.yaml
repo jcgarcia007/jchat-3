@@ -14,11 +14,11 @@ env:
     visible: "You're at ${VENUE}|Estás en ${VENUE}"
     timeout: 15000
 - takeScreenshot: 02-barra-estas-en
-- tapOn: "Back|Volver"
+- tapOn: "Back|Volver|Back to the .* chat|Volver al chat de .*"
 - extendedWaitUntil:
     visible: "Open menu|Abrir menú"
     timeout: 15000
-- assertNotVisible: "Enter the chat|Entrar al chat"
+- assertNotVisible: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"
 - takeScreenshot: 03-chat-sin-aviso
 - runFlow: ../helpers/leave-venue.yaml
 - takeScreenshot: 04-tras-salir
