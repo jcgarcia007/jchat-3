@@ -32,7 +32,19 @@
       "matchLike": "{{name}} liked you on Match",
       "matchSuper": "{{name}} sent you a Super Like",
       "matchMatch": "It's a match with {{name}}!",
-      "matchNewPeople": "New people joined Match at {{business}}"
+      "matchNewPeople": "New people joined Match at {{business}}",
+      "orderPreparing": "They're preparing your order #{{n}}",
+      "orderReady": "Your order #{{n}} is ready — pick it up at the counter",
+      "orderReadyTable": "Your order #{{n}} is on its way to your table",
+      "orderDelivered": "Your order #{{n}} was delivered",
+      "orderCancelled": "Your order #{{n}} was cancelled",
+      "orderGeneric": "Update on your order #{{n}}",
+      "giftOffer": "{{name}} sent you a gift at {{business}}",
+      "giftAccepted": "{{name}} accepted your gift",
+      "giftDeclined": "{{name}} didn't accept your gift",
+      "giftExpired": "Your gift for {{name}} expired",
+      "giftPaid": "Your gift is paid and on its way",
+      "giftGeneric": "Update on your gift"
     }
   },
   "dmChat": {

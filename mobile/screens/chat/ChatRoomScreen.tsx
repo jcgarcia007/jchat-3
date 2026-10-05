@@ -63,6 +63,11 @@ import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
 import { useVenueSession } from '../../context/VenueSessionContext';
+import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
+import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
+import { useNotifications } from '../../hooks/useNotifications';
+import type { NotificationRoute } from '../../services/notifications';
+import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
   fetchGames,
@@ -421,30 +426,34 @@ export default function ChatRoomScreen() {
     void matchCheckInWithQr(token);
   }, []);
 
-  // ⋯ → "Salir del local": the only way (besides leaving the area) to end the venue session.
-  const handleMoreOptions = useCallback(() => {
-    Alert.alert(business?.name ?? '', undefined, [
-      {
-        text: t('venueSession.leave'),
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert(
-            t('venueSession.leaveConfirmTitle'),
-            t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }),
-            [
-              { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
-              {
-                text: t('venueSession.leave'),
-                style: 'destructive',
-                onPress: () => {
-                  void venue.leaveVenue().then(() => navigation.goBack());
-                },
-              },
-            ],
-          ),
-      },
-      { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
-    ]);
+  // 🔔 notifications sheet + ⋯ options sheet (replace the old native Alert).
+  const [bellOpen, setBellOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { notifications: allNotifications, unreadCount, markRead: markNotificationRead } = useNotifications({ passive: true });
+  const { visible: visibleNotifications, textFor: notificationTextFor } = useNotificationPresenter(allNotifications);
+
+  const handleOpenNotificationRoute = useCallback(
+    (route: NotificationRoute) =>
+      openNotificationRoute(navigation as unknown as { navigate: (screen: string, params?: unknown) => void }, route),
+    [navigation],
+  );
+
+  // "Salir del local" is the only way (besides leaving the area) to end the venue session.
+  const handleLeaveVenue = useCallback(() => {
+    Alert.alert(
+      t('venueSession.leaveConfirmTitle'),
+      t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }),
+      [
+        { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
+        {
+          text: t('venueSession.leave'),
+          style: 'destructive',
+          onPress: () => {
+            void venue.leaveVenue().then(() => navigation.goBack());
+          },
+        },
+      ],
+    );
   }, [business?.name, navigation, i18n, t, venue]);
 
   // The online row shows the room on screen; demo mode falls back to demo users.
@@ -1489,8 +1498,9 @@ export default function ChatRoomScreen() {
         usersInRoom={usersInRoom}
         onBack={handleBack}
         onMenuPress={handleMenuPress}
-        onOrdersPress={() => navigation.navigate('MyOrders')}
-        onMorePress={!isOwner && !entryVisible ? handleMoreOptions : undefined}
+        onBellPress={() => setBellOpen(true)}
+        unreadCount={unreadCount}
+        onMorePress={!entryVisible ? () => setMoreOpen(true) : undefined}
         onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}
@@ -1736,6 +1746,24 @@ export default function ChatRoomScreen() {
         }}
       />
 
+      <ChatNotificationsSheet
+        visible={bellOpen}
+        onClose={() => setBellOpen(false)}
+        notifications={visibleNotifications}
+        textFor={notificationTextFor}
+        onMarkRead={(id) => void markNotificationRead(id)}
+        onOpenRoute={handleOpenNotificationRoute}
+      />
+      <ChatMoreSheet
+        visible={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        isOwner={isOwner}
+        inVenue={venue.session?.roomId === rootRoomId}
+        onMyOrders={() => navigation.navigate('MyOrders')}
+        onAskHelp={() => setServiceSheetVisible(true)}
+        onLeaveVenue={handleLeaveVenue}
+        onOwnerSettings={() => navigation.navigate('Settings')}
+      />
       <ServiceCallSheet
         visible={serviceSheetVisible}
         roomId={activeRoomId}

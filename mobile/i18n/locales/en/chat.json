@@ -47,7 +47,8 @@
     "peopleHere_other": "{{count}} people here",
     "userTapA11y": "View {{name}}'s options",
     "myOrders": "My orders",
-    "moreOptions": "More options"
+    "moreOptions": "More options",
+    "notifications": "Notifications ({{count}} unread)"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — password protected"
@@ -328,5 +329,21 @@
     "leave": "Leave the venue",
     "leaveConfirmTitle": "Leave the venue?",
     "leaveConfirmBody": "You'll stop being in {{business}} and lose your spot in the chat and Match."
+  },
+  "notificationsSheet": {
+    "title": "Notifications",
+    "close": "Close notifications",
+    "empty": "No notifications yet.",
+    "filter": {
+      "all": "All",
+      "match": "Match",
+      "orders": "Orders"
+    }
+  },
+  "moreSheet": {
+    "myOrders": "My account and orders",
+    "askHelp": "Ask the venue for help",
+    "ownerSettings": "Owner settings",
+    "close": "Close"
   }
 }

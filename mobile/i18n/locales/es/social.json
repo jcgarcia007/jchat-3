@@ -32,7 +32,19 @@
       "matchLike": "{{name}} te dio like en Match",
       "matchSuper": "{{name}} te dio un Super Like",
       "matchMatch": "¡Hiciste match con {{name}}!",
-      "matchNewPeople": "Llegó gente nueva a Match en {{business}}"
+      "matchNewPeople": "Llegó gente nueva a Match en {{business}}",
+      "orderPreparing": "Están preparando tu pedido #{{n}}",
+      "orderReady": "Tu pedido #{{n}} está listo. Recógelo en el mostrador",
+      "orderReadyTable": "Tu pedido #{{n}} va en camino a tu mesa",
+      "orderDelivered": "Tu pedido #{{n}} fue entregado",
+      "orderCancelled": "Tu pedido #{{n}} fue cancelado",
+      "orderGeneric": "Novedad en tu pedido #{{n}}",
+      "giftOffer": "{{name}} te envió un regalo en {{business}}",
+      "giftAccepted": "{{name}} aceptó tu regalo",
+      "giftDeclined": "{{name}} no aceptó tu regalo",
+      "giftExpired": "Tu regalo para {{name}} venció",
+      "giftPaid": "Tu regalo ya está pagado y va en camino",
+      "giftGeneric": "Novedad en tu regalo"
     }
   },
   "dmChat": {

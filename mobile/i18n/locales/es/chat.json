@@ -47,7 +47,8 @@
     "peopleHere_other": "{{count}} personas aquí",
     "userTapA11y": "Ver opciones de {{name}}",
     "myOrders": "Mis pedidos",
-    "moreOptions": "Más opciones"
+    "moreOptions": "Más opciones",
+    "notifications": "Notificaciones ({{count}} sin leer)"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — protegido con contraseña"
@@ -328,5 +329,21 @@
     "leave": "Salir del local",
     "leaveConfirmTitle": "¿Salir del local?",
     "leaveConfirmBody": "Dejarás de estar en {{business}} y perderás tu lugar en el chat y en Match."
+  },
+  "notificationsSheet": {
+    "title": "Notificaciones",
+    "close": "Cerrar notificaciones",
+    "empty": "Aún no tienes notificaciones.",
+    "filter": {
+      "all": "Todas",
+      "match": "Match",
+      "orders": "Pedidos"
+    }
+  },
+  "moreSheet": {
+    "myOrders": "Mi cuenta y pedidos",
+    "askHelp": "Pedir ayuda al local",
+    "ownerSettings": "Ajustes del dueño",
+    "close": "Cerrar"
   }
 }

@@ -303,6 +303,9 @@ const VALID_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set([
   'match_super',
   'match_match',
   'match_new_people',
+  'order_status',
+  'gift_offer',
+  'gift_response',
 ] as const);
 
 function isValidNotificationType(value: unknown): value is NotificationType {

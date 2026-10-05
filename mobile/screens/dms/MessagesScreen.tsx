@@ -15,55 +15,28 @@ import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  IconBell,
-  IconHeart,
-  IconMessage,
-  IconMessage2,
-  IconStar,
-  IconUserPlus,
-  type Icon,
-} from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 
 import ConversationList from '../../components/dms/ConversationList';
 import SwipeToDelete from '../../components/common/SwipeToDelete';
 import { useNotifications } from '../../hooks/useNotifications';
-import { useMatchNotificationLabels } from '../../hooks/useMatchNotificationLabels';
+import {
+  NOTIFICATION_ICONS,
+  openNotificationRoute,
+  useNotificationPresenter,
+} from '../../hooks/useNotificationPresenter';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import type { ConversationPreview } from '../../services/dms';
 import {
-  isMatchNotificationType,
   isSocialNotificationType,
   routeForNotification,
   type NotificationRow,
-  type NotificationType,
 } from '../../services/notifications';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
-
-const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
-  follower: IconUserPlus,
-  dm: IconMessage,
-  like: IconHeart,
-  comment: IconMessage2,
-  work_alert: IconBell,
-  match_like: IconHeart,
-  match_super: IconStar,
-  match_match: IconHeart,
-  match_new_people: IconHeart,
-};
-
-function actorName(payload: Record<string, unknown> | null, fallback: string): string {
-  for (const key of ['actor_name', 'from_name', 'username', 'display_name'] as const) {
-    const value = payload?.[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return fallback;
-}
 
 export default function MessagesScreen() {
   const colors = useThemeColors();
@@ -75,21 +48,7 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { notifications, markRead, refresh, remove } = useNotifications({ passive: true });
 
-  const matchLabels = useMatchNotificationLabels(notifications);
-  const socialNotifications = useMemo(
-    () => notifications.filter((notification) => {
-      if (!isSocialNotificationType(notification.type)) return false;
-      // Hide Match rows of venues where the owner has switched Match off.
-      if (isMatchNotificationType(notification.type)) {
-        const businessId = notification.payload?.business_id;
-        if (typeof businessId === 'string' && matchLabels.enabledBusinesses && !matchLabels.enabledBusinesses.has(businessId)) {
-          return false;
-        }
-      }
-      return true;
-    }),
-    [notifications, matchLabels.enabledBusinesses],
-  );
+  const { visible: socialNotifications, textFor: notificationText } = useNotificationPresenter(notifications);
   const clearSurface = `${colors.bgSurface}00`;
 
   useFocusEffect(useCallback(() => {
@@ -121,33 +80,8 @@ export default function MessagesScreen() {
     if (!isSocialNotificationType(notification.type)) return;
     const route = routeForNotification(notification.type, notification.payload);
     if (!route) return;
-    if (route.screen === 'DMs') navigation.navigate('DMs', route.params);
-    else if (route.screen === 'UserProfile') navigation.navigate('UserProfile', route.params);
-    else if (route.screen === 'MatchActivity') navigation.navigate('MatchActivity', route.params);
-    else if (route.screen === 'MatchHome') navigation.navigate('MatchHome', route.params);
-    else navigation.navigate('PostDetail', route.params);
+    openNotificationRoute(navigation as unknown as { navigate: (screen: string, params?: unknown) => void }, route);
   }, [markRead, navigation]);
-
-  const notificationText = useCallback((notification: NotificationRow) => {
-    if (!isSocialNotificationType(notification.type)) return '';
-    if (isMatchNotificationType(notification.type)) {
-      const userId = notification.payload?.from_user_id ?? notification.payload?.other_user_id;
-      const businessId = notification.payload?.business_id;
-      const key = {
-        match_like: 'matchLike',
-        match_super: 'matchSuper',
-        match_match: 'matchMatch',
-        match_new_people: 'matchNewPeople',
-      }[notification.type as 'match_like' | 'match_super' | 'match_match' | 'match_new_people'];
-      return translation.t(`messages.notif.${key}`, {
-        name: (typeof userId === 'string' && matchLabels.userNames[userId]) || translation.t('messages.someone'),
-        business: (typeof businessId === 'string' && matchLabels.businessNames[businessId]) || '',
-      });
-    }
-    return translation.t(`messages.notif.${notification.type === 'work_alert' ? 'workAlert' : notification.type}`, {
-      name: actorName(notification.payload, translation.t('messages.someone')),
-    });
-  }, [translation, matchLabels]);
 
   const removeNotification = useCallback((id: string) => {
     void remove(id).catch(() => {

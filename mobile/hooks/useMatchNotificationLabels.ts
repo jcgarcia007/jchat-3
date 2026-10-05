@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { isMatchEnabledForBusiness } from '../services/match';
-import { isMatchNotificationType } from '../services/notifications';
+import { isMatchNotificationType, isOrderNotificationType } from '../services/notifications';
 import type { NotificationRow } from '../services/notifications';
 
 export interface MatchNotificationLabels {
@@ -38,8 +38,8 @@ export function useMatchNotificationLabels(rows: NotificationRow[]): MatchNotifi
     const users = new Set<string>();
     const businesses = new Set<string>();
     for (const row of rows) {
-      if (!isMatchNotificationType(row.type)) continue;
-      const user = str(row.payload?.from_user_id) ?? str(row.payload?.other_user_id);
+      if (!isMatchNotificationType(row.type) && !isOrderNotificationType(row.type)) continue;
+      const user = str(row.payload?.from_user_id) ?? str(row.payload?.other_user_id) ?? str(row.payload?.to_user_id);
       const business = str(row.payload?.business_id);
       if (user) users.add(user);
       if (business) businesses.add(business);

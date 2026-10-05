@@ -2,7 +2,7 @@
  * JChat 3.0 — ChatTopBar (Task 2.4)
  *
  * The header area of a chat room:
- *   [Back] [Business icon + name]   [active count]   [Menu icon — only if menu_enabled]
+ *   [Back] [Business icon + name · N people here]   [🔔 badge] [🍴 menu — only if menu_enabled] [⋯]
  *
  * Layout below the top bar:
  *   - SubRoomTabs (horizontal scroll of sub-rooms)
@@ -33,14 +33,15 @@ import {
 } from 'react-native';
 import {
   IconArrowLeft,
+  IconBell,
   IconDots,
-  IconMenuDeep,
-  IconReceipt,
+  IconToolsKitchen2,
   IconUser,
 } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -69,9 +70,11 @@ export interface ChatTopBarProps {
   usersInRoom: UserSummary[];
   onBack: () => void;
   onMenuPress: () => void;
-  /** Opens the user's own orders. Optional: the button only shows when provided. */
-  onOrdersPress?: () => void;
-  /** Opens the ⋯ options menu (Match: leave the venue). The button only shows when provided. */
+  /** Opens the 🔔 notifications sheet. */
+  onBellPress?: () => void;
+  /** Unread notifications (badge on the bell). */
+  unreadCount?: number;
+  /** Opens the ⋯ options sheet. The button only shows when provided. */
   onMorePress?: () => void;
   onUserPress: (userId: string, displayName: string, anchor: UserAnchor) => void;
   children?: React.ReactNode;
@@ -157,7 +160,8 @@ export function ChatTopBar({
   usersInRoom,
   onBack,
   onMenuPress,
-  onOrdersPress,
+  onBellPress,
+  unreadCount = 0,
   onMorePress,
   onUserPress,
   children,
@@ -195,39 +199,43 @@ export function ChatTopBar({
           </View>
         </View>
 
-        {/* Menu + orders icons — only when business.menu_enabled */}
-        {business.menu_enabled && (
-          <View style={[topBarStyles.menuSection, { borderLeftColor: theme.border }]}>
-            {onOrdersPress ? (
-              <Pressable
-                onPress={onOrdersPress}
-                accessibilityRole="button"
-                accessibilityLabel={t('topBar.myOrders')}
-                hitSlop={10}
-                style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
-              >
-                <IconReceipt size={22} color={theme.tabActive} />
-              </Pressable>
+        {/* 🔔 notifications (badge = unread) */}
+        {onBellPress ? (
+          <Pressable
+            onPress={onBellPress}
+            accessibilityRole="button"
+            accessibilityLabel={t('topBar.notifications', { count: unreadCount })}
+            style={({ pressed }) => [topBarStyles.iconBtn, pressed && topBarStyles.btnPressed]}
+          >
+            <IconBell size={22} color={theme.tabActive} />
+            {unreadCount > 0 ? (
+              <View style={[topBarStyles.badge, { backgroundColor: palette.danger }]}>
+                <Text style={[topBarStyles.badgeText, { color: palette.onBrand }]}>
+                  {unreadCount > 9 ? '9+' : String(unreadCount)}
+                </Text>
+              </View>
             ) : null}
-            <Pressable
-              onPress={onMenuPress}
-              accessibilityRole="button"
-              accessibilityLabel={t('topBar.openMenu')}
-              hitSlop={10}
-              style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
-            >
-              <IconMenuDeep size={22} color={theme.tabActive} />
-            </Pressable>
-          </View>
-        )}
+          </Pressable>
+        ) : null}
+
+        {/* 🍴 the venue's menu — only when business.menu_enabled */}
+        {business.menu_enabled ? (
+          <Pressable
+            onPress={onMenuPress}
+            accessibilityRole="button"
+            accessibilityLabel={t('topBar.openMenu')}
+            style={({ pressed }) => [topBarStyles.iconBtn, pressed && topBarStyles.btnPressed]}
+          >
+            <IconToolsKitchen2 size={22} color={theme.tabActive} />
+          </Pressable>
+        ) : null}
 
         {onMorePress ? (
           <Pressable
             onPress={onMorePress}
             accessibilityRole="button"
             accessibilityLabel={t('topBar.moreOptions')}
-            hitSlop={10}
-            style={({ pressed }) => [topBarStyles.menuBtn, pressed && topBarStyles.btnPressed]}
+            style={({ pressed }) => [topBarStyles.iconBtn, pressed && topBarStyles.btnPressed]}
           >
             <IconDots size={22} color={theme.tabActive} />
           </Pressable>
@@ -281,8 +289,11 @@ const topBarStyles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   btnPressed: {
     opacity: 0.6,
@@ -310,14 +321,25 @@ const topBarStyles = StyleSheet.create({
   activeCount: {
     fontSize: 12,
   },
-  menuSection: {
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    paddingLeft: 8,
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  menuBtn: {
-    padding: 6,
-    borderRadius: 8,
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  badgeText: { fontSize: 11, fontWeight: '700' },
   avatarsScroll: {
     flexGrow: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,

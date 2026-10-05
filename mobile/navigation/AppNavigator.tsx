@@ -185,6 +185,8 @@ function navigateNotificationRoute(route: NotificationRoute): void {
   else if (route.screen === 'UserProfile') navigationRef.navigate('UserProfile', route.params);
   else if (route.screen === 'MatchActivity') navigationRef.navigate('MatchActivity', route.params);
   else if (route.screen === 'MatchHome') navigationRef.navigate('MatchHome', route.params);
+  else if (route.screen === 'OrderTracking') navigationRef.navigate('OrderTracking', route.params);
+  else if (route.screen === 'MyOrders') navigationRef.navigate('MyOrders');
   else navigationRef.navigate('PostDetail', route.params);
 }
 

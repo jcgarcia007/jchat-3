@@ -28,8 +28,10 @@ import { Platform } from 'react-native';
 import {
   IconBell,
   IconBriefcase,
+  IconGift,
   IconHeart,
   IconMessageCircle,
+  IconReceipt,
   IconStar,
   IconUserPlus,
   type Icon as TablerIcon,
@@ -53,7 +55,10 @@ export type NotificationType =
   | 'match_like'
   | 'match_super'
   | 'match_match'
-  | 'match_new_people';
+  | 'match_new_people'
+  | 'order_status'
+  | 'gift_offer'
+  | 'gift_response';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -66,6 +71,13 @@ export function isMatchNotificationType(value: unknown): value is NotificationTy
   return typeof value === 'string' && MATCH_NOTIFICATION_TYPES.includes(value as NotificationType);
 }
 
+/** Order in progress + gifts (migrations 201/202): shown under "Pedidos" in the chat's bell sheet. */
+export const ORDER_NOTIFICATION_TYPES: readonly NotificationType[] = ['order_status', 'gift_offer', 'gift_response'];
+
+export function isOrderNotificationType(value: unknown): value is NotificationType {
+  return typeof value === 'string' && ORDER_NOTIFICATION_TYPES.includes(value as NotificationType);
+}
+
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
   'follower',
@@ -73,6 +85,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'comment',
   'work_alert',
   ...MATCH_NOTIFICATION_TYPES,
+  ...ORDER_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -121,7 +134,9 @@ export type NotificationRoute =
   | { screen: 'UserProfile'; params: { userId: string } }
   | { screen: 'PostDetail'; params: { postId: string } }
   | { screen: 'MatchActivity'; params: { businessId: string; tab: 'likes' | 'likedMe' | 'matches' } }
-  | { screen: 'MatchHome'; params: { businessId: string } };
+  | { screen: 'MatchHome'; params: { businessId: string } }
+  | { screen: 'OrderTracking'; params: { orderId: string; roomId?: string } }
+  | { screen: 'MyOrders' };
 
 // ── Push permission & token registration ──────────────────────────────────────
 
@@ -229,6 +244,13 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
 
     case 'match_super':
       return { icon: IconStar, accent: palette.brand };
+
+    case 'order_status':
+      return { icon: IconReceipt, accent: palette.brand };
+
+    case 'gift_offer':
+    case 'gift_response':
+      return { icon: IconGift, accent: palette.brand };
   }
 }
 
@@ -377,6 +399,20 @@ export function routeForNotification(
     case 'match_new_people': {
       const businessId = typeof payload?.business_id === 'string' ? payload.business_id : null;
       return businessId ? { screen: 'MatchHome', params: { businessId } } : null;
+    }
+
+    case 'order_status': {
+      const orderId = typeof payload?.order_id === 'string' && payload.order_id ? payload.order_id : null;
+      return orderId ? { screen: 'OrderTracking', params: { orderId } } : { screen: 'MyOrders' };
+    }
+
+    case 'gift_offer':
+    case 'gift_response': {
+      // The gift card lives in the 1:1 chat (migration 202 puts conversation_id in the payload).
+      if (typeof payload?.conversation_id === 'string' && payload.conversation_id) {
+        return { screen: 'DMs', params: { screen: 'DMChat', params: { conversationId: payload.conversation_id } } };
+      }
+      return { screen: 'DMs', params: { screen: 'DMInbox' } };
     }
   }
 }
