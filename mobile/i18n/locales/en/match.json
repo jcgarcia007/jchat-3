@@ -204,8 +204,12 @@
       "not_present": "Match needs you to be at the venue.",
       "not_in_same_venue": "That person is no longer at this venue.",
       "super_like_quota": "You're out of Super Likes for today.",
-      "already_swiped": "You already answered that person."
-    }
+      "already_swiped": "You already answered that person.",
+      "not_passed": "That person isn't in your passed list anymore.",
+      "relike_limit": "You've reached the review limit for this visit.",
+      "relike_cooldown": "Wait a few seconds before liking again."
+    },
+    "reviewPassed": "Review the people I passed ({{count}})"
   },
   "lightbox": {
     "close": "Close photo"
@@ -304,5 +308,14 @@
     "uploadPhoto": "Upload a photo",
     "retry": "Try again",
     "noPhotoTitle": "Add a photo to appear"
+  },
+  "review": {
+    "title": "People I passed",
+    "hint": "Only people who are still here. They are never told you passed.",
+    "like": "Like",
+    "skip": "Keep passing",
+    "back": "Back",
+    "empty": "No one left to review.",
+    "someone": "Someone"
   }
 }

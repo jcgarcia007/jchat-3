@@ -17,11 +17,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { MatchDeck } from './MatchDeck';
+import { MatchPassedList } from './MatchPassedList';
 import { MatchStateView } from './MatchStateView';
 import {
   getMatchActivity,
   getMatchDeck,
+  getMatchPassed,
   matchErrorCode,
+  matchRelike,
   matchSwipe,
   matchUndoLast,
 } from '../../services/matchDeck';
@@ -67,6 +70,10 @@ export function MatchDeckSection({
   const [notice, setNotice] = useState<string | null>(null);
   const [notifyNewPeople, setNotifyNewPeople] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
+  // "Review the people I passed" (end of deck): the list, and which row is being liked.
+  const [passed, setPassed] = useState<MatchCard[]>([]);
+  const [reviewing, setReviewing] = useState(false);
+  const [relikeBusyId, setRelikeBusyId] = useState<string | null>(null);
   const leftScreenRef = useRef(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,17 +93,19 @@ export function MatchDeckSection({
   const load = useCallback(async () => {
     setLoadError(false);
     try {
-      const [deck, catalog, activity, approved] = await Promise.all([
+      const [deck, catalog, activity, approved, passedCards] = await Promise.all([
         getMatchDeck(businessId, 20),
         fetchInterests(),
         getMatchActivity(businessId),
         user?.id
           ? fetchMyMatchPhotos(user.id).then((photos) => photos.some((p) => p.status === 'approved')).catch(() => true)
           : Promise.resolve(true),
+        getMatchPassed(businessId).catch(() => [] as MatchCard[]),
       ]);
       setHasApprovedPhoto(approved);
-      const urls = await signedPhotoUrls(deck.flatMap((card) => card.photos.slice(0, 1)));
+      const urls = await signedPhotoUrls([...deck, ...passedCards].flatMap((card) => card.photos.slice(0, 1)));
       setCards(deck);
+      setPassed(passedCards);
       setPhotoUrls(urls);
       setInterestNames(Object.fromEntries(catalog.map((row) => [row.key, interestName(row, language)])));
       setSuperLeft(activity.super_left);
@@ -159,6 +168,32 @@ export function MatchDeckSection({
     }
   }, [businessId, showNotice, t]);
 
+  // Review: a normal like (never super) on someone I passed; may be a match. "Keep passing" just hides the row.
+  const handleRelike = useCallback(
+    async (card: MatchCard) => {
+      if (relikeBusyId) return;
+      setRelikeBusyId(card.id);
+      try {
+        const result = await matchRelike(businessId, card.id);
+        setPassed((prev) => prev.filter((p) => p.id !== card.id));
+        if (result.is_match) onMatch(card, result);
+      } catch (err) {
+        const code = matchErrorCode(err);
+        if (code === 'not_passed' || code === 'not_in_same_venue') {
+          setPassed((prev) => prev.filter((p) => p.id !== card.id)); // no longer reviewable
+        }
+        showNotice(t(code ? `deck.errors.${code}` : 'deck.errors.generic'));
+      } finally {
+        setRelikeBusyId(null);
+      }
+    },
+    [businessId, onMatch, relikeBusyId, showNotice, t],
+  );
+
+  const handleSkipPassed = useCallback((card: MatchCard) => {
+    setPassed((prev) => prev.filter((p) => p.id !== card.id));
+  }, []);
+
   const handleNotifyToggle = useCallback(
     (value: boolean) => {
       setNotifyNewPeople(value);
@@ -170,13 +205,20 @@ export function MatchDeckSection({
     [showNotice, t],
   );
 
-  // End of deck: centered, primary "Back to chat", secondary "My activity", keeps the new-people switch.
+  // End of deck: "Review the ones I passed (N)" is the main action when there are any; then "Back to
+  // chat", the new-people switch and a "View my activity" link.
+  const hasPassed = passed.length > 0;
   const endContent = (
     <MatchStateView
       title={t('deck.endTitle')}
       message={t('deck.endHint')}
-      primary={{ label: t('states.backToChat'), onPress: onBackToChat }}
-      secondary={{ label: t('states.viewActivity'), onPress: onOpenActivity }}
+      primary={
+        hasPassed
+          ? { label: t('deck.reviewPassed', { count: passed.length }), onPress: () => setReviewing(true) }
+          : { label: t('states.backToChat'), onPress: onBackToChat }
+      }
+      secondary={hasPassed ? { label: t('states.backToChat'), onPress: onBackToChat } : undefined}
+      link={{ label: t('states.viewActivity'), onPress: onOpenActivity }}
     >
       <View style={[styles.endSwitchRow, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
         <Text style={[styles.endSwitchLabel, { color: c.textPrimary }]}>{t('deck.notifyNewPeople')}</Text>
@@ -207,6 +249,23 @@ export function MatchDeckSection({
         primary={{ label: t('states.uploadPhoto'), onPress: onUploadPhoto }}
         secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
       />
+    );
+  }
+
+  if (reviewing) {
+    return (
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <MatchPassedList
+          cards={passed}
+          photoUrls={photoUrls}
+          busyId={relikeBusyId}
+          onLike={(card) => void handleRelike(card)}
+          onSkip={handleSkipPassed}
+          onOpenProfile={onOpenProfile}
+          onBack={() => setReviewing(false)}
+          notice={notice}
+        />
+      </ScrollView>
     );
   }
 

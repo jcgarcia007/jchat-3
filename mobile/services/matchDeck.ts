@@ -26,9 +26,24 @@ export interface UndoResult {
 }
 
 /** Known server error codes (PostgREST message) the UI translates. */
-export type MatchErrorCode = 'not_present' | 'not_in_same_venue' | 'super_like_quota' | 'already_swiped';
+export type MatchErrorCode =
+  | 'not_present'
+  | 'not_in_same_venue'
+  | 'super_like_quota'
+  | 'already_swiped'
+  | 'not_passed'
+  | 'relike_limit'
+  | 'relike_cooldown';
 
-const KNOWN_ERRORS: readonly string[] = ['not_present', 'not_in_same_venue', 'super_like_quota', 'already_swiped'];
+const KNOWN_ERRORS: readonly string[] = [
+  'not_present',
+  'not_in_same_venue',
+  'super_like_quota',
+  'already_swiped',
+  'not_passed',
+  'relike_limit',
+  'relike_cooldown',
+];
 
 /** The Match error code carried by a thrown Supabase error, or null. */
 export function matchErrorCode(err: unknown): MatchErrorCode | null {
@@ -73,6 +88,33 @@ export async function matchSwipe(
     p_target_id: targetId,
     p_action: action,
   });
+  if (error) throw error;
+  const r = (data ?? {}) as Partial<SwipeResult>;
+  return {
+    swiped: r.swiped === true,
+    is_match: r.is_match === true,
+    match_id: r.match_id ?? null,
+    conversation_id: r.conversation_id ?? null,
+    super_left: typeof r.super_left === 'number' ? r.super_left : null,
+  };
+}
+
+/**
+ * People I passed on who are STILL at the venue (blocked and absent people are excluded server-side).
+ * Same card format as the deck. Nobody is told they were passed or reviewed.
+ */
+export async function getMatchPassed(businessId: string): Promise<MatchCard[]> {
+  const { data, error } = await supabase.rpc('match_get_passed' as never, { p_business_id: businessId } as never);
+  if (error) throw error;
+  return (Array.isArray(data) ? (data as unknown[]) : []).map(asCard).filter((c): c is MatchCard => c !== null);
+}
+
+/**
+ * Turns a pass into a normal like (never a super): the person is notified like any like and a match
+ * is detected. Errors: not_passed, relike_limit (20 per visit), relike_cooldown (30 s).
+ */
+export async function matchRelike(businessId: string, userId: string): Promise<SwipeResult> {
+  const { data, error } = await supabase.rpc('match_relike' as never, { p_business_id: businessId, p_user_id: userId } as never);
   if (error) throw error;
   const r = (data ?? {}) as Partial<SwipeResult>;
   return {

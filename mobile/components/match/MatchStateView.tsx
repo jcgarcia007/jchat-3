@@ -24,10 +24,12 @@ interface MatchStateViewProps {
   message?: string;
   primary?: StateAction;
   secondary?: StateAction;
+  /** Text link under the buttons (e.g. "View my activity"). */
+  link?: StateAction;
   children?: React.ReactNode;
 }
 
-export function MatchStateView({ title, message, primary, secondary, children }: MatchStateViewProps) {
+export function MatchStateView({ title, message, primary, secondary, link, children }: MatchStateViewProps) {
   const c = useThemeColors();
   return (
     <View style={styles.wrap}>
@@ -68,6 +70,15 @@ export function MatchStateView({ title, message, primary, secondary, children }:
           <Text style={[styles.secondaryText, { color: c.brand }]}>{secondary.label}</Text>
         </Pressable>
       ) : null}
+      {link ? (
+        <Pressable
+          onPress={link.onPress}
+          accessibilityRole="link"
+          style={({ pressed }) => [styles.link, { opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={[styles.linkText, { color: c.brand }]}>{link.label}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -105,4 +116,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryText: { fontSize: 15, fontWeight: '700' },
+  link: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  linkText: { fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
 });

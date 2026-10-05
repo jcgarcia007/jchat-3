@@ -204,8 +204,12 @@
       "not_present": "Match necesita que estés en el local.",
       "not_in_same_venue": "Esa persona ya no está en este local.",
       "super_like_quota": "Te quedaste sin Super Likes por hoy.",
-      "already_swiped": "Ya respondiste a esa persona."
-    }
+      "already_swiped": "Ya respondiste a esa persona.",
+      "not_passed": "Esa persona ya no está en tu lista de descartados.",
+      "relike_limit": "Llegaste al límite de repasos de esta visita.",
+      "relike_cooldown": "Espera unos segundos antes de dar otro like."
+    },
+    "reviewPassed": "Repasar a los que pasé ({{count}})"
   },
   "lightbox": {
     "close": "Cerrar foto"
@@ -304,5 +308,14 @@
     "uploadPhoto": "Subir foto",
     "retry": "Reintentar",
     "noPhotoTitle": "Sube una foto para aparecer"
+  },
+  "review": {
+    "title": "Los que pasé",
+    "hint": "Solo gente que sigue aquí. Nunca se les avisa que los pasaste.",
+    "like": "Me gusta",
+    "skip": "Seguir pasando",
+    "back": "Volver",
+    "empty": "No queda nadie por repasar.",
+    "someone": "Alguien"
   }
 }
