@@ -391,6 +391,8 @@
     "kdsEmptyPreparing": "Nada en la cocina.",
     "kdsStartPreparing": "Empezar a preparar",
     "kdsMarkReady": "Marcar listo",
+    "orderMarkDelivered": "Entregado",
+    "kdsItemDelivered": "Entregado",
     "kdsUpdating": "Actualizando…",
     "kdsNoItems": "Sin ítems.",
     "kdsUpdateOrderError": "No se pudo actualizar el pedido.",

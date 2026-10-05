@@ -25,6 +25,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconPlayerPlay,
   IconCircleCheck,
+  IconCheck,
   IconRefresh,
   IconAlertCircle,
   IconClock,
@@ -33,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import { setOrderDelivered } from "@/lib/orderDelivery";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -435,6 +437,38 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
     }
   }
 
+  /**
+   * "Delivered" on a ready item: the item is done (set_item_status 'done') and, when it was the last
+   * open item of its order on this station, the whole order is marked delivered for the customer
+   * (staff_set_order_status) — the customer gets "Your order #N was delivered".
+   */
+  async function deliverItem(item: StationItem) {
+    setUpdatingId(item.id);
+    setError(null);
+    if (!isSupabaseConfigured) {
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setUpdatingId(null);
+      return;
+    }
+    try {
+      const { error: rpcErr } = await (supabase as unknown as SupabaseWithRpc).rpc(
+        "set_item_status",
+        { p_order_item_id: item.id, p_status: "done" },
+      );
+      if (rpcErr) throw rpcErr;
+      const othersOpen = items.some((i) => i.order_id === item.order_id && i.id !== item.id);
+      if (!othersOpen) {
+        const orderErr = await setOrderDelivered(item.order_id);
+        if (orderErr) throw new Error(orderErr);
+      }
+      if (bizIdRef.current) await loadItems(bizIdRef.current);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("kdsUpdateOrderError"));
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   // ── Early exits ──────────────────────────────────────────────────────────────
 
   if (!loading && needsRegister) {
@@ -546,10 +580,10 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
                 <ItemCard
                   key={item.id}
                   item={item}
-                  updating={false}
-                  actionLabel={null}
-                  actionIcon={null}
-                  onAction={null}
+                  updating={updatingId === item.id}
+                  actionLabel={t("kdsItemDelivered")}
+                  actionIcon={IconCheck}
+                  onAction={() => void deliverItem(item)}
                   heat={slaHeat(item, bizSlaRef.current)}
                 />
               ))
@@ -683,7 +717,7 @@ function ItemCard({
         </div>
       )}
 
-      {/* Action button (Pending → Start, Preparing → Mark Ready; Ready has none) */}
+      {/* Action button (Pending → Start, Preparing → Mark Ready, Ready → Delivered) */}
       {ActionIcon && actionLabel && onAction && (
         <button
           type="button"

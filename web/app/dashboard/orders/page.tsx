@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
+  IconCheck,
   IconReceipt,
   IconChevronDown,
   IconChevronUp,
@@ -18,6 +19,7 @@ import {
   IconClock,
   IconUser,
 } from "@tabler/icons-react";
+import { setOrderDelivered } from "@/lib/orderDelivery";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
@@ -113,6 +115,7 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deliveringId, setDeliveringId] = useState<string | null>(null);
   const businessIdRef = useRef<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -246,6 +249,21 @@ export default function OrdersPage() {
     : filter === "delivered" ? "ordersEmptyDelivered"
     : "ordersEmptyCancelled";
 
+  /** "Delivered": the customer gets "Your order #N was delivered" (staff_set_order_status). */
+  async function markDelivered(orderId: string) {
+    setDeliveringId(orderId);
+    setError(null);
+    if (!isSupabaseConfigured) {
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: "delivered" } : o)));
+      setDeliveringId(null);
+      return;
+    }
+    const message = await setOrderDelivered(orderId);
+    if (message) setError(message);
+    else if (businessIdRef.current) await loadOrders(businessIdRef.current).catch(() => {});
+    setDeliveringId(null);
+  }
+
   return (
     <div style={{ maxWidth: "960px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
@@ -299,7 +317,7 @@ export default function OrdersPage() {
       ) : (
         <div style={{ background: "var(--db-bg-surface)", border: "1px solid var(--db-border)", borderRadius: "var(--db-radius-card)", overflow: "hidden" }}>
           {/* header */}
-          <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 80px", gap: "12px", padding: "12px 20px", fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--db-border)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 150px", gap: "12px", padding: "12px 20px", fontSize: "11px", fontWeight: 700, color: "var(--db-text-tertiary)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--db-border)" }}>
             <span>{t("ordersColumnOrder")}</span>
             <span>{t("ordersColumnCustomer")}</span>
             <span>{t("ordersColumnStatus")}</span>
@@ -314,7 +332,7 @@ export default function OrdersPage() {
             const open = expanded === o.id;
             return (
               <div key={o.id} style={{ borderBottom: "1px solid var(--db-border)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 80px", gap: "12px", padding: "14px 20px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 150px", gap: "12px", padding: "14px 20px", alignItems: "center" }}>
                   <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>#{o.id.slice(0, 6)}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                     <IconUser size={14} color="var(--db-text-tertiary)" />
@@ -326,7 +344,17 @@ export default function OrdersPage() {
                   <span style={{ textAlign: "right", fontSize: "14px", color: "var(--db-text-primary)" }}>{o.items.length}</span>
                   <span style={{ textAlign: "right", fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>{money(o.total_cents)}</span>
                   <span style={{ textAlign: "right", fontSize: "13px", color: "var(--db-text-tertiary)" }}>{relativeTime(o.created_at, t)}</span>
-                  <span style={{ textAlign: "right" }}>
+                  <span style={{ textAlign: "right", display: "inline-flex", justifyContent: "flex-end", gap: "6px" }}>
+                    {o.status === "ready" && (
+                      <button
+                        type="button"
+                        onClick={() => void markDelivered(o.id)}
+                        disabled={deliveringId === o.id}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px", borderRadius: "var(--db-radius)", border: "none", background: "var(--db-accent)", color: "var(--db-accent-text)", fontSize: "12px", fontWeight: 600, cursor: deliveringId === o.id ? "wait" : "pointer" }}
+                      >
+                        <IconCheck size={13} /> {t("orderMarkDelivered")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setExpanded(open ? null : o.id)}
@@ -353,6 +381,16 @@ export default function OrdersPage() {
                           <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{money(it.price_cents * it.qty)}</span>
                         </div>
                       ))
+                    )}
+                    {["pending", "confirmed", "preparing"].includes(o.status) && (
+                      <button
+                        type="button"
+                        onClick={() => void markDelivered(o.id)}
+                        disabled={deliveringId === o.id}
+                        style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "var(--db-radius)", border: "1px solid var(--db-border)", background: "var(--db-bg-elevated)", color: "var(--db-text-primary)", fontSize: "13px", fontWeight: 600, cursor: deliveringId === o.id ? "wait" : "pointer" }}
+                      >
+                        <IconCheck size={14} /> {t("orderMarkDelivered")}
+                      </button>
                     )}
                     {o.eta_minutes != null && (
                       <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 0" }}>
