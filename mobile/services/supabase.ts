@@ -120,3 +120,27 @@ supabase.functions.invoke = (async (name: string, options?: Parameters<typeof ra
 export function channelTopic(base: string): string {
   return `${base}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
+
+/**
+ * fetch() to an Edge Function (or any endpoint) with the CURRENT user's access token — the same
+ * session guard as functions.invoke: a 401 refreshes the session ONCE and retries; if the refresh
+ * fails the session is closed locally and the user is sent to the login ("session expired").
+ * Use it instead of a hand-built fetch with `Authorization: Bearer <access_token>`.
+ */
+export async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const send = async (token: string): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    return fetch(input, { ...init, headers });
+  };
+  const { data: current } = await supabase.auth.getSession();
+  const token = current.session?.access_token;
+  if (!token) throw new Error('not_authenticated');
+  const res = await send(token);
+  if (res.status !== 401) return res;
+
+  const { data, error } = await supabase.auth.refreshSession();
+  if (!error && data.session) return send(data.session.access_token);
+  await expireSession();
+  return res;
+}

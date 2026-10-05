@@ -17,6 +17,7 @@ import { IconBellRinging } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { parseOrderNotice } from '../../utils/orderNotice';
+import { tableText } from '../../utils/tableLabel';
 import type { PosServiceCallRow } from '../../hooks/usePosAlerts';
 
 const VISIBLE_MS = 6000;
@@ -36,7 +37,7 @@ export function PosServiceCallBanner({ row, onDismiss }: Props): React.ReactElem
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
-  const table = row.table_label ? t('pos.serviceAlert.table', { table: row.table_label }) : null;
+  const table = row.table_label ? tableText(row.table_label, (label) => t('pos.serviceAlert.table', { table: label })) : null;
   let text: string;
   if (row.type === 'order') {
     const n = parseOrderNotice(row.notes);

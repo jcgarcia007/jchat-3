@@ -16,6 +16,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { formatCents } from "@/lib/currency";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { tableText } from "@/lib/tableLabel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ function FeedRow({ event, tick, locale, t }: {
       return (
         <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <span>
-            {p.table_label ? t("queueTableLabel", { label: p.table_label }) : "—"}
+            {p.table_label ? tableText(p.table_label, (label) => t("queueTableLabel", { label })) : "—"}
             {" · "}
             {formatCents(p.total_cents, locale)}
           </span>
@@ -190,7 +191,7 @@ function FeedRow({ event, tick, locale, t }: {
       const p = event.payload as CallPayload;
       return (
         <span>
-          {p.table_label ? t("queueTableLabel", { label: p.table_label }) : "—"}
+          {p.table_label ? tableText(p.table_label, (label) => t("queueTableLabel", { label })) : "—"}
           {" · "}
           {callTypeLabel(p.type, t)}
         </span>

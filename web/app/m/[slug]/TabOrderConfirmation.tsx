@@ -6,6 +6,7 @@
  */
 
 import { useTranslations } from "next-intl";
+import { tableText } from "@/lib/tableLabel";
 
 interface TabOrderConfirmationProps {
   tableLabel:     string;
@@ -51,7 +52,7 @@ export default function TabOrderConfirmation({
           <p style={{ margin: 0, fontSize: 14, opacity: 0.6 }}>
             {isAwaiting
               ? t("tabOrderAwaitingSubtitle", { label: tableLabel })
-              : t("tabOrderAddedSubtitle", { label: tableLabel })}
+              : tableText(tableLabel, (label) => t("tabOrderAddedSubtitle", { label }))}
           </p>
         </div>
 

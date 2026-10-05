@@ -30,6 +30,7 @@ import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import type { TFn } from "@/lib/tabSemantics";
 import { parseOrderNotice } from "@/lib/orderNotice";
+import { startsWithTableWord, tableText } from "@/lib/tableLabel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -326,7 +327,7 @@ export default function ServicePage() {
                         {kindLabel ? ` · ${kindLabel}` : ""}
                       </p>
                       {name && <p className="service-notes">{t("serviceOrderCustomer", { name })}</p>}
-                      {call.table_label && <p className="service-notes">{t("serviceTableLabel")} {call.table_label}</p>}
+                      {call.table_label && <p className="service-notes">{tableText(call.table_label, (l) => `${t("serviceTableLabel")} ${l}`)}</p>}
                     </>
                   );
                 })()
@@ -338,7 +339,13 @@ export default function ServicePage() {
                         <strong>{t("serviceGuestTable", { table: call.table_label })}</strong>
                       ) : (
                         <>
-                          <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                          {startsWithTableWord(call.table_label) ? (
+                            <strong>{call.table_label}</strong>
+                          ) : (
+                            <>
+                              <strong>{t("serviceTableLabel")}</strong> {call.table_label}
+                            </>
+                          )}
                         </>
                       )}
                     </p>

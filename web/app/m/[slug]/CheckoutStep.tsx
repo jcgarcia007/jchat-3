@@ -28,6 +28,7 @@ import { readFunctionErrorCode, venueErrorKey } from "@/lib/venueLocation";
 import { formatCents } from "@/lib/currency";
 import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import type { MenuItemOption, ModifierChoice } from "./page";
+import { tableText } from "@/lib/tableLabel";
 
 interface GroupSel {
   groupId: string;
@@ -500,7 +501,7 @@ function Receipt({
           {name && (
             <div>{t.rich("receiptOnBehalfOf", { name, b: (chunks) => <strong>{chunks}</strong> })}</div>
           )}
-          {tableLabel && <div>{t("receiptTable", { tableLabel })}</div>}
+          {tableLabel && <div>{tableText(tableLabel, (l) => t("receiptTable", { tableLabel: l }))}</div>}
         </div>
       )}
       {/* Items: quantity + name only. No per-line amount (the server doesn't

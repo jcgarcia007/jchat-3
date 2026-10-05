@@ -24,6 +24,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import { formatCents } from "@/lib/currency";
+import { tableText } from "@/lib/tableLabel";
 
 interface OrderItem {
   id: string;
@@ -396,7 +397,7 @@ export default function OrdersPage() {
                     )}
                     {o.gift && (o.gift.table || o.gift.details) && (
                       <p style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--db-text-secondary)" }}>
-                        {o.gift.table ? t("orderGiftTable", { table: o.gift.table }) : ""}
+                        {o.gift.table ? tableText(o.gift.table, (table) => t("orderGiftTable", { table })) : ""}
                         {o.gift.details ? ` — ${o.gift.details}` : ""}
                       </p>
                     )}

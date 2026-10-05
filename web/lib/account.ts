@@ -5,22 +5,19 @@
  * Used for accounts that fail the 18+ check.
  */
 
-import { supabase } from "@/lib/supabase";
+import { supabase, authedFetch } from "@/lib/supabase";
 import { TERMS_VERSION } from "@/lib/terms";
 
 /** true only when the server confirmed the deletion. Never throws. */
 export async function deleteMyAccount(): Promise<boolean> {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!session?.access_token || !base || !anon) return false;
-    const res = await fetch(`${base}/functions/v1/delete-account`, {
+    if (!base || !anon) return false;
+    // authedFetch adds the access token and applies the session guard (401 → refresh once → retry).
+    const res = await authedFetch(`${base}/functions/v1/delete-account`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
         apikey: anon,
         "Content-Type": "application/json",
       },

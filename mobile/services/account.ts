@@ -6,21 +6,16 @@
  * data). Shared by Settings (user-initiated) and the age gate (underage).
  */
 
-import { supabase, isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import { isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY, authedFetch } from './supabase';
 
 /** Returns true only when the server confirmed the deletion. Never throws. */
 export async function deleteMyAccount(): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) return false;
-
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+    // authedFetch adds the access token and applies the session guard (401 → refresh once → retry).
+    const res = await authedFetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
         apikey: SUPABASE_ANON_KEY,
         'Content-Type': 'application/json',
       },
