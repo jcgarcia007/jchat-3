@@ -122,7 +122,15 @@ function acquirePresence(
   onState: PresenceListener,
 ): Promise<PresenceHandle> {
   return enqueuePresence(roomId, async () => {
-    const existing = presenceEntries.get(roomId);
+    let existing = presenceEntries.get(roomId);
+    if (existing && (existing.channel.state === 'closed' || existing.channel.state === 'errored')) {
+      // A channel that died under us (socket error, removed elsewhere) can never track again: start over.
+      const listeners = existing.listeners;
+      presenceEntries.delete(roomId);
+      try { await supabase.removeChannel(existing.channel); } catch { /* already gone */ }
+      listeners.clear();
+      existing = undefined;
+    }
     if (existing) {
       existing.refs += 1;
       existing.listeners.add(onState);
@@ -149,10 +157,37 @@ function acquirePresence(
       .on('presence', { event: 'leave' }, rebuild)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') void channel.track(entry.payload);
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[presence] ${name} ${status} — the client retries; the watchdog rebuilds it if it does not come back`);
+        }
       });
     presenceEntries.set(roomId, entry);
     return { roomId, channel, listener: onState };
   });
+}
+
+/**
+ * Health of the channels this screen holds. A joined channel that does not list us in its own state
+ * re-publishes our presence; a channel that is not joined (and not joining) asks for a rebuild.
+ * Returns true when a rebuild is needed.
+ */
+function checkPresenceHealth(handles: PresenceHandle[], userId: string): boolean {
+  let rebuild = false;
+  for (const handle of handles) {
+    const entry = presenceEntries.get(handle.roomId);
+    if (!entry || entry.channel !== handle.channel) { rebuild = true; continue; }
+    const state = entry.channel.state;
+    if (state === 'joined') {
+      if (!(userId in entry.channel.presenceState())) {
+        void entry.channel.track(entry.payload);
+        const users = presenceUsers(entry.channel);
+        entry.listeners.forEach((listener) => listener(handle.roomId, users));
+      }
+    } else if (state !== 'joining') {
+      rebuild = true;
+    }
+  }
+  return rebuild;
 }
 
 function releasePresence(handle: PresenceHandle): Promise<void> {
@@ -224,6 +259,14 @@ export function usePresenceChannels({
   const applyState = (rid: string, users: UserSummary[]) =>
     setPresenceByRoom((prev) => ({ ...prev, [rid]: users }));
 
+  // Bounded retry after a failed join (up to 5 tries, 3 s apart); a success resets it.
+  const retriesRef = useRef(0);
+  const retryLater = () => {
+    if (retriesRef.current >= 5) return;
+    retriesRef.current += 1;
+    setTimeout(() => setRefreshTick((tick) => tick + 1), 3000);
+  };
+
   // ── Permanent channels: MAIN (always) + ANCHOR (if ≠ main) ──────────────────
   // Deps intentionally exclude activeRoomId so these never re-mount on navigation.
   useEffect(() => {
@@ -233,16 +276,23 @@ export function usePresenceChannels({
     const handles: PresenceHandle[] = [];
 
     void (async () => {
-      const main = await acquirePresence(mainRoomId, user.id, payload, applyState);
-      if (cancelled) { void releasePresence(main); return; }
-      mainRef.current = main.channel;
-      handles.push(main);
+      try {
+        const main = await acquirePresence(mainRoomId, user.id, payload, applyState);
+        if (cancelled) { void releasePresence(main); return; }
+        mainRef.current = main.channel;
+        handles.push(main);
+        retriesRef.current = 0;
 
-      if (anchorRoomId !== mainRoomId) {
-        const anchor = await acquirePresence(anchorRoomId, user.id, payload, applyState);
-        if (cancelled) { void releasePresence(anchor); return; }
-        anchorRef.current = anchor.channel;
-        handles.push(anchor);
+        if (anchorRoomId !== mainRoomId) {
+          const anchor = await acquirePresence(anchorRoomId, user.id, payload, applyState);
+          if (cancelled) { void releasePresence(anchor); return; }
+          anchorRef.current = anchor.channel;
+          handles.push(anchor);
+        }
+      } catch (error) {
+        // A failed subscribe used to leave the user silently absent: log it and retry (bounded).
+        console.warn('[presence] could not join the room channels:', error);
+        retryLater();
       }
     })();
 
@@ -263,10 +313,15 @@ export function usePresenceChannels({
     let handle: PresenceHandle | null = null;
 
     void (async () => {
-      const h = await acquirePresence(visitedRoomId, user.id, payload, applyState);
-      if (cancelled) { void releasePresence(h); return; }
-      handle = h;
-      visitedRef.current = h.channel;
+      try {
+        const h = await acquirePresence(visitedRoomId, user.id, payload, applyState);
+        if (cancelled) { void releasePresence(h); return; }
+        handle = h;
+        visitedRef.current = h.channel;
+      } catch (error) {
+        console.warn('[presence] could not join the visited room channel:', error);
+        retryLater();
+      }
     })();
 
     return () => {
@@ -276,6 +331,40 @@ export function usePresenceChannels({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visitedRoomId, user?.id, payload, entryVisible, refreshTick]);
+
+  // ── Watchdog: heal a channel that is silently dead or that does not list us ────
+  // Every 20 s: a joined channel missing our own key re-publishes our presence; a channel that is neither
+  // joined nor joining (or never got created) is rebuilt. This is what keeps "0 people here" / a missing own
+  // avatar from lasting after a socket hiccup.
+  const watchedRef = useRef({ mainRoomId, anchorRoomId, visitedRoomId });
+  watchedRef.current = { mainRoomId, anchorRoomId, visitedRoomId };
+  const missedRef = useRef(0);
+  useEffect(() => {
+    if (!isSupabaseConfigured || entryVisible || !payload || !user) return undefined;
+    const timer = setInterval(() => {
+      const w = watchedRef.current;
+      const wanted: Array<[string | null | undefined, RealtimeChannel | null]> = [
+        [w.mainRoomId, mainRef.current],
+        [w.anchorRoomId !== w.mainRoomId ? w.anchorRoomId : null, anchorRef.current],
+        [w.visitedRoomId, visitedRef.current],
+      ];
+      const handles: PresenceHandle[] = [];
+      let missing = false;
+      for (const [roomId, channel] of wanted) {
+        if (!roomId) continue;
+        if (!channel) { missing = true; continue; }
+        handles.push({ roomId, channel, listener: applyState });
+      }
+      // A channel that should exist but is still not there on two consecutive checks is rebuilt.
+      missedRef.current = missing ? missedRef.current + 1 : 0;
+      if (checkPresenceHealth(handles, user.id) || missedRef.current >= 2) {
+        missedRef.current = 0;
+        setRefreshTick((tick) => tick + 1);
+      }
+    }, 20_000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryVisible, payload, user?.id]);
 
   // ── AppState: re-track on foreground; rebuild any dropped channel ───────────
   useEffect(() => {

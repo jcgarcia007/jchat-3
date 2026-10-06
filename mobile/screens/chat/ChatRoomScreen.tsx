@@ -1182,10 +1182,14 @@ export default function ChatRoomScreen() {
   // ── Tap user → anchored quick card (long-press still opens the full sheet) ──
   const handleUserPress = useCallback(
     (userId: string, displayName: string, anchor: UserAnchor) => {
-      if (userId === user?.id) return; // Can't action yourself
+      // Your own avatar has no actions (follow / DM / block yourself): it opens your profile instead of doing nothing.
+      if (userId === user?.id) {
+        navigation.navigate('UserProfile', { userId });
+        return;
+      }
       setQuickCard({ visible: true, userId, userName: displayName, anchor });
     },
-    [user?.id],
+    [user?.id, navigation],
   );
 
   // Report: the card / action sheet hand the target over, then the reason picker opens
