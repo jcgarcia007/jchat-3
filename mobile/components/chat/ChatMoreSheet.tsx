@@ -59,7 +59,7 @@ export function ChatMoreSheet({
           <Row icon={<IconSettings size={22} color={c.textPrimary} />} label={t('moreSheet.ownerSettings')} onPress={run(onOwnerSettings)} color={c.textPrimary} border={c.borderSubtle} />
         ) : null}
         {!isOwner && inVenue ? (
-          <Row icon={<IconDoorExit size={22} color={c.danger} />} label={t('venueSession.leave')} onPress={run(onLeaveVenue)} color={c.danger} border={c.borderSubtle} />
+          <Row testID="venue-leave" icon={<IconDoorExit size={22} color={c.danger} />} label={t('venueSession.leave')} onPress={run(onLeaveVenue)} color={c.danger} border={c.borderSubtle} />
         ) : null}
 
         <Pressable onPress={onClose} accessibilityRole="button" style={styles.cancel}>
@@ -76,7 +76,9 @@ function Row({
   onPress,
   color,
   border,
+  testID,
 }: {
+  testID?: string;
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
@@ -85,6 +87,7 @@ function Row({
 }): React.ReactElement {
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => [styles.row, { borderBottomColor: border, opacity: pressed ? 0.7 : 1 }]}

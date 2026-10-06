@@ -148,6 +148,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
           ) : null}
 
           <Pressable
+            testID={`menu-add-${item.id}`}
             onPress={handleAdd}
             style={({ pressed }) => [
               styles.addButton,

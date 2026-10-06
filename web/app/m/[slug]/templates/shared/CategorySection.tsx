@@ -39,11 +39,13 @@ export function getDietaryLabels(t: (key: string) => string): Record<string, str
 
 function AddButton({
   hasOptions,
+  itemName,
   justAdded,
   onClick,
   floating,
 }: {
   hasOptions: boolean;
+  itemName: string;
   justAdded: boolean;
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   floating?: boolean;
@@ -55,7 +57,7 @@ function AddButton({
     <button
       type="button"
       onClick={onClick}
-      aria-label={hasOptions ? t("customizeAria") : t("addToCartAria")}
+      aria-label={hasOptions ? t("customizeAria") : t("addItemAria", { name: itemName })}
       style={{
         width: 30,
         height: 30,
@@ -228,6 +230,7 @@ export function ItemCard({
           <div style={{ position: "absolute", top: 8, right: 8, zIndex: 6 }}>
             <AddButton
               hasOptions={hasOptions}
+              itemName={item.name}
               justAdded={justAdded}
               onClick={handleAddClick}
               floating
@@ -349,6 +352,7 @@ export function ItemCard({
             {!soldOut && (
               <AddButton
                 hasOptions={hasOptions}
+                itemName={item.name}
                 justAdded={justAdded}
                 onClick={handleAddClick}
               />

@@ -110,6 +110,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
   return (
     <Pressable
       ref={ref}
+      testID={`chat-person-${user.id}`}
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={t('topBar.userTapA11y', { name: displayName })}

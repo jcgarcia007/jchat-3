@@ -71,7 +71,9 @@ function Cell({
   borderColor,
   onPress,
   last,
+  testID,
 }: {
+  testID?: string;
   icon: React.ReactNode;
   label: string;
   labelColor: string;
@@ -81,6 +83,7 @@ function Cell({
 }) {
   return (
     <TouchableOpacity
+      testID={testID}
       style={[styles.cell, !last && { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: borderColor }]}
       onPress={onPress}
       accessibilityRole="button"
@@ -227,7 +230,7 @@ export default function UserQuickCard({
             <View style={[styles.gridRow, { borderTopColor: c.borderSubtle }]}>
               {!viewerIsOwner && giftAvailable && onSendGift ? (
                 // Regular users: "Gift" replaces "Mute" (only while both are present at the venue).
-                <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.gift')}
+                <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.gift')} testID="quick-card-gift"
                   icon={<IconGift size={18} color={c.textPrimary} strokeWidth={1.8} />}
                   onPress={() => onSendGift(targetUserId, targetName)} />
               ) : (

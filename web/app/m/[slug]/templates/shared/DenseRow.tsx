@@ -204,7 +204,7 @@ export function DenseRow({
           type="button"
           onClick={handleAdd}
           disabled={soldOut}
-          aria-label={hasOptions ? t("customizeAria") : t("addToCartAria")}
+          aria-label={hasOptions ? t("customizeAria") : t("addItemAria", { name: item.name })}
           style={{
             width: 32,
             height: 32,

@@ -209,12 +209,14 @@ interface ActionRowProps {
   destructive?: boolean;
   loading?: boolean;
   c: ThemeColors;
+  testID?: string;
 }
 
-function ActionRow({ icon, label, onPress, destructive = false, loading = false, c }: ActionRowProps) {
+function ActionRow({ icon, label, onPress, destructive = false, loading = false, c, testID }: ActionRowProps) {
   const s = rowStyles(c);
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={loading}
       accessibilityRole="button"
@@ -548,6 +550,7 @@ export function UserActionSheet({
                   c={c}
                   icon={<IconGift size={20} color={c.textSecondary} />}
                   label={t('userAction.sendGift')}
+                  testID="user-action-gift"
                   onPress={() => onSendGift(targetUserId, targetName)}
                 />
               ) : null}

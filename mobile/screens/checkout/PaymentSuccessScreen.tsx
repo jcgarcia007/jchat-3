@@ -284,6 +284,7 @@ export default function PaymentSuccessScreen() {
 
         {/* ── View the order (primary CTA) ──────────────────────────────── */}
         <Pressable
+          testID="success-view-order"
           style={[styles.backBtn, { backgroundColor: c.brand }]}
           onPress={handleViewOrder}
           accessibilityLabel={orderId ? t('success.viewOrderA11y') : t('success.viewMyOrdersA11y')}
@@ -296,6 +297,7 @@ export default function PaymentSuccessScreen() {
 
         {/* ── Back ──────────────────────────────────────────────────────── */}
         <Pressable
+          testID="success-back"
           onPress={handleBackToChat}
           accessibilityLabel={roomId ? t('success.backToChatA11y') : t('success.doneA11y')}
           accessibilityRole="button"

@@ -1396,6 +1396,7 @@ export default function ChatRoomScreen() {
                   loaded first, so a fast tap can't race past it (see handleEnter's guard). */}
               {geoGate.gateStatus === 'idle' && (
                 <Pressable
+                  testID="chat-enter"
                   onPress={handleEnter}
                   disabled={initialLoading}
                   accessibilityRole="button"
@@ -1442,6 +1443,7 @@ export default function ChatRoomScreen() {
                   </Text>
                   <View style={gateStyles.outsideButtons}>
                     <Pressable
+                      testID="chat-geo-retry"
                       onPress={handleEnter}
                       accessibilityRole="button"
                       style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brand, opacity: pressed ? 0.82 : 1 }]}
@@ -1451,6 +1453,7 @@ export default function ChatRoomScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
+                      testID="chat-geo-menu"
                       onPress={handleMenuPress}
                       accessibilityRole="button"
                       style={({ pressed }) => [gateStyles.outsideBtn, { borderWidth: 1, borderColor: themeColors.borderSubtle, opacity: pressed ? 0.82 : 1 }]}

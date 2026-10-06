@@ -460,6 +460,7 @@ export default function DMChatScreen() {
         </Text>
         {giftAvailable && giftBusinessId && meta?.otherUserId ? (
           <Pressable
+            testID="dm-gift-button"
             onPress={() => setGiftOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={tg('gift.buttonA11y', { name: meta.otherName ?? '' })}

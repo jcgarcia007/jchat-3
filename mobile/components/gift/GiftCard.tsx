@@ -154,6 +154,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
       {canRespond ? (
         <View style={styles.actions}>
           <Pressable
+            testID="gift-decline"
             onPress={() => void decline()}
             disabled={busy}
             accessibilityRole="button"
@@ -162,6 +163,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
             <Text style={[styles.actionLabel, { color: c.textPrimary }]}>{t('giftCard.decline')}</Text>
           </Pressable>
           <Pressable
+            testID="gift-accept"
             onPress={() => setAcceptOpen(true)}
             disabled={busy}
             accessibilityRole="button"
