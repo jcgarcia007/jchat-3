@@ -18,7 +18,8 @@ import BusinessCard from '../../components/nearby/BusinessCard';
 import NearbyFilters from '../../components/nearby/NearbyFilters';
 import { useNearbyBusinesses } from '../../hooks/useNearbyBusinesses';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
-import type { NearbyBusiness } from '../../services/nearby';
+import { haversineMeters } from '../../services/geofence';
+import { formatDistanceLabel, type NearbyBusiness } from '../../services/nearby';
 import { useThemeColors } from '../../theme/colors';
 
 export default function NearbyScreen() {
@@ -32,11 +33,15 @@ export default function NearbyScreen() {
     navigation.navigate('ChatRoom', { id: business.main_room_id ?? business.id });
   }, [navigation]);
 
+  const { position } = nearby;
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<NearbyBusiness>) => (
-      <BusinessCard item={item} onEnter={enterBusiness} />
-    ),
-    [enterBusiness],
+    ({ item }: ListRenderItemInfo<NearbyBusiness>) => {
+      const withDistance = position && typeof item.lat === 'number' && typeof item.lng === 'number'
+        ? { ...item, distanceLabel: formatDistanceLabel(haversineMeters(position.lat, position.lng, item.lat, item.lng)) }
+        : item;
+      return <BusinessCard item={withDistance} onEnter={enterBusiness} />;
+    },
+    [enterBusiness, position],
   );
 
   if (nearby.loading) {

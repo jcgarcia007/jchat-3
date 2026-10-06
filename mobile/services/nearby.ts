@@ -13,6 +13,8 @@ export interface NearbyBusiness {
   hours: BusinessHours | null;
   room_count: number;
   main_room_id?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   /** Present only after a real distance source is connected. */
   distanceLabel?: string | null;
   /** Present only after a live presence source is connected. */
@@ -122,7 +124,7 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
 
   const { data: businesses, error } = await supabase
     .from('businesses')
-    .select('id, name, slug, category, address, icon_emoji, hours')
+    .select('id, name, slug, category, address, icon_emoji, hours, lat, lng')
     .eq('status', 'verified')
     .order('name');
 
@@ -156,6 +158,8 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
     address: string | null;
     icon_emoji: string | null;
     hours: unknown;
+    lat: number | null;
+    lng: number | null;
   }) => ({
     id: business.id,
     name: business.name,
@@ -164,7 +168,15 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
     address: business.address,
     icon_emoji: business.icon_emoji,
     hours: (business.hours as BusinessHours) ?? null,
+    lat: typeof business.lat === 'number' ? business.lat : null,
+    lng: typeof business.lng === 'number' ? business.lng : null,
     room_count: countMap[business.id] ?? 0,
     main_room_id: mainRoomMap[business.id] ?? null,
   }));
+}
+
+/** "250 m" under 1 km, "1.4 km" from there on. */
+export function formatDistanceLabel(meters: number): string {
+  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
 }
