@@ -64,7 +64,7 @@ export async function loadUserSettings(userId: string): Promise<Partial<UserSett
     ? data.settings as Record<string, unknown>
     : {};
 
-  return {
+  const loaded = {
     language: data?.language === 'es' ? 'es' : data?.language === 'en' ? 'en' : undefined,
     notifWork: typeof dbSettings.notifWork === 'boolean' ? dbSettings.notifWork : undefined,
     notifSocial: typeof dbSettings.notifSocial === 'boolean' ? dbSettings.notifSocial : undefined,
@@ -78,6 +78,8 @@ export async function loadUserSettings(userId: string): Promise<Partial<UserSett
     matchAgeMin: isAge(dbSettings.matchAgeMin) ? dbSettings.matchAgeMin : undefined,
     matchAgeMax: isAge(dbSettings.matchAgeMax) ? dbSettings.matchAgeMax : undefined,
   };
+  // Missing values are omitted (not explicit undefined) so spreading over the defaults keeps them.
+  return Object.fromEntries(Object.entries(loaded).filter(([, v]) => v !== undefined)) as Partial<UserSettings>;
 }
 
 export async function updateMySettings(patch: SettingsPatch): Promise<Record<string, unknown>> {
