@@ -26,8 +26,10 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -224,6 +226,13 @@ export default function DMChatScreen() {
   const { t: tm } = useTranslation('match');
   const { t: tg } = useTranslation('chat');
   const insets = useSafeAreaInsets();
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKeyboardHeight(Math.max(0, Dimensions.get('screen').height - e.endCoordinates.screenY)));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setAndroidKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
   const { user } = useAuth();
@@ -434,8 +443,11 @@ export default function DMChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: c.bgBase }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { backgroundColor: c.bgBase, paddingBottom: androidKeyboardHeight }]}
+      // iOS: KeyboardAvoidingView. Android: the window is not resized (edge-to-edge) and KeyboardAvoidingView's
+      // 'height' mode over-corrected and left a grey strip once the keyboard closed, so the keyboard height is
+      // applied as bottom padding instead (androidKeyboardHeight).
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={insets.bottom}
     >
       {/* Header */}
@@ -554,7 +566,7 @@ export default function DMChatScreen() {
           {
             backgroundColor: c.bgSurface,
             borderTopColor: c.borderSubtle,
-            paddingBottom: insets.bottom + 8,
+            paddingBottom: (androidKeyboardHeight > 0 ? 0 : insets.bottom) + 8,
           },
         ]}
       >
