@@ -48,7 +48,7 @@ import {
 import { IconMapPin, IconX } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -230,6 +230,8 @@ export default function ChatRoomScreen() {
   // The entry notice shows once per venue session: re-opening a minimized chat skips it.
   const venue = useVenueSession();
   const [entryVisible, setEntryVisible] = useState(() => venue.session?.roomId !== rootRoomId);
+  // The entry/gate sheet is a native Modal: it floats above any screen pushed on top (e.g. the pick-up menu on iOS).
+  const screenFocused = useIsFocused();
   const [incognitoState, setIncognitoState] = useState<IncognitoState>({ enabled: false, nickname: '' });
   const [incognitoError, setIncognitoError] = useState<string | undefined>(undefined);
   /** Locked after entering — cannot change mid-session. */
@@ -1340,7 +1342,7 @@ export default function ChatRoomScreen() {
     return (
       <SafeAreaView style={[gateStyles.safeArea, { backgroundColor: themeColors.bgBase }]}>
         <Modal
-          visible
+          visible={screenFocused}
           transparent
           animationType="slide"
           onRequestClose={handleBack}

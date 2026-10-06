@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -26,8 +27,23 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 type WebRoute = RouteProp<MainStackParamList, 'MenuWebPreview'>;
 type WebNav = NativeStackNavigationProp<MainStackParamList, 'MenuWebPreview'>;
 
-/** The WebView may only navigate inside our own domain. */
-const WEB_ORIGIN_WHITELIST = ['https://jchat.cloud', 'https://*.jchat.cloud'];
+const OWN_DOMAIN = /^https:\/\/([a-z0-9-]+\.)*jchat\.cloud(\/|$|\?)/i;
+
+/**
+ * The WebView's top-level page may only navigate inside our own domain; anything else opens in the
+ * system browser. Sub-frames (the Stripe.js iframe the web menu loads from js.stripe.com) are page
+ * content, not navigation: on iOS they reach this callback too, and must NOT be sent to Safari.
+ * `originWhitelist` is therefore wide open — react-native-webview applies it to every request,
+ * sub-frames included, and would itself open the non-matching ones with Linking before this runs.
+ */
+const WEB_ORIGIN_WHITELIST = ['*'];
+
+function shouldStartLoad(request: { url: string; isTopFrame?: boolean }): boolean {
+  if (request.url === 'about:blank' || OWN_DOMAIN.test(request.url)) return true;
+  if (request.isTopFrame === false) return true;
+  void Linking.openURL(request.url).catch(() => undefined);
+  return false;
+}
 
 // What the web sends when the user taps "Continuar al pago" in app mode
 // (web/app/m/[slug]/MenuPageClient.tsx). It is UNTRUSTED input: validated before use.
@@ -226,7 +242,7 @@ export default function MenuWebPreviewScreen() {
             onError={() => { setLoading(false); setError(true); }}
             onMessage={handleMessage}
             originWhitelist={WEB_ORIGIN_WHITELIST}
-            onShouldStartLoadWithRequest={(request) => /^https:\/\/([a-z0-9-]+\.)*jchat\.cloud(\/|$|\?)/i.test(request.url) || request.url === 'about:blank'}
+            onShouldStartLoadWithRequest={shouldStartLoad}
           />
           {loading && (
             <View style={[styles.loadingOverlay, { backgroundColor: c.bgBase }]}>
