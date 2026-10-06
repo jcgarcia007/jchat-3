@@ -130,6 +130,8 @@
     "tipLabelPercent": "Propina ({{value}}%)",
     "payA11y": "Pagar {{amount}} con Face ID",
     "payButton": "Pagar {{amount}} con Face ID",
+    "payA11yPlain": "Pagar {{amount}}",
+    "payButtonPlain": "Pagar {{amount}}",
     "securedByStripe": "Protegido por Stripe",
     "quoteError": "No pudimos obtener el precio exacto. Revisa tu conexión e inténtalo de nuevo.",
     "orderPickup": "Pedir para recoger",

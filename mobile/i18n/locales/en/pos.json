@@ -130,6 +130,8 @@
     "tipLabelPercent": "Tip ({{value}}%)",
     "payA11y": "Pay {{amount}} with Face ID",
     "payButton": "Pay {{amount}} with Face ID",
+    "payA11yPlain": "Pay {{amount}}",
+    "payButtonPlain": "Pay {{amount}}",
     "securedByStripe": "Secured by Stripe",
     "quoteError": "We couldn't get the exact price. Check your connection and try again.",
     "orderPickup": "Order for pick-up",

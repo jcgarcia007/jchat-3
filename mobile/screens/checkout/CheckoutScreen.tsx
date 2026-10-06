@@ -46,10 +46,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authenticateAsync } from 'expo-local-authentication';
-import { canUseBiometrics, isBiometricEnabled } from '../../services/biometric';
+import { biometricKind, canUseBiometrics, isBiometricEnabled } from '../../services/biometric';
 
 import {
   IconArrowLeft,
@@ -368,6 +368,25 @@ export default function CheckoutScreen() {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  // The button says "with Face ID" only when paying will really ask for it: biometrics turned on in
+  // Settings AND available on the device (same test as handlePay) AND the method is facial.
+  const [payWithFaceId, setPayWithFaceId] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void (async () => {
+        let face = false;
+        try {
+          face = (await isBiometricEnabled()) && (await canUseBiometrics()) && (await biometricKind()) === 'face';
+        } catch {
+          face = false;
+        }
+        if (alive) setPayWithFaceId(face);
+      })();
+      return () => { alive = false; };
+    }, []),
+  );
 
   // Animated scale for pay button press
   const payBtnScale = useRef(new Animated.Value(1)).current;
@@ -977,14 +996,14 @@ export default function CheckoutScreen() {
                 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={quote ? t('checkout.payA11y', { amount: formatCents(quote.total_cents) }) : t('checkout.payWaitingA11y')}
+              accessibilityLabel={quote ? t(payWithFaceId ? 'checkout.payA11y' : 'checkout.payA11yPlain', { amount: formatCents(quote.total_cents) }) : t('checkout.payWaitingA11y')}
               accessibilityState={{ disabled: payDisabled }}
             >
               {processing || quoteLoading ? (
                 <ActivityIndicator color={palette.bgSurfaceLight} size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {quote ? t('checkout.payButton', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') }) : t('checkout.payWaiting')}
+                  {quote ? t(payWithFaceId ? 'checkout.payButton' : 'checkout.payButtonPlain', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') }) : t('checkout.payWaiting')}
                 </Text>
               )}
             </Pressable>
