@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#08070C";
 const ACCENT = "#C9A96A"; // gold
@@ -108,8 +109,7 @@ export default function MagazineCover({
         }}
       >
         {heroPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={heroPhoto}
             alt={item.name}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
@@ -348,8 +348,7 @@ export default function MagazineCover({
               }}
             >
               {src ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <MenuImg
                   src={src}
                   alt={it.name}
                   style={{

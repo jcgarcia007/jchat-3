@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#000000";
 const ACCENT = "#FF5A1F";
@@ -233,8 +234,7 @@ function ReelFrame({
     >
       {/* Background photo */}
       {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={photoUrl}
           alt={item.name}
           style={{

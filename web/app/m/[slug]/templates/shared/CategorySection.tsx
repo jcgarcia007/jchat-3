@@ -7,6 +7,7 @@ import { getCategoryIcon } from "@/lib/categoryIcons";
 import { buildEffectStyles, type CardEffect } from "./effects";
 import { fmtPrice } from "./format";
 import type { PublicMenuCategory, PublicMenuItem } from "../../page";
+import MenuImg from "./MenuImg";
 
 // Item-card rendering system — moved verbatim from MenuPageClient.
 // Reused by every category-based template.
@@ -164,8 +165,7 @@ export function ItemCard({
       <div style={{ ...photoWrapStyle, flexShrink: 0 }}>
         {/* Image or placeholder */}
         {primaryUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={primaryUrl} alt="" style={imgStyle} />
+          <MenuImg src={primaryUrl} alt="" style={imgStyle} />
         ) : (
           <div
             style={{
@@ -406,8 +406,7 @@ export function CategorySection({
         }}
       >
         {category.icon_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={category.icon_url}
             alt=""
             style={{

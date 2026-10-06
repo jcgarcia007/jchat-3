@@ -8,6 +8,7 @@ import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * IconRail (#03 Right-Hand Icon Rail). Categories live on a permanent thumb-side
@@ -153,8 +154,7 @@ export default function IconRail({
                 }}
               >
                 {cat.icon_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <MenuImg
                     src={cat.icon_url}
                     alt=""
                     style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }}

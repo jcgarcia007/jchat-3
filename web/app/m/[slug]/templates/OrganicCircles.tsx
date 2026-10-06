@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#FFF0F4";
 const TEXT = "#8A2B4A";
@@ -297,8 +298,7 @@ function CircleCard({
       {/* Circle container */}
       <div style={{ position: "relative", width: 148, height: 148, flexShrink: 0 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

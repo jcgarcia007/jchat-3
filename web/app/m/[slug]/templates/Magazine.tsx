@@ -7,6 +7,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Magazine (#11 Magazine Layout). The menu as an editorial issue: a masthead, a
@@ -36,8 +37,7 @@ function ArticleItem({
   return (
     <div>
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={item.photo_url}
           alt={item.name}
           style={{ width: "100%", height: 92, objectFit: "cover", borderRadius: 4, display: "block" }}
@@ -160,8 +160,7 @@ export default function Magazine({
           {t("magazineFeaturedLabel")}
         </div>
         {featured.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={featured.photo_url} alt={featured.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 6, display: "block" }} />
+          <MenuImg src={featured.photo_url} alt={featured.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 6, display: "block" }} />
         ) : (
           <div style={{ width: "100%", height: 220, borderRadius: 6, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
         )}

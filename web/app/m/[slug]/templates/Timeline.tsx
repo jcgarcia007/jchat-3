@@ -6,6 +6,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Timeline (#14 Timeline Menu). The menu organized by time, not type: a tasting
@@ -144,8 +145,7 @@ export default function Timeline({
                 }}
               >
                 {item.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.photo_url} alt={item.name} style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+                  <MenuImg src={item.photo_url} alt={item.name} style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 64, height: 64, borderRadius: 10, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍽️</div>
                 )}

@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * CardStack (#17 Card Stack Navigation). The food truck's whole menu as a deck:
@@ -124,8 +125,7 @@ export default function CardStack({
                   >
                     <div style={{ position: "relative", height: 260 }}>
                       {item.photo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <MenuImg src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       ) : (
                         <div style={{ width: "100%", height: "100%", background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46 }}>🍽️</div>
                       )}

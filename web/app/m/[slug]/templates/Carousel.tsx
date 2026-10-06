@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Carousel (#09 Horizontal Product Carousel). One product at a time, sideways: a
@@ -145,8 +146,7 @@ export default function Carousel({
               }}
             >
               {item.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 16, display: "block" }} />
+                <MenuImg src={item.photo_url} alt={item.name} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 16, display: "block" }} />
               ) : (
                 <div style={{ width: "100%", height: 220, borderRadius: 16, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>🍽️</div>
               )}

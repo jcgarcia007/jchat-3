@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#120D0A";
 const SURFACE = "#211812";
@@ -227,8 +228,7 @@ export default function SpotlightStage({
         }}
       >
         {heroPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={heroPhoto}
             alt={hero.name}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
@@ -390,8 +390,7 @@ export default function SpotlightStage({
             >
               <div style={{ position: "relative", height: 104 }}>
                 {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={src} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                  <MenuImg src={src} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <div style={{ position: "absolute", inset: 0, background: "#2A1F18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🍜</div>
                 )}

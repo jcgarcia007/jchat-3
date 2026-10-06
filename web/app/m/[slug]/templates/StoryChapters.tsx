@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#1C1812";
 const SURFACE = "#242018";
@@ -214,8 +215,7 @@ function ChapterPage({ item, pageNum, isFaved, onFav, onAdd, t, accent, text, mu
       {/* Thumbnail */}
       {photoUrl ? (
         <div style={{ width: 68, height: 68, borderRadius: 10, overflow: "hidden", flexShrink: 0, position: "relative" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
       ) : (
         <div style={{ width: 68, height: 68, borderRadius: 10, background: "#2A241E", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📖</div>

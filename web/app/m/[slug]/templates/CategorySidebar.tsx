@@ -8,6 +8,7 @@ import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * CategorySidebar (#05 Vertical Category Sidebar). Grocery-app pattern: a
@@ -93,8 +94,7 @@ export default function CategorySidebar({
                 }}
               >
                 {cat.icon_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cat.icon_url} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+                  <MenuImg src={cat.icon_url} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
                 ) : TablerIcon ? (
                   <TablerIcon size={24} stroke={1.5} style={{ color: "currentColor" }} />
                 ) : (

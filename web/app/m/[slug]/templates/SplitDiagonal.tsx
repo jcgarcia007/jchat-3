@@ -8,6 +8,7 @@ import type { PublicMenuCategory, PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * SplitDiagonal (#25) — each item is a wide band where the photo occupies one
@@ -93,8 +94,7 @@ function SplitCard({
         }}
       >
         {primaryUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={primaryUrl}
             alt={item.name}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -264,8 +264,7 @@ function CategoryHeader({ category }: { category: PublicMenuCategory }) {
       }}
     >
       {category.icon_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={category.icon_url}
           alt=""
           style={{

@@ -8,6 +8,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * FullscreenType (#06 Full-Screen Menu Takeover). The menu IS the interface:
@@ -34,8 +35,7 @@ function CourseTile({
   return (
     <div style={{ flexShrink: 0, width: 150 }}>
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.photo_url} alt={item.name} style={{ width: 150, height: 110, objectFit: "cover", borderRadius: 10, display: "block" }} />
+        <MenuImg src={item.photo_url} alt={item.name} style={{ width: 150, height: 110, objectFit: "cover", borderRadius: 10, display: "block" }} />
       ) : (
         <div style={{ width: 150, height: 110, borderRadius: 10, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🍽️</div>
       )}

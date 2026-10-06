@@ -24,6 +24,7 @@ import { fmtPrice } from "./shared/format";
 import { getBadgeConfig } from "./shared/CategorySection";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 // ── Design constants (board #35 faithful) ──────────────────────────────────
 const BG = "#FBF6EE";
@@ -289,8 +290,7 @@ function ArchCard({
         }}
       >
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

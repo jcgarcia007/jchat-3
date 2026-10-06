@@ -8,6 +8,7 @@ import type { PublicMenuCategory, PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Polaroid (#26) — 2-column grid of "instant photo" cards.
@@ -88,8 +89,7 @@ function PolaroidCard({
           }}
         >
           {primaryUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <MenuImg
               src={primaryUrl}
               alt={item.name}
               style={{
@@ -232,8 +232,7 @@ function CategoryHeader({ category }: { category: PublicMenuCategory }) {
       }}
     >
       {category.icon_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={category.icon_url}
           alt=""
           style={{

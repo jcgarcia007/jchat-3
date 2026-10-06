@@ -8,6 +8,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * AiPersonalized (#18 AI-Personalized Menu). The menu re-ranks itself per person:
@@ -121,8 +122,7 @@ function RankedCard({
   return (
     <div style={{ display: "flex", gap: 12, background: P.surfaceElevated, border: `1px solid ${P.border}`, borderRadius: 16, padding: 10 }}>
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.photo_url} alt={item.name} style={{ width: 66, height: 66, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+        <MenuImg src={item.photo_url} alt={item.name} style={{ width: 66, height: 66, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
       ) : (
         <div style={{ width: 66, height: 66, borderRadius: 12, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>🍽️</div>
       )}

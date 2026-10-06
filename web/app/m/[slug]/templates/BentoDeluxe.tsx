@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#FAFAFA";
 const SURFACE = "#FFFFFF";
@@ -234,8 +235,7 @@ function BentoHero({ item, isFaved, onFav, onAdd, t }: {
       {/* Photo */}
       <div style={{ position: "relative", height: 220 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: ACCENT_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🍽️</div>
         )}
@@ -283,8 +283,7 @@ function BentoPairCard({ item, isFaved, onFav, onAdd, t }: {
     <div style={{ borderRadius: 14, overflow: "hidden", background: SURFACE, border: `0.5px solid ${BORDER}`, boxShadow: "0 1px 6px rgba(15,23,42,.05)" }}>
       <div style={{ position: "relative", height: 130 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: ACCENT_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🍴</div>
         )}
@@ -327,8 +326,7 @@ function BentoTrioCard({ item, isFaved, onFav, onAdd, t }: {
     <div style={{ borderRadius: 12, overflow: "hidden", background: SURFACE, border: `0.5px solid ${BORDER}` }}>
       <div style={{ position: "relative", height: 90 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: ACCENT_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>🍽</div>
         )}

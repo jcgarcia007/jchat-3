@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#F6F1EA";
 const CARD_BG = "#FFFFFF";
@@ -283,8 +284,7 @@ function FramedCard({
         {/* Photo — fixed height 190px */}
         <div style={{ position: "relative", width: "100%", height: 190, overflow: "hidden" }}>
           {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <MenuImg
               src={photoUrl}
               alt={item.name}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}

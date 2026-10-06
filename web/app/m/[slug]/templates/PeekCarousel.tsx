@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 // ── Design constants (board #27 faithful) ──────────────────────────────────
 const BG = "#0B1020";
@@ -246,8 +247,7 @@ function PeekCard({
       {/* Photo area — 62% of card height (flex-basis) */}
       <div style={{ position: "relative", flex: "0 0 62%" }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

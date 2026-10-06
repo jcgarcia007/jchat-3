@@ -8,6 +8,7 @@ import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
 import type { MenuPalette } from "./shared/palettes";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * GlassChips (#07 Floating Category Chips). Imagery goes edge-to-edge in a
@@ -43,8 +44,7 @@ function FullBleedCard({
       }}
     >
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={item.photo_url}
           alt={item.name}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}

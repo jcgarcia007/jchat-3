@@ -9,6 +9,7 @@ import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * HeroList (#24) — per category: the first item shown as a full-bleed hero
@@ -69,8 +70,7 @@ function HeroCard({
     >
       {/* Photo or placeholder */}
       {primaryUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={primaryUrl}
           alt={item.name}
           style={{
@@ -248,8 +248,7 @@ export default function HeroList({
               }}
             >
               {cat.icon_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <MenuImg
                   src={cat.icon_url}
                   alt=""
                   style={{

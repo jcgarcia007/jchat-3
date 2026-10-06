@@ -22,6 +22,7 @@ import { fmtPrice } from "./shared/format";
 import { getBadgeConfig } from "./shared/CategorySection";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#0E0E10";
 const ACCENT = "#FFC93C"; // yellow
@@ -354,8 +355,7 @@ function FilmFrame({
     >
       {/* Photo */}
       {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={photoUrl}
           alt={item.name}
           style={{

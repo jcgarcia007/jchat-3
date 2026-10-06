@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./format";
 import { getBadgeConfig, getDietaryLabels } from "./CategorySection";
 import type { PublicMenuItem } from "../../page";
+import MenuImg from "./MenuImg";
 
 /**
  * Optional per-template color overrides. Any field left undefined falls back to
@@ -80,8 +81,7 @@ export function DenseRow({
     >
       {/* Thumbnail */}
       {thumbSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={thumbSrc}
           alt={item.name}
           style={{

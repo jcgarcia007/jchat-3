@@ -6,6 +6,7 @@ import type { PublicMenuCategory } from "../page";
 import { ItemCard } from "./shared/CategorySection";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Bento (#23) — per-category CSS grid with variable-span cells.
@@ -53,8 +54,7 @@ export default function Bento({
             }}
           >
             {cat.icon_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <MenuImg
                 src={cat.icon_url}
                 alt=""
                 style={{

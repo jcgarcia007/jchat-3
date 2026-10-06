@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import type { CardEffect } from "./shared/effects";
 import { CategorySection } from "./shared/CategorySection";
 import { EmptyMenu } from "./shared/EmptyMenu";
+import MenuImg from "./shared/MenuImg";
 
 // CategoryNav — sticky top chips. Classic-template specific (moved verbatim).
 function CategoryNav({
@@ -77,8 +78,7 @@ function CategoryNav({
               }}
             >
               {cat.icon_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <MenuImg
                   src={cat.icon_url}
                   alt=""
                   style={{

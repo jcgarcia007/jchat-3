@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#0A1628";
 const SURFACE = "#112240";
@@ -189,8 +190,7 @@ export default function FullBleedSwipe({
             >
               {/* Photo */}
               {photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ position: "absolute", inset: 0, background: SURFACE, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 90 }}>🐟</div>
               )}

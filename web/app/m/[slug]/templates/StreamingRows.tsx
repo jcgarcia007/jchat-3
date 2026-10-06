@@ -7,6 +7,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * StreamingRows (#13 Streaming-Style Rows). Concessions browsed like a streaming
@@ -35,8 +36,7 @@ function LandscapeTile({
     <div style={{ flexShrink: 0, width: 200 }}>
       <div style={{ position: "relative", borderRadius: 10, overflow: "hidden" }}>
         {item.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.photo_url} alt={item.name} style={{ width: 200, height: 112, objectFit: "cover", display: "block" }} />
+          <MenuImg src={item.photo_url} alt={item.name} style={{ width: 200, height: 112, objectFit: "cover", display: "block" }} />
         ) : (
           <div style={{ width: 200, height: 112, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
         )}

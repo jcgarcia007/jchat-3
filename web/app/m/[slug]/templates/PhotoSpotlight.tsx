@@ -24,6 +24,7 @@ import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 // ── Design constants (board #31 faithful) ──────────────────────────────────
 const BG = "#0A0A0A";
@@ -124,8 +125,7 @@ export default function PhotoSpotlight({
         }}
       >
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

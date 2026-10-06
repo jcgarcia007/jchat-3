@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#FDFAF5";
 const ACCENT = "#4A7C3B"; // leaf green
@@ -89,8 +90,7 @@ export default function CurvedHero({
         }}
       >
         {heroPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={heroPhoto}
             alt={business.name}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
@@ -319,8 +319,7 @@ function CurvedItem({
       {/* Photo */}
       {photoUrl ? (
         <div style={{ width: 64, height: 64, borderRadius: 16, overflow: "hidden", flexShrink: 0, position: "relative" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
       ) : (
         <div style={{ width: 64, height: 64, borderRadius: 16, background: "#E4EAE0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🌱</div>

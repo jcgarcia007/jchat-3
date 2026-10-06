@@ -7,6 +7,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * InfiniteFeed (#08 Infinite Vertical Feed). Built for a stadium seat: NO
@@ -43,8 +44,7 @@ function Billboard({
     >
       <div style={{ position: "relative", height: 180 }}>
         {item.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={item.photo_url}
             alt={item.name}
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}

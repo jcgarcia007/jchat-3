@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Gesture (#16 Gesture-Based Navigation). Almost no chrome: one dish on stage at
@@ -96,8 +97,7 @@ export default function Gesture({
         <button type="button" onClick={prevItem} aria-label={t("gesturePrevDishAria")} style={stepBtn}>⌃</button>
         <div style={{ margin: "12px 0" }}>
           {item.photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.photo_url} alt={item.name} style={{ width: 240, height: 240, borderRadius: "50%", objectFit: "cover", boxShadow: "0 30px 60px rgba(0,0,0,0.4)" }} />
+            <MenuImg src={item.photo_url} alt={item.name} style={{ width: 240, height: 240, borderRadius: "50%", objectFit: "cover", boxShadow: "0 30px 60px rgba(0,0,0,0.4)" }} />
           ) : (
             <div style={{ width: 240, height: 240, borderRadius: "50%", background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>🍽️</div>
           )}

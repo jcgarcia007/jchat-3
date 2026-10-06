@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#FAF7F2";
 const SURFACE = "#FFFFFF";
@@ -184,8 +185,7 @@ function MosaicCard({ item, isFaved, onFav, onAdd, t, accent, text, muted, borde
       {/* Photo with diagonal clip on bottom */}
       <div style={{ position: "relative", height: 120, flexShrink: 0 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

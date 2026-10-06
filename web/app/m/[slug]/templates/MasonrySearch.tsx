@@ -8,6 +8,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * MasonrySearch (#10 Pinterest Masonry · Search First). Discovery over
@@ -43,8 +44,7 @@ function MasonryCard({
       }}
     >
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "auto", display: "block" }} />
+        <MenuImg src={item.photo_url} alt={item.name} style={{ width: "100%", height: "auto", display: "block" }} />
       ) : (
         <div style={{ width: "100%", height: 120, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
       )}

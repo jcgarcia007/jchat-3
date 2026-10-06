@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#111111";
 const SURFACE = "#1E1E1E";
@@ -305,8 +306,7 @@ function PosterCard({
     >
       {/* Photo */}
       {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={photoUrl}
           alt={item.name}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}

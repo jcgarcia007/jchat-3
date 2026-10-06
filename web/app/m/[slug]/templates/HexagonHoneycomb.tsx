@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#F2F7F0";
 const TEXT = "#1D3524";
@@ -299,8 +300,7 @@ function HexCard({
       {/* Hexagon container — 150 × 168 as per board */}
       <div style={{ position: "relative", width: 150, height: 168, flexShrink: 0 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={photoUrl}
             alt={item.name}
             style={{

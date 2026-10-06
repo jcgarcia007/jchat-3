@@ -52,12 +52,13 @@ import StickyHeroSheet from "./StickyHeroSheet";
 import TopArcDial from "./TopArcDial";
 import BentoDeluxe from "./BentoDeluxe";
 import type { MenuTemplateProps } from "./types";
+import { MenuImgProvider } from "./shared/MenuImg";
 
 /**
  * Routes menu_template_id to its template component. Non-ported ids fall back
  * to "classic" (JChat's current default layout).
  */
-export default function MenuTemplateRenderer({
+function MenuTemplateSwitch({
   templateId,
   ...props
 }: MenuTemplateProps & { templateId: string }) {
@@ -167,4 +168,12 @@ export default function MenuTemplateRenderer({
     default:
       return <Classic {...props} />;
   }
+}
+
+export default function MenuTemplateRenderer(props: MenuTemplateProps & { templateId: string }) {
+  return (
+    <MenuImgProvider>
+      <MenuTemplateSwitch {...props} />
+    </MenuImgProvider>
+  );
 }

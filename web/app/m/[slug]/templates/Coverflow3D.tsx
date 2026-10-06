@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#0C0C14";
 const SURFACE = "#16162A";
@@ -278,8 +279,7 @@ export default function Coverflow3D({
                   }}
                 >
                   {photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <MenuImg
                       src={photoUrl}
                       alt={item.name}
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}

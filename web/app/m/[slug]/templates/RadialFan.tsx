@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#1A0F04";
 const SURFACE = "#241606";
@@ -255,8 +256,7 @@ function FanItem({ item, isFaved, onFav, onAdd, t, accent, text, muted, faint, c
       {/* Thumbnail */}
       <div style={{ width: 64, height: 64, borderRadius: 14, overflow: "hidden", flexShrink: 0, position: "relative" }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: "#3A2510", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🫓</div>
         )}

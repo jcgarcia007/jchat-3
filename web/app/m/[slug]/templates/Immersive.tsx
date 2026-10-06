@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Immersive (#19 Immersive Full-Screen). Each dish owns the entire viewport in a
@@ -161,8 +162,7 @@ export default function Immersive({
           return (
             <div key={item.id} style={{ position: "relative", height: "100%", scrollSnapAlign: "start", overflow: "hidden" }}>
               {item.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.photo_url} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                <MenuImg src={item.photo_url} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ position: "absolute", inset: 0, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🍽️</div>
               )}

@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const BG = "#F8F7F5";
 const SURFACE = "#FFFFFF";
@@ -184,8 +185,7 @@ function FeatureCard({ item, isFaved, onFav, onAdd, t, accent, muted }: {
       {/* Photo */}
       <div style={{ position: "relative", height: 210, background: "#E8E4DD" }}>
         {photoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         )}
         {/* Featured badge */}
         <div style={{ position: "absolute", top: 12, left: 12, background: accent, color: "#fff", fontSize: 9, fontWeight: 900, letterSpacing: "1.5px", padding: "4px 10px", borderRadius: 99, textTransform: "uppercase" }}>
@@ -233,8 +233,7 @@ function GridCard({ item, isFaved, onFav, onAdd, t, accent, text, muted, border 
       {/* Photo */}
       <div style={{ position: "relative", height: 120 }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: "#F0EBE3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🍳</div>
         )}

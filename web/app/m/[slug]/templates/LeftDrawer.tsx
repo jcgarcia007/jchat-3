@@ -9,6 +9,7 @@ import type { MenuTemplateProps } from "./types";
 import { DenseRow } from "./shared/DenseRow";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * LeftDrawer (#02 Left Drawer Navigation). A hamburger opens a slide-in left
@@ -218,8 +219,7 @@ export default function LeftDrawer({
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
                   {cat.icon_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <MenuImg
                       src={cat.icon_url}
                       alt=""
                       style={{ width: 18, height: 18, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
@@ -273,8 +273,7 @@ export default function LeftDrawer({
                   }}
                 >
                   {cat.icon_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <MenuImg
                       src={cat.icon_url}
                       alt=""
                       style={{

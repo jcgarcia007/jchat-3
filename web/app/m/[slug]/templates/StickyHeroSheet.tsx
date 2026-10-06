@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import { fmtPrice } from "./shared/format";
 import type { MenuTemplateProps } from "./types";
 import type { PublicMenuItem } from "../page";
+import MenuImg from "./shared/MenuImg";
 
 const NAVY = "#1A2332";
 const SHEET_BG = "#FFFFFF";
@@ -83,8 +84,7 @@ export default function StickyHeroSheet({
         }}
       >
         {heroUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <MenuImg
             src={heroUrl}
             alt={business.name}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
@@ -226,8 +226,7 @@ function SheetItem({ item, isFaved, onFav, onAdd, t, accent, text, muted, border
       {/* Photo */}
       <div style={{ width: 70, height: 70, borderRadius: 14, overflow: "hidden", flexShrink: 0, position: "relative", background: sheetElevated }}>
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <MenuImg src={photoUrl} alt={item.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🦞</div>
         )}

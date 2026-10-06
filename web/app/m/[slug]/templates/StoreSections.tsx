@@ -7,6 +7,7 @@ import type { PublicMenuItem } from "../page";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * StoreSections (#12 Store-Style Sections). Retail / hotel room-service feel: a
@@ -33,8 +34,7 @@ function ShelfTile({
   return (
     <div style={{ flexShrink: 0, width: 148 }}>
       {item.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <MenuImg
           src={item.photo_url}
           alt={item.name}
           style={{ width: 148, height: 108, borderRadius: 16, objectFit: "cover", display: "block" }}

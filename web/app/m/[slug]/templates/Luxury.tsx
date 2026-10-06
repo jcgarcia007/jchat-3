@@ -7,6 +7,7 @@ import type { MenuTemplateProps } from "./types";
 import { EmptyMenu } from "./shared/EmptyMenu";
 import { fmtPrice } from "./shared/format";
 import { useMenuPalette } from "./shared/paletteContext";
+import MenuImg from "./shared/MenuImg";
 
 /**
  * Luxury (#20 Experimental Luxury). Anti-density as a statement: one numbered
@@ -100,8 +101,7 @@ export default function Luxury({
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingLeft: 12 }}>
           <div style={{ position: "relative", width: "100%", maxWidth: 260 }}>
             {hero.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={hero.photo_url} alt={hero.name} style={{ width: "100%", height: 240, objectFit: "cover", borderRadius: 8, display: "block" }} />
+              <MenuImg src={hero.photo_url} alt={hero.name} style={{ width: "100%", height: 240, objectFit: "cover", borderRadius: 8, display: "block" }} />
             ) : (
               <div style={{ width: "100%", height: 240, borderRadius: 8, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🍽️</div>
             )}
@@ -163,8 +163,7 @@ export default function Luxury({
               style={{ flexShrink: 0, width: 66, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "center" }}
             >
               {it.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={it.photo_url} alt={it.name} style={{ width: 66, height: 66, objectFit: "cover", borderRadius: 6, display: "block", opacity: 0.75 }} />
+                <MenuImg src={it.photo_url} alt={it.name} style={{ width: 66, height: 66, objectFit: "cover", borderRadius: 6, display: "block", opacity: 0.75 }} />
               ) : (
                 <div style={{ width: 66, height: 66, borderRadius: 6, background: P.surfaceElevated, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🍽️</div>
               )}
