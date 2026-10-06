@@ -46,6 +46,15 @@ interface MatchDeckSectionProps {
   onUploadPhoto: () => void;
 }
 
+/** Runs `run` once when it mounts (the end-of-deck screen appearing). */
+function RunOnMount({ run }: { run: () => void }): null {
+  useEffect(() => {
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 export function MatchDeckSection({
   businessId,
   onMatch,
@@ -75,6 +84,8 @@ export function MatchDeckSection({
   const [reviewing, setReviewing] = useState(false);
   const [relikeBusyId, setRelikeBusyId] = useState<string | null>(null);
   const leftScreenRef = useRef(false);
+  // Swipes of this visit, newest last: an undo takes the last one back (and out of the review list if it was a pass).
+  const swipedRef = useRef<{ card: MatchCard; action: SwipeAction }[]>([]);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showNotice = useCallback((message: string) => {
@@ -147,6 +158,11 @@ export function MatchDeckSection({
         const result = await matchSwipe(businessId, card.id, action);
         if (result.super_left != null) setSuperLeft(result.super_left);
         if (result.swiped && result.is_match) onMatch(card, result);
+        if (result.swiped) {
+          swipedRef.current.push({ card, action });
+          // The review list must include what I pass in THIS visit, not only what load() saw on mount.
+          if (action === 'pass') setPassed((prev) => [card, ...prev.filter((p) => p.id !== card.id)]);
+        }
         return true; // swiped=false means "already swiped": the card is gone either way
       } catch (err) {
         const code = matchErrorCode(err);
@@ -161,6 +177,10 @@ export function MatchDeckSection({
   const handleUndo = useCallback(async (): Promise<boolean> => {
     try {
       const result = await matchUndoLast(businessId);
+      if (result.undone) {
+        const last = swipedRef.current.pop();
+        if (last?.action === 'pass') setPassed((prev) => prev.filter((p) => p.id !== last.card.id));
+      }
       return result.undone;
     } catch {
       showNotice(t('deck.errors.generic'));
@@ -205,11 +225,26 @@ export function MatchDeckSection({
     [showNotice, t],
   );
 
+  // Reaching the end of the deck: take the authoritative list from the server (the local additions above
+  // keep it right meanwhile; this also drops anyone who has since left the venue).
+  const refreshPassed = useCallback(async () => {
+    try {
+      const fresh = await getMatchPassed(businessId);
+      const urls = await signedPhotoUrls(fresh.flatMap((card) => card.photos.slice(0, 1)));
+      setPassed(fresh);
+      setPhotoUrls((prev) => ({ ...prev, ...urls }));
+    } catch {
+      // keep the local list
+    }
+  }, [businessId]);
+
   // End of deck: "Review the ones I passed (N)" is the main action when there are any; then "Back to
   // chat", the new-people switch and a "View my activity" link.
   const hasPassed = passed.length > 0;
   const endContent = (
-    <MatchStateView
+    <>
+      <RunOnMount run={() => void refreshPassed()} />
+      <MatchStateView
       title={t('deck.endTitle')}
       message={t('deck.endHint')}
       primary={
@@ -230,7 +265,8 @@ export function MatchDeckSection({
           accessibilityLabel={t('deck.notifyNewPeople')}
         />
       </View>
-    </MatchStateView>
+      </MatchStateView>
+    </>
   );
 
   if (loading) {
