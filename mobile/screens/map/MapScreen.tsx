@@ -321,7 +321,7 @@ export default function MapScreen() {
         {filtered.map((b) => (
           <BusinessPin
             key={b.id}
-            business={{ id: b.id, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, status: b.status, activeCount: b.activeCount }}
+            business={{ id: b.id, name: b.name, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, status: b.status, activeCount: b.activeCount }}
             onPress={() => setSelected(b)}
           />
         ))}

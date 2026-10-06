@@ -39,6 +39,8 @@ export type HeatLevel = 'cool' | 'mild' | 'warm' | 'hot';
 export interface BusinessPinBusiness {
   /** Unique business identifier. */
   id: string;
+  /** Business name — the pin's accessibility label (VoiceOver / UI tests). */
+  name?: string;
   /** Latitude coordinate. */
   lat: number;
   /** Longitude coordinate. */
@@ -147,6 +149,10 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
       calloutAnchor={TEARDROP_CALL_ANCHOR}
       onPress={() => onPress(business)}
       tracksViewChanges={false}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={business.name || undefined}
+      testID={`map-pin-${business.id}`}
     >
       {/* Outer wrapper gives the Marker a sized container */}
       <View
