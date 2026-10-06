@@ -45,5 +45,6 @@
     "photosErrorMessage": "Check JChat's photo permissions and try again.",
     "cameraErrorTitle": "We couldn't open the camera",
     "cameraErrorMessage": "Check JChat's camera permissions and try again."
-  }
+  },
+  "sendMessage": "Send message"
 }

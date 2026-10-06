@@ -45,5 +45,6 @@
     "photosErrorMessage": "Revisa los permisos de fotos de JChat e inténtalo de nuevo.",
     "cameraErrorTitle": "No pudimos abrir la cámara",
     "cameraErrorMessage": "Revisa los permisos de cámara de JChat e inténtalo de nuevo."
-  }
+  },
+  "sendMessage": "Enviar mensaje"
 }

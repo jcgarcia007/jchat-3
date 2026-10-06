@@ -462,8 +462,11 @@ export default function DMChatScreen() {
         ]}
       >
         <TouchableOpacity
+          testID="dm-back"
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel={tc('back')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
@@ -622,6 +625,9 @@ export default function DMChatScreen() {
               opacity: sending ? 0.6 : 1,
             },
           ]}
+          testID="dm-send"
+          accessibilityRole="button"
+          accessibilityLabel={tc('sendMessage')}
           onPress={handleSendText}
           disabled={text.trim().length === 0 || sending || waitingForReply}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

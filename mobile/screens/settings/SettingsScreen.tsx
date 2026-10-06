@@ -498,6 +498,7 @@ export default function SettingsScreen() {
         ]}
       >
         <Pressable
+          testID="settings-back"
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
