@@ -25,8 +25,10 @@ import {
   MEGAPHONE_PAGE_SIZE,
   fetchMegaphoneFeed,
   getFeedCoords,
+  getLastKnownFeedCoords,
   type MegaphoneItem,
 } from '../../services/megaphone';
+import { haversineMeters } from '../../services/geofence';
 import { likePost, unlikePost } from '../../services/posts';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { useThemeColors } from '../../theme/colors';
@@ -67,23 +69,40 @@ export default function OffersScreen() {
   const lastLoadedAtRef = useRef(0);
   const likesInFlightRef = useRef(new Set<string>());
 
-  /** First page. Also re-reads the position (without ever prompting for permission). */
+  /**
+   * First page. It does NOT wait for the position: it paints with the last known one (or none) and, when the
+   * fresh fix arrives, refreshes in the background if it moved the feed (new coordinates or none before).
+   * Never prompts for permission.
+   */
   const loadFirst = useCallback(async () => {
     const requestId = ++requestRef.current;
     firstLoadPendingRef.current = true;
-    try {
-      const coords = await getFeedCoords();
-      const rows = await fetchMegaphoneFeed({
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
-        radiusMiles,
-      });
-      if (requestId !== requestRef.current) return;
+    const fix = getFeedCoords();
+    const apply = (coords: { lat: number; lng: number } | null, rows: MegaphoneItem[]) => {
       coordsRef.current = coords;
       setHasLocation(coords !== null);
       setItems(rows);
       setHasMore(rows.length === MEGAPHONE_PAGE_SIZE);
       lastLoadedAtRef.current = Date.now();
+    };
+    try {
+      const initial = coordsRef.current ?? (await getLastKnownFeedCoords());
+      const rows = await fetchMegaphoneFeed({ lat: initial?.lat ?? null, lng: initial?.lng ?? null, radiusMiles });
+      if (requestId !== requestRef.current) return;
+      apply(initial, rows);
+
+      // Background refresh once the fresh fix is in (not awaited: pull-to-refresh and the spinner end now).
+      void fix.then(async (fresh) => {
+        if (!fresh || requestId !== requestRef.current) return;
+        const moved = !initial || haversineMeters(initial.lat, initial.lng, fresh.lat, fresh.lng) > 250;
+        if (!moved) return;
+        try {
+          const freshRows = await fetchMegaphoneFeed({ lat: fresh.lat, lng: fresh.lng, radiusMiles });
+          if (requestId === requestRef.current) apply(fresh, freshRows);
+        } catch (error) {
+          console.warn('[megaphone] refresh with fresh position failed:', error);
+        }
+      });
     } catch (error) {
       console.warn('[megaphone] fetch error:', error);
     } finally {

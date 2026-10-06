@@ -1,3 +1,5 @@
+import * as Location from 'expo-location';
+
 import { getCurrentPosition, hasForegroundPermission } from './geofence';
 import { isSupabaseConfigured, supabase } from './supabase';
 
@@ -85,5 +87,19 @@ export async function getFeedCoords(): Promise<{ lat: number; lng: number } | nu
     return null;
   } finally {
     if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * Last position the OS already has (instant, no GPS wait), or null. Never prompts for permission.
+ * The feed paints with it while a fresh fix is still being read.
+ */
+export async function getLastKnownFeedCoords(): Promise<{ lat: number; lng: number } | null> {
+  try {
+    if (!(await hasForegroundPermission())) return null;
+    const last = await Location.getLastKnownPositionAsync();
+    return last ? { lat: last.coords.latitude, lng: last.coords.longitude } : null;
+  } catch {
+    return null;
   }
 }
