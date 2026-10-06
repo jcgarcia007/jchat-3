@@ -357,7 +357,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
       setNoticeSending(false);
       if (result.ok) {
         closeNoticeSheet();
-        Alert.alert(t('tracking.noticeSent'));
+        const body = kind === 'question'
+          ? (note?.trim() ?? '')
+          : t(kind === 'on_my_way' ? 'tracking.noticeOnMyWay' : 'tracking.noticeArrived');
+        Alert.alert(t('tracking.noticeSent'), body || undefined);
         return;
       }
       Alert.alert(t('shared.errorTitle'), t(`tracking.noticeErr.${result.error}`));
