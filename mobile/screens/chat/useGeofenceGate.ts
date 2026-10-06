@@ -24,12 +24,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { requestForegroundPermission, getCurrentPosition, type Coords } from '../../services/geofence';
+import {
+  requestForegroundPermission,
+  hasForegroundPermission,
+  getCurrentPosition,
+  type Coords,
+} from '../../services/geofence';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min while open+foreground
 const GRACE_DURATION_MS = 2 * 60 * 1000; // §3.3 of the design doc: warn, then 2 min to return
 const GRACE_RECHECK_INTERVAL_MS = 20 * 1000; // check more often during grace to detect "back inside" promptly
 const GRACE_COUNTDOWN_TICK_MS = 1000;
+/** A resume from the background re-checks only if the last automatic check is at least this old. */
+export const RESUME_RECHECK_MIN_GAP_MS = 60 * 1000;
 
 /** Rounds to whole meters below 1000 m, otherwise one decimal of km. */
 export function formatDistanceM(distanceM: number): string {
@@ -70,15 +77,21 @@ export interface GeoCheckResult {
  * network hiccup degrades to a result object instead of an unhandled crash.
  * "Degrade with security, not permissiveness": any unexpected failure here
  * falls through to `unavailable` (no access), never a silent grant.
+ *
+ * Permission: automatic checks (heartbeat, resume, re-opening the chat) only READ the permission
+ * state — on Android a request launches the system permission activity, which sends the app
+ * inactive → active and re-triggers the check in a loop. Only a user action (`interactive`:
+ * Enter, Retry, Allow location) may show the system prompt.
  */
 export async function runGeoCheck(
   roomId: string,
   onReading?: (coords: Coords) => void,
+  opts: { interactive?: boolean } = {},
 ): Promise<GeoCheckResult> {
   try {
     let permitted: boolean;
     try {
-      permitted = await requestForegroundPermission();
+      permitted = opts.interactive ? await requestForegroundPermission() : await hasForegroundPermission();
     } catch {
       return { granted: false, reason: 'permission_denied', distanceM: null };
     }
@@ -115,6 +128,29 @@ export async function runGeoCheck(
     return { granted: false, reason: 'unavailable', distanceM: null };
   } catch {
     return { granted: false, reason: 'unavailable', distanceM: null };
+  }
+}
+
+let autoChecksInFlight = 0;
+let lastAutoCheckAt = 0;
+
+/**
+ * An automatic (non-interactive) check shared by every owner of a heartbeat: never two at once, and
+ * with `minGapMs` skipped when the previous one is too recent. Resolves null when skipped.
+ */
+export async function runAutoGeoCheck(
+  roomId: string,
+  onReading?: (coords: Coords) => void,
+  minGapMs = 0,
+): Promise<GeoCheckResult | null> {
+  if (autoChecksInFlight > 0) return null;
+  if (minGapMs > 0 && Date.now() - lastAutoCheckAt < minGapMs) return null;
+  autoChecksInFlight += 1;
+  lastAutoCheckAt = Date.now();
+  try {
+    return await runGeoCheck(roomId, onReading);
+  } finally {
+    autoChecksInFlight -= 1;
   }
 }
 
@@ -204,9 +240,10 @@ export function useGeofenceGate({
    * Self-referential (starts the grace timers, which call this again) — safe
    * because by the time any timer fires, this const is already fully bound.
    */
-  const performBackgroundCheck = useCallback(async () => {
+  const performBackgroundCheck = useCallback(async (minGapMs = 0) => {
     if (AppState.currentState !== 'active') return; // never read GPS while backgrounded
-    const result = await runGeoCheck(roomIdRef.current, handleReading);
+    const result = await runAutoGeoCheck(roomIdRef.current, handleReading, minGapMs);
+    if (!result) return; // another check is running, or this one is too soon after the last
 
     if (result.granted) {
       if (graceDeadlineRef.current != null) clearGrace(); // was in grace, back inside → cancel
@@ -250,7 +287,7 @@ export function useGeofenceGate({
     }
     setGateStatus('checking');
     setOutsideDistanceM(null);
-    const result = await runGeoCheck(roomIdRef.current, handleReading);
+    const result = await runGeoCheck(roomIdRef.current, handleReading, { interactive: true });
     if (result.granted) {
       setGateStatus('idle');
       return true;
@@ -274,9 +311,9 @@ export function useGeofenceGate({
 
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
-        // Resumed foreground — re-check immediately rather than waiting for
-        // the next scheduled tick, so a stale "outside" state resolves fast.
-        void performBackgroundCheck();
+        // Resumed foreground — re-check rather than waiting for the next scheduled tick, so a stale
+        // "outside" state resolves fast; throttled so brief inactive→active flips don't re-check.
+        void performBackgroundCheck(RESUME_RECHECK_MIN_GAP_MS);
       }
       // Background: do nothing. No GPS read happens — performBackgroundCheck
       // itself guards on AppState.currentState === 'active'.

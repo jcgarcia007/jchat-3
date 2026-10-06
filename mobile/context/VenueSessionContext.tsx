@@ -24,7 +24,7 @@ import { Alert, AppState } from 'react-native';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
-import { runGeoCheck } from '../screens/chat/useGeofenceGate';
+import { runAutoGeoCheck, RESUME_RECHECK_MIN_GAP_MS } from '../screens/chat/useGeofenceGate';
 import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 import { getMatchActivity } from '../services/matchDeck';
 import { matchLeaveVenue } from '../services/match';
@@ -187,12 +187,15 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const businessId = session?.businessId ?? null;
   const roomId = session?.roomId ?? null;
 
-  const heartbeat = useCallback(async (mustPass: boolean) => {
+  const heartbeat = useCallback(async (mustPass: boolean, minGapMs = 0) => {
     const current = sessionRef.current;
     if (!current || AppState.currentState !== 'active') return;
-    const result = await runGeoCheck(current.roomId, (coords) =>
-      setMatchReading({ lat: coords.lat, lng: coords.lng, mocked: coords.mocked === true }),
+    const result = await runAutoGeoCheck(
+      current.roomId,
+      (coords) => setMatchReading({ lat: coords.lat, lng: coords.lng, mocked: coords.mocked === true }),
+      minGapMs,
     );
+    if (!result) return; // another check is running, or too soon after the last one
     if (sessionRef.current?.businessId !== current.businessId) return; // changed meanwhile
     if (result.granted) {
       if (matchActiveRef.current) void runMatchCheckIn(current.businessId, current.roomId);
@@ -215,9 +218,9 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       }
       const away = backgroundedAtRef.current != null ? Date.now() - backgroundedAtRef.current : 0;
       backgroundedAtRef.current = null;
-      // Long absence: verify even if the chat is open (it re-checks too, harmlessly).
-      if (away > STALE_AFTER_MS) void heartbeat(true);
-      else if (!chatMountedRef.current) void heartbeat(false);
+      // One owner at a time: while the chat is mounted its own gate re-checks on resume.
+      if (chatMountedRef.current) return;
+      void heartbeat(away > STALE_AFTER_MS, away > STALE_AFTER_MS ? 0 : RESUME_RECHECK_MIN_GAP_MS);
     });
     return () => {
       clearInterval(timer);
