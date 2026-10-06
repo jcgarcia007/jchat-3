@@ -36,6 +36,7 @@ import {
 } from '../../services/matchProfile';
 import type { MatchCard as MatchCardData, MatchPhoto } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
+import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchMyProfile'>;
 
@@ -152,9 +153,9 @@ export default function MatchMyProfileScreen() {
       };
       const result =
         source === 'camera'
-          ? await ImagePicker.launchCameraAsync(options)
-          : await ImagePicker.launchImageLibraryAsync({ ...options, legacy: true });
-      const uri = !result.canceled ? result.assets[0]?.uri : undefined;
+          ? await safeLaunchCamera(options)
+          : await safeLaunchLibrary({ ...options, legacy: true });
+      const uri = result && !result.canceled ? result.assets[0]?.uri : undefined;
       if (!uri) return;
       await run(() => addMatchPhoto(user.id, uri, photos.length), 'profile.photos.uploadError');
     },

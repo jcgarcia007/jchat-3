@@ -72,6 +72,7 @@ import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector'
 // The screen is registered in AppNavigator separately (Task 1.8 wire-up).
 import { useNavigation } from '@react-navigation/native';
 import { toUserMessage } from '../../utils/errors';
+import { safeLaunchLibrary } from '../../utils/safePicker';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ export default function EditProfileScreen(): React.JSX.Element {
     const granted = await requestMediaPermission();
     if (!granted) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await safeLaunchLibrary({
       mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
@@ -246,7 +247,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
+    if (result && !result.canceled && result.assets.length > 0) {
       setAvatarUri(result.assets[0].uri);
     }
   }, []);
@@ -255,7 +256,7 @@ export default function EditProfileScreen(): React.JSX.Element {
     const granted = await requestMediaPermission();
     if (!granted) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await safeLaunchLibrary({
       mediaTypes: 'images',
       allowsEditing: true,
       aspect: [16, 9],
@@ -263,7 +264,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
+    if (result && !result.canceled && result.assets.length > 0) {
       setCoverUri(result.assets[0].uri);
     }
   }, []);

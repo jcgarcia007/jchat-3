@@ -43,6 +43,7 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { createPost, removePostMedia, uploadPostMedia } from '../../services/posts';
 import { toUserMessage } from '../../utils/errors';
+import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
 
 // ── constants ───────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export default function CreatePostScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await safeLaunchLibrary({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,
@@ -138,7 +139,7 @@ export default function CreatePostScreen() {
       preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
 
-    if (result.canceled) return;
+    if (!result || result.canceled) return;
 
     const newAssets: SelectedAsset[] = result.assets.map((a) => ({
       key: `${a.uri}-${Date.now()}-${Math.random()}`,
@@ -157,13 +158,13 @@ export default function CreatePostScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
+    const result = await safeLaunchCamera({
       mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
     });
 
-    if (result.canceled) return;
+    if (!result || result.canceled) return;
 
     const a = result.assets[0];
     setAssets((prev) =>

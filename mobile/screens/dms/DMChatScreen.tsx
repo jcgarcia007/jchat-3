@@ -82,6 +82,7 @@ import { useMatchSafety } from '../../components/match/MatchSafety';
 import { getChatMeta, isAwaitingReplyError } from '../../services/matchChat';
 import type { ChatMeta } from '../../services/matchChat';
 import { getMatchPresence } from '../../services/matchPresence';
+import { safeLaunchLibrary } from '../../utils/safePicker';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -375,12 +376,12 @@ export default function DMChatScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await safeLaunchLibrary({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
     });
 
-    if (result.canceled || result.assets.length === 0) return;
+    if (!result || result.canceled || result.assets.length === 0) return;
 
     const asset = result.assets[0];
     // Upload to the PRIVATE dm-media bucket; store the returned path in media_url

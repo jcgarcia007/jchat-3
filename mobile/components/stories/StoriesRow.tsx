@@ -60,6 +60,7 @@ import {
   type UserStories,
 } from '../../services/stories';
 import StoryViewerScreen from '../../screens/stories/StoryViewerScreen';
+import { safeLaunchLibrary } from '../../utils/safePicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,7 +164,7 @@ export default function StoriesRow({
     }
 
     // 2. Launch image picker.
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await safeLaunchLibrary({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [9, 16],
@@ -172,7 +173,7 @@ export default function StoriesRow({
 
     setCreatingStory(false);
 
-    if (result.canceled || !result.assets || result.assets.length === 0) return;
+    if (!result || result.canceled || !result.assets || result.assets.length === 0) return;
 
     const asset = result.assets[0];
     const localUri = asset.uri;

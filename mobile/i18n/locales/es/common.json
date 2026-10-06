@@ -39,5 +39,11 @@
     "permissionTitle": "Se necesita acceso al micrófono",
     "permissionMessage": "Permite el acceso al micrófono en Ajustes para grabar mensajes de voz.",
     "openSettings": "Abrir Ajustes"
+  },
+  "picker": {
+    "photosErrorTitle": "No pudimos abrir tus fotos",
+    "photosErrorMessage": "Revisa los permisos de fotos de JChat e inténtalo de nuevo.",
+    "cameraErrorTitle": "No pudimos abrir la cámara",
+    "cameraErrorMessage": "Revisa los permisos de cámara de JChat e inténtalo de nuevo."
   }
 }
