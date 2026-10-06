@@ -8,6 +8,9 @@
 #   e2e/seed-presence.sh --minutes 90
 #   e2e/seed-presence.sh --once          # a single round and exit (0 = both inside)
 #
+# NOTE: it signs in through the Auth REST API, so it only works while Supabase Auth does NOT require a CAPTCHA token for
+# password sign-in (today it does: 'captcha_failed'); nightly.sh then falls back to presence through the apps.
+#
 # Nothing secret lives in the repo: everything comes from the environment.
 #   SUPABASE_URL, SUPABASE_ANON_KEY      (or EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY)
 #   E2E_TEST_EMAIL / E2E_TEST_PASSWORD  (or E2E_USER_A_* / MAESTRO_TEST_*)  → "test"

@@ -140,19 +140,27 @@ if has_phase 3; then
     grep -q MATCH_READY "$out/seed.log" || log "warning: Match presence not 'active' yet; running 04 anyway"
     both_ok 04-repasar 04-repasar
   else
-    skip_flow android 04-repasar "no seed (E2E_USER_* / SUPABASE_*)"; skip_flow ios 04-repasar "no seed (E2E_USER_* / SUPABASE_*)"
+    # No seed (e.g. Supabase Auth has CAPTCHA on, so the REST login is refused): presence through the apps themselves.
+    # Both enter the venue and wait 5.5 min (Match turns 'active' on the 2nd geo reading), so each sees the other.
+    log "04 without seed: presence through the apps (WAIT_MATCH_MS=330000)"
+    both_ok 04-repasar 04-repasar WAIT_MATCH_MS=330000
   fi
 fi
 
-# ── 4. gift: Android sends, the iPhone answers (parallel) ──────────────────────────────────────────────────────────
+# ── 4. gift: Android sends, the iPhone answers (parallel). The iPhone starts first and is inside the venue (its entry
+#       creates the server presence the gift button checks) before Android opens the 1:1 chat 90 s later. ──────────────
+gift_pair() { # android-flow ios-flow [VAR=value ...]
+  local fa="$1" fi="$2"; shift 2
+  plat_run ios "$fi" "$@" &
+  local pi=$!
+  sleep 90
+  plat_run android "$fa" "$@" &
+  local pa=$!
+  wait "$pa" "$pi"
+}
 if has_phase 4; then
-  if [ $seed_ok = 1 ]; then
-    both_ok 05-regalo 05-regalo-ios-acepta TABLE=12
-    both_ok 06-regalo-rechazado 06-regalo-ios-rechaza
-  else
-    for f in 05-regalo 06-regalo-rechazado; do skip_flow android "$f" "no seed (E2E_USER_* / SUPABASE_*)"; done
-    for f in 05-regalo-ios-acepta 06-regalo-ios-rechaza; do skip_flow ios "$f" "no seed (E2E_USER_* / SUPABASE_*)"; done
-  fi
+  gift_pair 05-regalo 05-regalo-ios-acepta TABLE=12
+  gift_pair 06-regalo-rechazado 06-regalo-ios-rechaza
 fi
 [ -n "$seed_pid" ] && kill "$seed_pid" 2>/dev/null
 
