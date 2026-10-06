@@ -14,7 +14,13 @@
     "errorTitle": "Something went wrong",
     "errorMsg": "Please try again.",
     "gift": "Gift",
-    "moderate": "Moderate"
+    "moderate": "Moderate",
+    "following": "Following",
+    "requested": "Requested",
+    "unfollow": "Unfollow",
+    "unfollowTitle": "Unfollow {{name}}?",
+    "cancelRequest": "Cancel request",
+    "cancelRequestTitle": "Cancel your request to {{name}}?"
   },
   "input": {
     "placeholder": "Message…",

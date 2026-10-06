@@ -14,7 +14,13 @@
     "errorTitle": "Algo salió mal",
     "errorMsg": "Inténtalo de nuevo.",
     "gift": "Regalo",
-    "moderate": "Moderar"
+    "moderate": "Moderar",
+    "following": "Siguiendo",
+    "requested": "Solicitado",
+    "unfollow": "Dejar de seguir",
+    "unfollowTitle": "¿Dejar de seguir a {{name}}?",
+    "cancelRequest": "Cancelar solicitud",
+    "cancelRequestTitle": "¿Cancelar tu solicitud a {{name}}?"
   },
   "input": {
     "placeholder": "Mensaje…",

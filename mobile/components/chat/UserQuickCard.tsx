@@ -10,7 +10,7 @@
  * duration selector) via onOpenFull.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -27,6 +27,7 @@ import {
   IconUser,
   IconMessage,
   IconUserPlus,
+  IconUserCheck,
   IconBell,
   IconGift,
   IconFlag,
@@ -35,7 +36,8 @@ import {
 
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
-import { requestOrFollow } from '../../services/follows';
+import { cancelRequest, hasPendingRequestTo, requestOrFollow } from '../../services/follows';
+import { isFollowing, unfollowUser } from '../../services/users';
 import { blockUser } from '../../services/blocks';
 import type { UserAnchor } from './MessageBubble';
 
@@ -116,6 +118,23 @@ export default function UserQuickCard({
   const { t } = useTranslation('chat');
   const { user } = useAuth();
 
+  // Real follow state, read each time the card opens: the cell reads Follow / Following / Requested.
+  const [relation, setRelation] = useState<'none' | 'following' | 'requested'>('none');
+  useEffect(() => {
+    if (!visible || !user?.id || user.id === targetUserId) return;
+    let alive = true;
+    setRelation('none');
+    void (async () => {
+      try {
+        if (await isFollowing(user.id, targetUserId)) { if (alive) setRelation('following'); return; }
+        if (await hasPendingRequestTo(targetUserId) && alive) setRelation('requested');
+      } catch {
+        // Unknown state: the cell stays on "Follow"; the server decides on tap.
+      }
+    })();
+    return () => { alive = false; };
+  }, [visible, user?.id, targetUserId]);
+
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
   // Flip: show below the avatar when there's room, else above.
@@ -148,7 +167,38 @@ export default function UserQuickCard({
   const handleFollow = useCallback(() => {
     void (async () => {
       try {
+        if (relation === 'following' || relation === 'requested') {
+          const undo = async () => {
+            try {
+              if (relation === 'following') {
+                if (user?.id) await unfollowUser(user.id, targetUserId);
+              } else {
+                await cancelRequest(targetUserId);
+              }
+              setRelation('none');
+            } catch {
+              Alert.alert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
+            }
+            onClose();
+          };
+          Alert.alert(
+            relation === 'following'
+              ? t('quickCard.unfollowTitle', { name: targetName })
+              : t('quickCard.cancelRequestTitle', { name: targetName }),
+            undefined,
+            [
+              { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
+              {
+                text: relation === 'following' ? t('quickCard.unfollow') : t('quickCard.cancelRequest'),
+                style: 'destructive',
+                onPress: () => void undo(),
+              },
+            ],
+          );
+          return;
+        }
         const res = await requestOrFollow(targetUserId);
+        setRelation(res === 'following' ? 'following' : 'requested');
         Alert.alert(
           t('quickCard.follow'),
           res === 'following' ? t('quickCard.followedMsg') : t('quickCard.requestedMsg'),
@@ -158,7 +208,7 @@ export default function UserQuickCard({
       }
       onClose();
     })();
-  }, [targetUserId, t, onClose]);
+  }, [relation, user?.id, targetUserId, targetName, t, onClose]);
 
   const handleReport = useCallback(() => {
     onClose();
@@ -222,8 +272,11 @@ export default function UserQuickCard({
                 icon={<IconUser size={18} color={c.textPrimary} strokeWidth={1.8} />} onPress={handleProfile} />
               <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.dm')}
                 icon={<IconMessage size={18} color={c.textPrimary} strokeWidth={1.8} />} onPress={handleDM} />
-              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.follow')} last
-                icon={<IconUserPlus size={18} color={c.textPrimary} strokeWidth={1.8} />} onPress={handleFollow} />
+              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t(relation === 'following' ? 'quickCard.following' : relation === 'requested' ? 'quickCard.requested' : 'quickCard.follow')} last
+                testID="quick-card-follow"
+                icon={relation === 'none'
+                  ? <IconUserPlus size={18} color={c.textPrimary} strokeWidth={1.8} />
+                  : <IconUserCheck size={18} color={c.success} strokeWidth={1.8} />} onPress={handleFollow} />
             </View>
 
             {/* Row 2 */}
