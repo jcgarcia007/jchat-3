@@ -68,51 +68,108 @@ interface UsePresenceChannelsResult {
   presenceByRoom: Record<string, UserSummary[]>;
 }
 
-// Subscribe + track presence on a single room channel. Caller owns the returned
-// channel (untrack + removeChannel on cleanup). `onState` fires with the room id
-// and its live present-user list on every sync/join/leave.
-async function subscribePresence(
+type PresenceListener = (roomId: string, users: UserSummary[]) => void;
+
+interface PresenceEntry {
+  channel: RealtimeChannel;
+  refs: number;
+  listeners: Set<PresenceListener>;
+  payload: PresencePayload;
+}
+
+/** What a caller holds: release it when done (the channel is torn down with the last holder). */
+interface PresenceHandle {
+  roomId: string;
+  channel: RealtimeChannel;
+  listener: PresenceListener;
+}
+
+// Presence NEEDS a shared topic (all devices join the same `presence:<roomId>`), so unlike the
+// postgres_changes channels it can't be uniquified. supabase.channel(name) returns the EXISTING
+// channel for a topic, and .on() after subscribe() throws — so two overlapping subscribers (an effect
+// re-running while the previous run is still awaiting) crashed. Hence one channel per room, shared by
+// reference count, and every create/remove of a topic runs one at a time on a per-room queue.
+const presenceEntries = new Map<string, PresenceEntry>();
+const presenceQueues = new Map<string, Promise<unknown>>();
+
+function enqueuePresence<T>(roomId: string, task: () => Promise<T>): Promise<T> {
+  const previous = presenceQueues.get(roomId) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(task);
+  presenceQueues.set(roomId, next);
+  return next;
+}
+
+function presenceUsers(channel: RealtimeChannel): UserSummary[] {
+  const state = channel.presenceState<PresencePayload>();
+  return Object.values(state)
+    .flat()
+    .filter((p, i, arr) => arr.findIndex((x) => x.user_id === p.user_id) === i)
+    .map((p) => ({
+      id: p.user_id,
+      display_name: p.display_name,
+      avatar_url: p.avatar_url,
+      is_incognito: p.is_incognito,
+      nickname: p.nickname ?? undefined,
+    }));
+}
+
+// Subscribe + track presence on a room channel (shared, reference-counted). `onState` fires with the
+// room id and its live present-user list on every sync/join/leave.
+function acquirePresence(
   roomId: string,
   userId: string,
   payload: PresencePayload,
-  onState: (roomId: string, users: UserSummary[]) => void,
-): Promise<RealtimeChannel> {
-  const name = `presence:${roomId}`;
-  // Presence NEEDS a shared topic (all devices join the same one), so we can't
-  // uniquify it like the postgres_changes channels. Instead, drop any stale channel
-  // with this topic and AWAIT it: supabase.channel(name) otherwise returns the old,
-  // already-subscribed channel and .on() after subscribe() throws.
-  const stale = supabase
-    .getChannels()
-    .filter((c) => c.topic === `realtime:${name}` || c.topic === name);
-  if (stale.length > 0) {
-    await Promise.all(stale.map((c) => supabase.removeChannel(c)));
-  }
+  onState: PresenceListener,
+): Promise<PresenceHandle> {
+  return enqueuePresence(roomId, async () => {
+    const existing = presenceEntries.get(roomId);
+    if (existing) {
+      existing.refs += 1;
+      existing.listeners.add(onState);
+      existing.payload = payload;
+      void existing.channel.track(payload);
+      onState(roomId, presenceUsers(existing.channel));
+      return { roomId, channel: existing.channel, listener: onState };
+    }
 
-  const ch = supabase.channel(name, {
-    config: { presence: { key: userId } },
+    // A channel with this topic that isn't ours (stale after a reconnect) must go first.
+    const name = `presence:${roomId}`;
+    const stale = supabase.getChannels().filter((c) => c.topic === `realtime:${name}` || c.topic === name);
+    if (stale.length > 0) await Promise.all(stale.map((c) => supabase.removeChannel(c)));
+
+    const channel = supabase.channel(name, { config: { presence: { key: userId } } });
+    const entry: PresenceEntry = { channel, refs: 1, listeners: new Set([onState]), payload };
+    const rebuild = () => {
+      const users = presenceUsers(channel);
+      entry.listeners.forEach((listener) => listener(roomId, users));
+    };
+    channel
+      .on('presence', { event: 'sync' }, rebuild)
+      .on('presence', { event: 'join' }, rebuild)
+      .on('presence', { event: 'leave' }, rebuild)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') void channel.track(entry.payload);
+      });
+    presenceEntries.set(roomId, entry);
+    return { roomId, channel, listener: onState };
   });
-  const rebuild = () => {
-    const state = ch.presenceState<PresencePayload>();
-    const users: UserSummary[] = Object.values(state)
-      .flat()
-      .filter((p, i, arr) => arr.findIndex((x) => x.user_id === p.user_id) === i)
-      .map((p) => ({
-        id: p.user_id,
-        display_name: p.display_name,
-        avatar_url: p.avatar_url,
-        is_incognito: p.is_incognito,
-        nickname: p.nickname ?? undefined,
-      }));
-    onState(roomId, users);
-  };
-  ch.on('presence', { event: 'sync' }, rebuild)
-    .on('presence', { event: 'join' }, rebuild)
-    .on('presence', { event: 'leave' }, rebuild)
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') void ch.track(payload);
-    });
-  return ch;
+}
+
+function releasePresence(handle: PresenceHandle): Promise<void> {
+  return enqueuePresence(handle.roomId, async () => {
+    const entry = presenceEntries.get(handle.roomId);
+    if (!entry || entry.channel !== handle.channel) return;
+    entry.listeners.delete(handle.listener);
+    entry.refs -= 1;
+    if (entry.refs > 0) return;
+    presenceEntries.delete(handle.roomId);
+    try {
+      await entry.channel.untrack();
+    } catch {
+      // the socket may already be gone; removing the channel below is what matters
+    }
+    await supabase.removeChannel(entry.channel);
+  });
 }
 
 export function usePresenceChannels({
@@ -173,29 +230,25 @@ export function usePresenceChannels({
     if (!isSupabaseConfigured || entryVisible || !payload || !user || !mainRoomId) return;
 
     let cancelled = false;
-    const channels: RealtimeChannel[] = [];
+    const handles: PresenceHandle[] = [];
 
     void (async () => {
-      const main = await subscribePresence(mainRoomId, user.id, payload, applyState);
-      if (cancelled) { void supabase.removeChannel(main); return; }
-      mainRef.current = main;
-      channels.push(main);
+      const main = await acquirePresence(mainRoomId, user.id, payload, applyState);
+      if (cancelled) { void releasePresence(main); return; }
+      mainRef.current = main.channel;
+      handles.push(main);
 
       if (anchorRoomId !== mainRoomId) {
-        const anchor = await subscribePresence(anchorRoomId, user.id, payload, applyState);
-        if (cancelled) { void supabase.removeChannel(anchor); return; }
-        anchorRef.current = anchor;
-        channels.push(anchor);
+        const anchor = await acquirePresence(anchorRoomId, user.id, payload, applyState);
+        if (cancelled) { void releasePresence(anchor); return; }
+        anchorRef.current = anchor.channel;
+        handles.push(anchor);
       }
     })();
 
     return () => {
       cancelled = true;
-      for (const ch of channels) {
-        void ch.untrack().finally(() => {
-          void supabase.removeChannel(ch);
-        });
-      }
+      for (const handle of handles) void releasePresence(handle);
       mainRef.current = null;
       anchorRef.current = null;
     };
@@ -207,23 +260,18 @@ export function usePresenceChannels({
     if (!isSupabaseConfigured || entryVisible || !payload || !user || !visitedRoomId) return;
 
     let cancelled = false;
-    let ch: RealtimeChannel | null = null;
+    let handle: PresenceHandle | null = null;
 
     void (async () => {
-      const c = await subscribePresence(visitedRoomId, user.id, payload, applyState);
-      if (cancelled) { void supabase.removeChannel(c); return; }
-      ch = c;
-      visitedRef.current = c;
+      const h = await acquirePresence(visitedRoomId, user.id, payload, applyState);
+      if (cancelled) { void releasePresence(h); return; }
+      handle = h;
+      visitedRef.current = h.channel;
     })();
 
     return () => {
       cancelled = true;
-      if (ch) {
-        const c = ch;
-        void c.untrack().finally(() => {
-          void supabase.removeChannel(c);
-        });
-      }
+      if (handle) void releasePresence(handle);
       visitedRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
