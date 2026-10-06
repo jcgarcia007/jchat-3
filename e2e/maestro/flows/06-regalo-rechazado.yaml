@@ -4,14 +4,15 @@ appId: com.juangarciacruz.jchatapp
 env:
   VENUE: Bar XZX
   RECIPIENT: test1
-  GIFT_ITEM_1: Tacos al Pastor
-  GIFT_ITEM_2: Pizza de Trufa
+  GIFT_ITEM_1: Mini Corn Dogs
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml
 - runFlow: ../helpers/enter-venue.yaml
 # Through the 1:1 chat: the gift button only shows when the SERVER says both people are at the venue
 # (gift_available), so it also proves the recipient's presence. (Needs e2e/seed-presence.sh or the iPhone inside.)
+# the chat has no tab bar: minimize it first (the venue session stays)
+- tapOn: "Go back|Volver"
 - tapOn: "Messages|Mensajes"
 - tapOn: "${RECIPIENT}"
 - extendedWaitUntil:
@@ -24,8 +25,9 @@ env:
 - extendedWaitUntil:
     visible: "Gift for.*|Regalo para.*"
     timeout: 30000
+# two units of the same item (the gift sheet only offers the venue's gift-eligible items)
 - tapOn: "Add one ${GIFT_ITEM_1}|Añadir un ${GIFT_ITEM_1}"
-- tapOn: "Add one ${GIFT_ITEM_2}|Añadir un ${GIFT_ITEM_2}"
+- tapOn: "Add one ${GIFT_ITEM_1}|Añadir un ${GIFT_ITEM_1}"
 - assertVisible: "Send gift · 2 items.*|Enviar regalo · 2 artículos.*"
 - takeScreenshot: 02-hoja-regalo
 - tapOn: "Send gift.*|Enviar regalo.*"

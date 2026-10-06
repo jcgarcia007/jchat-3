@@ -7,11 +7,18 @@ env:
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml
 - runFlow: ../helpers/enter-venue.yaml
+# Stay in the chat (real-time presence: the sender finds this account in the people row) while the sender works.
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${RECIPIENT_WAIT_MS}
+    optional: true
+# the chat has no tab bar: minimize it first (the venue session stays)
+- tapOn: "Go back|Volver"
 - tapOn: "Messages|Mensajes"
 - tapOn: ".*test.*"
 - extendedWaitUntil:
     visible: ".*sent you a gift.*|.*te envió un regalo.*"
-    timeout: 420000   # the sender (Android, flow 05/06) is paying with the test card in parallel
+    timeout: 120000
 - takeScreenshot: 01-tarjeta-regalo
 - tapOn:
     id: "gift-decline"
