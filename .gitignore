@@ -67,3 +67,4 @@ scripts/test-*.ts
 
 # Maestro e2e outputs (screenshots, logs)
 e2e/out/
+e2e/.env.local

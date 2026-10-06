@@ -11,14 +11,17 @@ env:
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml
 - runFlow: ../helpers/enter-venue.yaml
-- tapOn: "View ${RECIPIENT}.*options|Ver opciones de ${RECIPIENT}.*"
+# Through the 1:1 chat: the gift button only shows when the SERVER says both people are at the venue
+# (gift_available), so it also proves the recipient's presence. (Needs e2e/seed-presence.sh or the iPhone inside.)
+- tapOn: "Messages|Mensajes"
+- tapOn: "${RECIPIENT}"
 - extendedWaitUntil:
     visible:
-      id: "quick-card-gift"
-    timeout: 20000
-- takeScreenshot: 01-tarjeta-rapida
+      id: "dm-gift-button"
+    timeout: 30000
+- takeScreenshot: 01-chat-privado
 - tapOn:
-    id: "quick-card-gift"
+    id: "dm-gift-button"
 - extendedWaitUntil:
     visible: "Gift for.*|Regalo para.*"
     timeout: 30000

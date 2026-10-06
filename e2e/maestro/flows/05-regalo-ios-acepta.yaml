@@ -13,7 +13,7 @@ env:
 - tapOn: ".*test.*"
 - extendedWaitUntil:
     visible: ".*sent you a gift.*|.*te envió un regalo.*"
-    timeout: 60000
+    timeout: 420000   # the sender (Android, flow 05/06) is paying with the test card in parallel
 - takeScreenshot: 01-tarjeta-regalo
 - tapOn:
     id: "gift-accept"

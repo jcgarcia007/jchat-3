@@ -1,0 +1,37 @@
+# One endurance cycle (called by flows/08-resistencia.yaml): quiet in the chat → minimize → tab hopping →
+# quiet minimized (the venue session owns the heartbeat) → reopen the chat from the bar (no entry notice).
+# Env: VENUE, QUIET_MS (set by the flow).
+# Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
+# would override the -e given on the command line, so none is declared here.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+# chat open and quiet (the chat owns the heartbeat)
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${QUIET_MS}
+    optional: true
+- assertVisible: "Open menu|Abrir menú"
+# minimize → the bar, tab hopping
+- tapOn: "Go back|Volver"
+- extendedWaitUntil:
+    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    timeout: 20000
+- tapOn: "Messages|Mensajes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Nearby|Cerca.*"
+- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+# quiet minimized
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${QUIET_MS}
+    optional: true
+- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+# reopen from the bar
+- tapOn: "Back|Volver|Back to the .* chat|Volver al chat de .*"
+- extendedWaitUntil:
+    visible: "Open menu|Abrir menú"
+    timeout: 30000
+- assertNotVisible: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"

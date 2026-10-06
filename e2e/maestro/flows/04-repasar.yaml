@@ -2,13 +2,21 @@
 # 04 — Match: pass everyone in the deck until the end → "Review the people I passed (N)".
 # Needs other people present at the venue (e.g. the iPhone account) and a build that includes the
 # native modules of reanimated / gesture-handler / worklets (the swipe deck).
+# Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
+# would override the -e given on the command line, so none is declared here.
 appId: com.juangarciacruz.jchatapp
 env:
   VENUE: Bar XZX
+  # Match turns 'active' on the SECOND geo reading, >= 5 min after the first: right after entering, wait
+  # WAIT_MATCH_MS (e.g. 330000) unless the account has already been inside for a while.
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml
 - runFlow: ../helpers/enter-venue.yaml
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${WAIT_MATCH_MS}
+    optional: true
 - tapOn: "Open attachment panel|Abrir panel de adjuntos"
 - tapOn: "Games|Juegos"
 - tapOn: "Match"

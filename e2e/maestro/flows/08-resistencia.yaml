@@ -1,0 +1,35 @@
+# location: 26.083048,-80.223725
+# 08 — Endurance (~21 min with the defaults; CYCLES 1–5): CYCLES rounds of "quiet in the chat → minimize → hop between tabs →
+# quiet minimized (the bar owns the heartbeat) → reopen the chat from the bar". The app must stay open and keep
+# the venue session the whole time. e2e/nightly.sh samples memory and counts permission prompts / restarts /
+# crashes in the background while this runs (the pass/fail of THIS flow is only "still there and still working").
+# Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
+# would override the -e given on the command line, so none is declared here.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- takeScreenshot: 00-inicio
+# `repeat: times:` does not take ${ENV}, so the cycles are unrolled (1 to 5, CYCLES picks how many).
+- runFlow: ../helpers/resistencia-ciclo.yaml
+- runFlow:
+    file: ../helpers/resistencia-ciclo.yaml
+    when:
+      true: ${Number(CYCLES) >= 2}
+- runFlow:
+    file: ../helpers/resistencia-ciclo.yaml
+    when:
+      true: ${Number(CYCLES) >= 3}
+- runFlow:
+    file: ../helpers/resistencia-ciclo.yaml
+    when:
+      true: ${Number(CYCLES) >= 4}
+- runFlow:
+    file: ../helpers/resistencia-ciclo.yaml
+    when:
+      true: ${Number(CYCLES) >= 5}
+- takeScreenshot: 99-final
+- runFlow: ../helpers/leave-venue.yaml

@@ -1,0 +1,23 @@
+# location: 26.083048,-80.223725
+# Keeps the iPhone account ("test1") INSIDE the venue for HOLD_MS (default 8 min), through the app itself:
+# enters the chat (venue session, Match opt-in by the entry notice) and stays — the session's own heartbeat
+# renews the geofence presence and takes the second Match reading. Run it in parallel with the Android flows
+# that need another person at the venue (04 Match deck, 05/06 gift). Leaves the venue at the end.
+# (Alternative without the phone: e2e/seed-presence.sh does the same on the server with the two accounts.)
+# Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
+# would override the -e given on the command line, so none is declared here.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- takeScreenshot: 01-dentro
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${HOLD_MS}
+    optional: true
+- assertVisible: "Open menu|Abrir menú"
+- takeScreenshot: 02-sigue-dentro
+- runFlow: ../helpers/leave-venue.yaml

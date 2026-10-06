@@ -8,6 +8,21 @@ set -u
 export PATH="$PATH:$HOME/.maestro/bin"
 root="$(cd "$(dirname "$0")" && pwd)"
 platform="${1:?android|ios}"
+ROOT_E2E="$root"
+# Local credentials (git-ignored): e2e/.env.local, plus the two PUBLIC Supabase variables of mobile/.env. Never printed.
+[ -f "$ROOT_E2E/.env.local" ] && { set -a; . "$ROOT_E2E/.env.local"; set +a; }
+if [ -f "$ROOT_E2E/../mobile/.env" ]; then
+  : "${EXPO_PUBLIC_SUPABASE_URL:=$(grep -m1 '^EXPO_PUBLIC_SUPABASE_URL=' "$ROOT_E2E/../mobile/.env" | cut -d= -f2-)}"
+  : "${EXPO_PUBLIC_SUPABASE_ANON_KEY:=$(grep -m1 '^EXPO_PUBLIC_SUPABASE_ANON_KEY=' "$ROOT_E2E/../mobile/.env" | cut -d= -f2-)}"
+  export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+fi
+# Defaults of the tunable variables (the flows declare none: a header `env:` would beat -e).
+: "${CYCLES:=5}" "${QUIET_MS:=120000}" "${IDLE_MS:=330000}" "${HOLD_MS:=480000}" "${WAIT_MATCH_MS:=1000}"
+export CYCLES QUIET_MS IDLE_MS HOLD_MS WAIT_MATCH_MS
+# Login helper: "test" on Android, "test1" on the iPhone (only if not given explicitly for this run).
+if [ "$platform" = android ] && [ -n "${E2E_TEST_EMAIL:-}" ]; then MAESTRO_TEST_EMAIL="$E2E_TEST_EMAIL"; MAESTRO_TEST_PASSWORD="${E2E_TEST_PASSWORD:-}"; fi
+if [ "$platform" = ios ] && [ -n "${E2E_TEST1_EMAIL:-}" ]; then MAESTRO_TEST_EMAIL="$E2E_TEST1_EMAIL"; MAESTRO_TEST_PASSWORD="${E2E_TEST1_PASSWORD:-}"; fi
+
 flow="${2:?flow file, relative to e2e/maestro}"
 name="$(basename "$flow" .yaml)"
 # Environment checks first (device, UiAutomation, location, Metro, logged-in app). SKIP_PREFLIGHT=1 to skip.
@@ -29,7 +44,7 @@ if [ -n "$loc" ]; then
   else xcrun simctl location "$udid" set "$lat,$lng" || true; fi
 fi
 envs=()
-for v in METRO_HOST METRO_PORT MAESTRO_TEST_EMAIL MAESTRO_TEST_PASSWORD VENUE ITEM RECIPIENT TABLE IDLE_MS; do
+for v in METRO_HOST METRO_PORT MAESTRO_TEST_EMAIL MAESTRO_TEST_PASSWORD VENUE ITEM RECIPIENT TABLE IDLE_MS HOLD_MS CYCLES QUIET_MS WAIT_MATCH_MS; do
   [ -n "${!v:-}" ] && envs+=(-e "$v=${!v}")
 done
 cd "$root/maestro"

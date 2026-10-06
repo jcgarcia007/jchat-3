@@ -2,10 +2,11 @@
 # 07 — Idle smoke: stay in the chat (heartbeat owned by the chat) and then minimized with the "You're at …" bar
 # (heartbeat owned by the venue session) for several minutes. The app must still be on screen afterwards;
 # run.sh's logcat is checked for repeated REQUEST_PERMISSIONS launches (the Android permission loop).
+# Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
+# would override the -e given on the command line, so none is declared here.
 appId: com.juangarciacruz.jchatapp
 env:
   VENUE: Bar XZX
-  IDLE_MS: 330000
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

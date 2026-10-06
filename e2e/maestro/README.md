@@ -22,6 +22,8 @@ Maestro itself is installed outside the repo (`~/.maestro`; `curl -Ls "https://g
 | 04 | `04-repasar` — pass everyone → "Review the people I passed" | needs the Match native modules in the build |
 | 05 | `05-regalo` (Android sender) + `05-regalo-ios-acepta` (iPhone, table 12) | both |
 | 06 | `06-regalo-rechazado` (Android sender) + `06-regalo-ios-rechaza` (iPhone, "No, thanks") | both |
+| 08 | `08-resistencia` — ~21 min: 5 cycles of quiet in the chat → minimize + tab hopping → quiet minimized → reopen from the bar (`CYCLES`, `QUIET_MS`) | both |
+| — | `ios-presente` — keeps the iPhone account inside the venue for `HOLD_MS` (alternative to the seed) | iOS |
 | 07 | `07-reposo` — ~5.5 min quiet in the chat, then ~5.5 min minimized (bar): the app must stay open and the heartbeats must not prompt for permission (`IDLE_MS` to change) | Android |
 
 ## Running
@@ -41,6 +43,17 @@ e2e/run.sh android flows/01-sesion-local.yaml
 e2e/run.sh ios     flows/02-fuera-del-area.yaml
 ```
 Optional: `METRO_HOST` (default `192.168.1.227`), `METRO_PORT` (default `8081`), `ANDROID_UDID`, `IOS_UDID`.
+
+## Nightly run and seed
+```bash
+export E2E_USER_A_EMAIL=… E2E_USER_A_PASSWORD=…          # "test"
+export E2E_USER_B_EMAIL=… E2E_USER_B_PASSWORD=…          # "test1"
+export SUPABASE_URL=… SUPABASE_ANON_KEY=…                # or EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY
+e2e/nightly.sh            # ~70 min → docs/qa/<date>-nightly.md   (--quick for a dry run, --phases 1,5 for a subset)
+e2e/seed-presence.sh      # on its own: keeps test + test1 inside the venue (server side, like the app does)
+```
+Only one Maestro session fits on an iOS simulator (a second one kills the first); Android and iOS run in parallel.
+Details of the report: `docs/qa/README.md`.
 
 ## testIDs the flows rely on
 `chat-enter`, `chat-geo-retry`, `chat-geo-menu`, `menu-add-<itemId>` (native menu), `chat-person-<userId>`, `dm-gift-button`,

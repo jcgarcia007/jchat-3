@@ -24,7 +24,15 @@ ok() { echo "✓ $1"; }
 # ── 1 + 2 + 3: device ────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$platform" = android ]; then
   udid="${ANDROID_UDID:-emulator-5554}"
-  adb -s "$udid" get-state 2>/dev/null | grep -q device || fail "Android $udid is not connected" "start the emulator (Pixel_8)"
+  if ! adb -s "$udid" get-state 2>/dev/null | grep -q device; then
+    if [ "${PREFLIGHT_FIX:-0}" = 1 ]; then
+      echo "… Android $udid is not running; starting the Pixel_8 emulator (PREFLIGHT_FIX=1)"
+      (nohup "$HOME/Library/Android/sdk/emulator/emulator" -avd Pixel_8 > "$root/out/preflight-emulator.log" 2>&1 &)
+      for _ in $(seq 1 60); do adb -s "$udid" get-state 2>/dev/null | grep -q device && break; sleep 5; done
+    fi
+    adb -s "$udid" get-state 2>/dev/null | grep -q device || fail "Android $udid is not connected" "start the emulator (Pixel_8), or run with PREFLIGHT_FIX=1"
+  fi
+  for _ in $(seq 1 60); do [ "$(adb -s "$udid" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break; sleep 3; done
   [ "$(adb -s "$udid" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] || fail "Android $udid is still booting" "wait for it to finish"
   ok "Android $udid booted"
 
@@ -47,7 +55,11 @@ if [ "$platform" = android ]; then
   ok "location pinned at $lat,$lng"
 else
   udid="${IOS_UDID:-$(xcrun simctl list devices booted | grep -Eo '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1)}"
-  [ -n "$udid" ] || fail "no booted iOS simulator" "boot one (iPhone 17 Pro Max)"
+  if [ -z "$udid" ] && [ "${PREFLIGHT_FIX:-0}" = 1 ]; then
+    cand="$(xcrun simctl list devices available | grep 'iPhone 17 Pro Max' | grep -Eo '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1)"
+    [ -n "$cand" ] && echo "… booting simulator $cand (PREFLIGHT_FIX=1)" && xcrun simctl boot "$cand" 2>/dev/null && udid="$cand"
+  fi
+  [ -n "$udid" ] || fail "no booted iOS simulator" "boot one (iPhone 17 Pro Max), or run with PREFLIGHT_FIX=1"
   ok "iOS simulator $udid booted"
   xcrun simctl location "$udid" set "$lat,$lng" >/dev/null 2>&1 || fail "could not pin the location" "xcrun simctl location $udid set $lat,$lng"
   ok "location pinned at $lat,$lng"
