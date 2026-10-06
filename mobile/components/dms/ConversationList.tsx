@@ -23,6 +23,7 @@ import { isSupabaseConfigured, supabase, channelTopic } from '../../services/sup
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
+import { getInitials } from '../../utils/initials';
 
 interface ConversationListProps {
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -32,12 +33,7 @@ interface ConversationListProps {
 }
 
 function initials(name: string | null, username: string): string {
-  return (name ?? username)
-    .split(/\s+/)
-    .map((word) => word[0] ?? '')
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  return getInitials(name ?? username, 2);
 }
 
 function ConversationRow({

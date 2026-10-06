@@ -54,6 +54,7 @@ import { printKitchenTickets, resolveServerName } from '../../services/printer';
 import { usePosDraft } from '../../contexts/PosDraftContext';
 import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { getInitials } from '../../utils/initials';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ function MenuItemCard({
             ]}
           >
             <Text style={[styles.cardInitial, { color: c.brand }]}>
-              {item.name.charAt(0).toUpperCase()}
+              {getInitials(item.name)}
             </Text>
           </View>
         )}

@@ -68,6 +68,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { getInitials } from '../../utils/initials';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -606,7 +607,7 @@ export default function CartScreen() {
                       >
                         <View style={[styles.avatarCircle, { backgroundColor: palette.brandLight }]}>
                           <Text style={[styles.avatarInitial, { color: palette.brand }]}>
-                            {u.displayName.charAt(0).toUpperCase()}
+                            {getInitials(u.displayName)}
                           </Text>
                         </View>
                         <View>

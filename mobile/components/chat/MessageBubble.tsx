@@ -36,6 +36,7 @@ import type { Offer } from './OfferCard';
 import { isRoomVoicePath, isTrustedMediaUrl } from '../../utils/mediaUrl';
 import { VoiceBubble } from '../common/VoiceBubble';
 import type { VoiceSource } from '../../services/voiceNotes';
+import { getInitials } from '../../utils/initials';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -307,7 +308,7 @@ export function MessageBubble({
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
               <Text style={[styles.avatarInitial, { color: theme.bubbleInText }]}>
-                {displayName.charAt(0).toUpperCase()}
+                {getInitials(displayName)}
               </Text>
             </View>
           )}

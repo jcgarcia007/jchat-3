@@ -9,6 +9,7 @@ import {
 
 import type { ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
+import { getInitials } from '../../utils/initials';
 
 export interface ProfileTopBarProps {
   isOwnProfile: boolean;
@@ -126,7 +127,7 @@ export default function ProfileHeader({
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
   const name = displayName?.trim() || username;
-  const initials = name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
+  const initials = getInitials(name, 2);
   const completedCount = Object.values(completion).filter(Boolean).length;
   const followLabel = relation === 'requested' ? t('header.requested') : relation === 'following' ? t('header.following') : t('header.follow');
   const followOutlined = relation === 'requested' || relation === 'following';

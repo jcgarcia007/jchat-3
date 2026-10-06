@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
+import { getInitials } from '../../utils/initials';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
       ) : (
         <View style={[avatarStyles.img, avatarStyles.fallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
           <Text style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
-            {displayName.charAt(0).toUpperCase()}
+            {getInitials(displayName)}
           </Text>
         </View>
       )}

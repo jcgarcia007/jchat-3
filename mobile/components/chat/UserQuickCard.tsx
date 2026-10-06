@@ -40,6 +40,7 @@ import { cancelRequest, hasPendingRequestTo, requestOrFollow } from '../../servi
 import { isFollowing, unfollowUser } from '../../services/users';
 import { blockUser } from '../../services/blocks';
 import type { UserAnchor } from './MessageBubble';
+import { getInitials } from '../../utils/initials';
 
 const CARD_W = 264;
 const CARD_H_EST = 176; // header + 2 grid rows — for the flip decision + above positioning
@@ -252,7 +253,7 @@ export default function UserQuickCard({
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgElevated }]}>
                   <Text style={[styles.avatarInitial, { color: c.textPrimary }]}>
-                    {targetName.charAt(0).toUpperCase()}
+                    {getInitials(targetName)}
                   </Text>
                 </View>
               )}

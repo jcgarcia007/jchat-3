@@ -45,6 +45,7 @@ import {
   type ReviewWithAuthor,
 } from '../../services/reviews';
 import { toUserMessage } from '../../utils/errors';
+import { getLeadingLetters } from '../../utils/initials';
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ function authorInitials(review: ReviewWithAuthor): string {
     review.author?.display_name ||
     review.author?.username ||
     '?';
-  return name.slice(0, 2).toUpperCase();
+  return getLeadingLetters(name);
 }
 
 function authorLabel(review: ReviewWithAuthor, t: TFunction<'reviews'>): string {

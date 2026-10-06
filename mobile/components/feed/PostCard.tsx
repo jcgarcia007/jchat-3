@@ -34,6 +34,7 @@ import type { TFunction } from 'i18next';
 import { useThemeColors } from '../../theme/colors';
 import type { PostRow } from '../../services/posts';
 import { buildPostShareMessage } from '../../utils/postShare';
+import { getLeadingLetters } from '../../utils/initials';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ export default function PostCard({
 
   const authorName =
     post.author?.display_name ?? post.author?.username ?? t('post.unknownAuthor');
-  const initials = authorName.slice(0, 2).toUpperCase();
+  const initials = getLeadingLetters(authorName);
   const likeCount = post.like_count ?? 0;
   const commentCount = post.comment_count ?? 0;
 
