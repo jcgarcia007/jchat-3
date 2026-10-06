@@ -288,6 +288,8 @@
     "geoGraceWarning": "Saliste del área de {{business}}. Vuelve en 2 minutos o el chat se cerrará.",
     "geoRemoved": "Saliste del área de {{business}}, el chat se cerró.",
     "geoUnavailable": "No pudimos leer tu ubicación. Inténtalo de nuevo.",
+    "geoNoReadingTitle": "No pudimos leer tu ubicación",
+    "geoNoReadingBody": "Verifica que la ubicación esté activada e inténtalo de nuevo.",
     "geoAllowLocation": "Permitir ubicación",
     "geoViewMenu": "Ver menú",
     "geoMenuAndPickup": "Ver menú y pedir para recoger",

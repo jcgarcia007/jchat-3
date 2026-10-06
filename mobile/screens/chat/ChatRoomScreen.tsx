@@ -830,6 +830,8 @@ export default function ChatRoomScreen() {
   // Golden rule: when the entry gate refuses (outside / no location), the person still gets the menu
   // and — only if the owner enabled it — pick-up orders. The server tells us whether pick-up exists.
   const gateRefused = geoGate.gateStatus !== 'idle' && geoGate.gateStatus !== 'checking';
+  // No GPS fix (timeout / error) is not "you are outside": say so, with Retry.
+  const noReading = geoGate.gateStatus === 'position_error';
   const [outsidePickup, setOutsidePickup] = useState(false);
   const refusedBusinessId = room?.business_id ?? null;
   useEffect(() => {
@@ -1425,14 +1427,18 @@ export default function ChatRoomScreen() {
                     <IconMapPin size={30} color={themeColors.brand} strokeWidth={2} />
                   </View>
                   <Text style={[gateStyles.outsideTitle, { color: themeColors.textPrimary }]}>
-                    {t('chatRoom.geoOutsideTitle', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
+                    {noReading
+                      ? t('chatRoom.geoNoReadingTitle')
+                      : t('chatRoom.geoOutsideTitle', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
                   </Text>
                   <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
                     {geoGate.gateStatus === 'permission_denied'
                       ? t('chatRoom.geoPermissionNeeded')
                       : geoGate.gateStatus === 'outside_radius'
                         ? t('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
-                        : t('chatRoom.geoUnavailable')}
+                        : noReading
+                          ? t('chatRoom.geoNoReadingBody')
+                          : t('chatRoom.geoUnavailable')}
                   </Text>
                   <View style={gateStyles.outsideButtons}>
                     <Pressable

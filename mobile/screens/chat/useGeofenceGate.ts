@@ -35,6 +35,8 @@ const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min w
 const GRACE_DURATION_MS = 2 * 60 * 1000; // §3.3 of the design doc: warn, then 2 min to return
 const GRACE_RECHECK_INTERVAL_MS = 20 * 1000; // check more often during grace to detect "back inside" promptly
 const GRACE_COUNTDOWN_TICK_MS = 1000;
+/** No GPS fix after this long → 'position_error' ("couldn't read your location · Retry") instead of an endless spinner. */
+const POSITION_TIMEOUT_MS = 20 * 1000;
 /** A resume from the background re-checks only if the last automatic check is at least this old. */
 export const RESUME_RECHECK_MIN_GAP_MS = 60 * 1000;
 
@@ -101,7 +103,15 @@ export async function runGeoCheck(
 
     let coords: Coords;
     try {
-      coords = await getCurrentPosition();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('position timeout')), POSITION_TIMEOUT_MS);
+      });
+      try {
+        coords = await Promise.race([getCurrentPosition(), timeout]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } catch {
       return { granted: false, reason: 'position_error', distanceM: null };
     }
