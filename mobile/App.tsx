@@ -12,7 +12,7 @@
 
 import './i18n'; // must be first — initialises i18next before any component renders
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { LogBox, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import StripeRoot from './components/StripeRoot';
@@ -22,6 +22,10 @@ import { VenueSessionProvider } from './context/VenueSessionContext';
 import AppNavigator from './navigation/AppNavigator';
 import { applyAppearance, loadStoredAppearance } from './theme/appearance';
 import { loadUserSettings } from './services/userSettings';
+
+// E2E mode (Metro started with EXPO_PUBLIC_E2E=1, see e2e/README.md): the dev build's LogBox
+// notifications would cover the buttons Maestro taps. Uncaught exceptions still show their red screen.
+if (process.env.EXPO_PUBLIC_E2E === '1') LogBox.ignoreAllLogs(true);
 
 function AuthenticatedAppearanceBridge() {
   const { user } = useAuth();

@@ -10,6 +10,8 @@ root="$(cd "$(dirname "$0")" && pwd)"
 platform="${1:?android|ios}"
 flow="${2:?flow file, relative to e2e/maestro}"
 name="$(basename "$flow" .yaml)"
+# Environment checks first (device, UiAutomation, location, Metro, logged-in app). SKIP_PREFLIGHT=1 to skip.
+if [ "${SKIP_PREFLIGHT:-0}" != 1 ]; then "$root/preflight.sh" "$platform" || exit 1; fi
 out="$root/out/$platform-$name-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$out"
 if [ "$platform" = android ]; then
@@ -27,7 +29,7 @@ if [ -n "$loc" ]; then
   else xcrun simctl location "$udid" set "$lat,$lng" || true; fi
 fi
 envs=()
-for v in METRO_HOST METRO_PORT MAESTRO_TEST_EMAIL MAESTRO_TEST_PASSWORD VENUE ITEM RECIPIENT TABLE; do
+for v in METRO_HOST METRO_PORT MAESTRO_TEST_EMAIL MAESTRO_TEST_PASSWORD VENUE ITEM RECIPIENT TABLE IDLE_MS; do
   [ -n "${!v:-}" ] && envs+=(-e "$v=${!v}")
 done
 cd "$root/maestro"

@@ -1,0 +1,32 @@
+# location: 26.083048,-80.223725
+# 07 — Idle smoke: stay in the chat (heartbeat owned by the chat) and then minimized with the "You're at …" bar
+# (heartbeat owned by the venue session) for several minutes. The app must still be on screen afterwards;
+# run.sh's logcat is checked for repeated REQUEST_PERMISSIONS launches (the Android permission loop).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  IDLE_MS: 330000
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- takeScreenshot: 01-chat-antes
+# Chat open and quiet past a full 5-minute heartbeat.
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${IDLE_MS}
+    optional: true
+- assertVisible: "Open menu|Abrir menú"
+- takeScreenshot: 02-chat-despues
+# Minimized: the venue session's heartbeat.
+- tapOn: "Go back|Volver"
+- extendedWaitUntil:
+    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: ${IDLE_MS}
+    optional: true
+- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+- takeScreenshot: 03-barra-despues
+- runFlow: ../helpers/leave-venue.yaml

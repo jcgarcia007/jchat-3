@@ -22,8 +22,18 @@ Maestro itself is installed outside the repo (`~/.maestro`; `curl -Ls "https://g
 | 04 | `04-repasar` — pass everyone → "Review the people I passed" | needs the Match native modules in the build |
 | 05 | `05-regalo` (Android sender) + `05-regalo-ios-acepta` (iPhone, table 12) | both |
 | 06 | `06-regalo-rechazado` (Android sender) + `06-regalo-ios-rechaza` (iPhone, "No, thanks") | both |
+| 07 | `07-reposo` — ~5.5 min quiet in the chat, then ~5.5 min minimized (bar): the app must stay open and the heartbeats must not prompt for permission (`IDLE_MS` to change) | Android |
 
 ## Running
+`run.sh` calls `preflight.sh` first (`SKIP_PREFLIGHT=1` to skip): device booted, **UiAutomation free** (Android — a stale or
+foreign client makes Maestro's driver time out; `PREFLIGHT_FIX=1` reboots the emulator for you), location pinned, Metro answering,
+and the dev build opening on the tabs (= logged in). It prints the first problem and what to do about it.
+
+**E2E mode.** Start Metro with `EXPO_PUBLIC_E2E=1` so the dev build's LogBox notifications never cover the buttons:
+```bash
+cd mobile && EXPO_PUBLIC_E2E=1 npx expo start --dev-client          # Android (8081)
+cd mobile && EXPO_PUBLIC_E2E=1 npx expo start --dev-client --port 8082   # iPhone
+```
 ```bash
 # Metro must be up; the dev build must be installed on the emulator / simulator.
 export MAESTRO_TEST_EMAIL=...   MAESTRO_TEST_PASSWORD=...     # only needed if the app is logged out
@@ -31,6 +41,11 @@ e2e/run.sh android flows/01-sesion-local.yaml
 e2e/run.sh ios     flows/02-fuera-del-area.yaml
 ```
 Optional: `METRO_HOST` (default `192.168.1.227`), `METRO_PORT` (default `8081`), `ANDROID_UDID`, `IOS_UDID`.
+
+## testIDs the flows rely on
+`chat-enter`, `chat-geo-retry`, `chat-geo-menu`, `menu-add-<itemId>` (native menu), `chat-person-<userId>`, `dm-gift-button`,
+`user-action-gift`, `quick-card-gift`, `gift-accept`, `gift-decline`, `success-view-order`, `success-back`, `venue-leave`.
+The web menu's "+" announces the item (`Add Burger Angus`) once the web with that label is deployed; flow 03 falls back to a tap by position until then.
 
 ## Notes
 - Texts are matched in English **and** Spanish.
