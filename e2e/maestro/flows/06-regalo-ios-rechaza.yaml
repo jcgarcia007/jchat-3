@@ -13,7 +13,8 @@ env:
     visible: ".*sent you a gift.*|.*te envió un regalo.*"
     timeout: 60000
 - takeScreenshot: 01-tarjeta-regalo
-- tapOn: "No, thanks|No, gracias"
+- tapOn:
+    id: "gift-decline"
 - extendedWaitUntil:
     visible: "Not accepted|No aceptado"
     timeout: 30000

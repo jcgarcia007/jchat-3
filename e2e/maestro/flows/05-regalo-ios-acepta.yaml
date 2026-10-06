@@ -15,7 +15,8 @@ env:
     visible: ".*sent you a gift.*|.*te envió un regalo.*"
     timeout: 60000
 - takeScreenshot: 01-tarjeta-regalo
-- tapOn: "Accept|Aceptar"
+- tapOn:
+    id: "gift-accept"
 - extendedWaitUntil:
     visible: "Which table are you at\\?|¿Cuál es tu mesa\\?"
     timeout: 15000

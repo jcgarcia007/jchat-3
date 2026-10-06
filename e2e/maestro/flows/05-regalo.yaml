@@ -13,10 +13,12 @@ env:
 - runFlow: ../helpers/enter-venue.yaml
 - tapOn: "View ${RECIPIENT}.*options|Ver opciones de ${RECIPIENT}.*"
 - extendedWaitUntil:
-    visible: "Gift|Regalo"
+    visible:
+      id: "quick-card-gift"
     timeout: 20000
 - takeScreenshot: 01-tarjeta-rapida
-- tapOn: "Gift|Regalo"
+- tapOn:
+    id: "quick-card-gift"
 - extendedWaitUntil:
     visible: "Gift for.*|Regalo para.*"
     timeout: 30000

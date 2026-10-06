@@ -7,7 +7,9 @@ appId: com.juangarciacruz.jchatapp
       visible: "More options|Más opciones"
     commands:
       - tapOn: "More options|Más opciones"
-      - tapOn: "Leave the venue|Salir del local"
+      - tapOn:
+          id: "venue-leave"
+      # the native confirmation alert
       - tapOn: "Leave the venue|Salir del local"
 - extendedWaitUntil:
     visible: "Nearby|Cerca.*"

@@ -14,15 +14,19 @@ env:
 - tapOn:
     text: "Enter|Entrar"
     below: "${VENUE}"
-- tapOn: "Enter the chat|Entrar al chat|Enter room|Entrar a la sala"
+- tapOn:
+    id: "chat-enter"
 - extendedWaitUntil:
     visible: "You're not at.*|No estás en.*"
     timeout: 90000
-- assertVisible: "Retry|Allow location|Reintentar|Permitir ubicación"
-- assertVisible: "View menu.*|Ver menú.*"
+- assertVisible:
+    id: "chat-geo-retry"
+- assertVisible:
+    id: "chat-geo-menu"
 - assertNotVisible: "Open menu|Abrir menú"
 - takeScreenshot: 01-fuera-del-area
-- tapOn: "View menu.*|Ver menú.*"
+- tapOn:
+    id: "chat-geo-menu"
 - extendedWaitUntil:
     visible: "${VENUE}"
     timeout: 30000

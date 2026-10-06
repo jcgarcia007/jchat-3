@@ -13,9 +13,19 @@ env:
 - extendedWaitUntil:
     visible: "${ITEM}"
     timeout: 60000
-# The web menu's "+" has no text: with the menu scrolled to the top, Burger Angus's "+" is at ~(73%, 40%).
-- tapOn:
-    point: "73%,40%"
+# The web menu's "+" announces the item ("Add Burger Angus") once the web with that label is deployed;
+# until then fall back to its position (menu scrolled to the top: ~73%, 40%).
+- runFlow:
+    when:
+      notVisible: "Add ${ITEM}|Agregar ${ITEM}"
+    commands:
+      - tapOn:
+          point: "73%,40%"
+- runFlow:
+    when:
+      visible: "Add ${ITEM}|Agregar ${ITEM}"
+    commands:
+      - tapOn: "Add ${ITEM}|Agregar ${ITEM}"
 - extendedWaitUntil:
     visible: "Add to order.*|Añadir al pedido.*"
     timeout: 15000
@@ -23,10 +33,10 @@ env:
 - tapOn: "Cart.*|Carrito.*"
 - tapOn: "Continue|Continuar"
 - extendedWaitUntil:
-    visible: "Pay .*"
+    visible: "Pay .*|Pagar .*"
     timeout: 60000
 - takeScreenshot: 01-checkout
-- tapOn: "Pay .*"
+- tapOn: "Pay .*|Pagar .*"
 - runFlow: ../helpers/pay-test-card.yaml
 - extendedWaitUntil:
     visible: "Payment confirmed!|¡Pago confirmado!"
@@ -37,7 +47,8 @@ env:
       visible: "Not now|Ahora no"
     commands:
       - tapOn: "Not now|Ahora no"
-- tapOn: "View order|Ver pedido"
+- tapOn:
+    id: "success-view-order"
 - extendedWaitUntil:
     visible: ".*Your order.*|.*Tu pedido.*"
     timeout: 30000
