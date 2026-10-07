@@ -16,7 +16,18 @@ env:
 - inputText: ${CARD_EXPIRY}
 - inputText: ${CARD_CVC}
 - inputText: ${CARD_ZIP}
-# With the numeric keyboard still open (hideKeyboard is unreliable in the Stripe sheet) the sheet is
-# expanded and "Pay" sits at ~58% of the screen height.
-- tapOn:
-    point: "50%,58%"
+# Android exposes the "Pay $x" button text: tap it when it is on screen; otherwise (iOS, or the keyboard still open) the
+# sheet is expanded and "Pay" sits at ~58% of the screen height.
+- evalScript: ${output.payTapped = false}
+- runFlow:
+    when:
+      visible: "Pay \\$[0-9].*"
+    commands:
+      - tapOn: "Pay \\$[0-9].*"
+      - evalScript: ${output.payTapped = true}
+- runFlow:
+    when:
+      true: ${!output.payTapped}
+    commands:
+      - tapOn:
+          point: "50%,58%"
