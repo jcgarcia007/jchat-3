@@ -33,6 +33,11 @@ const config: ExpoConfig = {
     fallbackToCacheTimeout: 0,
     checkAutomatically: 'ON_LOAD',
   },
+  // iOS permission texts per language (InfoPlist.strings): the photo-library message is shown in the phone's language.
+  locales: {
+    en: './assets/locales/en.json',
+    es: './assets/locales/es.json',
+  },
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
@@ -46,6 +51,8 @@ const config: ExpoConfig = {
     googleServicesFile: IOS_GOOGLE_SERVICES,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      // Lets the per-language InfoPlist.strings (locales above) apply.
+      CFBundleAllowMixedLocalizations: true,
       // react-native-bluetooth-classic force-unwraps this key in its iOS init
       // (RNBluetoothClassic.swift) → launch crash if absent. Empty = no MFi
       // accessory protocols (BT Classic printing is Android-only).
@@ -93,7 +100,7 @@ const config: ExpoConfig = {
     [
       'expo-image-picker',
       {
-        photosPermission: 'JChat needs access to your photos to share images in chat.',
+        photosPermission: 'JChat uses your photos for your profile, posts, messages and Match.',
         cameraPermission: 'JChat needs access to your camera to take photos in chat.',
       },
     ],
