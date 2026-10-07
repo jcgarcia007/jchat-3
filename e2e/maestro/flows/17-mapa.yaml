@@ -8,13 +8,20 @@ appId: com.juangarciacruz.jchatapp
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: 01-mapa
+# iOS simulator: the first position read can fail ("We couldn't get your location · tap to retry")
+- runFlow:
+    when:
+      visible: ".*Toca para reintentar.*|.*tap to retry.*|.*Tap to retry.*"
+    commands:
+      - tapOn: ".*Toca para reintentar.*|.*tap to retry.*|.*Tap to retry.*"
+      - waitForAnimationToEnd:
+          timeout: 5000
+# the pin exposes the venue name (iOS) / "Map Marker" (Android)
 - extendedWaitUntil:
-    visible:
-      id: "map-pin-.*"
+    visible: "Bar XZX|Map Marker"
     timeout: 20000
-- tapOn:
-    id: "map-pin-.*"
+- tapOn: "Bar XZX|Map Marker"
 - extendedWaitUntil:
-    visible: "Bar XZX"
+    visible: "Enter the chat|Entrar al chat|View menu|Ver menú"
     timeout: 10000
 - takeScreenshot: 02-tarjeta-pin

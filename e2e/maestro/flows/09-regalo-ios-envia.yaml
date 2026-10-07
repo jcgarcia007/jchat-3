@@ -35,8 +35,16 @@ env:
     timeout: 180000
 - takeScreenshot: 02-enviado
 - tapOn: "OK"
-# stay in the 1:1 chat: the card must flip without any action here
+# stay in the 1:1 chat: the card must flip without any action here. The thread keeps older cards with the same final texts,
+# so the flip is detected on the LIVE card: its "waiting for an answer" line must disappear (file time of 03 = the moment).
 - extendedWaitUntil:
-    visible: "${EXPECT}"
+    visible: "Waiting for an answer.*|Esperando respuesta.*"
+    timeout: 60000
+- takeScreenshot: 02b-esperando
+- extendedWaitUntil:
+    notVisible: "Waiting for an answer.*|Esperando respuesta.*"
     timeout: 240000
 - takeScreenshot: 03-card-changed
+- extendedWaitUntil:
+    visible: "${EXPECT}"
+    timeout: 20000
