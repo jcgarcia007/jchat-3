@@ -21,6 +21,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { haversineMeters } from '../../services/geofence';
 import { formatDistanceLabel, type NearbyBusiness } from '../../services/nearby';
 import { useThemeColors } from '../../theme/colors';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
 export default function NearbyScreen() {
   const colors = useThemeColors();
@@ -28,6 +29,7 @@ export default function NearbyScreen() {
   const translation = useTranslation('nearby');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const nearby = useNearbyBusinesses();
+  const homeBarInset = useHomeBarInset();
 
   const enterBusiness = useCallback((business: NearbyBusiness) => {
     navigation.navigate('ChatRoom', { id: business.main_room_id ?? business.id });
@@ -80,7 +82,7 @@ export default function NearbyScreen() {
         />
       </View>
       <FlatList
-        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom }]}
+        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom + homeBarInset }]}
         data={nearby.filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}

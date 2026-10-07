@@ -45,6 +45,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -137,6 +138,7 @@ export default function MapScreen() {
     satellite: t('mapScreen.styleSatellite'),
   };
   const insets = useSafeAreaInsets();
+  const homeBarInset = useHomeBarInset();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
   const isMounted = useRef(true);
@@ -404,7 +406,7 @@ export default function MapScreen() {
           style={[
             styles.styleSwitcher,
             {
-              bottom: 68 + 26 + 12 + insets.bottom,
+              bottom: 68 + 26 + 12 + insets.bottom + homeBarInset,
               backgroundColor: c.bgSurface,
               borderColor: c.borderSubtle,
             },

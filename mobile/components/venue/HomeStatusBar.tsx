@@ -8,7 +8,7 @@
  * current screen is a tab screen.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { useActiveOrders } from '../../hooks/useActiveOrders';
+import { useReportHomeBarInset } from './HomeBarInset';
 
 /** Tab bar geometry (components/navigation/NotchTabBar): bottom offset 26 + inset, height 68. */
 const TAB_BAR_TOP_OFFSET = 26 + 68;
@@ -40,8 +41,16 @@ export function HomeStatusBar({ visible, onOpenChat, onOpenOrder, onOpenOrders }
   const { user } = useAuth();
   const { session, unreadMessages, likeCount } = useVenueSession();
   const orders = useActiveOrders(user?.id ?? null);
+  const reportInset = useReportHomeBarInset();
+  const shown = visible && (!!session || orders.length > 0);
 
-  if (!visible || (!session && orders.length === 0)) return null;
+  // Hidden → the screens get their full height back.
+  useEffect(() => {
+    if (!shown) reportInset(0);
+    return () => reportInset(0);
+  }, [shown, reportInset]);
+
+  if (!shown) return null;
 
   const venueParts = session ? [t('venueSession.here', { business: session.businessName })] : [];
   if (session && unreadMessages > 0) venueParts.push(t('venueSession.messages', { count: unreadMessages }));
@@ -57,7 +66,10 @@ export function HomeStatusBar({ visible, onOpenChat, onOpenOrder, onOpenOrders }
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + TAB_BAR_TOP_OFFSET + GAP }]}>
-      <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+      <View
+        style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
+        onLayout={(event) => reportInset(event.nativeEvent.layout.height + GAP)}
+      >
         {session ? (
           <Segment
             icon={<IconMapPin size={20} color={palette.brand} strokeWidth={2} />}

@@ -35,12 +35,14 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
 
 export default function MessagesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const homeBarInset = useHomeBarInset();
   const { height } = useWindowDimensions();
   const navigation = useNavigation<MessagesNavigation>();
   const translation = useTranslation('social');
@@ -135,7 +137,7 @@ export default function MessagesScreen() {
         styles.root,
         {
           backgroundColor: colors.bgBase,
-          paddingBottom: 102 + insets.bottom,
+          paddingBottom: 102 + insets.bottom + homeBarInset,
           paddingTop: insets.top,
         },
       ]}

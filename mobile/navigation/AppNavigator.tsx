@@ -30,6 +30,7 @@ import {
 } from '../services/onboarding';
 import BottomTabs from './tabs/BottomTabs';
 import { HomeStatusBar } from '../components/venue/HomeStatusBar';
+import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -239,7 +240,7 @@ export default function AppNavigator() {
   }, [navigationReady, notificationsEnabled, user?.id]);
 
   return (
-    <>
+    <HomeBarInsetProvider>
     <NavigationContainer
       linking={linking}
       onReady={() => {
@@ -320,6 +321,6 @@ export default function AppNavigator() {
         onOpenOrders={() => navigationRef.isReady() && navigationRef.navigate('MyOrders')}
       />
     ) : null}
-    </>
+    </HomeBarInsetProvider>
   );
 }

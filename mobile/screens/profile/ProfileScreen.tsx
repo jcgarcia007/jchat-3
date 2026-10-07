@@ -28,6 +28,7 @@ import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
 import { toUserMessage } from '../../utils/errors';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
@@ -129,6 +130,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const c = useThemeColors();
   const { t } = useTranslation('profile');
   const insets = useSafeAreaInsets();
+  const homeBarInset = useHomeBarInset();
   const { width: windowWidth } = useWindowDimensions();
   const cellSize = (windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -340,7 +342,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom + (route.name === 'UserProfile' ? 0 : homeBarInset) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile(true)} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader
