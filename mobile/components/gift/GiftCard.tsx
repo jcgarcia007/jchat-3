@@ -68,13 +68,12 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
     };
   }, [offerId, refresh]);
 
-  // Safety net: realtime on gift_offers needs the table in the supabase_realtime publication (migration 207). Until
-  // that is applied — and whenever a socket hiccup swallows an event — an open card re-reads itself every 5 s while
-  // the offer can still change state, so neither side is left looking at a stale card.
+  // Safety net: realtime on gift_offers (migration 207) is what updates the card in ~1 s; an open card also re-reads itself
+  // every 30 s while the offer can still change state, in case a socket hiccup swallowed an event.
   const open = view?.status === 'awaiting_payment' || view?.status === 'held' || view?.status === 'accepted';
   useEffect(() => {
     if (!open || !isSupabaseConfigured) return;
-    const id = setInterval(() => void refresh(), 5000);
+    const id = setInterval(() => void refresh(), 30000);
     return () => clearInterval(id);
   }, [open, refresh]);
 
