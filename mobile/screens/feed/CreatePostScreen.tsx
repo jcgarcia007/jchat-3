@@ -335,6 +335,7 @@ export default function CreatePostScreen() {
           <View style={[styles.pickerRow, { borderColor: c.borderSubtle }]}>
             <TouchableOpacity
               style={[styles.pickerBtn, { backgroundColor: c.bgSurface }]}
+              testID="create-post-gallery"
               onPress={pickFromGallery}
               disabled={posting || assets.length >= MAX_IMAGES}
               accessibilityRole="button"
@@ -348,6 +349,7 @@ export default function CreatePostScreen() {
 
             <TouchableOpacity
               style={[styles.pickerBtn, { backgroundColor: c.bgSurface }]}
+              testID="create-post-camera"
               onPress={pickFromCamera}
               disabled={posting || assets.length >= MAX_IMAGES}
               accessibilityRole="button"
