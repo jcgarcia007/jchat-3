@@ -344,7 +344,10 @@
     "orders_one": "{{count}} pedido en curso",
     "orders_other": "{{count}} pedidos en curso",
     "view": "Ver",
-    "viewA11y": "Ver mi pedido"
+    "viewA11y": "Ver mi pedido",
+    "movedToNotifications": "Movido a notificaciones",
+    "undo": "Deshacer",
+    "moveToNotifications": "Mover a notificaciones"
   },
   "notificationsSheet": {
     "title": "Notificaciones",

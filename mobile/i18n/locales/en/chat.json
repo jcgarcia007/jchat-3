@@ -344,7 +344,10 @@
     "orders_one": "{{count}} order in progress",
     "orders_other": "{{count}} orders in progress",
     "view": "View",
-    "viewA11y": "View my order"
+    "viewA11y": "View my order",
+    "movedToNotifications": "Moved to notifications",
+    "undo": "Undo",
+    "moveToNotifications": "Move to notifications"
   },
   "notificationsSheet": {
     "title": "Notifications",

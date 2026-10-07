@@ -36,6 +36,8 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
+import { PinnedOrderRow } from '../../components/venue/PinnedOrderRow';
+import { useOrdersBar } from '../../context/OrdersBarContext';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
 
@@ -43,6 +45,7 @@ export default function MessagesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const homeBarInset = useHomeBarInset();
+  const { pinnedOrders } = useOrdersBar();
   const { height } = useWindowDimensions();
   const navigation = useNavigation<MessagesNavigation>();
   const translation = useTranslation('social');
@@ -184,8 +187,20 @@ export default function MessagesScreen() {
         {translation.t('messages.notificationsTitle')}
       </Text>
       <FlatList
-        contentContainerStyle={socialNotifications.length === 0 ? styles.emptyNotifications : undefined}
+        contentContainerStyle={socialNotifications.length === 0 && pinnedOrders.length === 0 ? styles.emptyNotifications : undefined}
         data={socialNotifications}
+        ListHeaderComponent={pinnedOrders.length > 0 ? (
+          <View>
+            {pinnedOrders.map((order) => (
+              <PinnedOrderRow
+                key={order.id}
+                order={order}
+                background={colors.bgBase}
+                onPress={(o) => navigation.navigate('OrderTracking', { orderId: o.id })}
+              />
+            ))}
+          </View>
+        ) : null}
         keyExtractor={(item) => item.id}
         refreshControl={(
           <RefreshControl
@@ -196,7 +211,7 @@ export default function MessagesScreen() {
           />
         )}
         renderItem={renderNotification}
-        ListEmptyComponent={(
+        ListEmptyComponent={pinnedOrders.length > 0 ? null : (
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             {translation.t('messages.emptyNotifications')}
           </Text>

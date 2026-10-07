@@ -31,6 +31,7 @@ import {
 import BottomTabs from './tabs/BottomTabs';
 import { HomeStatusBar } from '../components/venue/HomeStatusBar';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
+import { OrdersBarProvider } from '../context/OrdersBarContext';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -241,6 +242,7 @@ export default function AppNavigator() {
 
   return (
     <HomeBarInsetProvider>
+    <OrdersBarProvider>
     <NavigationContainer
       linking={linking}
       onReady={() => {
@@ -321,6 +323,7 @@ export default function AppNavigator() {
         onOpenOrders={() => navigationRef.isReady() && navigationRef.navigate('MyOrders')}
       />
     ) : null}
+    </OrdersBarProvider>
     </HomeBarInsetProvider>
   );
 }

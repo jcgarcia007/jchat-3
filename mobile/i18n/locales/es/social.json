@@ -45,7 +45,11 @@
       "giftExpired": "Tu regalo para {{name}} venció",
       "giftPaid": "Tu regalo ya está pagado y va en camino",
       "giftGeneric": "Novedad en tu regalo"
-    }
+    },
+    "pinnedOrderTitle": "Pedido #{{n}} · {{status}}",
+    "pinnedOrderSub": "{{business}} · toca para ver",
+    "pinnedBadge": "En curso",
+    "pinnedOrderA11y": "Pedido {{n}}, {{status}}. Abre el seguimiento"
   },
   "dmChat": {
     "title": "Chat",

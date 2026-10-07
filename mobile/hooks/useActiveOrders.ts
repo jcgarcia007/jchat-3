@@ -14,20 +14,35 @@ import { myActiveOrders, type ActiveOrder } from '../services/orders';
 const REFRESH_MS = 5 * 60 * 1000;
 const DEBOUNCE_MS = 400;
 
+export interface ActiveOrdersState {
+  orders: ActiveOrder[];
+  /** True once the first server answer arrived (an empty list before that means "unknown", not "none"). */
+  loaded: boolean;
+}
+
 export function useActiveOrders(userId: string | null): ActiveOrder[] {
+  return useActiveOrdersState(userId).orders;
+}
+
+export function useActiveOrdersState(userId: string | null): ActiveOrdersState {
   const [orders, setOrders] = useState<ActiveOrder[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(() => {
     if (!userId || !isSupabaseConfigured) return;
     void myActiveOrders()
-      .then(setOrders)
+      .then((rows) => {
+        setOrders(rows);
+        setLoaded(true);
+      })
       .catch(() => undefined); // keep what we have; the next event/tick retries
   }, [userId]);
 
   useEffect(() => {
     if (!userId || !isSupabaseConfigured) {
       setOrders([]);
+      setLoaded(false);
       return;
     }
     refresh();
@@ -51,5 +66,5 @@ export function useActiveOrders(userId: string | null): ActiveOrder[] {
     };
   }, [userId, refresh]);
 
-  return orders;
+  return { orders, loaded };
 }

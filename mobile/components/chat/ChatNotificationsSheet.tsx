@@ -23,6 +23,8 @@ import {
   type NotificationRow,
 } from '../../services/notifications';
 import { formatSocialTime } from '../../utils/formatSocialTime';
+import { PinnedOrderRow } from '../venue/PinnedOrderRow';
+import type { ActiveOrder } from '../../services/orders';
 
 type Filter = 'all' | 'match' | 'orders';
 const FILTERS: Filter[] = ['all', 'match', 'orders'];
@@ -36,6 +38,8 @@ interface Props {
   onMarkRead: (id: string) => void;
   /** Opens the route of a tapped notification (the sheet closes first). */
   onOpenRoute: (route: NotificationRoute) => void;
+  /** Orders in progress the user swiped away from the home bar: pinned on top of All / Orders. */
+  pinnedOrders?: ActiveOrder[];
 }
 
 export function ChatNotificationsSheet({
@@ -45,6 +49,7 @@ export function ChatNotificationsSheet({
   textFor,
   onMarkRead,
   onOpenRoute,
+  pinnedOrders = [],
 }: Props): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -135,13 +140,32 @@ export function ChatNotificationsSheet({
         </View>
 
         <FlatList
+          ListHeaderComponent={
+            filter !== 'match' && pinnedOrders.length > 0 ? (
+              <View>
+                {pinnedOrders.map((order) => (
+                  <PinnedOrderRow
+                    key={order.id}
+                    order={order}
+                    background={c.bgSurface}
+                    onPress={(o) => {
+                      onClose();
+                      onOpenRoute({ screen: 'OrderTracking', params: { orderId: o.id } });
+                    }}
+                  />
+                ))}
+              </View>
+            ) : null
+          }
           data={rows}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.textSecondary }]}>
-              {t('notificationsSheet.empty')}
-            </Text>
+            filter !== 'match' && pinnedOrders.length > 0 ? null : (
+              <Text style={[styles.empty, { color: c.textSecondary }]}>
+                {t('notificationsSheet.empty')}
+              </Text>
+            )
           }
         />
       </View>

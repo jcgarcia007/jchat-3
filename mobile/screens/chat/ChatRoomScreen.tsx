@@ -67,6 +67,7 @@ import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsS
 import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
 import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
+import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
@@ -436,6 +437,7 @@ export default function ChatRoomScreen() {
   const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const { notifications: allNotifications, unreadCount, markRead: markNotificationRead } = useNotifications({ passive: true });
+  const { pinnedOrders } = useOrdersBar();
   const { visible: visibleNotifications, textFor: notificationTextFor } = useNotificationPresenter(allNotifications);
 
   const quickGift = useGiftAvailable(quickCard.visible ? quickCard.userId : null);
@@ -1798,6 +1800,7 @@ export default function ChatRoomScreen() {
         textFor={notificationTextFor}
         onMarkRead={(id) => void markNotificationRead(id)}
         onOpenRoute={handleOpenNotificationRoute}
+        pinnedOrders={pinnedOrders}
       />
       <ChatMoreSheet
         visible={moreOpen}

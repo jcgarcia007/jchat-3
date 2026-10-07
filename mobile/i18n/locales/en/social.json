@@ -45,7 +45,11 @@
       "giftExpired": "Your gift for {{name}} expired",
       "giftPaid": "Your gift is paid and on its way",
       "giftGeneric": "Update on your gift"
-    }
+    },
+    "pinnedOrderTitle": "Order #{{n}} · {{status}}",
+    "pinnedOrderSub": "{{business}} · tap to view",
+    "pinnedBadge": "In progress",
+    "pinnedOrderA11y": "Order {{n}}, {{status}}. Opens tracking"
   },
   "dmChat": {
     "title": "Chat",
