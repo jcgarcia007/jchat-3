@@ -1,0 +1,14 @@
+# location: 26.083048,-80.223725
+# 18 — Offers loads without waiting for the position: the time between tapping the megaphone (screenshot 01) and the first
+# card / empty state (screenshot 02) is the difference of the file times (it used to wait up to 8 s for the GPS fix).
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- takeScreenshot: 01-antes
+- tapOn: "Offers|Ofertas"
+- extendedWaitUntil:
+    visible: "No offers right now|No hay ofertas.*|Nothing new within.*|Nada nuevo.*|Enter|Entrar|.*like.*|.*Me gusta.*"
+    timeout: 20000
+- takeScreenshot: 02-lista
+- tapOn: "Go back|Volver"

@@ -11,6 +11,6 @@ appId: com.juangarciacruz.jchatapp
 - takeScreenshot: 01-filas-fijas
 - tapOn: ".*Abre el seguimiento.*|.*Opens tracking.*"
 - extendedWaitUntil:
-    visible: ".*Order #.*|.*Pedido #.*|.*Seguimiento.*|.*Tracking.*"
+    visible: "Your order|Tu pedido"
     timeout: 15000
 - takeScreenshot: 02-seguimiento
