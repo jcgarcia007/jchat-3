@@ -82,7 +82,7 @@
     "backA11y": "Volver",
     "shareA11y": "Compartir perfil",
     "settingsA11y": "Abrir ajustes",
-    "createPostA11y": "Crear una publicación",
+    "createPostA11y": "Nueva publicación",
     "moreA11y": "Más acciones del perfil",
     "addBio": "+ Agregar una bio",
     "shareProfile": "Compartir perfil",
@@ -90,11 +90,11 @@
     "blockedMe": "No puedes interactuar con esta cuenta."
   },
   "empty": {
-    "ownPostsTitle": "Comparte tu primer momento",
+    "ownPostsTitle": "Comparte tu primera foto",
     "ownPostsSubtitle": "Tus fotos y publicaciones en los lugares que visitas aparecerán aquí.",
     "otherPostsTitle": "Aún no ha publicado",
     "otherPostsSubtitle": "Sus publicaciones aparecerán aquí.",
-    "createPost": "Crear publicación"
+    "createPost": "Nueva publicación"
   },
   "actions": {
     "shareText": "Encuentra a @{{username}} en JChat — https://jchat.cloud",

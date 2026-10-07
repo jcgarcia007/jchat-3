@@ -10,7 +10,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
-  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconPlus, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -62,6 +62,23 @@ function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: n
         {Array.from({ length: 6 }).map((_, index) => <Animated.View key={index} style={[styles.skeletonCell, block, { opacity }]} />)}
       </View>
     </View>
+  );
+}
+
+/** First cell of the OWN grid: same size as a thumbnail, opens the post composer. */
+function NewPostCell({ theme, size, onPress }: { theme: ProfileTheme; size: number; onPress: () => void }) {
+  const { t } = useTranslation('profile');
+  return (
+    <TouchableOpacity
+      testID="profile-new-post-cell"
+      style={[styles.newPostCell, { width: size, height: size, backgroundColor: theme.statsBg, borderColor: theme.tabInactiveText }]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={t('empty.createPost')}
+    >
+      <IconPlus size={28} color={theme.tabActive} strokeWidth={2} />
+      <Text style={[styles.newPostText, { color: theme.bodyText }]} numberOfLines={2}>{t('empty.createPost')}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -328,7 +345,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const renderPosts = () => !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe') ? null : !canViewPosts ? (
     <EmptyState icon={<IconLock size={42} color={theme.tabInactiveText} />} title={t('private.title')} subtitle={t('private.subtitle')} theme={theme} />
   ) : posts.length ? (
-    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
+    <View style={styles.postsGrid}>{isOwnProfile ? <NewPostCell theme={theme} size={cellSize} onPress={() => navigation.navigate('CreatePost')} /> : null}{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
     <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} theme={theme} />
   );
@@ -390,7 +407,7 @@ const styles = StyleSheet.create({
   skeletonAvatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 4, marginLeft: 28, marginTop: -48 }, skeletonName: { width: 180, height: 22, borderRadius: 8, marginLeft: 20, marginTop: 12 },
   skeletonHandle: { width: 110, height: 14, borderRadius: 7, marginLeft: 20, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
-  postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
+  postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, newPostCell: { alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, borderWidth: 1.5, borderStyle: 'dashed' }, newPostText: { fontSize: 12, fontWeight: '700', textAlign: 'center' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
   multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
   emptySubtitle: { marginTop: 7, textAlign: 'center', fontSize: 14, lineHeight: 20 }, emptyAction: { marginTop: 18, minHeight: 44, borderRadius: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }, emptyActionText: { fontSize: 14, fontWeight: '700' },

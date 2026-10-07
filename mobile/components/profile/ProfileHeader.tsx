@@ -60,9 +60,9 @@ function formatCount(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
 }
 
-function IconButton({ label, onPress, children }: { label: string; onPress: () => void; children: React.ReactNode }) {
+function IconButton({ label, onPress, children, testID }: { label: string; onPress: () => void; children: React.ReactNode; testID?: string }) {
   return (
-    <TouchableOpacity style={styles.iconButton} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+    <TouchableOpacity testID={testID} style={styles.iconButton} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
       {children}
     </TouchableOpacity>
   );
@@ -113,7 +113,7 @@ export function ProfileTopBar({
         <View style={styles.topActions}>
           {isOwnProfile ? (
             <>
-              <IconButton label={t('header.createPostA11y')} onPress={onCreatePost}><IconPlus size={24} color={theme.bodyText} /></IconButton>
+              <IconButton testID="profile-create-post" label={t('header.createPostA11y')} onPress={onCreatePost}><IconPlus size={24} color={theme.bodyText} /></IconButton>
               <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={theme.bodyText} /></IconButton>
               <IconButton label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={theme.bodyText} /></IconButton>
             </>

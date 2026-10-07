@@ -82,7 +82,7 @@
     "backA11y": "Go back",
     "shareA11y": "Share profile",
     "settingsA11y": "Open settings",
-    "createPostA11y": "Create a post",
+    "createPostA11y": "New post",
     "moreA11y": "More profile actions",
     "addBio": "+ Add a bio",
     "shareProfile": "Share Profile",
@@ -90,11 +90,11 @@
     "blockedMe": "You can't interact with this account."
   },
   "empty": {
-    "ownPostsTitle": "Share your first moment",
+    "ownPostsTitle": "Share your first photo",
     "ownPostsSubtitle": "Your photos and posts from the places you visit will appear here.",
     "otherPostsTitle": "No posts yet",
     "otherPostsSubtitle": "Their posts will appear here.",
-    "createPost": "Create post"
+    "createPost": "New post"
   },
   "actions": {
     "shareText": "Find @{{username}} on JChat — https://jchat.cloud",
