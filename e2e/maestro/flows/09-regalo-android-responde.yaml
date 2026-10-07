@@ -14,20 +14,27 @@ env:
 - tapOn: "Messages|Mensajes"
 - tapOn:
     id: "dm-row-0b4895d0.*"
-- extendedWaitUntil:
-    visible: ".*sent you a gift.*|.*te envió un regalo.*"
-    timeout: 300000
-- takeScreenshot: 01-card-received
+# The thread keeps older gift cards (also "X sent you a gift"): wait for the buttons of a card that is waiting.
 - runFlow:
     when:
       true: ${ACTION == 'decline'}
     commands:
+      - extendedWaitUntil:
+          visible:
+            id: "gift-decline"
+          timeout: 300000
+      - takeScreenshot: 01-card-received
       - tapOn:
           id: "gift-decline"
 - runFlow:
     when:
       true: ${ACTION == 'accept'}
     commands:
+      - extendedWaitUntil:
+          visible:
+            id: "gift-accept"
+          timeout: 300000
+      - takeScreenshot: 01-card-received
       - tapOn:
           id: "gift-accept"
       - extendedWaitUntil:
