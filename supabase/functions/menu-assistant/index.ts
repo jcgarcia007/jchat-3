@@ -1195,6 +1195,41 @@ async function generateImages(
     : generateImagesOpenAI(basePrompt, n);
 }
 
+
+// ── Photo variants (webp full ≤1280 px + ≤400 px thumb) ─────────────────────────
+// The AI images arrive as ~1.5 MB PNGs. The public menu is much lighter with a webp "full" (max 1280 px) and a
+// "_thumb.webp" (max 400 px) next to it. WASM codecs (jSquash) are loaded lazily so a failure to load them only
+// means the original PNG is uploaded as before.
+const FULL_MAX_PX = 1280;
+const THUMB_MAX_PX = 400;
+
+async function encodePhotoVariants(
+  png: Uint8Array,
+): Promise<{ full: Uint8Array; thumb: Uint8Array } | null> {
+  try {
+    const [{ decode }, { encode }, { default: resize }] = await Promise.all([
+      import("npm:@jsquash/png@3"),
+      import("npm:@jsquash/webp@1"),
+      import("npm:@jsquash/resize@2"),
+    ]);
+    const source = await decode(png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer);
+    const variant = async (maxSide: number, quality: number): Promise<Uint8Array> => {
+      const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+      const image = scale < 1
+        ? await resize(source, {
+          width: Math.max(1, Math.round(source.width * scale)),
+          height: Math.max(1, Math.round(source.height * scale)),
+        })
+        : source;
+      return new Uint8Array(await encode(image, { quality }));
+    };
+    return { full: await variant(FULL_MAX_PX, 80), thumb: await variant(THUMB_MAX_PX, 75) };
+  } catch (err) {
+    console.error("[menu-assistant] webp re-encode failed, uploading the PNG:", err);
+    return null;
+  }
+}
+
 async function handleGenerateImages(
   body: Record<string, unknown>,
   db: SupabaseClient,
@@ -1261,16 +1296,22 @@ async function handleGenerateImages(
   }
 
   // ── Upload to Supabase Storage → menu-photos bucket (already public) ───────
-  // Path: {business_id}/ai/{uuid}.png  — service-role client, no RLS bypass needed.
+  // Path: {business_id}/ai/{uuid}.webp (+ {uuid}_thumb.webp); the PNG only if the re-encode fails.
+  // Service-role client, no RLS bypass needed.
   const urls: string[] = [];
   const uploadFailures: string[] = [];
 
   for (const bytes of imageBytes) {
-    const path = `${businessId}/ai/${crypto.randomUUID()}.png`;
+    const id = crypto.randomUUID();
+    const variants = await encodePhotoVariants(bytes);
+    const path = variants ? `${businessId}/ai/${id}.webp` : `${businessId}/ai/${id}.png`;
 
     const { error: upErr } = await db.storage
       .from("menu-photos")
-      .upload(path, bytes, { contentType: "image/png", upsert: false });
+      .upload(path, variants ? variants.full : bytes, {
+        contentType: variants ? "image/webp" : "image/png",
+        upsert: false,
+      });
 
     if (upErr) {
       console.error(
@@ -1279,6 +1320,19 @@ async function handleGenerateImages(
       );
       uploadFailures.push(upErr.message);
       continue; // partial failure — keep uploading the rest
+    }
+
+    if (variants) {
+      // Best effort: without the thumb the menu just loads the full photo.
+      const { error: thumbErr } = await db.storage
+        .from("menu-photos")
+        .upload(`${businessId}/ai/${id}_thumb.webp`, variants.thumb, {
+          contentType: "image/webp",
+          upsert: false,
+        });
+      if (thumbErr) {
+        console.error("[menu-assistant] thumb upload failed:", thumbErr.message);
+      }
     }
 
     const { data: pubData } = db.storage
