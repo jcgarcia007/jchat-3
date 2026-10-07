@@ -1,0 +1,16 @@
+# location: 26.083048,-80.223725
+# 10b — Pinned "In progress" rows (after flow 10 with PIN=1): they are in Messages, tapping one opens the order tracking.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Messages|Mensajes"
+- extendedWaitUntil:
+    visible: ".*Abre el seguimiento.*|.*Opens tracking.*"
+    timeout: 15000
+- takeScreenshot: 01-filas-fijas
+- tapOn: ".*Abre el seguimiento.*|.*Opens tracking.*"
+- extendedWaitUntil:
+    visible: ".*Order #.*|.*Pedido #.*|.*Seguimiento.*|.*Tracking.*"
+    timeout: 15000
+- takeScreenshot: 02-seguimiento
