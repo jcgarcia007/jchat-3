@@ -16,14 +16,16 @@ env:
 - inputText: ${CARD_EXPIRY}
 - inputText: ${CARD_CVC}
 - inputText: ${CARD_ZIP}
-# Android exposes the "Pay $x" button text: tap it when it is on screen; otherwise (iOS, or the keyboard still open) the
-# sheet is expanded and "Pay" sits at ~58% of the screen height.
+# The "Pay" button is not exposed to the accessibility tree. Its position depends on the keyboard: with it still open
+# (iOS number pad) the sheet is expanded and "Pay" sits at ~58%; with it closed (Android after the ZIP) the whole
+# form, including the "Save payment details" checkbox, is on screen and "Pay" sits at ~90%.
 - evalScript: ${output.payTapped = false}
 - runFlow:
     when:
-      visible: "Pay \\$[0-9].*"
+      visible: "Save payment details.*"
     commands:
-      - tapOn: "Pay \\$[0-9].*"
+      - tapOn:
+          point: "50%,90%"
       - evalScript: ${output.payTapped = true}
 - runFlow:
     when:

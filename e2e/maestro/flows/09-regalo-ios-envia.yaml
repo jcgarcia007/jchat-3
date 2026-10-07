@@ -21,6 +21,11 @@ env:
       id: "dm-gift-button"
     timeout: 30000
 - takeScreenshot: 01-dm
+# The dev client's floating gear (dev builds only) sits on the "+" of the gift sheet rows: park it at the top first.
+- swipe:
+    start: 91%, 68%
+    end: 91%, 18%
+    duration: 800
 - tapOn:
     id: "dm-gift-button"
 - extendedWaitUntil:
