@@ -532,6 +532,7 @@ export default function DMChatScreen() {
         <FlatList
           data={messages}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
           inverted
           renderItem={({ item }) => (
             <MessageBubble

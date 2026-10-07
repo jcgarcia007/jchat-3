@@ -27,6 +27,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  ScrollView,
   Modal,
   Platform,
   Pressable,
@@ -255,6 +256,7 @@ export function ServiceCallSheet({
         pointerEvents="box-none"
       >
         <View style={s.sheet}>
+<ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
           {/* Drag handle */}
           <View style={s.handle} />
 
@@ -346,7 +348,8 @@ export function ServiceCallSheet({
           >
             <Text style={s.cancelText}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
-        </View>
+        </ScrollView>
+</View>
       </KeyboardAvoidingView>
     </Modal>
   );

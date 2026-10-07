@@ -301,6 +301,7 @@ function GiftAcceptSheet({
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
+<ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 10 }}>
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: c.textPrimary }]} accessibilityRole="header">
               {t('giftCard.tableTitle')}
@@ -336,7 +337,8 @@ function GiftAcceptSheet({
           >
             {sending ? <ActivityIndicator color={palette.onBrand} /> : <Text style={[styles.confirmLabel, { color: palette.onBrand }]}>{t('giftCard.confirmAccept')}</Text>}
           </Pressable>
-        </View>
+        </ScrollView>
+</View>
       </KeyboardAvoidingView>
     </Modal>
   );

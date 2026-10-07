@@ -711,6 +711,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
       <Modal visible={showNoticeSheet} transparent animationType="slide" onRequestClose={closeNoticeSheet}>
         <Pressable style={styles.sheetOverlay} onPress={closeNoticeSheet} accessibilityRole="none" />
         <View style={styles.sheet}>
+<ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 12 }}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>{t('tracking.noticeBtn')}</Text>
 
@@ -775,7 +776,8 @@ export default function OrderTrackingScreen(): React.ReactElement {
           <Pressable onPress={closeNoticeSheet} style={styles.sheetCancelBtn} accessibilityRole="button">
             <Text style={styles.sheetCancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
-        </View>
+        </ScrollView>
+</View>
       </Modal>
 
       {/* ── Service call bottom sheet (Modal) ── */}
