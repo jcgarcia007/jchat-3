@@ -41,6 +41,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { useMatchPresenceState } from '../../services/matchPresence';
+import { normalizeImageUri } from '../../utils/normalizeImage';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -155,9 +156,9 @@ export function AttachmentPanel({
         legacy: true,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const uri = result.assets[0]?.uri;
-        if (uri) {
-          onPhoto(uri);
+        const asset = result.assets[0];
+        if (asset?.uri) {
+          onPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
         }
       }
     } catch (err) {

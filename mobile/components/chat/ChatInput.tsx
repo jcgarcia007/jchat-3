@@ -40,6 +40,7 @@ import { AttachmentPanel } from './AttachmentPanel';
 import { VoiceRecorderBar } from '../common/VoiceRecorderBar';
 import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { normalizeImageUri } from '../../utils/normalizeImage';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -129,9 +130,9 @@ export function ChatInput({
         quality: 0.85,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const uri = result.assets[0]?.uri;
-        if (uri) {
-          onSendPhoto(uri);
+        const asset = result.assets[0];
+        if (asset?.uri) {
+          onSendPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
         }
       }
     } catch (err) {
@@ -160,8 +161,8 @@ export function ChatInput({
         quality: 0.85,
         legacy: true,
       });
-      const uri = !result.canceled ? result.assets[0]?.uri : undefined;
-      if (uri) onSendPhoto(uri);
+      const asset = !result.canceled ? result.assets[0] : undefined;
+      if (asset?.uri) onSendPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
     } catch (err) {
       console.error('[ChatInput] launchImageLibraryAsync failed:', err);
       Alert.alert(t('input.cameraErrorTitle'), t('input.cameraErrorMessage'));
