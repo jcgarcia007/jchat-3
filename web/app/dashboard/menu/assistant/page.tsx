@@ -67,6 +67,7 @@ import type { Json } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
 import { readFunctionError } from "@/lib/functionError";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { makeMenuPhotoVariants, thumbPathFor } from "@/lib/menuPhotos";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1157,25 +1158,33 @@ export default function MenuAssistantPage() {
       const uploaded: string[] = [];
       try {
         for (const file of Array.from(files)) {
-          // Normalize: convert any format to JPEG ≤ 2048 px.
-          let blob: Blob;
-          try {
-            blob = await normalizeImage(file);
-          } catch {
-            setPhotoUploadErrors((prev) => ({
-              ...prev,
-              [itemId]: t("uploadFormatError"),
-            }));
-            continue; // skip this file, try the rest
+          // Two sizes (full ≤1280 px + ≤400 px thumb, webp); if the browser cannot, fall back to JPEG ≤ 2048 px.
+          let variants = await makeMenuPhotoVariants(file);
+          if (!variants.reencoded) {
+            try {
+              variants = { full: await normalizeImage(file), thumb: null, reencoded: false };
+            } catch {
+              setPhotoUploadErrors((prev) => ({
+                ...prev,
+                [itemId]: t("uploadFormatError"),
+              }));
+              continue; // skip this file, try the rest
+            }
           }
 
-          const path = `${businessId}/${itemId}/${crypto.randomUUID()}.jpg`;
+          const ext = variants.reencoded ? "webp" : "jpg";
+          const path = `${businessId}/${itemId}/${crypto.randomUUID()}.${ext}`;
           const { error: upErr } = await supabase.storage
             .from("menu-photos")
-            .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+            .upload(path, variants.full, { contentType: variants.reencoded ? "image/webp" : "image/jpeg", upsert: false });
           if (upErr) {
             setPhotoUploadErrors((prev) => ({ ...prev, [itemId]: upErr.message }));
             continue; // skip, try the rest
+          }
+          const thumbPath = variants.thumb ? thumbPathFor(path) : null;
+          if (variants.thumb && thumbPath) {
+            // Best effort: a missing thumb only means the menu loads the full photo.
+            await supabase.storage.from("menu-photos").upload(thumbPath, variants.thumb, { contentType: "image/webp", upsert: false });
           }
           const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(path);
           uploaded.push(urlData.publicUrl);

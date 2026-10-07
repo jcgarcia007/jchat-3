@@ -68,6 +68,7 @@ import { resolvePalette, type MenuPalette } from "@/app/m/[slug]/templates/share
 import { resolveActiveBusiness } from "@/lib/business";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
+import { makeMenuPhotoVariants, thumbPathFor } from "@/lib/menuPhotos";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -4147,7 +4148,10 @@ export default function MenuPage() {
         // 2. Delete photos removed by the user (Storage object + DB row).
         for (const photo of photosToDelete) {
           if (photo.storage_path) {
-            await supabase.storage.from("menu-photos").remove([photo.storage_path]);
+            const thumb = thumbPathFor(photo.storage_path);
+            await supabase.storage
+              .from("menu-photos")
+              .remove(thumb ? [photo.storage_path, thumb] : [photo.storage_path]);
           }
           await supabase.from("menu_item_photos").delete().eq("id", photo.id);
         }
@@ -4159,12 +4163,25 @@ export default function MenuPage() {
         const baseSort = Math.floor(Date.now() / 1000);
         for (let i = 0; i < stagedPhotos.length; i++) {
           const { file } = stagedPhotos[i];
-          const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+          // Two sizes made in the browser: full (≤1280 px) and a ≤400 px thumb next to it (`_thumb.webp`).
+          const variants = await makeMenuPhotoVariants(file);
+          const ext = variants.reencoded ? "webp" : (file.name.split(".").pop() ?? "jpg").toLowerCase();
           const storagePath = `${businessId}/${resolvedItemId}/${crypto.randomUUID()}.${ext}`;
           const { error: upErr } = await supabase.storage
             .from("menu-photos")
-            .upload(storagePath, file, { contentType: file.type, upsert: false });
+            .upload(storagePath, variants.full, {
+              contentType: variants.reencoded ? "image/webp" : file.type,
+              upsert: false,
+            });
           if (upErr) throw upErr;
+          const thumbPath = variants.thumb ? thumbPathFor(storagePath) : null;
+          if (variants.thumb && thumbPath) {
+            // Best effort: a missing thumb only means the menu loads the full photo instead.
+            const { error: thumbErr } = await supabase.storage
+              .from("menu-photos")
+              .upload(thumbPath, variants.thumb, { contentType: "image/webp", upsert: false });
+            if (thumbErr) console.warn("[menu] thumb upload failed:", thumbErr.message);
+          }
           const { data: pub } = supabase.storage
             .from("menu-photos")
             .getPublicUrl(storagePath);
