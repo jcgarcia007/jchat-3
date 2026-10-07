@@ -15,11 +15,11 @@ appId: com.juangarciacruz.jchatapp
 - assertNotVisible: ".*previewHint.*"
 - takeScreenshot: 01-ajustes-arriba
 - scrollUntilVisible:
-    element: "Privacy|Privacidad"
+    element: "Privacy Settings|Ajustes de privacidad"
     timeout: 20000
 - assertNotVisible: ".*previewHint.*"
 - takeScreenshot: 02-ajustes-medio
-- tapOn: "Privacy|Privacidad"
+- tapOn: "Privacy Settings|Ajustes de privacidad"
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: 03-privacidad

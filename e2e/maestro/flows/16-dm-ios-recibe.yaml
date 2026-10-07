@@ -1,0 +1,18 @@
+# location: 26.083048,-80.223725
+# 16 — DM text (RECEIVER, simulator account "test1"): sits in the Messages tab; the row of "Test" must show the new text
+# (real-time inbox) and then the thread must contain it.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Messages|Mensajes"
+- extendedWaitUntil:
+    visible: ".*noche hola.*"
+    timeout: 120000
+- takeScreenshot: 01-fila-con-texto
+- tapOn:
+    id: "dm-row-a613d6a9.*"
+- extendedWaitUntil:
+    visible: "\\[QA\\] noche hola"
+    timeout: 20000
+- takeScreenshot: 02-hilo

@@ -1,0 +1,20 @@
+# location: 26.083048,-80.223725
+# 17 — Map: the venue pin exposes its name (accessibility label), opens the preview card, and the filters respond.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Map|Mapa"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 01-mapa
+- extendedWaitUntil:
+    visible:
+      id: "map-pin-.*"
+    timeout: 20000
+- tapOn:
+    id: "map-pin-.*"
+- extendedWaitUntil:
+    visible: "Bar XZX"
+    timeout: 10000
+- takeScreenshot: 02-tarjeta-pin

@@ -1,0 +1,28 @@
+# location: 26.083048,-80.223725
+# 16 — DM text + emoji (SENDER, Android account "test" → "test1"). Pair: 16-dm-ios-recibe.yaml on the simulator at the same time.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+# give the receiver time to sit in the Messages tab
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: 25000
+    optional: true
+- tapOn: "Messages|Mensajes"
+- tapOn:
+    id: "dm-row-0b4895d0.*"
+- extendedWaitUntil:
+    visible:
+      id: "dm-send"
+    optional: true
+    timeout: 5000
+- tapOn: "Message…|Mensaje…"
+- inputText: "[QA] noche hola"
+- tapOn:
+    id: "dm-send"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: 01-enviado
