@@ -2,7 +2,8 @@
 # 12 — Photos (iOS simulator, account test1): (a) the gallery opens 3 times in a row (open → cancel) and a 4th time to pick;
 # (b) the VERTICAL phone photo (EXIF orientation 6, tagged "QA-VERT-TOP", red bar on the right when upright) is published in
 # a "[QA]" post and must look upright in the profile grid (portrait pixels, red bar on the right, not a sideways landscape).
-# Needs the sample photos in the simulator library:  xcrun simctl addmedia <udid> e2e/fixtures/*.jpg  (see README) and the
+# The dev client's floating gear (dev builds only) was dragged to the left edge (it covers the picker's confirm button at the
+# right). Needs the sample photos in the simulator library:  xcrun simctl addmedia <udid> e2e/fixtures/*.jpg  (see README) and the
 # Photos permission granted to the app.
 appId: com.juangarciacruz.jchatapp
 ---
@@ -40,7 +41,7 @@ appId: com.juangarciacruz.jchatapp
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: 02-compositor
-- tapOn: "Escribe una descripción…|Write a caption…|Write a description…"
+- tapOn: "Escribe una descripci.*|Write a (caption|description).*"
 - inputText: "[QA] foto vertical"
 - tapOn: "Publish|Publicar|Post"
 - waitForAnimationToEnd:
