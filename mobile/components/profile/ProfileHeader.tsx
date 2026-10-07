@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +45,8 @@ export interface ProfileHeaderProps {
   completionVisible: boolean;
   onEditProfile: () => void;
   onShare: () => void;
+  /** Own profile: the primary "+ Post" button of the action row. */
+  onCreatePost?: () => void;
   onDismissCompletion: () => void;
   onOpenFollowers: () => void;
   onOpenFollowing: () => void;
@@ -129,10 +131,16 @@ export function ProfileTopBar({
 export default function ProfileHeader({
   isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
   followerCount, followingCount, relation, followBusy, completion,
-  completionVisible, onEditProfile, onShare, onDismissCompletion, onOpenFollowers, onOpenFollowing,
+  completionVisible, onEditProfile, onShare, onCreatePost, onDismissCompletion, onOpenFollowers, onOpenFollowing,
   onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
+  // Own action row [Edit] [+ Post] [Share]: when the three labels do not fit the measured width, Share
+  // becomes an icon-only button (its label stays as the accessibility label).
+  const [actionRowWidth, setActionRowWidth] = useState(0);
+  const labelChars = t('header.editProfile').length + t('header.publish').length + t('header.shareProfile').length;
+  const fullRowNeeded = labelChars * 8 + 3 * (17 + 7) + 2 * 9 + 3 * 12;
+  const compactShare = actionRowWidth > 0 && actionRowWidth < fullRowNeeded;
   const name = displayName?.trim() || username;
   const initials = getInitials(name, 2);
   const completedCount = Object.values(completion).filter(Boolean).length;
@@ -207,11 +215,25 @@ export default function ProfileHeader({
         </View>
       ) : null}
 
-      <View style={styles.actionRow}>
+      <View style={styles.actionRow} onLayout={(event) => setActionRowWidth(event.nativeEvent.layout.width)}>
         {isOwnProfile ? (
           <>
-            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.editProfile')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.shareProfile')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.editProfile')}</Text></TouchableOpacity>
+            <TouchableOpacity
+              testID="profile-create-post-button"
+              style={[styles.ownActionButton, { backgroundColor: theme.btn1Bg, borderColor: theme.btn1Bg }]}
+              onPress={onCreatePost}
+              accessibilityRole="button"
+              accessibilityLabel={t('header.createPostA11y')}
+            >
+              <IconPlus size={17} color={theme.btn1Color} strokeWidth={2.4} />
+              <Text style={[styles.buttonLabel, { color: theme.btn1Color }]} numberOfLines={1}>{t('header.publish')}</Text>
+            </TouchableOpacity>
+            {compactShare ? (
+              <TouchableOpacity style={[styles.ownIconButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button" accessibilityLabel={t('header.shareProfile')}><IconShare3 size={18} color={theme.btn2Color} /></TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.shareProfile')}</Text></TouchableOpacity>
+            )}
           </>
         ) : (
           relation === 'blockedMe' ? (
@@ -264,6 +286,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
   statLabel: { minHeight: 28, fontSize: 12, lineHeight: 14, fontWeight: '600', textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 9, marginHorizontal: 16, marginTop: 12 },
+  ownIconButton: { width: 44, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   ownActionButton: { flex: 1, height: 36, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   primaryButton: { flex: 1, height: 44, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   secondaryButton: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },

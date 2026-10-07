@@ -87,7 +87,8 @@
     "addBio": "+ Agregar una bio",
     "shareProfile": "Compartir perfil",
     "unblock": "Desbloquear",
-    "blockedMe": "No puedes interactuar con esta cuenta."
+    "blockedMe": "No puedes interactuar con esta cuenta.",
+    "publish": "Publicar"
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primera foto",
