@@ -334,7 +334,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   return (
     <View style={[styles.root, { backgroundColor: theme.statsBg }]}>
       <ProfileTopBar
-        isOwnProfile={isOwnProfile} username={profile.username} topInset={insets.top}
+        isOwnProfile={isOwnProfile} showBack={route.name === 'UserProfile'} username={profile.username} topInset={insets.top}
         onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
         onSettings={() => navigation.navigate('Settings')} onCreatePost={() => navigation.navigate('CreatePost')} theme={theme}
       />

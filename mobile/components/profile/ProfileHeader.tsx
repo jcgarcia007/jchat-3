@@ -13,6 +13,8 @@ import { getInitials } from '../../utils/initials';
 
 export interface ProfileTopBarProps {
   isOwnProfile: boolean;
+  /** Own profile opened as a stacked screen (e.g. from the chat): show the back arrow. */
+  showBack?: boolean;
   username: string;
   topInset: number;
   onBack: () => void;
@@ -91,14 +93,19 @@ function StatItem({ label, value, theme, onPress }: { label: string; value: numb
  * so scrolling could pass the avatar/cover behind the status bar clock/battery.
  */
 export function ProfileTopBar({
-  isOwnProfile, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
+  isOwnProfile, showBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
 }: ProfileTopBarProps) {
   const { t } = useTranslation('profile');
   return (
     <View style={[styles.topBarRoot, { backgroundColor: theme.statsBg, paddingTop: topInset }]}>
       <View style={styles.topBar}>
         {isOwnProfile ? (
-          <Text style={[styles.topUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text>
+          <>
+            {showBack ? (
+              <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
+            ) : null}
+            <Text style={[styles.topUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text>
+          </>
         ) : (
           <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
         )}
