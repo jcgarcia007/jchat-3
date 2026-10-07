@@ -1,0 +1,20 @@
+# location: 26.083048,-80.223725
+# 11 — Own profile tab: action row [Edit] [+ Post] [Share], the content must start in its final place (no jump):
+# two screenshots, right after the tab opens and 4 s later, are compared by eye (and the header position by hierarchy).
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Profile|Perfil"
+- takeScreenshot: 01-recien-abierto
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: 02-4s-despues
+- assertVisible:
+    id: "profile-create-post-button"
+- assertVisible: "Edit Profile|Editar perfil"
+- tapOn: "Profile|Perfil"
+- takeScreenshot: 03-segunda-visita
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 04-segunda-4s

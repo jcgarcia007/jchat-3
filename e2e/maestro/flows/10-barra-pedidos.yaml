@@ -1,0 +1,54 @@
+# location: 26.083048,-80.223725
+# 10 — Home bar: swipe the ORDERS segment left → "Moved to notifications · Undo"; Undo restores it; swiped again, the order is a
+# pinned "In progress" row in Messages and opens the tracking. Needs at least one order in progress for the account.
+# With PIN=1 it leaves the orders pinned (the local state is not restored); default only exercises swipe + undo.
+appId: com.juangarciacruz.jchatapp
+env:
+  PIN: "0"
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- extendedWaitUntil:
+    visible: ".*orders? in progress.*|.*pedidos? en curso.*|Order #.*|Pedido #.*"
+    timeout: 30000
+- takeScreenshot: 01-barra
+- swipe:
+    from:
+      text: ".*orders? in progress.*|.*pedidos? en curso.*|Order #.*|Pedido #.*"
+    direction: LEFT
+    duration: 400
+- extendedWaitUntil:
+    visible: "Moved to notifications|Movido a notificaciones"
+    timeout: 6000
+- takeScreenshot: 02-aviso
+- tapOn: "Undo|Deshacer"
+- extendedWaitUntil:
+    visible: ".*orders? in progress.*|.*pedidos? en curso.*|Order #.*|Pedido #.*"
+    timeout: 6000
+- takeScreenshot: 03-deshecho
+- runFlow:
+    when:
+      true: ${PIN == '1'}
+    commands:
+      - swipe:
+          from:
+            text: ".*orders? in progress.*|.*pedidos? en curso.*|Order #.*|Pedido #.*"
+          direction: LEFT
+          duration: 400
+      - extendedWaitUntil:
+          visible: "Moved to notifications|Movido a notificaciones"
+          timeout: 6000
+      - extendedWaitUntil:
+          notVisible: "Moved to notifications|Movido a notificaciones"
+          timeout: 10000
+      - assertNotVisible: ".*orders? in progress.*|.*pedidos? en curso.*"
+      - tapOn: "Messages|Mensajes"
+      - extendedWaitUntil:
+          visible: "In progress|En curso"
+          timeout: 10000
+      - takeScreenshot: 04-fila-fija
+      - tapOn: "In progress|En curso"
+      - extendedWaitUntil:
+          visible: ".*Order #.*|.*Pedido #.*"
+          timeout: 15000
+      - takeScreenshot: 05-seguimiento
