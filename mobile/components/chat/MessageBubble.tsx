@@ -295,6 +295,7 @@ export function MessageBubble({
       {!isOwn && (
         <Pressable
           ref={avatarRef}
+          testID={`chat-message-avatar-${message.user_id}`}
           onPress={handlePressUser}
           accessibilityRole="button"
           accessibilityLabel={t('bubble.userLongPressA11y', { name: displayName })}

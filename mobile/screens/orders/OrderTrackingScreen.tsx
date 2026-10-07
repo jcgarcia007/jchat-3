@@ -660,6 +660,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {/* "Avisar al local": notice about a PAID order (replaces the generic staff call) */}
         {showStepper && !isDelivered && (
           <Pressable
+            testID="order-notify"
             onPress={() => setShowNoticeSheet(true)}
             style={styles.serviceBtn}
             accessibilityRole="button"
@@ -673,6 +674,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {/* Table orders keep "Call the waiter" apart (golden rule: needs the venue presence) */}
         {showStepper && !isDelivered && order.order_type === 'table' && (
           <Pressable
+            testID="order-call-waiter"
             onPress={() => setShowServiceSheet(true)}
             style={styles.chatBtn}
             accessibilityRole="button"
@@ -685,6 +687,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         {/* Secondary: back to the chat only with an active venue presence; otherwise home */}
         {canReturnToChat ? (
           <Pressable
+            testID="order-back-chat"
             onPress={handleBackToChat}
             style={styles.chatBtn}
             accessibilityRole="button"

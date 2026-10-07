@@ -50,6 +50,7 @@ function ConversationRow({
 
   return (
     <TouchableOpacity
+      testID={`dm-row-${otherUser.id}`}
       activeOpacity={0.7}
       onPress={onPress}
       style={[

@@ -288,6 +288,7 @@ export function ChatInput({
 
         {/* Dynamic: mic (text empty) ↔ send (text present) */}
         <Pressable
+          testID={canSend ? 'chat-send' : 'chat-mic'}
           onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
           accessibilityLabel={canSend ? t('input.send') : t('voice.record', { ns: 'common' })}

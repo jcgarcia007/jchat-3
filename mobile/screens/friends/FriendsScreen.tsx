@@ -354,6 +354,7 @@ export default function FriendsScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgBase }]} edges={['top']}>
       <View style={styles.header}>
         <Pressable
+          testID="back-button"
           accessibilityLabel={commonTranslation.t('back')}
           accessibilityRole="button"
           hitSlop={8}

@@ -195,6 +195,7 @@ function rowBorderRadius(isFirst?: boolean, isLast?: boolean) {
 
 /** A row that renders a label on the left and a Switch on the right. */
 interface ToggleRowProps extends RowBaseProps {
+  testID?: string;
   icon?: React.ReactNode;
   label: string;
   subLabel?: string;
@@ -204,6 +205,7 @@ interface ToggleRowProps extends RowBaseProps {
   subLabelColor: string;
 }
 function ToggleRow({
+  testID,
   icon,
   label,
   subLabel,
@@ -235,6 +237,7 @@ function ToggleRow({
         )}
       </View>
       <Switch
+        testID={testID}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: palette.textTertiary, true: palette.brand }}
@@ -539,6 +542,7 @@ export default function PrivacyScreen() {
         ]}
       >
         <Pressable
+          testID="back-button"
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
@@ -722,6 +726,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Posts */}
         <ToggleRow
+          testID="setting-tabPosts"
           label={t('privacy.showPostsTab')}
           value={settings.tabPosts}
           onValueChange={(v) => updateSettings({ tabPosts: v })}
@@ -733,6 +738,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Stories */}
         <ToggleRow
+          testID="setting-tabStories"
           label={t('privacy.showStoriesTab')}
           value={settings.tabStories}
           onValueChange={(v) => updateSettings({ tabStories: v })}
@@ -744,6 +750,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Places */}
         <ToggleRow
+          testID="setting-tabPlaces"
           label={t('privacy.showPlacesTab')}
           value={settings.tabPlaces}
           onValueChange={(v) => updateSettings({ tabPlaces: v })}
@@ -755,6 +762,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Gifts */}
         <ToggleRow
+          testID="setting-tabGifts"
           label={t('privacy.showGiftsTab')}
           value={settings.tabGifts}
           onValueChange={(v) => updateSettings({ tabGifts: v })}
@@ -766,6 +774,7 @@ export default function PrivacyScreen() {
 
         {/* Visible profile tabs — Saved */}
         <ToggleRow
+          testID="setting-tabSaved"
           label={t('privacy.showSavedTab')}
           value={settings.tabSaved}
           onValueChange={(v) => updateSettings({ tabSaved: v })}

@@ -177,7 +177,7 @@ export default function PostDetailScreen(): React.JSX.Element {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgBase }]}>
       <View style={[styles.header, { borderBottomColor: c.borderSubtle }]}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel={t('detail.backA11y')}>
+        <TouchableOpacity testID="back-button" style={styles.iconButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel={t('detail.backA11y')}>
           <IconArrowLeft size={24} color={c.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('detail.title')}</Text>
@@ -226,7 +226,7 @@ export default function PostDetailScreen(): React.JSX.Element {
 
         <View style={[styles.composer, { backgroundColor: c.bgBase, borderTopColor: c.borderSubtle }]}>
           <TextInput value={comment} onChangeText={setComment} maxLength={1000} editable={!busy} placeholder={t('detail.commentPlaceholder')} placeholderTextColor={c.textTertiary} style={[styles.commentInput, { color: c.textPrimary, backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]} />
-          <TouchableOpacity style={[styles.sendButton, { backgroundColor: comment.trim() && !busy ? c.brand : c.bgSurface }]} disabled={!comment.trim() || busy} onPress={() => void sendComment()} accessibilityRole="button" accessibilityLabel={t('detail.sendCommentA11y')}>
+          <TouchableOpacity style={[styles.sendButton, { backgroundColor: comment.trim() && !busy ? c.brand : c.bgSurface }]} testID="comment-send" disabled={!comment.trim() || busy} onPress={() => void sendComment()} accessibilityRole="button" accessibilityLabel={t('detail.sendCommentA11y')}>
             {busy ? <ActivityIndicator size="small" color={c.textPrimary} /> : <IconSend size={20} color={comment.trim() ? c.bgBase : c.textTertiary} />}
           </TouchableOpacity>
         </View>

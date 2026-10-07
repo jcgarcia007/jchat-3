@@ -269,9 +269,9 @@ export default function UserQuickCard({
 
             {/* Row 1 */}
             <View style={[styles.gridRow, { borderTopColor: c.borderSubtle }]}>
-              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.profile')}
+              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.profile')} testID="quick-card-profile"
                 icon={<IconUser size={18} color={c.textPrimary} strokeWidth={1.8} />} onPress={handleProfile} />
-              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.dm')}
+              <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t('quickCard.dm')} testID="quick-card-dm"
                 icon={<IconMessage size={18} color={c.textPrimary} strokeWidth={1.8} />} onPress={handleDM} />
               <Cell borderColor={c.borderSubtle} labelColor={c.textPrimary} label={t(relation === 'following' ? 'quickCard.following' : relation === 'requested' ? 'quickCard.requested' : 'quickCard.follow')} last
                 testID="quick-card-follow"
@@ -292,9 +292,9 @@ export default function UserQuickCard({
                   icon={<IconBell size={18} color={c.textPrimary} strokeWidth={1.8} />}
                   onPress={() => onOpenFull(targetUserId, targetName)} />
               )}
-              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.report')}
+              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.report')} testID="quick-card-report"
                 icon={<IconFlag size={18} color={c.danger} strokeWidth={1.8} />} onPress={handleReport} />
-              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.block')} last
+              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.block')} testID="quick-card-block" last
                 icon={<IconBan size={18} color={c.danger} strokeWidth={1.8} />} onPress={handleBlock} />
             </View>
           </Pressable>

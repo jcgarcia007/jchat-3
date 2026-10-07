@@ -72,6 +72,7 @@ function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: Profil
   const hasMultiplePhotos = (post.media_urls?.length ?? 0) > 1;
   return (
     <TouchableOpacity
+      testID={`post-tile-${post.id}`}
       style={[styles.postCell, { width: size, height: size, backgroundColor: theme.cellColors[1] }]}
       onPress={onPress}
       accessibilityRole="button"

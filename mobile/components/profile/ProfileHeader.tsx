@@ -244,7 +244,7 @@ export default function ProfileHeader({
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity style={[styles.primaryButton, { backgroundColor: followOutlined ? theme.btn2Bg : theme.btn1Bg }, followOutlined && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={followAction} disabled={followBusy} accessibilityRole="button">
+              <TouchableOpacity testID="profile-follow" style={[styles.primaryButton, { backgroundColor: followOutlined ? theme.btn2Bg : theme.btn1Bg }, followOutlined && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={followAction} disabled={followBusy} accessibilityRole="button">
                 {followBusy ? <ActivityIndicator color={followOutlined ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onMessage} accessibilityRole="button"><IconMessage size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.message')}</Text></TouchableOpacity>
