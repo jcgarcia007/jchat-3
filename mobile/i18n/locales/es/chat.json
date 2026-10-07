@@ -413,6 +413,9 @@
     "tablePlaceholder": "Número de mesa",
     "detailsPlaceholder": "Detalles para encontrarte (opcional)",
     "idNotice": "Algunos artículos requieren mostrar ID (21+) al entregarse.",
-    "confirmAccept": "Aceptar regalo"
+    "confirmAccept": "Aceptar regalo",
+    "senderAccepted": "{{name}} aceptó tu regalo",
+    "senderDeclined": "{{name}} no aceptó tu regalo. No se te cobró nada.",
+    "senderExpired": "{{name}} no respondió a tiempo. No se te cobró nada."
   }
 }

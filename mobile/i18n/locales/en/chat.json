@@ -413,6 +413,9 @@
     "tablePlaceholder": "Table number",
     "detailsPlaceholder": "Details to find you (optional)",
     "idNotice": "Some items require showing ID (21+) when delivered.",
-    "confirmAccept": "Accept gift"
+    "confirmAccept": "Accept gift",
+    "senderAccepted": "{{name}} accepted your gift",
+    "senderDeclined": "{{name}} didn't accept your gift. You weren't charged.",
+    "senderExpired": "{{name}} didn't answer in time. You weren't charged."
   }
 }

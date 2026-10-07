@@ -68,6 +68,16 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
     };
   }, [offerId, refresh]);
 
+  // Safety net: realtime on gift_offers needs the table in the supabase_realtime publication (migration 207). Until
+  // that is applied — and whenever a socket hiccup swallows an event — an open card re-reads itself every 5 s while
+  // the offer can still change state, so neither side is left looking at a stale card.
+  const open = view?.status === 'awaiting_payment' || view?.status === 'held' || view?.status === 'accepted';
+  useEffect(() => {
+    if (!open || !isSupabaseConfigured) return;
+    const id = setInterval(() => void refresh(), 5000);
+    return () => clearInterval(id);
+  }, [open, refresh]);
+
   // 1 s timer only while the offer is waiting for an answer.
   const waiting = view?.status === 'held';
   useEffect(() => {
@@ -122,13 +132,13 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
       case 'held':
         return view.is_sender ? t('giftCard.waitingSender') : t('giftCard.waitingRecipient', { time: mmss(secondsLeft) });
       case 'accepted':
-        return t('giftCard.accepted');
+        return view.is_sender ? t('giftCard.senderAccepted', { name: view.to.name }) : t('giftCard.accepted');
       case 'paid':
-        return t('giftCard.paid');
+        return view.is_sender ? t('giftCard.senderAccepted', { name: view.to.name }) : t('giftCard.paid');
       case 'declined':
-        return t('giftCard.declined');
+        return view.is_sender ? t('giftCard.senderDeclined', { name: view.to.name }) : t('giftCard.declined');
       case 'expired':
-        return t('giftCard.expired');
+        return view.is_sender ? t('giftCard.senderExpired', { name: view.to.name }) : t('giftCard.expired');
       default:
         return t('giftCard.cancelled');
     }
