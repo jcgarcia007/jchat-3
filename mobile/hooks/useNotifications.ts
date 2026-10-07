@@ -38,13 +38,27 @@ import {
 // ── Configure foreground presentation behaviour ────────────────────────────────
 // Must be called outside any component / hook body so it is set before the
 // first notification arrives (Expo SDK requirement).
+// With the app OPEN the OS banner is shown only for the events a person must not miss: a gift offer or
+// its response, an order status change and a Match. Tapping it goes through the response listener below
+// (1:1 chat / order tracking / Match chat). Everything else keeps arriving silently (bell + badges).
+const FOREGROUND_BANNER_TYPES: ReadonlySet<string> = new Set([
+  'gift_offer',
+  'gift_response',
+  'order_status',
+  'match_match',
+]);
+
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: false,
-    shouldShowList: false,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const type = notification.request.content.data?.type;
+    const show = typeof type === 'string' && FOREGROUND_BANNER_TYPES.has(type);
+    return {
+      shouldShowBanner: show,
+      shouldShowList: show,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 // ── Public interface ───────────────────────────────────────────────────────────
