@@ -1,0 +1,25 @@
+# location: 26.083048,-80.223725
+# 13 — DM with a photo (iOS simulator, account test1 → "Test"): picks the VERTICAL sample photo (EXIF 6) and sends it; the
+# bubble must show it upright and the thread must not error. Needs the sample photos in the simulator library.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Messages|Mensajes"
+- tapOn:
+    id: "dm-row-a613d6a9.*"
+- extendedWaitUntil:
+    visible:
+      id: "dm-photo"
+    timeout: 20000
+- tapOn:
+    id: "dm-photo"
+- extendedWaitUntil:
+    visible: "Select up to 1 photo.*|Cancel|Cancelar"
+    timeout: 15000
+- takeScreenshot: 01-picker
+- tapOn:
+    point: "83%,27%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: 02-enviada

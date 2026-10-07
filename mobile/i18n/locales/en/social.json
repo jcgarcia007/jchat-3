@@ -59,7 +59,8 @@
     "sendTextError": "Failed to send message.",
     "sendPhotoError": "Failed to send photo.",
     "permissionTitle": "Permission required",
-    "permissionMessage": "Allow photo access to send images."
+    "permissionMessage": "Allow photo access to send images.",
+    "sendPhotoA11y": "Send a photo"
   },
   "friends": {
     "title": "Friends",

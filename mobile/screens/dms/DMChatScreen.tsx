@@ -575,6 +575,9 @@ export default function DMChatScreen() {
       >
         {/* Photo picker */}
         <TouchableOpacity
+          testID="dm-photo"
+          accessibilityRole="button"
+          accessibilityLabel={t('dmChat.sendPhotoA11y')}
           style={styles.composerIconBtn}
           onPress={handlePickPhoto}
           disabled={waitingForReply}
