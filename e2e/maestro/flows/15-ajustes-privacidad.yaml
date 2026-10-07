@@ -1,0 +1,43 @@
+# location: 26.083048,-80.223725
+# 15 — Settings and Privacy: no raw i18n keys on screen (the Match / message preview hints used to show
+# "main.previewHint.undefined"), the real-time location notice is fixed (no switch), and a privacy switch (profile tab "Posts")
+# is toggled off and back on (original value restored).
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Profile|Perfil"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Open settings|Abrir ajustes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: ".*previewHint.*"
+- takeScreenshot: 01-ajustes-arriba
+- scrollUntilVisible:
+    element: "Privacy|Privacidad"
+    timeout: 20000
+- assertNotVisible: ".*previewHint.*"
+- takeScreenshot: 02-ajustes-medio
+- tapOn: "Privacy|Privacidad"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 03-privacidad
+- scrollUntilVisible:
+    element:
+      id: "setting-tabPosts"
+    timeout: 20000
+- tapOn:
+    id: "setting-tabPosts"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: 04-posts-off
+- tapOn:
+    id: "setting-tabPosts"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: 05-posts-restaurado
+- tapOn:
+    id: "back-button"
+- tapOn:
+    id: "settings-back"
