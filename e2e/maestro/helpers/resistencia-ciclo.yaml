@@ -16,19 +16,19 @@ env:
 # minimize → the bar, tab hopping
 - tapOn: "Go back|Volver"
 - extendedWaitUntil:
-    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    visible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
     timeout: 20000
 - tapOn: "Messages|Mensajes"
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn: "Nearby|Cerca.*"
-- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+- assertVisible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
 # quiet minimized
 - extendedWaitUntil:
     visible: "THIS TEXT NEVER APPEARS"
     timeout: ${QUIET_MS}
     optional: true
-- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+- assertVisible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
 # reopen from the bar
 - tapOn: "Back|Volver|Back to the .* chat|Volver al chat de .*"
 - extendedWaitUntil:

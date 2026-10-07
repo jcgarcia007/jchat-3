@@ -11,7 +11,7 @@ env:
 - takeScreenshot: 01-chat-dentro
 - tapOn: "Go back|Volver"
 - extendedWaitUntil:
-    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    visible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
     timeout: 15000
 - takeScreenshot: 02-barra-estas-en
 - tapOn: "Back|Volver|Back to the .* chat|Volver al chat de .*"

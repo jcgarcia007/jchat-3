@@ -1,0 +1,43 @@
+# location: 26.083048,-80.223725
+# 09 — Gift, SENDER = iPhone/simulator account "test1" → recipient Android "test". Run 09-regalo-android-responde.yaml on
+# Android at the same time (same ACTION). The card on the sender's side must change by itself (realtime) to the answer;
+# the screenshot "03-card-changed" is taken the moment it does (its file time vs gift_offers.responded_at = latency).
+#   ACTION=decline → "Test didn't accept your gift. You weren't charged."   ACTION=accept → "Test accepted your gift"
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  GIFT_ITEM_1: Mini Corn Dogs
+  EXPECT: "Test didn't accept your gift.*|Test no aceptó tu regalo.*"
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Go back|Volver"
+- tapOn: "Messages|Mensajes"
+- tapOn:
+    id: "dm-row-a613d6a9.*"
+- extendedWaitUntil:
+    visible:
+      id: "dm-gift-button"
+    timeout: 30000
+- takeScreenshot: 01-dm
+- tapOn:
+    id: "dm-gift-button"
+- extendedWaitUntil:
+    visible: "Gift for.*|Regalo para.*"
+    timeout: 30000
+- tapOn: "Add one ${GIFT_ITEM_1}|Añadir un ${GIFT_ITEM_1}"
+- tapOn: "Add one ${GIFT_ITEM_1}|Añadir un ${GIFT_ITEM_1}"
+- assertVisible: "Send gift · 2 items.*|Enviar regalo · 2 artículos.*"
+- tapOn: "Send gift.*|Enviar regalo.*"
+- runFlow: ../helpers/pay-test-card.yaml
+- extendedWaitUntil:
+    visible: "Gift on its way|Regalo en camino"
+    timeout: 180000
+- takeScreenshot: 02-enviado
+- tapOn: "OK"
+# stay in the 1:1 chat: the card must flip without any action here
+- extendedWaitUntil:
+    visible: "${EXPECT}"
+    timeout: 240000
+- takeScreenshot: 03-card-changed

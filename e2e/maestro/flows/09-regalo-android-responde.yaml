@@ -1,0 +1,43 @@
+# location: 26.083048,-80.223725
+# 09 — Gift, RECIPIENT = Android account "test": waits for the gift card from "test1" in the 1:1 chat and answers.
+#   ACTION=decline → taps "No, thanks"        ACTION=accept → "Accept" with table 12
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+  ACTION: decline
+  TABLE: "12"
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Go back|Volver"
+- tapOn: "Messages|Mensajes"
+- tapOn:
+    id: "dm-row-0b4895d0.*"
+- extendedWaitUntil:
+    visible: ".*sent you a gift.*|.*te envió un regalo.*"
+    timeout: 300000
+- takeScreenshot: 01-card-received
+- runFlow:
+    when:
+      true: ${ACTION == 'decline'}
+    commands:
+      - tapOn:
+          id: "gift-decline"
+- runFlow:
+    when:
+      true: ${ACTION == 'accept'}
+    commands:
+      - tapOn:
+          id: "gift-accept"
+      - extendedWaitUntil:
+          visible: "Which table are you at\\?|¿Cuál es tu mesa\\?"
+          timeout: 15000
+      - tapOn: "Table number|Número de mesa"
+      - inputText: ${TABLE}
+      - tapOn: "Accept gift|Aceptar regalo"
+- takeScreenshot: 02-responded
+- extendedWaitUntil:
+    visible: "Not accepted|No aceptado|Accepted.*|Aceptado.*"
+    timeout: 30000
+- takeScreenshot: 03-card-final

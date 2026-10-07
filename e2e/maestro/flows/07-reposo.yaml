@@ -22,12 +22,12 @@ env:
 # Minimized: the venue session's heartbeat.
 - tapOn: "Go back|Volver"
 - extendedWaitUntil:
-    visible: "You're at ${VENUE}|Estás en ${VENUE}"
+    visible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
     timeout: 15000
 - extendedWaitUntil:
     visible: "THIS TEXT NEVER APPEARS"
     timeout: ${IDLE_MS}
     optional: true
-- assertVisible: "You're at ${VENUE}|Estás en ${VENUE}"
+- assertVisible: "You're at ${VENUE}.*|Estás en ${VENUE}.*"
 - takeScreenshot: 03-barra-despues
 - runFlow: ../helpers/leave-venue.yaml
