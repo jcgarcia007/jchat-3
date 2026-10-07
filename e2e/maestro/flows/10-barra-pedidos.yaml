@@ -1,10 +1,8 @@
 # location: 26.083048,-80.223725
 # 10 — Home bar: swipe the ORDERS segment left → "Moved to notifications · Undo"; Undo restores it; swiped again, the order is a
 # pinned "In progress" row in Messages and opens the tracking. Needs at least one order in progress for the account.
-# With PIN=1 it leaves the orders pinned (the local state is not restored); default only exercises swipe + undo.
+# (PIN defaults to 0 in e2e/run.sh.) With PIN=1 it leaves the orders pinned (the local state is not restored); default only exercises swipe + undo.
 appId: com.juangarciacruz.jchatapp
-env:
-  PIN: "0"
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

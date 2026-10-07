@@ -17,9 +17,9 @@ if [ -f "$ROOT_E2E/../mobile/.env" ]; then
   export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
 fi
 # Defaults of the tunable variables (the flows declare none: a header `env:` would beat -e).
-: "${ACTION:=decline}" "${TABLE:=12}" "${CYCLES:=5}" "${QUIET_MS:=120000}" "${IDLE_MS:=330000}" "${HOLD_MS:=480000}" "${WAIT_MATCH_MS:=1000}" "${RECIPIENT_WAIT_MS:=330000}"
+: "${PIN:=0}" "${ACTION:=decline}" "${TABLE:=12}" "${CYCLES:=5}" "${QUIET_MS:=120000}" "${IDLE_MS:=330000}" "${HOLD_MS:=480000}" "${WAIT_MATCH_MS:=1000}" "${RECIPIENT_WAIT_MS:=330000}"
 if [ "$ACTION" = accept ]; then : "${EXPECT:=Test accepted your gift.*|Test aceptó tu regalo.*}"; else : "${EXPECT:=Test didn.t accept your gift.*|Test no aceptó tu regalo.*}"; fi
-export ACTION TABLE EXPECT CYCLES QUIET_MS IDLE_MS HOLD_MS WAIT_MATCH_MS RECIPIENT_WAIT_MS
+export PIN ACTION TABLE EXPECT CYCLES QUIET_MS IDLE_MS HOLD_MS WAIT_MATCH_MS RECIPIENT_WAIT_MS
 # Login helper: "test" on Android, "test1" on the iPhone (only if not given explicitly for this run).
 if [ "$platform" = android ] && [ -n "${E2E_TEST_EMAIL:-}" ]; then MAESTRO_TEST_EMAIL="$E2E_TEST_EMAIL"; MAESTRO_TEST_PASSWORD="${E2E_TEST_PASSWORD:-}"; fi
 if [ "$platform" = ios ] && [ -n "${E2E_TEST1_EMAIL:-}" ]; then MAESTRO_TEST_EMAIL="$E2E_TEST1_EMAIL"; MAESTRO_TEST_PASSWORD="${E2E_TEST1_PASSWORD:-}"; fi
