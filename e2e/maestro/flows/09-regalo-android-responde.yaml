@@ -42,6 +42,14 @@ env:
       - tapOn: "Table number|Número de mesa"
       - inputText: ${TABLE}
       - tapOn: "Accept gift|Aceptar regalo"
+      - waitForAnimationToEnd:
+          timeout: 2500
+      # The first tap can be swallowed by the open keyboard (Android): if the sheet is still there, tap again.
+      - runFlow:
+          when:
+            visible: "Which table are you at\\?|¿Cuál es tu mesa\\?"
+          commands:
+            - tapOn: "Accept gift|Aceptar regalo"
 - takeScreenshot: 02-responded
 - extendedWaitUntil:
     visible: "Not accepted|No aceptado|Accepted.*|Aceptado.*"
