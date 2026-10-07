@@ -7,7 +7,6 @@ appId: com.juangarciacruz.jchatapp
 env:
   VENUE: Bar XZX
   GIFT_ITEM_1: Mini Corn Dogs
-  EXPECT: "Test didn't accept your gift.*|Test no aceptó tu regalo.*"
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

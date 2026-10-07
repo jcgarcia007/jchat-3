@@ -1,11 +1,10 @@
 # location: 26.083048,-80.223725
+# (ACTION / TABLE come from e2e/run.sh defaults: a header `env:` would beat the -e of the command line)
 # 09 — Gift, RECIPIENT = Android account "test": waits for the gift card from "test1" in the 1:1 chat and answers.
 #   ACTION=decline → taps "No, thanks"        ACTION=accept → "Accept" with table 12
 appId: com.juangarciacruz.jchatapp
 env:
   VENUE: Bar XZX
-  ACTION: decline
-  TABLE: "12"
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml
