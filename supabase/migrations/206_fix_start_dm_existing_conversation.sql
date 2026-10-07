@@ -1,6 +1,7 @@
 -- 206: start_dm no reconocía conversaciones existentes. "v_conv is not null" sobre un registro completo solo es
 -- verdadero si TODAS sus columnas tienen valor; con columnas nuevas vacías (ephemeral_business_id, hidden_at_*, etc.)
 -- daba falso, intentaba insertar y chocaba con el índice único (409). Se compara por id.
+-- APLICADA EN PRODUCCIÓN POR PLANNING (2026-10-06). Este archivo solo la versiona.
 create or replace function public.start_dm(p_target_id uuid)
 returns dm_conversations language plpgsql security definer set search_path to 'public' as $function$
 declare v_caller uuid := auth.uid(); v_user_a uuid; v_user_b uuid; v_setting text; v_conv public.dm_conversations;
