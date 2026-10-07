@@ -42,10 +42,10 @@ appId: com.juangarciacruz.jchatapp
       - assertNotVisible: ".*orders? in progress.*|.*pedidos? en curso.*"
       - tapOn: "Messages|Mensajes"
       - extendedWaitUntil:
-          visible: "In progress|En curso"
+          visible: ".*Abre el seguimiento.*|.*Opens tracking.*"
           timeout: 10000
       - takeScreenshot: 04-fila-fija
-      - tapOn: "In progress|En curso"
+      - tapOn: ".*Abre el seguimiento.*|.*Opens tracking.*"
       - extendedWaitUntil:
           visible: ".*Order #.*|.*Pedido #.*"
           timeout: 15000
