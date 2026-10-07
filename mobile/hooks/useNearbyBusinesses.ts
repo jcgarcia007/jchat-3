@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { getCurrentPosition, hasForegroundPermission, type Coords } from '../services/geofence';
+import * as Location from 'expo-location';
+
+import { getCurrentPosition, hasForegroundPermission, requestForegroundPermission, type Coords } from '../services/geofence';
 import {
   fetchBusinesses,
   filterNearbyBusinesses,
@@ -29,11 +31,16 @@ export function useNearbyBusinesses() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Distances: only when location is already allowed (this screen never prompts); a failure just hides them.
+  // Distances need the position. The permission is asked once, here, when the person enters the tab and has never
+  // answered (it used to never be asked, so Nearby never had distances); a denial just hides the distances.
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
+        const current = await Location.getForegroundPermissionsAsync();
+        if (current.status === Location.PermissionStatus.UNDETERMINED && current.canAskAgain) {
+          await requestForegroundPermission();
+        }
         if (!(await hasForegroundPermission())) return;
         const coords = await Promise.race([
           getCurrentPosition(),

@@ -44,7 +44,7 @@ function MasonryCard({
       }}
     >
       {item.photo_url ? (
-        <MenuImg src={item.photo_url} alt={item.name} style={{ width: "100%", height: "auto", display: "block" }} />
+        <MenuImg src={item.photo_url} alt={item.name} style={{ width: "100%", aspectRatio: "4 / 3", height: "auto", objectFit: "cover", display: "block" }} />
       ) : (
         <div style={{ width: "100%", height: 120, background: P.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🍽️</div>
       )}
