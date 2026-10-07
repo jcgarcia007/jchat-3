@@ -8,7 +8,7 @@
  * groups) are not offered: a gift has no way to choose them.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,7 +29,7 @@ import { IconMinus, IconPlus, IconX } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getMenu, type MenuCategory } from '../../services/menu';
-import { createGiftOffer, giftErrorCode } from '../../services/giftOffers';
+import { cancelGiftOffer, createGiftOffer, giftErrorCode } from '../../services/giftOffers';
 import { holdGiftPayment } from '../../services/stripe';
 import { formatCents } from '../../utils/currency';
 
@@ -57,6 +57,32 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const [sending, setSending] = useState(false);
   // Once the offer exists its items are locked; a cancelled payment retries the SAME offer.
   const [offerId, setOfferId] = useState<string | null>(null);
+  // True once the card is on hold: from then on the offer belongs to the recipient's chat and must not be cancelled.
+  const heldRef = useRef(false);
+
+  // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
+  useEffect(() => {
+    if (visible) return;
+    setOfferId(null);
+    setQty({});
+    setNote('');
+    heldRef.current = false;
+  }, [visible]);
+
+  /** An offer that never got paid is cancelled so it stops blocking the next gift to this person. */
+  const cancelUnpaidOffer = useCallback(
+    (id: string | null) => {
+      if (!id || heldRef.current) return;
+      void cancelGiftOffer(id);
+      setOfferId(null);
+    },
+    [],
+  );
+
+  const handleClose = useCallback(() => {
+    cancelUnpaidOffer(offerId);
+    onClose();
+  }, [cancelUnpaidOffer, offerId, onClose]);
 
   useEffect(() => {
     if (!visible) return;
@@ -119,10 +145,15 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
       }
       const result = await holdGiftPayment(id);
       if (result.ok) {
+        heldRef.current = true;
         onSent();
         return;
       }
-      if (result.code === 'Canceled') return; // the offer stays; "Send" tries the same one again
+      if (result.code === 'Canceled') {
+        // Payment sheet dismissed without paying: drop the offer; "Send" creates a fresh one.
+        cancelUnpaidOffer(id);
+        return;
+      }
       const known = giftErrorCode(result.code) ?? giftErrorCode(result.message);
       Alert.alert(t('gift.errorTitle'), known ? t(`gift.errors.${known}`) : result.message);
     } catch (err) {
@@ -131,13 +162,13 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
     } finally {
       setSending(false);
     }
-  }, [sending, count, offerId, businessId, recipient.id, lines, note, conversationId, onSent, t]);
+  }, [sending, count, offerId, businessId, recipient.id, lines, note, conversationId, onSent, cancelUnpaidOffer, t]);
 
   const sendLabel = t('gift.send', { count, amount: formatCents(subtotal) });
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <Pressable style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
           <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
@@ -145,7 +176,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">
               {t('gift.title', { name: recipient.name })}
             </Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t('gift.close')} style={styles.closeBtn}>
+            <Pressable onPress={handleClose} accessibilityRole="button" accessibilityLabel={t('gift.close')} style={styles.closeBtn}>
               <IconX size={22} color={c.textSecondary} />
             </Pressable>
           </View>

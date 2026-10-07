@@ -115,6 +115,19 @@ export async function viewGiftOffer(offerId: string): Promise<GiftView | null> {
   return data as unknown as GiftView;
 }
 
+/**
+ * Cancels MY offer while it has not reached the other person yet (draft / awaiting_payment): used when the payment sheet
+ * is closed or cancelled without paying, so "you already have a gift waiting" does not block the next try for 30 minutes
+ * (migration 208). Never throws: if it fails the server's own 30-minute cleanup still applies.
+ */
+export async function cancelGiftOffer(offerId: string): Promise<void> {
+  try {
+    await supabase.rpc('gift_offer_cancel' as never, { p_offer_id: offerId } as never);
+  } catch {
+    // silent by design
+  }
+}
+
 /** Accept (with the table) or decline. Errors: not_your_gift, gift_not_open, gift_expired, not_in_venue, table_required. */
 export async function respondGiftOffer(
   offerId: string,
