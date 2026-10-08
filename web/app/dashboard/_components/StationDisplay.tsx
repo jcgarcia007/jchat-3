@@ -7,7 +7,7 @@
  * station="bar"     → menu_items where station='bar'.
  *
  * Queries:
- *   1. open orders for this business.
+ *   1. orders for this business still in the kitchen (status pending/confirmed/preparing/ready, not canceled; paid_at is NOT consulted).
  *   2. order_items (with menu_items!inner join) for those orders, not done.
  *      Client-side filter by station after fetch.
  *
@@ -249,12 +249,14 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
 
   const loadItems = useCallback(
     async (bid: string) => {
-      // Step 1 — open orders
+      // Step 1 — orders the station still has to work on. Visibility is the kitchen stage (status),
+      // NEVER paid_at: orders paid in the app (table / counter / gift) arrive already paid, and a waiter
+      // order charged before it is served must not vanish from the screen (paid_at = money, 078).
       const { data: ordersData, error: ordErr } = await supabase
         .from("orders")
         .select("id, table_label, order_type, user_id, gift_recipient_id, special_instructions")
         .eq("business_id", bid)
-        .is("paid_at", null)
+        .in("status", ["pending", "confirmed", "preparing", "ready"])
         .is("canceled_at", null)
         // F4: excluir órdenes pendientes de aprobación del mesero
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
