@@ -11,4 +11,8 @@ appId: com.juangarciacruz.jchatapp
     visible: "No offers right now|No hay ofertas.*|Nothing new within.*|Nada nuevo.*|Enter|Entrar|.*like.*|.*Me gusta.*"
     timeout: 20000
 - takeScreenshot: 02-lista
-- tapOn: "Go back|Volver"
+- runFlow:
+    when:
+      visible: "Go back|Volver"   # the Offers list has no back button on every platform
+    commands:
+      - tapOn: "Go back|Volver"

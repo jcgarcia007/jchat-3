@@ -9,7 +9,9 @@
 #        3 match  (04 review the passed — both platforms)
 #        4 gift   (05 accepted + 06 declined: Android sends, the iPhone answers, in parallel)
 #        5 endurance (08, ~21 min, both platforms; samples memory and counts permission prompts / restarts / crashes)
-#   Phases 3 and 4 need the seed (they are reported as SKIPPED without the variables).
+#        6 extras (09 gift with swapped roles, 10 orders bar, 11 profile, 12/13 photos + DM photo (iOS), 14 nearby, 15 settings,
+#          16 DM pair, 17 map, 18 offers) — runs after 4 and before 5
+#   Phases 3, 4 and 6 need the seed (they are reported as SKIPPED without the variables).
 #
 # Output:  e2e/out/nightly-<stamp>/   (git-ignored: logs, screenshots, memory samples)
 #          docs/qa/<date>-nightly.md   (the report — NOT committed by the script)
@@ -33,7 +35,7 @@ if [ -f "$ROOT_E2E/../mobile/.env" ]; then
 fi
 export PREFLIGHT_FIX="${PREFLIGHT_FIX:-1}"   # unattended: a stuck UiAutomation or a closed emulator is repaired, not reported
 
-phases="1,2,3,4,5"; cycles=5; quiet_ms=120000
+phases="1,2,3,4,6,5"; cycles="${CYCLES:-5}"; quiet_ms="${QUIET_MS:-120000}"   # CYCLES / QUIET_MS can come from the environment (5 × 2 × 240 s ≈ 40 min)
 while [ $# -gt 0 ]; do
   case "$1" in
     --quick) cycles=2; quiet_ms=20000 ;;
@@ -121,10 +123,10 @@ fi
 
 # ── 2. seed: test + test1 inside the venue at once ─────────────────────────────────────────────────────────────────
 seed_ok=0; seed_pid=""
-if has_phase 2 || has_phase 3 || has_phase 4; then
+if has_phase 2 || has_phase 3 || has_phase 4 || has_phase 6; then
   if "$root/seed-presence.sh" --once > "$out/seed-check.log" 2>&1; then
     seed_ok=1
-    "$root/seed-presence.sh" --minutes 90 > "$out/seed.log" 2>&1 &
+    "$root/seed-presence.sh" --minutes 180 > "$out/seed.log" 2>&1 &
     seed_pid=$!; pids+=($seed_pid)
     for _ in $(seq 1 60); do grep -q READY "$out/seed.log" && break; sleep 3; done
     log "seed: both accounts inside the venue"
@@ -161,6 +163,16 @@ gift_pair() { # android-flow ios-flow [VAR=value ...]
 if has_phase 4; then
   gift_pair 05-regalo 05-regalo-ios-acepta TABLE=12
   gift_pair 06-regalo-rechazado 06-regalo-ios-rechaza
+fi
+
+# ── 6. extras (flows 09–18): need the seed for the gift / DM pairs; the rest only need the logged-in apps ─────────────
+if has_phase 6; then
+  gift_pair 09-regalo-android-responde 09-regalo-ios-envia ACTION=decline
+  gift_pair 09-regalo-android-responde 09-regalo-ios-envia ACTION=accept TABLE=12
+  for f in 10-barra-pedidos 11-perfil-propio 14-cerca-ofertas 15-ajustes-privacidad 17-mapa 18-ofertas; do both_ok "$f" "$f"; done
+  plat_run ios 12-fotos-ios
+  plat_run ios 13-dm-foto-ios
+  gift_pair 16-dm-android-envia 16-dm-ios-recibe
 fi
 [ -n "$seed_pid" ] && kill "$seed_pid" 2>/dev/null
 

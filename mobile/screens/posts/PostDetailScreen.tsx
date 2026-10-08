@@ -51,6 +51,7 @@ import {
 import { getPublicProfile, type PublicProfileRow } from '../../services/users';
 import BusinessAvatar from '../../components/megaphone/BusinessAvatar';
 import { toUserMessage } from '../../utils/errors';
+import { checkMessage } from '../../utils/messageFilter';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
@@ -128,6 +129,10 @@ export default function PostDetailScreen(): React.JSX.Element {
   const sendComment = useCallback(async () => {
     const body = comment.trim();
     if (!post || !user?.id || !body || busy) return;
+    if (!checkMessage(body).allowed) {
+      Alert.alert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
+      return; // the comment stays in the box
+    }
     setBusy(true);
     try {
       await addComment(post.id, user.id, body);

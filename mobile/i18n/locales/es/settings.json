@@ -51,7 +51,9 @@
       "name": "Muestra quién es, sin el mensaje.",
       "discreet": "Solo muestra \"Tienes una novedad en JChat\"."
     },
-    "previewBrandNote": "El nombre \"JChat\" siempre se ve en la notificación."
+    "previewBrandNote": "El nombre \"JChat\" siempre se ve en la notificación.",
+    "safetyCommunity": "Seguridad y comunidad",
+    "contactUs": "Contacto"
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",

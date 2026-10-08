@@ -54,6 +54,7 @@ import {
   IconReceipt,
   IconSpeakerphone,
   IconShield,
+  IconMail,
   IconTrash,
   IconUser,
 } from '@tabler/icons-react-native';
@@ -455,6 +456,14 @@ export default function SettingsScreen() {
     await WebBrowser.openBrowserAsync('https://jchat.cloud/terms');
   }, []);
 
+  const openSafety = useCallback(async () => {
+    await WebBrowser.openBrowserAsync('https://jchat.cloud/safety');
+  }, []);
+
+  const openContact = useCallback(async () => {
+    await WebBrowser.openBrowserAsync('https://jchat.cloud/contact');
+  }, []);
+
   // TODO(geofence): Restore the proximityMode control when geofencing ships.
 
   // ── Language options ───────────────────────────────────────────────────────
@@ -767,6 +776,24 @@ export default function SettingsScreen() {
           icon={<IconLock size={20} color={c.textSecondary} strokeWidth={2} />}
           label={t('main.termsOfService')}
           onPress={() => { void openTerms(); }}
+          right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          icon={<IconShield size={20} color={c.textSecondary} strokeWidth={2} />}
+          label={t('main.safetyCommunity')}
+          onPress={() => { void openSafety(); }}
+          right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          icon={<IconMail size={20} color={c.textSecondary} strokeWidth={2} />}
+          label={t('main.contactUs')}
+          onPress={() => { void openContact(); }}
           right={<ChevronRight />}
         />
 

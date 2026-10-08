@@ -3083,7 +3083,9 @@
       "copyright": "© 2026 JChat",
       "privacy": "Privacy",
       "terms": "Terms",
-      "support": "Support"
+      "support": "Support",
+      "safety": "Safety",
+      "contact": "Contact"
     },
     "howItWorks": {
       "label": "How it works",
@@ -3188,7 +3190,9 @@
     "footer": {
       "privacy": "Privacy",
       "terms": "Terms",
-      "support": "Support"
+      "support": "Support",
+      "safety": "Safety",
+      "contact": "Contact"
     },
     "promoErrors": {
       "notFound": "That code doesn't exist. Check it.",
@@ -3391,6 +3395,14 @@
       "support": {
         "title": "Help & Support — JChat",
         "description": "Get help with JChat: account, privacy, payments and how to contact us."
+      },
+      "safety": {
+        "title": "Safety & Community Standards — JChat",
+        "description": "Our rules, child safety standards, how to report a problem and our 24-hour response commitment."
+      },
+      "contact": {
+        "title": "Contact — JChat",
+        "description": "How to reach JChat: safety reports, support and privacy requests."
       }
     },
     "business": {
@@ -3647,7 +3659,8 @@
     "notePlaceholder": "E.g. Bring the check, more water…",
     "notifying": "Notifying…",
     "imageEnlarged": "Enlarged image",
-    "beFirst": "Be the first to write something 👋"
+    "beFirst": "Be the first to write something 👋",
+    "contentBlocked": "Your message has language we don't allow on JChat. Please rewrite it with respect."
   },
   "venue": {
     "restrictedTitle": "We couldn't confirm you're at {business}",

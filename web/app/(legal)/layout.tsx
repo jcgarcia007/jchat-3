@@ -88,6 +88,12 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             <Link href="/support" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Soporte" : "Support"}
             </Link>
+            <Link href="/safety" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
+              {isEs ? "Seguridad" : "Safety"}
+            </Link>
+            <Link href="/contact" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
+              {isEs ? "Contacto" : "Contact"}
+            </Link>
           </nav>
           <span>© 2026 Otunity Labs LLC</span>
         </div>

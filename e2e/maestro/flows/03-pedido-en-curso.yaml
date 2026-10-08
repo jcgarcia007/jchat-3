@@ -13,19 +13,9 @@ env:
 - extendedWaitUntil:
     visible: "${ITEM}"
     timeout: 60000
-# The web menu's "+" announces the item ("Add Burger Angus") once the web with that label is deployed;
-# until then fall back to its position (menu scrolled to the top: ~73%, 40%).
-- runFlow:
-    when:
-      notVisible: "Add ${ITEM}|Agregar ${ITEM}"
-    commands:
-      - tapOn:
-          point: "73%,40%"
-- runFlow:
-    when:
-      visible: "Add ${ITEM}|Agregar ${ITEM}"
-    commands:
-      - tapOn: "Add ${ITEM}|Agregar ${ITEM}"
+# The web menu's "+" quick-adds without opening the item, and the menu content/layout changes with the venue's data, so the
+# item is opened by its NAME (never by a screen position). If the item sheet shows "Add to order", confirm it there.
+- tapOn: "${ITEM}"
 - extendedWaitUntil:
     visible: "Add to order.*|Añadir al pedido.*"
     timeout: 15000
