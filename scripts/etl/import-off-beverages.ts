@@ -11,7 +11,7 @@
  *
  * Required env vars (from web/.env.local):
  *   SUPABASE_URL              – https://klfsgcfoahdtkojyqspd.supabase.co
- *   SB_SECRET_KEY             – secret key (bypasses RLS); falls back to the legacy SUPABASE_SERVICE_ROLE_KEY
+ *   SB_SECRET_KEY             – secret key (bypasses RLS)
  *
  * Strategy:
  *   - Fetches en:beverages + en:alcoholic-beverages filtered to en:united-states
