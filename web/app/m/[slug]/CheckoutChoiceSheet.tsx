@@ -144,10 +144,23 @@ export default function CheckoutChoiceSheet({
                 )}
               </>
             ) : (
-              /* Sin tableCtx (entrada manual) */
-              <p style={{ textAlign: "center", fontSize: 14, opacity: 0.6 }}>
-                {t("checkoutChoiceScanQrToOrder")}
-              </p>
+              /* Sin tableCtx (mesa escrita a mano, sin QR): se paga con guest-pay como pedido de mesa con la mesa
+                 escrita. La cuenta de mesa exige el QR, que queda como pista. */
+              <>
+                <button
+                  onClick={onPayNow}
+                  style={{
+                    width: "100%", padding: "14px 0", marginBottom: 12,
+                    background: accent, color: "#fff",
+                    border: "none", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  {t("checkoutChoicePayNow")}
+                </button>
+                <p style={{ textAlign: "center", fontSize: 13, opacity: 0.5, marginTop: 8 }}>
+                  {t("checkoutChoiceScanQrToOrder")}
+                </p>
+              </>
             )}
           </>
         )}
