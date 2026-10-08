@@ -388,6 +388,11 @@ async function handlePaymentSucceeded(
   const contactEmail = meta.contact_email ?? null;
   const contactPhone = meta.contact_phone ?? null;
   const contactName = meta.contact_name ?? null;
+  // Guest orders only (guest-pay stamps them): the tracking code the guest follows at /o/<code>, and the browser id.
+  const guestTrackingCode = meta.payment_kind === "guest_order" && /^[A-Za-z0-9_-]{20,64}$/.test(meta.guest_tracking_code ?? "")
+    ? (meta.guest_tracking_code as string) : null;
+  const guestDeviceId = meta.payment_kind === "guest_order" && /^[A-Za-z0-9_-]{8,64}$/.test(meta.guest_device_id ?? "")
+    ? (meta.guest_device_id as string) : null;
   const itemsRaw = meta.items ?? "[]";
 
   // ⚠️ MINE #2 — the old guard was `if (!businessId || !userId) return`, which
@@ -510,6 +515,8 @@ async function handlePaymentSucceeded(
       contact_email: contactEmail,
       contact_phone: contactPhone,
       contact_name: contactName,
+      guest_device_id: guestDeviceId,
+      guest_tracking_code: guestTrackingCode, // read by create_paid_order once pending/210 is applied
       stripe_pi_id: paymentIntent.id,
       source: "customer_stripe", // F3 D-24: identifica órdenes de cliente para el puente de comandas
       // An order born from a payment IS paid (paid_at defaults to now() in the function).
@@ -533,6 +540,17 @@ async function handlePaymentSucceeded(
 
   const createdRow = (Array.isArray(created) ? created[0] : created) as { id: string; order_number: number } | null;
   const orderId = createdRow?.id ?? "unknown";
+
+  // Safety net for the tracking code: if create_paid_order does not know the field yet (pending/210 not fully
+  // applied) set it right after. Idempotent and non-fatal — the order itself is already saved.
+  if (guestTrackingCode && createdRow?.id) {
+    const { error: codeErr } = await db
+      .from("orders")
+      .update({ guest_tracking_code: guestTrackingCode } as never)
+      .eq("id", createdRow.id)
+      .is("guest_tracking_code" as never, null);
+    if (codeErr) console.error(`[stripe-webhook] could not store guest_tracking_code for order ${orderId}: ${codeErr.message}`);
+  }
 
   // Clean up the pending cart (idempotent; log-only on failure).
   if (pendingCart) {

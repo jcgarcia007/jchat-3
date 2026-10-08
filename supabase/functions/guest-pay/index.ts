@@ -14,7 +14,12 @@
  * Action: { action: "create_guest_payment", captcha_token, order:{...}, contact_name, contact_email? }
  *   → verifies hCaptcha, re-prices from the DB, applies the SAME Connect routing as
  *     the customer flow, stamps metadata.payment_kind='guest_order' (NO user_id),
- *     persists the cart with user_id NULL, and returns { clientSecret, publishableKey }.
+ *     persists the cart with user_id NULL, and returns { clientSecret, publishableKey, trackingCode }.
+ *
+ * Order tracking (Lote C): BEFORE the PaymentIntent exists we mint an unguessable tracking code
+ * (24 random bytes, base64url = 32 chars) and put it in the PI metadata; the webhook stores it on the order
+ * (orders.guest_tracking_code) and the guest follows the order at /o/<code>. The optional body.device_id
+ * (the browser's persistent device id) travels the same way as metadata.guest_device_id.
  *
  * The webhook turns metadata.payment_kind='guest_order' into an order with user_id
  * NULL. Prices/Connect are reused from ../_shared (never duplicated).
@@ -83,6 +88,14 @@ async function verifyCaptcha(token: string, remoteip: string | null): Promise<bo
   }
 }
 
+/** Unguessable, URL-safe tracking code: 24 random bytes → 32 base64url chars (192 bits). */
+function newTrackingCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
@@ -112,6 +125,10 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
     if (!isValidEmail(e)) return errorResponse("El correo no tiene un formato válido", 400);
     contactEmail = e;
   }
+
+  // Persistent browser id (optional, cosmetic/abuse trail): short, printable, never trusted for access.
+  const deviceId =
+    typeof body.device_id === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.device_id) ? body.device_id : null;
 
   // ── Parse the order ────────────────────────────────────────────────────────
   const order = body.order as Record<string, unknown> | undefined;
@@ -208,6 +225,10 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   if (tableLabel) metadata.table_label = tableLabel;
   if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
   if (resolvedTableId) metadata.table_id = resolvedTableId;
+  // Minted BEFORE the PaymentIntent so the webhook can store it with the order (see header).
+  const trackingCode = newTrackingCode();
+  metadata.guest_tracking_code = trackingCode;
+  if (deviceId) metadata.guest_device_id = deviceId;
 
   const piParams = buildConnectPiParams({
     amountCents: totalCents,
@@ -243,6 +264,7 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   return jsonResponse({
     clientSecret: paymentIntent.client_secret,
     publishableKey,
+    trackingCode,
     serverTotalCents: totalCents,
     serverBreakdown: { subtotalCents, taxCents, tipCents: 0, discountCents: 0 },
   });
