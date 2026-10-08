@@ -56,8 +56,11 @@ $$;
 create or replace function public.message_filter_trigger()
 returns trigger language plpgsql set search_path = public as $$
 begin
-  if tg_table_name = 'messages' and (coalesce(new.is_system, false) or coalesce(new.type, 'text') <> 'text') then
-    return new;
+  if tg_table_name = 'messages' then
+    -- nested on purpose: dm_messages / comments have no is_system / type column
+    if coalesce(new.is_system, false) or coalesce(new.type, 'text') <> 'text' then
+      return new;
+    end if;
   end if;
   if public.message_is_objectionable(new.body) then
     raise exception 'message_not_allowed' using errcode = '22023';
