@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Guard: require admin client to be configured
   if (!isSupabaseAdminConfigured) {
     return NextResponse.json(
-      { error: "Supabase admin not configured. Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY." },
+      { error: "Supabase admin not configured. Set SUPABASE_URL + SB_SECRET_KEY." },
       { status: 503 }
     );
   }

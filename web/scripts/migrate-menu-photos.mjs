@@ -5,7 +5,7 @@
  * Run from web/ directory:
  *   node scripts/migrate-menu-photos.mjs
  *
- * Reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from .env.local
+ * Reads NEXT_PUBLIC_SUPABASE_URL + SB_SECRET_KEY (or the legacy SUPABASE_SERVICE_ROLE_KEY) from .env.local
  * DO NOT COMMIT WITH KEY VALUES HARDCODED.
  */
 
@@ -30,10 +30,10 @@ function loadEnv() {
 
 const env = loadEnv();
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
-const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = env.SB_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("❌  Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+  console.error("❌  Missing NEXT_PUBLIC_SUPABASE_URL or SB_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in .env.local");
   process.exit(1);
 }
 
