@@ -10,16 +10,28 @@
  *   • --apply writes NEW paths only (upsert:false, never overwrites an object) and writes a CSV with
  *     old_url,new_url,thumb_url,old_bytes,new_bytes. It NEVER touches the database: pointing menu_item_photos /
  *     menu_items.photo_url at the new URLs is a separate, reviewed step done from that CSV.
- *   • the service key is read from the environment only and is never printed.
+ *   • the secret key comes from the environment or, if absent, from web/.env.local (SB_SECRET_KEY); it is never printed.
+ *
+ * FLAGS
+ *   --only-referenced  process ONLY the photos some database column uses today (menu_items.photo_url / image_url,
+ *                      menu_item_photos.url + storage_path, menu_categories.icon_url, businesses.logo_url / cover_url /
+ *                      icon_url / gallery_urls / brand_kit). Same behaviour as --apply otherwise: NEW paths only, never
+ *                      overwrites or deletes. The CSV gains a `referenced_by` column so the update can be reviewed per column.
+ *   --report-orphans   write (nothing is deleted) a CSV of the bucket objects NO column references, and print their total
+ *                      size. A referenced photo keeps its companions: <name>_thumb.webp, <name>_r.webp, <name>_r_thumb.webp.
+ *   --csv <file>       override the CSV path (default: scripts/menu-photos/out/<kind>-<timestamp>.csv, ignored by git)
  *
  * USAGE (node ≥ 18; sharp and supabase-js are resolved from ../../web/node_modules, no new dependency)
  *   SUPABASE_URL=https://<ref>.supabase.co SB_SECRET_KEY=… node scripts/menu-photos/reprocess.mjs --dry-run
  *   … --dry-run --sample 20 --prefix <business_id>/
  *   … --apply --csv /path/out.csv --limit 200
+ *   … --only-referenced --dry-run | --only-referenced --apply
+ *   … --report-orphans
  *   node scripts/menu-photos/reprocess.mjs --local ./some/folder          # offline test on local image files
  */
 import { createRequire } from 'node:module';
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const require = createRequire(new URL('../../web/package.json', import.meta.url));
@@ -41,7 +53,12 @@ const localDir = opt('local', null);
 const prefix = opt('prefix', '');
 const limit = Number(opt('limit', '0')) || Infinity;
 const sampleSize = Number(opt('sample', '10'));
-const csvPath = opt('csv', 'menu-photos-reprocess.csv');
+const onlyReferenced = flag('only-referenced');
+const reportOrphans = flag('report-orphans');
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const outDir = fileURLToPath(new URL('./out/', import.meta.url));
+const csvPath = opt('csv', path.join(outDir, `${onlyReferenced ? 'referenced' : 'reprocess'}-${stamp}.csv`));
+const orphansPath = opt('csv', path.join(outDir, `orphans-${stamp}.csv`));
 
 const mb = (bytes) => `${(bytes / 1048576).toFixed(2)} MB`;
 
@@ -73,10 +90,25 @@ if (localDir) {
 }
 
 // ── bucket mode ─────────────────────────────────────────────────────────────
-const url = process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL;
-const key = process.env.SB_SECRET_KEY;
+/** KEY=VALUE pairs of web/.env.local (values are never printed). Missing file → empty. */
+async function readEnvLocal() {
+  const out = {};
+  try {
+    const text = await readFile(fileURLToPath(new URL('../../web/.env.local', import.meta.url)), 'utf8');
+    for (const line of text.split('\n')) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m) out[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+    }
+  } catch {
+    // no file: rely on the environment
+  }
+  return out;
+}
+const envLocal = await readEnvLocal();
+const url = process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? envLocal.SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.SB_SECRET_KEY || envLocal.SB_SECRET_KEY;
 if (!url || !key) {
-  console.error('Set SUPABASE_URL and SB_SECRET_KEY in the environment (or use --local <dir>).');
+  console.error('Set SB_SECRET_KEY (environment or web/.env.local) and SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL), or use --local <dir>.');
   process.exit(2);
 }
 const { createClient } = require('@supabase/supabase-js');
@@ -93,7 +125,7 @@ async function listAll(dir) {
     for (const entry of data) {
       const full = dir ? `${dir}/${entry.name}` : entry.name;
       if (entry.id === null) files.push(...(await listAll(full)));
-      else files.push({ path: full, size: entry.metadata?.size ?? 0 });
+      else files.push({ path: full, size: entry.metadata?.size ?? 0, updated: entry.updated_at ?? entry.created_at ?? '' });
     }
     if (data.length < 100) break;
   }
@@ -101,7 +133,99 @@ async function listAll(dir) {
 }
 
 const publicUrl = (p) => bucket.getPublicUrl(p).data.publicUrl;
-const all = (await listAll(prefix.replace(/\/$/, ''))).filter((f) => needsWork(f.path)).slice(0, limit);
+
+// ── which objects does the database reference? (read-only) ───────────────────
+/** [table, columns, kind] — kind 'text' (one URL / path), 'array' (text[]), 'json' (any URL inside a jsonb). */
+const REFERENCE_COLUMNS = [
+  ['menu_items', 'photo_url', 'text'],
+  ['menu_items', 'image_url', 'text'],
+  ['menu_item_photos', 'url', 'text'],
+  ['menu_item_photos', 'storage_path', 'text'],
+  ['menu_categories', 'icon_url', 'text'],
+  ['businesses', 'logo_url', 'text'],
+  ['businesses', 'cover_url', 'text'],
+  ['businesses', 'icon_url', 'text'],
+  ['businesses', 'gallery_urls', 'array'],
+  ['businesses', 'brand_kit', 'json'],
+];
+
+/** Object path inside the bucket for a public URL (or a bare storage path); null when it is not ours. */
+function pathOf(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const marker = `/${BUCKET}/`;
+  const i = value.indexOf(marker);
+  if (i >= 0) {
+    try {
+      return decodeURIComponent(value.slice(i + marker.length).split('?')[0]);
+    } catch {
+      return value.slice(i + marker.length).split('?')[0];
+    }
+  }
+  return /^https?:/i.test(value) ? null : value.replace(/^\/+/, '');
+}
+
+/** Map<path, Set<'table.column'>>. Pages through every table (PostgREST caps a page at 1000 rows). */
+async function referencedPaths() {
+  const refs = new Map();
+  const add = (p, label) => {
+    if (!p) return;
+    if (!refs.has(p)) refs.set(p, new Set());
+    refs.get(p).add(label);
+  };
+  for (const [table, column, kind] of REFERENCE_COLUMNS) {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from(table).select(column).range(from, from + 999);
+      if (error) {
+        console.error(`WARN ${table}.${column}: ${error.message} — skipped (its photos would look unreferenced)`);
+        break;
+      }
+      for (const row of data ?? []) {
+        const v = row[column];
+        const label = `${table}.${column}`;
+        if (kind === 'text') add(pathOf(v), label);
+        else if (kind === 'array') for (const item of v ?? []) add(pathOf(item), label);
+        else if (v) for (const m of JSON.stringify(v).match(/https?:[^"\\]+/g) ?? []) add(pathOf(m), label);
+      }
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return refs;
+}
+
+const withExt = (p, suffix) => p.replace(/\.[^./]+$/, suffix);
+/** A referenced path plus the files that belong to it (thumb, reprocessed copy and its thumb). */
+function companionsOf(p) {
+  const r = withExt(p, '_r.webp');
+  const thumbOf = (x) => withExt(x, '_thumb.webp');
+  return [p, thumbOf(p), r, thumbOf(r)];
+}
+
+const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+let everything = null; // listing of the whole bucket, shared by the modes that need it
+const listing = async () => (everything ??= await listAll(prefix.replace(/\/$/, '')));
+
+if (reportOrphans) {
+  const refs = await referencedPaths();
+  const keep = new Set([...refs.keys()].flatMap(companionsOf));
+  const objects = (await listing());
+  const orphans = objects.filter((f) => !keep.has(f.path));
+  const bytes = orphans.reduce((sum, f) => sum + f.size, 0);
+  await mkdir(path.dirname(orphansPath), { recursive: true });
+  await writeFile(orphansPath, ['path,url,bytes,updated_at', ...orphans.map((f) => [csvCell(f.path), csvCell(publicUrl(f.path)), f.size, csvCell(f.updated)].join(','))].join('\n') + '\n');
+  const missing = [...refs.keys()].filter((p) => !objects.some((o) => o.path === p)).length;
+  console.log(`${objects.length} objects in the bucket, ${refs.size} referenced paths (${missing} referenced but not in the bucket).`);
+  console.log(`ORPHANS: ${orphans.length} objects, ${mb(bytes)}. CSV: ${orphansPath}. Nothing was deleted.`);
+  process.exit(0);
+}
+
+let referencedBy = new Map();
+let all = (await listing()).filter((f) => needsWork(f.path));
+if (onlyReferenced) {
+  referencedBy = await referencedPaths();
+  all = all.filter((f) => referencedBy.has(f.path));
+  console.log(`--only-referenced: ${referencedBy.size} distinct paths referenced by the database.`);
+}
+all = all.slice(0, limit);
 const totalBytes = all.reduce((sum, f) => sum + f.size, 0);
 console.log(`${all.length} photos to process, ${mb(totalBytes)} today.`);
 
@@ -131,7 +255,7 @@ if (!apply) {
   process.exit(0);
 }
 
-const rows = ['old_url,new_url,thumb_url,old_bytes,new_bytes'];
+const rows = [onlyReferenced ? 'old_url,new_url,thumb_url,old_bytes,new_bytes,referenced_by' : 'old_url,new_url,thumb_url,old_bytes,new_bytes'];
 let done = 0;
 for (const f of all) {
   const newFull = f.path.replace(/\.[^./]+$/, '_r.webp');
@@ -143,12 +267,15 @@ for (const f of all) {
     if (up1.error) throw up1.error;
     const up2 = await bucket.upload(newThumb, thumb, { contentType: 'image/webp', upsert: false });
     if (up2.error) throw up2.error;
-    rows.push([publicUrl(f.path), publicUrl(newFull), publicUrl(newThumb), buf.length, full.length].join(','));
+    const cells = [publicUrl(f.path), publicUrl(newFull), publicUrl(newThumb), buf.length, full.length];
+    if (onlyReferenced) cells.push(csvCell([...(referencedBy.get(f.path) ?? [])].join(' ')));
+    rows.push(cells.join(','));
     done += 1;
     console.log(`ok  ${f.path} → ${newFull}`);
   } catch (error) {
     console.error(`ERR ${f.path}: ${error.message ?? error}`);
   }
 }
+await mkdir(path.dirname(csvPath), { recursive: true });
 await writeFile(csvPath, rows.join('\n') + '\n');
 console.log(`${done}/${all.length} written. CSV: ${csvPath}. The database was not touched.`);
