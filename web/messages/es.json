@@ -3078,7 +3078,9 @@
       "copyright": "© 2026 JChat",
       "privacy": "Privacidad",
       "terms": "Términos",
-      "support": "Soporte"
+      "support": "Soporte",
+      "safety": "Seguridad",
+      "contact": "Contacto"
     },
     "howItWorks": {
       "label": "¿Cómo funciona?",
@@ -3183,7 +3185,9 @@
     "footer": {
       "privacy": "Privacidad",
       "terms": "Términos",
-      "support": "Soporte"
+      "support": "Soporte",
+      "safety": "Seguridad",
+      "contact": "Contacto"
     },
     "promoErrors": {
       "notFound": "Ese código no existe. Revísalo.",
@@ -3386,6 +3390,14 @@
       "support": {
         "title": "Ayuda y soporte — JChat",
         "description": "Obtén ayuda con JChat: cuenta, privacidad, pagos y cómo contactarnos."
+      },
+      "safety": {
+        "title": "Seguridad y normas de la comunidad — JChat",
+        "description": "Nuestras normas, estándares de seguridad infantil, cómo reportar un problema y nuestro compromiso de respuesta en 24 horas."
+      },
+      "contact": {
+        "title": "Contacto — JChat",
+        "description": "Cómo contactar con JChat: reportes de seguridad, soporte y solicitudes de privacidad."
       }
     },
     "business": {

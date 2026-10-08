@@ -843,6 +843,8 @@ export default function LandingPage() {
               <a href="/privacy" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.privacy")}</a>
               <a href="/terms" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.terms")}</a>
               <a href="/support" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.support")}</a>
+              <a href="/safety" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.safety")}</a>
+              <a href="/contact" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.contact")}</a>
             </span>
             <span>{t("footer.copyright")}</span>
           </div>
