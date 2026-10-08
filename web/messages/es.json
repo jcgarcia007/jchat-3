@@ -35,7 +35,12 @@
     "receiptTax": "Impuestos",
     "receiptTip": "Propina",
     "receiptDiscount": "Descuento",
-    "receiptTotal": "Total"
+    "receiptTotal": "Total",
+    "trackTitle": "Sigue tu pedido",
+    "trackBody": "Guarda este enlace: es la única forma de volver a tu pedido desde este teléfono o cualquier otro.",
+    "trackCopy": "Copiar enlace",
+    "trackCopied": "Enlace copiado",
+    "trackOpen": "Abrir"
   },
   "menu": {
     "notFoundTitle": "Menú no encontrado — JChat",
@@ -3399,6 +3404,9 @@
     },
     "table": {
       "title": "Mesa — JChat"
+    },
+    "orderTracking": {
+      "title": "Tu pedido · JChat"
     }
   },
   "plans": {
@@ -3674,5 +3682,40 @@
     "viewMenuAndPickup": "Ver menú y pedir para recoger",
     "notNow": "Ahora no",
     "outsideVenueGeneric": "Para esto necesitas estar en el local"
+  },
+  "orderTracking": {
+    "loading": "Cargando tu pedido…",
+    "notFoundTitle": "No encontramos este pedido",
+    "notFoundBody": "Puede que el enlace sea incorrecto o que el pedido tenga más de 12 horas. Si pagaste, revisa tu recibo o pregunta al personal.",
+    "orderNumber": "Pedido #{n}",
+    "atTable": "Mesa {label}",
+    "pickup": "Recoger en el mostrador",
+    "progress": "Progreso del pedido",
+    "itemsTitle": "Tu pedido",
+    "autoUpdates": "Esta página se actualiza sola cada 15 segundos.",
+    "status": {
+      "pending": "Recibido",
+      "confirmed": "Confirmado",
+      "preparing": "En preparación",
+      "ready": "¡Listo!",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado",
+      "disputed": "En revisión"
+    },
+    "notifyTitle": "Avisar al local",
+    "kind": {
+      "on_my_way": "Voy en camino",
+      "arrived": "Ya llegué",
+      "question": "Tengo una pregunta"
+    },
+    "notePlaceholder": "Escribe tu pregunta (máx. 200 caracteres)",
+    "send": "Enviar aviso",
+    "sending": "Enviando…",
+    "sent": "Aviso enviado. El local lo verá enseguida.",
+    "errNote": "Escribe primero tu pregunta.",
+    "errCooldown": "Acabas de enviar un aviso. Espera 2 minutos para enviar otro.",
+    "errLimit": "Llegaste al límite de avisos de este pedido. Pregunta directamente al personal.",
+    "errClosed": "Este pedido está cerrado y ya no admite avisos.",
+    "errGeneric": "No pudimos enviar el aviso. Inténtalo de nuevo."
   }
 }
