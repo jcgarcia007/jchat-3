@@ -93,6 +93,13 @@ que venga del cliente se trata como "sugerencia no confiable".
   y que el `stripe_account_id` corresponde a ese negocio — no confiar en los IDs
   que mandó el cliente.
 
+### Llaves de Supabase (formato nuevo `sb_secret_` / `sb_publishable_`)
+- **Las llaves nunca van al repo ni al chat.** Solo en variables de entorno (Supabase secrets, Vercel, EAS, `.env*` ignorados por git). Una llave pegada en un chat o commit se rota.
+- Servidor: `SB_SECRET_KEY` (fallback `SUPABASE_SERVICE_ROLE_KEY`). Cliente/verificación de JWT: `SB_PUBLISHABLE_KEY` (fallback `SUPABASE_ANON_KEY`); en web/móvil el valor va en `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- Edge Functions: usar siempre `_shared/supabaseAdmin.ts`; no leer las variables de llave directamente.
+- La llave secret solo en servidor (Edge Functions, route handlers, scripts locales); jamás en `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*`.
+- No son JWT: no decodificar ni validar formato; la secret no se manda como `Authorization: Bearer`.
+
 ### RLS — la capa de autorización real
 - RLS habilitada en TODA tabla del schema público (sin excepción). Tabla sin RLS =
   accesible por cualquiera con la anon key.
