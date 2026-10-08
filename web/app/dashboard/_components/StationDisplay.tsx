@@ -258,9 +258,10 @@ export function StationDisplay({ station }: { station: "kitchen" | "bar" }) {
         .eq("business_id", bid)
         .in("status", ["pending", "confirmed", "preparing", "ready"])
         .is("canceled_at", null)
-        // F4: excluir órdenes pendientes de aprobación del mesero
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .neq("approval_status" as any, "awaiting");
+        // F4: excluir órdenes pendientes de aprobación del mesero. approval_status is NULL for every order paid in
+        // the app (table / counter / gift), and `NULL <> 'awaiting'` is NULL (not true) → a plain .neq() dropped them
+        // all. Same rule as pos_pickup_board: coalesce(approval_status, 'approved') <> 'awaiting'.
+        .or("approval_status.is.null,approval_status.neq.awaiting");
       if (ordErr) throw ordErr;
 
       const orderRows = (ordersData ?? []) as unknown as RawOrderRow[];
