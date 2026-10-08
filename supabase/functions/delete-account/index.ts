@@ -24,6 +24,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { getPublishableKey, getSecretKey } from "../_shared/supabaseAdmin.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -54,10 +55,10 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = getPublishableKey();
+    const serviceKey = getSecretKey();
     if (!supabaseUrl || !anonKey || !serviceKey) {
-      console.error("[delete-account] SUPABASE_URL / ANON_KEY / SERVICE_ROLE_KEY not set");
+      console.error("[delete-account] SUPABASE_URL / publishable key / secret key not set");
       return jsonResponse({ error: "Internal server error" }, 500);
     }
 

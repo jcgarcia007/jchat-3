@@ -60,22 +60,20 @@ import {
   createClient,
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
 
 // ── Supabase clients (same pattern as functions/terminal/index.ts) ────────────
 
 /** Admin (service role) client — bypasses RLS for server-side reads. */
 function getAdminClient(): SupabaseClient {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createAdminClient();
 }
 
 /** User-scoped (anon + caller token) client — used only to resolve the user. */
 function getUserClient(authHeader: string): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY");
+  const key = getPublishableKey();
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SB_PUBLISHABLE_KEY / SUPABASE_ANON_KEY");
   return createClient(url, key, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -117,9 +115,9 @@ async function verifyCaller(req: Request): Promise<{ authUserId: string } | Resp
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const anonKey = getPublishableKey();
   if (!supabaseUrl || !anonKey) {
-    console.error("[menu-assistant] SUPABASE_URL or SUPABASE_ANON_KEY not set");
+    console.error("[menu-assistant] SUPABASE_URL or publishable key not set");
     return errorResponse("service_not_configured", 500);
   }
 

@@ -19,7 +19,7 @@
  * If Vision fails (or no key), the row is NOT changed and 500 is returned; the cron of 193 retries.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 
 const BUCKET = "match-photos";
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
@@ -63,12 +63,7 @@ function nonEmptyString(value: unknown): string | null {
 }
 
 function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Missing Supabase Edge Function environment");
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  return createAdminClient();
 }
 
 function rank(value: unknown): number {

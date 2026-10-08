@@ -22,7 +22,7 @@
  *                      HCAPTCHA_SECRET, GUEST_IP_SALT (opcional).
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import Stripe from "npm:stripe@16.2.0";
 import { priceLinesFromDb } from "../_shared/pricing.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
@@ -58,9 +58,7 @@ function errResponse(code: string, message: string, status: number, extra: Recor
 }
 
 function getAdminClient() {
-  const url  = Deno.env.get("SUPABASE_URL")!;
-  const key  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createAdminClient();
 }
 
 async function verifyCaptcha(token: string, remoteip: string | null): Promise<boolean> {

@@ -17,7 +17,7 @@
  * 173b invokes it exactly once for each INSERT that needs a push notification.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_TIMEOUT_MS = 8_000;
@@ -113,12 +113,7 @@ function tokenSuffix(token: string): string {
 }
 
 function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Missing Supabase Edge Function environment");
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  return createAdminClient();
 }
 
 /** display_name or @username of a user — never the email. Throws on query errors. */

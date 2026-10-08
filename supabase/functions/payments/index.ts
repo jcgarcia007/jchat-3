@@ -30,6 +30,7 @@
 
 import Stripe from "npm:stripe@16.2.0";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 import { finiteCoord, venueOrderGate } from "../_shared/venue.ts";
 import {
@@ -45,10 +46,7 @@ import {
 type UserClient = SupabaseClient<any, "public", any>;
 
 function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createAdminClient();
 }
 
 function getStripe(): Stripe {
@@ -89,10 +87,10 @@ async function verifyCaller(
   if (!authHeader?.startsWith("Bearer ")) {
     return errorResponse("Missing or invalid Authorization header", 401);
   }
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const anonKey = getPublishableKey();
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   if (!anonKey || !supabaseUrl) {
-    console.error("[payments] SUPABASE_ANON_KEY or SUPABASE_URL not set");
+    console.error("[payments] publishable key or SUPABASE_URL not set");
     return errorResponse("Internal server error", 500);
   }
   const userClient = createClient(supabaseUrl, anonKey, {

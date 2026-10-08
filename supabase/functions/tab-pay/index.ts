@@ -25,14 +25,11 @@
  */
 
 import Stripe from "npm:stripe@16.2.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 
 function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createAdminClient();
 }
 
 function getStripe(): Stripe {
