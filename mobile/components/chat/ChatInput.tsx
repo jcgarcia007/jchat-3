@@ -41,6 +41,7 @@ import { VoiceRecorderBar } from '../common/VoiceRecorderBar';
 import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { normalizeImageUri } from '../../utils/normalizeImage';
+import { checkMessage } from '../../utils/messageFilter';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -95,9 +96,14 @@ export function ChatInput({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || disabled) return;
+    // Grave insults/threats are not sent; the text stays in the box so the person can rewrite it.
+    if (!checkMessage(trimmed).allowed) {
+      Alert.alert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
+      return;
+    }
     onSendText(trimmed);
     setText('');
-  }, [text, disabled, onSendText]);
+  }, [text, disabled, onSendText, t]);
 
   const handleToggleAttachment = useCallback(() => {
     setAttachmentOpen((prev) => !prev);

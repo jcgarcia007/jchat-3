@@ -18,6 +18,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 import { getChatTheme } from "@/lib/chatThemes";
 import { requestPosition } from "@/lib/venueLocation";
+import { checkMessage } from "@/lib/messageFilter";
 
 const WAITER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -679,6 +680,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   async function handleSend() {
     const body = inputText.trim();
     if (!body || sending || uploading) return;
+    // Grave insults/threats are not sent; the text stays in the box.
+    if (!checkMessage(body).allowed) {
+      setSendError(t("contentBlocked"));
+      return;
+    }
     setSending(true);
     setSendError(null);
 

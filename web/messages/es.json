@@ -3639,7 +3639,8 @@
     "notePlaceholder": "Ej. Traer la cuenta, más agua…",
     "notifying": "Notificando…",
     "imageEnlarged": "Imagen ampliada",
-    "beFirst": "Sé el primero en escribir algo 👋"
+    "beFirst": "Sé el primero en escribir algo 👋",
+    "contentBlocked": "Tu mensaje contiene lenguaje que no permitimos en JChat. Reescríbelo con respeto."
   },
   "venue": {
     "restrictedTitle": "No pudimos confirmar que estés en {business}",

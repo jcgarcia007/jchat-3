@@ -46,5 +46,9 @@
     "cameraErrorTitle": "We couldn't open the camera",
     "cameraErrorMessage": "Check JChat's camera permissions and try again."
   },
-  "sendMessage": "Send message"
+  "sendMessage": "Send message",
+  "contentFilter": {
+    "title": "Message not sent",
+    "blocked": "Your message has language we don't allow on JChat. Please rewrite it with respect."
+  }
 }

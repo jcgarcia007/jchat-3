@@ -85,6 +85,7 @@ import { getChatMeta, isAwaitingReplyError } from '../../services/matchChat';
 import type { ChatMeta } from '../../services/matchChat';
 import { getMatchPresence } from '../../services/matchPresence';
 import { safeLaunchLibrary } from '../../utils/safePicker';
+import { checkMessage } from '../../utils/messageFilter';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -353,6 +354,10 @@ export default function DMChatScreen() {
   const handleSendText = useCallback(async () => {
     if (!user || text.trim().length === 0 || sending) return;
     const body = text.trim();
+    if (!checkMessage(body).allowed) {
+      Alert.alert(tc('contentFilter.title'), tc('contentFilter.blocked'));
+      return; // the text stays in the box
+    }
     setText('');
     setSending(true);
     try {
@@ -369,7 +374,7 @@ export default function DMChatScreen() {
     } finally {
       setSending(false);
     }
-  }, [user, text, sending, conversationId, t, tm]);
+  }, [user, text, sending, conversationId, t, tm, tc]);
 
   // ── Pick & send photo ───────────────────────────────────────────────────────
 
