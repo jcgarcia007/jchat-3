@@ -2252,8 +2252,11 @@ export default function MenuPageClient({
             setPickupType(type);
             setPickupTable(table);
             setPickupName(name);
-            // F3: ir a selección de método de pago (Stripe vs cuenta de mesa)
-            setStep("choice");
+            // pos_payment_mode and table tabs apply ONLY to table orders reached by QR (tableCtx). A pick-up order
+            // (counter, no tableCtx) is always paid with Stripe via guest-pay, same as in the app → straight to pay.
+            if (type === "counter" && !tableCtx) setStep("pay");
+            // F3: otherwise, payment method selection (Stripe vs table tab)
+            else setStep("choice");
           }}
         />
       )}
@@ -2406,7 +2409,8 @@ export default function MenuPageClient({
           presetName={pickupName}
           venuePos={venue.pos}
           onVenueError={() => void refreshVenue(true)}
-          onBack={() => setStep("choice")}
+          // a pick-up order skipped the choice sheet, so "back" returns to the pick-up details
+          onBack={() => setStep(!tableCtx && pickupType === "counter" ? "pickup" : "choice")}
           onDone={() => {
             setCartItems([]);
             setStep("menu");

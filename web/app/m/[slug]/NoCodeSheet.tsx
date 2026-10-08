@@ -140,6 +140,7 @@ export default function NoCodeSheet({
       <div
         style={{
           background: "var(--menu-bg, #fff)",
+          color: "var(--menu-text, #111827)",
           borderRadius: "16px 16px 0 0",
           padding: "24px 20px 44px",
           width: "100%", maxWidth: 480,

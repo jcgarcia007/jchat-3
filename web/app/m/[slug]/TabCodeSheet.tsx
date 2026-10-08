@@ -142,7 +142,7 @@ export default function TabCodeSheet({ tableQrToken, palette, onSuccess, onClose
     }} onClick={onClose}>
       <div
         style={{
-          background: "var(--menu-bg, #fff)", borderRadius: "16px 16px 0 0",
+          background: "var(--menu-bg, #fff)", color: "var(--menu-text, #111827)", borderRadius: "16px 16px 0 0",
           padding: "24px 20px 40px", width: "100%", maxWidth: 480,
         }}
         onClick={(e) => e.stopPropagation()}
