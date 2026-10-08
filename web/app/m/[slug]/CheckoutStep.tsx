@@ -29,6 +29,7 @@ import { formatCents } from "@/lib/currency";
 import InvisibleCaptcha, { type InvisibleCaptchaHandle } from "@/components/InvisibleCaptcha";
 import type { MenuItemOption, ModifierChoice } from "./page";
 import { tableText } from "@/lib/tableLabel";
+import { getDeviceId } from "@/lib/guestDevice";
 
 interface GroupSel {
   groupId: string;
@@ -102,6 +103,9 @@ export function CheckoutStep({
   // Golden rule refusal (outside_venue / pickup_disabled): shown as such, never as a failed payment.
   const [venueRefused, setVenueRefused] = useState(false);
   const [intent, setIntent] = useState<IntentResult | null>(null);
+  // Guest orders only: unguessable code from guest-pay → /o/<code> (follow the order without an account).
+  const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   // Name the order is served under — from the pickup screen (presetName). May be
   // empty (optional). Used only for the on-screen receipt.
   const contactName = presetName.trim().slice(0, 60);
@@ -231,6 +235,7 @@ export function CheckoutStep({
         action: "create_guest_payment",
         captcha_token: captchaToken,
         contact_name: contactName || undefined, // optional (guest-pay v2)
+        device_id: getDeviceId(),
         order,
       },
     });
@@ -254,13 +259,14 @@ export function CheckoutStep({
 
     const res = data as {
       clientSecret?: string; publishableKey?: string;
-      serverTotalCents?: number; serverBreakdown?: ServerBreakdown;
+      serverTotalCents?: number; serverBreakdown?: ServerBreakdown; trackingCode?: string;
     };
     if (!res?.clientSecret || !res?.publishableKey) {
       setError(t("errorNoPaymentDataRetry"));
       setPhase("error");
       return;
     }
+    setTrackingCode(typeof res.trackingCode === "string" && res.trackingCode ? res.trackingCode : null);
     setIntent({
       clientSecret: res.clientSecret,
       publishableKey: res.publishableKey,
@@ -354,6 +360,27 @@ export function CheckoutStep({
               tableLabel={pickupType === "table" ? tableLabel.trim() : ""}
             />
           </div>
+
+          {trackingCode && (
+            <div className="no-print" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 14, borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{t("trackTitle")}</div>
+              <Muted>{t("trackBody")}</Muted>
+              <div style={{ fontSize: 13, wordBreak: "break-all", color: "var(--text-secondary)" }}>{`${originOf()}/o/${trackingCode}`}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a href={`/o/${trackingCode}`} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, flex: 1, textDecoration: "none" }}>{t("trackOpen")}</a>
+                <button
+                  type="button"
+                  style={{ ...primaryBtn, flex: 1 }}
+                  onClick={() => {
+                    const url = `${originOf()}/o/${trackingCode}`;
+                    void navigator.clipboard?.writeText(url).then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); }).catch(() => undefined);
+                  }}
+                >
+                  {linkCopied ? t("trackCopied") : t("trackCopy")}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="no-print" style={{ fontSize: 13, color: "#b45309", fontWeight: 600, textAlign: "center" }}>
             {t("receiptWarning")}

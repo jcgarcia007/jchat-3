@@ -35,7 +35,12 @@
     "receiptTax": "Tax",
     "receiptTip": "Tip",
     "receiptDiscount": "Discount",
-    "receiptTotal": "Total"
+    "receiptTotal": "Total",
+    "trackTitle": "Follow your order",
+    "trackBody": "Save this link: it is the only way to come back to your order from this phone or any other.",
+    "trackCopy": "Copy link",
+    "trackCopied": "Link copied",
+    "trackOpen": "Open"
   },
   "menu": {
     "notFoundTitle": "Menu not found — JChat",
@@ -3399,6 +3404,9 @@
     },
     "table": {
       "title": "Table — JChat"
+    },
+    "orderTracking": {
+      "title": "Your order · JChat"
     }
   },
   "plans": {
@@ -3674,5 +3682,40 @@
     "viewMenuAndPickup": "View menu and order for pick-up",
     "notNow": "Not now",
     "outsideVenueGeneric": "To do this you need to be at the venue"
+  },
+  "orderTracking": {
+    "loading": "Loading your order…",
+    "notFoundTitle": "We can't find this order",
+    "notFoundBody": "The link may be wrong, or the order is more than 12 hours old. If you paid, check the receipt or ask the staff.",
+    "orderNumber": "Order #{n}",
+    "atTable": "Table {label}",
+    "pickup": "Pick-up at the counter",
+    "progress": "Order progress",
+    "itemsTitle": "Your order",
+    "autoUpdates": "This page updates by itself every 15 seconds.",
+    "status": {
+      "pending": "Received",
+      "confirmed": "Confirmed",
+      "preparing": "Being prepared",
+      "ready": "Ready!",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "disputed": "Under review"
+    },
+    "notifyTitle": "Let the venue know",
+    "kind": {
+      "on_my_way": "I'm on my way",
+      "arrived": "I've arrived",
+      "question": "I have a question"
+    },
+    "notePlaceholder": "Write your question (max. 200 characters)",
+    "send": "Send notice",
+    "sending": "Sending…",
+    "sent": "Notice sent. The venue will see it right away.",
+    "errNote": "Write your question first.",
+    "errCooldown": "You just sent a notice. Wait 2 minutes before sending another.",
+    "errLimit": "You reached the notice limit for this order. Ask the staff directly.",
+    "errClosed": "This order is closed and can no longer send notices.",
+    "errGeneric": "We couldn't send the notice. Try again."
   }
 }
