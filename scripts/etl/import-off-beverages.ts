@@ -11,7 +11,7 @@
  *
  * Required env vars (from web/.env.local):
  *   SUPABASE_URL              – https://klfsgcfoahdtkojyqspd.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY – JWT service-role key (bypasses RLS)
+ *   SB_SECRET_KEY             – secret key (bypasses RLS); falls back to the legacy SUPABASE_SERVICE_ROLE_KEY
  *
  * Strategy:
  *   - Fetches en:beverages + en:alcoholic-beverages filtered to en:united-states
@@ -324,7 +324,7 @@ const dot   = () => Deno.stdout.writeSync(enc.encode("."));
 
 function loadEnv(): { url: string; key: string } {
   const url = Deno.env.get("SUPABASE_URL")              ?? "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const key = (Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) ?? "";
   if (!url || !key) {
     console.error(
       "\n❌  Missing env vars. Run:\n\n" +

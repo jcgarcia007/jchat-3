@@ -48,7 +48,7 @@ Optional: `METRO_HOST` (default `192.168.1.227`), `METRO_PORT` (default `8081`),
 ```bash
 export E2E_USER_A_EMAIL=… E2E_USER_A_PASSWORD=…          # "test"
 export E2E_USER_B_EMAIL=… E2E_USER_B_PASSWORD=…          # "test1"
-export SUPABASE_URL=… SUPABASE_ANON_KEY=…                # or EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY
+export SUPABASE_URL=… SB_PUBLISHABLE_KEY=…               # or EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY
 e2e/nightly.sh            # ~70 min → docs/qa/<date>-nightly.md   (--quick for a dry run, --phases 1,5 for a subset)
 e2e/seed-presence.sh      # on its own: keeps test + test1 inside the venue (server side, like the app does)
 ```

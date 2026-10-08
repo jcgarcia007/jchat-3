@@ -13,7 +13,7 @@
  *   • the service key is read from the environment only and is never printed.
  *
  * USAGE (node ≥ 18; sharp and supabase-js are resolved from ../../web/node_modules, no new dependency)
- *   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=… node scripts/menu-photos/reprocess.mjs --dry-run
+ *   SUPABASE_URL=https://<ref>.supabase.co SB_SECRET_KEY=… node scripts/menu-photos/reprocess.mjs --dry-run
  *   … --dry-run --sample 20 --prefix <business_id>/
  *   … --apply --csv /path/out.csv --limit 200
  *   node scripts/menu-photos/reprocess.mjs --local ./some/folder          # offline test on local image files
@@ -74,9 +74,9 @@ if (localDir) {
 
 // ── bucket mode ─────────────────────────────────────────────────────────────
 const url = process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const key = process.env.SB_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment (or use --local <dir>).');
+  console.error('Set SUPABASE_URL and SB_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in the environment (or use --local <dir>).');
   process.exit(2);
 }
 const { createClient } = require('@supabase/supabase-js');
