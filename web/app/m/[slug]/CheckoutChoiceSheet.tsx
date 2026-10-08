@@ -45,7 +45,7 @@ export default function CheckoutChoiceSheet({
     >
       <div
         style={{
-          background: "var(--menu-bg, #fff)", borderRadius: "16px 16px 0 0",
+          background: "var(--menu-bg, #fff)", color: "var(--menu-text, #111)", borderRadius: "16px 16px 0 0",
           padding: "24px 20px 40px", width: "100%", maxWidth: 480,
         }}
         onClick={(e) => e.stopPropagation()}
