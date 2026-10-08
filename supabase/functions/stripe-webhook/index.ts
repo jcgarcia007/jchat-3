@@ -39,7 +39,7 @@
  *   STRIPE_WEBHOOK_SECRET        — whsec_… for the "Your account" endpoint (payment_intent.*)
  *   STRIPE_CONNECT_WEBHOOK_SECRET — whsec_… for the "Connected accounts" endpoint (account.updated)
  *   SUPABASE_URL                — auto-injected
- *   SUPABASE_SERVICE_ROLE_KEY   — set manually
+ *   SB_SECRET_KEY   — set manually
  *
  * Stripe webhook endpoints to register (both → this same function URL):
  *   https://<project-ref>.supabase.co/functions/v1/stripe-webhook

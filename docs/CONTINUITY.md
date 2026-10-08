@@ -249,7 +249,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 
 ## Llaves de Supabase (formato nuevo) — 2026-10-07
 - **REGLA: las llaves nunca van al repo ni al chat.** Ni en código, docs, logs, commits, capturas ni mensajes con Claude/Planning. Solo viven en variables de entorno de cada plataforma. Si una llave aparece en un chat, se considera filtrada: rotarla.
-- **Variables nuevas (el código las lee primero; las viejas son fallback mientras migramos):**
+- **Variables (las llaves legacy están DESACTIVADAS desde 2026-10-07 y el código ya no tiene fallback):**
   - `SB_SECRET_KEY` (`sb_secret_…`, solo servidor, salta RLS) → antes `SUPABASE_SERVICE_ROLE_KEY`.
   - `SB_PUBLISHABLE_KEY` (`sb_publishable_…`, pública) → antes `SUPABASE_ANON_KEY`.
   - En clientes se mantienen los nombres `NEXT_PUBLIC_SUPABASE_ANON_KEY` (web) y `EXPO_PUBLIC_SUPABASE_ANON_KEY` (móvil); su VALOR pasa a ser la publishable.
@@ -257,7 +257,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 - **Las llaves nuevas NO son JWT:** no decodificarlas, no validar el prefijo `eyJ`, no mandarlas como `Authorization: Bearer` (solo como `apikey`). Los JWT de sesión de usuario no cambian.
 - **El prefijo `SUPABASE_` está reservado en `supabase secrets set`:** por eso las nuevas se llaman `SB_*`.
 - **Tras `supabase secrets set`, REDESPLEGAR** las funciones afectadas (ya anotado arriba).
-- **Cuando las llaves viejas estén desactivadas y todo funcione:** borrar los fallbacks (`?? SUPABASE_SERVICE_ROLE_KEY`, `?? SUPABASE_ANON_KEY`) y las variables viejas de cada entorno.
+- **Limpieza pendiente de entornos:** borrar `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_ANON_KEY` de Vercel, EAS, Supabase secrets y de los `.env*` locales; ya nada las lee.
 - La integración Supabase↔Vercel ya creó `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY`: el código NO las lee; usar `SB_*`.
 
 Last updated: 2026-10-07

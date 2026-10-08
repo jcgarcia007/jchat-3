@@ -1,7 +1,7 @@
 /**
  * JChat Match — removes EVERYTHING of the test users (…@jchat.test).
  *
- * Reads SUPABASE_URL and SB_SECRET_KEY (or the legacy SUPABASE_SERVICE_ROLE_KEY) from the environment (never from code/git).
+ * Reads SUPABASE_URL and SB_SECRET_KEY from the environment (never from code/git).
  * For each @jchat.test user: Match notifications they caused, their objects in the match-photos
  * bucket ('{user_id}/'), and the auth user itself (public rows cascade).
  *
@@ -11,9 +11,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 const URL = process.env.SUPABASE_URL;
-const KEY = process.env.SB_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KEY = process.env.SB_SECRET_KEY;
 if (!URL || !KEY) {
-  console.error('Missing SUPABASE_URL or SB_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in the environment.');
+  console.error('Missing SUPABASE_URL or SB_SECRET_KEY in the environment.');
   process.exit(1);
 }
 

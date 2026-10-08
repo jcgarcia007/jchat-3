@@ -32,8 +32,8 @@
  *                               its own signing secret, so they must NOT share a variable.
  *   STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO / STRIPE_PRICE_VERIFIED — recurring Price IDs
  *   SUPABASE_URL              — project URL (auto-injected)
- *   SUPABASE_SERVICE_ROLE_KEY — service role key (set manually in secrets)
- *   SUPABASE_ANON_KEY         — for the JWT verification path
+ *   SB_SECRET_KEY — service role key (set manually in secrets)
+ *   SB_PUBLISHABLE_KEY         — for the JWT verification path
  *
  * Stripe webhook endpoint events (subscriptions): checkout.session.completed,
  * customer.subscription.updated/deleted/trial_will_end, invoice.payment_failed,

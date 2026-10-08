@@ -18,7 +18,7 @@
  * Errores: { error: { code, message, retry_after_s?, blocked_until? } } con HTTP 4xx.
  * El campo `code` es estable en mayúsculas — el cliente traduce por code.
  *
- * Secretos requeridos: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * Secretos requeridos: SUPABASE_URL, SB_SECRET_KEY,
  *                      HCAPTCHA_SECRET, GUEST_IP_SALT (opcional).
  */
 

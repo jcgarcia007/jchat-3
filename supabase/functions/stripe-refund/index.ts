@@ -20,8 +20,8 @@
  * Idempotency: idempotencyKey `refund:<dispute_id>` — one dispute = one refund,
  * ever. The dispute.refund_id guard is the second line of double-refund defense.
  *
- * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- *   SUPABASE_ANON_KEY.
+ * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SB_SECRET_KEY,
+ *   SB_PUBLISHABLE_KEY.
  *
  * Deploy: supabase functions deploy stripe-refund
  */

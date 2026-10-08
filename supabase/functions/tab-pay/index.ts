@@ -20,7 +20,7 @@
  *     the webhook from creating a phantom order), saves stripe_pi_id, and returns
  *     { clientSecret, publishableKey }.
  *
- * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SB_SECRET_KEY,
  *   EXPO_PUBLIC_STRIPE_PK, PLATFORM_FEE_PERCENT / PLATFORM_FEE_FIXED_CENTS (shared).
  */
 

@@ -74,9 +74,9 @@ if (localDir) {
 
 // ── bucket mode ─────────────────────────────────────────────────────────────
 const url = process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL;
-const key = process.env.SB_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+const key = process.env.SB_SECRET_KEY;
 if (!url || !key) {
-  console.error('Set SUPABASE_URL and SB_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in the environment (or use --local <dir>).');
+  console.error('Set SUPABASE_URL and SB_SECRET_KEY in the environment (or use --local <dir>).');
   process.exit(2);
 }
 const { createClient } = require('@supabase/supabase-js');

@@ -12,7 +12,7 @@
 # password sign-in (today it does: 'captcha_failed'); nightly.sh then falls back to presence through the apps.
 #
 # Nothing secret lives in the repo: everything comes from the environment.
-#   SUPABASE_URL, SB_PUBLISHABLE_KEY     (legacy: SUPABASE_ANON_KEY; or EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY)
+#   SUPABASE_URL, SB_PUBLISHABLE_KEY     (or EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY)
 #   E2E_TEST_EMAIL / E2E_TEST_PASSWORD  (or E2E_USER_A_* / MAESTRO_TEST_*)  → "test"
 #   E2E_TEST1_EMAIL / E2E_TEST1_PASSWORD (or E2E_USER_B_*)                  → "test1"
 #   (read from e2e/.env.local, git-ignored; the Supabase URL / anon key from mobile/.env)
@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
 done
 
 url="${SUPABASE_URL:-${EXPO_PUBLIC_SUPABASE_URL:-}}"
-anon="${SB_PUBLISHABLE_KEY:-${SUPABASE_ANON_KEY:-${EXPO_PUBLIC_SUPABASE_ANON_KEY:-}}}"
+anon="${SB_PUBLISHABLE_KEY:-${EXPO_PUBLIC_SUPABASE_ANON_KEY:-}}"
 a_email="${E2E_USER_A_EMAIL:-${E2E_TEST_EMAIL:-${MAESTRO_TEST_EMAIL:-}}}"; a_pass="${E2E_USER_A_PASSWORD:-${E2E_TEST_PASSWORD:-${MAESTRO_TEST_PASSWORD:-}}}"
 b_email="${E2E_USER_B_EMAIL:-${E2E_TEST1_EMAIL:-}}"; b_pass="${E2E_USER_B_PASSWORD:-${E2E_TEST1_PASSWORD:-}}"
 venue="${E2E_VENUE_NAME:-Bar XZX}"; lat="${E2E_LAT:-26.083048}"; lng="${E2E_LNG:--80.223725}"
@@ -47,7 +47,7 @@ missing=()
 for v in url anon a_email a_pass b_email b_pass; do [ -n "${!v}" ] || missing+=("$v"); done
 if [ ${#missing[@]} -gt 0 ]; then
   echo "missing environment: ${missing[*]}"
-  echo "set SUPABASE_URL, SB_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY), E2E_USER_A_EMAIL/PASSWORD (or MAESTRO_TEST_*), E2E_USER_B_EMAIL/PASSWORD"
+  echo "set SUPABASE_URL, SB_PUBLISHABLE_KEY, E2E_USER_A_EMAIL/PASSWORD (or MAESTRO_TEST_*), E2E_USER_B_EMAIL/PASSWORD"
   exit 2
 fi
 

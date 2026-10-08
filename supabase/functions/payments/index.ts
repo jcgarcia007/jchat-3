@@ -13,7 +13,7 @@
  * shows its answer and sends back expected_total_cents, so create_payment_intent answers
  * 409 { code: 'TOTAL_CHANGED' } instead of charging a different amount.
  *
- * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SB_SECRET_KEY,
  *   EXPO_PUBLIC_STRIPE_PK (returned to client). See README.md.
  *
  * Security (P0-2, P0-3 — 2026-06-24; FIX #7 — 2026-07-08):

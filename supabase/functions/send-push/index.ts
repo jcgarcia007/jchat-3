@@ -11,7 +11,7 @@
  * Required secrets:
  *   PUSH_WEBHOOK_SECRET       — shared only with the database trigger
  *   SUPABASE_URL              — auto-injected by Supabase Edge Functions
- *   SUPABASE_SERVICE_ROLE_KEY — auto-injected by Supabase Edge Functions
+ *   SB_SECRET_KEY — auto-injected by Supabase Edge Functions
  *
  * Idempotency: this function intentionally has no deduplication store. Migration
  * 173b invokes it exactly once for each INSERT that needs a push notification.

@@ -16,7 +16,7 @@
  * Required env vars (Supabase dashboard → Edge Functions → Secrets):
  *   STRIPE_SECRET_KEY         — sk_live_… or sk_test_…
  *   SUPABASE_URL              — auto-injected
- *   SUPABASE_SERVICE_ROLE_KEY — set manually
+ *   SB_SECRET_KEY — set manually
  *   CONNECT_RETURN_URL        — URL user lands on after onboarding (e.g. https://jchat.app/dashboard/billing)
  *   CONNECT_REFRESH_URL       — URL if onboarding link expires (re-trigger onboarding)
  */

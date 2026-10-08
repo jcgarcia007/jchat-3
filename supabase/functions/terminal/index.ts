@@ -36,8 +36,8 @@
  * ── Required env vars ────────────────────────────────────────────────────────
  *   STRIPE_SECRET_KEY         — platform secret key (sk_live_… or sk_test_…)
  *   SUPABASE_URL              — auto-injected
- *   SUPABASE_SERVICE_ROLE_KEY — set in Edge Function secrets
- *   SUPABASE_ANON_KEY         — for JWT verification (same as other functions)
+ *   SB_SECRET_KEY — set in Edge Function secrets
+ *   SB_PUBLISHABLE_KEY         — for JWT verification (same as other functions)
  *
  * Deploy (after audit):
  *   supabase functions deploy terminal
@@ -63,7 +63,7 @@ function getAdminClient(): SupabaseClient {
 function getUserClient(authHeader: string): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
   const key = getPublishableKey();
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SB_PUBLISHABLE_KEY / SUPABASE_ANON_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SB_PUBLISHABLE_KEY");
   return createClient(url, key, {
     global: { headers: { Authorization: authHeader } },
   });

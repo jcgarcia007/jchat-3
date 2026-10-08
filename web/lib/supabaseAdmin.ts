@@ -3,8 +3,7 @@
  * For Next.js Route Handlers / server actions that need elevated access
  * (e.g. /api/verify). Uses the service role key — NEVER import this into a
  * Client Component (server-only by convention).
- * Reads SUPABASE_URL + SB_SECRET_KEY (server env), falling back to the legacy SUPABASE_SERVICE_ROLE_KEY
- * while the keys are migrated. The key is opaque (sb_secret_…): never decode or pattern-match it.
+ * Reads SUPABASE_URL + SB_SECRET_KEY (server env). The key is opaque (sb_secret_…): never decode or pattern-match it.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -22,12 +21,11 @@ const SUPABASE_URL =
   'https://placeholder.supabase.co';
 const SECRET_KEY =
   envOrUndefined(process.env.SB_SECRET_KEY) ??
-  envOrUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY) ??
   'service-role-placeholder-key';
 
 export const isSupabaseAdminConfigured =
   !!envOrUndefined(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-  (!!envOrUndefined(process.env.SB_SECRET_KEY) || !!envOrUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY));
+  !!envOrUndefined(process.env.SB_SECRET_KEY);
 
 export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SECRET_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },

@@ -19,8 +19,8 @@
  *
  * Required env vars (auto-injected by Supabase unless noted):
  *   SUPABASE_URL              — project URL
- *   SUPABASE_ANON_KEY         — anon key (to verify the caller's JWT)
- *   SUPABASE_SERVICE_ROLE_KEY — service role key (admin API; auth.users delete)
+ *   SB_PUBLISHABLE_KEY         — anon key (to verify the caller's JWT)
+ *   SB_SECRET_KEY — service role key (admin API; auth.users delete)
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";

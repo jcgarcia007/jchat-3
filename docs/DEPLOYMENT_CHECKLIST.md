@@ -48,7 +48,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 | `NEXT_PUBLIC_SUPABASE_URL` | client | `web/lib/supabase.ts` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client | `web/lib/supabase.ts` |
 | `SUPABASE_URL` | server | `web/lib/supabaseAdmin.ts` |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | `web/lib/supabaseAdmin.ts` (Route Handlers, e.g. `/api/verify`) |
+| `SB_SECRET_KEY` | server | `web/lib/supabaseAdmin.ts` (Route Handlers, e.g. `/api/verify`) |
 
 ### Supabase Edge Functions (set via `supabase secrets set`, never in repo)
 | Var | Used by |
@@ -57,7 +57,8 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 | `STRIPE_WEBHOOK_SECRET` | stripe-webhook, subscriptions (signature verification) |
 | `STRIPE_PRICE_VERIFIED` / `STRIPE_PRICE_BUSINESS` / `STRIPE_PRICE_PRO` | subscriptions (Stripe Price IDs) |
 | `SUPABASE_URL` | all functions (service-role client) |
-| `SUPABASE_SERVICE_ROLE_KEY` | all functions |
+| `SB_SECRET_KEY` | all functions (secret key) |
+| `SB_PUBLISHABLE_KEY` | functions that verify the caller's JWT (publishable key) |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` | verification SMS (Task 2.2) |
 
 - [ ] All mobile vars set (local `.env` + EAS secrets for builds)
@@ -180,7 +181,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 - [ ] Import the repo into Vercel; set **Root Directory = `web`**
 - [ ] Framework preset: Next.js (v16). Build: `next build` (default)
 - [ ] Add all **Web** env vars from §1 (client `NEXT_PUBLIC_*` + server `SUPABASE_URL` /
-      `SUPABASE_SERVICE_ROLE_KEY`)
+      `SB_SECRET_KEY`)
 - [ ] Set the production domain; update Supabase Auth allowed redirect URLs + the
       `b/[slug]` / store links in `web/app/b/[slug]/page.tsx` (`// TODO: real domain`)
 - [ ] Deploy; verify dashboard auth, KDS realtime, analytics charts, super-admin gate,

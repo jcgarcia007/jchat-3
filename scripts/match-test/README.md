@@ -2,7 +2,7 @@
 
 Scripts para sembrar y borrar 20 usuarios de prueba (`seed01@jchat.test` … `seed20@jchat.test`) en Bar XZX.
 
-**Nunca pongas la llave en el código ni en git.** Los scripts leen `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno.
+**Nunca pongas la llave en el código ni en git.** Los scripts leen `SUPABASE_URL` y `SB_SECRET_KEY` del entorno.
 
 ## Uso
 
@@ -10,7 +10,7 @@ Scripts para sembrar y borrar 20 usuarios de prueba (`seed01@jchat.test` … `se
 cd scripts/match-test
 npm install
 export SUPABASE_URL="https://klfsgcfoahdtkojyqspd.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="<service role key>"   # solo en tu terminal
+export SB_SECRET_KEY="<secret key>"   # solo en tu terminal
 node seed.mjs      # crea los usuarios (idempotente: salta los que ya existen)
 node cleanup.mjs   # borra TODO lo de los @jchat.test
 ```

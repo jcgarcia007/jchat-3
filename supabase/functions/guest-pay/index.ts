@@ -19,7 +19,7 @@
  * The webhook turns metadata.payment_kind='guest_order' into an order with user_id
  * NULL. Prices/Connect are reused from ../_shared (never duplicated).
  *
- * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * Required secrets: STRIPE_SECRET_KEY, SUPABASE_URL, SB_SECRET_KEY,
  *   EXPO_PUBLIC_STRIPE_PK, HCAPTCHA_SECRET, PLATFORM_FEE_* (shared).
  */
 

@@ -1,7 +1,7 @@
 /**
  * JChat Match — seed of 20 test profiles (seed01@jchat.test … seed20@jchat.test).
  *
- * Reads SUPABASE_URL and SB_SECRET_KEY (or the legacy SUPABASE_SERVICE_ROLE_KEY) from the environment (never from code/git).
+ * Reads SUPABASE_URL and SB_SECRET_KEY from the environment (never from code/git).
  * Idempotent: a seedNN user that already exists is skipped entirely.
  *
  *   SUPABASE_URL=... SB_SECRET_KEY=... node seed.mjs
@@ -11,9 +11,9 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const URL = process.env.SUPABASE_URL;
-const KEY = process.env.SB_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KEY = process.env.SB_SECRET_KEY;
 if (!URL || !KEY) {
-  console.error('Missing SUPABASE_URL or SB_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in the environment.');
+  console.error('Missing SUPABASE_URL or SB_SECRET_KEY in the environment.');
   process.exit(1);
 }
 

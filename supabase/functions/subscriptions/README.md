@@ -16,7 +16,7 @@ Set these in the Supabase dashboard under **Edge Functions → Secrets** (or via
 |---|---|
 | `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_…` or `sk_test_…`) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) from Stripe dashboard |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (bypasses RLS for webhook writes) |
+| `SB_SECRET_KEY` | Supabase service role key (bypasses RLS for webhook writes) |
 | `STRIPE_PRICE_VERIFIED` | Stripe Price ID for the Verified plan ($1.99/mo) |
 | `STRIPE_PRICE_BUSINESS` | Stripe Price ID for the Business plan ($49/mo) |
 | `STRIPE_PRICE_PRO` | Stripe Price ID for the Pro plan ($99/mo) |

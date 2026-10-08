@@ -13,7 +13,7 @@
  *   PUSH_WEBHOOK_SECRET       — shared with the database trigger
  *   GOOGLE_VISION_API_KEY     — Google Cloud Vision (never logged)
  *   SUPABASE_URL              — auto-injected by Supabase Edge Functions
- *   SUPABASE_SERVICE_ROLE_KEY — auto-injected by Supabase Edge Functions
+ *   SB_SECRET_KEY — auto-injected by Supabase Edge Functions
  *
  * Idempotent: a row that is no longer 'pending' or already has moderated_at is left untouched.
  * If Vision fails (or no key), the row is NOT changed and 500 is returned; the cron of 193 retries.

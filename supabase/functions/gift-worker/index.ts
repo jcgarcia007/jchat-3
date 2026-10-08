@@ -17,7 +17,7 @@
  * Deploy:
  *   supabase functions deploy gift-worker --project-ref klfsgcfoahdtkojyqspd --no-verify-jwt
  *
- * Required secrets: PUSH_WEBHOOK_SECRET, STRIPE_SECRET_KEY (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected).
+ * Required secrets: PUSH_WEBHOOK_SECRET, STRIPE_SECRET_KEY (SUPABASE_URL / SB_SECRET_KEY are injected).
  */
 
 import Stripe from "npm:stripe@16.2.0";

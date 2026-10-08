@@ -47,8 +47,8 @@
  *                               https://ai.google.dev/gemini-api/docs/models
  *                               NOTE: Imagen (:predict endpoint) deprecated Aug 17 2026.
  *   SUPABASE_URL              — auto-injected
- *   SUPABASE_SERVICE_ROLE_KEY — set in Edge Function secrets
- *   SUPABASE_ANON_KEY         — for JWT verification (same as other functions)
+ *   SB_SECRET_KEY — set in Edge Function secrets
+ *   SB_PUBLISHABLE_KEY         — for JWT verification (same as other functions)
  *
  * Deploy (Juan, manually — NOT part of this task):
  *   supabase functions deploy menu-assistant
@@ -73,7 +73,7 @@ function getAdminClient(): SupabaseClient {
 function getUserClient(authHeader: string): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
   const key = getPublishableKey();
-  if (!url || !key) throw new Error("Missing SUPABASE_URL or SB_PUBLISHABLE_KEY / SUPABASE_ANON_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SB_PUBLISHABLE_KEY");
   return createClient(url, key, {
     global: { headers: { Authorization: authHeader } },
   });

@@ -324,7 +324,7 @@ const dot   = () => Deno.stdout.writeSync(enc.encode("."));
 
 function loadEnv(): { url: string; key: string } {
   const url = Deno.env.get("SUPABASE_URL")              ?? "";
-  const key = (Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) ?? "";
+  const key = Deno.env.get("SB_SECRET_KEY")        ?? "";
   if (!url || !key) {
     console.error(
       "\n❌  Missing env vars. Run:\n\n" +

@@ -17,7 +17,7 @@ Set these in the Supabase dashboard → **Edge Functions → Secrets** (or via C
 ```bash
 supabase secrets set STRIPE_SECRET_KEY=sk_test_...
 supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=eyJ...
+supabase secrets set SB_SECRET_KEY=<secret key>
 supabase secrets set EXPO_PUBLIC_STRIPE_PK=pk_test_...
 
 # Optional — defaults shown:
@@ -33,7 +33,7 @@ supabase secrets set CONNECT_REFRESH_URL=https://jchat.app/dashboard/billing?con
 |--------|-------------|
 | `STRIPE_SECRET_KEY` | `sk_live_…` or `sk_test_…` — from Stripe dashboard → API keys |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` — from Stripe dashboard → Webhooks endpoint |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (bypasses RLS for order creation) |
+| `SB_SECRET_KEY` | Service role key (bypasses RLS for order creation) |
 | `EXPO_PUBLIC_STRIPE_PK` | `pk_live_…` or `pk_test_…` — returned to mobile for `StripeProvider` |
 | `PLATFORM_FEE_PERCENT` | Platform revenue cut (default 2.9%) |
 | `PLATFORM_FEE_FIXED_CENTS` | Fixed platform fee per transaction in cents (default 30¢) |
