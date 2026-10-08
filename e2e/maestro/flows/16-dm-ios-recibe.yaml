@@ -8,7 +8,7 @@ appId: com.juangarciacruz.jchatapp
 - tapOn: "Messages|Mensajes"
 - extendedWaitUntil:
     visible: ".*noche hola.*"
-    timeout: 120000
+    timeout: 240000   # the sender starts 90 s later and needs ~100 s to log in and send
 - takeScreenshot: 01-fila-con-texto
 - tapOn:
     id: "dm-row-a613d6a9.*"
