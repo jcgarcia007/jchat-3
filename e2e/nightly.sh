@@ -174,6 +174,7 @@ if has_phase 6; then
   plat_run ios 13-dm-foto-ios
   gift_pair 16-dm-android-envia 16-dm-ios-recibe
   gift_pair 19-reportar-mensaje-chat 19-reportar-mensaje-chat-ios-envia   # iOS writes, Android long-presses → Report (reason: spam)
+  plat_run android 19b-reportar-mensaje-historial                         # same report without the iOS pair (uses a message already in the history)
   plat_run android 20-bloquear-en-dm                                       # block from the DM and restore (unblock) in the same flow
 fi
 [ -n "$seed_pid" ] && kill "$seed_pid" 2>/dev/null

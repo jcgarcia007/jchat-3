@@ -1,0 +1,34 @@
+# location: 26.083048,-80.223725
+# 19b — Report a venue-chat message WITHOUT the iOS pair (Android, account "test"): reports an EXISTING message of "test1" already in the
+# Bar XZX chat history ("Hola qué tal"). Same steps as 19; reason "Spam or scam" ON PURPOSE (never child_safety: it e-mails safety@).
+# The report row is created by the test account; the nightly report lists its id and removes it afterwards.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- extendedWaitUntil:
+    visible: "Hola qué tal"
+    timeout: 60000
+- takeScreenshot: 01-mensaje-ajeno
+- longPressOn: "Hola qué tal"
+- extendedWaitUntil:
+    visible: "Report message|Reportar mensaje"
+    timeout: 10000
+- takeScreenshot: 02-hoja-acciones
+- tapOn: "Report message|Reportar mensaje"
+- extendedWaitUntil:
+    visible: "Why are you reporting this\\?|¿Por qué lo reportas\\?"
+    timeout: 10000
+- takeScreenshot: 03-motivos
+- assertVisible: "Child safety.*|Seguridad de un menor.*"
+- tapOn: "Spam or scam|Spam o estafa"
+- tapOn: "Send report|Enviar reporte"
+- extendedWaitUntil:
+    visible: ".*under 24 hours.*|.*menos de 24 h.*"
+    timeout: 20000
+- takeScreenshot: 04-exito
+- tapOn: "Close|Cerrar"
+- assertVisible: "Open menu|Abrir menú"
