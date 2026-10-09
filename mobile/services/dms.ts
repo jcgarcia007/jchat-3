@@ -394,10 +394,25 @@ export async function markRead(
  * Reads the file as base64 → ArrayBuffer (React Native / Hermes can't build a
  * Blob from fetch()), matching services/storage.ts.
  */
+const DM_PHOTO_TYPES: Record<string, { ext: string; contentType: string }> = {
+  jpg: { ext: 'jpg', contentType: 'image/jpeg' },
+  jpeg: { ext: 'jpg', contentType: 'image/jpeg' },
+  png: { ext: 'png', contentType: 'image/png' },
+  gif: { ext: 'gif', contentType: 'image/gif' },
+};
+
+/** Extension + contentType of the (already normalized) file: the picker's mimeType first, then the uri extension, else JPEG. */
+function dmPhotoType(localUri: string, mimeType?: string | null): { ext: string; contentType: string } {
+  const fromMime = (mimeType ?? '').toLowerCase().replace(/^image\//, '');
+  const fromUri = (localUri.split('?')[0].split('.').pop() ?? '').toLowerCase();
+  return DM_PHOTO_TYPES[fromMime] ?? DM_PHOTO_TYPES[fromUri] ?? DM_PHOTO_TYPES.jpg;
+}
+
 export async function uploadDmPhoto(
   conversationId: string,
   userId: string,
   localUri: string,
+  mimeType?: string | null,
 ): Promise<string> {
   if (!isSupabaseConfigured) return localUri;
   const base64 = await FileSystem.readAsStringAsync(localUri, {
@@ -405,10 +420,11 @@ export async function uploadDmPhoto(
   });
   const arrayBuffer = decode(base64);
   const rand = Math.random().toString(36).slice(2, 8);
-  const path = `${conversationId}/${userId}/${Date.now()}_${rand}.jpg`;
+  const { ext, contentType } = dmPhotoType(localUri, mimeType);
+  const path = `${conversationId}/${userId}/${Date.now()}_${rand}.${ext}`;
   const { error } = await supabase.storage
     .from('dm-media')
-    .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: false });
+    .upload(path, arrayBuffer, { contentType, upsert: false });
   if (error) throw error;
   return path;
 }
