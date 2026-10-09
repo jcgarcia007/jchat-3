@@ -1,0 +1,22 @@
+# location: 26.083048,-80.223725
+# 19 (pair, iOS side — account "test1"): sits in the Bar XZX chat and writes ONE message so the Android account "test" has a message from
+# ANOTHER person to report. Run 19-reportar-mensaje-chat.yaml on Android at the same time (Android starts ~60-90 s later).
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- tapOn: "Message…|Mensaje…"
+- inputText: "[QA] mensaje para reportar"
+- tapOn:
+    id: "chat-send"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: 01-mensaje-enviado
+# stay in the chat while the other side reports (the message must be live), then leave quietly
+- extendedWaitUntil:
+    visible: "THIS TEXT NEVER APPEARS"
+    timeout: 120000
+    optional: true

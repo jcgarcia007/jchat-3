@@ -1,0 +1,51 @@
+# location: 26.083048,-80.223725
+# 20b — Restores the state after flow 20 (Android, account "test"): checks whether the blocked conversation disappears after a REFRESH (leave
+# the Messages tab and come back), then Settings → Privacy → Blocked users → Unblock, and the conversation must be back.
+# Run it whenever flow 20 stops half way (a failed assertion leaves "test1" blocked).
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Nearby|Cerca.*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Messages|Mensajes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 01-mensajes-tras-refrescar
+- tapOn: "Profile|Perfil"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Open settings|Abrir ajustes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element: "Privacy Settings|Ajustes de privacidad"
+    timeout: 20000
+- tapOn: "Privacy Settings|Ajustes de privacidad"
+- scrollUntilVisible:
+    element: "Blocked users|Usuarios bloqueados"
+    timeout: 20000
+# the row has no accessible text of its own (the tap by text did not open the screen); it is the last row, ~88% down once scrolled
+- tapOn:
+    point: "50%,88%"
+- extendedWaitUntil:
+    visible: "Unblock|Desbloquear"
+    timeout: 15000
+- takeScreenshot: 02-bloqueados
+- tapOn: "Unblock|Desbloquear"
+# the app asks for confirmation ("Unblock @user?"); on Android the dialog button is upper-case
+# (a text match picks the row button behind the dialog, so the dialog's UNBLOCK is tapped by position: bottom right of the dialog)
+- tapOn:
+    point: "80%,58%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 03-desbloqueado
+# (two Android "back" presses would leave the app; reopen it instead)
+- runFlow: ../helpers/open-app.yaml
+- tapOn: "Messages|Mensajes"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-0b4895d0.*"
+    timeout: 30000
+- takeScreenshot: 04-conversacion-de-vuelta
