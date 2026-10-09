@@ -3730,5 +3730,46 @@
     "errLimit": "You reached the notice limit for this order. Ask the staff directly.",
     "errClosed": "This order is closed and can no longer send notices.",
     "errGeneric": "We couldn't send the notice. Try again."
+  },
+  "report": {
+    "title": "Report {name}",
+    "subtitle": "Why are you reporting this?",
+    "reasons": {
+      "spam": "Spam or scam",
+      "harassment": "Harassment or bullying",
+      "hate": "Hate speech or discrimination",
+      "threat_violence": "Threats or violence",
+      "sexual_content": "Sexual content",
+      "child_safety": "Child safety — a minor is at risk",
+      "impersonation": "Impersonation",
+      "copyright": "Copyright infringement",
+      "other": "Other"
+    },
+    "childSafetyHint": "If someone is in immediate danger, call 911.",
+    "detailsOptional": "Add details (optional)",
+    "detailsRequired": "Tell us what happened (required)",
+    "detailsPlaceholder": "What should we know?",
+    "send": "Send report",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "successTitle": "Thank you",
+    "successMessage": "Thanks. We'll review it in under 24 hours.",
+    "errors": {
+      "notAuthenticated": "Sign in to send a report.",
+      "invalidReason": "Pick a reason for the report.",
+      "detailsRequired": "Please tell us what happened.",
+      "notFound": "We couldn't find that content. It may have been removed.",
+      "invalidTarget": "You can't report your own content.",
+      "reportLimit": "You've reached today's report limit. Try again tomorrow.",
+      "generic": "The report couldn't be sent. Try again."
+    },
+    "message": "Report message",
+    "block": "Block {name}",
+    "blockTitle": "Block {name}?",
+    "blockMessage": "You won't see their messages and they won't be able to contact you.",
+    "blockConfirm": "Block",
+    "blockError": "We couldn't block this person. Try again.",
+    "menu": "Message options"
   }
 }

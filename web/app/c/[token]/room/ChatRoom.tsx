@@ -19,6 +19,7 @@ import { getBusinessRoleMap, type ChatRole } from "@/lib/roleBadges";
 import { getChatTheme } from "@/lib/chatThemes";
 import { requestPosition } from "@/lib/venueLocation";
 import { checkMessage } from "@/lib/messageFilter";
+import { ReportDialog } from "@/components/report/ReportDialog";
 
 const WAITER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -193,6 +194,7 @@ interface Props {
 export function ChatRoom({ token, roomId, roomName, businessName, businessId, userId, chatThemeId = 1 }: Props) {
   const t = useTranslations("chatRoom");
   const tv = useTranslations("venue");
+  const tr = useTranslations("report");
   const nameLabelsRef = useRef<NameLabels>({ anonymous: t("anonymous"), user: t("user") });
   nameLabelsRef.current = { anonymous: t("anonymous"), user: t("user") };
   const router = useRouter();
@@ -203,6 +205,10 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
   const anchorRoomId = roomId;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Report / block (migrations 212 / 213): the ⋯ menu of a message of someone else (needs a session).
+  const [menuMsg, setMenuMsg] = useState<{ id: string; userId: string; name: string } | null>(null);
+  const [reportMsg, setReportMsg] = useState<{ id: string; name: string } | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   // Sender name/avatar cache, resolved from public_profiles (see ensureProfiles).
   const [profiles, setProfiles] = useState<Record<string, SenderProfile>>({});
   // Business slug + menu config → header icon + attach-panel "Menú" button.
@@ -565,6 +571,22 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
             requestAnimationFrame(() =>
               requestAnimationFrame(() => scrollToBottom("smooth")),
             );
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `room_id=eq.${activeRoomId}`,
+        },
+        (payload) => {
+          // A moderator hid the message (migration 213): everyone but its author drops it at once.
+          const row = payload.new as { id?: string; user_id?: string; hidden_at?: string | null };
+          if (row.hidden_at && row.id && row.user_id !== userId) {
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
           }
         }
       )
@@ -1341,7 +1363,7 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           </div>
         )}
 
-        {messages.map((msg) => {
+        {messages.filter((m) => !blockedIds.has(m.user_id)).map((msg) => {
           const isOwn = msg.user_id === userId;
 
           if (msg.is_system || msg.type === "system") {
@@ -1550,17 +1572,32 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
                 </div>
               )}
 
-              <span
-                style={{
-                  fontSize: 10,
-                  color: isOwn ? theme.bubbleOutText : theme.bubbleInText,
-                  opacity: 0.45,
-                  paddingLeft: isOwn ? 0 : 4,
-                  paddingRight: isOwn ? 4 : 0,
-                }}
-              >
-                {formatTime(msg.created_at)}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: isOwn ? theme.bubbleOutText : theme.bubbleInText,
+                    opacity: 0.45,
+                    paddingLeft: isOwn ? 0 : 4,
+                    paddingRight: isOwn ? 4 : 0,
+                  }}
+                >
+                  {formatTime(msg.created_at)}
+                </span>
+                {!isOwn && !!userId && (
+                  <button
+                    type="button"
+                    aria-label={tr("menu")}
+                    onClick={() => setMenuMsg({ id: msg.id, userId: msg.user_id, name: senderName(msg, profiles, nameLabelsRef.current).replace("🎭 ", "") })}
+                    style={{
+                      minWidth: 28, minHeight: 28, border: "none", background: "transparent", cursor: "pointer",
+                      color: theme.bubbleInText, opacity: 0.55, fontSize: 16, lineHeight: 1,
+                    }}
+                  >
+                    ⋯
+                  </button>
+                )}
+              </div>
               </div>
             </div>
           );
@@ -1568,6 +1605,60 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
 
         {/* Scroll anchor */}
         <div ref={bottomRef} />
+
+        {menuMsg && (
+          <div
+            role="presentation"
+            onClick={() => setMenuMsg(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 250 }}
+          >
+            <div
+              role="menu"
+              aria-label={tr("menu")}
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: "100%", maxWidth: 480, padding: "12px 16px 24px", borderRadius: "16px 16px 0 0", background: "var(--bg-surface)", color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 4 }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { setReportMsg({ id: menuMsg.id, name: menuMsg.name }); setMenuMsg(null); }}
+                style={{ minHeight: 48, textAlign: "left", background: "transparent", border: "none", color: "var(--color-danger)", fontSize: 16, cursor: "pointer" }}
+              >
+                {tr("message")}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const target = menuMsg;
+                  setMenuMsg(null);
+                  if (!window.confirm(`${tr("blockTitle", { name: target.name })}\n${tr("blockMessage")}`)) return;
+                  void supabase.rpc("block_user", { p_target: target.userId }).then(({ error: blockError }) => {
+                    if (blockError) { window.alert(tr("blockError")); return; }
+                    setBlockedIds((prev) => new Set(prev).add(target.userId)); // their messages leave the list at once
+                  });
+                }}
+                style={{ minHeight: 48, textAlign: "left", background: "transparent", border: "none", color: "var(--color-danger)", fontSize: 16, cursor: "pointer" }}
+              >
+                {tr("block", { name: menuMsg.name })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuMsg(null)}
+                style={{ minHeight: 48, background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 16, fontWeight: 600, cursor: "pointer" }}
+              >
+                {tr("cancel")}
+              </button>
+            </div>
+          </div>
+        )}
+        <ReportDialog
+          open={reportMsg !== null}
+          targetName={reportMsg?.name ?? ""}
+          contentType="message"
+          contentId={reportMsg?.id ?? ""}
+          onClose={() => setReportMsg(null)}
+        />
       </div>
 
       {/* Input row */}
