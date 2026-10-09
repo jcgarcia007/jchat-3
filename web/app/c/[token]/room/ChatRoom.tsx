@@ -1363,6 +1363,11 @@ export function ChatRoom({ token, roomId, roomName, businessName, businessId, us
           </div>
         )}
 
+        {/* Few messages sit at the BOTTOM, next to the composer, like the app. The spacer takes the free height and shrinks to
+            nothing once the messages fill the area, so scrolling to the newest message is unchanged. (justify-content:
+            flex-end would clip the top of a scrollable list, hence the spacer.) */}
+        {messages.length > 0 && <div aria-hidden="true" style={{ flex: "1 1 0", minHeight: 0 }} />}
+
         {messages.filter((m) => !blockedIds.has(m.user_id)).map((msg) => {
           const isOwn = msg.user_id === userId;
 
