@@ -96,7 +96,9 @@
     "deleteErrorTitle": "Deletion failed",
     "deleteErrorMessage": "We couldn't delete your account. Please try again.",
     "biometricUnavailableTitle": "Biometrics unavailable",
-    "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first."
+    "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first.",
+    "deleteOwnerTitle": "You own a business",
+    "deleteOwnerMessage": "You own a business. Close or transfer it before deleting your account."
   },
   "workMode": {
     "title": "Work Mode",

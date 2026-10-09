@@ -3841,6 +3841,7 @@
     "error": "We couldn't delete your account. Try again or write to safety@jchat.cloud.",
     "doneTitle": "Your account was deleted",
     "doneBody": "Your account and personal data have been removed and you were signed out. Thank you for trying JChat.",
-    "goHome": "Back to the home page"
+    "goHome": "Back to the home page",
+    "ownerBodyNoName": "Deleting your account would also remove your business. Close or transfer it first."
   }
 }

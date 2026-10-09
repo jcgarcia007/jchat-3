@@ -64,7 +64,7 @@ import { useThemeColors } from '../../theme/colors';
 import { applyAppearance, type AppearancePreference } from '../../theme/appearance';
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../services/supabase';
-import { deleteMyAccount } from '../../services/account';
+import { deleteMyAccountDetailed } from '../../services/account';
 import {
   canUseBiometrics,
   isBiometricEnabled,
@@ -394,8 +394,13 @@ export default function SettingsScreen() {
       return;
     }
     try {
-      const deleted = await deleteMyAccount();
-      if (!deleted) {
+      const result = await deleteMyAccountDetailed();
+      if (result === 'owns_business') {
+        // Nothing was deleted: the owner has to close or transfer the business first.
+        Alert.alert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
+        return;
+      }
+      if (result !== 'ok') {
         Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
         return;
       }

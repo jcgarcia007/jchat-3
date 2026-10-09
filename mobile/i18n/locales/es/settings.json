@@ -96,7 +96,9 @@
     "deleteErrorTitle": "Error al eliminar",
     "deleteErrorMessage": "No pudimos eliminar tu cuenta. Inténtalo de nuevo.",
     "biometricUnavailableTitle": "Biometría no disponible",
-    "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo."
+    "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
+    "deleteOwnerTitle": "Eres dueño de un negocio",
+    "deleteOwnerMessage": "Eres dueño de un negocio. Ciérralo o transfiérelo antes de eliminar tu cuenta."
   },
   "workMode": {
     "title": "Modo Trabajo",

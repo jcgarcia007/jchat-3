@@ -3841,6 +3841,7 @@
     "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo o escribe a safety@jchat.cloud.",
     "doneTitle": "Tu cuenta fue eliminada",
     "doneBody": "Tu cuenta y tus datos personales se eliminaron y cerramos tu sesión. Gracias por probar JChat.",
-    "goHome": "Volver al inicio"
+    "goHome": "Volver al inicio",
+    "ownerBodyNoName": "Eliminar tu cuenta también eliminaría tu negocio. Ciérralo o transfiérelo primero."
   }
 }

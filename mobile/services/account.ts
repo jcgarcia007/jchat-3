@@ -8,9 +8,14 @@
 
 import { isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY, authedFetch } from './supabase';
 
-/** Returns true only when the server confirmed the deletion. Never throws. */
-export async function deleteMyAccount(): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
+export type DeleteAccountResult = 'ok' | 'owns_business' | 'error';
+
+/**
+ * Deletes the account and says why it did not: 'owns_business' (409) when the user still owns a business — they must close or
+ * transfer it first, nothing was deleted. Never throws.
+ */
+export async function deleteMyAccountDetailed(): Promise<DeleteAccountResult> {
+  if (!isSupabaseConfigured) return 'error';
   try {
     // authedFetch adds the access token and applies the session guard (401 → refresh once → retry).
     const res = await authedFetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
@@ -20,8 +25,18 @@ export async function deleteMyAccount(): Promise<boolean> {
         'Content-Type': 'application/json',
       },
     });
-    return res.ok;
+    if (res.ok) return 'ok';
+    if (res.status === 409) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (body?.error === 'owns_business') return 'owns_business';
+    }
+    return 'error';
   } catch {
-    return false;
+    return 'error';
   }
+}
+
+/** Returns true only when the server confirmed the deletion. Never throws. */
+export async function deleteMyAccount(): Promise<boolean> {
+  return (await deleteMyAccountDetailed()) === 'ok';
 }

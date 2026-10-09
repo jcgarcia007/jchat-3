@@ -8,12 +8,14 @@
 import { supabase, authedFetch } from "@/lib/supabase";
 import { TERMS_VERSION } from "@/lib/terms";
 
-/** true only when the server confirmed the deletion. Never throws. */
-export async function deleteMyAccount(): Promise<boolean> {
+export type DeleteAccountResult = "ok" | "owns_business" | "error";
+
+/** Deletes the account and says why not: "owns_business" (409) when the user still owns a business. Never throws. */
+export async function deleteMyAccountDetailed(): Promise<DeleteAccountResult> {
   try {
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!base || !anon) return false;
+    if (!base || !anon) return "error";
     // authedFetch adds the access token and applies the session guard (401 → refresh once → retry).
     const res = await authedFetch(`${base}/functions/v1/delete-account`, {
       method: "POST",
@@ -22,10 +24,20 @@ export async function deleteMyAccount(): Promise<boolean> {
         "Content-Type": "application/json",
       },
     });
-    return res.ok;
+    if (res.ok) return "ok";
+    if (res.status === 409) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (body?.error === "owns_business") return "owns_business";
+    }
+    return "error";
   } catch {
-    return false;
+    return "error";
   }
+}
+
+/** true only when the server confirmed the deletion. Never throws. */
+export async function deleteMyAccount(): Promise<boolean> {
+  return (await deleteMyAccountDetailed()) === "ok";
 }
 
 export type ConfirmAgeResult = "ok" | "underage" | "error";

@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { deleteMyAccount } from "@/lib/account";
+import { deleteMyAccountDetailed } from "@/lib/account";
 
 type Phase = "checking" | "blocked" | "form" | "deleting" | "done";
 
@@ -56,8 +56,10 @@ export function DeleteAccountClient() {
     if (!confirmed || phase !== "form") return;
     setPhase("deleting");
     setError(null);
-    const ok = await deleteMyAccount();
-    if (!ok) { setError(t("error")); setPhase("form"); return; }
+    const result = await deleteMyAccountDetailed();
+    // Backup of the check above: the server refuses owners too (409 owns_business) and nothing is deleted.
+    if (result === "owns_business") { setPhase("blocked"); return; }
+    if (result !== "ok") { setError(t("error")); setPhase("form"); return; }
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     setPhase("done");
   }, [confirmed, phase, t]);
@@ -91,7 +93,9 @@ export function DeleteAccountClient() {
       {phase === "blocked" ? (
         <div role="alert" style={{ padding: 14, borderRadius: 10, border: "1px solid var(--color-danger)", color: "var(--gray-900)" }}>
           <strong>{t("ownerTitle")}</strong>
-          <p style={{ ...P, marginTop: 6 }}>{t("ownerBody", { names: ownedNames.join(", ") })}</p>
+          <p style={{ ...P, marginTop: 6 }}>
+            {ownedNames.length > 0 ? t("ownerBody", { names: ownedNames.join(", ") }) : t("ownerBodyNoName")}
+          </p>
           <p style={{ ...P, marginBottom: 0 }}>
             {t("ownerHelp")} <a href="mailto:safety@jchat.cloud" style={LINK}>safety@jchat.cloud</a> · <Link href="/contact" style={LINK}>{t("contact")}</Link>
           </p>

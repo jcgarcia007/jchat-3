@@ -76,6 +76,22 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // 2b. A business owner cannot delete the account: businesses.owner_id is ON DELETE CASCADE, so the venue (menu,
+    //     staff, history) would disappear with it. They must close or transfer the business first. Nothing has been
+    //     deleted at this point.
+    const { data: owned, error: ownedErr } = await admin
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", userId)
+      .limit(1);
+    if (ownedErr) {
+      console.error("[delete-account] owner check failed", ownedErr);
+      return jsonResponse({ error: "Internal server error" }, 500);
+    }
+    if ((owned ?? []).length > 0) {
+      return jsonResponse({ error: "owns_business" }, 409);
+    }
+
     // 3. Clear NO ACTION references that would block the cascade.
     //    requested_by → the user owns these requests, delete them.
     //    reviewed_by  → the user reviewed OTHER users' requests, only unlink.
