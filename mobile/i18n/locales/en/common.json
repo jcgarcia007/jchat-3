@@ -90,5 +90,12 @@
     "blockConfirm": "Block",
     "blockError": "We couldn't block this person. Try again.",
     "reportUser": "Report user"
+  },
+  "dmPhoto": {
+    "blurredTitle": "Sensitive photo",
+    "blurredHint": "This photo may contain sensitive content.",
+    "showAnyway": "View anyway",
+    "report": "Report",
+    "rejected": "This photo was removed because it breaks our rules."
   }
 }

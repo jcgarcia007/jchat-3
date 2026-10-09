@@ -64,6 +64,8 @@ export interface DmMessageRow {
   created_at: string;
   /** Set when the message is a gift card (migration 202): the offer it represents. */
   gift_offer_id?: string | null;
+  /** Photo moderation verdict (migration 214): 'pending' | 'clear' | 'blurred' | 'rejected'; null/absent = no photo or older row. */
+  media_moderation?: 'pending' | 'clear' | 'blurred' | 'rejected' | null;
 }
 
 /** Enriched conversation item for the inbox list. */

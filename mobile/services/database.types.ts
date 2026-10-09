@@ -725,6 +725,8 @@ export type Database = {
           voice_url: string | null
           hidden_at: string | null
           hidden_by: string | null
+          media_moderation: string | null
+          media_moderated_at: string | null
         }
         Insert: {
           body?: string | null
@@ -737,6 +739,8 @@ export type Database = {
           voice_url?: string | null
           hidden_at?: string | null
           hidden_by?: string | null
+          media_moderation?: string | null
+          media_moderated_at?: string | null
         }
         Update: {
           body?: string | null
@@ -749,6 +753,8 @@ export type Database = {
           voice_url?: string | null
           hidden_at?: string | null
           hidden_by?: string | null
+          media_moderation?: string | null
+          media_moderated_at?: string | null
         }
         Relationships: [
           {
@@ -3633,6 +3639,10 @@ export type Database = {
       }
     }
     Functions: {
+      dm_photo_set_verdict: {
+        Args: { p_message_id: string; p_scores?: Json; p_status: string }
+        Returns: undefined
+      }
       admin_hide_content: {
         Args: { p_content_id: string; p_content_type: string; p_report_id?: string; p_unhide?: boolean }
         Returns: undefined

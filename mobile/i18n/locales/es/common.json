@@ -90,5 +90,12 @@
     "blockConfirm": "Bloquear",
     "blockError": "No pudimos bloquear a esta persona. Inténtalo de nuevo.",
     "reportUser": "Reportar usuario"
+  },
+  "dmPhoto": {
+    "blurredTitle": "Foto sensible",
+    "blurredHint": "Esta foto puede contener contenido sensible.",
+    "showAnyway": "Ver de todos modos",
+    "report": "Reportar",
+    "rejected": "Esta foto se retiró porque incumple nuestras normas."
   }
 }

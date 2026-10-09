@@ -59,6 +59,10 @@ verify_jwt = false
 [functions.safety-alert]
 verify_jwt = false
 
+# DM photo moderation: invoked by pg_net (migration 214) with x-push-secret, not a user JWT. SafeSearch verdict on dm_messages.
+[functions.moderate-dm-photo]
+verify_jwt = false
+
 # ── Auth email templates (bilingual ES/EN) ─────────────────────────────────
 # Source of truth: supabase/templates/*.html (see docs/JCHAT_PLANTILLAS_CORREO_SUPABASE.md).
 # Applies to local dev only; in production they are pasted manually into
