@@ -14,7 +14,7 @@
  * TODOs:
  *   - TODO(expo-av not installed): voice recording — stubbed with an alert
  *   - TODO(Task 1.13): respect read-receipts privacy setting before showing ticks
- *   - TODO(Task 1.13/1.15): filter blocked + DM-permission check
+ *   - Blocking / reporting: long-press a received message, or the ⋯ menu of the header (migrations 212 / 213)
  */
 
 import React, {
@@ -86,6 +86,9 @@ import type { ChatMeta } from '../../services/matchChat';
 import { getMatchPresence } from '../../services/matchPresence';
 import { safeLaunchLibrary } from '../../utils/safePicker';
 import { checkMessage } from '../../utils/messageFilter';
+import { blockUser } from '../../services/blocks';
+import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
+import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -278,6 +281,46 @@ export default function DMChatScreen() {
     onBlocked: () => navigation.goBack(),
   });
 
+  // Report / block: long-press a received message, or the ⋯ menu of a normal chat (Match chats keep their own menu).
+  const [msgAction, setMsgAction] = useState<DmMessageRow | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ type: 'user' | 'dm_message'; id: string } | null>(null);
+  const [reportVisible, setReportVisible] = useState(false);
+  const otherName = meta?.otherName ?? t('dmChat.title');
+
+  const startReport = useCallback((type: 'user' | 'dm_message', id: string) => {
+    setMsgAction(null);
+    setReportTarget({ type, id });
+    setTimeout(() => setReportVisible(true), 350); // after the closing sheet is gone (two modals on iOS)
+  }, []);
+
+  const confirmBlockOther = useCallback(() => {
+    const otherId = meta?.otherUserId;
+    setMsgAction(null);
+    if (!otherId) return;
+    Alert.alert(tc('report.blockTitle', { name: otherName }), tc('report.blockMessage'), [
+      { text: tc('actions.cancel'), style: 'cancel' },
+      {
+        text: tc('report.blockConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          void blockUser(otherId)
+            .then(() => navigation.goBack())
+            .catch(() => Alert.alert(tc('state.error'), tc('report.blockError')));
+        },
+      },
+    ]);
+  }, [meta?.otherUserId, otherName, navigation, tc]);
+
+  const openUserMenu = useCallback(() => {
+    const otherId = meta?.otherUserId;
+    if (!otherId) return;
+    Alert.alert(otherName, undefined, [
+      { text: tc('report.reportUser'), onPress: () => startReport('user', otherId) },
+      { text: tc('report.block', { name: otherName }), style: 'destructive', onPress: confirmBlockOther },
+      { text: tc('actions.cancel'), style: 'cancel' },
+    ]);
+  }, [meta?.otherUserId, otherName, startReport, confirmBlockOther, tc]);
+
   // The first sender must wait for a reply (server rule); I'm waiting when I sent the first message.
   const waitingForReply = isEphemeral && meta?.awaitingReply === true && meta?.firstSenderId === user?.id;
 
@@ -335,6 +378,22 @@ export default function DMChatScreen() {
           // If the message is from the other user, mark it read immediately
           if (newMsg.sender_id !== user.id) {
             markRead(conversationId, user.id).catch(() => {});
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dm_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          // A moderator hid a message of the other person (migration 213): it disappears from the thread at once.
+          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null };
+          if (row.hidden_at && row.id && row.sender_id !== user.id) {
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
           }
         },
       )
@@ -490,6 +549,18 @@ export default function DMChatScreen() {
             <IconGift size={22} color={palette.brand} strokeWidth={2} />
           </Pressable>
         ) : null}
+        {!isEphemeral && meta?.otherUserId ? (
+          <Pressable
+            testID="dm-menu"
+            onPress={openUserMenu}
+            accessibilityRole="button"
+            accessibilityLabel={tc('report.reportUser')}
+            hitSlop={10}
+            style={styles.moreBtn}
+          >
+            <IconDots size={22} color={c.textPrimary} />
+          </Pressable>
+        ) : null}
         {isEphemeral && (
           <>
             <Pressable
@@ -540,10 +611,17 @@ export default function DMChatScreen() {
           keyboardShouldPersistTaps="handled"
           inverted
           renderItem={({ item }) => (
-            <MessageBubble
-              message={item}
-              isOwn={item.sender_id === user?.id}
-            />
+            <Pressable
+              accessible={false}
+              delayLongPress={350}
+              disabled={item.sender_id === user?.id}
+              onLongPress={() => setMsgAction(item)}
+            >
+              <MessageBubble
+                message={item}
+                isOwn={item.sender_id === user?.id}
+              />
+            </Pressable>
           )}
           contentContainerStyle={styles.messageList}
           ListEmptyComponent={
@@ -650,6 +728,20 @@ export default function DMChatScreen() {
       </View>
       )}
       {safety.sheets}
+      <MessageActionSheet
+        visible={msgAction !== null}
+        authorName={otherName}
+        onReport={() => { if (msgAction) startReport('dm_message', msgAction.id); }}
+        onBlock={confirmBlockOther}
+        onClose={() => setMsgAction(null)}
+      />
+      <ReportReasonSheet
+        visible={reportVisible}
+        targetName={otherName}
+        contentType={reportTarget?.type ?? 'user'}
+        contentId={reportTarget?.id ?? ''}
+        onClose={() => setReportVisible(false)}
+      />
       {giftBusinessId && meta?.otherUserId ? (
         <GiftSheet
           visible={giftOpen}

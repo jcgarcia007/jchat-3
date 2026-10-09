@@ -72,6 +72,8 @@ export function toUserMessage(err: unknown, fallbackKey = 'errors:generic'): str
   } else if (isAuthError(err)) {
     const code = typeof err.code === 'string' ? err.code : null;
     if (code) message = tr(`errors:auth.${code}`);
+    // A suspended account (migration 213 sets auth.users.banned_until): code user_banned, or only the message on old servers.
+    if (!message && /banned/i.test(err.message)) message = tr('errors:auth.user_banned');
     if (!message && err.status === 429) message = tr('errors:auth.over_request_rate_limit');
     if (!message && isNetworkFailure(err)) message = tr('errors:network');
   } else if (isNetworkFailure(err)) {

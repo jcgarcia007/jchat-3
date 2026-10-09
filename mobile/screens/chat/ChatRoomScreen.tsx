@@ -111,9 +111,9 @@ import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
 import { usePresenceChannels, type SelfProfile } from './usePresenceChannels';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
-import { getBlockRelations } from '../../services/blocks';
-import { reportUser } from '../../services/users';
-import { ReportReasonSheet, type ReportReason } from '../../components/chat/ReportReasonSheet';
+import { blockUser, getBlockRelations } from '../../services/blocks';
+import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
+import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { palette } from '../../theme/tokens';
@@ -221,6 +221,8 @@ export default function ChatRoomScreen() {
   const { user } = useAuth();
   const themeColors = useThemeColors();
   const { t, i18n } = useTranslation('chat');
+  const { t: tc } = useTranslation('common');
+
   const matchLanguage: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
 
   const rootRoomId = route.params.id;
@@ -721,6 +723,7 @@ export default function ChatRoomScreen() {
   }, [user?.id]);
 
   // ── Realtime subscription (messages) ──────────────────────────────────────
+  const meId = user?.id;
 
   useEffect(() => {
     if (!isSupabaseConfigured || entryVisible) return;
@@ -775,12 +778,28 @@ export default function ChatRoomScreen() {
           }
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${activeRoomId}`,
+        },
+        (payload) => {
+          // A moderator hid the message (migration 213): everyone but its author drops it from the list at once.
+          const row = payload.new as { id?: string; user_id?: string; hidden_at?: string | null };
+          if (row.hidden_at && row.id && row.user_id !== meId) {
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [activeRoomId, entryVisible]);
+  }, [activeRoomId, entryVisible, meId]);
 
   // Presence (main + anchor + visited) is owned by usePresenceChannels above.
 
@@ -1196,28 +1215,49 @@ export default function ChatRoomScreen() {
 
   // Report: the card / action sheet hand the target over, then the reason picker opens
   // (after the closing sheet has gone, so iOS doesn't stack two modals).
-  const [reportTarget, setReportTarget] = useState<{ userId: string; userName: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ type: 'user' | 'message'; id: string; name: string } | null>(null);
   const [reportVisible, setReportVisible] = useState(false);
 
   const handleStartReport = useCallback((userId: string, userName: string) => {
-    setReportTarget({ userId, userName });
+    setReportTarget({ type: 'user', id: userId, name: userName });
     setTimeout(() => setReportVisible(true), 350);
   }, []);
 
-  const handleSubmitReport = useCallback(
-    async (reason: ReportReason) => {
-      const target = reportTarget;
-      setReportVisible(false);
-      if (!target || !user?.id) return;
-      try {
-        await reportUser(user.id, target.userId, reason);
-        Alert.alert(t('userAction.reportSubmittedTitle'), t('userAction.reportSubmittedMessage'));
-      } catch {
-        Alert.alert(t('userAction.errorTitle'), t('userAction.tryAgain'));
-      }
-    },
-    [reportTarget, user?.id, t],
-  );
+  // Long-press on a message of someone else → report / block (the pin option stays for owners and moderators).
+  const [msgAction, setMsgAction] = useState<ChatMessage | null>(null);
+  const msgActionName = msgAction
+    ? (msgAction.sender_name ?? userNameCacheRef.current.get(msgAction.user_id) ?? t('chatRoom.fallbackUserName'))
+    : '';
+
+  const handleReportMessage = useCallback(() => {
+    const m = msgAction;
+    if (!m) return;
+    setMsgAction(null);
+    setReportTarget({ type: 'message', id: m.id, name: msgActionName });
+    setTimeout(() => setReportVisible(true), 350);
+  }, [msgAction, msgActionName]);
+
+  const handleBlockAuthor = useCallback(() => {
+    const m = msgAction;
+    if (!m) return;
+    setMsgAction(null);
+    Alert.alert(tc('report.blockTitle', { name: msgActionName }), tc('report.blockMessage'), [
+      { text: tc('actions.cancel'), style: 'cancel' },
+      {
+        text: tc('report.blockConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          void blockUser(m.user_id)
+            .then(() => {
+              // Their messages disappear right away; refreshBlocks makes it permanent for this session.
+              setBlockedIds((prev) => new Set(prev).add(m.user_id));
+              void refreshBlocks();
+            })
+            .catch(() => Alert.alert(tc('actions.errorTitle', { defaultValue: 'Error' }), tc('report.blockError')));
+        },
+      },
+    ]);
+  }, [msgAction, msgActionName, refreshBlocks, tc]);
 
   const handleCloseQuickCard = useCallback(() => {
     setQuickCard((p) => ({ ...p, visible: false }));
@@ -1294,10 +1334,15 @@ export default function ChatRoomScreen() {
 
   const handleLongPressMessage = useCallback(
     (m: ChatMessage) => {
-      // Pin is Owner/Moderator only (spec 2.5).
-      if (viewerRole !== 'user') setPinMsg(m);
+      const canPin = viewerRole !== 'user';
+      // Own and system messages: only the pin option, and only for owners / moderators (spec 2.5).
+      if (m.is_system || m.user_id === user?.id) {
+        if (canPin) setPinMsg(m);
+        return;
+      }
+      setMsgAction(m);
     },
-    [viewerRole],
+    [viewerRole, user?.id],
   );
 
   const sheetRooms = useMemo(
@@ -1744,9 +1789,20 @@ export default function ChatRoomScreen() {
       {/* ── Report reason picker ──────────────────────────────────────────── */}
       <ReportReasonSheet
         visible={reportVisible}
-        targetName={reportTarget?.userName ?? ''}
-        onSelect={(reason) => { void handleSubmitReport(reason); }}
+        targetName={reportTarget?.name ?? ''}
+        contentType={reportTarget?.type ?? 'user'}
+        contentId={reportTarget?.id ?? ''}
         onClose={() => setReportVisible(false)}
+      />
+
+      {/* ── Long-press on a message of someone else: report / block ───────── */}
+      <MessageActionSheet
+        visible={msgAction !== null}
+        authorName={msgActionName}
+        onReport={handleReportMessage}
+        onBlock={handleBlockAuthor}
+        onPin={msgAction && viewerRole !== 'user' ? () => { const m = msgAction; setMsgAction(null); setPinMsg(m); } : undefined}
+        onClose={() => setMsgAction(null)}
       />
 
       {/* ── Pin message sheet (Task 2.5) ──────────────────────────────────── */}

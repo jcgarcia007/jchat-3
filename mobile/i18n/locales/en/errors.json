@@ -19,7 +19,7 @@
     "validation_failed": "Some of the information you entered isn't valid.",
     "session_expired": "Your session expired. Please sign in again.",
     "reauthentication_needed": "For security, please sign in again and retry.",
-    "user_banned": "This account is unavailable.",
+    "user_banned": "Your account is suspended. If you think this is a mistake, write to safety@jchat.cloud.",
     "provider_disabled": "This sign-in method isn't available right now.",
     "oauth_provider_not_supported": "This sign-in method isn't available right now.",
     "bad_oauth_callback": "Sign-in could not be completed. Please try again.",

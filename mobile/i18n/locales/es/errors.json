@@ -19,7 +19,7 @@
     "validation_failed": "Alguno de los datos que ingresaste no es válido.",
     "session_expired": "Tu sesión venció. Inicia sesión de nuevo.",
     "reauthentication_needed": "Por seguridad, inicia sesión de nuevo e inténtalo otra vez.",
-    "user_banned": "Esta cuenta no está disponible.",
+    "user_banned": "Tu cuenta está suspendida. Si crees que es un error, escribe a safety@jchat.cloud.",
     "provider_disabled": "Este método de inicio de sesión no está disponible por ahora.",
     "oauth_provider_not_supported": "Este método de inicio de sesión no está disponible por ahora.",
     "bad_oauth_callback": "No se pudo completar el inicio de sesión. Inténtalo de nuevo.",
