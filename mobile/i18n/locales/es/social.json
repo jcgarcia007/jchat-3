@@ -60,7 +60,10 @@
     "sendPhotoError": "No se pudo enviar la foto.",
     "permissionTitle": "Permiso requerido",
     "permissionMessage": "Permite el acceso a las fotos para enviar imágenes.",
-    "sendPhotoA11y": "Enviar una foto"
+    "sendPhotoA11y": "Enviar una foto",
+    "photoSourceTitle": "Enviar una foto",
+    "takePhoto": "Tomar foto",
+    "chooseFromGallery": "Elegir de la galería"
   },
   "friends": {
     "title": "Amigos",

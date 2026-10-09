@@ -60,7 +60,10 @@
     "sendPhotoError": "Failed to send photo.",
     "permissionTitle": "Permission required",
     "permissionMessage": "Allow photo access to send images.",
-    "sendPhotoA11y": "Send a photo"
+    "sendPhotoA11y": "Send a photo",
+    "photoSourceTitle": "Send a photo",
+    "takePhoto": "Take photo",
+    "chooseFromGallery": "Choose from gallery"
   },
   "friends": {
     "title": "Friends",
