@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
   IconArrowLeft,
   IconDots,
@@ -43,7 +44,6 @@ import {
   getPostById,
   isPostLiked,
   likePost,
-  reportPost,
   unlikePost,
   type CommentRow,
   type PostRow,
@@ -55,7 +55,6 @@ import { checkMessage } from '../../utils/messageFilter';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
-const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'impersonation', 'other'] as const;
 const PHOTO_WIDTH = Dimensions.get('window').width;
 
 function SheetRow({ label, color, borderColor, icon, onPress }: {
@@ -158,17 +157,15 @@ export default function PostDetailScreen(): React.JSX.Element {
     ]);
   }, [navigation, post, t, user?.id]);
 
-  const submitReport = useCallback(async (reason: typeof REPORT_REASONS[number]) => {
-    if (!post || !user?.id || busy) return;
-    setBusy(true);
-    try {
-      await reportPost(user.id, post.id, post.user_id, reason);
-      setReportVisible(false);
-      Alert.alert(t('detail.reportThanksTitle'), t('detail.reportThanksMessage'));
-    } catch {
-      Alert.alert(t('detail.actionFailedTitle'), t('detail.reportFailed'));
-    } finally { setBusy(false); }
-  }, [busy, post, t, user?.id]);
+  // Long-press a comment of someone else → offer to report it (the sheet below sends it as content_type 'comment').
+  const [reportComment, setReportComment] = useState<{ id: string; name: string } | null>(null);
+  const handleCommentLongPress = useCallback((item: CommentRow, name: string) => {
+    if (!user?.id || item.user_id === user.id) return;
+    Alert.alert(name, undefined, [
+      { text: t('common:report.comment'), onPress: () => setReportComment({ id: item.id, name }) },
+      { text: t('detail.cancel'), style: 'cancel' },
+    ]);
+  }, [t, user?.id]);
 
   if (loading || !post) {
     return <View style={[styles.center, { backgroundColor: c.bgBase }]}><ActivityIndicator color={c.brand} /></View>;
@@ -220,11 +217,11 @@ export default function PostDetailScreen(): React.JSX.Element {
 
             <Text style={[styles.commentsTitle, { color: c.textPrimary }]}>{t('detail.comments')}</Text>
             {comments.length === 0 ? <Text style={[styles.emptyComments, { color: c.textTertiary }]}>{t('detail.noComments')}</Text> : comments.map((item) => (
-              <View key={item.id} style={[styles.commentRow, { borderBottomColor: c.borderSubtle }]}>
+              <Pressable key={item.id} onLongPress={() => handleCommentLongPress(item, item.author?.display_name || item.author?.username || t('post.unknownAuthor'))} delayLongPress={350} style={[styles.commentRow, { borderBottomColor: c.borderSubtle }]}>
                 <Text style={[styles.commentAuthor, { color: c.textPrimary }]}>{item.author?.display_name || item.author?.username || t('post.unknownAuthor')}</Text>
                 <Text style={[styles.commentBody, { color: c.textSecondary }]}>{item.body}</Text>
                 <Text style={[styles.commentDate, { color: c.textTertiary }]}>{new Date(item.created_at).toLocaleString(i18n.language)}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </ScrollView>
@@ -246,15 +243,20 @@ export default function PostDetailScreen(): React.JSX.Element {
         </View>
       </Modal>
 
-      <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setReportVisible(false)} />
-        <View style={[styles.sheet, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
-          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
-          <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>{t('detail.reportTitle')}</Text>
-          {REPORT_REASONS.map((reason) => <SheetRow key={reason} label={t(`detail.reportReasons.${reason}`)} color={c.textPrimary} borderColor={c.borderSubtle} onPress={() => void submitReport(reason)} />)}
-          <SheetRow label={t('detail.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} onPress={() => setReportVisible(false)} />
-        </View>
-      </Modal>
+      <ReportReasonSheet
+        visible={reportVisible}
+        targetName={authorName}
+        contentType="post"
+        contentId={post.id}
+        onClose={() => setReportVisible(false)}
+      />
+      <ReportReasonSheet
+        visible={reportComment !== null}
+        targetName={reportComment?.name ?? ''}
+        contentType="comment"
+        contentId={reportComment?.id ?? ''}
+        onClose={() => setReportComment(null)}
+      />
     </SafeAreaView>
   );
 }

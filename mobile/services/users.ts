@@ -12,6 +12,8 @@
  */
 
 import { supabase } from './supabase';
+import { reportContent } from './reports';
+import type { ReportReason } from '../utils/reportReasons';
 
 // ── Co-located types ────────────────────────────────────────────────────────
 
@@ -198,20 +200,11 @@ export async function canViewProfile(viewerId: string, targetId: string): Promis
 
 // ── Reports ─────────────────────────────────────────────────────────────────
 
-/** Report a user for Super Admin review. */
+/** Report a user for Super Admin review (report_content RPC, content_type 'user'). Throws ReportError. */
 export async function reportUser(
-  currentUserId: string,
   targetId: string,
-  reason: string,
+  reason: ReportReason,
+  details?: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('reports')
-    .insert({
-      reporter_id: currentUserId,
-      reported_user_id: targetId,
-      content_type: 'user',
-      status: 'pending',
-      reason,
-    });
-  if (error) throw error;
+  await reportContent('user', targetId, reason, details);
 }

@@ -50,5 +50,45 @@
   "contentFilter": {
     "title": "Mensaje no enviado",
     "blocked": "Tu mensaje contiene lenguaje que no permitimos en JChat. Reescríbelo con respeto."
+  },
+  "report": {
+    "title": "Reportar a {{name}}",
+    "subtitle": "¿Por qué lo reportas?",
+    "reasons": {
+      "spam": "Spam o estafa",
+      "harassment": "Acoso o intimidación",
+      "hate": "Discurso de odio o discriminación",
+      "threat_violence": "Amenazas o violencia",
+      "sexual_content": "Contenido sexual",
+      "child_safety": "Seguridad de un menor — un menor está en riesgo",
+      "impersonation": "Suplantación de identidad",
+      "copyright": "Infracción de derechos de autor",
+      "other": "Otro"
+    },
+    "childSafetyHint": "Si alguien está en peligro inmediato, llama al 911.",
+    "detailsOptional": "Añade detalles (opcional)",
+    "detailsRequired": "Cuéntanos qué pasó (obligatorio)",
+    "detailsLabel": "Detalles del reporte",
+    "detailsPlaceholder": "¿Qué debemos saber?",
+    "send": "Enviar reporte",
+    "successTitle": "Gracias",
+    "successMessage": "Gracias. Lo revisamos en menos de 24 h.",
+    "errors": {
+      "notAuthenticated": "Inicia sesión para enviar un reporte.",
+      "invalidReason": "Elige un motivo para el reporte.",
+      "detailsRequired": "Cuéntanos qué pasó.",
+      "notFound": "No encontramos ese contenido. Puede que ya se haya retirado.",
+      "invalidTarget": "No puedes reportar tu propio contenido.",
+      "reportLimit": "Llegaste al límite de reportes de hoy. Inténtalo mañana.",
+      "generic": "No se pudo enviar el reporte. Inténtalo de nuevo."
+    },
+    "message": "Reportar mensaje",
+    "comment": "Reportar comentario",
+    "block": "Bloquear a {{name}}",
+    "blockTitle": "¿Bloquear a {{name}}?",
+    "blockMessage": "No verás sus mensajes y no podrá contactarte.",
+    "blockConfirm": "Bloquear",
+    "blockError": "No pudimos bloquear a esta persona. Inténtalo de nuevo.",
+    "reportUser": "Reportar usuario"
   }
 }

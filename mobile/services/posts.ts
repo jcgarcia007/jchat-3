@@ -5,6 +5,8 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { reportContent } from './reports';
+import type { ReportReason } from '../utils/reportReasons';
 
 export interface PostAuthor {
   id: string;
@@ -202,21 +204,9 @@ export async function isPostLiked(postId: string, userId: string): Promise<boole
   return data !== null;
 }
 
-export async function reportPost(
-  reporterId: string,
-  postId: string,
-  authorId: string,
-  reason: string,
-): Promise<void> {
-  const { error } = await supabase.from('reports').insert({
-    reporter_id: reporterId,
-    reported_user_id: authorId,
-    content_type: 'post',
-    content_id: postId,
-    reason,
-    status: 'pending',
-  });
-  if (error) throw error;
+/** Report a post (report_content RPC, content_type 'post'). Throws ReportError. */
+export async function reportPost(postId: string, reason: ReportReason, details?: string): Promise<void> {
+  await reportContent('post', postId, reason, details);
 }
 
 export async function likePost(postId: string, userId: string): Promise<void> {

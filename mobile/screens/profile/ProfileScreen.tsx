@@ -9,6 +9,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
   IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
@@ -19,7 +20,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
-import { canViewProfile, getPublicProfile, getProfileCounts, reportUser, type ProfileCounts } from '../../services/users';
+import { canViewProfile, getPublicProfile, getProfileCounts, type ProfileCounts } from '../../services/users';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
@@ -32,7 +33,6 @@ import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
-const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'impersonation', 'other'] as const;
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
 const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
@@ -301,18 +301,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     ]);
   }, [profile, unblock, loadProfile, t]);
 
-  const submitReport = useCallback(async (reason: typeof REPORT_REASONS[number]) => {
-    if (!authUser?.id || !targetId || actionBusy) return;
-    setActionBusy(true);
-    try {
-      await reportUser(authUser.id, targetId, reason);
-      setReportVisible(false);
-      Alert.alert(t('report.thanksTitle'), t('report.thanksMessage'));
-    } catch {
-      Alert.alert(t('actions.errorTitle'), t('report.error'));
-    } finally { setActionBusy(false); }
-  }, [actionBusy, authUser?.id, t, targetId]);
-
   const confirmBlock = useCallback(() => {
     if (!profile || !targetId || actionBusy || relationBusy) return; // double-tap guard
     if (blocked) { handleUnblock(); return; }
@@ -376,15 +364,13 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         </View>
       </Modal>
 
-      <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setReportVisible(false)} />
-        <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
-          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
-          <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>{t('report.title')}</Text>
-          {REPORT_REASONS.map((reason) => <SheetRow key={reason} label={t(`report.reasons.${reason}`)} color={theme.bodyText} borderColor={theme.statsBorder} onPress={() => void submitReport(reason)} />)}
-          <SheetRow label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setReportVisible(false)} />
-        </View>
-      </Modal>
+      <ReportReasonSheet
+        visible={reportVisible}
+        targetName={profile.display_name?.trim() || profile.username}
+        contentType="user"
+        contentId={targetId ?? ''}
+        onClose={() => setReportVisible(false)}
+      />
     </View>
   );
 }
