@@ -45,7 +45,8 @@ export function SupportEN() {
 
       <h2 id="delete-account" style={H2}>Delete your account</h2>
       <p style={P}>
-        In the app: <strong>Settings → Delete account</strong>. This permanently deletes your profile,
+        In the app: <strong>Settings → Delete account</strong>, or on the web at{" "}
+        <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. This permanently deletes your profile,
         content and personal data. If you can't access the app, email us from the address on your account and
         we'll delete it for you. Business owners: close or transfer your business first.
       </p>

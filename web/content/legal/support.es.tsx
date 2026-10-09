@@ -46,7 +46,8 @@ export function SupportES() {
 
       <h2 id="delete-account" style={H2}>Eliminar tu cuenta</h2>
       <p style={P}>
-        En la app: <strong>Ajustes → Eliminar cuenta</strong>. Esto borra de forma permanente tu perfil,
+        En la app: <strong>Ajustes → Eliminar cuenta</strong>, o en la web en{" "}
+        <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. Esto borra de forma permanente tu perfil,
         contenido y datos personales. Si no puedes acceder a la app, escríbenos desde el correo de tu cuenta
         y la eliminamos por ti. Dueños de negocio: cierren o transfieran su negocio primero.
       </p>

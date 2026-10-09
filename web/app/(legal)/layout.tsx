@@ -94,6 +94,9 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             <Link href="/contact" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Contacto" : "Contact"}
             </Link>
+            <Link href="/account/delete" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
+              {isEs ? "Eliminar cuenta" : "Delete account"}
+            </Link>
           </nav>
           <span>© 2026 Otunity Labs LLC</span>
         </div>

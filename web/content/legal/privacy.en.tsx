@@ -142,7 +142,8 @@ export function PrivacyEN() {
       <h2 id="delete-account" style={H2}>7. Deleting your account</h2>
       <p style={P}>
         You can permanently delete your account at any time in the app:{" "}
-        <strong>Settings → Delete account</strong>. Deletion is immediate and irreversible. If you cannot
+        <strong>Settings → Delete account</strong>, or on the web at{" "}
+        <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. Deletion is immediate and irreversible. If you cannot
         access the app, email{" "}
         <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> from the address
         on your account and we will delete it. Business owners should first close or transfer their business.

@@ -3403,6 +3403,10 @@
       "contact": {
         "title": "Contact — JChat",
         "description": "How to reach JChat: safety reports, support and privacy requests."
+      },
+      "accountDelete": {
+        "title": "Delete your account — JChat",
+        "description": "Delete your JChat account and personal data from the web, without the app."
       }
     },
     "business": {
@@ -3813,5 +3817,30 @@
       "user_suspended": "User suspended",
       "escalated_ncmec": "Escalated to NCMEC"
     }
+  },
+  "accountDelete": {
+    "title": "Delete your account",
+    "checking": "Checking your session…",
+    "intro": "This page deletes your JChat account without needing the app. Sign in with the account you want to delete.",
+    "whatTitle": "What gets deleted",
+    "what1": "Your profile, photos and posts, comments and stories.",
+    "what2": "Your messages, follows, blocks and settings.",
+    "what3": "Your reviews, notifications and saved data in your account.",
+    "what4": "Orders, payments and logs are kept without your identity, as the law requires for accounting and fraud prevention.",
+    "irreversible": "Deleting is immediate and cannot be undone.",
+    "ownerTitle": "You own a business",
+    "ownerBody": "Deleting your account would also remove your business ({names}). Close or transfer it first.",
+    "ownerHelp": "Need help closing or transferring it? Write to",
+    "contact": "Contact",
+    "account": "Account: {email}",
+    "typePrompt": "To confirm, type {word}",
+    "confirmWord": "DELETE",
+    "deleteButton": "Delete my account",
+    "deleting": "Deleting…",
+    "cancel": "Cancel",
+    "error": "We couldn't delete your account. Try again or write to safety@jchat.cloud.",
+    "doneTitle": "Your account was deleted",
+    "doneBody": "Your account and personal data have been removed and you were signed out. Thank you for trying JChat.",
+    "goHome": "Back to the home page"
   }
 }

@@ -145,7 +145,8 @@ export function PrivacyES() {
       <h2 id="delete-account" style={H2}>7. Eliminar tu cuenta</h2>
       <p style={P}>
         Puedes eliminar tu cuenta de forma permanente en cualquier momento desde la app:{" "}
-        <strong>Ajustes → Eliminar cuenta</strong>. La eliminación es inmediata e irreversible. Si no puedes
+        <strong>Ajustes → Eliminar cuenta</strong>, o en la web en{" "}
+        <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. La eliminación es inmediata e irreversible. Si no puedes
         acceder a la app, escríbenos a{" "}
         <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> desde el correo
         de tu cuenta y la eliminaremos. Los dueños de negocio deben cerrar o transferir su negocio primero.

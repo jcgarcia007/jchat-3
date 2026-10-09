@@ -3403,6 +3403,10 @@
       "contact": {
         "title": "Contacto — JChat",
         "description": "Cómo contactar con JChat: reportes de seguridad, soporte y solicitudes de privacidad."
+      },
+      "accountDelete": {
+        "title": "Eliminar tu cuenta — JChat",
+        "description": "Elimina tu cuenta de JChat y tus datos personales desde la web, sin la app."
       }
     },
     "business": {
@@ -3813,5 +3817,30 @@
       "user_suspended": "Usuario suspendido",
       "escalated_ncmec": "Escalado al NCMEC"
     }
+  },
+  "accountDelete": {
+    "title": "Eliminar tu cuenta",
+    "checking": "Comprobando tu sesión…",
+    "intro": "Esta página elimina tu cuenta de JChat sin necesitar la app. Inicia sesión con la cuenta que quieres eliminar.",
+    "whatTitle": "Qué se borra",
+    "what1": "Tu perfil, fotos y publicaciones, comentarios e historias.",
+    "what2": "Tus mensajes, seguidos, bloqueos y ajustes.",
+    "what3": "Tus reseñas, notificaciones y datos guardados en tu cuenta.",
+    "what4": "Los pedidos, pagos y registros se conservan sin tu identidad, como exige la ley por contabilidad y prevención de fraude.",
+    "irreversible": "La eliminación es inmediata y no se puede deshacer.",
+    "ownerTitle": "Eres dueño de un negocio",
+    "ownerBody": "Eliminar tu cuenta también eliminaría tu negocio ({names}). Ciérralo o transfiérelo primero.",
+    "ownerHelp": "¿Necesitas ayuda para cerrarlo o transferirlo? Escribe a",
+    "contact": "Contacto",
+    "account": "Cuenta: {email}",
+    "typePrompt": "Para confirmar, escribe {word}",
+    "confirmWord": "ELIMINAR",
+    "deleteButton": "Eliminar mi cuenta",
+    "deleting": "Eliminando…",
+    "cancel": "Cancelar",
+    "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo o escribe a safety@jchat.cloud.",
+    "doneTitle": "Tu cuenta fue eliminada",
+    "doneBody": "Tu cuenta y tus datos personales se eliminaron y cerramos tu sesión. Gracias por probar JChat.",
+    "goHome": "Volver al inicio"
   }
 }
