@@ -63,7 +63,11 @@
     "sendPhotoA11y": "Send a photo",
     "photoSourceTitle": "Send a photo",
     "takePhoto": "Take photo",
-    "chooseFromGallery": "Choose from gallery"
+    "chooseFromGallery": "Choose from gallery",
+    "openPhotoA11y": "View photo full screen",
+    "closePhotoA11y": "Close photo",
+    "photoViewerErrorTitle": "Couldn't open the photo",
+    "photoViewerError": "We couldn't load the image. Check your connection and try again."
   },
   "friends": {
     "title": "Friends",
