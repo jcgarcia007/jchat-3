@@ -34,6 +34,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -56,7 +57,9 @@ import {
   IconMicrophone,
   IconPhoto,
   IconSend,
+  IconX,
 } from '@tabler/icons-react-native';
+import ImageView from 'react-native-image-viewing';
 
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
@@ -112,9 +115,13 @@ interface BubbleProps {
   isOwn: boolean;
   /** Reports THIS message (a photo the receiver finds inappropriate). */
   onReportPhoto?: () => void;
+  /** Opens the fullscreen viewer for this photo (receives the stored dm-media path, never a signed URL). */
+  onOpenPhoto?: (mediaPath: string) => void;
+  /** Long press on the photo (the list's report/block sheet), since the photo's own Pressable would swallow it. */
+  onLongPress?: () => void;
 }
 
-function MessageBubble({ message, isOwn, onReportPhoto }: BubbleProps) {
+function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress }: BubbleProps) {
   const c = useThemeColors();
   const { t } = useTranslation('social');
   const { t: tc } = useTranslation('common');
@@ -124,6 +131,12 @@ function MessageBubble({ message, isOwn, onReportPhoto }: BubbleProps) {
   const moderation = message.media_moderation ?? null;
   const photoRejected = !isOwn && message.media_url != null && moderation === 'rejected';
   const photoBlurred = !isOwn && message.media_url != null && (moderation === 'pending' || moderation === 'blurred') && !revealed;
+  // Viewer rules: the sender always opens their own photo. The receiver opens it when it is clear (or has no verdict),
+  // or 'blurred' AFTER tapping "View anyway". 'pending' never opens (even if revealed) and 'rejected' never opens.
+  const canOpenPhoto =
+    onOpenPhoto != null &&
+    message.media_url != null &&
+    (isOwn || moderation === null || moderation === 'clear' || (moderation === 'blurred' && revealed));
 
   // Bubble colors mirror chatThemes "default" style
   const bubbleOutBg = palette.brand;
@@ -186,12 +199,21 @@ function MessageBubble({ message, isOwn, onReportPhoto }: BubbleProps) {
           </View>
         ) : mediaUri != null ? (
           <View>
-            <Image
-              source={{ uri: mediaUri }}
-              style={styles.bubbleImage}
-              resizeMode="cover"
-              blurRadius={photoBlurred ? 40 : 0}
-            />
+            <Pressable
+              disabled={!canOpenPhoto}
+              onPress={() => { if (message.media_url) onOpenPhoto?.(message.media_url); }}
+              onLongPress={onLongPress}
+              delayLongPress={350}
+              accessibilityRole={canOpenPhoto ? 'imagebutton' : undefined}
+              accessibilityLabel={canOpenPhoto ? t('dmChat.openPhotoA11y') : undefined}
+            >
+              <Image
+                source={{ uri: mediaUri }}
+                style={styles.bubbleImage}
+                resizeMode="cover"
+                blurRadius={photoBlurred ? 40 : 0}
+              />
+            </Pressable>
             {photoBlurred ? (
               <View style={[StyleSheet.absoluteFill, styles.photoGate, { backgroundColor: palette.scrim }]}>
                 <Text style={[styles.photoGateTitle, { color: palette.onImageStrong }]}>{tc('dmPhoto.blurredTitle')}</Text>
@@ -535,6 +557,29 @@ export default function DMChatScreen() {
     await sendPickedPhoto(result);
   }, [tg, sendPickedPhoto]);
 
+  // ── Fullscreen photo viewer ─────────────────────────────────────────────────
+  // Signed URLs expire (1 h), so a NEW one is requested every time the viewer opens. It is the ORIGINAL object in dm-media
+  // (no transform, no thumbnail). Prefetching first lets us show a translated error instead of an empty black screen.
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const openingPhotoRef = useRef(false);
+  const openPhoto = useCallback(
+    async (mediaPath: string) => {
+      if (openingPhotoRef.current) return;
+      openingPhotoRef.current = true;
+      try {
+        const url = await resolveDmMediaUrl(mediaPath);
+        if (!/^file:/i.test(url)) await Image.prefetch(url);
+        setViewerUri(url);
+      } catch (err) {
+        console.warn('[DMChat] photo viewer load error', err);
+        Alert.alert(t('dmChat.photoViewerErrorTitle'), t('dmChat.photoViewerError'));
+      } finally {
+        openingPhotoRef.current = false;
+      }
+    },
+    [t],
+  );
+
   // Photo button: Take photo / Choose from gallery / Cancel (same idea as ChatInput.handleCameraPress).
   const handlePickPhoto = useCallback(() => {
     if (!user) return;
@@ -713,6 +758,8 @@ export default function DMChatScreen() {
                 message={item}
                 isOwn={item.sender_id === user?.id}
                 onReportPhoto={() => startReport('dm_message', item.id)}
+                onOpenPhoto={openPhoto}
+                onLongPress={item.sender_id === user?.id ? undefined : () => setMsgAction(item)}
               />
             </Pressable>
           )}
@@ -828,6 +875,32 @@ export default function DMChatScreen() {
         onBlock={confirmBlockOther}
         onClose={() => setMsgAction(null)}
       />
+      {/* Fullscreen photo viewer (react-native-image-viewing, same as the venue chat): pinch, double-tap, swipe down to close */}
+      <ImageView
+        images={viewerUri ? [{ uri: viewerUri }] : []}
+        imageIndex={0}
+        visible={viewerUri != null}
+        onRequestClose={() => setViewerUri(null)}
+        HeaderComponent={() => (
+          <View
+            style={{
+              alignItems: 'flex-start',
+              // The library's SafeAreaView ignores the Android status bar: compute the top inset per platform.
+              paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : insets.top || 50,
+            }}
+          >
+            <Pressable
+              onPress={() => setViewerUri(null)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t('dmChat.closePhotoA11y')}
+              style={styles.viewerClose}
+            >
+              <IconX size={20} color={palette.onImage} />
+            </Pressable>
+          </View>
+        )}
+      />
       <ReportReasonSheet
         visible={reportVisible}
         targetName={otherName}
@@ -935,6 +1008,17 @@ const styles = StyleSheet.create({
   photoGateTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
   photoGateText: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
   photoGateRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  viewerClose: {
+    margin: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: palette.scrimMedium,
+    borderWidth: 2,
+    borderColor: palette.onImageFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   photoGateBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   photoGateBtnText: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   bubbleImage: {

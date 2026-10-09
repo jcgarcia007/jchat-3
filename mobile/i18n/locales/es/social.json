@@ -63,7 +63,11 @@
     "sendPhotoA11y": "Enviar una foto",
     "photoSourceTitle": "Enviar una foto",
     "takePhoto": "Tomar foto",
-    "chooseFromGallery": "Elegir de la galería"
+    "chooseFromGallery": "Elegir de la galería",
+    "openPhotoA11y": "Ver foto a pantalla completa",
+    "closePhotoA11y": "Cerrar foto",
+    "photoViewerErrorTitle": "No se pudo abrir la foto",
+    "photoViewerError": "No pudimos cargar la imagen. Revisa tu conexión e inténtalo de nuevo."
   },
   "friends": {
     "title": "Amigos",
