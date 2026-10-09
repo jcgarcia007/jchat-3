@@ -508,7 +508,7 @@ export default function DMChatScreen() {
       // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
       // (resolved to a signed URL on render). Path: {conversationId}/{uid}/{ts}_{rand}.jpg
       try {
-        const path = await uploadDmPhoto(conversationId, user.id, asset.uri);
+        const path = await uploadDmPhoto(conversationId, user.id, asset.uri, asset.mimeType);
         await sendMessage({
           conversationId,
           senderId: user.id,
@@ -534,7 +534,8 @@ export default function DMChatScreen() {
     // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
     const result = await safeLaunchLibrary({
       mediaTypes: ['images'],
-      quality: 0.8,
+      // quality 1: the picker does not compress; the only compression is normalizeImageUri (2000 px, JPEG 0.85).
+      quality: 1,
       legacy: true,
     });
     await sendPickedPhoto(result);
@@ -552,7 +553,7 @@ export default function DMChatScreen() {
     const result = await safeLaunchCamera({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 0.85,
+      quality: 1, // see pickFromGallery: normalizeImageUri is the only compression
     });
     await sendPickedPhoto(result);
   }, [tg, sendPickedPhoto]);
