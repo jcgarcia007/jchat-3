@@ -20,32 +20,20 @@
  */
 
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
+import {
+  decideMatchPhoto as decide,
+  safeSearch,
+  toBase64,
+  type SafeSearch,
+} from "../_shared/safesearch.ts";
 
 const BUCKET = "match-photos";
-const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
-const VISION_TIMEOUT_MS = 15_000;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "content-type, x-push-secret",
 };
-
-const LIKELIHOOD = ["UNKNOWN", "VERY_UNLIKELY", "UNLIKELY", "POSSIBLE", "LIKELY", "VERY_LIKELY"] as const;
-type Likelihood = typeof LIKELIHOOD[number];
-
-interface SafeSearch {
-  adult: Likelihood;
-  racy: Likelihood;
-  violence: Likelihood;
-  medical: Likelihood;
-  spoof: Likelihood;
-}
-
-type Decision =
-  | { status: "rejected"; reason: "auto_explicit" | "auto_violence" }
-  | { status: "pending"; needsReview: true }
-  | { status: "approved" };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -64,78 +52,6 @@ function nonEmptyString(value: unknown): string | null {
 
 function getAdminClient() {
   return createAdminClient();
-}
-
-function rank(value: unknown): number {
-  const idx = LIKELIHOOD.indexOf(value as Likelihood);
-  return idx < 0 ? 0 : idx;
-}
-
-function normalize(value: unknown): Likelihood {
-  return LIKELIHOOD[rank(value)];
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-/** Moderation rules (spec): returns the automatic decision for a SafeSearch result. */
-function decide(s: SafeSearch): Decision {
-  if (rank(s.adult) >= rank("LIKELY")) return { status: "rejected", reason: "auto_explicit" };
-  if (s.violence === "VERY_LIKELY") return { status: "rejected", reason: "auto_violence" };
-  if (s.adult === "POSSIBLE" || rank(s.racy) >= rank("LIKELY") || s.violence === "LIKELY") {
-    return { status: "pending", needsReview: true };
-  }
-  return { status: "approved" };
-}
-
-/** Calls Vision SAFE_SEARCH_DETECTION. Throws a sanitized Error on any failure (never includes the key). */
-async function safeSearch(apiKey: string, imageBase64: string): Promise<SafeSearch> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), VISION_TIMEOUT_MS);
-  let response: Response;
-  try {
-    response = await fetch(`${VISION_URL}?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: imageBase64 },
-          features: [{ type: "SAFE_SEARCH_DETECTION" }],
-        }],
-      }),
-      signal: controller.signal,
-    });
-  } catch {
-    throw new Error("vision_unreachable");
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (!response.ok) throw new Error(`vision_http_${response.status}`);
-
-  let json: unknown;
-  try {
-    json = await response.json();
-  } catch {
-    throw new Error("vision_bad_json");
-  }
-  const first = isObject(json) && Array.isArray(json.responses) ? json.responses[0] : null;
-  if (!isObject(first) || isObject(first.error)) throw new Error("vision_response_error");
-  const annotation = first.safeSearchAnnotation;
-  if (!isObject(annotation)) throw new Error("vision_no_annotation");
-
-  return {
-    adult: normalize(annotation.adult),
-    racy: normalize(annotation.racy),
-    violence: normalize(annotation.violence),
-    medical: normalize(annotation.medical),
-    spoof: normalize(annotation.spoof),
-  };
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
