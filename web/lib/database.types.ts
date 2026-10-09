@@ -528,6 +528,8 @@ export type Database = {
           id: string
           post_id: string
           user_id: string
+          hidden_at: string | null
+          hidden_by: string | null
         }
         Insert: {
           body: string
@@ -535,6 +537,8 @@ export type Database = {
           id?: string
           post_id: string
           user_id: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Update: {
           body?: string
@@ -542,6 +546,8 @@ export type Database = {
           id?: string
           post_id?: string
           user_id?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Relationships: [
           {
@@ -732,6 +738,8 @@ export type Database = {
           read_at: string | null
           sender_id: string
           voice_url: string | null
+          hidden_at: string | null
+          hidden_by: string | null
         }
         Insert: {
           body?: string | null
@@ -742,6 +750,8 @@ export type Database = {
           read_at?: string | null
           sender_id: string
           voice_url?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Update: {
           body?: string | null
@@ -752,6 +762,8 @@ export type Database = {
           read_at?: string | null
           sender_id?: string
           voice_url?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Relationships: [
           {
@@ -1545,6 +1557,8 @@ export type Database = {
           room_id: string
           type: string
           user_id: string
+          hidden_at: string | null
+          hidden_by: string | null
         }
         Insert: {
           body: string
@@ -1558,6 +1572,8 @@ export type Database = {
           room_id: string
           type?: string
           user_id: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Update: {
           body?: string
@@ -1571,6 +1587,8 @@ export type Database = {
           room_id?: string
           type?: string
           user_id?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Relationships: [
           {
@@ -2405,6 +2423,8 @@ export type Database = {
           id: string
           media_urls: string[]
           user_id: string
+          hidden_at: string | null
+          hidden_by: string | null
         }
         Insert: {
           business_id?: string | null
@@ -2414,6 +2434,8 @@ export type Database = {
           id?: string
           media_urls?: string[]
           user_id: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Update: {
           business_id?: string | null
@@ -2423,6 +2445,8 @@ export type Database = {
           id?: string
           media_urls?: string[]
           user_id?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
         }
         Relationships: [
           {
@@ -2726,6 +2750,14 @@ export type Database = {
           reported_user_id: string | null
           reporter_id: string
           status: string
+          business_id: string | null
+          details: string | null
+          snapshot: Json | null
+          priority: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolution: string | null
+          admin_note: string | null
         }
         Insert: {
           content_id?: string | null
@@ -2736,6 +2768,14 @@ export type Database = {
           reported_user_id?: string | null
           reporter_id: string
           status?: string
+          business_id?: string | null
+          details?: string | null
+          snapshot?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution?: string | null
+          admin_note?: string | null
         }
         Update: {
           content_id?: string | null
@@ -2746,6 +2786,14 @@ export type Database = {
           reported_user_id?: string | null
           reporter_id?: string
           status?: string
+          business_id?: string | null
+          details?: string | null
+          snapshot?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution?: string | null
+          admin_note?: string | null
         }
         Relationships: [
           {
@@ -3937,6 +3985,8 @@ export type Database = {
           terms_version: string | null
           updated_at: string
           username: string
+          suspended_until: string | null
+          suspended_reason: string | null
         }
         Insert: {
           active_business_id?: string | null
@@ -3966,6 +4016,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           updated_at?: string
           username: string
+          suspended_until?: string | null
+          suspended_reason?: string | null
         }
         Update: {
           active_business_id?: string | null
@@ -3995,6 +4047,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           updated_at?: string
           username?: string
+          suspended_until?: string | null
+          suspended_reason?: string | null
         }
         Relationships: [
           {
@@ -4046,6 +4100,26 @@ export type Database = {
       }
     }
     Functions: {
+      admin_hide_content: {
+        Args: { p_content_id: string; p_content_type: string; p_report_id?: string; p_unhide?: boolean }
+        Returns: undefined
+      }
+      admin_resolve_report: {
+        Args: { p_note?: string; p_report_id: string; p_resolution: string }
+        Returns: undefined
+      }
+      admin_suspend_user: {
+        Args: { p_days?: number; p_reason?: string; p_report_id?: string; p_user_id: string }
+        Returns: string
+      }
+      admin_unsuspend_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      report_content: {
+        Args: { p_content_id: string; p_content_type: string; p_details?: string; p_reason: string }
+        Returns: string
+      }
       accept_follow_request: {
         Args: { p_requester: string }
         Returns: undefined
