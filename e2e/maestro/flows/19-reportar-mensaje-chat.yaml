@@ -1,0 +1,36 @@
+# location: 26.083048,-80.223725
+# 19 — Report a message in the venue chat (Android, account "test"): long-press a message written by ANOTHER person (the iOS pair
+# flow 19-reportar-mensaje-chat-ios-envia.yaml sends "[QA] mensaje para reportar") → "Report message" → reason → success.
+# The reason is "Spam or scam" ON PURPOSE: child_safety would trigger the urgent e-mail to safety@ every night.
+# The report row is created by the test account; the nightly report lists its id and removes it afterwards.
+appId: com.juangarciacruz.jchatapp
+env:
+  VENUE: Bar XZX
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- runFlow: ../helpers/enter-venue.yaml
+- extendedWaitUntil:
+    visible: ".*mensaje para reportar.*"
+    timeout: 150000
+- takeScreenshot: 01-mensaje-ajeno
+- longPressOn: ".*mensaje para reportar.*"
+- extendedWaitUntil:
+    visible: "Report message|Reportar mensaje"
+    timeout: 10000
+- takeScreenshot: 02-hoja-acciones
+- tapOn: "Report message|Reportar mensaje"
+- extendedWaitUntil:
+    visible: "Why are you reporting this\\?|¿Por qué lo reportas\\?"
+    timeout: 10000
+- takeScreenshot: 03-motivos
+# the urgent reason is listed first and highlighted; we never pick it here
+- assertVisible: "Child safety.*|Seguridad de un menor.*"
+- tapOn: "Spam or scam|Spam o estafa"
+- tapOn: "Send report|Enviar reporte"
+- extendedWaitUntil:
+    visible: ".*under 24 hours.*|.*menos de 24 h.*"
+    timeout: 20000
+- takeScreenshot: 04-exito
+- tapOn: "Close|Cerrar"
+- assertVisible: "Open menu|Abrir menú"

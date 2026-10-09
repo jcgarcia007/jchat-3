@@ -10,7 +10,7 @@
 #        4 gift   (05 accepted + 06 declined: Android sends, the iPhone answers, in parallel)
 #        5 endurance (08, ~21 min, both platforms; samples memory and counts permission prompts / restarts / crashes)
 #        6 extras (09 gift with swapped roles, 10 orders bar, 11 profile, 12/13 photos + DM photo (iOS), 14 nearby, 15 settings,
-#          16 DM pair, 17 map, 18 offers) — runs after 4 and before 5
+#          16 DM pair, 17 map, 18 offers, 19 report a chat message, 20 block from a DM) — runs after 4 and before 5
 #   Phases 3, 4 and 6 need the seed (they are reported as SKIPPED without the variables).
 #
 # Output:  e2e/out/nightly-<stamp>/   (git-ignored: logs, screenshots, memory samples)
@@ -173,6 +173,8 @@ if has_phase 6; then
   plat_run ios 12-fotos-ios
   plat_run ios 13-dm-foto-ios
   gift_pair 16-dm-android-envia 16-dm-ios-recibe
+  gift_pair 19-reportar-mensaje-chat 19-reportar-mensaje-chat-ios-envia   # iOS writes, Android long-presses → Report (reason: spam)
+  plat_run android 20-bloquear-en-dm                                       # block from the DM and restore (unblock) in the same flow
 fi
 [ -n "$seed_pid" ] && kill "$seed_pid" 2>/dev/null
 

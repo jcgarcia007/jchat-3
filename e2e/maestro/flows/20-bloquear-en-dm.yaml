@@ -1,0 +1,72 @@
+# location: 26.083048,-80.223725
+# 20 — Block from a DM (Android, account "test" → "test1"): ⋯ menu → Block → confirm → the conversation disappears from Messages.
+# Then the state is RESTORED in the same flow (Settings → Privacy → Blocked users → Unblock) and the conversation must be back.
+# (Blocking cuts follow edges both ways; test and test1 have none, so nothing else changes.)
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: ../helpers/open-app.yaml
+- runFlow: ../helpers/login.yaml
+- tapOn: "Messages|Mensajes"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-0b4895d0.*"
+    timeout: 30000
+- takeScreenshot: 01-conversacion
+- tapOn:
+    id: "dm-row-0b4895d0.*"
+- extendedWaitUntil:
+    visible:
+      id: "dm-menu"
+    timeout: 15000
+- tapOn:
+    id: "dm-menu"
+- extendedWaitUntil:
+    visible: "Report user|Reportar usuario"
+    timeout: 10000
+- takeScreenshot: 02-menu
+- tapOn: "Block .*|Bloquear a .*"
+- extendedWaitUntil:
+    visible: "Block .*\\?|¿Bloquear a .*\\?"
+    timeout: 10000
+- tapOn: "Block|Bloquear"
+# after blocking the chat closes (goBack) and the conversation is gone from the list
+- extendedWaitUntil:
+    visible: "Messages|Mensajes"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 03-tras-bloquear
+- assertNotVisible:
+    id: "dm-row-0b4895d0.*"
+# ── restore: unblock ─────────────────────────────────────────────────────────────────────────────────────────────────────
+- tapOn: "Profile|Perfil"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Open settings|Abrir ajustes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element: "Privacy Settings|Ajustes de privacidad"
+    timeout: 20000
+- tapOn: "Privacy Settings|Ajustes de privacidad"
+- scrollUntilVisible:
+    element: "Blocked users|Usuarios bloqueados"
+    timeout: 20000
+- tapOn: "Blocked users|Usuarios bloqueados"
+- extendedWaitUntil:
+    visible: "Unblock|Desbloquear"
+    timeout: 15000
+- takeScreenshot: 04-bloqueados
+- tapOn: "Unblock|Desbloquear"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 05-desbloqueado
+# the conversation is back
+- back
+- back
+- tapOn: "Messages|Mensajes"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-0b4895d0.*"
+    timeout: 30000
+- takeScreenshot: 06-conversacion-de-vuelta
