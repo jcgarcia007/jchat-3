@@ -6,7 +6,7 @@
  * for "Other"), send through the report_content RPC. The server validates, deduplicates and takes the snapshot.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabase";
 import {
@@ -31,16 +31,17 @@ interface ReportDialogProps {
 
 type Phase = "form" | "sending" | "sent";
 
-export function ReportDialog({ open, targetName, contentType, contentId, onClose }: ReportDialogProps) {
+export function ReportDialog(props: ReportDialogProps) {
+  // The body mounts on every opening, so its state always starts clean (no reset effect needed).
+  return props.open ? <ReportDialogBody {...props} /> : null;
+}
+
+function ReportDialogBody({ targetName, contentType, contentId, onClose }: ReportDialogProps) {
   const t = useTranslations("report");
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) { setReason(null); setDetails(""); setPhase("form"); setError(null); }
-  }, [open]);
 
   const needsDetails = reason !== null && reportNeedsDetails(reason);
   const canSend = reason !== null && phase === "form" && (!needsDetails || details.trim().length > 0);
@@ -63,8 +64,6 @@ export function ReportDialog({ open, targetName, contentType, contentId, onClose
     }
     setPhase("sent");
   }, [reason, phase, needsDetails, details, contentType, contentId, t]);
-
-  if (!open) return null;
 
   return (
     <div style={overlay} onClick={onClose} role="presentation">

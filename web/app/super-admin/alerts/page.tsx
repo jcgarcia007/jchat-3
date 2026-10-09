@@ -28,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import MatchPhotosReview from "@/components/super-admin/MatchPhotosReview";
+import ReportsQueue from "@/components/super-admin/ReportsQueue";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,19 +47,6 @@ interface FailedPayment {
   status: string;
   business_id: string | null;
   current_period_end: string | null;
-}
-
-interface ReportItem {
-  id: string;
-  reporter_id: string | null;
-  reported_user_id: string | null;
-  content_type: string | null;
-  content_id: string | null;
-  reason: string | null;
-  status: string | null;
-  created_at: string;
-  /** Venue context for Match reports (migration 192). */
-  business_id?: string | null;
 }
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
@@ -100,28 +88,6 @@ const DEMO_FAILED_PAYMENTS: FailedPayment[] = [
   },
 ];
 
-const DEMO_REPORTS: ReportItem[] = [
-  {
-    id: "report-01",
-    reporter_id: "user-10",
-    reported_user_id: "user-20",
-    content_type: "user",
-    content_id: "user-20",
-    reason: "Harassment in chat room",
-    status: "pending",
-    created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
-  },
-  {
-    id: "report-02",
-    reporter_id: "user-11",
-    reported_user_id: null,
-    content_type: "business",
-    content_id: "biz-05",
-    reason: "Spam messages / fake offers",
-    status: "pending",
-    created_at: new Date(Date.now() - 8 * 3600000).toISOString(),
-  },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,9 +99,7 @@ export default function SuperAdminAlertsPage() {
   const tShell = useTranslations("superAdmin.shell");
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [failedPayments, setFailedPayments] = useState<FailedPayment[]>([]);
-  const [reports, setReports] = useState<ReportItem[]>([]);
-  const [businessNames, setBusinessNames] = useState<Record<string, string>>({});
-  const [reportFilter, setReportFilter] = useState<"all" | "match">("all");
+  const [pendingReports, setPendingReports] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -146,7 +110,6 @@ export default function SuperAdminAlertsPage() {
     if (!isSupabaseConfigured) {
       setSecurityLogs(DEMO_SECURITY_LOGS);
       setFailedPayments(DEMO_FAILED_PAYMENTS);
-      setReports(DEMO_REPORTS);
       setLoading(false);
       return;
     }
@@ -155,7 +118,7 @@ export default function SuperAdminAlertsPage() {
     setFetchError(null);
 
     try {
-      const [{ data: logs }, { data: subs }, { data: rpts }] = await Promise.all([
+      const [{ data: logs }, { data: subs }] = await Promise.all([
         supabase
           .from("security_logs")
           .select("id, action, target_id, target_type, detail, created_at")
@@ -166,26 +129,10 @@ export default function SuperAdminAlertsPage() {
           .select("id, plan, status, business_id, current_period_end")
           .eq("status", "past_due")
           .limit(20),
-        supabase
-          .from("reports")
-          .select("id, reporter_id, reported_user_id, content_type, content_id, reason, status, created_at, business_id")
-          .eq("status", "pending")
-          .order("created_at", { ascending: false })
-          .limit(30),
       ]);
 
       setSecurityLogs((logs ?? []) as SecurityLog[]);
       setFailedPayments((subs ?? []) as FailedPayment[]);
-      // reports.business_id (migration 192) is not in the generated types yet → go through unknown.
-      const reportRows = (rpts ?? []) as unknown as ReportItem[];
-      setReports(reportRows);
-
-      // Venue names for Match reports (best effort: the id is shown if the lookup fails).
-      const businessIds = [...new Set(reportRows.map((r) => r.business_id).filter((id): id is string => !!id))];
-      if (businessIds.length > 0) {
-        const { data: biz } = await supabase.from("businesses").select("id, name").in("id", businessIds);
-        setBusinessNames(Object.fromEntries((biz ?? []).map((b) => [b.id as string, b.name as string])));
-      }
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : ta("unknownErrorFallback"));
     } finally {
@@ -206,21 +153,9 @@ export default function SuperAdminAlertsPage() {
     setSuccessMsg(ta("resolvedToast", { id: id.slice(0, 8) }));
   }
 
-  // ── Dismiss report ────────────────────────────────────────────────────────
-
-  async function dismissReport(id: string) {
-    if (isSupabaseConfigured) {
-      await supabase.from("reports").update({ status: "dismissed" }).eq("id", id);
-    }
-    setReports((prev) => prev.filter((r) => r.id !== id));
-    setSuccessMsg(ta("dismissedToast", { id: id.slice(0, 8) }));
-  }
-
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const visibleReports = reportFilter === "match" ? reports.filter((r) => r.content_type === "match") : reports;
-
-  const totalAlerts = securityLogs.length + failedPayments.length + reports.length;
+  const totalAlerts = securityLogs.length + failedPayments.length + pendingReports;
 
   return (
     <div style={{ maxWidth: "900px" }}>
@@ -404,98 +339,15 @@ export default function SuperAdminAlertsPage() {
             </Section>
           )}
 
-          {/* Reports queue */}
-          {reports.length > 0 && (
-            <Section
-              title={ta("reportsQueueSectionTitle")}
-              count={reports.length}
-              icon={IconFlag}
-              iconColor="var(--color-brand-purple)"
-            >
-              <div style={{ display: "flex", gap: "8px", padding: "10px 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
-                {(["all", "match"] as const).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setReportFilter(f)}
-                    aria-pressed={reportFilter === f}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: "999px",
-                      border: "1px solid var(--border-subtle)",
-                      background: reportFilter === f ? "var(--color-brand)" : "transparent",
-                      color: reportFilter === f ? "var(--on-brand)" : "var(--text-secondary)",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {f === "all" ? ta("reportsFilterAll") : ta("reportsFilterMatch")}
-                  </button>
-                ))}
-              </div>
-              {visibleReports.map((r, idx) => (
-                <div
-                  key={r.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    borderBottom: idx === visibleReports.length - 1 ? "none" : "1px solid var(--border-subtle)",
-                    background: "var(--bg-surface)",
-                    flexWrap: "wrap",
-                    rowGap: "8px",
-                  }}
-                >
-                  <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "3px" }}>
-                      {r.content_type === "match" && (
-                        <span
-                          style={{
-                            marginRight: "6px",
-                            padding: "1px 6px",
-                            borderRadius: "999px",
-                            background: "var(--color-brand-light)",
-                            color: "var(--color-brand)",
-                            fontSize: "11px",
-                          }}
-                        >
-                          {ta("matchReportLabel")}
-                        </span>
-                      )}
-                      {r.reason ?? ta("noReasonProvided")}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
-                      {formatRelativeTime(r.created_at, t, { granularity: "time" })}
-                      {r.content_type === "match"
-                        ? r.business_id
-                          ? ` · ${ta("matchReportBusiness", { name: businessNames[r.business_id] ?? r.business_id.slice(0, 8) })}`
-                          : ""
-                        : r.content_type && ` · ${r.content_type}: ${r.content_id?.slice(0, 10) ?? "—"}`}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => void dismissReport(r.id)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "5px 10px",
-                      borderRadius: "6px",
-                      border: "1px solid var(--border-subtle)",
-                      background: "transparent",
-                      color: "var(--text-secondary)",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <IconX size={12} stroke={2} />
-                    {ta("dismissButton")}
-                  </button>
-                </div>
-              ))}
-            </Section>
-          )}
+          {/* Reports queue (migrations 212 / 213): priority order, urgent tab, snapshot, moderation actions */}
+          <Section
+            title={ta("reportsQueueSectionTitle")}
+            count={pendingReports}
+            icon={IconFlag}
+            iconColor="var(--color-brand-purple)"
+          >
+            <ReportsQueue onPendingCount={setPendingReports} />
+          </Section>
         </>
       )}
 

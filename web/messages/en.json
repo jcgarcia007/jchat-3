@@ -3771,5 +3771,47 @@
     "blockConfirm": "Block",
     "blockError": "We couldn't block this person. Try again.",
     "menu": "Message options"
+  },
+  "reportsAdmin": {
+    "tab": {
+      "all": "All",
+      "urgent": "Urgent",
+      "match": "Match"
+    },
+    "showResolved": "Show resolved",
+    "loading": "Loading reports…",
+    "empty": "No reports here.",
+    "noReason": "No reason",
+    "close": "Close",
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal"
+    },
+    "type": "Type",
+    "reported": "Reported",
+    "venue": "Venue",
+    "snapshot": "Snapshot of the reported content",
+    "sensitiveHidden": "Sensitive content hidden",
+    "show": "Show",
+    "snapshotMedia": "Reported media",
+    "hideContent": "Hide content",
+    "suspendDays": "Suspend {days} days",
+    "suspendPermanent": "Suspend permanently",
+    "dismiss": "Dismiss",
+    "resolution": "Resolution",
+    "note": "Note",
+    "resolve": "Resolve",
+    "actionFailed": "The action failed",
+    "hidden": "Content hidden",
+    "suspended": "User suspended",
+    "dismissed": "Report dismissed",
+    "resolved": "Report resolved",
+    "resolutions": {
+      "no_action": "No action needed",
+      "content_removed": "Content removed",
+      "user_suspended": "User suspended",
+      "escalated_ncmec": "Escalated to NCMEC"
+    }
   }
 }

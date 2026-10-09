@@ -3771,5 +3771,47 @@
     "blockConfirm": "Bloquear",
     "blockError": "No pudimos bloquear a esta persona. Inténtalo de nuevo.",
     "menu": "Opciones del mensaje"
+  },
+  "reportsAdmin": {
+    "tab": {
+      "all": "Todas",
+      "urgent": "Urgentes",
+      "match": "Match"
+    },
+    "showResolved": "Ver resueltos",
+    "loading": "Cargando reportes…",
+    "empty": "No hay reportes aquí.",
+    "noReason": "Sin motivo",
+    "close": "Cerrar",
+    "priority": {
+      "urgent": "Urgente",
+      "high": "Alta",
+      "normal": "Normal"
+    },
+    "type": "Tipo",
+    "reported": "Reportado",
+    "venue": "Local",
+    "snapshot": "Copia del contenido reportado",
+    "sensitiveHidden": "Contenido sensible oculto",
+    "show": "Mostrar",
+    "snapshotMedia": "Contenido reportado",
+    "hideContent": "Ocultar contenido",
+    "suspendDays": "Suspender {days} días",
+    "suspendPermanent": "Suspender permanente",
+    "dismiss": "Descartar",
+    "resolution": "Resolución",
+    "note": "Nota",
+    "resolve": "Resolver",
+    "actionFailed": "La acción falló",
+    "hidden": "Contenido oculto",
+    "suspended": "Usuario suspendido",
+    "dismissed": "Reporte descartado",
+    "resolved": "Reporte resuelto",
+    "resolutions": {
+      "no_action": "Sin acción necesaria",
+      "content_removed": "Contenido retirado",
+      "user_suspended": "Usuario suspendido",
+      "escalated_ncmec": "Escalado al NCMEC"
+    }
   }
 }
