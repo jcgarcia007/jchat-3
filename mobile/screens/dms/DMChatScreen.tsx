@@ -24,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Dimensions,
@@ -84,7 +85,7 @@ import { useMatchSafety } from '../../components/match/MatchSafety';
 import { getChatMeta, isAwaitingReplyError } from '../../services/matchChat';
 import type { ChatMeta } from '../../services/matchChat';
 import { getMatchPresence } from '../../services/matchPresence';
-import { safeLaunchLibrary } from '../../utils/safePicker';
+import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
 import { checkMessage } from '../../utils/messageFilter';
 import { blockUser } from '../../services/blocks';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
@@ -477,9 +478,29 @@ export default function DMChatScreen() {
 
   // ── Pick & send photo ───────────────────────────────────────────────────────
 
-  const handlePickPhoto = useCallback(async () => {
-    if (!user) return;
+  // Camera and gallery end in the same send. safeLaunch* already applies normalizeImageUri.
+  const sendPickedPhoto = useCallback(
+    async (result: ImagePicker.ImagePickerResult | null) => {
+      if (!user || !result || result.canceled || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
+      // (resolved to a signed URL on render). Path: {conversationId}/{uid}/{ts}_{rand}.jpg
+      try {
+        const path = await uploadDmPhoto(conversationId, user.id, asset.uri);
+        await sendMessage({
+          conversationId,
+          senderId: user.id,
+          mediaUrl: path,
+        });
+      } catch (err) {
+        console.warn('[DMChat] photo send error', err);
+        Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendPhotoError'));
+      }
+    },
+    [user, conversationId, t],
+  );
 
+  const pickFromGallery = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
@@ -488,29 +509,60 @@ export default function DMChatScreen() {
       );
       return;
     }
-
+    // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
     const result = await safeLaunchLibrary({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
+      legacy: true,
     });
+    await sendPickedPhoto(result);
+  }, [t, sendPickedPhoto]);
 
-    if (!result || result.canceled || result.assets.length === 0) return;
-
-    const asset = result.assets[0];
-    // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
-    // (resolved to a signed URL on render). Path: {conversationId}/{uid}/{ts}_{rand}.jpg
-    try {
-      const path = await uploadDmPhoto(conversationId, user.id, asset.uri);
-      await sendMessage({
-        conversationId,
-        senderId: user.id,
-        mediaUrl: path,
-      });
-    } catch (err) {
-      console.warn('[DMChat] photo send error', err);
-      Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendPhotoError'));
+  const takePhoto = useCallback(async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        tg('input.cameraPermissionTitle'),
+        tg('input.cameraPermissionMessage'),
+      );
+      return;
     }
-  }, [user, conversationId, t]);
+    const result = await safeLaunchCamera({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.85,
+    });
+    await sendPickedPhoto(result);
+  }, [tg, sendPickedPhoto]);
+
+  // Photo button: Take photo / Choose from gallery / Cancel (same idea as ChatInput.handleCameraPress).
+  const handlePickPhoto = useCallback(() => {
+    if (!user) return;
+    const labels = {
+      camera: t('dmChat.takePhoto'),
+      gallery: t('dmChat.chooseFromGallery'),
+      cancel: tc('actions.cancel'),
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t('dmChat.photoSourceTitle'),
+          options: [labels.camera, labels.gallery, labels.cancel],
+          cancelButtonIndex: 2,
+        },
+        (index) => {
+          if (index === 0) void takePhoto();
+          else if (index === 1) void pickFromGallery();
+        },
+      );
+      return;
+    }
+    Alert.alert(t('dmChat.photoSourceTitle'), undefined, [
+      { text: labels.camera, onPress: () => void takePhoto() },
+      { text: labels.gallery, onPress: () => void pickFromGallery() },
+      { text: labels.cancel, style: 'cancel' },
+    ]);
+  }, [user, t, tc, takePhoto, pickFromGallery]);
 
   // ── Voice note ──────────────────────────────────────────────────────────────
 
