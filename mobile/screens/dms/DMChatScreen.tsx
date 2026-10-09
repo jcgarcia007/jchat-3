@@ -109,11 +109,20 @@ function formatTime(iso: string): string {
 interface BubbleProps {
   message: DmMessageRow;
   isOwn: boolean;
+  /** Reports THIS message (a photo the receiver finds inappropriate). */
+  onReportPhoto?: () => void;
 }
 
-function MessageBubble({ message, isOwn }: BubbleProps) {
+function MessageBubble({ message, isOwn, onReportPhoto }: BubbleProps) {
   const c = useThemeColors();
   const { t } = useTranslation('social');
+  const { t: tc } = useTranslation('common');
+  // Photo moderation (migration 214), for the RECEIVER only — the sender always sees their own photo: while the verdict is
+  // 'pending' or when it is 'blurred' the photo is blurred ("View anyway" / "Report"); 'rejected' is not shown at all.
+  const [revealed, setRevealed] = useState(false);
+  const moderation = message.media_moderation ?? null;
+  const photoRejected = !isOwn && message.media_url != null && moderation === 'rejected';
+  const photoBlurred = !isOwn && message.media_url != null && (moderation === 'pending' || moderation === 'blurred') && !revealed;
 
   // Bubble colors mirror chatThemes "default" style
   const bubbleOutBg = palette.brand;
@@ -165,13 +174,41 @@ function MessageBubble({ message, isOwn }: BubbleProps) {
         )}
 
         {/* Media image (signed URL resolved from the private dm-media bucket) */}
-        {mediaUri != null && (
-          <Image
-            source={{ uri: mediaUri }}
-            style={styles.bubbleImage}
-            resizeMode="cover"
-          />
-        )}
+        {photoRejected ? (
+          <View style={[styles.bubbleImage, styles.photoGate, { backgroundColor: c.bgBase }]}>
+            <Text style={[styles.photoGateText, { color: c.textSecondary }]}>{tc('dmPhoto.rejected')}</Text>
+            {onReportPhoto ? (
+              <Pressable accessibilityRole="button" onPress={onReportPhoto} style={styles.photoGateBtn}>
+                <Text style={[styles.photoGateBtnText, { color: c.textPrimary }]}>{tc('dmPhoto.report')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : mediaUri != null ? (
+          <View>
+            <Image
+              source={{ uri: mediaUri }}
+              style={styles.bubbleImage}
+              resizeMode="cover"
+              blurRadius={photoBlurred ? 40 : 0}
+            />
+            {photoBlurred ? (
+              <View style={[StyleSheet.absoluteFill, styles.photoGate, { backgroundColor: palette.scrim }]}>
+                <Text style={[styles.photoGateTitle, { color: palette.onImageStrong }]}>{tc('dmPhoto.blurredTitle')}</Text>
+                <Text style={[styles.photoGateText, { color: palette.onImageStrong }]}>{tc('dmPhoto.blurredHint')}</Text>
+                <View style={styles.photoGateRow}>
+                  <Pressable accessibilityRole="button" onPress={() => setRevealed(true)} style={styles.photoGateBtn}>
+                    <Text style={[styles.photoGateBtnText, { color: palette.onImageStrong }]}>{tc('dmPhoto.showAnyway')}</Text>
+                  </Pressable>
+                  {onReportPhoto ? (
+                    <Pressable accessibilityRole="button" onPress={onReportPhoto} style={styles.photoGateBtn}>
+                      <Text style={[styles.photoGateBtnText, { color: palette.onImageStrong }]}>{tc('dmPhoto.report')}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Voice note (private dm-media bucket; voice_url holds the storage PATH) */}
         {message.voice_url != null && (
@@ -391,9 +428,12 @@ export default function DMChatScreen() {
         },
         (payload) => {
           // A moderator hid a message of the other person (migration 213): it disappears from the thread at once.
-          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null };
+          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null; media_moderation?: DmMessageRow['media_moderation'] };
           if (row.hidden_at && row.id && row.sender_id !== user.id) {
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          } else if (row.id) {
+            // The photo verdict arrived (migration 214): update the bubble in place (blur on / off, rejected).
+            setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, media_moderation: row.media_moderation ?? null } : m)));
           }
         },
       )
@@ -620,6 +660,7 @@ export default function DMChatScreen() {
               <MessageBubble
                 message={item}
                 isOwn={item.sender_id === user?.id}
+                onReportPhoto={() => startReport('dm_message', item.id)}
               />
             </Pressable>
           )}
@@ -838,6 +879,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
+  photoGate: { alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12 },
+  photoGateTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
+  photoGateText: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
+  photoGateRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  photoGateBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  photoGateBtnText: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   bubbleImage: {
     width: 200,
     height: 160,
