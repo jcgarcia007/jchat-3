@@ -1,4 +1,4 @@
--- 214 (PROPUESTA — NO APLICADA): moderación de fotos de DM — se difuminan, no se bloquea el envío (Lote D2-D).
+-- 214: moderación de fotos de DM (Lote D2-D) — APLICADA 2026-10-09
 -- Implementa docs/proposals/dm-photo-blur.md. Requiere la 212 aplicada (usa reports.priority / snapshot).
 --
 -- Qué hace
@@ -11,7 +11,7 @@
 --   6. RPC dm_photo_set_verdict(message_id, status, scores) — solo service_role: fija el veredicto una sola vez y, si es
 --      'rejected', crea un reporte URGENTE (content_type 'dm_message', reason 'sexual_content', reporter NULL = sistema,
 --      snapshot SIN ninguna URL) y deja registro en security_logs. El reporte urgente dispara el correo de safety-alert (212).
---   7. reports.reporter_id pasa a admitir NULL (reportes automáticos del sistema). Planning: revisar este cambio de esquema.
+--   7. Reportes automáticos del sistema: reporter NULL (reports.reporter_id ya admitía NULL; no hace falta alterar la columna).
 --
 -- Veredicto (supabase/functions/_shared/safesearch.ts → decideDmPhoto):
 --   adult VERY_LIKELY → rejected · adult LIKELY/POSSIBLE, racy LIKELY+, violence LIKELY+ → blurred · resto → clear.
@@ -40,13 +40,14 @@
 alter table public.dm_messages
   add column if not exists media_moderation text,
   add column if not exists media_moderated_at timestamptz;
-alter table public.dm_messages drop constraint if exists dm_messages_media_moderation_chk;
-alter table public.dm_messages add constraint dm_messages_media_moderation_chk
-  check (media_moderation is null or media_moderation in ('pending', 'clear', 'blurred', 'rejected'));
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_messages_media_moderation_chk') then
+    alter table public.dm_messages add constraint dm_messages_media_moderation_chk
+      check (media_moderation is null or media_moderation in ('pending', 'clear', 'blurred', 'rejected'));
+  end if;
+end $$;
 create index if not exists dm_messages_media_pending_idx on public.dm_messages (created_at) where media_moderation = 'pending';
-
--- 7. Reportes automáticos del sistema (sin persona que reporta)
-alter table public.reports alter column reporter_id drop not null;
 
 -- 2. Estado inicial decidido por el servidor
 create or replace function public.dm_messages_media_init()
@@ -57,8 +58,7 @@ begin
   return new;
 end;
 $$;
-drop trigger if exists trg_dm_media_init on public.dm_messages;
-create trigger trg_dm_media_init before insert on public.dm_messages
+create or replace trigger trg_dm_media_init before insert on public.dm_messages
   for each row execute function public.dm_messages_media_init();
 
 -- 3. El cliente no toca los campos de moderación (auth.uid() es NULL para service_role / funciones del servidor)
@@ -74,8 +74,7 @@ begin
   return new;
 end;
 $$;
-drop trigger if exists trg_dm_media_guard on public.dm_messages;
-create trigger trg_dm_media_guard before update on public.dm_messages
+create or replace trigger trg_dm_media_guard before update on public.dm_messages
   for each row execute function public.dm_messages_media_guard();
 
 -- 4. Al insertar una foto → Edge Function de moderación (mismo patrón y secreto que 193)
@@ -96,8 +95,7 @@ exception when others then
   return new;
 end;
 $$;
-drop trigger if exists trg_dm_photo_moderation on public.dm_messages;
-create trigger trg_dm_photo_moderation after insert on public.dm_messages
+create or replace trigger trg_dm_photo_moderation after insert on public.dm_messages
   for each row when (new.media_url is not null) execute function public.dm_photo_dispatch_moderation();
 
 -- 5. Reintento de pendientes (cada 10 min)
@@ -121,7 +119,6 @@ begin
 end;
 $$;
 revoke all on function public.dm_photo_retry_moderation() from public, anon, authenticated;
-select cron.unschedule('dm-photo-retry-moderation') where exists (select 1 from cron.job where jobname = 'dm-photo-retry-moderation');
 select cron.schedule('dm-photo-retry-moderation', '*/10 * * * *', $$select public.dm_photo_retry_moderation()$$);
 
 -- 6. Veredicto (solo service_role). Idempotente: solo actúa sobre un mensaje todavía 'pending'.

@@ -159,6 +159,16 @@ import { IconMapPin } from '@tabler/icons-react';        // web
 - Supabase Realtime: subscribe al montar la pantalla, **unsubscribe al desmontar**.
 - Nunca modificar la tabla `pinned_messages` directamente desde el cliente.
 
+### Migraciones (`supabase/migrations/`)
+- Las migraciones NO deben usar `DROP` / `DELETE` / `TRUNCATE` salvo que la operación sea realmente destructiva.
+- Usar formas idempotentes y no destructivas: `create or replace trigger`, `create or replace function`,
+  `add column if not exists`, `create index if not exists`, y constraints dentro de un bloque `DO` que
+  compruebe su existencia en `pg_constraint` antes de agregarlas.
+- No usar `drop trigger if exists` + `create trigger`, ni `drop constraint if exists` + `add constraint`,
+  ni `cron.unschedule` antes de `cron.schedule`.
+- Si algo destructivo es imprescindible, va en un archivo aparte `NNN_destructive.sql` que aplica Juan
+  en el SQL Editor. Nunca mezclado con una migración normal.
+
 ### Scope
 - NO implementar: Event Tickets, Delivery Module → ambos marcados como Future.
 - Stage 4 (Google Maps nativo) va DESPUÉS de Stage 3 completo.
