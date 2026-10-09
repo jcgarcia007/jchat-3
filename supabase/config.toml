@@ -55,6 +55,10 @@ verify_jwt = false
 [functions.moderate-match-photo]
 verify_jwt = false
 
+# Urgent-report email: invoked by pg_net (migration 212) with x-push-secret, not a user JWT. Emails safety@jchat.cloud (notice only).
+[functions.safety-alert]
+verify_jwt = false
+
 # ── Auth email templates (bilingual ES/EN) ─────────────────────────────────
 # Source of truth: supabase/templates/*.html (see docs/JCHAT_PLANTILLAS_CORREO_SUPABASE.md).
 # Applies to local dev only; in production they are pasted manually into
