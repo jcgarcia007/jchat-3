@@ -97,5 +97,9 @@
     "showAnyway": "View anyway",
     "report": "Report",
     "rejected": "This photo was removed because it breaks our rules."
+  },
+  "imageViewer": {
+    "close": "Close image",
+    "error": "The image couldn't be loaded."
   }
 }

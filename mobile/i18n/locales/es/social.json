@@ -65,7 +65,8 @@
     "takePhoto": "Tomar foto",
     "chooseFromGallery": "Elegir de la galería",
     "openPhotoA11y": "Ver foto a pantalla completa",
-    "closePhotoA11y": "Cerrar foto",
+    "gifNotAllowedTitle": "GIF no permitido",
+    "gifNotAllowed": "Los GIF no están permitidos en mensajes. Elige otra foto.",
     "photoViewerErrorTitle": "No se pudo abrir la foto",
     "photoViewerError": "No pudimos cargar la imagen. Revisa tu conexión e inténtalo de nuevo."
   },
