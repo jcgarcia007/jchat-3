@@ -34,7 +34,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -57,9 +56,8 @@ import {
   IconMicrophone,
   IconPhoto,
   IconSend,
-  IconX,
 } from '@tabler/icons-react-native';
-import ImageView from 'react-native-image-viewing';
+import { ImageViewerModal } from '../../components/ImageViewerModal';
 
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
@@ -505,6 +503,11 @@ export default function DMChatScreen() {
     async (result: ImagePicker.ImagePickerResult | null) => {
       if (!user || !result || result.canceled || result.assets.length === 0) return;
       const asset = result.assets[0];
+      // dm-media does not accept GIFs (and SafeSearch only looks at an animated GIF's first frame): never upload one.
+      if (asset.mimeType?.toLowerCase() === 'image/gif' || /\.gif(\?|$)/i.test(asset.fileName ?? asset.uri)) {
+        Alert.alert(t('dmChat.gifNotAllowedTitle'), t('dmChat.gifNotAllowed'));
+        return;
+      }
       // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
       // (resolved to a signed URL on render). Path: {conversationId}/{uid}/{ts}_{rand}.jpg
       try {
@@ -876,32 +879,8 @@ export default function DMChatScreen() {
         onBlock={confirmBlockOther}
         onClose={() => setMsgAction(null)}
       />
-      {/* Fullscreen photo viewer (react-native-image-viewing, same as the venue chat): pinch, double-tap, swipe down to close */}
-      <ImageView
-        images={viewerUri ? [{ uri: viewerUri }] : []}
-        imageIndex={0}
-        visible={viewerUri != null}
-        onRequestClose={() => setViewerUri(null)}
-        HeaderComponent={() => (
-          <View
-            style={{
-              alignItems: 'flex-start',
-              // The library's SafeAreaView ignores the Android status bar: compute the top inset per platform.
-              paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : insets.top || 50,
-            }}
-          >
-            <Pressable
-              onPress={() => setViewerUri(null)}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t('dmChat.closePhotoA11y')}
-              style={styles.viewerClose}
-            >
-              <IconX size={20} color={palette.onImage} />
-            </Pressable>
-          </View>
-        )}
-      />
+      {/* Fullscreen photo viewer: pinch 1x–4x, double tap, tap outside / swipe down / X to close */}
+      <ImageViewerModal visible={viewerUri != null} uri={viewerUri} onClose={() => setViewerUri(null)} />
       <ReportReasonSheet
         visible={reportVisible}
         targetName={otherName}
@@ -1009,17 +988,6 @@ const styles = StyleSheet.create({
   photoGateTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
   photoGateText: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
   photoGateRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  viewerClose: {
-    margin: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: palette.scrimMedium,
-    borderWidth: 2,
-    borderColor: palette.onImageFaint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   photoGateBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   photoGateBtnText: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   bubbleImage: {

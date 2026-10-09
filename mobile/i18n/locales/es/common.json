@@ -97,5 +97,9 @@
     "showAnyway": "Ver de todos modos",
     "report": "Reportar",
     "rejected": "Esta foto se retiró porque incumple nuestras normas."
+  },
+  "imageViewer": {
+    "close": "Cerrar imagen",
+    "error": "No se pudo cargar la imagen."
   }
 }

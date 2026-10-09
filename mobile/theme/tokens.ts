@@ -61,6 +61,8 @@ export const palette = {
   // 1.6 Black scrim scale (modal backdrops, image darkening). `scrim` (.72) is above.
   scrimSoft: 'rgba(0,0,0,0.30)',
   scrimMedium: 'rgba(0,0,0,0.55)',
+  /** Fullscreen image viewer background — pure black in both color schemes. */
+  imageViewerBg: '#000000',
 
   // 1.7 White overlays on images
   onImageFaint: 'rgba(255,255,255,0.40)',

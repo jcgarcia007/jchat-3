@@ -40,14 +40,13 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { IconMapPin, IconX } from '@tabler/icons-react-native';
+import { IconMapPin } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -98,7 +97,7 @@ import { toUserMessage } from '../../utils/errors';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import type { ChatMessage, UserAnchor } from '../../components/chat/MessageBubble';
 import UserQuickCard from '../../components/chat/UserQuickCard';
-import ImageView from 'react-native-image-viewing';
+import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { IncognitoToggle, INCOGNITO_ENABLED, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
 import { PasswordEntrySheet } from '../../components/chat/PasswordEntrySheet';
@@ -274,10 +273,6 @@ export default function ChatRoomScreen() {
   const flatListRef = useRef<FlatList>(null);
   // Fullscreen photo viewer: the tapped image's URL (null = closed).
   const [viewerImage, setViewerImage] = useState<string | null>(null);
-  // Read once in the screen tree (under the app's SafeAreaProvider) and close
-  // over it in the viewer's HeaderComponent — calling the hook inside the
-  // library's Modal can return 0 on Android.
-  const insets = useSafeAreaInsets();
   // With the inverted list, "near bottom" means scroll offset near 0 (newest).
   const isNearBottomRef = useRef(true);
 
@@ -1691,46 +1686,8 @@ export default function ChatRoomScreen() {
         />
       )}
 
-      {/* ── Fullscreen image viewer (pinch-to-zoom + swipe-to-close) ──────── */}
-      <ImageView
-        images={viewerImage ? [{ uri: viewerImage }] : []}
-        imageIndex={0}
-        visible={viewerImage != null}
-        onRequestClose={() => setViewerImage(null)}
-        HeaderComponent={() => (
-          <View
-            style={{
-              alignItems: 'flex-end',
-              // react-native core SafeAreaView doesn't respect the Android status
-              // bar; compute the top inset per-platform so the X never gets cut.
-              paddingTop:
-                Platform.OS === 'android'
-                  ? (StatusBar.currentHeight ?? 24) + 8
-                  : insets.top || 50,
-            }}
-          >
-            <Pressable
-              onPress={() => setViewerImage(null)}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t('chatRoom.closeImageA11y')}
-              style={{
-                margin: 12,
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: palette.scrimMedium,
-                borderWidth: 2,
-                borderColor: palette.onImageFaint,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <IconX size={20} color={palette.onImage} />
-            </Pressable>
-          </View>
-        )}
-      />
+      {/* ── Fullscreen image viewer (pinch 1x–4x, double tap, tap outside / swipe down / X to close) ── */}
+      <ImageViewerModal visible={viewerImage != null} uri={viewerImage} onClose={() => setViewerImage(null)} />
 
       {/* ── UserActionSheet ───────────────────────────────────────────────── */}
       <UserActionSheet
