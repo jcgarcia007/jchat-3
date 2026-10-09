@@ -1,0 +1,6 @@
+# Wrapper used by e2e/preflight.sh. open-app.yaml declares default METRO_HOST / METRO_PORT in its header, and a header `env:` beats the
+# -e of the command line when the file is run DIRECTLY (so the preflight opened the dev build against 192.168.1.227:8081 and only passed
+# while a Metro was running there). Run through runFlow, the variables come from this parent flow (the command line) as in every real flow.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow: open-app.yaml

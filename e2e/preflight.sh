@@ -74,7 +74,7 @@ ok "Metro running on :$metro_port"
 envs=()
 for v in METRO_HOST METRO_PORT; do [ -n "${!v:-}" ] && envs+=(-e "$v=${!v}"); done
 cd "$root/maestro"
-if ! maestro --udid "$udid" test ${envs[@]+"${envs[@]}"} helpers/open-app.yaml >/dev/null 2>&1; then
+if ! maestro --udid "$udid" test ${envs[@]+"${envs[@]}"} helpers/preflight-open.yaml >/dev/null 2>&1; then
   fail "the dev build did not reach the tabs (not installed, Metro host wrong, or logged out)" \
     "check METRO_HOST (Android emulator: 10.0.2.2), and log in once by hand or export MAESTRO_TEST_EMAIL / MAESTRO_TEST_PASSWORD and run helpers/login.yaml"
 fi
