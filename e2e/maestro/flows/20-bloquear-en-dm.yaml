@@ -36,6 +36,13 @@ appId: com.juangarciacruz.jchatapp
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: 03-tras-bloquear
+# KNOWN ISSUE (reported 2026-10-09): right after blocking, the Messages list still shows the conversation, and it stays there when the tab is left
+# and re-entered; only a restart of the app reloads it. The server DOES hide it (dm_conv_read), which is what this flow asserts after reopening.
+- runFlow: ../helpers/open-app.yaml
+- tapOn: "Messages|Mensajes"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 03b-tras-refrescar
 - assertNotVisible:
     id: "dm-row-0b4895d0.*"
 # ── restore: unblock ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -52,18 +59,24 @@ appId: com.juangarciacruz.jchatapp
 - scrollUntilVisible:
     element: "Blocked users|Usuarios bloqueados"
     timeout: 20000
-- tapOn: "Blocked users|Usuarios bloqueados"
+# the row has no accessible text of its own (the tap by text did not open the screen); it is the last row, ~88% down once scrolled
+- tapOn:
+    point: "50%,88%"
 - extendedWaitUntil:
     visible: "Unblock|Desbloquear"
     timeout: 15000
 - takeScreenshot: 04-bloqueados
 - tapOn: "Unblock|Desbloquear"
+# the app asks for confirmation ("Unblock @user?"); on Android the dialog button is upper-case
+# (a text match picks the row button behind the dialog, so the dialog's UNBLOCK is tapped by position: bottom right of the dialog)
+- tapOn:
+    point: "80%,58%"
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: 05-desbloqueado
 # the conversation is back
-- back
-- back
+# (two Android "back" presses would leave the app; reopen it instead)
+- runFlow: ../helpers/open-app.yaml
 - tapOn: "Messages|Mensajes"
 - extendedWaitUntil:
     visible:

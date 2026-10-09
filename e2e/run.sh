@@ -17,7 +17,7 @@ if [ -f "$ROOT_E2E/../mobile/.env" ]; then
   export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
 fi
 # Defaults of the tunable variables (the flows declare none: a header `env:` would beat -e).
-: "${PIN:=0}" "${ACTION:=decline}" "${TABLE:=12}" "${CYCLES:=5}" "${QUIET_MS:=120000}" "${IDLE_MS:=330000}" "${HOLD_MS:=480000}" "${WAIT_MATCH_MS:=1000}" "${RECIPIENT_WAIT_MS:=330000}"
+: "${METRO_HOST:=192.168.1.227}" "${METRO_PORT:=8081}" "${PIN:=0}" "${ACTION:=decline}" "${TABLE:=12}" "${CYCLES:=5}" "${QUIET_MS:=120000}" "${IDLE_MS:=330000}" "${HOLD_MS:=480000}" "${WAIT_MATCH_MS:=1000}" "${RECIPIENT_WAIT_MS:=330000}"
 if [ "$ACTION" = accept ]; then : "${EXPECT:=Test accepted your gift.*|Test aceptó tu regalo.*}"; else : "${EXPECT:=Test didn.t accept your gift.*|Test no aceptó tu regalo.*}"; fi
 export PIN ACTION TABLE EXPECT CYCLES QUIET_MS IDLE_MS HOLD_MS WAIT_MATCH_MS RECIPIENT_WAIT_MS
 # Login helper: "test" on Android, "test1" on the iPhone (only if not given explicitly for this run).

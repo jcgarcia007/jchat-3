@@ -9,8 +9,19 @@ appId: com.juangarciacruz.jchatapp
       - tapOn: "More options|Más opciones"
       - tapOn:
           id: "venue-leave"
-      # the native confirmation alert
-      - tapOn: "Leave the venue|Salir del local"
+      # the native confirmation alert. Android: the confirm button is upper-case and a text match did not hit it (the title is
+      # "Leave the venue?"), so it is tapped by position (bottom right of the dialog); iOS: by text.
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn:
+                point: "73%,57%"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn: "Leave the venue|Salir del local"
 - extendedWaitUntil:
     visible: "Nearby|Cerca.*"
     timeout: 20000

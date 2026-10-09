@@ -1,9 +1,7 @@
 # Opens the JChat DEVELOPMENT BUILD pointing at Metro and waits for the tabs.
 # Env (all optional): METRO_HOST (default 192.168.1.227), METRO_PORT (default 8081).
 appId: com.juangarciacruz.jchatapp
-env:
-  METRO_HOST: 192.168.1.227
-  METRO_PORT: 8081
+# (No header `env:` — it would override the -e of the command line. The defaults live in e2e/run.sh.)
 ---
 # The dev build sometimes stays on a blank screen / "Loading from …" after a (re)start: retry the open.
 - retry:
