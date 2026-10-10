@@ -135,5 +135,76 @@ export const POST_LINES = [
 export const avatarUrl = (seed) =>
   `https://api.dicebear.com/9.x/adventurer/png?size=256&seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
+// ── Venue presence, Match check-in and Match photos (shared by simulate.mjs and match-setup.mjs) ─────────────────────────
+
+/** Illustrated DiceBear styles for Match photos (generated drawings; never a photo of a real person). */
+export const MATCH_STYLES = ['lorelei', 'notionists', 'adventurer'];
+
+/** A DiceBear illustration as WebP: the format the app itself uploads to the match-photos bucket (≤ 800 px, image/webp). */
+export const matchPhotoUrl = (style, seed) =>
+  `https://api.dicebear.com/9.x/${style}/webp?size=512&seed=${encodeURIComponent(seed)}`;
+
+/**
+ * The coordinates a script sends are SUPPLIED, not read from a GPS sensor, so the honest value of match_check_in's
+ * p_mocked is true. With mocked=true the server (migrations 196/197) keeps the Match presence 'pending' until a venue QR is
+ * scanned, and the Match deck needs an ACTIVE presence. This is reported, never worked around: do not flip this to false to
+ * "make it work" — that would be claiming a real GPS fix the script does not have.
+ */
+export const SCRIPT_LOCATION_IS_SIMULATED = true;
+
+/** Enter the venue like the app does: the geofence RPC with the venue position (publishes room_geo_presence, TTL 10 min). */
+export async function enterVenue(client, room, venue) {
+  const { data, error } = await client.rpc('check_geofence_and_join_room', { _room_id: room.id, _lat: venue.lat, _lng: venue.lng });
+  const granted = !error && Array.isArray(data) && data[0]?.access_granted === true;
+  return { granted, code: granted ? 'ok' : (error?.code ?? data?.[0]?.reason ?? 'refused') };
+}
+
+/** Match check-in / heartbeat as the user (the server expires the presence after 15 min without one). */
+export async function matchCheckIn(client, venue) {
+  const { data, error } = await client.rpc('match_check_in', {
+    p_business_id: venue.id,
+    p_lat: venue.lat,
+    p_lng: venue.lng,
+    p_qr_token: null,
+    p_mocked: SCRIPT_LOCATION_IS_SIMULATED,
+  });
+  if (error) return { status: 'error', reason: error.code ?? 'error' };
+  return { status: data?.status ?? 'denied', reason: data?.reason ?? null };
+}
+
+/** The presence payload the app tracks (screens/chat/usePresenceChannels.ts), built from the user's own public profile. */
+export async function presencePayload(client, userId) {
+  const { data } = await client.from('public_profiles').select('display_name, username, avatar_url').eq('id', userId).maybeSingle();
+  return {
+    user_id: userId,
+    display_name: data?.display_name || data?.username || 'Guest',
+    avatar_url: data?.avatar_url ?? null,
+    is_incognito: false,
+    nickname: null,
+  };
+}
+
+/**
+ * Joins the shared `presence:<roomId>` Realtime channel keyed by the user id and tracks the payload, exactly like a phone
+ * (mobile usePresenceChannels / web ChatRoom.tsx). That channel is what feeds the horizontal profile bar of the venue chat.
+ * Resolves with the channel, or null if it could not subscribe in time. The user stays "present" while the socket lives.
+ */
+export function joinVenuePresence(client, roomId, payload) {
+  const channel = client.channel(`presence:${roomId}`, { config: { presence: { key: payload.user_id } } });
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 12_000);
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track(payload);
+        clearTimeout(timer);
+        resolve(channel);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+  });
+}
+
 export const slug = (text) =>
   text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
