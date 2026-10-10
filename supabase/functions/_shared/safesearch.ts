@@ -104,12 +104,13 @@ export async function safeSearch(apiKey: string, imageBase64: string): Promise<S
 export type DmPhotoVerdict = "clear" | "blurred" | "rejected";
 
 /**
- * DM photo rules: very likely explicit adult content → rejected (not shown to the receiver, urgent report);
- * likely adult / racy / violence, or POSSIBLE adult → blurred ("View anyway" + "Report"); everything else → clear.
+ * DM photo rules: adult VERY_LIKELY → rejected (not shown to the receiver, urgent report);
+ * adult LIKELY, or racy / violence LIKELY or VERY_LIKELY → blurred ("View anyway" + "Report");
+ * everything else → clear. POSSIBLE in any category no longer blurs.
  */
 export function decideDmPhoto(s: SafeSearch): DmPhotoVerdict {
   if (s.adult === "VERY_LIKELY") return "rejected";
-  if (rank(s.adult) >= rank("LIKELY") || rank(s.racy) >= rank("LIKELY") || rank(s.violence) >= rank("LIKELY") || s.adult === "POSSIBLE") {
+  if (rank(s.adult) >= rank("LIKELY") || rank(s.racy) >= rank("LIKELY") || rank(s.violence) >= rank("LIKELY")) {
     return "blurred";
   }
   return "clear";
