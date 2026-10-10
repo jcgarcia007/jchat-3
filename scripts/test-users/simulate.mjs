@@ -45,7 +45,7 @@ if (pool.length < 2) {
   console.error('Need at least 2 seeded users in scripts/test-users/out/credentials.json (run seed.mjs first).');
   process.exit(1);
 }
-const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx');
+const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx-omd2');
 // The venue's QR token, handed over by the owner through the environment (never an argument, never printed).
 const qrToken = qrTokenFromEnv();
 
@@ -86,6 +86,10 @@ for (const u of pool) {
   sessions.push({ user: u, client, entered: false, channel: null, payload: null });
 }
 if (sessions.length < 2) { console.error('Fewer than 2 sessions could be opened.'); process.exit(1); }
+
+// Everything the swipe action did, printed at the end: Match deletes a user's swipes at the venue when their presence expires,
+// so afterwards there is nothing left to review.
+const swipeLog = { like: { real: 0, test: 0 }, pass: { real: 0, test: 0 }, already: 0, errors: {}, matches: [] };
 
 // Which cards are test accounts? credentials.json knows the seeded ones; users.is_test (when the column exists) also covers others.
 const testIds = new Set(saved.users.map((u) => u.id));
@@ -156,8 +160,19 @@ const doAction = {
     const isTest = testIds.has(card.id);
     const action = Math.random() < (isTest ? LIKE_TEST : LIKE_REAL) ? 'like' : 'pass';
     const { data, error: swipeError } = await s.client.rpc('match_swipe', { p_business_id: venue.id, p_target_id: card.id, p_action: action });
-    if (swipeError) { count('swipe', `${action}:${swipeError.code ?? 'error'}`); return; }
-    count('swipe', `${action}-${isTest ? 'test' : 'real'}:${data?.swiped === false ? 'already' : data?.is_match ? 'match' : 'ok'}`);
+    if (swipeError) {
+      const code = swipeError.code ?? 'error';
+      swipeLog.errors[code] = (swipeLog.errors[code] ?? 0) + 1;
+      count('swipe', `${action}:${code}`);
+      return;
+    }
+    const who = isTest ? 'test' : 'real';
+    if (data?.swiped === false) swipeLog.already += 1;
+    else swipeLog[action][who] += 1;
+    if (data?.swiped !== false && data?.is_match) {
+      swipeLog.matches.push({ by: s.user.username, with: card.username || card.display_name || card.id.slice(0, 8), real: !isTest });
+    }
+    count('swipe', `${action}-${who}:${data?.swiped === false ? 'already' : data?.is_match ? 'match' : 'ok'}`);
   },
 };
 
@@ -184,4 +199,29 @@ for (const s of sessions) {
 
 console.log('Done. Outcomes (action:result → count; a code is the server refusing, which is expected sometimes):');
 for (const [key, n] of Object.entries(stats).sort()) console.log(`  ${key}: ${n}`);
+
+if (actions.includes('swipe')) {
+  // Printed NOW, while the presence is still alive: Match wipes the swipes of a user at the venue shortly after it expires.
+  console.log('\nMatch summary (this run):');
+  console.log(`  likes:  ${swipeLog.like.real} to real accounts, ${swipeLog.like.test} to test accounts`);
+  console.log(`  passes: ${swipeLog.pass.real} to real accounts, ${swipeLog.pass.test} to test accounts`);
+  console.log(`  already swiped (refused by the server): ${swipeLog.already}`);
+  const errorCodes = Object.entries(swipeLog.errors);
+  if (errorCodes.length) console.log(`  swipe errors: ${errorCodes.map(([code, n]) => `${code} ×${n}`).join(', ')}`);
+  const withReal = swipeLog.matches.filter((m) => m.real).length;
+  console.log(`  matches created by these swipes: ${swipeLog.matches.length} (${withReal} with real accounts, ${swipeLog.matches.length - withReal} between test accounts)`);
+  for (const m of swipeLog.matches) console.log(`    ${m.by} ↔ ${m.with}${m.real ? '  (real account)' : ''}`);
+
+  // What Match itself holds right now for each simulated user (match_get_activity, as that user).
+  let likedMe = 0;
+  let matchRows = 0;
+  let unavailable = 0;
+  for (const s of sessions) {
+    const { data, error } = await s.client.rpc('match_get_activity', { p_business_id: venue.id });
+    if (error || !data) { unavailable += 1; continue; }
+    likedMe += Array.isArray(data.liked_me) ? data.liked_me.length : 0;
+    matchRows += Array.isArray(data.matches) ? data.matches.length : 0;
+  }
+  console.log(`  Match activity now (all simulated users): ${likedMe} "liked me", ${matchRows} match rows${unavailable ? ` (${unavailable} users could not be read)` : ''}`);
+}
 process.exit(0); // the Realtime sockets would otherwise keep the process alive

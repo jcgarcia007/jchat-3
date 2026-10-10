@@ -79,26 +79,58 @@ export function termsVersion() {
 }
 
 /**
- * A client signed in AS the user (so every RLS policy and RPC rule applies exactly as in the apps). Supabase Auth may have
- * hCaptcha on for password sign-ins, which a script cannot solve; so the session comes from a one-time magic-link token
- * minted with the admin API and exchanged with verifyOtp (that exchange is not captcha-gated). If that fails, it falls back
- * to the password. Returns null when no session could be created.
+ * Keeps a user's latest refresh token in credentials.json (the same git-ignored, chmod 600 file as the password; never printed).
+ * Read-modify-write on every call, so several clients renewing at once never overwrite each other's token.
+ */
+export function saveRefreshToken(userId, token) {
+  if (!userId || !token) return;
+  const data = readCredentials();
+  const entry = data.users.find((u) => u.id === userId);
+  if (!entry || entry.refresh_token === token) return;
+  entry.refresh_token = token;
+  writeCredentials(data);
+}
+
+/**
+ * A client signed in AS the user (so every RLS policy and RPC rule applies exactly as in the apps). Supabase Auth rate-limits
+ * new sign-ins (magic links, passwords) and may have hCaptcha on for password sign-ins, which a script cannot solve, so the
+ * order is: (1) the refresh token saved in credentials.json (refreshSession — no new sign-in); only if that fails, (2) a
+ * one-time magic-link token minted with the admin API and exchanged with verifyOtp (not captcha-gated); (3) the password.
+ * Whatever session results, its refresh token is saved, and every automatic renewal saves the new one (refresh tokens rotate).
+ * Returns null when no session could be created.
  */
 export async function userClient(cfg, admin, user) {
-  const client = createClient(cfg.url, cfg.publishable, { auth: { persistSession: false, autoRefreshToken: false } });
+  const client = createClient(cfg.url, cfg.publishable, { auth: { persistSession: false, autoRefreshToken: true } });
+  const remember = (session) => {
+    if (!session?.refresh_token) return;
+    user.refresh_token = session.refresh_token;
+    saveRefreshToken(user.id, session.refresh_token);
+  };
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESHED') remember(session);
+  });
+
+  if (user.refresh_token) {
+    try {
+      const { data, error } = await client.auth.refreshSession({ refresh_token: user.refresh_token });
+      if (!error && data?.session) { remember(data.session); return client; }
+    } catch {
+      // fall through to a new sign-in
+    }
+  }
   try {
     const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email: user.email });
     const hash = data?.properties?.hashed_token;
     if (!error && hash) {
       const { data: s, error: e2 } = await client.auth.verifyOtp({ token_hash: hash, type: 'magiclink' });
-      if (!e2 && s?.session) return client;
+      if (!e2 && s?.session) { remember(s.session); return client; }
     }
   } catch {
     // fall through to the password
   }
   if (user.password) {
     const { data, error } = await client.auth.signInWithPassword({ email: user.email, password: user.password });
-    if (!error && data?.session) return client;
+    if (!error && data?.session) { remember(data.session); return client; }
   }
   return null;
 }

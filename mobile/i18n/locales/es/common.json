@@ -96,7 +96,8 @@
     "blurredHint": "Esta foto puede contener contenido sensible.",
     "showAnyway": "Ver de todos modos",
     "report": "Reportar",
-    "rejected": "Esta foto se retiró porque incumple nuestras normas."
+    "rejected": "Esta foto se retiró porque incumple nuestras normas.",
+    "unavailable": "Esta foto no está disponible."
   },
   "imageViewer": {
     "close": "Cerrar imagen",

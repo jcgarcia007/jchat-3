@@ -1,5 +1,7 @@
--- 218 (PROPUESTA — NO APLICADA): la purga de 24 h del chat del local ya no borra la evidencia de mensajes reportados.
--- Contiene un DELETE (dentro de la función de purga): la aplica Juan en el SQL Editor, no un `db push`.
+-- 218: la purga de 24 h del chat del local ya no borra la evidencia de mensajes reportados. APLICADA 2026-10-10.
+-- Aplicada por Juan desde el SQL Editor (contiene un DELETE dentro de la función de purga), así que NO está registrada en
+-- supabase_migrations.schema_migrations. Versionada tal cual estaba en pending/: purge_expired_messages() y message_under_retention_hold()
+-- se compararon con pg_get_functiondef de producción y coinciden.
 --
 -- Problema
 --   purge_expired_messages() (pg_cron 'purge-expired-messages', cada 15 min, migración 043) borra los mensajes de sala de más de 24 h

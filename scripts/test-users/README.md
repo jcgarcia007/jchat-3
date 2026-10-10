@@ -16,7 +16,7 @@ tocar nada real. Todos leen la llave de servidor **`SB_SECRET_KEY` de `web/.env.
 ## 1. `seed.mjs`
 ```bash
 node scripts/test-users/seed.mjs --dry-run                         # lista lo que crearía
-node scripts/test-users/seed.mjs --count 20 --venue bar-xzx        # crea 20 (por defecto 20; máx. 200)
+node scripts/test-users/seed.mjs --count 20 --venue bar-xzx-omd2 # crea 20 (por defecto 20; máx. 200)
 ```
 - Crea cada cuenta con el correo `<nombre>NN@test.jchat.cloud` (ej. `lucia01@test.jchat.cloud`), correo ya confirmado, nombre, bio
   ("Cuenta de prueba · …") y **avatar generado** (DiceBear *adventurer*, un dibujo; **nunca fotos de personas reales**). El avatar se
@@ -25,10 +25,10 @@ node scripts/test-users/seed.mjs --count 20 --venue bar-xzx        # crea 20 (po
   (carpeta `out/` ignorada por git; el archivo se escribe con `chmod 600`). No se imprime nunca.
 - **Mayores de 18:** llama al RPC `confirm_age` *como el propio usuario* (año de nacimiento aleatorio entre 1985 y 1999; el servidor
   guarda solo el año) con el `TERMS_VERSION` actual de `web/lib/terms.ts`.
-- `--venue <slug>` (por defecto `bar-xzx`): comprueba que el local existe y lo guarda en `credentials.json` para que `simulate` lo use.
+- `--venue <slug>` (por defecto `bar-xzx-omd2`): comprueba que el local existe y lo guarda en `credentials.json` para que `simulate` lo use.
 - Es **idempotente**: si el correo ya existe no lo duplica (si falta en `credentials.json`, le pone una contraseña nueva).
-- **Marca de prueba:** el dominio del correo siempre; y, si se aplica `supabase/migrations/pending/215_test_users_flag.sql`, además
-  `users.is_test = true` (el script lo detecta solo). Sin esa migración funciona igual.
+- **Marca de prueba:** el dominio del correo siempre; y, como la `supabase/migrations/215_test_users_flag.sql` ya está aplicada, además
+  `users.is_test = true` (el script lo detecta solo; sin la columna funcionaría igual solo con el dominio).
 
 ## 2. `simulate.mjs`
 ```bash
@@ -43,11 +43,19 @@ Opciones: `--minutes` (5), `--users` (8, mínimo 2), `--actions` (`chat,dm,post,
   mandan los simuladores con `adb emu geo fix`); se repite cada 4 min por el TTL de presencia.
 - Acciones: `chat` (mensaje en la sala principal), `dm` (`start_dm` + mensaje), `post` (publicación de texto, sin foto), `like` (a una de las
   últimas 20 publicaciones).
-- **Cómo abre sesión sin contraseña ni captcha:** Supabase Auth puede tener hCaptcha en el login con contraseña, que un script no puede
-  resolver. Por eso `lib.mjs` pide con la API de admin un enlace mágico de un solo uso y lo canjea con `verifyOtp` (ese canje no lleva
-  captcha); si falla, prueba la contraseña. **Esto no se pudo comprobar** (no se ejecutó): si tu proyecto lo bloquea, `simulate` avisa
+- **Cómo abre sesión sin contraseña ni captcha** (`lib.mjs`, en este orden):
+  1. **Reusa el `refresh_token` guardado** en `out/credentials.json` (`refreshSession`): no es un inicio de sesión nuevo, así que no
+     gasta el límite de Supabase Auth ("no session for …" en 5 de 12 usuarios por ese límite).
+  2. **Solo si eso falla**, pide con la API de admin un enlace mágico de un solo uso y lo canjea con `verifyOtp` (ese canje no lleva captcha).
+  3. Por último prueba la contraseña (puede llevar hCaptcha, que un script no resuelve).
+
+  El `refresh_token` va en el mismo archivo `out/credentials.json` (git-ignorado, `chmod 600`) y **no se imprime nunca**. Rota: cada vez que
+  se renueva la sesión (al abrirla y cada hora mientras el script corre) se guarda el nuevo. Si no hay ninguna vía, `simulate` avisa
   "no session for …" y no hace nada para ese usuario.
-- Al final imprime una tabla `acción:resultado → n` (por ejemplo `chat:ok: 12`, `dm:42501: 3`).
+- Al final imprime una tabla `acción:resultado → n` (por ejemplo `chat:ok: 12`, `dm:42501: 3`) y, si hubo `swipe`, un **resumen de Match**:
+  likes y pases a cuentas reales y de prueba, swipes rechazados por ya existir, errores por código, **los matches creados** (con quién) y lo
+  que `match_get_activity` ve en ese momento. Se imprime al terminar porque **Match borra los swipes del local cuando vence la presencia**
+  y después ya no se pueden revisar.
 
 ### Barra de perfiles del chat del local
 La barra horizontal de perfiles **sale del canal Realtime de *presence* `presence:<id de la sala principal>`**, con la clave de
@@ -161,8 +169,8 @@ Reglas de seguridad:
 3. Cuidado con el chat y los DM: el filtro de insultos y la moderación aplican también a estas cuentas; los textos son neutros.
 4. `simulate` envía la posición del local a la geocerca. Es el mismo mecanismo de las pruebas con simuladores, pero hazlo solo en
    entornos de prueba.
-5. **SQL pendiente (opcional):** `supabase/migrations/pending/215_test_users_flag.sql` añade `users.is_test` (solo `service_role` puede
-   cambiarlo). Aplícalo antes de `seed` si quieres la doble marca.
+5. **SQL ya aplicado:** `supabase/migrations/215_test_users_flag.sql` añadió `users.is_test` (solo `service_role` puede
+   cambiarlo), así que `seed` marca las cuentas con la doble marca (dominio + `is_test`).
 6. Los scripts usan solo `@supabase/supabase-js` ya instalado en `web/node_modules` (y el `WebSocket` y `fetch` de Node 22+); no hay
    dependencias nuevas.
 7. `match-setup` descarga las ilustraciones de `api.dicebear.com` (red necesaria al ejecutarlo; la app no depende de DiceBear porque las

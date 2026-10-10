@@ -53,7 +53,7 @@ if (pool.length === 0) {
   console.error('No seeded users in scripts/test-users/out/credentials.json (run seed.mjs first).');
   process.exit(1);
 }
-const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx');
+const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx-omd2');
 // The venue's QR token, handed over by the owner through the environment (never an argument, never printed).
 const qrToken = qrTokenFromEnv();
 

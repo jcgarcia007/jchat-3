@@ -148,18 +148,22 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
   // dm-media is private → resolve the stored path to a short-lived signed URL.
   // Legacy/demo values that already carry a scheme are returned as-is.
   const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaFailed, setMediaFailed] = useState(false);
   useEffect(() => {
     let alive = true;
     const raw = message.media_url;
-    if (raw == null) {
+    setMediaFailed(false);
+    // A 'rejected' photo is NEVER requested by its receiver: since migration 217 the storage policy refuses to sign it for them.
+    // (This also drops a URL signed earlier, when the verdict arrives while the chat is open.)
+    if (raw == null || photoRejected) {
       setMediaUri(null);
       return;
     }
     resolveDmMediaUrl(raw)
       .then((u) => { if (alive) setMediaUri(u); })
-      .catch(() => { if (alive) setMediaUri(null); });
+      .catch(() => { if (alive) { setMediaUri(null); setMediaFailed(true); } }); // e.g. hidden by a moderator: show a placeholder
     return () => { alive = false; };
-  }, [message.media_url]);
+  }, [message.media_url, photoRejected]);
 
   // A gift card replaces the bubble (the 🎁 body is just a fallback for older clients).
   if (message.gift_offer_id) return <GiftCard offerId={message.gift_offer_id} />;
@@ -228,6 +232,10 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
                 </View>
               </View>
             ) : null}
+          </View>
+        ) : mediaFailed ? (
+          <View style={[styles.bubbleImage, styles.photoGate, { backgroundColor: c.bgBase }]}>
+            <Text style={[styles.photoGateText, { color: c.textSecondary }]}>{tc('dmPhoto.unavailable')}</Text>
           </View>
         ) : null}
 
@@ -306,6 +314,8 @@ export default function DMChatScreen() {
   const [text, setText] = useState(route.params.prefill ?? '');
   const [sending, setSending] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // Path of the photo currently open in the fullscreen viewer (closed if a moderator hides that message).
+  const viewerPathRef = useRef<string | null>(null);
 
   // ── Ephemeral Match chat (Fase D5) ───────────────────────────────────────────
   const [meta, setMeta] = useState<ChatMeta | null>(null);
@@ -449,11 +459,14 @@ export default function DMChatScreen() {
         },
         (payload) => {
           // A moderator hid a message of the other person (migration 213): it disappears from the thread at once.
-          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null; media_moderation?: DmMessageRow['media_moderation'] };
+          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null; media_url?: string | null; media_moderation?: DmMessageRow['media_moderation'] };
           if (row.hidden_at && row.id && row.sender_id !== user.id) {
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
-          } else if (row.id) {
-            // The photo verdict arrived (migration 214): update the bubble in place (blur on / off, rejected).
+            // The photo being viewed was just hidden: close the viewer instead of leaving it on screen.
+            if (row.media_url && viewerPathRef.current === row.media_url) setViewerUri(null);
+          } else if (row.id && row.media_moderation !== undefined) {
+            // The photo verdict arrived (migration 214): update the bubble in place (blur on / off, rejected). An event that does
+            // not carry the column (a read receipt, say) must not erase a verdict that is already known.
             setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, media_moderation: row.media_moderation ?? null } : m)));
           }
         },
@@ -573,6 +586,7 @@ export default function DMChatScreen() {
       try {
         const url = await resolveDmMediaUrl(mediaPath);
         if (!/^file:/i.test(url)) await Image.prefetch(url);
+        viewerPathRef.current = mediaPath;
         setViewerUri(url);
       } catch (err) {
         console.warn('[DMChat] photo viewer load error', err);
@@ -880,7 +894,11 @@ export default function DMChatScreen() {
         onClose={() => setMsgAction(null)}
       />
       {/* Fullscreen photo viewer: pinch 1x–4x, double tap, tap outside / swipe down / X to close */}
-      <ImageViewerModal visible={viewerUri != null} uri={viewerUri} onClose={() => setViewerUri(null)} />
+      <ImageViewerModal
+        visible={viewerUri != null}
+        uri={viewerUri}
+        onClose={() => { viewerPathRef.current = null; setViewerUri(null); }}
+      />
       <ReportReasonSheet
         visible={reportVisible}
         targetName={otherName}

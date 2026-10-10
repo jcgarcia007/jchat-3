@@ -4,7 +4,7 @@
  * NOT RUN by the assistant: read scripts/test-users/README.md first.
  *
  *   node scripts/test-users/seed.mjs --dry-run                 # shows what would be created, touches nothing
- *   node scripts/test-users/seed.mjs --count 20 --venue bar-xzx
+ *   node scripts/test-users/seed.mjs --count 20 --venue bar-xzx-omd2
  *
  * Passwords are random and live only in scripts/test-users/out/credentials.json (git-ignored, chmod 600). Nothing secret is printed.
  */
@@ -16,7 +16,7 @@ import {
 
 const dryRun = flag('dry-run');
 const count = Math.max(1, Math.min(200, Number(opt('count', '20')) || 20));
-const venueSlug = opt('venue', 'bar-xzx');
+const venueSlug = opt('venue', 'bar-xzx-omd2');
 
 const plan = Array.from({ length: count }, (_, i) => {
   const first = FIRST_NAMES[i % FIRST_NAMES.length];
@@ -43,10 +43,10 @@ if (venueError || !venue) {
 
 const saved = readCredentials();
 const byEmail = new Map(saved.users.map((u) => [u.email, u]));
-// Is the optional is_test column there (pending/215)? If not, the e-mail domain is the only marker.
+// Is the optional is_test column there (migration 215)? If not, the e-mail domain is the only marker.
 const probe = await admin.from('users').select('is_test').limit(1);
 const hasIsTest = !probe.error;
-if (!hasIsTest) console.log('Note: users.is_test does not exist yet (pending/215_test_users_flag.sql); the @' + DOMAIN + ' domain is the marker.');
+if (!hasIsTest) console.log('Note: users.is_test does not exist yet (migration 215_test_users_flag.sql); the @' + DOMAIN + ' domain is the marker.');
 
 let created = 0;
 let skipped = 0;
@@ -79,7 +79,8 @@ for (const p of plan) {
   }
 
   // Profile row (created by the auth trigger): name, bio, avatar. The avatar is generated and re-hosted in our own bucket.
-  const profile = { display_name: p.first, bio: pick(BIOS) };
+  // username too: the sign-up trigger ignores user_metadata.username and generates its own.
+  const profile = { display_name: p.first, username: p.username, bio: pick(BIOS) };
   try {
     const res = await fetch(avatarUrl(`${p.username}`));
     if (res.ok) {
@@ -113,3 +114,4 @@ for (const p of plan) {
 
 writeCredentials({ venue: { id: venue.id, slug: venue.slug, name: venue.name }, users: [...byEmail.values()] });
 console.log(`Done: ${created} created, ${skipped} already existed. Credentials: scripts/test-users/out/credentials.json (not printed).`);
+process.exit(0); // the user clients renew their sessions on a timer; do not wait for it

@@ -96,7 +96,8 @@
     "blurredHint": "This photo may contain sensitive content.",
     "showAnyway": "View anyway",
     "report": "Report",
-    "rejected": "This photo was removed because it breaks our rules."
+    "rejected": "This photo was removed because it breaks our rules.",
+    "unavailable": "This photo isn't available."
   },
   "imageViewer": {
     "close": "Close image",
