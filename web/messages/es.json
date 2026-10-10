@@ -3811,6 +3811,11 @@
     "suspended": "Usuario suspendido",
     "dismissed": "Reporte descartado",
     "resolved": "Reporte resuelto",
+    "contentExpired": "El contenido ya expiró; se muestra la copia guardada",
+    "hideDisabledExpired": "No se puede ocultar: el contenido ya no existe",
+    "ncmecConfirmMessage": "¿Ya enviaste el reporte al CyberTipline de NCMEC? Esto queda en el registro de auditoría.",
+    "ncmecConfirmCancel": "Cancelar",
+    "ncmecConfirmYes": "Sí, ya lo envié",
     "resolutions": {
       "no_action": "Sin acción necesaria",
       "content_removed": "Contenido retirado",
