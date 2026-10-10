@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Alert,
   FlatList,
@@ -20,6 +21,7 @@ import {
   type ConversationPreview,
 } from '../../services/dms';
 import { isSupabaseConfigured, supabase, channelTopic } from '../../services/supabase';
+import { subscribeBlockChanges } from '../../services/blocks';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
@@ -129,6 +131,28 @@ export default function ConversationList({
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
+  }, [load]);
+
+  // The Messages tab stays mounted, so it must reload when it comes back into focus (a block, unblock or new chat made
+  // elsewhere). The first focus is skipped: the mount effect above already loads.
+  const hasFocusedRef = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (!hasFocusedRef.current) {
+      hasFocusedRef.current = true;
+      return;
+    }
+    void load();
+  }, [load]));
+
+  // Blocking hides the conversation at once (the server already filters it on the next load); unblocking reloads it.
+  useEffect(() => {
+    return subscribeBlockChanges(({ userId, blocked }) => {
+      if (blocked) {
+        setConversations((prev) => prev.filter((conversation) => conversation.otherUser.id !== userId));
+      } else {
+        void load();
+      }
+    });
   }, [load]);
 
   useEffect(() => {

@@ -12,16 +12,45 @@
 import { supabase } from './supabase';
 import type { SocialUser } from './follows';
 
+// ── Block change notifications ───────────────────────────────────────────────
+// The server already hides a blocked person's DM conversation (RLS), but lists that stay mounted (the Messages tab) keep
+// what they loaded. Every block/unblock goes through this module, so it tells the open lists right after the RPC succeeds.
+
+export interface BlockChange {
+  userId: string;
+  blocked: boolean;
+}
+
+const blockListeners = new Set<(change: BlockChange) => void>();
+
+/** Subscribe to successful block/unblock actions made from this device. Returns the unsubscribe function. */
+export function subscribeBlockChanges(listener: (change: BlockChange) => void): () => void {
+  blockListeners.add(listener);
+  return () => { blockListeners.delete(listener); };
+}
+
+function emitBlockChange(change: BlockChange): void {
+  for (const listener of [...blockListeners]) {
+    try {
+      listener(change);
+    } catch (error) {
+      console.warn('[blocks] listener failed:', error);
+    }
+  }
+}
+
 /** Block a user: cuts follows (both ways) + pending requests, then hides content. */
 export async function blockUser(targetId: string): Promise<void> {
   const { error } = await supabase.rpc('block_user', { p_target: targetId });
   if (error) throw error;
+  emitBlockChange({ userId: targetId, blocked: true });
 }
 
 /** Unblock a user (does not restore prior follow edges — re-follow if desired). */
 export async function unblockUser(targetId: string): Promise<void> {
   const { error } = await supabase.rpc('unblock_user', { p_target: targetId });
   if (error) throw error;
+  emitBlockChange({ userId: targetId, blocked: false });
 }
 
 /** Users the current user has blocked (newest first). */
