@@ -47,8 +47,21 @@ targets = targets.filter((t) => !ownerIds.has(t.id));
 
 if (targets.length > max) { console.error(`${targets.length} accounts exceed --max ${max}. Aborting.`); process.exit(1); }
 
+/**
+ * Every Match photo file of a user: the paths the DB knows plus anything under `{uid}/` in the private bucket (an upload whose row
+ * insert failed leaves an orphan). The rows go with the user by cascade, the Storage objects do NOT, so they are removed first.
+ */
+async function matchPhotoPaths(userId) {
+  const paths = new Set();
+  const { data: rows } = await admin.from('match_photos').select('path').eq('user_id', userId);
+  for (const row of rows ?? []) if (row.path?.startsWith(`${userId}/`)) paths.add(row.path);
+  const { data: files } = await admin.storage.from('match-photos').list(userId, { limit: 1000 });
+  for (const file of files ?? []) if (file.name) paths.add(`${userId}/${file.name}`);
+  return [...paths];
+}
+
 console.log(`${apply ? 'DELETING' : 'DRY RUN — would delete'} ${targets.length} test account(s):`);
-for (const t of targets) console.log(`  ${t.email}`);
+for (const t of targets) console.log(`  ${t.email}  (${(await matchPhotoPaths(t.id)).length} Match photo file(s))`);
 if (!apply) { console.log('Nothing was deleted. Re-run with --apply to delete.'); process.exit(0); }
 
 let deleted = 0;
@@ -57,8 +70,13 @@ for (const t of targets) {
   // Same pre-steps as the delete-account Edge Function (NO ACTION references that would block the cascade).
   await admin.from('radius_increase_requests').delete().eq('requested_by', t.id);
   await admin.from('radius_increase_requests').update({ reviewed_by: null }).eq('reviewed_by', t.id);
-  // Own avatar object.
+  // Own avatar object and Match photo files (the match_photos rows go with the user by cascade; the files would stay behind).
   await admin.storage.from('avatars').remove([`${t.id}/avatar.png`]);
+  const photoPaths = await matchPhotoPaths(t.id);
+  for (let i = 0; i < photoPaths.length; i += 100) {
+    const { error: removeError } = await admin.storage.from('match-photos').remove(photoPaths.slice(i, i + 100));
+    if (removeError) console.error(`  ! ${t.email}: could not remove some Match photos (${removeError.message})`);
+  }
   const { error } = await admin.auth.admin.deleteUser(t.id);
   if (error) console.error(`  ✘ ${t.email}: ${error.message}`);
   else { deleted += 1; console.log(`  ✔ ${t.email}`); }
