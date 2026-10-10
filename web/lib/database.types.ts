@@ -4114,6 +4114,10 @@ export type Database = {
         Args: { p_content_id: string; p_content_type: string; p_report_id?: string; p_unhide?: boolean }
         Returns: undefined
       }
+      admin_report_content_exists: {
+        Args: { p_content_id: string; p_content_type: string }
+        Returns: boolean
+      }
       admin_resolve_report: {
         Args: { p_note?: string; p_report_id: string; p_resolution: string }
         Returns: undefined

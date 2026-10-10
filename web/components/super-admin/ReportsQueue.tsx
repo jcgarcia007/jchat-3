@@ -9,7 +9,7 @@
  * behind "Show". Actions go through the admin_* RPCs (they check is_platform_admin() and leave a security_logs record).
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatRelativeTime } from "@/lib/relativeTime";
@@ -67,6 +67,12 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [resolution, setResolution] = useState<Record<string, string>>({});
   const [note, setNote] = useState<Record<string, string>>({});
+  // Reports whose reported content no longer exists (purged): the saved copy is all that is left.
+  const [expired, setExpired] = useState<Set<string>>(new Set());
+  // Report waiting for the explicit "I already sent it to NCMEC" confirmation.
+  const [ncmecAsk, setNcmecAsk] = useState<Report | null>(null);
+  // Set once the existence RPC (migration 219) turns out not to be there: then only a failed "hide" marks a report as expired.
+  const existsCheckUnavailable = useRef(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -81,6 +87,32 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
     const rows = (data ?? []) as unknown as Report[];
     setReports(rows);
     if (!showResolved) onPendingCount?.(rows.length);
+
+    // Does the reported content still exist? An admin cannot read messages / posts / DMs with a normal query (RLS depends on being
+    // a member of the room or a participant), so a security-definer RPC answers (migration 219). If it is not applied yet nothing is
+    // marked here, and the first "hide" that comes back not_found marks the report instead.
+    const checkable = rows.filter((r) => r.status === "pending" && r.content_id && HIDEABLE.includes(r.content_type ?? ""));
+    if (checkable.length > 0 && !existsCheckUnavailable.current) {
+      const answers = await Promise.all(
+        checkable.map(async (r) => {
+          const { data: exists, error: existsError } = await supabase.rpc("admin_report_content_exists", {
+            p_content_type: r.content_type as string,
+            p_content_id: r.content_id as string,
+          });
+          return { id: r.id, exists, failed: !!existsError };
+        }),
+      );
+      if (answers.some((a) => a.failed)) existsCheckUnavailable.current = true;
+      setExpired((prev) => {
+        const next = new Set(prev);
+        for (const a of answers) {
+          if (a.failed) continue;
+          if (a.exists === false) next.add(a.id);
+          else next.delete(a.id);
+        }
+        return next;
+      });
+    }
 
     const userIds = [...new Set(rows.map((r) => r.reported_user_id).filter((id): id is string => !!id))];
     if (userIds.length > 0) {
@@ -120,8 +152,23 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
     await load();
   }
 
-  const hide = (r: Report) =>
-    run(r, () => supabase.rpc("admin_hide_content", { p_content_type: r.content_type as string, p_content_id: r.content_id as string, p_report_id: r.id }), "hidden");
+  const hide = async (r: Report) => {
+    setBusyId(r.id);
+    const { error: rpcError } = await supabase.rpc("admin_hide_content", { p_content_type: r.content_type as string, p_content_id: r.content_id as string, p_report_id: r.id });
+    setBusyId(null);
+    if (rpcError) {
+      // not_found: the content was purged. Say so (and keep the saved copy) instead of a bare failure.
+      if (rpcError.code === "P0002" || rpcError.message.includes("not_found")) {
+        setExpired((prev) => new Set(prev).add(r.id));
+        setToast(t("contentExpired"));
+        return;
+      }
+      setToast(`${t("actionFailed")}: ${rpcError.message}`);
+      return;
+    }
+    setToast(t("hidden"));
+    await load();
+  };
 
   const suspend = (r: Report, days: number | null) => {
     if (!r.reported_user_id) return;
@@ -132,6 +179,24 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
 
   const resolve = (r: Report, value: string) =>
     run(r, () => supabase.rpc("admin_resolve_report", { p_report_id: r.id, p_resolution: value, p_note: note[r.id]?.trim() || undefined }), value === "dismissed" ? "dismissed" : "resolved");
+
+  // "Escalated to NCMEC" is only recorded after an explicit confirmation (it goes to the audit log); the rest resolve at once.
+  const requestResolve = (r: Report, value: string) => {
+    if (value === "escalated_ncmec") { setNcmecAsk(r); return; }
+    void resolve(r, value);
+  };
+  const confirmNcmec = () => {
+    const r = ncmecAsk;
+    setNcmecAsk(null);
+    if (r) void resolve(r, "escalated_ncmec");
+  };
+
+  useEffect(() => {
+    if (!ncmecAsk) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNcmecAsk(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ncmecAsk]);
 
   const reasonLabel = (reason: string | null) => {
     const code = (reason ?? "").split(":")[0];
@@ -170,6 +235,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
         const snapshotText = typeof r.snapshot?.body === "string" ? (r.snapshot.body as string) : typeof r.snapshot?.caption === "string" ? (r.snapshot.caption as string) : null;
         const media = mediaItems(r.snapshot);
         const busy = busyId === r.id;
+        const isExpired = expired.has(r.id);
         return (
           <div key={r.id} style={{ padding: "14px 16px", background: "var(--bg-surface)", borderBottom: idx === visible.length - 1 ? "none" : "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
@@ -184,6 +250,12 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
               {r.business_id ? ` · ${t("venue")}: ${businessNames[r.business_id] ?? r.business_id.slice(0, 8)}` : ""}
             </div>
             {r.details && <div style={{ fontSize: 13, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>{r.details}</div>}
+
+            {isExpired && (
+              <div role="status" style={{ fontSize: 12, fontWeight: 600, color: "var(--color-warning)", background: "var(--bg-elevated)", borderRadius: 6, padding: "6px 10px" }}>
+                {t("contentExpired")}
+              </div>
+            )}
 
             {(snapshotText || media.length > 0) && (
               <div style={{ border: "1px dashed var(--border-subtle)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -213,7 +285,15 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
             {pending ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                 {HIDEABLE.includes(r.content_type ?? "") && r.content_id && (
-                  <button type="button" disabled={busy} onClick={() => void hide(r)} style={smallBtn}>{t("hideContent")}</button>
+                  <button
+                    type="button"
+                    disabled={busy || isExpired}
+                    title={isExpired ? t("hideDisabledExpired") : undefined}
+                    onClick={() => void hide(r)}
+                    style={{ ...smallBtn, opacity: isExpired ? 0.5 : 1, cursor: isExpired ? "not-allowed" : "pointer" }}
+                  >
+                    {t("hideContent")}
+                  </button>
                 )}
                 {r.reported_user_id && (
                   <>
@@ -228,7 +308,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
                     {RESOLUTIONS.map((v) => <option key={v} value={v}>{t(`resolutions.${v}`)}</option>)}
                   </select>
                   <input aria-label={t("note")} placeholder={t("note")} value={note[r.id] ?? ""} onChange={(e) => setNote((p) => ({ ...p, [r.id]: e.target.value }))} style={{ ...field, flex: "1 1 180px" }} />
-                  <button type="button" disabled={busy || !resolution[r.id]} onClick={() => void resolve(r, resolution[r.id])} style={{ ...smallBtn, background: "var(--color-brand)", color: "var(--on-brand)", opacity: resolution[r.id] ? 1 : 0.5 }}>{t("resolve")}</button>
+                  <button type="button" disabled={busy || !resolution[r.id]} onClick={() => requestResolve(r, resolution[r.id])} style={{ ...smallBtn, background: "var(--color-brand)", color: "var(--on-brand)", opacity: resolution[r.id] ? 1 : 0.5 }}>{t("resolve")}</button>
                 </div>
               </div>
             ) : (
@@ -237,6 +317,24 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
           </div>
         );
       })}
+
+      {ncmecAsk && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ncmec-confirm-text"
+          onClick={(e) => { if (e.target === e.currentTarget) setNcmecAsk(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "color-mix(in srgb, var(--bg-base) 70%, transparent)" }}
+        >
+          <div style={{ maxWidth: 420, width: "100%", background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <p id="ncmec-confirm-text" style={{ margin: 0, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>{t("ncmecConfirmMessage")}</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" autoFocus onClick={() => setNcmecAsk(null)} style={smallBtn}>{t("ncmecConfirmCancel")}</button>
+              <button type="button" onClick={confirmNcmec} style={{ ...smallBtn, background: "var(--color-brand)", color: "var(--on-brand)" }}>{t("ncmecConfirmYes")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
