@@ -14,13 +14,15 @@
  *   2. Interests: picks a few neutral ones (only orders the deck; not required).
  *   3. Venue + Match: check_geofence_and_join_room with the venue position, then match_check_in. The check-in is also the Match
  *      opt-in (the server inserts game_optins itself). A script's coordinates are supplied, not sensed, so it sends p_mocked = true;
- *      the server then leaves the presence 'pending' until a venue QR is scanned. That is reported at the end, not bypassed.
+ *      the server then leaves the presence 'pending' until a venue QR is scanned. The owner hands over the real QR of the main room in
+ *      the JCHAT_QR_TOKEN environment variable (full URL https://jchat.cloud/c/<token> or the bare token; never an argument, never
+ *      printed) and it is sent as p_qr_token. Without it, "pending" is reported at the end, not bypassed.
  *   4. Waits for the moderation verdicts and prints the state.
  */
 import { randomUUID } from 'node:crypto';
 import {
   MATCH_STYLES, SCRIPT_LOCATION_IS_SIMULATED, adminClient, config, enterVenue, flag, isTestEmail, matchCheckIn, matchPhotoUrl, opt,
-  pick, readCredentials, sleep, userClient,
+  pick, qrTokenFromEnv, qrTokenStatus, readCredentials, sleep, userClient,
 } from './lib.mjs';
 
 const dryRun = flag('dry-run');
@@ -36,7 +38,7 @@ const REQUIREMENTS = [
   'Not kicked from Match at that venue (match_kicks).',
   'Inside the venue per the server: a live room_geo_presence row (check_geofence_and_join_room within the radius +25 m, TTL 10 min).',
   'An ACTIVE Match presence: match_check_in with a valid venue QR token, or GPS without a mocked flag; renewed at least every 15 min. ' +
-    'Mocked/simulated location stays "pending" until a QR is scanned (migrations 196/197).',
+    'Mocked/simulated location stays "pending" until a QR is scanned (migrations 196/197): here the owner provides the venue QR in JCHAT_QR_TOKEN.',
   'Match opt-in for that venue (game_optins): inserted by match_check_in itself; there is no separate opt-in call. (The switch in the app is local.)',
   'At least ONE approved photo (match_photos.status = approved), set only by the moderation (Edge Function moderate-match-photo, Google Vision SafeSearch) or a superadmin review. Max 6 photos, bucket match-photos, path {uid}/{uuid}.webp, image/webp, ≤ 5 MB.',
   'Not blocked either way with the viewer, and not already swiped by the viewer; age filter ±1 year only if the viewer set matchAgeMin/Max and the candidate has a birth_year.',
@@ -52,6 +54,8 @@ if (pool.length === 0) {
   process.exit(1);
 }
 const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx');
+// The venue's QR token, handed over by the owner through the environment (never an argument, never printed).
+const qrToken = qrTokenFromEnv();
 
 function printRequirements() {
   console.log('\nWhat a user needs to appear in another user\'s Match deck:');
@@ -65,7 +69,8 @@ if (dryRun) {
     console.log(`  ${u.email}  photos → ${seeds.join('  ')}`);
   }
   console.log(`Per photo: GET https://api.dicebear.com/9.x/<style>/webp?size=512&seed=<seed> → upload match-photos/{uid}/{uuid}.webp (image/webp) → insert match_photos { user_id, path, sort, status: 'pending' }.`);
-  console.log(`Per user: ${INTERESTS_PER_USER} neutral interests (if none), check_geofence_and_join_room(venue position), match_check_in(p_mocked = ${SCRIPT_LOCATION_IS_SIMULATED}).`);
+  console.log(`Per user: ${INTERESTS_PER_USER} neutral interests (if none), check_geofence_and_join_room(venue position), match_check_in(p_mocked = ${SCRIPT_LOCATION_IS_SIMULATED}, p_qr_token = ${qrToken ? 'the JCHAT_QR_TOKEN value' : 'null'}).`);
+  console.log(`QR token: ${qrTokenStatus(qrToken)}${qrToken ? '' : ' — set JCHAT_QR_TOKEN (see the README) or the Match presence will stay pending'}.`);
   console.log(`Then wait up to ${waitSeconds}s for the moderation verdicts and report them (never set by this script).`);
   printRequirements();
   console.log('\nNothing was done.');
@@ -98,7 +103,7 @@ if (matchOn !== true) console.log(`! Match is OFF at "${venue.name}" (the owner'
 const { data: catalog } = await sessions[0].client.from('interests').select('key').eq('is_active', true);
 const interestKeys = (catalog ?? []).map((r) => r.key);
 
-console.log(`Preparing ${sessions.length} users for Match in "${venue.name}"…`);
+console.log(`Preparing ${sessions.length} users for Match in "${venue.name}"… (QR token: ${qrTokenStatus(qrToken)})`);
 for (const s of sessions) {
   const { user, client } = s;
 
@@ -150,7 +155,7 @@ for (const s of sessions) {
   if (!entered.granted) {
     tally(report.checkins, `venue-refused/${entered.code}`);
   } else {
-    const result = await matchCheckIn(client, venue);
+    const result = await matchCheckIn(client, venue, qrToken);
     tally(report.checkins, result.reason ? `${result.status}/${result.reason}` : result.status);
   }
   console.log(`  ✔ ${user.email}`);
@@ -189,7 +194,11 @@ if (report.profileGaps.length) {
 if (Object.keys(report.checkins).some((k) => k.startsWith('pending'))) {
   console.log('\n! BLOCKED: the check-ins stayed "pending" (mocked_location). A script cannot honestly give what the server asks for an active');
   console.log('  Match presence: either a real GPS reading (no mocked flag) or a scanned venue QR. These users will NOT appear in the Match deck');
-  console.log('  until that changes. Nothing was bypassed.');
+  console.log('  until the owner hands over the venue QR (JCHAT_QR_TOKEN, see the README). Nothing was bypassed.');
+}
+if (Object.keys(report.checkins).some((k) => k.endsWith('invalid_qr'))) {
+  console.log('\n! The server refused the QR token (invalid_qr): it is not a token of an active room of this venue, or the code was renewed in the');
+  console.log('  dashboard after the QR was read. Read the current QR of the MAIN room again and set JCHAT_QR_TOKEN.');
 }
 printRequirements();
 process.exit(0); // the clients may hold open sockets

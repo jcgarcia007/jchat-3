@@ -69,7 +69,7 @@ Cada acción de un usuario: pide su mazo con `match_get_deck` y hace `like` o `p
 Probabilidad de like: **0,85 hacia cuentas reales** (`is_test = false`, para que `test` y `test1` reciban matches) y **0,35 entre cuentas de
 prueba**. Mientras dure la simulación se **renueva el check-in** de Match cada 4 min (junto con la geocerca y la barra), porque el servidor
 lo vence a los 15 min. El resultado de cada llamada se cuenta (`swipe:like-real:ok`, `swipe:like-real:match`, `swipe:deck:42501`…).
-Ver el bloqueo de la sección siguiente: sin presencia **activa** el mazo responde `42501 not_present`.
+Sin presencia **activa** el mazo responde `42501 not_present`: ver `JCHAT_QR_TOKEN` en la sección de `match-setup`.
 
 ## 3. `match-setup.mjs`
 ```bash
@@ -98,14 +98,42 @@ Todo **como el propio usuario** (su sesión), igual que la app (`mobile/services
 9. Campos de la tarjeta (no obligatorios): `display_name`, `username`, `avatar_url`, `bio`, intereses.
 10. Para hacer swipe, quien mira necesita también presencia **activa** en el mismo local.
 
-### Bloqueo conocido: la ubicación de un script no es una lectura de GPS
+### Check-in de Match con el QR real del local (`JCHAT_QR_TOKEN`)
 `match_check_in` recibe `p_mocked`. Las coordenadas de un script **se le dan, no se miden**, así que el valor honesto es `true`
-(`SCRIPT_LOCATION_IS_SIMULATED` en `lib.mjs`). Con eso el servidor deja la presencia en **`pending` (`mocked_location`)** hasta que
-se escanee el QR del local, y el mazo exige presencia **activa**. Resultado: **las fotos y el opt-in se quedan listos, pero los usuarios
-simulados NO aparecen en el mazo** mientras la ubicación sea simulada. El script lo imprime como `BLOCKED` y **no lo rodea**: no manda
-`p_mocked = false` (sería declarar una lectura de GPS que no existe) ni toma el token QR de la base con la llave de servidor.
-Quien decida cómo resolverlo es el dueño del entorno (por ejemplo, una regla de servidor explícita para cuentas `is_test`, o pasar un
-QR real entregado por una persona). No está implementado.
+(`SCRIPT_LOCATION_IS_SIMULATED` en `lib.mjs`, no se cambia). Con eso el servidor deja la presencia en **`pending`
+(`mocked_location`)** hasta que se escanee el QR del local, y el mazo exige presencia **activa**. La forma honesta de resolverlo es que
+**el dueño entregue el QR real de la sala principal**: `match-setup.mjs` y `simulate.mjs` lo mandan como `p_qr_token` en cada check-in.
+
+**Sin `JCHAT_QR_TOKEN` todo sigue como antes:** la presencia queda `pending`, el script imprime `BLOCKED` y no rodea nada (ni manda
+`p_mocked = false`, ni lee el token de la base con la llave de servidor).
+
+**Dónde ve el dueño el QR de la sala principal.** En el dashboard web: **Salas de chat** (`/dashboard/chat-rooms`) → fila de la sala
+**Main** → botón **QR**. El modal enseña la imagen del QR y botones de descarga (PNG/PDF); **no muestra la URL como texto**. Se lee
+apuntando la cámara del teléfono (o cualquier lector de QR) al QR en pantalla o al impreso, y da una URL con este formato:
+
+```
+https://jchat.cloud/c/<token>
+```
+
+El **token es el tramo que va después de `/c/`** (letras, números, `-` y `_`; de 6 a 128 caracteres), p. ej. en `https://jchat.cloud/c/AbC123_xyz-9`
+el token es `AbC123_xyz-9`. Se puede pasar **la URL completa o solo el token**: el script extrae el token con la misma regla que la app
+(`mobile/utils/venueQr.ts`). Una URL de **mesa** (`/t/…`) no vale; tiene que ser la de una sala (`/c/…`) del mismo local.
+
+**Cómo pasarlo sin que quede en el historial** (nunca como argumento; el script solo lo lee del entorno):
+```bash
+read -s JCHAT_QR_TOKEN && export JCHAT_QR_TOKEN     # pega la URL o el token y Enter (no se ve al escribir)
+node scripts/test-users/match-setup.mjs --dry-run   # imprime solo "QR token: provided" o "missing"
+node scripts/test-users/match-setup.mjs --users 20
+unset JCHAT_QR_TOKEN                                # al terminar
+```
+El valor **nunca se imprime**: ni en logs, ni en errores, ni en `--dry-run` (solo `QR token: provided` / `missing`).
+
+**Vencimiento.** La presencia de Match **vence a los 15 min** sin latido, y la de la geocerca a los 10. `match-setup.mjs` hace **un** check-in
+por usuario; para mantenerlos en el mazo hay que dejar corriendo `simulate.mjs --actions …,swipe`, que **renueva el check-in (y la
+geocerca y la barra) cada 4 min** mientras corre, enviando el mismo token. Si el dueño pulsa **Renovar código** en el dashboard, el token
+anterior deja de valer (`denied/invalid_qr`): hay que leer el QR nuevo.
+
+**Trátalo como un secreto del local:** quien tenga ese token puede activar Match en el local sin estar allí. Si se filtra, renueva el código.
 
 ## 4. `cleanup.mjs`
 ```bash

@@ -159,13 +159,49 @@ export async function enterVenue(client, room, venue) {
   return { granted, code: granted ? 'ok' : (error?.code ?? data?.[0]?.reason ?? 'refused') };
 }
 
-/** Match check-in / heartbeat as the user (the server expires the presence after 15 min without one). */
-export async function matchCheckIn(client, venue) {
+// The printed QR of a venue room encodes `https://jchat.cloud/c/{rooms.qr_token}` (web/services/qr.ts roomQrUrl). Same rule as the
+// app's mobile/utils/venueQr.ts: the token is the segment after `/c/`; a bare token is accepted too. Anything else → null.
+const QR_URL_TOKEN_RE = /\/c\/([A-Za-z0-9_-]{6,128})(?:[/?#]|$)/;
+const QR_BARE_TOKEN_RE = /^[A-Za-z0-9_-]{6,128}$/;
+
+export function parseVenueQrToken(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  const fromUrl = QR_URL_TOKEN_RE.exec(value);
+  if (fromUrl) return fromUrl[1];
+  return QR_BARE_TOKEN_RE.test(value) ? value : null;
+}
+
+/**
+ * The venue QR token the OWNER hands over, from the JCHAT_QR_TOKEN environment variable only (never a command-line argument, so it
+ * does not land in the shell history). Accepts the full QR URL or the bare token. The value is a secret: it is never printed, not
+ * even in errors — a malformed value only says so. Returns null when the variable is not set.
+ */
+export function qrTokenFromEnv() {
+  const raw = process.env.JCHAT_QR_TOKEN;
+  if (raw == null || raw.trim() === '') return null;
+  const token = parseVenueQrToken(raw);
+  if (!token) {
+    console.error('JCHAT_QR_TOKEN is set but is neither a venue QR URL (https://<host>/c/<token>) nor a bare token. Its value is not shown.');
+    process.exit(2);
+  }
+  return token;
+}
+
+/** What may be printed about the token: never the value. */
+export const qrTokenStatus = (token) => (token ? 'provided' : 'missing');
+
+/**
+ * Match check-in / heartbeat as the user (the server expires the presence after 15 min without one). With the owner's venue QR
+ * token the server makes the presence active even though the coordinates are simulated; without it the presence stays 'pending'.
+ * Only the server's status/reason come back — never the token.
+ */
+export async function matchCheckIn(client, venue, qrToken = null) {
   const { data, error } = await client.rpc('match_check_in', {
     p_business_id: venue.id,
     p_lat: venue.lat,
     p_lng: venue.lng,
-    p_qr_token: null,
+    p_qr_token: qrToken,
     p_mocked: SCRIPT_LOCATION_IS_SIMULATED,
   });
   if (error) return { status: 'error', reason: error.code ?? 'error' };

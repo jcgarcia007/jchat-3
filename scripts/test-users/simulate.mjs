@@ -18,11 +18,14 @@
  *
  * Match (action "swipe"): the Match check-in is renewed every few minutes for as long as the simulation lasts. The coordinates of a
  * script are supplied, not sensed, so the check-in says so (p_mocked = true, see lib.mjs): the server then keeps the Match presence
- * 'pending' until a venue QR is scanned, and the deck needs an active presence — those outcomes are reported, not bypassed.
+ * 'pending' until a venue QR is scanned, and the deck needs an active presence. The owner can hand over the real QR of the venue's
+ * main room: put the URL (https://jchat.cloud/c/<token>) or the bare token in the JCHAT_QR_TOKEN environment variable (never as an
+ * argument; it is never printed) and every Match check-in sends it as p_qr_token. Without it the outcomes are reported, not bypassed.
+ * The Match presence expires after 15 min, so this script renews the check-in every 4 min while it runs.
  */
 import {
   CHAT_LINES, DM_LINES, POST_LINES, adminClient, config, enterVenue, flag, isTestEmail, joinVenuePresence, matchCheckIn, opt,
-  pick, presencePayload, readCredentials, sleep, userClient,
+  pick, presencePayload, qrTokenFromEnv, qrTokenStatus, readCredentials, sleep, userClient,
 } from './lib.mjs';
 
 const dryRun = flag('dry-run');
@@ -43,6 +46,8 @@ if (pool.length < 2) {
   process.exit(1);
 }
 const venueSlug = opt('venue', saved.venue?.slug ?? 'bar-xzx');
+// The venue's QR token, handed over by the owner through the environment (never an argument, never printed).
+const qrToken = qrTokenFromEnv();
 
 const unknownActions = actions.filter((a) => !['chat', 'dm', 'post', 'like', 'swipe'].includes(a));
 if (unknownActions.length) { console.error(`Unknown actions: ${unknownActions.join(', ')}`); process.exit(1); }
@@ -53,6 +58,7 @@ if (dryRun) {
   console.log(`Online bar: ${withPresence ? 'each user would join presence:<main room id> and track { user_id, display_name, avatar_url, is_incognito, nickname }' : 'off (--no-presence)'}.`);
   console.log(`Keep-alive every ${KEEPALIVE_MS / 60_000} min: check_geofence_and_join_room${actions.includes('swipe') ? ' + match_check_in (p_mocked = true: the coordinates are supplied by a script)' : ''}.`);
   if (actions.includes('swipe')) {
+    console.log(`QR token: ${qrTokenStatus(qrToken)}${qrToken ? ' (sent as p_qr_token on every Match check-in)' : ' — without it the Match presence stays pending and the deck stays closed'}.`);
     console.log(`Swipe: match_get_deck → like with p(${LIKE_REAL}) on real accounts (is_test = false) and p(${LIKE_TEST}) on test accounts, otherwise pass; never super.`);
   }
   console.log('Nothing was done.');
@@ -111,7 +117,7 @@ async function keepAlive(s) {
   }
 
   if (actions.includes('swipe')) {
-    const result = await matchCheckIn(s.client, venue);
+    const result = await matchCheckIn(s.client, venue, qrToken);
     s.matchStatus = result.status;
     count('match-checkin', result.reason ? `${result.status}/${result.reason}` : result.status);
   }
