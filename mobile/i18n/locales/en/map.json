@@ -1,5 +1,6 @@
 {
   "mapScreen": {
+    "webUnavailable": "Open the app to see the map",
     "styleNormal": "Normal",
     "styleSatellite": "Satellite",
     "findingLocation": "Finding your location…",

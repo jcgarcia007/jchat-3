@@ -35,23 +35,22 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+import {
+  CaptchaError,
+  SITE_KEY,
+  captchaErrorI18nKeys,
+  isCaptchaEnabled,
+  type CaptchaErrorCode,
+  type UseCaptcha,
+} from './captcha.shared';
 
-// ---------------------------------------------------------------------------
-// Config — sitekey desde app.config.ts → extra.hcaptchaSiteKey
-// (EXPO_PUBLIC_HCAPTCHA_SITEKEY). La SECRET key NUNCA vive en el cliente:
-// va sólo en el dashboard de Supabase.
-// ---------------------------------------------------------------------------
-const PLACEHOLDER_SITEKEY = 'PENDIENTE_SITEKEY';
-
-const SITE_KEY: string =
-  (Constants.expoConfig?.extra?.hcaptchaSiteKey as string | undefined)?.trim() ?? '';
-
-/** True cuando hay una sitekey real configurada (no vacía, no placeholder). */
-export const isCaptchaEnabled: boolean =
-  SITE_KEY.length > 0 && SITE_KEY !== PLACEHOLDER_SITEKEY;
+// Sitekey (extra.hcaptchaSiteKey ← EXPO_PUBLIC_HCAPTCHA_SITEKEY), kill-switch, CaptchaError,
+// captchaErrorI18nKeys and UseCaptcha live in captcha.shared.ts (shared with captcha.web.tsx).
+// La SECRET key NUNCA vive en el cliente: va sólo en el dashboard de Supabase.
+export { CaptchaError, captchaErrorI18nKeys, isCaptchaEnabled };
+export type { CaptchaErrorCode, UseCaptcha };
 
 // Hostname que hCaptcha valida contra la lista de hosts de la sitekey. Usamos
 // jchat.cloud en web y móvil → un solo dominio que registrar en el panel de hCaptcha.
@@ -61,40 +60,6 @@ const BASE_URL = 'https://jchat.cloud';
 // pisarlo: cubre el caso de que el WebView cargue pero luego no emita (p. ej. la app
 // pasa a background en mitad del reto), que el SDK no maneja.
 const GLOBAL_TIMEOUT_MS = 30000;
-
-// ---------------------------------------------------------------------------
-// Errores distinguibles — el consumidor mapea `.code` a un mensaje i18n concreto.
-// ---------------------------------------------------------------------------
-export type CaptchaErrorCode = 'busy' | 'network' | 'timeout' | 'unavailable' | 'expired';
-
-export class CaptchaError extends Error {
-  code: CaptchaErrorCode;
-  constructor(code: CaptchaErrorCode) {
-    super(code);
-    this.name = 'CaptchaError';
-    this.code = code;
-  }
-}
-
-/**
- * Mapea un error de `getCaptchaToken()` a las claves i18n (namespace 'auth') del
- * Alert. Centralizado para que LoginScreen y RegisterStep2 no dupliquen el switch.
- */
-export function captchaErrorI18nKeys(err: unknown): { titleKey: string; messageKey: string } {
-  const code: CaptchaErrorCode = err instanceof CaptchaError ? err.code : 'network';
-  switch (code) {
-    case 'expired':
-      return { titleKey: 'captcha.expiredTitle', messageKey: 'captcha.expiredMessage' };
-    case 'timeout':
-      return { titleKey: 'captcha.timeoutTitle', messageKey: 'captcha.timeoutMessage' };
-    case 'busy':
-      return { titleKey: 'captcha.busyTitle', messageKey: 'captcha.busyMessage' };
-    case 'network':
-    case 'unavailable':
-    default:
-      return { titleKey: 'captcha.errorTitle', messageKey: 'captcha.errorMessage' };
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Tipo estructural del evento de onMessage.
@@ -111,19 +76,6 @@ type HcaptchaEvent = {
 type Settler = {
   resolve: (token: string | null) => void;
   reject: (err: CaptchaError) => void;
-};
-
-export type UseCaptcha = {
-  /** Hay sitekey real: hay que pedir token y abortar si el usuario cancela. */
-  captchaEnabled: boolean;
-  /**
-   * Muestra el reto invisible y resuelve con el token, o `null` si el usuario
-   * cancela (o si el kill-switch está activo). Rechaza con `CaptchaError` (ver
-   * `.code`) en expiración, timeout, fallo de red o si el componente no está montado.
-   */
-  getCaptchaToken: () => Promise<string | null>;
-  /** Elemento a renderizar en el árbol del consumidor (null si el captcha está off). */
-  CaptchaGate: React.ReactElement | null;
 };
 
 export function useCaptcha(): UseCaptcha {

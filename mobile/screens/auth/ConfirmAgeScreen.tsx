@@ -30,7 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DatePicker from '../../components/common/DatePicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { IconCalendar, IconCheck } from '@tabler/icons-react-native';
 
@@ -72,10 +72,11 @@ export default function ConfirmAgeScreen() {
   );
 
   const onPickerChange = useCallback((event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setShowPicker(false);
+    // Android's dialog and the web <input type="date"> commit on selection; the iOS spinner commits on "Done".
+    if (Platform.OS !== 'ios') setShowPicker(false);
     if (event.type === 'set' && selected) {
       setPickerValue(selected);
-      if (Platform.OS === 'android') setDob(selected);
+      if (Platform.OS !== 'ios') setDob(selected);
     }
   }, []);
 
@@ -171,7 +172,7 @@ export default function ConfirmAgeScreen() {
 
         {showPicker && Platform.OS === 'ios' && (
           <View style={[styles.iosPickerWrap, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-            <DateTimePicker
+            <DatePicker
               value={pickerValue}
               mode="date"
               display="spinner"
@@ -190,8 +191,8 @@ export default function ConfirmAgeScreen() {
             </TouchableOpacity>
           </View>
         )}
-        {showPicker && Platform.OS === 'android' && (
-          <DateTimePicker
+        {showPicker && Platform.OS !== 'ios' && (
+          <DatePicker
             value={pickerValue}
             mode="date"
             display="default"

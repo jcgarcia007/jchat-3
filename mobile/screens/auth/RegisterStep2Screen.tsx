@@ -36,7 +36,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DatePicker from '../../components/common/DatePicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslation } from 'react-i18next';
@@ -235,14 +235,14 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------------
   const handleDateChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
-      // On Android the picker dismisses itself after selection / cancellation
-      if (Platform.OS === 'android') {
+      // On Android (and the web <input type="date">) the picker dismisses itself after selection / cancellation
+      if (Platform.OS !== 'ios') {
         setShowDatePicker(false);
       }
       if (event.type === 'set' && selectedDate) {
         setPickerValue(selectedDate);
-        // Android's dialog commits on OK; the iOS spinner commits on "Done".
-        if (Platform.OS === 'android') {
+        // Android's dialog / the web input commit on selection; the iOS spinner commits on "Done".
+        if (Platform.OS !== 'ios') {
           setDob(selectedDate);
           setDobTouched(true);
         }
@@ -552,7 +552,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                 { backgroundColor: inputBg, borderColor: inputBorder },
               ]}
             >
-              <DateTimePicker
+              <DatePicker
                 value={pickerValue}
                 mode="date"
                 display="spinner"
@@ -575,9 +575,9 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             </View>
           )}
 
-          {/* Android: modal picker — shown imperatively */}
-          {showDatePicker && Platform.OS === 'android' && (
-            <DateTimePicker
+          {/* Android: modal picker — shown imperatively. Web: native <input type="date">. */}
+          {showDatePicker && Platform.OS !== 'ios' && (
+            <DatePicker
               value={pickerValue}
               mode="date"
               display="default"
