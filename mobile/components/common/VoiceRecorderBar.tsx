@@ -10,7 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -28,7 +28,7 @@ import {
   clampVoiceSeconds,
   discardLocalRecording,
 } from '../../services/voiceNotes';
-import { confirm } from '../../utils/dialog';
+import { confirm, showAlert } from '../../utils/dialog';
 
 export interface VoiceRecording {
   uri: string;
@@ -107,10 +107,15 @@ export function VoiceRecorderBar({
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         finishedRef.current = true;
-        void confirm(t('voice.permissionTitle'), t('voice.permissionMessage'), { confirmText: t('voice.openSettings'), cancelText: t('actions.cancel') }).then((accepted) => {
-          if (!accepted) return;
-          void Linking.openSettings();
-        });
+        if (Platform.OS === 'web') {
+          // The browser has no "open settings" deep link: only explain how to allow the microphone.
+          showAlert(t('voice.permissionTitle'), t('voice.permissionMessage'));
+        } else {
+          void confirm(t('voice.permissionTitle'), t('voice.permissionMessage'), { confirmText: t('voice.openSettings'), cancelText: t('actions.cancel') }).then((accepted) => {
+            if (!accepted) return;
+            void Linking.openSettings();
+          });
+        }
         onCancel();
         return;
       }

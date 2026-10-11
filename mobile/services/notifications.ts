@@ -153,6 +153,9 @@ export type NotificationRoute =
 export async function registerForPushNotifications(
   userId: string,
 ): Promise<string | null> {
+  // Web push needs VAPID keys and a service worker; the browser build does not register a token.
+  if (Platform.OS === 'web') return null;
+
   // Android requires an explicit notification channel to be set before
   // requesting a token (Expo SDK 56 / RN 0.85).
   if (Platform.OS === 'android') {

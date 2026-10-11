@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import StripeRoot from './components/StripeRoot';
 import DialogHost from './components/common/DialogHost';
+import WebFrame from './components/common/WebFrame';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { VenueSessionProvider } from './context/VenueSessionContext';
@@ -78,7 +79,9 @@ export default function App() {
             <AuthenticatedAppearanceBridge />
             <CartProvider>
               <VenueSessionProvider>
-                <AppNavigator />
+                <WebFrame>
+                  <AppNavigator />
+                </WebFrame>
                 {/* Web: renders showAlert()/confirm() dialogs (native uses Alert); renders nothing on iOS/Android. */}
                 <DialogHost />
               </VenueSessionProvider>

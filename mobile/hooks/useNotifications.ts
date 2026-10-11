@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
@@ -48,18 +48,21 @@ const FOREGROUND_BANNER_TYPES: ReadonlySet<string> = new Set([
   'match_match',
 ]);
 
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const type = notification.request.content.data?.type;
-    const show = typeof type === 'string' && FOREGROUND_BANNER_TYPES.has(type);
-    return {
-      shouldShowBanner: show,
-      shouldShowList: show,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    };
-  },
-});
+// Web has no foreground OS banners or push (the browser build lists notifications through Realtime only).
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async (notification) => {
+      const type = notification.request.content.data?.type;
+      const show = typeof type === 'string' && FOREGROUND_BANNER_TYPES.has(type);
+      return {
+        shouldShowBanner: show,
+        shouldShowList: show,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      };
+    },
+  });
+}
 
 // ── Public interface ───────────────────────────────────────────────────────────
 
@@ -169,7 +172,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     };
 
     const attemptPushRegistration = async () => {
-      if (cancelled || passive || registrationInFlight) return;
+      if (cancelled || passive || registrationInFlight || Platform.OS === 'web') return;
       registrationInFlight = true;
       try {
         await registerForPushNotifications(userId);
@@ -199,8 +202,8 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       if (shouldRetryUndeterminedPermission) void attemptPushRegistration();
     });
 
-    // 3. Foreground received listener — refresh the list so the new row appears.
-    if (!passive) {
+    // 3. Foreground received listener — refresh the list so the new row appears (native only: no push on web).
+    if (!passive && Platform.OS !== 'web') {
       void Notifications.getLastNotificationResponseAsync()
         .then((response) => {
           if (cancelled || !response) return;

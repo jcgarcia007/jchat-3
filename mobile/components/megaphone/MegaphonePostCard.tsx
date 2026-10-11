@@ -7,7 +7,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useWindowDimensions,
   type ListRenderItemInfo,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -21,6 +20,7 @@ import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { formatDistance } from '../../utils/distanceUnits';
 import BusinessAvatar from './BusinessAvatar';
+import { useAppWindow } from '../../utils/appWindow';
 
 /** List padding (16 each side) the card has to fit inside. */
 const LIST_HORIZONTAL_PADDING = 32;
@@ -44,7 +44,7 @@ export default function MegaphonePostCard({
   const colors = useThemeColors();
   const translation = useTranslation('offers');
   const socialTranslation = useTranslation('social');
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } = useAppWindow();
   const mediaWidth = screenWidth - LIST_HORIZONTAL_PADDING;
   const mediaHeight = Math.round((mediaWidth * 5) / 4);
 

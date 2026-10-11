@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,6 +38,7 @@ import type { MatchCard as MatchCardData, MatchPhoto } from '../../services/matc
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
 import { showAlert } from '../../utils/dialog';
+import { useAppWindow } from '../../utils/appWindow';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchMyProfile'>;
 
@@ -52,7 +53,7 @@ export default function MatchMyProfileScreen() {
   const { t, i18n } = useTranslation('match');
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
-  const { width } = useWindowDimensions();
+  const { width } = useAppWindow();
   const language: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
 
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);

@@ -14,10 +14,8 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
-  Dimensions,
   Image,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,10 +33,12 @@ import { useThemeColors } from '../../theme/colors';
 import type { PostRow } from '../../services/posts';
 import { buildPostShareMessage } from '../../utils/postShare';
 import { getLeadingLetters } from '../../utils/initials';
+import { shareContent } from '../../utils/shareContent';
+import { getAppWindow } from '../../utils/appWindow';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W } = getAppWindow();
 const MEDIA_H = 280;
 
 /** Format a UTC ISO string as a relative human label ("2h ago", "3d ago"). */
@@ -126,7 +126,7 @@ export default function PostCard({
 
   const handleShare = useCallback(async () => {
     try {
-      await Share.share({ message: buildPostShareMessage(post, t) });
+      await shareContent({ message: buildPostShareMessage(post, t) });
     } catch {
       // The user dismissed the sheet or the platform refused it: nothing to report.
     }

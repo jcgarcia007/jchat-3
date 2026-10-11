@@ -22,7 +22,6 @@ import {
   AppState,
   Modal,
   ActivityIndicator,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -46,6 +45,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
+import { shareContent } from '../../utils/shareContent';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -466,7 +466,7 @@ export default function MapScreen() {
                 onShare={() => {
                   const handle = selected.slug ?? selected.id;
                   const url = `https://jchat.cloud/b/${handle}`;
-                  void Share.share({ message: `${selected.name} — ${url}`, url });
+                  void shareContent({ message: `${selected.name} — ${url}`, url });
                 }}
               />
             )}

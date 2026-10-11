@@ -12,7 +12,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Dimensions,
   Image,
   Modal,
   Pressable,
@@ -41,6 +40,7 @@ import { blockUser } from '../../services/blocks';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
 import { confirm, showAlert } from '../../utils/dialog';
+import { getAppWindow } from '../../utils/appWindow';
 
 const CARD_W = 264;
 const CARD_H_EST = 176; // header + 2 grid rows — for the flip decision + above positioning
@@ -136,7 +136,7 @@ export default function UserQuickCard({
     return () => { alive = false; };
   }, [visible, user?.id, targetUserId]);
 
-  const { width: screenW, height: screenH } = Dimensions.get('window');
+  const { width: screenW, height: screenH } = getAppWindow();
 
   // Flip: show below the avatar when there's room, else above.
   const spaceBelow = screenH - (anchor.y + anchor.height);

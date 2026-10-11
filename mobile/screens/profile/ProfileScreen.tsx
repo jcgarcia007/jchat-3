@@ -6,11 +6,9 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,6 +39,8 @@ import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHe
 import { toUserMessage } from '../../utils/errors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { confirm, showAlert } from '../../utils/dialog';
+import { shareContent } from '../../utils/shareContent';
+import { useAppWindow } from '../../utils/appWindow';
 
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
@@ -143,7 +143,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const { t } = useTranslation('profile');
   const insets = useSafeAreaInsets();
   const homeBarInset = useHomeBarInset();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth } = useAppWindow();
   const cellSize = (windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<ProfileRoute>();
@@ -233,7 +233,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const shareProfile = useCallback(async () => {
     if (!profile) return;
-    await Share.share({ message: t('actions.shareText', { username: profile.username }) });
+    await shareContent({ message: t('actions.shareText', { username: profile.username }) });
   }, [profile, t]);
 
   // Another user's counters open THEIR lists, not mine.

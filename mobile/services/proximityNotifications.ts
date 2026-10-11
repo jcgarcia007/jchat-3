@@ -28,6 +28,7 @@
  *   The route descriptor shape is `{ type: 'proximity', businessId: string }`.
  */
 
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
   canNotify,
@@ -149,6 +150,9 @@ export async function fireProximityNotification(
   mode: ProximityMode,
   context: ProximityContext,
 ): Promise<void> {
+  // Local notifications are native-only; the map and geofencing do not run on web.
+  if (Platform.OS === 'web') return;
+
   // Gate: mode + daily cap + per-venue cooldown.
   const allowed = await canNotify(venue.id, mode, venue, context);
   if (!allowed) {

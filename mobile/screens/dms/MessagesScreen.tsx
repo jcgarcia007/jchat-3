@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -58,7 +59,7 @@ export default function MessagesScreen() {
 
   useFocusEffect(useCallback(() => {
     void refresh();
-    void Notifications.setBadgeCountAsync(0).catch(() => {});
+    if (Platform.OS !== 'web') void Notifications.setBadgeCountAsync(0).catch(() => {});
   }, [refresh]));
 
   const handleRefresh = useCallback(async () => {

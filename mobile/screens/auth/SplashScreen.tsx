@@ -10,7 +10,6 @@ import {
   Text,
   Animated,
   StyleSheet,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
+import { getAppWindow } from '../../utils/appWindow';
 
 // ---------------------------------------------------------------------------
 // Design-System splash colors — sourced from JCHAT_3.0_DESIGN_SYSTEM.docx
@@ -67,7 +67,7 @@ type SplashNav = NativeStackNavigationProp<AuthStackParamList, 'Splash'>;
 // City-map SVG — static schematic of streets + blocks + heatmap blobs
 // Keeps render cost low: one SVG, no canvas, no WebGL.
 // ---------------------------------------------------------------------------
-const { width: SW, height: SH } = Dimensions.get('window');
+const { width: SW, height: SH } = getAppWindow();
 
 function CityMapSvg({ opacity }: { opacity: Animated.Value }) {
   // Build a simple grid of city blocks

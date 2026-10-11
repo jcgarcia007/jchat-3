@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -21,6 +20,7 @@ import { IconBrandPagekit } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
+import { getAppWindow } from '../../utils/appWindow';
 
 // ---------------------------------------------------------------------------
 // Design-System gradient / border hexes specific to this screen.
@@ -39,7 +39,7 @@ const WELCOME_COLORS = {
 
 type WelcomeNav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = getAppWindow();
 const BUTTON_RADIUS = 14;
 const BUTTON_HEIGHT = 44;
 

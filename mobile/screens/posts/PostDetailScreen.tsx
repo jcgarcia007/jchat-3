@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -52,10 +51,11 @@ import BusinessAvatar from '../../components/megaphone/BusinessAvatar';
 import { toUserMessage } from '../../utils/errors';
 import { checkMessage } from '../../utils/messageFilter';
 import { confirm, showAlert } from '../../utils/dialog';
+import { getAppWindow } from '../../utils/appWindow';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
-const PHOTO_WIDTH = Dimensions.get('window').width;
+const PHOTO_WIDTH = getAppWindow().width;
 
 function SheetRow({ label, color, borderColor, icon, onPress }: {
   label: string; color: string; borderColor: string; icon?: React.ReactNode; onPress: () => void;
