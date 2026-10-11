@@ -68,3 +68,6 @@ scripts/test-*.ts
 # Maestro e2e outputs (screenshots, logs)
 e2e/out/
 e2e/.env.local
+
+# Playwright web smoke test (e2e/web.config.ts)
+e2e/artifacts/
