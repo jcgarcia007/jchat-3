@@ -41,6 +41,7 @@ import {
   IconTerminal2,
   IconPrinter,
   IconHeart,
+  IconCards,
 } from "@tabler/icons-react";
 
 export type NavIcon = React.ComponentType<{ size?: number; stroke?: number }>;
@@ -137,6 +138,8 @@ export const NAV_MODULES: NavModule[] = [
 // Owner-only page: the Sidebar appends it to the "chat" module when the signed-in user is
 // businesses.owner_id of the active business (not part of NAV_MODULES on purpose).
 export const MATCH_PAGE: NavPage = { labelKey: "railMatch", href: "/dashboard/match", icon: IconHeart };
+// Same rule for Truth or Dare (moderation, official rounds, stats).
+export const TOD_PAGE: NavPage = { labelKey: "railTruthOrDare", href: "/dashboard/truth-or-dare", icon: IconCards };
 
 // Configuration lives apart, pinned to the bottom of the rail (engranaje).
 export const CONFIG_MODULE: NavModule = {

@@ -3,7 +3,8 @@
  *
  * Match tables/columns added by migrations 189–193 (business_games, match_kicks, reports.business_id,
  * match_* RPCs) are not in lib/database.types.ts yet (not regenerated on purpose). Use this
- * client ONLY for those; everything else keeps the typed `supabase` client. Remove once the
+ * client ONLY for those. Truth or Dare (migrations 222–227: tod_* tables, tod_* RPCs, reports.snapshot, messages.hidden_at)
+ * is not in the generated types either. Use this client ONLY for those; everything else keeps the typed `supabase` client. Remove once the
  * types are regenerated.
  */
 
