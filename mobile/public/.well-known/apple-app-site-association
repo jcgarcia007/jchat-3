@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["5H45ZXU67Q.com.juangarciacruz.jchatapp"],
+        "components": [{ "/": "/*", "comment": "Todo el subdominio del local abre la app" }]
+      }
+    ]
+  }
+}
