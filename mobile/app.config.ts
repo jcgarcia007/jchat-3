@@ -53,6 +53,9 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.juangarciacruz.jchatapp',
     // Universal Links: the AASA file is served from public/.well-known/ (added with the real IDs).
     associatedDomains: ['applinks:jchat.cloud', 'applinks:*.jchat.cloud'],
+    // La app usa Sign in with Apple (OAuth de Supabase hoy, botón nativo después). Sin esta línea EAS intenta
+    // desactivar la capability APPLE_ID_AUTH y Apple lo rechaza.
+    usesAppleSignIn: true,
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
     infoPlist: {
