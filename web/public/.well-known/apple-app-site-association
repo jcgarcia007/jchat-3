@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["5H45ZXU67Q.com.juangarciacruz.jchatapp"],
+        "components": [{ "/": "/c/*", "comment": "Entrada por QR del apex" }]
+      }
+    ]
+  }
+}

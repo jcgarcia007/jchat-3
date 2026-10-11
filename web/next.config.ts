@@ -85,6 +85,20 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      // Universal Links / App Links (public/.well-known). Apple pide JSON en el AASA aunque no tenga
+      // extensión; ambos archivos se cachean 1 h. Deben responder 200 directo (Apple no sigue redirecciones):
+      // el matcher de middleware.ts los excluye y no hay trailingSlash ni prefijo de idioma.
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [
+          { key: "Content-Type", value: "application/json" },
+          { key: "Cache-Control", value: "public, max-age=3600" },
+        ],
+      },
+      {
+        source: "/.well-known/assetlinks.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600" }],
+      },
     ];
   },
 };

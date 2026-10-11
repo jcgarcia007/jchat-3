@@ -42,8 +42,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all paths except static assets and image files.
+  // Run on all paths except static assets, image files and /.well-known/.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // `.well-known/` (AASA / assetlinks) must answer 200 straight from public/ with no session work.
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
