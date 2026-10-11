@@ -42,11 +42,17 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   web: {
+    // Client web (jchat.cloud / *.jchat.cloud): same React Native code via react-native-web.
+    // 'single' = SPA with one index.html; the venue host is read from window.location.hostname.
+    bundler: 'metro',
+    output: 'single',
     favicon: './assets/favicon.png',
   },
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.juangarciacruz.jchatapp',
+    // Universal Links: the AASA file is served from public/.well-known/ (added with the real IDs).
+    associatedDomains: ['applinks:jchat.cloud', 'applinks:*.jchat.cloud'],
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
     infoPlist: {
@@ -68,6 +74,18 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // App Links: open *.jchat.cloud and jchat.cloud/c/* in the app (assetlinks.json goes in public/.well-known/).
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          { scheme: 'https', host: '*.jchat.cloud' },
+          { scheme: 'https', host: 'jchat.cloud', pathPrefix: '/c/' },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
     config: {
