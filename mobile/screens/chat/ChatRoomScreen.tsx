@@ -113,6 +113,9 @@ import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser, getBlockRelations } from '../../services/blocks';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
+import { TodChatProvider } from '../../components/games/TodChatProvider';
+import { TodRoundsBar } from '../../components/games/TodRoundsBar';
+import { isTodEnabledForBusiness, isTodMessageType } from '../../services/tod';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { palette } from '../../theme/tokens';
@@ -351,6 +354,8 @@ export default function ChatRoomScreen() {
   const [gamesEnabled, setGamesEnabled] = useState(true);
   const [matchOptInValue, setMatchOptInValue] = useState(true);
   const [matchNoticeFull, setMatchNoticeFull] = useState(true);
+  // Truth or Dare is enabled per venue by the owner (off by default); independent from Match.
+  const [todAvailable, setTodAvailable] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !matchBusinessId || !user?.id) return;
@@ -361,17 +366,22 @@ export default function ChatRoomScreen() {
       loadUserSettings(user.id),
       hasSeenMatchNotice(matchBusinessId),
       getMatchOptIn(matchBusinessId),
+      isTodEnabledForBusiness(matchBusinessId), // never throws: false when it cannot be confirmed
     ])
-      .then(([available, games, settings, seen, optIn]) => {
+      .then(([available, games, settings, seen, optIn, todOn]) => {
         if (!alive) return;
         setMatchAvailable(available);
+        setTodAvailable(todOn);
         setMatchGames(games);
         setGamesEnabled(settings.gamesEnabled ?? true);
         setMatchNoticeFull(!seen);
         setMatchOptInValue(optIn);
       })
       .catch(() => {
-        if (alive) setMatchAvailable(false); // fail closed: no Match UI if we can't confirm
+        if (alive) {
+          setMatchAvailable(false); // fail closed: no Match UI if we can't confirm
+          setTodAvailable(false);
+        }
       });
     return () => {
       alive = false;
@@ -406,21 +416,28 @@ export default function ChatRoomScreen() {
 
   // Games panel / ⋯ menu / QR (Fase D1). Hidden for the owner (no geofence reading → not in Match).
   const [qrScannerVisible, setQrScannerVisible] = useState(false);
-  const gamesAvailable = matchActive && !isOwner;
+  // Truth or Dare needs no check-in or Match opt-in: only the owner's switch and the user's own "play games" setting.
+  const todActive = todAvailable && gamesEnabled;
+  const gamesAvailable = (matchActive || todActive) && !isOwner;
   const panelGames = useMemo(
     () =>
       matchGames
-        .filter((g) => g.key === 'match')
+        .filter((g) => (g.key === 'match' && matchActive) || (g.key === 'truth_or_dare' && todActive))
         .map((g) => ({ key: g.key, name: matchLanguage === 'es' ? g.name_es : g.name_en })),
-    [matchGames, matchLanguage],
+    [matchGames, matchLanguage, matchActive, todActive],
   );
 
   const handleGamePress = useCallback(
     (key: string) => {
-      if (key !== 'match' || !matchBusinessId) return;
-      navigation.navigate('MatchHome', { businessId: matchBusinessId, businessName: business?.name });
+      if (!matchBusinessId) return;
+      if (key === 'match') {
+        navigation.navigate('MatchHome', { businessId: matchBusinessId, businessName: business?.name });
+      } else if (key === 'truth_or_dare') {
+        // The card is published in the room the player is looking at right now.
+        navigation.navigate('TodHome', { businessId: matchBusinessId, businessName: business?.name, roomId: activeRoomId });
+      }
     },
-    [navigation, matchBusinessId, business?.name],
+    [navigation, matchBusinessId, business?.name, activeRoomId],
   );
 
   const handleQrToken = useCallback((token: string) => {
@@ -783,9 +800,19 @@ export default function ChatRoomScreen() {
         },
         (payload) => {
           // A moderator hid the message (migration 213): everyone but its author drops it from the list at once.
-          const row = payload.new as { id?: string; user_id?: string; hidden_at?: string | null };
+          const row = payload.new as {
+            id?: string;
+            user_id?: string;
+            type?: string;
+            metadata?: Record<string, unknown>;
+            hidden_at?: string | null;
+          };
           if (row.hidden_at && row.id && row.user_id !== meId) {
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          } else if (row.id && isTodMessageType(row.type) && row.metadata) {
+            // Truth or Dare: the server patches plays / status / applause in the message metadata.
+            const metadata = row.metadata;
+            setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, metadata } : m)));
           }
         },
       )
@@ -1329,6 +1356,11 @@ export default function ChatRoomScreen() {
 
   const handleLongPressMessage = useCallback(
     (m: ChatMessage) => {
+      // Truth or Dare messages cannot be pinned, edited or deleted from the client: only others' ones open report / block.
+      if (isTodMessageType(m.type)) {
+        if (m.user_id !== user?.id) setMsgAction(m);
+        return;
+      }
       const canPin = viewerRole !== 'user';
       // Own and system messages: only the pin option, and only for owners / moderators (spec 2.5).
       if (m.is_system || m.user_id === user?.id) {
@@ -1367,6 +1399,29 @@ export default function ChatRoomScreen() {
   // ── FlatList key extractor + render ───────────────────────────────────────
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
+
+  // ── Truth or Dare: re-read signal for the rounds strip, name lookup and scroll-to-card ──
+  const todRefreshKey = useMemo(
+    () =>
+      messages
+        .filter((m) => m.type === 'tod_round')
+        .map((m) => `${m.id}:${String(m.metadata.status ?? '')}:${String(m.metadata.plays ?? '')}`)
+        .join('|'),
+    [messages],
+  );
+  const resolveTodName = useCallback((id: string) => userNameCacheRef.current.get(id), []);
+  const goToTodMessage = useCallback(
+    (messageId: string) => {
+      const index = visibleMessages.findIndex((m) => m.id === messageId);
+      if (index < 0) return; // older than the page that is loaded: nothing to scroll to
+      try {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      } catch {
+        // not measurable yet: onScrollToIndexFailed takes over
+      }
+    },
+    [visibleMessages],
+  );
 
   const renderMessage = useCallback(
     ({ item }: { item: ChatMessage }) => (
@@ -1553,6 +1608,12 @@ export default function ChatRoomScreen() {
   const isMainRoom = activeSubRoomData?.is_main ?? room?.is_main ?? true;
 
   return (
+    <TodChatProvider
+      businessId={matchBusinessId}
+      businessName={business?.name ?? ''}
+      userId={user?.id ?? null}
+      enabled={todActive && !isOwner}
+    >
     <View style={[chatStyles.container, { backgroundColor: chatTheme.bg }]}>
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <ChatTopBar
@@ -1577,6 +1638,16 @@ export default function ChatRoomScreen() {
           onSelectProtected={handleSelectProtectedSubRoom}
         />
       </ChatTopBar>
+
+      {/* Truth or Dare: strip of active rounds of THIS room, right under the room tabs (hidden when there are none). */}
+      <TodRoundsBar
+        roomId={activeRoomId}
+        enabled={todActive && !isOwner}
+        refreshKey={todRefreshKey}
+        theme={chatTheme}
+        resolveName={resolveTodName}
+        onGoToMessage={goToTodMessage}
+      />
 
       {/* Pinned banner — sticky below the sub-room tabs (Task 2.5). */}
       <PinnedBanner
@@ -1613,8 +1684,9 @@ export default function ChatRoomScreen() {
           showsVerticalScrollIndicator={false}
           onScroll={handleMessageListScroll}
           scrollEventThrottle={16}
-          onScrollToIndexFailed={() => {
-            // Safe no-op: we never call scrollToIndex, but guard against crashes.
+          onScrollToIndexFailed={(info) => {
+            // Only the Truth or Dare strip scrolls to a card; if the row is not measured yet, go near it.
+            flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
           }}
           keyboardShouldPersistTaps="handled"
           // Inverted: data is DESC (index 0 = newest = bottom). The "end" of the
@@ -1758,7 +1830,7 @@ export default function ChatRoomScreen() {
         authorName={msgActionName}
         onReport={handleReportMessage}
         onBlock={handleBlockAuthor}
-        onPin={msgAction && viewerRole !== 'user' ? () => { const m = msgAction; setMsgAction(null); setPinMsg(m); } : undefined}
+        onPin={msgAction && viewerRole !== 'user' && !isTodMessageType(msgAction.type) ? () => { const m = msgAction; setMsgAction(null); setPinMsg(m); } : undefined}
         onClose={() => setMsgAction(null)}
       />
 
@@ -1834,6 +1906,7 @@ export default function ChatRoomScreen() {
         onClose={() => setServiceSheetVisible(false)}
       />
     </View>
+    </TodChatProvider>
   );
 }
 

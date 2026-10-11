@@ -35,12 +35,14 @@ import { OfferCard } from './OfferCard';
 import type { Offer } from './OfferCard';
 import { isRoomVoicePath, isTrustedMediaUrl } from '../../utils/mediaUrl';
 import { VoiceBubble } from '../common/VoiceBubble';
+import { TodRoundCard } from '../games/TodRoundCard';
+import { TodDrawResult } from '../games/TodDrawResult';
 import type { VoiceSource } from '../../services/voiceNotes';
 import { getInitials } from '../../utils/initials';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export type MessageType = 'text' | 'photo' | 'voice' | 'gif' | 'system' | 'offer';
+export type MessageType = 'text' | 'photo' | 'voice' | 'gif' | 'system' | 'offer' | 'tod_round' | 'tod_draw';
 
 export interface ChatMessage {
   id: string;
@@ -131,9 +133,11 @@ interface BubbleContentProps {
   theme: ChatTheme;
   onImagePress?: (url: string) => void;
   onOrderNow?: (offer: Offer) => void;
+  /** Name of the author (Truth or Dare cards say who started the round / got the card). */
+  displayName: string;
 }
 
-function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow }: BubbleContentProps) {
+function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, displayName }: BubbleContentProps) {
   const { t } = useTranslation('chat');
   const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
   // Only this project's Storage URLs are rendered. The sender's own optimistic bubble
@@ -229,6 +233,12 @@ function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow }: Bubb
     case 'offer':
       return <OfferCard offer={offerFromMessage(message, t('bubble.offerFallback'))} theme={theme} onOrderNow={onOrderNow} />;
 
+    case 'tod_round':
+      return <TodRoundCard metadata={message.metadata} theme={theme} isOwn={isOwn} creatorName={displayName} />;
+
+    case 'tod_draw':
+      return <TodDrawResult metadata={message.metadata} theme={theme} isOwn={isOwn} authorName={displayName} />;
+
     case 'system':
     default:
       // System messages are handled by the parent list, but this is a safe fallback.
@@ -256,6 +266,8 @@ export function MessageBubble({
   const displayName = resolveDisplayName(message, t('bubble.unknownUser'));
   const incognito = isIncognito(message);
   const isOffer = message.type === 'offer';
+  // Offers and Truth or Dare round cards are full cards: no bubble chrome around them.
+  const isCard = isOffer || message.type === 'tod_round';
   const avatarRef = useRef<View>(null);
 
   // Tap → measure the avatar rect (window coords) and open the anchored quick card.
@@ -353,11 +365,11 @@ export function MessageBubble({
 
         {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
         <Pressable onLongPress={handleLongPressMessage} delayLongPress={400}>
-          {isOffer ? (
-            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} />
+          {isCard ? (
+            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} displayName={displayName} />
           ) : (
             <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} />
+              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} displayName={displayName} />
             </View>
           )}
         </Pressable>

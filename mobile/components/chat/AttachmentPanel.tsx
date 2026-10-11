@@ -34,6 +34,7 @@ import {
   IconBell,
   IconTag,
   IconDeviceGamepad2,
+  IconDice5,
   IconHeart,
   IconQrcode,
 } from '@tabler/icons-react-native';
@@ -267,7 +268,7 @@ export function AttachmentPanel({
 
       </View>
 
-      {/* Games row — only the catalog games (today Match) */}
+      {/* Games row — the catalog games enabled at this venue (Match and/or Truth or Dare) */}
       {gamesAvailable && gamesOpen && (
         <View style={panelStyles.gamesBlock} accessibilityLabel={tm('games.rowA11y')}>
           <View style={panelStyles.row}>
@@ -275,7 +276,11 @@ export function AttachmentPanel({
               <OptionButton
                 key={game.key}
                 theme={theme}
-                icon={<IconHeart size={24} color={theme.accent} />}
+                icon={
+                  game.key === 'truth_or_dare'
+                    ? <IconDice5 size={24} color={theme.accent} />
+                    : <IconHeart size={24} color={theme.accent} />
+                }
                 label={game.name}
                 onPress={() => handleGame(game.key)}
               />

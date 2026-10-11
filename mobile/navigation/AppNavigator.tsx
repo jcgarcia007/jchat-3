@@ -72,6 +72,7 @@ import MatchInterestsScreen from '../screens/match/MatchInterestsScreen';
 import MatchProfileScreen from '../screens/match/MatchProfileScreen';
 import MatchItsAMatchScreen from '../screens/match/MatchItsAMatchScreen';
 import MatchActivityScreen from '../screens/match/MatchActivityScreen';
+import TodHomeScreen from '../screens/games/TodHomeScreen';
 import type { MatchCard } from '../services/matchTypes';
 import type { MenuItem } from '../services/menu';
 
@@ -136,6 +137,8 @@ export type MainStackParamList = {
   MyOrders: undefined;
   /** Match (JChat's venue game): entry/home screen. Presence state comes from the shared store. */
   MatchHome: { businessId: string; businessName?: string };
+  /** Truth or Dare: publish a card (pick a category) in the room the player was in. */
+  TodHome: { businessId: string; businessName?: string; roomId: string };
   /** "Mi perfil del deck": my Match card, photos, interests and settings. */
   MatchMyProfile: undefined;
   /** Interests quiz/editor. firstTime shows "skip". */
@@ -300,6 +303,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
           <MainStack.Screen name="MyOrders" component={MyOrdersScreen} />
           <MainStack.Screen name="MatchHome" component={MatchHomeScreen} />
+          <MainStack.Screen name="TodHome" component={TodHomeScreen} />
           <MainStack.Screen name="MatchMyProfile" component={MatchMyProfileScreen} />
           <MainStack.Screen name="MatchInterests" component={MatchInterestsScreen} />
           <MainStack.Screen name="MatchProfile" component={MatchProfileScreen} />
