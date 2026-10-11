@@ -42,6 +42,7 @@
     "expo-updates": "~57.0.25",
     "expo-web-browser": "~57.0.3",
     "i18next": "^26.3.5",
+    "prop-types": "^15.8.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.8",
