@@ -56,7 +56,9 @@
     "userTapA11y": "Ver opciones de {{name}}",
     "myOrders": "Mis pedidos",
     "moreOptions": "Más opciones",
-    "notifications": "Notificaciones ({{count}} sin leer)"
+    "notifications": "Notificaciones ({{count}} sin leer)",
+    "messages": "Mensajes",
+    "messagesUnread": "Mensajes (tienes mensajes sin leer)"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — protegido con contraseña"
@@ -357,7 +359,12 @@
       "all": "Todas",
       "match": "Match",
       "orders": "Pedidos"
-    }
+    },
+    "unreadCount_one": "{{count}} sin leer",
+    "unreadCount_other": "{{count}} sin leer",
+    "markAllRead": "Marcar todo como leído",
+    "markedRead_one": "{{count}} notificación marcada como leída",
+    "markedRead_other": "{{count}} notificaciones marcadas como leídas"
   },
   "moreSheet": {
     "myOrders": "Mi cuenta y pedidos",
