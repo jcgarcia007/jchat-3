@@ -451,7 +451,13 @@ export default function ChatRoomScreen() {
   // 🎁 Gift (from the quick card / user sheet): only offered while both are present at the venue.
   const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { notifications: allNotifications, unreadCount, markRead: markNotificationRead } = useNotifications({ passive: true });
+  const {
+    notifications: allNotifications,
+    unreadCount,
+    markRead: markNotificationRead,
+    markAllRead: markAllNotificationsRead,
+    undoMarkAll: undoMarkAllNotifications,
+  } = useNotifications({ passive: true });
   // Red dot on the 💬 button of the top bar (shared source with the Messages tab dot).
   const { hasUnread: hasUnreadDms } = useDmUnread();
   const { pinnedOrders } = useOrdersBar();
@@ -1879,6 +1885,8 @@ export default function ChatRoomScreen() {
         notifications={visibleNotifications}
         textFor={notificationTextFor}
         onMarkRead={(id) => void markNotificationRead(id)}
+        onMarkAllRead={markAllNotificationsRead}
+        onUndoMarkAll={(ids) => void undoMarkAllNotifications(ids)}
         onOpenRoute={handleOpenNotificationRoute}
         pinnedOrders={pinnedOrders}
       />
