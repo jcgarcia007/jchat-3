@@ -26,7 +26,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -46,6 +45,7 @@ import {
 } from '../../services/reviews';
 import { toUserMessage } from '../../utils/errors';
 import { getLeadingLetters } from '../../utils/initials';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -94,18 +94,10 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
   const styles = makeCardStyles(c);
 
   const handleReport = useCallback(() => {
-    Alert.alert(
-      t('reviewList.reportConfirmTitle'),
-      t('reviewList.reportConfirmMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('reviewList.reportConfirmAction'),
-          style: 'destructive',
-          onPress: () => onReport(review.id),
-        },
-      ],
-    );
+    void confirm(t('reviewList.reportConfirmTitle'), t('reviewList.reportConfirmMessage'), { confirmText: t('reviewList.reportConfirmAction'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      onReport(review.id);
+    });
   }, [onReport, review.id, t]);
 
   return (
@@ -197,7 +189,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
       setReviews((prev) => prev.filter((r) => r.id !== reviewId));
     } catch (err: unknown) {
       const msg = toUserMessage(err, 'reviews:reviewList.reportError');
-      Alert.alert(t('reviewList.errorAlertTitle'), msg);
+      showAlert(t('reviewList.errorAlertTitle'), msg);
     }
   }, [t]);
 

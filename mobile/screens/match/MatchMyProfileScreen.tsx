@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,6 +37,7 @@ import {
 import type { MatchCard as MatchCardData, MatchPhoto } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
+import { showAlert } from '../../utils/dialog';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchMyProfile'>;
 
@@ -85,7 +86,7 @@ export default function MatchMyProfileScreen() {
       setInterestKeys(keys);
       setInterestNames(Object.fromEntries(catalog.map((row) => [row.key, interestName(row, language)])));
     } catch {
-      Alert.alert(t('profile.loadError'));
+      showAlert(t('profile.loadError'));
     } finally {
       setLoading(false);
     }
@@ -126,7 +127,7 @@ export default function MatchMyProfileScreen() {
         await load();
       } catch (err) {
         const code = (err as { code?: string })?.code;
-        Alert.alert(code === '22023' ? t('profile.photos.limit') : t(errorKey));
+        showAlert(code === '22023' ? t('profile.photos.limit') : t(errorKey));
       } finally {
         setBusy(false);
       }
@@ -142,7 +143,7 @@ export default function MatchMyProfileScreen() {
           ? await ImagePicker.requestCameraPermissionsAsync()
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('profile.photos.permission'));
+        showAlert(t('profile.photos.permission'));
         return;
       }
       const options: ImagePicker.ImagePickerOptions = {
@@ -163,7 +164,7 @@ export default function MatchMyProfileScreen() {
   );
 
   const handleAdd = useCallback(() => {
-    Alert.alert(t('profile.photos.add'), undefined, [
+    showAlert(t('profile.photos.add'), undefined, [
       { text: t('profile.photos.fromGallery'), onPress: () => void pickAndUpload('gallery') },
       { text: t('profile.photos.fromCamera'), onPress: () => void pickAndUpload('camera') },
       { text: t('menu.cancel'), style: 'cancel' },
@@ -197,7 +198,7 @@ export default function MatchMyProfileScreen() {
         text: t('profile.photos.delete'),
         style: 'destructive',
         onPress: () =>
-          Alert.alert(t('profile.photos.deleteConfirmTitle'), t('profile.photos.deleteConfirmBody'), [
+          showAlert(t('profile.photos.deleteConfirmTitle'), t('profile.photos.deleteConfirmBody'), [
             { text: t('menu.cancel'), style: 'cancel' },
             {
               text: t('profile.photos.delete'),
@@ -207,7 +208,7 @@ export default function MatchMyProfileScreen() {
           ]),
       });
       buttons.push({ text: t('menu.cancel'), style: 'cancel' });
-      Alert.alert(t('profile.photos.menuTitle'), undefined, buttons);
+      showAlert(t('profile.photos.menuTitle'), undefined, buttons);
     },
     [photos.length, move, run, t],
   );
@@ -216,7 +217,7 @@ export default function MatchMyProfileScreen() {
   const saveSetting = useCallback(
     (patch: Parameters<typeof updateMySettings>[0]) => {
       void updateMySettings(patch).catch(() => {
-        Alert.alert(t('profile.settings.saveError'));
+        showAlert(t('profile.settings.saveError'));
         void load();
       });
     },

@@ -16,7 +16,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   View,
   Text,
   Image,
@@ -48,6 +47,7 @@ import {
   type SocialUser,
   type PendingRequest,
 } from '../../services/follows';
+import { showAlert } from '../../utils/dialog';
 
 type TabId = 'followers' | 'following' | 'requests';
 
@@ -254,7 +254,7 @@ export default function FriendsScreen() {
         await fn();
       } catch (error) {
         console.warn('[friends] action error:', error);
-        Alert.alert(t('friends.actionErrorTitle'), t('friends.actionError'));
+        showAlert(t('friends.actionErrorTitle'), t('friends.actionError'));
       } finally {
         setBusyId(null);
         void load(reload);

@@ -13,7 +13,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Linking,
   Pressable,
@@ -51,6 +50,7 @@ import { fetchStaffPrinters, type NetworkPrinter } from '../../services/printer'
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { toUserMessage } from '../../utils/errors';
 import { palette } from '../../theme/tokens';
+import { showAlert } from '../../utils/dialog';
 
 type PosMyPrintersRoute = RouteProp<PosStackParamList, 'PosMyPrinters'>;
 
@@ -117,7 +117,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     try {
       await printToBluetooth(record.address, bytes);
     } catch (err) {
-      Alert.alert(t('pos.printers.errorTitle'), toUserMessage(err));
+      showAlert(t('pos.printers.errorTitle'), toUserMessage(err));
     }
   }
 
@@ -127,7 +127,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     setAddPhase('listing');
     const hasPerms = await requestBtPermissions();
     if (!hasPerms) {
-      Alert.alert(
+      showAlert(
         t('pos.printers.btPermTitle'),
         t('pos.printers.btPermBody'),
         [{ text: t('pos.printers.openSettings'), onPress: () => Linking.openSettings() }, { text: t('actions.ok', { ns: 'common' }) }],
@@ -138,14 +138,14 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     try {
       const devices = await listPairedDevices();
       if (devices.length === 0) {
-        Alert.alert(t('pos.printers.noPairedTitle'), t('pos.printers.noPairedBody'));
+        showAlert(t('pos.printers.noPairedTitle'), t('pos.printers.noPairedBody'));
         setAddPhase('idle');
         return;
       }
       setPairedDevices(devices);
       setAddPhase('picking');
     } catch (err) {
-      Alert.alert(t('pos.printers.btErrorTitle'), toUserMessage(err));
+      showAlert(t('pos.printers.btErrorTitle'), toUserMessage(err));
       setAddPhase('idle');
     }
   }

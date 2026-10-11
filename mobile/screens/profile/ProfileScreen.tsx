@@ -1,7 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Image, Modal, Pressable, RefreshControl, ScrollView,
-  Share, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+  Animated,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -30,6 +40,7 @@ import { useFollowSystem } from '../../hooks/useFollowSystem';
 import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
 import { toUserMessage } from '../../utils/errors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
+import { confirm, showAlert } from '../../utils/dialog';
 
 type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
 
@@ -241,7 +252,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       const conversation = await getOrCreateConversation(authUser.id, targetId);
       navigation.navigate('DMs', { screen: 'DMChat', params: { conversationId: conversation.id, otherUserId: targetId } });
     } catch (messageError) {
-      Alert.alert(t('actions.messageErrorTitle'), messageError instanceof DmGateError ? messageError.message : t('actions.messageError'));
+      showAlert(t('actions.messageErrorTitle'), messageError instanceof DmGateError ? messageError.message : t('actions.messageError'));
     }
   }, [authUser?.id, navigation, t, targetId]);
 
@@ -253,7 +264,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const handleFollow = useCallback(async () => {
     const result = await follow();
-    if (result === null) { Alert.alert(t('actions.errorTitle'), t('follow.error')); return; }
+    if (result === null) { showAlert(t('actions.errorTitle'), t('follow.error')); return; }
     // 'requested' (private account) does NOT add a follower yet.
     if (result === 'following') setCounts((value) => ({ ...value, followers: value.followers + 1 }));
     reconcileCounts();
@@ -261,56 +272,48 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const handleUnfollow = useCallback(() => {
     if (!profile) return;
-    Alert.alert(t('follow.unfollowTitle', { username: profile.username }), t('follow.unfollowMessage'), [
-      { text: t('actions.cancel'), style: 'cancel' },
-      { text: t('follow.unfollowConfirm'), style: 'destructive', onPress: () => {
-        void (async () => {
-          const done = await unfollow();
-          if (!done) { Alert.alert(t('actions.errorTitle'), t('follow.error')); return; }
-          setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
-          reconcileCounts();
-        })();
-      } },
-    ]);
+    void confirm(t('follow.unfollowTitle', { username: profile.username }), t('follow.unfollowMessage'), { confirmText: t('follow.unfollowConfirm'), cancelText: t('actions.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void (async () => {
+        const done = await unfollow();
+        if (!done) { showAlert(t('actions.errorTitle'), t('follow.error')); return; }
+        setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
+        reconcileCounts();
+      })();
+    });
   }, [profile, unfollow, reconcileCounts, t]);
 
   const handleCancelRequest = useCallback(() => {
-    Alert.alert(t('follow.cancelRequestTitle'), t('follow.cancelRequestMessage'), [
-      { text: t('follow.keepRequest'), style: 'cancel' },
-      { text: t('follow.cancelRequestConfirm'), style: 'destructive', onPress: () => {
-        void (async () => {
-          const done = await cancelFollowRequest();
-          if (!done) Alert.alert(t('actions.errorTitle'), t('follow.error'));
-        })();
-      } },
-    ]);
+    void confirm(t('follow.cancelRequestTitle'), t('follow.cancelRequestMessage'), { confirmText: t('follow.cancelRequestConfirm'), cancelText: t('follow.keepRequest'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void (async () => {
+        const done = await cancelFollowRequest();
+        if (!done) showAlert(t('actions.errorTitle'), t('follow.error'));
+      })();
+    });
   }, [cancelFollowRequest, t]);
 
   const handleUnblock = useCallback(() => {
     if (!profile) return;
-    Alert.alert(t('block.unblockTitle', { username: profile.username }), t('block.unblockMessage'), [
-      { text: t('actions.cancel'), style: 'cancel' },
-      { text: t('block.unblockConfirm'), onPress: () => {
-        void (async () => {
-          setMenuVisible(false);
-          const done = await unblock();
-          if (!done) { Alert.alert(t('actions.errorTitle'), t('block.error')); return; }
-          void loadProfile('silent');
-        })();
-      } },
-    ]);
+    void confirm(t('block.unblockTitle', { username: profile.username }), t('block.unblockMessage'), { confirmText: t('block.unblockConfirm'), cancelText: t('actions.cancel') }).then((accepted) => {
+      if (!accepted) return;
+      void (async () => {
+        setMenuVisible(false);
+        const done = await unblock();
+        if (!done) { showAlert(t('actions.errorTitle'), t('block.error')); return; }
+        void loadProfile('silent');
+      })();
+    });
   }, [profile, unblock, loadProfile, t]);
 
   const confirmBlock = useCallback(() => {
     if (!profile || !targetId || actionBusy || relationBusy) return; // double-tap guard
     if (blocked) { handleUnblock(); return; }
-    Alert.alert(t('block.title', { username: profile.username }), t('block.message'), [
-      { text: t('actions.cancel'), style: 'cancel' },
-      { text: t('block.confirm'), style: 'destructive', onPress: () => {
-        setActionBusy(true);
-        void blockUser(targetId).then(() => { setMenuVisible(false); navigation.goBack(); }).catch(() => Alert.alert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
-      } },
-    ]);
+    void confirm(t('block.title', { username: profile.username }), t('block.message'), { confirmText: t('block.confirm'), cancelText: t('actions.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      setActionBusy(true);
+      void blockUser(targetId).then(() => { setMenuVisible(false); navigation.goBack(); }).catch(() => showAlert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
+    });
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
   if (initialLoading) return <ProfileSkeleton theme={theme} topInset={insets.top} />;

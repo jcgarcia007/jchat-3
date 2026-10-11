@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -26,6 +25,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { getInitials } from '../../utils/initials';
+import { confirm, showAlert } from '../../utils/dialog';
 
 interface ConversationListProps {
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -193,26 +193,15 @@ export default function ConversationList({
         restored.splice(Math.min(originalIndex, restored.length), 0, conversation);
         return restored;
       });
-      Alert.alert(translation.t('state.error', { ns: 'common' }));
+      showAlert(translation.t('state.error', { ns: 'common' }));
     }
   }, [conversations, translation]);
 
   const confirmRemoveConversation = useCallback((conversation: ConversationPreview) => {
-    Alert.alert(
-      translation.t('messages.deleteConversationTitle'),
-      translation.t('messages.deleteConversationBody'),
-      [
-        {
-          style: 'cancel',
-          text: translation.t('actions.cancel', { ns: 'common' }),
-        },
-        {
-          onPress: () => { void removeConversation(conversation); },
-          style: 'destructive',
-          text: translation.t('actions.delete', { ns: 'common' }),
-        },
-      ],
-    );
+    void confirm(translation.t('messages.deleteConversationTitle'), translation.t('messages.deleteConversationBody'), { confirmText: translation.t('actions.delete', { ns: 'common' }), cancelText: translation.t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void removeConversation(conversation); 
+    });
   }, [removeConversation, translation]);
 
   if (loading && conversations.length === 0) {

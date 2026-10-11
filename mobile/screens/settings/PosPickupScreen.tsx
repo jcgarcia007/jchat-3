@@ -21,7 +21,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SectionList,
   StatusBar,
@@ -49,6 +48,7 @@ import {
   type PosPickupItem,
 } from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { showAlert } from '../../utils/dialog';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export default function PosPickupScreen() {
     if (!result.ok) {
       // Revert optimistic removal and alert
       void loadBoard();
-      Alert.alert(t('pos.pickupErrDeliver'));
+      showAlert(t('pos.pickupErrDeliver'));
     } else {
       // The database marks the whole order delivered once every item is done (trg_order_auto_delivered).
       // Sync in background to pick up any other changes

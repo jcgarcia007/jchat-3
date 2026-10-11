@@ -17,7 +17,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -40,6 +39,7 @@ import {
   type PosAwaitingOrder,
 } from '../../services/pos';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,14 +121,14 @@ export default function PosApprovalScreen(): React.ReactElement {
       const result = await posApproveOrder(businessId, order.order_id);
       if (!result.ok) {
         if (result.reason === 'already_processed') {
-          Alert.alert(t('pos.approval.alreadyProcessed'));
+          showAlert(t('pos.approval.alreadyProcessed'));
         } else {
-          Alert.alert(t('pos.approval.approveError'));
+          showAlert(t('pos.approval.approveError'));
         }
       } else {
         // The comanda bridge in PosNavigator will catch the UPDATE (awaiting→approved)
         // and trigger the print automatically (claim-based dedup prevents double print).
-        Alert.alert(t('pos.approval.sentToKitchen'));
+        showAlert(t('pos.approval.sentToKitchen'));
         void loadOrders();
       }
     } finally {
@@ -137,42 +137,33 @@ export default function PosApprovalScreen(): React.ReactElement {
   }, [businessId, loadOrders, t]);
 
   const handleEdit = useCallback((order: PosAwaitingOrder) => {
-    Alert.alert(
-      t('pos.approval.editConfirm'),
-      undefined,
-      [
-        { text: t('pos.approval.cancel'), style: 'cancel' },
-        {
-          text: t('pos.approval.edit'),
-          onPress: async () => {
-            setProcessing({ orderId: order.order_id, action: 'edit' });
-            try {
-              const result = await posRejectOrder(businessId, order.order_id, 'edit');
-              if (!result.ok) {
-                if (result.reason === 'already_processed') {
-                  Alert.alert(t('pos.approval.alreadyProcessed'));
-                } else {
-                  Alert.alert(t('pos.approval.editError'));
-                }
-              } else {
-                Alert.alert(t('pos.approval.editDone'));
-                // Navigate to PosTableHub so the waiter can edit with the pre-loaded draft
-                navigation.navigate('PosTableHub', {
-                  businessId,
-                  businessName: '',
-                  tableId: order.table_id,
-                  tableLabel: order.table_label,
-                  plan: null,
-                });
-              }
-            } finally {
-              setProcessing(null);
-              void loadOrders();
-            }
-          },
-        },
-      ],
-    );
+    void confirm(t('pos.approval.editConfirm'), undefined, { confirmText: t('pos.approval.edit'), cancelText: t('pos.approval.cancel') }).then(async (accepted) => {
+      if (!accepted) return;
+      setProcessing({ orderId: order.order_id, action: 'edit' });
+      try {
+        const result = await posRejectOrder(businessId, order.order_id, 'edit');
+        if (!result.ok) {
+          if (result.reason === 'already_processed') {
+            showAlert(t('pos.approval.alreadyProcessed'));
+          } else {
+            showAlert(t('pos.approval.editError'));
+          }
+        } else {
+          showAlert(t('pos.approval.editDone'));
+          // Navigate to PosTableHub so the waiter can edit with the pre-loaded draft
+          navigation.navigate('PosTableHub', {
+            businessId,
+            businessName: '',
+            tableId: order.table_id,
+            tableLabel: order.table_label,
+            plan: null,
+          });
+        }
+      } finally {
+        setProcessing(null);
+        void loadOrders();
+      }
+    });
   }, [businessId, loadOrders, navigation, t]);
 
   const handleReject = useCallback((order: PosAwaitingOrder) => {
@@ -181,7 +172,7 @@ export default function PosApprovalScreen(): React.ReactElement {
       ? `\n\n${t('pos.approval.strikeWarning', { count: strikes + 1 })}`
       : '';
 
-    Alert.alert(
+    showAlert(
       t('pos.approval.rejectTitle'),
       t('pos.approval.rejectSubtitle') + strikeWarning,
       [
@@ -208,9 +199,9 @@ export default function PosApprovalScreen(): React.ReactElement {
       const result = await posRejectOrder(businessId, order.order_id, 'reject', reason);
       if (!result.ok) {
         if (result.reason === 'already_processed') {
-          Alert.alert(t('pos.approval.alreadyProcessed'));
+          showAlert(t('pos.approval.alreadyProcessed'));
         } else {
-          Alert.alert(t('pos.approval.rejectError'));
+          showAlert(t('pos.approval.rejectError'));
         }
       } else {
         void loadOrders();

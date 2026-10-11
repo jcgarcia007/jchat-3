@@ -23,7 +23,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Platform,
   Pressable,
@@ -47,6 +46,7 @@ import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { palette } from '../../theme/tokens';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -307,7 +307,7 @@ export function PinMessageSheet({
       onPinned();
       onClose();
     } catch (err) {
-      Alert.alert(
+      showAlert(
         t('pin.couldNotPinTitle'),
         toUserMessage(err, 'chat:pin.tryAgain'),
       );

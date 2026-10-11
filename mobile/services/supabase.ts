@@ -9,9 +9,9 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import i18n from '../i18n';
+import { showAlert } from '../utils/dialog';
 
 /** Project URL — exported so callers can reach Edge Functions (e.g. delete-account). */
 export const SUPABASE_URL =
@@ -67,7 +67,7 @@ export async function expireSession(): Promise<void> {
   sessionExpiring = true;
   try {
     await supabase.auth.signOut({ scope: 'local' });
-    Alert.alert(i18n.t('errors:sessionExpired') as string);
+    showAlert(i18n.t('errors:sessionExpired') as string);
   } finally {
     setTimeout(() => {
       sessionExpiring = false;

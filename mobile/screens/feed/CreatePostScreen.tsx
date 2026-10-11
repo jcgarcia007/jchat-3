@@ -26,7 +26,6 @@ import {
   ScrollView,
   Image,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
@@ -44,6 +43,7 @@ import { useAuth } from '../../context/AuthContext';
 import { createPost, removePostMedia, uploadPostMedia } from '../../services/posts';
 import { toUserMessage } from '../../utils/errors';
 import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── constants ───────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ interface SelectedAsset {
 async function requestMediaPermission(title: string, message: string): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert(title, message);
+    showAlert(title, message);
     return false;
   }
   return true;
@@ -77,7 +77,7 @@ async function requestMediaPermission(title: string, message: string): Promise<b
 async function requestCameraPermission(title: string, message: string): Promise<boolean> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert(title, message);
+    showAlert(title, message);
     return false;
   }
   return true;
@@ -126,7 +126,7 @@ export default function CreatePostScreen() {
 
     const remaining = MAX_IMAGES - assets.length;
     if (remaining <= 0) {
-      Alert.alert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
+      showAlert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
       return;
     }
 
@@ -154,7 +154,7 @@ export default function CreatePostScreen() {
     if (!allowed) return;
 
     if (assets.length >= MAX_IMAGES) {
-      Alert.alert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
+      showAlert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
       return;
     }
 
@@ -183,18 +183,10 @@ export default function CreatePostScreen() {
       navigation.goBack();
       return;
     }
-    Alert.alert(
-      t('create.discardTitle'),
-      t('create.discardMessage'),
-      [
-        { text: t('create.keepEditing'), style: 'cancel' },
-        {
-          text: t('create.discard'),
-          style: 'destructive',
-          onPress: () => navigation.goBack(),
-        },
-      ],
-    );
+    void confirm(t('create.discardTitle'), t('create.discardMessage'), { confirmText: t('create.discard'), cancelText: t('create.keepEditing'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      navigation.goBack();
+    });
   }, [hasDraft, navigation, t]);
 
   // ── submit ─────────────────────────────────────────────────────────────────
@@ -202,7 +194,7 @@ export default function CreatePostScreen() {
   const handlePost = useCallback(async () => {
     if (!canPost) return;
     if (!user) {
-      Alert.alert(t('create.notSignedInTitle'), t('create.notSignedInMessage'));
+      showAlert(t('create.notSignedInTitle'), t('create.notSignedInMessage'));
       return;
     }
 
@@ -217,7 +209,7 @@ export default function CreatePostScreen() {
           setUploadProgress((value) => ({ ...value, done: value.done + 1 }));
         } catch (uploadError) {
           await removePostMedia(mediaUrls).catch(() => undefined);
-          Alert.alert(t('create.uploadFailedTitle'), t('create.uploadFailedMessage'));
+          showAlert(t('create.uploadFailedTitle'), t('create.uploadFailedMessage'));
           return;
         }
       }
@@ -238,7 +230,7 @@ export default function CreatePostScreen() {
       navigation.goBack();
     } catch (err) {
       const message = toUserMessage(err, 'feed:create.genericError');
-      Alert.alert(t('create.couldNotPost'), message);
+      showAlert(t('create.couldNotPost'), message);
     } finally {
       setPosting(false);
       setUploadProgress({ done: 0, total: 0 });

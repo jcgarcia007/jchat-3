@@ -17,7 +17,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -39,6 +38,7 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge, pickerMaxDate } from '../../services/age';
 import { deleteMyAccount } from '../../services/account';
+import { confirm, showAlert } from '../../utils/dialog';
 
 const TERMS_URL = 'https://jchat.cloud/terms';
 const PRIVACY_URL = 'https://jchat.cloud/privacy';
@@ -94,23 +94,19 @@ export default function ConfirmAgeScreen() {
       await deleteMyAccount();
       await signOut().catch(() => null);
       setBusy(false);
-      Alert.alert(t('age.notEligibleTitle'), t('age.notEligibleMessage'));
+      showAlert(t('age.notEligibleTitle'), t('age.notEligibleMessage'));
       return;
     }
     setBusy(false);
-    Alert.alert(t('age.errorTitle'), t('age.errorMessage'));
+    showAlert(t('age.errorTitle'), t('age.errorMessage'));
   }, [dob, refreshAge, signOut, t]);
 
   const onContinue = useCallback(() => {
     if (!dob || !terms || busy) return;
-    Alert.alert(
-      t('age.confirmTitle'),
-      t('age.confirmMessage', { date: formatLong(dob) }),
-      [
-        { text: t('age.confirmEdit'), style: 'cancel' },
-        { text: t('age.confirmYes'), onPress: () => void submit() },
-      ],
-    );
+    void confirm(t('age.confirmTitle'), t('age.confirmMessage', { date: formatLong(dob) }), { confirmText: t('age.confirmYes'), cancelText: t('age.confirmEdit') }).then((accepted) => {
+      if (!accepted) return;
+      void submit();
+    });
   }, [busy, dob, formatLong, submit, t, terms]);
 
   const frame = [

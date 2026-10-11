@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { Alert, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +24,7 @@ import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShel
 import { TicketHeader } from '../../components/auth/TicketHeader';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle, useTicketCascade } from '../../components/auth/TicketReveal';
+import { showAlert } from '../../utils/dialog';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -66,7 +67,7 @@ export default function LoginScreen() {
   //   → AuthContext.onAuthStateChange entra a la app.
   async function handleOAuth(provider: 'google' | 'apple') {
     if (!isSupabaseConfigured) {
-      Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
+      showAlert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
 
@@ -79,7 +80,7 @@ export default function LoginScreen() {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) {
-      Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(error, 'auth:login.alerts.signInErrorMessage'));
+      showAlert(t('login.alerts.signInErrorTitle'), toUserMessage(error, 'auth:login.alerts.signInErrorMessage'));
       return;
     }
     if (!data?.url) return;
@@ -98,7 +99,7 @@ export default function LoginScreen() {
         refresh_token: fragment.refresh_token,
       });
       if (sessionError) {
-        Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(sessionError, 'auth:login.alerts.signInErrorMessage'));
+        showAlert(t('login.alerts.signInErrorTitle'), toUserMessage(sessionError, 'auth:login.alerts.signInErrorMessage'));
       }
       // Éxito: onAuthStateChange en AuthContext dispara y la app entra.
       return;
@@ -110,13 +111,13 @@ export default function LoginScreen() {
     if (typeof code === 'string' && code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
-        Alert.alert(t('login.alerts.signInErrorTitle'), toUserMessage(exchangeError, 'auth:login.alerts.signInErrorMessage'));
+        showAlert(t('login.alerts.signInErrorTitle'), toUserMessage(exchangeError, 'auth:login.alerts.signInErrorMessage'));
       }
       return;
     }
 
     // Ni token ni code: el texto del provider es crudo e inglés; mostrar el genérico traducido.
-    Alert.alert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInErrorMessage'));
+    showAlert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInErrorMessage'));
   }
 
   async function runOAuth(provider: 'google' | 'apple') {

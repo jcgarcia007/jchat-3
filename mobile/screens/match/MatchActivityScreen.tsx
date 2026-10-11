@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -31,6 +31,7 @@ import { signedPhotoUrls } from '../../services/matchProfile';
 import { cardName } from '../../services/matchTypes';
 import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 import type { MatchCard } from '../../services/matchTypes';
+import { confirm, showAlert } from '../../utils/dialog';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchActivity'>;
 type Tab = 'likes' | 'likedMe' | 'matches';
@@ -70,7 +71,7 @@ export default function MatchActivityScreen() {
       const firstPhotos = [...a.likes_given, ...a.liked_me, ...a.matches].flatMap((r) => r.user.photos.slice(0, 1));
       setUrls(await signedPhotoUrls(firstPhotos));
     } catch {
-      Alert.alert(t('activity.loadError'));
+      showAlert(t('activity.loadError'));
     } finally {
       setLoading(false);
     }
@@ -111,7 +112,7 @@ export default function MatchActivityScreen() {
         await action();
         await load();
       } catch {
-        Alert.alert(t('activity.actionError'));
+        showAlert(t('activity.actionError'));
       } finally {
         setBusy(false);
       }
@@ -123,29 +124,29 @@ export default function MatchActivityScreen() {
     (row: Row) => {
       if (!row.swipeId) return;
       const swipeId = row.swipeId;
-      Alert.alert(t('activity.deleteLikeTitle'), t('activity.deleteLikeBody'), [
-        { text: t('menu.cancel'), style: 'cancel' },
-        { text: t('activity.delete'), style: 'destructive', onPress: () => void run(() => deleteLike(swipeId)) },
-      ]);
+      void confirm(t('activity.deleteLikeTitle'), t('activity.deleteLikeBody'), { confirmText: t('activity.delete'), cancelText: t('menu.cancel'), destructive: true }).then((accepted) => {
+        if (!accepted) return;
+        void run(() => deleteLike(swipeId));
+      });
     },
     [run, t],
   );
 
   const confirmClearAll = useCallback(() => {
-    Alert.alert(t('activity.clearAllTitle'), t('activity.clearAllBody'), [
-      { text: t('menu.cancel'), style: 'cancel' },
-      { text: t('activity.clearAll'), style: 'destructive', onPress: () => void run(() => clearLikes(params.businessId)) },
-    ]);
+    void confirm(t('activity.clearAllTitle'), t('activity.clearAllBody'), { confirmText: t('activity.clearAll'), cancelText: t('menu.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void run(() => clearLikes(params.businessId));
+    });
   }, [params.businessId, run, t]);
 
   const confirmDeleteMatch = useCallback(
     (row: Row) => {
       if (!row.matchId) return;
       const matchId = row.matchId;
-      Alert.alert(t('activity.deleteMatchTitle'), t('activity.deleteMatchBody'), [
-        { text: t('menu.cancel'), style: 'cancel' },
-        { text: t('activity.delete'), style: 'destructive', onPress: () => void run(() => deleteMatch(matchId)) },
-      ]);
+      void confirm(t('activity.deleteMatchTitle'), t('activity.deleteMatchBody'), { confirmText: t('activity.delete'), cancelText: t('menu.cancel'), destructive: true }).then((accepted) => {
+        if (!accepted) return;
+        void run(() => deleteMatch(matchId));
+      });
     },
     [run, t],
   );

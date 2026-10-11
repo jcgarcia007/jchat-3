@@ -25,7 +25,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -88,6 +87,7 @@ import {
   type PushPreview,
   type UserSettings,
 } from '../../services/userSettings';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -316,7 +316,7 @@ export default function SettingsScreen() {
       // Enabling — require hardware + enrollment, then confirm with a live prompt.
       const available = await canUseBiometrics();
       if (!available) {
-        Alert.alert(
+        showAlert(
           t('alerts.biometricUnavailableTitle'),
           t('alerts.biometricUnavailableMessage'),
         );
@@ -359,7 +359,7 @@ export default function SettingsScreen() {
         if (delta.appearance) {
           void applyAppearance(previous.appearance).catch(() => undefined);
         }
-        Alert.alert(t('state.error', { ns: 'common' }));
+        showAlert(t('state.error', { ns: 'common' }));
       }
     },
     [t, user?.id],
@@ -367,22 +367,12 @@ export default function SettingsScreen() {
 
   // ── Sign out ───────────────────────────────────────────────────────────────
   const handleSignOut = useCallback(() => {
-    Alert.alert(
-      t('alerts.signOutTitle'),
-      t('alerts.signOutMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('alerts.signOutConfirm'),
-          style: 'destructive',
-          onPress: () => {
-            signOut().catch(() => {
-              Alert.alert(t('alerts.signOutErrorTitle'), t('alerts.signOutError'));
-            });
-          },
-        },
-      ],
-    );
+    void confirm(t('alerts.signOutTitle'), t('alerts.signOutMessage'), { confirmText: t('alerts.signOutConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      signOut().catch(() => {
+        showAlert(t('alerts.signOutErrorTitle'), t('alerts.signOutError'));
+      });
+    });
   }, [signOut, t]);
 
   // ── Delete account (M6 — hard delete via Edge Function) ────────────────────
@@ -390,23 +380,23 @@ export default function SettingsScreen() {
   // server-side and hard-deletes auth.users (cascades all personal data).
   const performDeleteAccount = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+      showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
       return;
     }
     try {
       const result = await deleteMyAccountDetailed();
       if (result === 'owns_business') {
         // Nothing was deleted: the owner has to close or transfer the business first.
-        Alert.alert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
+        showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
         return;
       }
       if (result !== 'ok') {
-        Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+        showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
         return;
       }
 
       // Success — confirm, then sign out (AuthContext routes to Welcome/Login).
-      Alert.alert(t('alerts.deleteSuccessTitle'), t('alerts.deleteSuccessMessage'), [
+      showAlert(t('alerts.deleteSuccessTitle'), t('alerts.deleteSuccessMessage'), [
         {
           text: t('actions.ok', { ns: 'common' }),
           onPress: () => {
@@ -415,32 +405,20 @@ export default function SettingsScreen() {
         },
       ]);
     } catch {
-      Alert.alert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+      showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
     }
   }, [signOut, t]);
 
   const handleDeleteAccount = useCallback(() => {
     // Confirmation 1 — explain that deletion is permanent and irreversible.
-    Alert.alert(t('alerts.deleteTitle'), t('alerts.deleteMessage'), [
-      { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-      {
-        text: t('alerts.deleteContinue'),
-        style: 'destructive',
-        onPress: () => {
-          // Confirmation 2 — last chance before the irreversible action.
-          Alert.alert(t('alerts.deleteFinalTitle'), t('alerts.deleteFinalMessage'), [
-            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-            {
-              text: t('alerts.deleteConfirm'),
-              style: 'destructive',
-              onPress: () => {
-                void performDeleteAccount();
-              },
-            },
-          ]);
-        },
-      },
-    ]);
+    void confirm(t('alerts.deleteTitle'), t('alerts.deleteMessage'), { confirmText: t('alerts.deleteContinue'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      // Confirmation 2 — last chance before the irreversible action.
+      void confirm(t('alerts.deleteFinalTitle'), t('alerts.deleteFinalMessage'), { confirmText: t('alerts.deleteConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+        if (!accepted) return;
+        void performDeleteAccount();
+      });
+    });
   }, [performDeleteAccount, t]);
 
   // ── Change password ────────────────────────────────────────────────────────

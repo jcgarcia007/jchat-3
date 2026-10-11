@@ -10,7 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -28,6 +28,7 @@ import {
   clampVoiceSeconds,
   discardLocalRecording,
 } from '../../services/voiceNotes';
+import { confirm } from '../../utils/dialog';
 
 export interface VoiceRecording {
   uri: string;
@@ -106,10 +107,10 @@ export function VoiceRecorderBar({
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         finishedRef.current = true;
-        Alert.alert(t('voice.permissionTitle'), t('voice.permissionMessage'), [
-          { text: t('actions.cancel') , style: 'cancel' },
-          { text: t('voice.openSettings'), onPress: () => void Linking.openSettings() },
-        ]);
+        void confirm(t('voice.permissionTitle'), t('voice.permissionMessage'), { confirmText: t('voice.openSettings'), cancelText: t('actions.cancel') }).then((accepted) => {
+          if (!accepted) return;
+          void Linking.openSettings();
+        });
         onCancel();
         return;
       }

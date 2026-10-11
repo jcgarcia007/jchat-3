@@ -13,10 +13,10 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useMatchPresenceState } from '../services/matchPresence';
+import { showAlert } from '../utils/dialog';
 
 export function useRequireMatchPresence(businessId: string, mode: 'active' | 'present'): void {
   const navigation = useNavigation();
@@ -30,7 +30,7 @@ export function useRequireMatchPresence(businessId: string, mode: 'active' | 'pr
   useEffect(() => {
     if (ok || leftRef.current) return;
     leftRef.current = true;
-    Alert.alert(t('presence.requiredTitle'), t('presence.required'));
+    showAlert(t('presence.requiredTitle'), t('presence.required'));
     if (navigation.canGoBack()) navigation.goBack();
     else (navigation as unknown as { navigate: (name: string) => void }).navigate('Tabs');
   }, [ok, navigation, t]);

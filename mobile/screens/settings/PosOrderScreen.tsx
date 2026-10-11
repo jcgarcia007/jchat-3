@@ -15,7 +15,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Modal,
@@ -55,6 +54,7 @@ import { usePosDraft } from '../../contexts/PosDraftContext';
 import type { DraftItem } from '../../contexts/PosDraftContext';
 import type { PosStackParamList } from '../../navigation/PosNavigator';
 import { getInitials } from '../../utils/initials';
+import { showAlert } from '../../utils/dialog';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -747,7 +747,7 @@ export default function PosOrderScreen() {
         printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
       });
       // fire-and-forget — impresion no bloquea el flujo
-      Alert.alert(
+      showAlert(
         t('pos.submitSuccess'),
         t('pos.submitSuccessMsg'),
         [{ text: t('pos.submitOk'), onPress: () => navigation.goBack() }],
@@ -778,7 +778,7 @@ export default function PosOrderScreen() {
       default:
         errorMsg = t('pos.errorDb');
     }
-    Alert.alert(t('pos.errorTitle'), errorMsg);
+    showAlert(t('pos.errorTitle'), errorMsg);
   }, [businessId, tableId, cart, notes, submitting, navigation, t]);
 
   // ── Draft save (mode === 'draft') ───────────────────────────────────────────

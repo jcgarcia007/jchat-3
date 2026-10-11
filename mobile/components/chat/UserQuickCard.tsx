@@ -12,7 +12,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -41,6 +40,7 @@ import { isFollowing, unfollowUser } from '../../services/users';
 import { blockUser } from '../../services/blocks';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
+import { confirm, showAlert } from '../../utils/dialog';
 
 const CARD_W = 264;
 const CARD_H_EST = 176; // header + 2 grid rows — for the flip decision + above positioning
@@ -178,34 +178,26 @@ export default function UserQuickCard({
               }
               setRelation('none');
             } catch {
-              Alert.alert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
+              showAlert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
             }
             onClose();
           };
-          Alert.alert(
-            relation === 'following'
+          void confirm(relation === 'following'
               ? t('quickCard.unfollowTitle', { name: targetName })
-              : t('quickCard.cancelRequestTitle', { name: targetName }),
-            undefined,
-            [
-              { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-              {
-                text: relation === 'following' ? t('quickCard.unfollow') : t('quickCard.cancelRequest'),
-                style: 'destructive',
-                onPress: () => void undo(),
-              },
-            ],
-          );
+              : t('quickCard.cancelRequestTitle', { name: targetName }), undefined, { confirmText: relation === 'following' ? t('quickCard.unfollow') : t('quickCard.cancelRequest'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+            if (!accepted) return;
+            void undo();
+          });
           return;
         }
         const res = await requestOrFollow(targetUserId);
         setRelation(res === 'following' ? 'following' : 'requested');
-        Alert.alert(
+        showAlert(
           t('quickCard.follow'),
           res === 'following' ? t('quickCard.followedMsg') : t('quickCard.requestedMsg'),
         );
       } catch {
-        Alert.alert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
+        showAlert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
       }
       onClose();
     })();
@@ -217,23 +209,17 @@ export default function UserQuickCard({
   }, [onClose, onReport, targetUserId, targetName]);
 
   const handleBlock = useCallback(() => {
-    Alert.alert(t('quickCard.block'), t('quickCard.blockConfirm', { name: targetName }), [
-      { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-      {
-        text: t('quickCard.block'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await blockUser(targetUserId);
-            } catch {
-              Alert.alert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
-            }
-            onClose();
-          })();
-        },
-      },
-    ]);
+    void confirm(t('quickCard.block'), t('quickCard.blockConfirm', { name: targetName }), { confirmText: t('quickCard.block'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void (async () => {
+        try {
+          await blockUser(targetUserId);
+        } catch {
+          showAlert(t('quickCard.errorTitle'), t('quickCard.errorMsg'));
+        }
+        onClose();
+      })();
+    });
   }, [t, targetName, targetUserId, onClose]);
 
   return (

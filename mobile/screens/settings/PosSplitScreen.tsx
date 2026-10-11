@@ -32,7 +32,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StatusBar,
@@ -71,6 +70,7 @@ import type { PublicReceipt } from '../../services/escpos';
 import { fetchAnyPrinter, printToNetwork } from '../../services/printer';
 import type { NetworkPrinter } from '../../services/printer';
 import { toUserMessage } from '../../utils/errors';
+import { showAlert } from '../../utils/dialog';
 
 // ─── Nav types ────────────────────────────────────────────────────────────────
 
@@ -381,7 +381,7 @@ export default function PosSplitScreen(): React.ReactElement {
   const handleMoveItem = useCallback(
     (item: PosTableItemRow, fromId: string) => {
       const targets = subAccounts.filter((a) => a.id !== fromId);
-      Alert.alert(
+      showAlert(
         t('pos.splitMoveTitle'),
         undefined,
         [

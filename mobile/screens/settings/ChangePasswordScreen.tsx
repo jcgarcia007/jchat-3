@@ -16,7 +16,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +28,7 @@ import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
+import { showAlert } from '../../utils/dialog';
 
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
@@ -52,19 +52,19 @@ export default function ChangePasswordScreen() {
 
   const handleSave = useCallback(async () => {
     if (!currentPassword) {
-      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentRequired'));
+      showAlert(t('changePassword.errorTitle'), t('changePassword.errorCurrentRequired'));
       return;
     }
     if (newPassword.length < 8) {
-      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorTooShort'));
+      showAlert(t('changePassword.errorTitle'), t('changePassword.errorTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorMismatch'));
+      showAlert(t('changePassword.errorTitle'), t('changePassword.errorMismatch'));
       return;
     }
     if (!isSupabaseConfigured) {
-      Alert.alert(t('changePassword.successTitle'), t('changePassword.successMessage'));
+      showAlert(t('changePassword.successTitle'), t('changePassword.successMessage'));
       navigation.goBack();
       return;
     }
@@ -74,7 +74,7 @@ export default function ChangePasswordScreen() {
     const email = session?.user?.email;
     if (!email) {
       setLoading(false);
-      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
+      showAlert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
       return;
     }
     let captchaToken: string | null = null;
@@ -84,13 +84,13 @@ export default function ChangePasswordScreen() {
       } catch (err) {
         setLoading(false);
         const { titleKey, messageKey } = captchaErrorI18nKeys(err);
-        Alert.alert(tAuth(titleKey), tAuth(messageKey));
+        showAlert(tAuth(titleKey), tAuth(messageKey));
         return;
       }
       if (captchaToken === null) {
         // User cancelled: don't call Supabase without a token.
         setLoading(false);
-        Alert.alert(tAuth('captcha.cancelledTitle'), tAuth('captcha.cancelledMessage'));
+        showAlert(tAuth('captcha.cancelledTitle'), tAuth('captcha.cancelledMessage'));
         return;
       }
     }
@@ -101,16 +101,16 @@ export default function ChangePasswordScreen() {
     });
     if (reauthError) {
       setLoading(false);
-      Alert.alert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
+      showAlert(t('changePassword.errorTitle'), t('changePassword.errorCurrentWrong'));
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
     if (error) {
-      Alert.alert(t('changePassword.errorTitle'), toUserMessage(error));
+      showAlert(t('changePassword.errorTitle'), toUserMessage(error));
       return;
     }
-    Alert.alert(t('changePassword.successTitle'), t('changePassword.successMessage'), [
+    showAlert(t('changePassword.successTitle'), t('changePassword.successMessage'), [
       { text: t('actions.ok', { ns: 'common' }), onPress: () => navigation.goBack() },
     ]);
   }, [currentPassword, newPassword, confirmPassword, t, tAuth, navigation, captchaEnabled, getCaptchaToken]);

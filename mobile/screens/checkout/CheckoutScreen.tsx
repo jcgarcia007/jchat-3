@@ -33,7 +33,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -72,6 +71,7 @@ import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { toUserMessage } from '../../utils/errors';
 import { resetToTabsThen } from '../../utils/navFlow';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -562,7 +562,7 @@ export default function CheckoutScreen() {
     if (!current) return; // the button is disabled without a ready quote
 
     if (!user?.id) {
-      Alert.alert(t('checkout.signInRequired'));
+      showAlert(t('checkout.signInRequired'));
       return;
     }
 
@@ -595,10 +595,10 @@ export default function CheckoutScreen() {
 
         if (!bioResult.success) {
           // Cancelled or locked out: never pay, and say so (no silent exit).
-          Alert.alert(t('checkout.bioFailedTitle'), t('checkout.bioFailedMessage'), [
-            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-            { text: t('checkout.tryAgain'), onPress: () => { void handlePay(); } },
-          ]);
+          void confirm(t('checkout.bioFailedTitle'), t('checkout.bioFailedMessage'), { confirmText: t('checkout.tryAgain'), cancelText: t('actions.cancel', { ns: 'common' }) }).then((accepted) => {
+            if (!accepted) return;
+            void handlePay(); 
+          });
           return;
         }
       }
@@ -629,7 +629,7 @@ export default function CheckoutScreen() {
         }
         if (result.code === 'TotalChanged') {
           const b = result.breakdown;
-          Alert.alert(
+          showAlert(
             t('checkout.totalChangedTitle'),
             b
               ? t('checkout.totalChangedMessage', {

@@ -25,7 +25,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -46,6 +45,7 @@ import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
+import { showAlert } from '../../utils/dialog';
 
 // ---------------------------------------------------------------------------
 // Screen-local color constants — only values not in palette/tokens
@@ -142,7 +142,7 @@ export default function RegisterStep1Screen() {
   // ---------------------------------------------------------------------------
   const handleOAuth = useCallback(async (provider: 'google' | 'apple') => {
     if (!isSupabaseConfigured) {
-      Alert.alert(t('register.alerts.demoModeTitle'), t('register.alerts.demoModeMessage'));
+      showAlert(t('register.alerts.demoModeTitle'), t('register.alerts.demoModeMessage'));
       return;
     }
     const redirectTo = Linking.createURL('auth/callback');
@@ -151,7 +151,7 @@ export default function RegisterStep1Screen() {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) {
-      Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(error, 'auth:register.alerts.unexpectedError'));
+      showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(error, 'auth:register.alerts.unexpectedError'));
       return;
     }
     if (!data?.url) return;
@@ -173,18 +173,18 @@ export default function RegisterStep1Screen() {
         access_token: fragment.access_token,
         refresh_token: fragment.refresh_token,
       });
-      if (sessionError) Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(sessionError, 'auth:register.alerts.unexpectedError'));
+      if (sessionError) showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(sessionError, 'auth:register.alerts.unexpectedError'));
       return;
     }
     // PKCE flow
     const code = Linking.parse(returnedUrl).queryParams?.code;
     if (typeof code === 'string' && code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(exchangeError, 'auth:register.alerts.unexpectedError'));
+      if (exchangeError) showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(exchangeError, 'auth:register.alerts.unexpectedError'));
       return;
     }
     // The provider's text is raw and English-only: show the translated generic message.
-    Alert.alert(t('register.alerts.signUpFailedTitle'), t('register.alerts.unexpectedError'));
+    showAlert(t('register.alerts.signUpFailedTitle'), t('register.alerts.unexpectedError'));
   }, [t]);
 
   const handleGoogleSignUp = useCallback(() => handleOAuth('google'), [handleOAuth]);

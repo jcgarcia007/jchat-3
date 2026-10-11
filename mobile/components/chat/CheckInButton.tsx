@@ -28,7 +28,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -41,6 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { checkIn } from '../../services/checkIn';
 import type { CheckInParams } from '../../services/checkIn';
 import { toUserMessage } from '../../utils/errors';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ export function CheckInButton({
 
   const handlePress = useCallback(async () => {
     if (!user) {
-      Alert.alert(t('checkIn.notSignedInTitle'), t('checkIn.notSignedInMessage'));
+      showAlert(t('checkIn.notSignedInTitle'), t('checkIn.notSignedInMessage'));
       return;
     }
 
@@ -132,14 +132,14 @@ export function CheckInButton({
       if (result.ok) {
         setCheckedIn(true);
         onSuccess?.(result.checkInId);
-        Alert.alert(t('checkIn.successTitle'), t('checkIn.successMessage'));
+        showAlert(t('checkIn.successTitle'), t('checkIn.successMessage'));
       } else {
         const { titleKey, messageKey } = blockedReasonKeys(result.reason);
         const dynamicMessage = result.reason === 'db_error' ? result.message : undefined;
-        Alert.alert(t(titleKey), dynamicMessage ?? t(messageKey));
+        showAlert(t(titleKey), dynamicMessage ?? t(messageKey));
       }
     } catch (err) {
-      Alert.alert(
+      showAlert(
         t('checkIn.errorTitle'),
         toUserMessage(err, 'chat:checkIn.tryAgain'),
       );

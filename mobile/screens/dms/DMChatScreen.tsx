@@ -26,7 +26,6 @@ import React, {
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -91,6 +90,7 @@ import { checkMessage } from '../../utils/messageFilter';
 import { blockUser } from '../../services/blocks';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ─── Nav / Route types ───────────────────────────────────────────────────────
 
@@ -365,24 +365,18 @@ export default function DMChatScreen() {
     const otherId = meta?.otherUserId;
     setMsgAction(null);
     if (!otherId) return;
-    Alert.alert(tc('report.blockTitle', { name: otherName }), tc('report.blockMessage'), [
-      { text: tc('actions.cancel'), style: 'cancel' },
-      {
-        text: tc('report.blockConfirm'),
-        style: 'destructive',
-        onPress: () => {
-          void blockUser(otherId)
-            .then(() => navigation.goBack())
-            .catch(() => Alert.alert(tc('state.error'), tc('report.blockError')));
-        },
-      },
-    ]);
+    void confirm(tc('report.blockTitle', { name: otherName }), tc('report.blockMessage'), { confirmText: tc('report.blockConfirm'), cancelText: tc('actions.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void blockUser(otherId)
+        .then(() => navigation.goBack())
+        .catch(() => showAlert(tc('state.error'), tc('report.blockError')));
+    });
   }, [meta?.otherUserId, otherName, navigation, tc]);
 
   const openUserMenu = useCallback(() => {
     const otherId = meta?.otherUserId;
     if (!otherId) return;
-    Alert.alert(otherName, undefined, [
+    showAlert(otherName, undefined, [
       { text: tc('report.reportUser'), onPress: () => startReport('user', otherId) },
       { text: tc('report.block', { name: otherName }), style: 'destructive', onPress: confirmBlockOther },
       { text: tc('actions.cancel'), style: 'cancel' },
@@ -488,7 +482,7 @@ export default function DMChatScreen() {
     if (!user || text.trim().length === 0 || sending) return;
     const body = text.trim();
     if (!checkMessage(body).allowed) {
-      Alert.alert(tc('contentFilter.title'), tc('contentFilter.blocked'));
+      showAlert(tc('contentFilter.title'), tc('contentFilter.blocked'));
       return; // the text stays in the box
     }
     setText('');
@@ -499,9 +493,9 @@ export default function DMChatScreen() {
       console.warn('[DMChat] send error', err);
       if (isAwaitingReplyError(err)) {
         setMeta((m) => (m ? { ...m, firstSenderId: user.id, awaitingReply: true } : m));
-        Alert.alert(t('dmChat.errorTitle'), tm('chat.waitingBody'));
+        showAlert(t('dmChat.errorTitle'), tm('chat.waitingBody'));
       } else {
-        Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendTextError'));
+        showAlert(t('dmChat.errorTitle'), t('dmChat.sendTextError'));
       }
       setText(body); // restore on failure
     } finally {
@@ -518,7 +512,7 @@ export default function DMChatScreen() {
       const asset = result.assets[0];
       // dm-media does not accept GIFs (and SafeSearch only looks at an animated GIF's first frame): never upload one.
       if (asset.mimeType?.toLowerCase() === 'image/gif' || /\.gif(\?|$)/i.test(asset.fileName ?? asset.uri)) {
-        Alert.alert(t('dmChat.gifNotAllowedTitle'), t('dmChat.gifNotAllowed'));
+        showAlert(t('dmChat.gifNotAllowedTitle'), t('dmChat.gifNotAllowed'));
         return;
       }
       // Upload to the PRIVATE dm-media bucket; store the returned path in media_url
@@ -532,7 +526,7 @@ export default function DMChatScreen() {
         });
       } catch (err) {
         console.warn('[DMChat] photo send error', err);
-        Alert.alert(t('dmChat.errorTitle'), t('dmChat.sendPhotoError'));
+        showAlert(t('dmChat.errorTitle'), t('dmChat.sendPhotoError'));
       }
     },
     [user, conversationId, t],
@@ -541,7 +535,7 @@ export default function DMChatScreen() {
   const pickFromGallery = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         t('dmChat.permissionTitle'),
         t('dmChat.permissionMessage'),
       );
@@ -560,7 +554,7 @@ export default function DMChatScreen() {
   const takePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         tg('input.cameraPermissionTitle'),
         tg('input.cameraPermissionMessage'),
       );
@@ -590,7 +584,7 @@ export default function DMChatScreen() {
         setViewerUri(url);
       } catch (err) {
         console.warn('[DMChat] photo viewer load error', err);
-        Alert.alert(t('dmChat.photoViewerErrorTitle'), t('dmChat.photoViewerError'));
+        showAlert(t('dmChat.photoViewerErrorTitle'), t('dmChat.photoViewerError'));
       } finally {
         openingPhotoRef.current = false;
       }
@@ -620,7 +614,7 @@ export default function DMChatScreen() {
       );
       return;
     }
-    Alert.alert(t('dmChat.photoSourceTitle'), undefined, [
+    showAlert(t('dmChat.photoSourceTitle'), undefined, [
       { text: labels.camera, onPress: () => void takePhoto() },
       { text: labels.gallery, onPress: () => void pickFromGallery() },
       { text: labels.cancel, style: 'cancel' },
@@ -649,7 +643,7 @@ export default function DMChatScreen() {
         });
       } catch (err) {
         console.warn('[DMChat] voice send error', err);
-        Alert.alert(t('dmChat.errorTitle'), toUserMessage(err, 'errors:app.VOICE_UPLOAD_FAILED'));
+        showAlert(t('dmChat.errorTitle'), toUserMessage(err, 'errors:app.VOICE_UPLOAD_FAILED'));
       } finally {
         void discardLocalRecording(recording.uri);
       }
@@ -915,7 +909,7 @@ export default function DMChatScreen() {
           conversationId={conversationId}
           onSent={() => {
             setGiftOpen(false);
-            Alert.alert(tg('gift.sentTitle'), tg('gift.sentBody'));
+            showAlert(tg('gift.sentTitle'), tg('gift.sentBody'));
           }}
         />
       ) : null}

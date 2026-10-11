@@ -7,7 +7,6 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -25,6 +24,7 @@ import {
 import type { TodCategory, TodChoice, TodDrawOk } from '../../services/tod';
 import { TodCardModal } from './TodCardModal';
 import { useTodOnboarding } from './TodWelcome';
+import { showAlert } from '../../utils/dialog';
 
 export interface TodChatValue {
   businessId: string | null;
@@ -80,7 +80,7 @@ export function TodChatProvider({ businessId, businessName, userId, enabled, chi
 
   const showReason = useCallback(
     (reason: string) => {
-      Alert.alert(t('title'), t(todReasonKey(reason)));
+      showAlert(t('title'), t(todReasonKey(reason)));
     },
     [t],
   );

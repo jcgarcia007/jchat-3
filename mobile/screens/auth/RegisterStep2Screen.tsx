@@ -30,7 +30,6 @@ import {
   Platform,
   Pressable,
   Modal,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -59,6 +58,7 @@ import { deleteMyAccount } from '../../services/account';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
+import { showAlert } from '../../utils/dialog';
 
 // ---------------------------------------------------------------------------
 // Screen-local color constants — only values not already in palette/tokens
@@ -273,11 +273,11 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
 
     // ── Client-side validation ────────────────────────────────────────────
     if (!dob) {
-      Alert.alert(t('register.dobLabel'), t('register.dobPlaceholder'));
+      showAlert(t('register.dobLabel'), t('register.dobPlaceholder'));
       return;
     }
     if (!isAtLeast18(dob)) {
-      Alert.alert(
+      showAlert(
         t('register.alerts.ageTitle'),
         t('register.alerts.ageMessage'),
       );
@@ -286,24 +286,24 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
 
     const formatErr = validateUsername(username);
     if (formatErr) {
-      Alert.alert(t('register.alerts.invalidUsernameTitle'), t(formatErr));
+      showAlert(t('register.alerts.invalidUsernameTitle'), t(formatErr));
       return;
     }
 
     if (availability !== 'available') {
       if (availability === 'taken') {
-        Alert.alert(t('register.alerts.usernameTakenTitle'), t('register.alerts.usernameTakenMessage'));
+        showAlert(t('register.alerts.usernameTakenTitle'), t('register.alerts.usernameTakenMessage'));
       } else if (availability === 'checking') {
-        Alert.alert(t('register.alerts.pleaseWaitTitle'), t('register.alerts.pleaseWaitMessage'));
+        showAlert(t('register.alerts.pleaseWaitTitle'), t('register.alerts.pleaseWaitMessage'));
       } else {
         // idle or error — re-trigger a check
-        Alert.alert(t('register.alerts.checkUsernameTitle'), t('register.alerts.checkUsernameMessage'));
+        showAlert(t('register.alerts.checkUsernameTitle'), t('register.alerts.checkUsernameMessage'));
       }
       return;
     }
 
     if (!termsAccepted) {
-      Alert.alert(
+      showAlert(
         t('register.alerts.termsRequiredTitle'),
         t('register.alerts.termsRequiredMessage'),
       );
@@ -311,7 +311,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
     }
 
     if (!email || !password) {
-      Alert.alert(
+      showAlert(
         t('register.alerts.missingDataTitle'),
         t('register.alerts.missingDataMessage'),
       );
@@ -323,7 +323,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
     try {
       // ── Guard: no real backend configured ────────────────────────────────
       if (!isSupabaseConfigured) {
-        Alert.alert(
+        showAlert(
           t('register.alerts.demoModeTitle'),
           t('register.alerts.demoModeMessage'),
         );
@@ -340,13 +340,13 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         } catch (err) {
           // Expiración / timeout / red / no disponible / ocupado: mensaje según el código.
           const { titleKey, messageKey } = captchaErrorI18nKeys(err);
-          Alert.alert(t(titleKey), t(messageKey));
+          showAlert(t(titleKey), t(messageKey));
           setSubmitting(false);
           return;
         }
         if (captchaToken === null) {
           // Usuario canceló: no llamar a Supabase sin token.
-          Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+          showAlert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
           setSubmitting(false);
           return;
         }
@@ -375,14 +375,14 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       });
 
       if (signUpError) {
-        Alert.alert(t('register.alerts.signUpFailedTitle'), toUserMessage(signUpError, 'auth:register.alerts.unexpectedError'));
+        showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(signUpError, 'auth:register.alerts.unexpectedError'));
         setSubmitting(false);
         return;
       }
 
       const userId = authData.user?.id;
       if (!userId) {
-        Alert.alert(
+        showAlert(
           t('register.alerts.signUpErrorTitle'),
           t('register.alerts.signUpErrorMessage'),
         );
@@ -394,7 +394,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // user taps the link in the email (AuthContext, pending_profile).
       if (!authData.session) {
         setSubmitting(false);
-        Alert.alert(
+        showAlert(
           t('register.alerts.checkEmailTitle'),
           t('register.alerts.checkEmailMessage', { email: email.trim().toLowerCase() }),
           [{ text: t('actions.ok', { ns: 'common' }), onPress: () => navigation.navigate('Login') }],
@@ -412,7 +412,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         if (ageResult === 'underage') {
           await deleteMyAccount();
           await signOut().catch(() => null);
-          Alert.alert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));
+          showAlert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));
           setSubmitting(false);
           return;
         }
@@ -437,7 +437,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         // user must SEE that, not silently keep the email-derived fallback.
         console.warn('[RegisterStep2] profile update error:', profileError.message);
         // 23505 = the chosen username was taken in the meantime.
-        Alert.alert(
+        showAlert(
           t('register.alerts.signUpErrorTitle'),
           profileError.code === '23505'
             ? t('register.usernameTaken')
@@ -452,7 +452,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       // The authenticated root navigator reads onboarding_completed and routes
       // this new session to Onboarding before the user enters the main tabs.
     } catch (err: unknown) {
-      Alert.alert(t('register.alerts.errorTitle'), toUserMessage(err, 'auth:register.alerts.unexpectedError'));
+      showAlert(t('register.alerts.errorTitle'), toUserMessage(err, 'auth:register.alerts.unexpectedError'));
       setSubmitting(false);
     } finally {
       holdAgeGate(false);

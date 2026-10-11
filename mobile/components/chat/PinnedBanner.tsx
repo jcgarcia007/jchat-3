@@ -33,7 +33,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   FlatList,
   Modal,
@@ -55,6 +54,7 @@ import type { ChatTheme } from '../../theme/chatThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { palette } from '../../theme/tokens';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -468,42 +468,32 @@ export function PinnedBanner({
 
   const handleUnpin = useCallback(
     (pinId: string) => {
-      Alert.alert(
-        t('pin.unpinTitle'),
-        t('pin.unpinMessage'),
-        [
-          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-          {
-            text: t('pin.unpin'),
-            style: 'destructive',
-            onPress: async () => {
-              setUnpinning((prev) => new Set(prev).add(pinId));
-              try {
-                if (isSupabaseConfigured) {
-                  const { error } = await supabase
-                    .from('pinned_messages')
-                    .delete()
-                    .eq('id', pinId);
-                  if (error) throw error;
-                }
-                onUnpin?.(pinId);
-                setShowAll(false);
-              } catch (err) {
-                Alert.alert(
-                  t('pin.couldNotUnpinTitle'),
-                  toUserMessage(err, 'chat:pin.tryAgain'),
-                );
-              } finally {
-                setUnpinning((prev) => {
-                  const next = new Set(prev);
-                  next.delete(pinId);
-                  return next;
-                });
-              }
-            },
-          },
-        ],
-      );
+      void confirm(t('pin.unpinTitle'), t('pin.unpinMessage'), { confirmText: t('pin.unpin'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+        if (!accepted) return;
+        setUnpinning((prev) => new Set(prev).add(pinId));
+        try {
+          if (isSupabaseConfigured) {
+            const { error } = await supabase
+              .from('pinned_messages')
+              .delete()
+              .eq('id', pinId);
+            if (error) throw error;
+          }
+          onUnpin?.(pinId);
+          setShowAll(false);
+        } catch (err) {
+          showAlert(
+            t('pin.couldNotUnpinTitle'),
+            toUserMessage(err, 'chat:pin.tryAgain'),
+          );
+        } finally {
+          setUnpinning((prev) => {
+            const next = new Set(prev);
+            next.delete(pinId);
+            return next;
+          });
+        }
+      });
     },
     [onUnpin, t],
   );

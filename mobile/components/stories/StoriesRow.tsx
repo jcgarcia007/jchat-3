@@ -61,6 +61,7 @@ import {
 } from '../../services/stories';
 import StoryViewerScreen from '../../screens/stories/StoryViewerScreen';
 import { safeLaunchLibrary } from '../../utils/safePicker';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,7 +156,7 @@ export default function StoriesRow({
     // 1. Request permission.
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      showAlert(
         t('create.permissionTitle'),
         t('storiesRow.storyPermission'),
       );
@@ -233,7 +234,7 @@ export default function StoriesRow({
         await loadStories();
       } catch (err) {
         console.warn('[StoriesRow] uploadAndCreate error:', err);
-        Alert.alert(t('storiesRow.errorTitle'), t('storiesRow.createError'));
+        showAlert(t('storiesRow.errorTitle'), t('storiesRow.createError'));
       } finally {
         setUploading(false);
       }

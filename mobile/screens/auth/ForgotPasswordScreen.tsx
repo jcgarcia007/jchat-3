@@ -13,7 +13,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +26,7 @@ import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import { useAuth } from '../../context/AuthContext';
+import { showAlert } from '../../utils/dialog';
 
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
@@ -68,13 +68,13 @@ export default function ForgotPasswordScreen() {
     try {
       const token = await getCaptchaToken();
       if (token === null) {
-        Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+        showAlert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
         return null;
       }
       return token;
     } catch (err) {
       const { titleKey, messageKey } = captchaErrorI18nKeys(err);
-      Alert.alert(t(titleKey), t(messageKey));
+      showAlert(t(titleKey), t(messageKey));
       return null;
     }
   }, [captchaEnabled, getCaptchaToken, t]);
@@ -89,11 +89,11 @@ export default function ForgotPasswordScreen() {
     });
 
     if (isRateLimitError(error)) {
-      Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.rateLimited'));
+      showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.rateLimited'));
       return false;
     }
     if (isCaptchaError(error)) {
-      Alert.alert(t('captcha.errorTitle'), t('captcha.errorMessage'));
+      showAlert(t('captcha.errorTitle'), t('captcha.errorMessage'));
       return false;
     }
 
@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen() {
   const handleSend = useCallback(async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.errorInvalidEmail'));
+      showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.errorInvalidEmail'));
       return;
     }
 
@@ -122,11 +122,11 @@ export default function ForgotPasswordScreen() {
 
   const handleVerify = useCallback(async () => {
     if (code.length !== 6) {
-      Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
+      showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
       return;
     }
     if (!isSupabaseConfigured) {
-      Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
+      showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
       return;
     }
 
@@ -142,12 +142,12 @@ export default function ForgotPasswordScreen() {
       });
       if (error || !data.session) {
         await clearRecovery();
-        Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
+        showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
       }
     } catch (error) {
       await clearRecovery().catch(() => undefined);
       console.warn('[ForgotPassword] recovery verification failed:', error);
-      Alert.alert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
+      showAlert(t('forgotPassword.errorTitle'), t('forgotPassword.codeInvalid'));
     } finally {
       setLoading(false);
     }
