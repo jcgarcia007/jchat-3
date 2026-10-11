@@ -56,7 +56,9 @@
     "userTapA11y": "View {{name}}'s options",
     "myOrders": "My orders",
     "moreOptions": "More options",
-    "notifications": "Notifications ({{count}} unread)"
+    "notifications": "Notifications ({{count}} unread)",
+    "messages": "Messages",
+    "messagesUnread": "Messages (you have unread messages)"
   },
   "subRoom": {
     "tabLockedA11y": "{{name}} — password protected"
@@ -357,7 +359,12 @@
       "all": "All",
       "match": "Match",
       "orders": "Orders"
-    }
+    },
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "markAllRead": "Mark all as read",
+    "markedRead_one": "{{count}} notification marked as read",
+    "markedRead_other": "{{count}} notifications marked as read"
   },
   "moreSheet": {
     "myOrders": "My account and orders",

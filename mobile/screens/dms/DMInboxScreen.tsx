@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconArrowLeft } from '@tabler/icons-react-native';
 
 import ConversationList from '../../components/dms/ConversationList';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import type { DMStackParamList } from '../../navigation/DMStack';
 import type { ConversationPreview } from '../../services/dms';
 import { useThemeColors } from '../../theme/colors';
@@ -17,6 +18,8 @@ export default function DMInboxScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<InboxNavigation>();
+  // The venue bar floats over the bottom when the chat is pinned: the last conversation stays reachable.
+  const homeBarInset = useHomeBarInset();
   const translation = useTranslation('social');
   const commonTranslation = useTranslation('common');
 
@@ -43,7 +46,7 @@ export default function DMInboxScreen() {
           {translation.t('inbox.title')}
         </Text>
       </View>
-      <ConversationList onConversationPress={openConversation} />
+      <ConversationList onConversationPress={openConversation} contentContainerStyle={{ paddingBottom: homeBarInset }} />
     </View>
   );
 }

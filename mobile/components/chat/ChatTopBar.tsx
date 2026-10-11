@@ -2,7 +2,7 @@
  * JChat 3.0 — ChatTopBar (Task 2.4)
  *
  * The header area of a chat room:
- *   [Back] [Business icon + name · N people here]   [🔔 badge] [🍴 menu — only if menu_enabled] [⋯]
+ *   [Back] [Business icon + name · N people here]   [💬 dot] [🔔 badge] [🍴 menu — only if menu_enabled] [⋯]
  *
  * Layout below the top bar:
  *   - SubRoomTabs (horizontal scroll of sub-rooms)
@@ -35,6 +35,7 @@ import {
   IconArrowLeft,
   IconBell,
   IconDots,
+  IconMessageCircle,
   IconToolsKitchen2,
   IconUser,
 } from '@tabler/icons-react-native';
@@ -71,6 +72,10 @@ export interface ChatTopBarProps {
   usersInRoom: UserSummary[];
   onBack: () => void;
   onMenuPress: () => void;
+  /** Opens the Messages (DM inbox) on top of the chat. The 💬 button only shows when provided. */
+  onMessagesPress?: () => void;
+  /** Red dot (no number) on the 💬 button while there are unread DMs. */
+  hasUnreadDms?: boolean;
   /** Opens the 🔔 notifications sheet. */
   onBellPress?: () => void;
   /** Unread notifications (badge on the bell). */
@@ -162,6 +167,8 @@ export function ChatTopBar({
   usersInRoom,
   onBack,
   onMenuPress,
+  onMessagesPress,
+  hasUnreadDms = false,
   onBellPress,
   unreadCount = 0,
   onMorePress,
@@ -200,6 +207,24 @@ export function ChatTopBar({
             </Text>
           </View>
         </View>
+
+        {/* 💬 Messages (red dot = unread DMs) */}
+        {onMessagesPress ? (
+          <Pressable
+            onPress={onMessagesPress}
+            accessibilityRole="button"
+            accessibilityLabel={hasUnreadDms ? t('topBar.messagesUnread') : t('topBar.messages')}
+            style={({ pressed }) => [topBarStyles.iconBtn, pressed && topBarStyles.btnPressed]}
+          >
+            <IconMessageCircle size={22} color={theme.tabActive} />
+            {hasUnreadDms ? (
+              <View
+                testID="chat-messages-dot"
+                style={[topBarStyles.dot, { backgroundColor: palette.danger, borderColor: theme.topBg }]}
+              />
+            ) : null}
+          </Pressable>
+        ) : null}
 
         {/* 🔔 notifications (badge = unread) */}
         {onBellPress ? (
@@ -342,6 +367,15 @@ const topBarStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  dot: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
   avatarsScroll: {
     flexGrow: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,

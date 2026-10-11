@@ -3,28 +3,23 @@ import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { getTotalUnread, subscribeToDmUnreadInvalidation } from '../services/dms';
+import { useDmUnread } from './useDmUnread';
 import { getUnreadSocialNotificationCount } from '../services/notifications';
 import { isSupabaseConfigured, supabase, channelTopic } from '../services/supabase';
 
 export function useUnreadBadge(): boolean {
   const { user } = useAuth();
-  const [dmUnread, setDmUnread] = useState(0);
+  // DM unread comes from the shared source (one Realtime channel for the tab dot and the chat top bar).
+  const { count: dmUnread } = useDmUnread();
   const [notificationUnread, setNotificationUnread] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!user?.id) {
-      setDmUnread(0);
       setNotificationUnread(0);
       return;
     }
 
-    const [nextDmUnread, nextNotificationUnread] = await Promise.all([
-      getTotalUnread(user.id).catch(() => 0),
-      getUnreadSocialNotificationCount(user.id).catch(() => 0),
-    ]);
-    setDmUnread(nextDmUnread);
-    setNotificationUnread(nextNotificationUnread);
+    setNotificationUnread(await getUnreadSocialNotificationCount(user.id).catch(() => 0));
   }, [user?.id]);
 
   useFocusEffect(useCallback(() => {
@@ -40,12 +35,6 @@ export function useUnreadBadge(): boolean {
       if (!cancelled) setNotificationUnread(nextCount);
     };
 
-    const dmChannel = supabase
-      .channel(channelTopic(`tab_badge_dm_${user.id}`))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_messages' }, () => {
-        void refresh();
-      })
-      .subscribe();
     const notificationChannel = supabase
       .channel(channelTopic(`tab_badge_notifications_${user.id}`))
       .on(
@@ -76,9 +65,6 @@ export function useUnreadBadge(): boolean {
       .subscribe((status) => {
         if (status === 'SUBSCRIBED' && !cancelled) void refreshNotificationCount();
       });
-    const unsubscribeDmInvalidation = subscribeToDmUnreadInvalidation(() => {
-      if (!cancelled) void refresh();
-    });
     const appStateSubscription = AppState.addEventListener('change', (status) => {
       if (status === 'active' && !cancelled) void refreshNotificationCount();
     });
@@ -86,11 +72,9 @@ export function useUnreadBadge(): boolean {
     return () => {
       cancelled = true;
       appStateSubscription.remove();
-      unsubscribeDmInvalidation();
-      void supabase.removeChannel(dmChannel);
       void supabase.removeChannel(notificationChannel);
     };
-  }, [refresh, user?.id]);
+  }, [user?.id]);
 
   return dmUnread > 0 || notificationUnread > 0;
 }

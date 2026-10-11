@@ -318,6 +318,39 @@ export async function deleteNotification(id: string): Promise<void> {
 }
 
 /** Count unread social notifications without loading their payloads. */
+/**
+ * "Mark all as read" of the chat's bell sheet: ONE update of the user's unread rows of the given types
+ * (RLS already lets a user update their own notifications). Returns the ids it changed, so the caller can
+ * offer an Undo. Throws when the update fails so the caller can roll back its optimistic state.
+ */
+export async function markAllNotificationsRead(userId: string, types: string[]): Promise<string[]> {
+  if (!isSupabaseConfigured || types.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+    .in('type', types)
+    .select('id');
+
+  if (error) throw error;
+  return (data ?? []).map((row) => row.id as string);
+}
+
+/** Undo of markAllNotificationsRead: puts exactly those ids back to unread (chunked to keep the URL short). */
+export async function unmarkNotificationsRead(ids: string[]): Promise<void> {
+  if (!isSupabaseConfigured || ids.length === 0) return;
+
+  for (let start = 0; start < ids.length; start += 100) {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: false })
+      .in('id', ids.slice(start, start + 100));
+    if (error) throw error;
+  }
+}
+
 export async function getUnreadSocialNotificationCount(userId: string): Promise<number> {
   if (!isSupabaseConfigured) return 0;
 

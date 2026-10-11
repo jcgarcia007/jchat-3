@@ -67,6 +67,7 @@ import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useDmUnread } from '../../hooks/useDmUnread';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
@@ -450,7 +451,15 @@ export default function ChatRoomScreen() {
   // 🎁 Gift (from the quick card / user sheet): only offered while both are present at the venue.
   const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { notifications: allNotifications, unreadCount, markRead: markNotificationRead } = useNotifications({ passive: true });
+  const {
+    notifications: allNotifications,
+    unreadCount,
+    markRead: markNotificationRead,
+    markAllRead: markAllNotificationsRead,
+    undoMarkAll: undoMarkAllNotifications,
+  } = useNotifications({ passive: true });
+  // Red dot on the 💬 button of the top bar (shared source with the Messages tab dot).
+  const { hasUnread: hasUnreadDms } = useDmUnread();
   const { pinnedOrders } = useOrdersBar();
   const { visible: visibleNotifications, textFor: notificationTextFor } = useNotificationPresenter(allNotifications);
 
@@ -1279,6 +1288,12 @@ export default function ChatRoomScreen() {
     [navigation],
   );
 
+  // 💬 in the top bar: the DM inbox is pushed ON TOP of this chat (no reset / popToTop), so ← and the
+  // back gesture return here with the room, its scroll position and its Realtime channels intact.
+  const handleOpenMessages = useCallback(() => {
+    navigation.navigate('DMs', { screen: 'DMInbox' });
+  }, [navigation]);
+
   const handleStartDM = useCallback(
     async (userId: string) => {
       if (!user) return;
@@ -1607,6 +1622,8 @@ export default function ChatRoomScreen() {
         usersInRoom={usersInRoom}
         onBack={handleBack}
         onMenuPress={handleMenuPress}
+        onMessagesPress={handleOpenMessages}
+        hasUnreadDms={hasUnreadDms}
         onBellPress={() => setBellOpen(true)}
         unreadCount={unreadCount}
         onMorePress={!entryVisible ? () => setMoreOpen(true) : undefined}
@@ -1868,6 +1885,8 @@ export default function ChatRoomScreen() {
         notifications={visibleNotifications}
         textFor={notificationTextFor}
         onMarkRead={(id) => void markNotificationRead(id)}
+        onMarkAllRead={markAllNotificationsRead}
+        onUndoMarkAll={(ids) => void undoMarkAllNotifications(ids)}
         onOpenRoute={handleOpenNotificationRoute}
         pinnedOrders={pinnedOrders}
       />
