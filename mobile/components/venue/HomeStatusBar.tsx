@@ -13,7 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconMapPin, IconReceipt } from '@tabler/icons-react-native';
@@ -23,6 +23,7 @@ import { palette } from '../../theme/tokens';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useReportHomeBarInset } from './HomeBarInset';
+import { useAppWindow } from '../../utils/appWindow';
 
 /** Tab bar geometry (components/navigation/NotchTabBar): bottom offset 26 + inset, height 68. */
 const TAB_BAR_TOP_OFFSET = 26 + 68;
@@ -182,7 +183,7 @@ function SwipeAway({
   onSwiped: () => void;
   reduceMotion: boolean;
 }): React.ReactElement {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } = useAppWindow();
   const translateX = useRef(new Animated.Value(0)).current;
   const widthRef = useRef(screenWidth);
   const onSwipedRef = useRef(onSwiped);

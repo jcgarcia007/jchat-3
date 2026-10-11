@@ -13,7 +13,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   BackHandler,
 } from 'react-native';
@@ -25,6 +24,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { showAlert } from '../../utils/dialog';
 
 const BTN_HEIGHT = 52;
 const INPUT_HEIGHT = 52;
@@ -47,11 +47,11 @@ export default function ResetPasswordScreen() {
 
   const handleSave = useCallback(async () => {
     if (newPassword.length < 8) {
-      Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.errorTooShort'));
+      showAlert(t('resetPassword.errorTitle'), t('resetPassword.errorTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.errorMismatch'));
+      showAlert(t('resetPassword.errorTitle'), t('resetPassword.errorMismatch'));
       return;
     }
 
@@ -59,14 +59,14 @@ export default function ResetPasswordScreen() {
     if (!isSupabaseConfigured) {
       await clearRecovery();
       setLoading(false);
-      Alert.alert(t('resetPassword.successTitle'), t('resetPassword.successMessage'));
+      showAlert(t('resetPassword.successTitle'), t('resetPassword.successMessage'));
       return;
     }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setLoading(false);
-      Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.errorTryAgain'));
+      showAlert(t('resetPassword.errorTitle'), t('resetPassword.errorTryAgain'));
       return;
     }
 
@@ -77,10 +77,10 @@ export default function ResetPasswordScreen() {
 
     try {
       await clearRecovery();
-      Alert.alert(t('resetPassword.successTitle'), t('resetPassword.successMessage'));
+      showAlert(t('resetPassword.successTitle'), t('resetPassword.successMessage'));
     } catch (error) {
       console.warn('[ResetPassword] could not clear recovery state:', error);
-      Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.errorTryAgain'));
+      showAlert(t('resetPassword.errorTitle'), t('resetPassword.errorTryAgain'));
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function ResetPasswordScreen() {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) {
         setLoading(false);
-        Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.cancelError'));
+        showAlert(t('resetPassword.errorTitle'), t('resetPassword.cancelError'));
         return;
       }
     }
@@ -103,7 +103,7 @@ export default function ResetPasswordScreen() {
       await clearRecovery();
     } catch (error) {
       console.warn('[ResetPassword] could not clear recovery state after cancel:', error);
-      Alert.alert(t('resetPassword.errorTitle'), t('resetPassword.cancelError'));
+      showAlert(t('resetPassword.errorTitle'), t('resetPassword.cancelError'));
     } finally {
       setLoading(false);
     }

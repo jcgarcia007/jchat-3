@@ -34,7 +34,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -69,6 +68,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { getInitials } from '../../utils/initials';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -266,7 +266,7 @@ export default function CartScreen() {
     const limit = line ? stockLimitOf(line.item) : null;
     // Stock cap: tell the user instead of silently ignoring the tap.
     if (line && limit !== null && qty + 1 + qtyOfItemInOtherLines(lines, line.item.id, lineId) > limit) {
-      Alert.alert(t('cart.onlyLeftTitle'), t('cart.onlyLeft', { count: limit }));
+      showAlert(t('cart.onlyLeftTitle'), t('cart.onlyLeft', { count: limit }));
       return;
     }
     updateQty(lineId, qty + 1);
@@ -274,28 +274,20 @@ export default function CartScreen() {
 
   const handleDecrement = useCallback((lineId: string, qty: number) => {
     if (qty <= 1) {
-      Alert.alert(
-        t('cart.removeItemTitle'),
-        t('cart.removeItemMessage'),
-        [
-          { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-          { text: t('cart.remove'), style: 'destructive', onPress: () => removeLine(lineId) },
-        ],
-      );
+      void confirm(t('cart.removeItemTitle'), t('cart.removeItemMessage'), { confirmText: t('cart.remove'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+        if (!accepted) return;
+        removeLine(lineId);
+      });
     } else {
       updateQty(lineId, qty - 1);
     }
   }, [updateQty, removeLine, t]);
 
   const handleDelete = useCallback((lineId: string, itemName: string) => {
-    Alert.alert(
-      t('cart.removeItemTitle'),
-      t('cart.removeItemNamed', { name: itemName }),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        { text: t('cart.remove'), style: 'destructive', onPress: () => removeLine(lineId) },
-      ],
-    );
+    void confirm(t('cart.removeItemTitle'), t('cart.removeItemNamed', { name: itemName }), { confirmText: t('cart.remove'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      removeLine(lineId);
+    });
   }, [removeLine, t]);
 
   const handleSelectOrderType = useCallback((type: OrderType) => {

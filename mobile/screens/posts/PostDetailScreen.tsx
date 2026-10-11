@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -52,10 +50,12 @@ import { getPublicProfile, type PublicProfileRow } from '../../services/users';
 import BusinessAvatar from '../../components/megaphone/BusinessAvatar';
 import { toUserMessage } from '../../utils/errors';
 import { checkMessage } from '../../utils/messageFilter';
+import { confirm, showAlert } from '../../utils/dialog';
+import { getAppWindow } from '../../utils/appWindow';
 
 type DetailRoute = RouteProp<MainStackParamList, 'PostDetail'>;
 type DetailNavigation = NativeStackNavigationProp<MainStackParamList, 'PostDetail'>;
-const PHOTO_WIDTH = Dimensions.get('window').width;
+const PHOTO_WIDTH = getAppWindow().width;
 
 function SheetRow({ label, color, borderColor, icon, onPress }: {
   label: string; color: string; borderColor: string; icon?: React.ReactNode; onPress: () => void;
@@ -102,7 +102,7 @@ export default function PostDetailScreen(): React.JSX.Element {
       setLikeCount(count);
       setLiked(likedByMe);
     } catch (error) {
-      Alert.alert(t('detail.loadFailedTitle'), toUserMessage(error, 'feed:detail.loadFailed'));
+      showAlert(t('detail.loadFailedTitle'), toUserMessage(error, 'feed:detail.loadFailed'));
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -121,7 +121,7 @@ export default function PostDetailScreen(): React.JSX.Element {
     } catch {
       setLiked(!next);
       setLikeCount((value) => Math.max(0, value + (next ? -1 : 1)));
-      Alert.alert(t('detail.actionFailedTitle'), t('detail.likeFailed'));
+      showAlert(t('detail.actionFailedTitle'), t('detail.likeFailed'));
     }
   }, [busy, liked, post, t, user?.id]);
 
@@ -129,7 +129,7 @@ export default function PostDetailScreen(): React.JSX.Element {
     const body = comment.trim();
     if (!post || !user?.id || !body || busy) return;
     if (!checkMessage(body).allowed) {
-      Alert.alert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
+      showAlert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
       return; // the comment stays in the box
     }
     setBusy(true);
@@ -138,33 +138,31 @@ export default function PostDetailScreen(): React.JSX.Element {
       setComment('');
       setComments(await getComments(post.id));
     } catch {
-      Alert.alert(t('detail.actionFailedTitle'), t('detail.commentFailed'));
+      showAlert(t('detail.actionFailedTitle'), t('detail.commentFailed'));
     } finally { setBusy(false); }
   }, [busy, comment, post, t, user?.id]);
 
   const confirmDelete = useCallback(() => {
     if (!post || !user?.id) return;
     setMenuVisible(false);
-    Alert.alert(t('detail.deleteTitle'), t('detail.deleteMessage'), [
-      { text: t('detail.cancel'), style: 'cancel' },
-      { text: t('detail.delete'), style: 'destructive', onPress: () => {
-        setBusy(true);
-        void deletePost(post.id, user.id)
-          .then(() => navigation.goBack())
-          .catch(() => Alert.alert(t('detail.actionFailedTitle'), t('detail.deleteFailed')))
-          .finally(() => setBusy(false));
-      } },
-    ]);
+    void confirm(t('detail.deleteTitle'), t('detail.deleteMessage'), { confirmText: t('detail.delete'), cancelText: t('detail.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      setBusy(true);
+      void deletePost(post.id, user.id)
+        .then(() => navigation.goBack())
+        .catch(() => showAlert(t('detail.actionFailedTitle'), t('detail.deleteFailed')))
+        .finally(() => setBusy(false));
+    });
   }, [navigation, post, t, user?.id]);
 
   // Long-press a comment of someone else → offer to report it (the sheet below sends it as content_type 'comment').
   const [reportComment, setReportComment] = useState<{ id: string; name: string } | null>(null);
   const handleCommentLongPress = useCallback((item: CommentRow, name: string) => {
     if (!user?.id || item.user_id === user.id) return;
-    Alert.alert(name, undefined, [
-      { text: t('common:report.comment'), onPress: () => setReportComment({ id: item.id, name }) },
-      { text: t('detail.cancel'), style: 'cancel' },
-    ]);
+    void confirm(name, undefined, { confirmText: t('common:report.comment'), cancelText: t('detail.cancel') }).then((accepted) => {
+      if (!accepted) return;
+      setReportComment({ id: item.id, name });
+    });
   }, [t, user?.id]);
 
   if (loading || !post) {

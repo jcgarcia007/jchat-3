@@ -27,7 +27,6 @@ import React, {
 } from 'react';
 import {
   Animated,
-  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -55,11 +54,12 @@ import {
   type UserStories,
   type StoryViewer,
 } from '../../services/stories';
+import { getAppWindow } from '../../utils/appWindow';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STORY_DURATION_MS = 5000;
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getAppWindow();
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
 // ── Props ─────────────────────────────────────────────────────────────────────

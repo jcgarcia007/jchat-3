@@ -14,7 +14,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -35,6 +34,7 @@ import {
   matchRequestHelp,
 } from '../../services/matchSafety';
 import type { MatchReportReason } from '../../services/matchSafety';
+import { confirm, showAlert } from '../../utils/dialog';
 
 interface UseMatchSafetyArgs {
   businessId: string;
@@ -55,18 +55,12 @@ export function useMatchSafety({ businessId, roomId, targetUserId, targetName, o
 
   const confirmBlock = useCallback(() => {
     if (!targetUserId) return;
-    Alert.alert(t('safety.blockTitle', { name: targetName }), t('safety.blockBody'), [
-      { text: t('safety.cancel'), style: 'cancel' },
-      {
-        text: t('safety.block'),
-        style: 'destructive',
-        onPress: () => {
-          void matchBlock(targetUserId)
-            .then(() => onBlocked?.())
-            .catch(() => Alert.alert(t('safety.error')));
-        },
-      },
-    ]);
+    void confirm(t('safety.blockTitle', { name: targetName }), t('safety.blockBody'), { confirmText: t('safety.block'), cancelText: t('safety.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void matchBlock(targetUserId)
+        .then(() => onBlocked?.())
+        .catch(() => showAlert(t('safety.error')));
+    });
   }, [targetUserId, targetName, onBlocked, t]);
 
   const openMenu = useCallback(() => {
@@ -77,7 +71,7 @@ export function useMatchSafety({ businessId, roomId, targetUserId, targetName, o
     }
     buttons.push({ text: t('safety.help'), onPress: () => setSheet('help') });
     buttons.push({ text: t('menu.cancel'), style: 'cancel' });
-    Alert.alert(t('safety.menuTitle'), undefined, buttons);
+    showAlert(t('safety.menuTitle'), undefined, buttons);
   }, [targetUserId, confirmBlock, t]);
 
   const sheets = (
@@ -180,7 +174,7 @@ function ReportSheet({
       await matchReport(businessId, targetUserId, reason, details);
       setDone(true);
     } catch {
-      Alert.alert(t('safety.error'));
+      showAlert(t('safety.error'));
     } finally {
       setSending(false);
     }
@@ -263,7 +257,7 @@ function HelpSheet({
       await matchRequestHelp(businessId, roomId, where);
       setDone(true);
     } catch {
-      Alert.alert(t('safety.error'));
+      showAlert(t('safety.error'));
     } finally {
       setSending(false);
     }

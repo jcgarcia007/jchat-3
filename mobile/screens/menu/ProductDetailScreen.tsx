@@ -32,7 +32,6 @@ import { useTranslation } from 'react-i18next';
 import { useVenueAccess } from '../../hooks/useVenueAccess';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -61,6 +60,7 @@ import type { CartModifierSelection } from '../../context/CartContext';
 import { getItemModifierGroups } from '../../services/menu';
 import type { MenuItem, MenuOptionChoice, ModifierGroup } from '../../services/menu';
 import { formatCents } from '../../utils/currency';
+import { showAlert } from '../../utils/dialog';
 
 // ── Badge accent colours (local const — same pattern as ProductRow) ───────────
 
@@ -248,7 +248,7 @@ export default function ProductDetailScreen() {
     if (viewOnly) {
       // Golden rule: outside the area with pick-up off the menu is view-only.
       const business = (route.params as ProductDetailRouteParams).businessName ?? t('menu.menuFallback');
-      Alert.alert(t('menu.viewOnlyTitle'), t('menu.viewOnlyNotice', { business }));
+      showAlert(t('menu.viewOnlyTitle'), t('menu.viewOnlyNotice', { business }));
       return;
     }
 

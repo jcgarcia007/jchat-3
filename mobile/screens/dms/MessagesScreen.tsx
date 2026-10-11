@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -38,6 +38,7 @@ import { formatSocialTime } from '../../utils/formatSocialTime';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { PinnedOrderRow } from '../../components/venue/PinnedOrderRow';
 import { useOrdersBar } from '../../context/OrdersBarContext';
+import { showAlert } from '../../utils/dialog';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
 
@@ -58,7 +59,7 @@ export default function MessagesScreen() {
 
   useFocusEffect(useCallback(() => {
     void refresh();
-    void Notifications.setBadgeCountAsync(0).catch(() => {});
+    if (Platform.OS !== 'web') void Notifications.setBadgeCountAsync(0).catch(() => {});
   }, [refresh]));
 
   const handleRefresh = useCallback(async () => {
@@ -90,7 +91,7 @@ export default function MessagesScreen() {
 
   const removeNotification = useCallback((id: string) => {
     void remove(id).catch(() => {
-      Alert.alert(translation.t('state.error', { ns: 'common' }));
+      showAlert(translation.t('state.error', { ns: 'common' }));
     });
   }, [remove, translation]);
 

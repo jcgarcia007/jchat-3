@@ -25,7 +25,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -88,6 +87,7 @@ import * as Clipboard from 'expo-clipboard';
 import PrinterPickerSheet from '../../components/pos/PrinterPickerSheet';
 import type { PrinterPickerSheetRef } from '../../components/pos/PrinterPickerSheet';
 import { toUserMessage } from '../../utils/errors';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ─── Navigation types ─────────────────────────────────────────────────────────
 
@@ -533,7 +533,7 @@ export default function PosTableHub(): React.ReactElement {
       setSessionDetail(detail);
     } catch (err) {
       const msg = toUserMessage(err);
-      Alert.alert(t('pos.tableCode.title'), msg);
+      showAlert(t('pos.tableCode.title'), msg);
     } finally {
       setSessionLoading(false);
     }
@@ -542,28 +542,22 @@ export default function PosTableHub(): React.ReactElement {
   /** Close the session (only allowed when open_orders_count === 0). */
   const handleReleaseSession = useCallback(async () => {
     if ((sessionDetail?.open_orders_count ?? 0) > 0) {
-      Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.releaseBlocked'));
+      showAlert(t('pos.tableCode.title'), t('pos.tableCode.releaseBlocked'));
       return;
     }
-    Alert.alert(
-      t('pos.tableCode.title'),
-      t('pos.tableCode.releaseConfirm'),
-      [
-        { text: t('pos.tableCode.release'), style: 'destructive', onPress: async () => {
-          setReleaseLoading(true);
-          try {
-            await posCloseTableSession(businessId, tableId);
-            setSessionDetail(null);
-          } catch (err) {
-            const msg = toUserMessage(err);
-            Alert.alert(t('pos.tableCode.title'), msg);
-          } finally {
-            setReleaseLoading(false);
-          }
-        } },
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-      ],
-    );
+    void confirm(t('pos.tableCode.title'), t('pos.tableCode.releaseConfirm'), { confirmText: t('pos.tableCode.release'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+      if (!accepted) return;
+      setReleaseLoading(true);
+      try {
+        await posCloseTableSession(businessId, tableId);
+        setSessionDetail(null);
+      } catch (err) {
+        const msg = toUserMessage(err);
+        showAlert(t('pos.tableCode.title'), msg);
+      } finally {
+        setReleaseLoading(false);
+      }
+    });
   }, [businessId, tableId, sessionDetail, t]);
 
   const handleCopyCode = useCallback(async () => {
@@ -586,7 +580,7 @@ export default function PosTableHub(): React.ReactElement {
         serverName,
       });
     } catch {
-      Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'));
+      showAlert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'));
       return;
     }
     printerPickerRef.current?.print(businessId, bytes);
@@ -664,7 +658,7 @@ export default function PosTableHub(): React.ReactElement {
         printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
       });
       // fire-and-forget — impresion no bloquea el flujo
-      Alert.alert(t('pos.hubKitchenSent'), t('pos.hubKitchenSentMsg'), [
+      showAlert(t('pos.hubKitchenSent'), t('pos.hubKitchenSentMsg'), [
         { text: t('pos.submitOk') },
       ]);
       return;
@@ -680,7 +674,7 @@ export default function PosTableHub(): React.ReactElement {
       invalid_modifier: t('pos.errorModifier'),
       db_error: t('pos.errorDb'),
     };
-    Alert.alert(
+    showAlert(
       t('pos.errorTitle'),
       errorMap[result.reason] ?? t('pos.errorDb'),
     );
@@ -763,7 +757,7 @@ export default function PosTableHub(): React.ReactElement {
           already_paid:    t('pos.voidOrderErrPaid'),
           no_access:       t('pos.errorNoAccess'),
         };
-        Alert.alert(
+        showAlert(
           t('pos.errorTitle'),
           msgMap[result.reason] ?? t('pos.voidOrderErr'),
         );
@@ -790,18 +784,10 @@ export default function PosTableHub(): React.ReactElement {
   /** Show confirmation Alert, then call handleVoidOrder in cancel mode. */
   const handleCancelOrderPress = useCallback(
     (orderId: string) => {
-      Alert.alert(
-        t('pos.voidOrderConfirmTitle'),
-        t('pos.voidOrderConfirmMsg'),
-        [
-          { text: t('pos.voidOrderConfirmDismiss'), style: 'cancel' },
-          {
-            text: t('pos.voidOrderConfirmBtn'),
-            style: 'destructive',
-            onPress: () => { void handleVoidOrder(orderId, 'cancel'); },
-          },
-        ],
-      );
+      void confirm(t('pos.voidOrderConfirmTitle'), t('pos.voidOrderConfirmMsg'), { confirmText: t('pos.voidOrderConfirmBtn'), cancelText: t('pos.voidOrderConfirmDismiss'), destructive: true }).then((accepted) => {
+        if (!accepted) return;
+        void handleVoidOrder(orderId, 'cancel'); 
+      });
     },
     [t, handleVoidOrder],
   );
@@ -858,7 +844,7 @@ export default function PosTableHub(): React.ReactElement {
       plusLastTapRef.current = 0; // reset so a third tap starts fresh
       if (combining || !!uncombiningId) return;
       if (freeTables.length === 0) {
-        Alert.alert(t('pos.combineMesa'), t('pos.combineNoFree'));
+        showAlert(t('pos.combineMesa'), t('pos.combineNoFree'));
         return;
       }
       setShowCombinePicker(true);
@@ -883,7 +869,7 @@ export default function PosTableHub(): React.ReactElement {
           secondary_already_combined: t('pos.combineErrAlreadyCombined'),
           no_access:                  t('pos.combineErrNoAccess'),
         };
-        Alert.alert(
+        showAlert(
           t('pos.errorTitle'),
           msgMap[result.reason] ?? t('pos.combineErrGeneral'),
         );
@@ -904,7 +890,7 @@ export default function PosTableHub(): React.ReactElement {
       setUncombiningId(null);
 
       if (!result.ok) {
-        Alert.alert(t('pos.errorTitle'), t('pos.uncombineErr'));
+        showAlert(t('pos.errorTitle'), t('pos.uncombineErr'));
         return;
       }
 
@@ -1635,8 +1621,8 @@ export default function PosTableHub(): React.ReactElement {
       {/* F2 — Printer picker (no-UI helper; mounts once per screen) */}
       <PrinterPickerSheet
         ref={printerPickerRef}
-        onNoPrinter={() => Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.noPrinter'))}
-        onError={(err) => Alert.alert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'))}
+        onNoPrinter={() => showAlert(t('pos.tableCode.title'), t('pos.tableCode.noPrinter'))}
+        onError={(err) => showAlert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'))}
       />
     </View>
   );

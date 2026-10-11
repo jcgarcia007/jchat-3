@@ -25,7 +25,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Modal,
@@ -45,6 +44,7 @@ import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
+import { showAlert } from '../../utils/dialog';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -223,7 +223,7 @@ export function ServiceCallSheet({
       onClose();
       // Brief delay so the sheet closes before the alert appears
       setTimeout(() => {
-        Alert.alert(t('service.successTitle'), t('service.successMessage'));
+        showAlert(t('service.successTitle'), t('service.successMessage'));
       }, 300);
     } catch {
       setErrorMsg(t('service.errorConnection'));

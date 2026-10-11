@@ -1,0 +1,11 @@
+{
+  "name": "jchat-e2e-web",
+  "private": true,
+  "description": "Playwright smoke tests for the Expo Web build (the Maestro flows live in e2e/maestro).",
+  "scripts": {
+    "web": "playwright test -c web.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}

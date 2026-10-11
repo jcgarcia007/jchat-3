@@ -22,7 +22,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -43,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { useMatchPresenceState } from '../../services/matchPresence';
 import { normalizeImageUri } from '../../utils/normalizeImage';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ export function AttachmentPanel({
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAlert(
           t('attachment.photoPermissionTitle'),
           t('attachment.photoPermissionMessage'),
         );
@@ -165,7 +165,7 @@ export function AttachmentPanel({
     } catch (err) {
       // Don't fail silently — surface a clear message and log for debugging.
       console.error('[AttachmentPanel] launchImageLibraryAsync failed:', err);
-      Alert.alert(
+      showAlert(
         t('attachment.galleryErrorTitle'),
         t('attachment.galleryErrorMessage'),
       );

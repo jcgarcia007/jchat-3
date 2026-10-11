@@ -39,7 +39,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -78,6 +77,7 @@ import {
 } from '../../services/moderation';
 import type { ThemeColors } from '../../theme/colors';
 import { toUserMessage } from '../../utils/errors';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -309,7 +309,7 @@ export function UserActionSheet({
       } catch (err) {
         // 42501 = RLS refused it: only the business owner can moderate.
         const code = (err as { code?: unknown } | null)?.code;
-        Alert.alert(
+        showAlert(
           t('userAction.errorTitle'),
           code === '42501'
             ? t('userAction.noPermission')
@@ -339,7 +339,7 @@ export function UserActionSheet({
     await run('follow', async () => {
       // Server decides public (direct follow) vs private (pending request).
       const result = await requestOrFollow(targetUserId);
-      Alert.alert(
+      showAlert(
         result === 'requested' ? t('userAction.requestSentTitle') : t('userAction.followingTitle'),
         result === 'requested'
           ? t('userAction.requestSentMessage')
@@ -356,23 +356,13 @@ export function UserActionSheet({
 
   const handleBlock = useCallback(async () => {
     if (!user) return;
-    Alert.alert(
-      t('userAction.blockTitle', { name: targetName }),
-      t('userAction.blockMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('userAction.blockConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await run('block', async () => {
-              await blockUser(targetUserId);
-              onClose();
-            });
-          },
-        },
-      ],
-    );
+    void confirm(t('userAction.blockTitle', { name: targetName }), t('userAction.blockMessage'), { confirmText: t('userAction.blockConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+      if (!accepted) return;
+      await run('block', async () => {
+        await blockUser(targetUserId);
+        onClose();
+      });
+    });
   }, [user, run, targetName, targetUserId, onClose]);
 
   // ── Owner / Moderator actions ──────────────────────────────────────────────
@@ -388,7 +378,7 @@ export function UserActionSheet({
         action: 'warn',
         detail: null,
       });
-      Alert.alert(t('userAction.warnedTitle', { name: targetName }), t('userAction.warnedMessage'));
+      showAlert(t('userAction.warnedTitle', { name: targetName }), t('userAction.warnedMessage'));
       onClose();
     });
   }, [user, run, businessId, roomId, targetUserId, targetName, onClose]);
@@ -411,7 +401,7 @@ export function UserActionSheet({
         await muteInRoom(roomId, targetUserId, user.id, businessId, durationHours);
         const label =
           duration === '1h' ? t('userAction.forOneHour') : t('userAction.forTwentyFourHours');
-        Alert.alert(
+        showAlert(
           t('userAction.mutedTitle', { name: targetName }),
           t('userAction.mutedInRoomFor', { duration: label }),
         );
@@ -423,49 +413,29 @@ export function UserActionSheet({
 
   const handleRemove = useCallback(async () => {
     if (!user) return;
-    Alert.alert(
-      t('userAction.removeTitle', { name: targetName }),
-      t('userAction.removeMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('userAction.removeConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await run('remove', async () => {
-              // TODO(Stage 4): require moderator physical presence (geofence check)
-              // Real server-enforced removal from THIS room (bans row with room_id); it logs itself.
-              await expelFromRoom(businessId, roomId, targetUserId, user.id);
-              onRemove?.(targetUserId);
-              onClose();
-            });
-          },
-        },
-      ],
-    );
+    void confirm(t('userAction.removeTitle', { name: targetName }), t('userAction.removeMessage'), { confirmText: t('userAction.removeConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+      if (!accepted) return;
+      await run('remove', async () => {
+        // TODO(Stage 4): require moderator physical presence (geofence check)
+        // Real server-enforced removal from THIS room (bans row with room_id); it logs itself.
+        await expelFromRoom(businessId, roomId, targetUserId, user.id);
+        onRemove?.(targetUserId);
+        onClose();
+      });
+    });
   }, [user, run, businessId, roomId, targetUserId, targetName, onRemove, onClose]);
 
   const handleBan = useCallback(async () => {
     if (!user) return;
-    Alert.alert(
-      t('userAction.banTitle', { name: targetName }),
-      t('userAction.banMessage'),
-      [
-        { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('userAction.banConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await run('ban', async () => {
-              // TODO(Stage 4): require moderator physical presence (geofence check)
-              await banUser(businessId, roomId, targetUserId, user.id);
-              onBanned?.(targetUserId);
-              onClose();
-            });
-          },
-        },
-      ],
-    );
+    void confirm(t('userAction.banTitle', { name: targetName }), t('userAction.banMessage'), { confirmText: t('userAction.banConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+      if (!accepted) return;
+      await run('ban', async () => {
+        // TODO(Stage 4): require moderator physical presence (geofence check)
+        await banUser(businessId, roomId, targetUserId, user.id);
+        onBanned?.(targetUserId);
+        onClose();
+      });
+    });
   }, [user, run, businessId, roomId, targetUserId, targetName, onBanned, onClose]);
 
   // ── Render ─────────────────────────────────────────────────────────────────

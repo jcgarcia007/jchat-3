@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
   createNavigationContainerRef,
@@ -202,7 +203,7 @@ function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady
     if (!navigationReady || !pendingRoute || !navigationRef.isReady()) return;
     navigateNotificationRoute(pendingRoute);
     clearPendingRoute();
-    void Notifications.clearLastNotificationResponseAsync().catch(() => {});
+    if (Platform.OS !== 'web') void Notifications.clearLastNotificationResponseAsync().catch(() => {});
   }, [clearPendingRoute, navigationReady, pendingRoute]);
 
   return null;

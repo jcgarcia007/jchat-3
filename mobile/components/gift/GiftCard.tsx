@@ -10,7 +10,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -30,6 +29,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { giftErrorCode, giftItemPhotos, respondGiftOffer, viewGiftOffer, type GiftView } from '../../services/giftOffers';
+import { showAlert } from '../../utils/dialog';
 
 function mmss(totalSeconds: number): string {
   const s = Math.max(0, totalSeconds);
@@ -100,7 +100,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
       await respondGiftOffer(view.id, false);
     } catch (err) {
       const known = giftErrorCode(err);
-      Alert.alert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
+      showAlert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
     } finally {
       setBusy(false);
       void refresh();
@@ -288,7 +288,7 @@ function GiftAcceptSheet({
       onDone();
     } catch (err) {
       const known = giftErrorCode(err);
-      Alert.alert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
+      showAlert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
       if (known === 'gift_expired' || known === 'gift_not_open') onDone();
     } finally {
       setSending(false);

@@ -31,7 +31,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -119,6 +118,7 @@ import { isTodEnabledForBusiness, isTodMessageType } from '../../services/tod';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { palette } from '../../theme/tokens';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -335,7 +335,7 @@ export default function ChatRoomScreen() {
   const isOwner = !!user?.id && !!businessOwnerId && user.id === businessOwnerId;
 
   const handleExpelled = useCallback(() => {
-    Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
+    showAlert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
     venue.endSession('user'); // already told the user above
     navigation.goBack();
   }, [t, business, navigation, venue]);
@@ -465,20 +465,10 @@ export default function ChatRoomScreen() {
 
   // "Salir del local" is the only way (besides leaving the area) to end the venue session.
   const handleLeaveVenue = useCallback(() => {
-    Alert.alert(
-      t('venueSession.leaveConfirmTitle'),
-      t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }),
-      [
-        { text: i18n.t('menu.cancel', { ns: 'match' }), style: 'cancel' },
-        {
-          text: t('venueSession.leave'),
-          style: 'destructive',
-          onPress: () => {
-            void venue.leaveVenue().then(() => navigation.goBack());
-          },
-        },
-      ],
-    );
+    void confirm(t('venueSession.leaveConfirmTitle'), t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }), { confirmText: t('venueSession.leave'), cancelText: i18n.t('menu.cancel', { ns: 'match' }), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void venue.leaveVenue().then(() => navigation.goBack());
+    });
   }, [business?.name, navigation, i18n, t, venue]);
 
   // The online row shows the room on screen; demo mode falls back to demo users.
@@ -500,7 +490,7 @@ export default function ChatRoomScreen() {
 
   // ── Bans are enforced by the server; here the banned user is told and sent out ──
   const notifyBanned = useCallback(() => {
-    Alert.alert(t('chatRoom.bannedTitle'), t('chatRoom.bannedMessage'));
+    showAlert(t('chatRoom.bannedTitle'), t('chatRoom.bannedMessage'));
   }, [t]);
 
   const checkBannedFromRoom = useCallback(
@@ -577,7 +567,7 @@ export default function ChatRoomScreen() {
           .single();
 
         if (roomErr || !roomData) {
-          Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.roomNotFound'));
+          showAlert(t('chatRoom.errorTitle'), t('chatRoom.roomNotFound'));
           navigation.goBack();
           return;
         }
@@ -936,14 +926,14 @@ export default function ChatRoomScreen() {
             p_user: user.id,
           });
           if (muted === true) {
-            Alert.alert(t('chatRoom.mutedTitle'), t('chatRoom.mutedMessage'));
+            showAlert(t('chatRoom.mutedTitle'), t('chatRoom.mutedMessage'));
             return;
           }
         } catch {
           // fall through to the generic error
         }
       }
-      Alert.alert(t('chatRoom.errorTitle'), fallbackMessage ?? t('chatRoom.messageFailed'));
+      showAlert(t('chatRoom.errorTitle'), fallbackMessage ?? t('chatRoom.messageFailed'));
     },
     [user?.id, activeRoomId, t],
   );
@@ -1061,10 +1051,10 @@ export default function ChatRoomScreen() {
         } catch (uploadErr) {
           console.warn('[ChatRoom] photo upload failed:', uploadErr);
           setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
-          Alert.alert(t('chatRoom.photoUploadFailedTitle'), t('chatRoom.photoUploadFailedMessage'), [
-            { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },
-            { text: t('chatRoom.retry'), onPress: () => { sendPhotoRef.current?.(uri); } },
-          ]);
+          void confirm(t('chatRoom.photoUploadFailedTitle'), t('chatRoom.photoUploadFailedMessage'), { confirmText: t('chatRoom.retry'), cancelText: t('actions.cancel', { ns: 'common' }) }).then((accepted) => {
+            if (!accepted) return;
+            sendPhotoRef.current?.(uri); 
+          });
           return;
         }
 
@@ -1263,22 +1253,16 @@ export default function ChatRoomScreen() {
     const m = msgAction;
     if (!m) return;
     setMsgAction(null);
-    Alert.alert(tc('report.blockTitle', { name: msgActionName }), tc('report.blockMessage'), [
-      { text: tc('actions.cancel'), style: 'cancel' },
-      {
-        text: tc('report.blockConfirm'),
-        style: 'destructive',
-        onPress: () => {
-          void blockUser(m.user_id)
-            .then(() => {
-              // Their messages disappear right away; refreshBlocks makes it permanent for this session.
-              setBlockedIds((prev) => new Set(prev).add(m.user_id));
-              void refreshBlocks();
-            })
-            .catch(() => Alert.alert(tc('actions.errorTitle', { defaultValue: 'Error' }), tc('report.blockError')));
-        },
-      },
-    ]);
+    void confirm(tc('report.blockTitle', { name: msgActionName }), tc('report.blockMessage'), { confirmText: tc('report.blockConfirm'), cancelText: tc('actions.cancel'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      void blockUser(m.user_id)
+        .then(() => {
+          // Their messages disappear right away; refreshBlocks makes it permanent for this session.
+          setBlockedIds((prev) => new Set(prev).add(m.user_id));
+          void refreshBlocks();
+        })
+        .catch(() => showAlert(tc('actions.errorTitle', { defaultValue: 'Error' }), tc('report.blockError')));
+    });
   }, [msgAction, msgActionName, refreshBlocks, tc]);
 
   const handleCloseQuickCard = useCallback(() => {
@@ -1307,11 +1291,11 @@ export default function ChatRoomScreen() {
         });
       } catch (err) {
         if (err instanceof DmGateError) {
-          Alert.alert(t('chatRoom.dmTitle'), err.message); // gated: blocked / nobody / not-follower
+          showAlert(t('chatRoom.dmTitle'), err.message); // gated: blocked / nobody / not-follower
           return;
         }
         console.warn('[ChatRoom] start DM error', err);
-        Alert.alert(t('chatRoom.errorTitle'), t('chatRoom.dmOpenError'));
+        showAlert(t('chatRoom.errorTitle'), t('chatRoom.dmOpenError'));
       }
     },
     [user, navigation, t],
@@ -1874,7 +1858,7 @@ export default function ChatRoomScreen() {
           recipient={giftTarget}
           onSent={() => {
             setGiftTarget(null);
-            Alert.alert(t('gift.sentTitle'), t('gift.sentBody'));
+            showAlert(t('gift.sentTitle'), t('gift.sentBody'));
           }}
         />
       ) : null}

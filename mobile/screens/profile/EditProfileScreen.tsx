@@ -28,7 +28,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -73,6 +72,7 @@ import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector'
 import { useNavigation } from '@react-navigation/native';
 import { toUserMessage } from '../../utils/errors';
 import { safeLaunchLibrary } from '../../utils/safePicker';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -226,7 +226,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   async function requestMediaPermission(): Promise<boolean> {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert(
+      showAlert(
         t('edit.permissionTitle'),
         t('edit.permissionMessage'),
       );
@@ -292,18 +292,10 @@ export default function EditProfileScreen(): React.JSX.Element {
       navigation.goBack();
       return;
     }
-    Alert.alert(
-      t('edit.discardTitle'),
-      t('edit.discardMessage'),
-      [
-        { text: t('edit.keepEditing'), style: 'cancel' },
-        {
-          text: t('edit.discard'),
-          style: 'destructive',
-          onPress: () => navigation.goBack(),
-        },
-      ],
-    );
+    void confirm(t('edit.discardTitle'), t('edit.discardMessage'), { confirmText: t('edit.discard'), cancelText: t('edit.keepEditing'), destructive: true }).then((accepted) => {
+      if (!accepted) return;
+      navigation.goBack();
+    });
   }, [navigation, displayName, username, bio, city, language, profileThemeId, avatarUri, coverUri, t]);
 
   // ── Save handler ──────────────────────────────────────────────────────────
@@ -313,13 +305,13 @@ export default function EditProfileScreen(): React.JSX.Element {
 
     // Block save if username is taken
     if (usernameStatus === 'taken') {
-      Alert.alert(t('edit.usernameTakenTitle'), t('edit.usernameTakenMessage'));
+      showAlert(t('edit.usernameTakenTitle'), t('edit.usernameTakenMessage'));
       return;
     }
 
     // Block save while checking
     if (usernameStatus === 'checking') {
-      Alert.alert(t('edit.pleaseWaitTitle'), t('edit.checkingUsername'));
+      showAlert(t('edit.pleaseWaitTitle'), t('edit.checkingUsername'));
       return;
     }
 
@@ -367,7 +359,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       navigation.goBack();
     } catch (err) {
       const msg = toUserMessage(err, 'profile:edit.saveErrorGeneric');
-      Alert.alert(t('edit.saveFailedTitle'), msg);
+      showAlert(t('edit.saveFailedTitle'), msg);
     } finally {
       setSaving(false);
     }

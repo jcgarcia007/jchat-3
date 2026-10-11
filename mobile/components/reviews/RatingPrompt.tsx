@@ -22,7 +22,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -34,6 +33,7 @@ import { useThemeColors } from '../../theme/colors';
 import { StarRating } from './StarRating';
 import { createReview } from '../../services/reviews';
 import { toUserMessage } from '../../utils/errors';
+import { showAlert } from '../../utils/dialog';
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ export function RatingPrompt({
 
   const handleSubmit = useCallback(async () => {
     if (rating === 0) {
-      Alert.alert(
+      showAlert(
         t('ratingPrompt.selectRatingTitle'),
         t('ratingPrompt.selectRatingMessage'),
       );
@@ -79,7 +79,7 @@ export function RatingPrompt({
     } catch (err: unknown) {
       const message =
         toUserMessage(err, 'common:state.error');
-      Alert.alert(t('ratingPrompt.submitErrorTitle'), message);
+      showAlert(t('ratingPrompt.submitErrorTitle'), message);
     } finally {
       setLoading(false);
     }

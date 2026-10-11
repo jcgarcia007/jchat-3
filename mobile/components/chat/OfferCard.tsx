@@ -33,7 +33,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -51,6 +50,7 @@ import { palette } from '../../theme/tokens';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import type { OfferType } from './CreateOfferSheet';
+import { shareContent } from '../../utils/shareContent';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -180,7 +180,7 @@ export function OfferCard({
     }
     // RN Share fallback
     const discount = offer.discount ? ` — ${offer.discount}` : '';
-    await Share.share({
+    await shareContent({
       message: `${offer.title}${discount}`,
       title: offer.title,
     });

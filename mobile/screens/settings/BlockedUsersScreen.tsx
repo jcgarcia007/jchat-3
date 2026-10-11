@@ -9,7 +9,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Pressable,
@@ -27,6 +26,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { listBlocked, unblockUser } from '../../services/blocks';
 import type { SocialUser } from '../../services/follows';
+import { confirm, showAlert } from '../../utils/dialog';
 
 export default function BlockedUsersScreen() {
   const c = useThemeColors();
@@ -66,19 +66,14 @@ export default function BlockedUsersScreen() {
   const confirmUnblock = useCallback(
     (u: SocialUser) => {
       const name = nameOf(u);
-      Alert.alert(t('blockedUsers.confirmTitle', { name }), t('blockedUsers.confirmMessage'), [
-        { text: tc('actions.cancel'), style: 'cancel' },
-        {
-          text: t('blockedUsers.unblock'),
-          onPress: () => {
-            setBusyId(u.id);
-            unblockUser(u.id)
-              .then(() => setUsers((prev) => prev.filter((x) => x.id !== u.id)))
-              .catch(() => Alert.alert(t('blockedUsers.errorTitle'), t('blockedUsers.errorMessage')))
-              .finally(() => setBusyId(null));
-          },
-        },
-      ]);
+      void confirm(t('blockedUsers.confirmTitle', { name }), t('blockedUsers.confirmMessage'), { confirmText: t('blockedUsers.unblock'), cancelText: tc('actions.cancel') }).then((accepted) => {
+        if (!accepted) return;
+        setBusyId(u.id);
+        unblockUser(u.id)
+          .then(() => setUsers((prev) => prev.filter((x) => x.id !== u.id)))
+          .catch(() => showAlert(t('blockedUsers.errorTitle'), t('blockedUsers.errorMessage')))
+          .finally(() => setBusyId(null));
+      });
     },
     [nameOf, t, tc],
   );

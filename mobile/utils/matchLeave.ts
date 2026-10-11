@@ -7,10 +7,10 @@
  * decides where to navigate in onLeft (leaving the venue means leaving its chat too).
  */
 
-import { Alert } from 'react-native';
 import i18n from '../i18n';
 import { matchLeaveVenue, setMatchOptIn } from '../services/match';
 import { resetMatchPresence } from '../services/matchPresence';
+import { confirm, showAlert } from './dialog';
 
 interface ConfirmLeaveArgs {
   businessId: string;
@@ -20,23 +20,17 @@ interface ConfirmLeaveArgs {
 
 export function confirmLeaveVenue({ businessId, businessName, onLeft }: ConfirmLeaveArgs): void {
   const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, { ns: 'match', ...options }) as string;
-  Alert.alert(t('leave.title', { business: businessName }), t('leave.body'), [
-    { text: t('leave.cancel'), style: 'cancel' },
-    {
-      text: t('leave.confirm'),
-      style: 'destructive',
-      onPress: () => {
-        void (async () => {
-          try {
-            await matchLeaveVenue(businessId);
-            await setMatchOptIn(businessId, false);
-            resetMatchPresence();
-            onLeft();
-          } catch {
-            Alert.alert(t('leave.error'));
-          }
-        })();
-      },
-    },
-  ]);
+  void confirm(t('leave.title', { business: businessName }), t('leave.body'), { confirmText: t('leave.confirm'), cancelText: t('leave.cancel'), destructive: true }).then((accepted) => {
+    if (!accepted) return;
+    void (async () => {
+      try {
+        await matchLeaveVenue(businessId);
+        await setMatchOptIn(businessId, false);
+        resetMatchPresence();
+        onLeft();
+      } catch {
+        showAlert(t('leave.error'));
+      }
+    })();
+  });
 }

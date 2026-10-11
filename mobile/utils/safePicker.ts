@@ -1,8 +1,9 @@
-import { Alert, InteractionManager, Keyboard } from 'react-native';
+import { InteractionManager, Keyboard } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 import i18n from '../i18n';
 import { normalizeImageUri } from './normalizeImage';
+import { showAlert } from './dialog';
 
 /**
  * Opens the photo library / camera and never leaves a rejected promise behind: if the native picker
@@ -57,7 +58,7 @@ export async function safeLaunchLibrary(
     }
   } catch (err) {
     console.warn('[picker] launchImageLibraryAsync failed:', err);
-    Alert.alert(i18n.t('common:picker.photosErrorTitle'), i18n.t('common:picker.photosErrorMessage'));
+    showAlert(i18n.t('common:picker.photosErrorTitle'), i18n.t('common:picker.photosErrorMessage'));
     return null;
   }
 }
@@ -75,7 +76,7 @@ export async function safeLaunchCamera(
     }
   } catch (err) {
     console.warn('[picker] launchCameraAsync failed:', err);
-    Alert.alert(i18n.t('common:picker.cameraErrorTitle'), i18n.t('common:picker.cameraErrorMessage'));
+    showAlert(i18n.t('common:picker.cameraErrorTitle'), i18n.t('common:picker.cameraErrorMessage'));
     return null;
   }
 }

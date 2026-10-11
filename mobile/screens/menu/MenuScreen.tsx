@@ -31,7 +31,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -68,6 +67,7 @@ import type { OfferStub } from '../../components/menu/FeaturedOfferBanner';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { formatCents } from '../../utils/currency';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -327,7 +327,7 @@ export default function MenuScreen() {
         }
       } catch (err) {
         if (!cancelled) {
-          Alert.alert(t('shared.errorTitle'), t('menu.loadError'));
+          showAlert(t('shared.errorTitle'), t('menu.loadError'));
           console.warn('[MenuScreen] getMenu error:', err);
         }
       } finally {

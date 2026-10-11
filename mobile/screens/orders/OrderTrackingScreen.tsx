@@ -27,7 +27,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   FlatList,
   Modal,
@@ -70,6 +69,7 @@ import { toUserMessage } from '../../utils/errors';
 import { notifyOrderStaff, type OrderNoticeKind } from '../../services/orders';
 import { fetchVenueAccess, readVenueCoords } from '../../services/venueAccess';
 import { goBackOrHome, resetToTabs } from '../../utils/navFlow';
+import { showAlert } from '../../utils/dialog';
 
 // ── Route / Navigation types ──────────────────────────────────────────────────
 
@@ -316,7 +316,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
   // ── Service call
   const handleServiceCall = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      Alert.alert(t('tracking.serviceUnavailableTitle'), t('tracking.serviceUnavailableMessage'));
+      showAlert(t('tracking.serviceUnavailableTitle'), t('tracking.serviceUnavailableMessage'));
       return;
     }
     if (!order || !user) return;
@@ -332,12 +332,12 @@ export default function OrderTrackingScreen(): React.ReactElement {
       });
       if (error) throw error;
       setShowServiceSheet(false);
-      Alert.alert(t('tracking.staffNotifiedTitle'), t('tracking.staffNotifiedMessage'));
+      showAlert(t('tracking.staffNotifiedTitle'), t('tracking.staffNotifiedMessage'));
     } catch (err) {
       // Golden rule: the waiter call needs the venue presence; outside it is explained, not "generic".
       const outside = /outside_venue/.test(String((err as { message?: unknown } | null)?.message ?? ''));
       const msg = outside ? t('tracking.waiterOutside') : toUserMessage(err, 'pos:tracking.genericError');
-      Alert.alert(t('shared.errorTitle'), msg);
+      showAlert(t('shared.errorTitle'), msg);
     } finally {
       setServiceCallLoading(false);
     }
@@ -360,10 +360,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
         const body = kind === 'question'
           ? (note?.trim() ?? '')
           : t(kind === 'on_my_way' ? 'tracking.noticeOnMyWay' : 'tracking.noticeArrived');
-        Alert.alert(t('tracking.noticeSent'), body || undefined);
+        showAlert(t('tracking.noticeSent'), body || undefined);
         return;
       }
-      Alert.alert(t('shared.errorTitle'), t(`tracking.noticeErr.${result.error}`));
+      showAlert(t('shared.errorTitle'), t(`tracking.noticeErr.${result.error}`));
     },
     [order, noticeSending, closeNoticeSheet, t],
   );

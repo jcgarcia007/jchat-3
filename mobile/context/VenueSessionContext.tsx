@@ -20,7 +20,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
@@ -28,6 +28,7 @@ import { runAutoGeoCheck, RESUME_RECHECK_MIN_GAP_MS } from '../screens/chat/useG
 import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 import { getMatchActivity } from '../services/matchDeck';
 import { matchLeaveVenue } from '../services/match';
+import { showAlert } from '../utils/dialog';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 /** Back from the background after this long: the server presence has lapsed → check again or end. */
@@ -107,7 +108,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     resetMatchPresence();
     setMatchReading(null);
     if (reason === 'outside' || reason === 'stale') {
-      Alert.alert(
+      showAlert(
         i18n.t('chatRoom.errorTitle', { ns: 'chat' }) as string,
         i18n.t('chatRoom.geoRemoved', { ns: 'chat', business: current.businessName }) as string,
       );
@@ -128,7 +129,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       const current = sessionRef.current;
       if (current && current.businessId !== info.businessId) {
         const confirmed = await new Promise<boolean>((resolve) => {
-          Alert.alert(
+          showAlert(
             i18n.t('venueSession.switchTitle', { ns: 'chat', business: info.businessName }) as string,
             i18n.t('venueSession.switchBody', { ns: 'chat', current: current.businessName }) as string,
             [

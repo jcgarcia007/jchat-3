@@ -14,7 +14,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -50,6 +49,7 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
+import { showAlert } from '../../utils/dialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -466,7 +466,7 @@ export default function PrivacyScreen() {
           .eq('id', user.id);
         if (error) {
           console.warn('[PrivacyScreen] Could not save privacy_settings:', error.message);
-          Alert.alert(t('privacy.saveFailedTitle'), t('privacy.saveFailedMessage'));
+          showAlert(t('privacy.saveFailedTitle'), t('privacy.saveFailedMessage'));
         }
       } finally {
         setSaving(false);

@@ -10,7 +10,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Linking,
   Platform,
   Pressable,
@@ -34,6 +33,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { showAlert } from '../../utils/dialog';
 
 type UserPlan = 'regular' | 'verified' | 'business' | 'pro';
 
@@ -71,14 +71,14 @@ export default function PricingScreen() {
         body: { action: 'create_checkout', plan: 'verified' },
       });
       if (error) {
-        Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+        showAlert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
       } else if (data?.url) {
         await Linking.openURL(data.url as string);
       } else {
-        Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+        showAlert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
       }
     } catch {
-      Alert.alert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
+      showAlert(t('checkoutErrorTitle'), t('checkoutErrorMsg'));
     } finally {
       setCheckingOut(false);
     }

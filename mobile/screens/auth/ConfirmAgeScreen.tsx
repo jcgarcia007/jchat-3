@@ -17,7 +17,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -30,7 +29,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DatePicker from '../../components/common/DatePicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { IconCalendar, IconCheck } from '@tabler/icons-react-native';
 
@@ -39,6 +38,7 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge, pickerMaxDate } from '../../services/age';
 import { deleteMyAccount } from '../../services/account';
+import { confirm, showAlert } from '../../utils/dialog';
 
 const TERMS_URL = 'https://jchat.cloud/terms';
 const PRIVACY_URL = 'https://jchat.cloud/privacy';
@@ -72,10 +72,11 @@ export default function ConfirmAgeScreen() {
   );
 
   const onPickerChange = useCallback((event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setShowPicker(false);
+    // Android's dialog and the web <input type="date"> commit on selection; the iOS spinner commits on "Done".
+    if (Platform.OS !== 'ios') setShowPicker(false);
     if (event.type === 'set' && selected) {
       setPickerValue(selected);
-      if (Platform.OS === 'android') setDob(selected);
+      if (Platform.OS !== 'ios') setDob(selected);
     }
   }, []);
 
@@ -93,23 +94,19 @@ export default function ConfirmAgeScreen() {
       await deleteMyAccount();
       await signOut().catch(() => null);
       setBusy(false);
-      Alert.alert(t('age.notEligibleTitle'), t('age.notEligibleMessage'));
+      showAlert(t('age.notEligibleTitle'), t('age.notEligibleMessage'));
       return;
     }
     setBusy(false);
-    Alert.alert(t('age.errorTitle'), t('age.errorMessage'));
+    showAlert(t('age.errorTitle'), t('age.errorMessage'));
   }, [dob, refreshAge, signOut, t]);
 
   const onContinue = useCallback(() => {
     if (!dob || !terms || busy) return;
-    Alert.alert(
-      t('age.confirmTitle'),
-      t('age.confirmMessage', { date: formatLong(dob) }),
-      [
-        { text: t('age.confirmEdit'), style: 'cancel' },
-        { text: t('age.confirmYes'), onPress: () => void submit() },
-      ],
-    );
+    void confirm(t('age.confirmTitle'), t('age.confirmMessage', { date: formatLong(dob) }), { confirmText: t('age.confirmYes'), cancelText: t('age.confirmEdit') }).then((accepted) => {
+      if (!accepted) return;
+      void submit();
+    });
   }, [busy, dob, formatLong, submit, t, terms]);
 
   const frame = [
@@ -171,7 +168,7 @@ export default function ConfirmAgeScreen() {
 
         {showPicker && Platform.OS === 'ios' && (
           <View style={[styles.iosPickerWrap, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-            <DateTimePicker
+            <DatePicker
               value={pickerValue}
               mode="date"
               display="spinner"
@@ -190,8 +187,8 @@ export default function ConfirmAgeScreen() {
             </TouchableOpacity>
           </View>
         )}
-        {showPicker && Platform.OS === 'android' && (
-          <DateTimePicker
+        {showPicker && Platform.OS !== 'ios' && (
+          <DatePicker
             value={pickerValue}
             mode="date"
             display="default"

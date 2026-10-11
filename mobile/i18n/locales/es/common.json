@@ -102,5 +102,10 @@
   "imageViewer": {
     "close": "Cerrar imagen",
     "error": "No se pudo cargar la imagen."
+  },
+  "share": {
+    "copiedTitle": "Copiado",
+    "copiedMessage": "Copiamos el texto al portapapeles para que lo pegues donde quieras.",
+    "manualTitle": "Copia este texto"
   }
 }

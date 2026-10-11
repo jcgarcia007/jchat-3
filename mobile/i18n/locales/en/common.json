@@ -102,5 +102,10 @@
   "imageViewer": {
     "close": "Close image",
     "error": "The image couldn't be loaded."
+  },
+  "share": {
+    "copiedTitle": "Copied",
+    "copiedMessage": "We copied the text to your clipboard so you can paste it anywhere.",
+    "manualTitle": "Copy this text"
   }
 }

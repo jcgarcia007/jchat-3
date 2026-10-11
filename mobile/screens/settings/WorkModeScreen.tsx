@@ -14,7 +14,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StatusBar,
@@ -43,6 +42,7 @@ import {
   type PosMyBusinessesRow,
 } from '../../services/pos';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
+import { showAlert } from '../../utils/dialog';
 
 // ─── Flow state type ──────────────────────────────────────────────────────────
 
@@ -188,7 +188,7 @@ export default function WorkModeScreen() {
       if (result.verified) {
         navigateToPosHome(selected);
       } else {
-        Alert.alert(t('workMode.pinWrongTitle'), t('workMode.pinWrongMessage'));
+        showAlert(t('workMode.pinWrongTitle'), t('workMode.pinWrongMessage'));
         setPin('');
       }
     } else {

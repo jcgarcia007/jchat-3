@@ -11,7 +11,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -32,6 +31,7 @@ import { getMenu, type MenuCategory } from '../../services/menu';
 import { cancelGiftOffer, createGiftOffer, giftErrorCode } from '../../services/giftOffers';
 import { holdGiftPayment } from '../../services/stripe';
 import { formatCents } from '../../utils/currency';
+import { showAlert } from '../../utils/dialog';
 
 interface Props {
   visible: boolean;
@@ -155,10 +155,10 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
         return;
       }
       const known = giftErrorCode(result.code) ?? giftErrorCode(result.message);
-      Alert.alert(t('gift.errorTitle'), known ? t(`gift.errors.${known}`) : result.message);
+      showAlert(t('gift.errorTitle'), known ? t(`gift.errors.${known}`) : result.message);
     } catch (err) {
       const known = giftErrorCode(err);
-      Alert.alert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
+      showAlert(t('gift.errorTitle'), t(known ? `gift.errors.${known}` : 'gift.errors.generic'));
     } finally {
       setSending(false);
     }

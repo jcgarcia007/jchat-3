@@ -19,7 +19,6 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -42,6 +41,7 @@ import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { normalizeImageUri } from '../../utils/normalizeImage';
 import { checkMessage } from '../../utils/messageFilter';
+import { showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ export function ChatInput({
     if (!trimmed || disabled) return;
     // Grave insults/threats are not sent; the text stays in the box so the person can rewrite it.
     if (!checkMessage(trimmed).allowed) {
-      Alert.alert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
+      showAlert(t('common:contentFilter.title'), t('common:contentFilter.blocked'));
       return;
     }
     onSendText(trimmed);
@@ -123,7 +123,7 @@ export function ChatInput({
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAlert(
           t('input.cameraPermissionTitle'),
           t('input.cameraPermissionMessage'),
         );
@@ -144,7 +144,7 @@ export function ChatInput({
     } catch (err) {
       // Don't fail silently — surface a clear message and log for debugging.
       console.error('[ChatInput] launchCameraAsync failed:', err);
-      Alert.alert(
+      showAlert(
         t('input.cameraErrorTitle'),
         t('input.cameraErrorMessage'),
       );
@@ -157,7 +157,7 @@ export function ChatInput({
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('input.cameraPermissionTitle'), t('input.cameraPermissionMessage'));
+        showAlert(t('input.cameraPermissionTitle'), t('input.cameraPermissionMessage'));
         return;
       }
       // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
@@ -171,7 +171,7 @@ export function ChatInput({
       if (asset?.uri) onSendPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
     } catch (err) {
       console.error('[ChatInput] launchImageLibraryAsync failed:', err);
-      Alert.alert(t('input.cameraErrorTitle'), t('input.cameraErrorMessage'));
+      showAlert(t('input.cameraErrorTitle'), t('input.cameraErrorMessage'));
     }
   }, [onSendPhoto, t]);
 
@@ -181,7 +181,7 @@ export function ChatInput({
       return;
     }
     setAttachmentOpen(false);
-    Alert.alert(t('input.sourceTitle'), undefined, [
+    showAlert(t('input.sourceTitle'), undefined, [
       { text: t('input.sourceCamera'), onPress: () => void handleCamera() },
       { text: t('input.sourceGallery'), onPress: () => void handleGallery() },
       { text: t('actions.cancel', { ns: 'common' }), style: 'cancel' },

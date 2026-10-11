@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Pressable,
   StyleSheet,
@@ -23,6 +22,7 @@ import { useCart } from '../../context/CartContext';
 import type { CartModifierSelection } from '../../context/CartContext';
 import type { MenuItem, MenuOptionChoice } from '../../services/menu';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { showAlert } from '../../utils/dialog';
 
 type WebRoute = RouteProp<MainStackParamList, 'MenuWebPreview'>;
 type WebNav = NativeStackNavigationProp<MainStackParamList, 'MenuWebPreview'>;
@@ -149,12 +149,12 @@ export default function MenuWebPreviewScreen() {
     // R4 — the message must be for THIS screen's business and room. A page that was navigated
     // elsewhere (or tampered with) can't target another business.
     if (msg.businessId !== businessId || (msg.roomId ?? null) !== (roomId ?? null)) {
-      Alert.alert(t('webPreview.securityTitle'), t('webPreview.securityMessage'));
+      showAlert(t('webPreview.securityTitle'), t('webPreview.securityMessage'));
       return;
     }
     // Who pays is ALWAYS the native session — never anything from the page.
     if (!user?.id) {
-      Alert.alert(t('webPreview.signInTitle'), t('webPreview.signInMessage'));
+      showAlert(t('webPreview.signInTitle'), t('webPreview.signInMessage'));
       return;
     }
 

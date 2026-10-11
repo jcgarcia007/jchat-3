@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -23,6 +23,7 @@ import { palette } from '../../theme/tokens';
 import { fetchInterests, fetchMyInterestKeys, interestName, saveMyInterests } from '../../services/matchProfile';
 import { markInterestsQuizSkipped } from '../../services/match';
 import type { InterestRow } from '../../services/matchTypes';
+import { showAlert } from '../../utils/dialog';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchInterests'>;
 
@@ -51,7 +52,7 @@ export default function MatchInterestsScreen() {
         setCatalog(rows);
         setSelected(new Set(mine));
       })
-      .catch(() => Alert.alert(t('interests.loadError')))
+      .catch(() => showAlert(t('interests.loadError')))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -74,7 +75,7 @@ export default function MatchInterestsScreen() {
       await saveMyInterests(user.id, [...selected]);
       navigation.goBack();
     } catch {
-      Alert.alert(t('interests.saveError'));
+      showAlert(t('interests.saveError'));
     } finally {
       setSaving(false);
     }

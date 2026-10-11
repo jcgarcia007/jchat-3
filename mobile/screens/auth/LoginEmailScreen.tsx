@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +23,7 @@ import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShel
 import { TicketHeader } from '../../components/auth/TicketHeader';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle } from '../../components/auth/TicketReveal';
+import { showAlert } from '../../utils/dialog';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'LoginEmail'>;
 
@@ -45,11 +46,11 @@ export default function LoginEmailScreen() {
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert(t('login.alerts.missingFieldsTitle'), t('login.alerts.missingFieldsMessage'));
+      showAlert(t('login.alerts.missingFieldsTitle'), t('login.alerts.missingFieldsMessage'));
       return;
     }
     if (!isSupabaseConfigured) {
-      Alert.alert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
+      showAlert(t('login.alerts.notConfiguredTitle'), t('login.alerts.notConfiguredMessage'));
       return;
     }
 
@@ -65,13 +66,13 @@ export default function LoginEmailScreen() {
         // Expiración / timeout / red / no disponible / ocupado: mensaje según el código.
         setLoading(false);
         const { titleKey, messageKey } = captchaErrorI18nKeys(err);
-        Alert.alert(t(titleKey), t(messageKey));
+        showAlert(t(titleKey), t(messageKey));
         return;
       }
       if (captchaToken === null) {
         // Usuario canceló: no llamar a Supabase sin token.
         setLoading(false);
-        Alert.alert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
+        showAlert(t('captcha.cancelledTitle'), t('captcha.cancelledMessage'));
         return;
       }
     }
@@ -86,7 +87,7 @@ export default function LoginEmailScreen() {
     if (error) {
       // AuthContext session listener handles successful sign-in automatically.
       // Tras cualquier intento el token queda quemado: el próximo pide uno nuevo.
-      Alert.alert(
+      showAlert(
         t('login.alerts.signInFailedTitle'),
         toUserMessage(error, 'auth:login.alerts.signInErrorMessage'),
       );

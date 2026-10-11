@@ -17,7 +17,6 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
@@ -26,6 +25,7 @@ import { clearLanguageChoice, getLanguageChoice } from '../services/languageChoi
 import { updateMyLanguage } from '../services/userSettings';
 import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
+import { showAlert } from '../utils/dialog';
 
 /** Server-side 18+ confirmation state of the signed-in user. */
 export type AgeStatus = 'loading' | 'confirmed' | 'required' | 'error';
@@ -99,9 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const ok = await exchangeAuthUrl(url);
       if (!mounted) return;
       if (ok) {
-        Alert.alert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
+        showAlert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
       } else {
-        Alert.alert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
+        showAlert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
       }
     }
 

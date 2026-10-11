@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -38,6 +37,7 @@ import {
   isFeedRadiusMiles,
   type FeedRadiusMiles,
 } from '../../utils/distanceUnits';
+import { showAlert } from '../../utils/dialog';
 
 type OffersNavigation = NativeStackNavigationProp<MainStackParamList, 'Offers'>;
 
@@ -137,7 +137,7 @@ export default function OffersScreen() {
       console.warn('[megaphone] radius save error:', error);
       lastLoadedAtRef.current = 0;
       setSavedRadius(previous);
-      Alert.alert(translation.t('radiusSaveErrorTitle'), translation.t('radiusSaveErrorMessage'));
+      showAlert(translation.t('radiusSaveErrorTitle'), translation.t('radiusSaveErrorMessage'));
     }
   }, [radiusMiles, translation]);
 
