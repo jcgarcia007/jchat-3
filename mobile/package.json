@@ -19,6 +19,7 @@
     "@stripe/stripe-terminal-react-native": "0.0.1-beta.32",
     "@supabase/supabase-js": "^2.108.2",
     "@tabler/icons-react-native": "^3.44.0",
+    "@types/react-dom": "~19.2.3",
     "base64-arraybuffer": "^1.0.2",
     "expo": "^57.0.0",
     "expo-asset": "~57.0.19",
