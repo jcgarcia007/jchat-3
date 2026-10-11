@@ -40,6 +40,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -303,6 +304,18 @@ export default function DMChatScreen() {
     const hide = Keyboard.addListener('keyboardDidHide', () => setAndroidKeyboardHeight(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
+  // The venue bar ("Estás en {negocio} · Volver al chat") floats over the bottom of this screen when the chat
+  // is pinned: the composer clears it. On iOS/Android the keyboard covers the bar, so no extra room while it
+  // is open; on web the viewport resizes with the keyboard and the bar stays above it, so the room stays.
+  const homeBarInset = useHomeBarInset();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const barClearance = keyboardOpen ? 0 : homeBarInset;
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
   const { user } = useAuth();
@@ -788,7 +801,7 @@ export default function DMChatScreen() {
 
       {/* Composer — replaced by the voice recorder while recording */}
       {recordingVoice ? (
-        <View style={{ paddingBottom: insets.bottom, backgroundColor: c.bgSurface }}>
+        <View style={{ paddingBottom: insets.bottom + barClearance, backgroundColor: c.bgSurface }}>
           <VoiceRecorderBar
             onSend={(rec) => void handleVoiceSend(rec)}
             onCancel={handleVoiceCancel}
@@ -805,7 +818,7 @@ export default function DMChatScreen() {
           {
             backgroundColor: c.bgSurface,
             borderTopColor: c.borderSubtle,
-            paddingBottom: (androidKeyboardHeight > 0 ? 0 : insets.bottom) + 8,
+            paddingBottom: (androidKeyboardHeight > 0 ? 0 : insets.bottom) + 8 + barClearance,
           },
         ]}
       >

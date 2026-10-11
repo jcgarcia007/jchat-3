@@ -4,8 +4,12 @@
  * One fixed bar above the tab bar with up to two segments:
  *   • venue session  — "Estás en {negocio} · N mensajes · N likes"  [Volver] (reopens the chat instantly)
  *   • order in progress — "Pedido #N · {estado}" [Ver]  /  "N pedidos en curso" [Ver] (→ My orders)
- * With neither, nothing is drawn. Always mounted (the hooks keep running); `visible` says whether the
- * current screen is a tab screen.
+ * With neither, nothing is drawn. Always mounted (the hooks keep running); `placement` says where the bar is:
+ *   'tabs'     — a tab screen: above the tab bar, venue session and/or orders.
+ *   'detached' — the DM inbox / a DM conversation reached from the venue chat: no tab bar, so the bar sits
+ *                insets.bottom + 10 from the edge, and only while there is a venue session.
+ *   'hidden'   — everywhere else.
+ * (the segment text and actions are the same everywhere)
  *
  * ONLY the orders segment can be swiped left away ("Moved to notifications · Undo", 4 s). The orders it hides
  * live on as pinned "In progress" rows in Notifications (context/OrdersBarContext). Screen readers get the same
@@ -25,19 +29,21 @@ import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useReportHomeBarInset } from './HomeBarInset';
 import { useAppWindow } from '../../utils/appWindow';
 
+export type HomeStatusBarPlacement = 'tabs' | 'detached' | 'hidden';
+
 /** Tab bar geometry (components/navigation/NotchTabBar): bottom offset 26 + inset, height 68. */
 const TAB_BAR_TOP_OFFSET = 26 + 68;
 const GAP = 10;
 
 interface Props {
-  /** True on the tab screens (the bar sits above the tab bar only there). */
-  visible: boolean;
+  /** Where the current screen wants the bar (see the file header). */
+  placement: HomeStatusBarPlacement;
   onOpenChat: (roomId: string) => void;
   onOpenOrder: (orderId: string) => void;
   onOpenOrders: () => void;
 }
 
-export function HomeStatusBar({ visible, onOpenChat, onOpenOrder, onOpenOrders }: Props): React.ReactElement | null {
+export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders }: Props): React.ReactElement | null {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('chat');
@@ -48,8 +54,9 @@ export function HomeStatusBar({ visible, onOpenChat, onOpenOrder, onOpenOrders }
   const [toast, setToast] = useState<{ ids: string[]; snapshot: ReturnType<typeof dismiss> } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportInset = useReportHomeBarInset();
-  const showCard = visible && (!!session || orders.length > 0);
-  const shown = showCard || (visible && toast !== null);
+  const showCard =
+    placement === 'tabs' ? !!session || orders.length > 0 : placement === 'detached' ? !!session : false;
+  const shown = showCard || (placement === 'tabs' && toast !== null);
 
   // Hidden → the screens get their full height back (the toast alone reserves no space).
   useEffect(() => {
@@ -93,7 +100,7 @@ export function HomeStatusBar({ visible, onOpenChat, onOpenOrder, onOpenOrders }
     : t('venueSession.orders', { count: orders.length });
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + TAB_BAR_TOP_OFFSET + GAP }]}>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + (placement === 'tabs' ? TAB_BAR_TOP_OFFSET + GAP : GAP) }]}>
       {toast ? (
         <View
           accessibilityLiveRegion="polite"

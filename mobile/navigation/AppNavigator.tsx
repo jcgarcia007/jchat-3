@@ -14,6 +14,7 @@ import * as Notifications from 'expo-notifications';
 import {
   createNavigationContainerRef,
   NavigationContainer,
+  StackActions,
   LinkingOptions,
 } from '@react-navigation/native';
 import type { NavigatorScreenParams } from '@react-navigation/native';
@@ -30,7 +31,7 @@ import {
   hasLocalOnboardingCompletion,
 } from '../services/onboarding';
 import BottomTabs from './tabs/BottomTabs';
-import { HomeStatusBar } from '../components/venue/HomeStatusBar';
+import { HomeStatusBar, type HomeStatusBarPlacement } from '../components/venue/HomeStatusBar';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
 import type { BottomTabParamList } from './tabs/BottomTabs';
@@ -185,6 +186,31 @@ const navigationRef = createNavigationContainerRef<MainStackParamList>();
 /** Leaf route names of the bottom tabs (the venue bar sits above the tab bar). */
 const TAB_ROUTE_NAMES = new Set(['Map', 'Nearby', 'Messages', 'Profile']);
 
+/**
+ * Leaf routes without a tab bar where the venue bar ("Estás en {negocio} · Volver al chat") also shows
+ * while a venue session is active: the DM inbox and a DM conversation opened from the venue chat.
+ * navigationRef.getCurrentRoute() already returns the focused leaf of nested stacks (DMs → DMInbox).
+ */
+const VENUE_BAR_ROUTE_NAMES = new Set(['DMInbox', 'DMChat']);
+
+function venueBarPlacement(routeName: string | null): HomeStatusBarPlacement {
+  if (routeName === null) return 'hidden';
+  if (TAB_ROUTE_NAMES.has(routeName)) return 'tabs';
+  return VENUE_BAR_ROUTE_NAMES.has(routeName) ? 'detached' : 'hidden';
+}
+
+/**
+ * "Volver al chat". In React Navigation 7 navigate() pushes a second ChatRoom when one is already below
+ * (the DM screens sit on top of the chat), so go back to the existing instance with popTo; with no
+ * ChatRoom in the stack (the bar was opened from a tab) it is a normal navigate.
+ */
+function openVenueChat(roomId: string): void {
+  if (!navigationRef.isReady()) return;
+  const chatInStack = navigationRef.getRootState()?.routes.some((r) => r.name === 'ChatRoom');
+  if (chatInStack) navigationRef.dispatch(StackActions.popTo('ChatRoom', { id: roomId }));
+  else navigationRef.navigate('ChatRoom', { id: roomId });
+}
+
 function navigateNotificationRoute(route: NotificationRoute): void {
   if (!navigationRef.isReady()) return;
   if (route.screen === 'DMs') navigationRef.navigate('DMs', route.params);
@@ -322,8 +348,8 @@ export default function AppNavigator() {
     {/* Venue session + order in progress: one bar above the tab bar (tab screens only). */}
     {notificationsEnabled ? (
       <HomeStatusBar
-        visible={currentRoute !== null && TAB_ROUTE_NAMES.has(currentRoute)}
-        onOpenChat={(id) => navigationRef.isReady() && navigationRef.navigate('ChatRoom', { id })}
+        placement={venueBarPlacement(currentRoute)}
+        onOpenChat={openVenueChat}
         onOpenOrder={(orderId) => navigationRef.isReady() && navigationRef.navigate('OrderTracking', { orderId })}
         onOpenOrders={() => navigationRef.isReady() && navigationRef.navigate('MyOrders')}
       />
