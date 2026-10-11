@@ -13,6 +13,7 @@ import {
   NAV_MODULES,
   CONFIG_MODULE,
   MATCH_PAGE,
+  TOD_PAGE,
   isNavPageActive,
   type NavPage,
   type NavModule,
@@ -88,9 +89,9 @@ export function Sidebar() {
     };
   }, []);
 
-  // Match is owner-only: appended to the chat module only when owner_id = current user.
+  // Match and Truth or Dare are owner-only: appended to the chat module only when owner_id = current user.
   function withOwnerPages(module: NavModule): NavModule {
-    return isOwner && module.id === "chat" ? { ...module, pages: [...module.pages, MATCH_PAGE] } : module;
+    return isOwner && module.id === "chat" ? { ...module, pages: [...module.pages, MATCH_PAGE, TOD_PAGE] } : module;
   }
 
   function renderPage(page: NavPage) {

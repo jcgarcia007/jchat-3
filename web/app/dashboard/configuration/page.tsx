@@ -27,6 +27,7 @@ import {
   IconPhoto,
   IconMenu2,
   IconHeart,
+  IconCards,
   IconShoppingBag,
   IconPalette,
   IconCurrencyDollar,
@@ -52,6 +53,7 @@ import { useDashboardThemeContext } from "@/components/dashboard/DashboardThemeP
 import { ThemePreview } from "@/components/dashboard/ThemePreview";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { LocationEditor, MAPS_KEY } from "@/components/dashboard/LocationEditor";
+import { TOD_CATEGORY_KEYS } from "@/lib/tod";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -626,6 +628,11 @@ export default function ConfigurationPage() {
   // Match (business_games.game_key = 'match'); off by default when there is no row.
   const [matchEnabled, setMatchEnabled] = useState(false);
   const [savingMatch, setSavingMatch] = useState(false);
+  // Truth or Dare (business_games.game_key = 'truth_or_dare' + tod_settings.categories); off by default, all 5 categories when there is no settings row.
+  const [todEnabled, setTodEnabled] = useState(false);
+  const [savingTod, setSavingTod] = useState(false);
+  const [todCategories, setTodCategories] = useState<string[]>([...TOD_CATEGORY_KEYS]);
+  const [savingTodCategories, setSavingTodCategories] = useState(false);
   const [posPaymentMode, setPosPaymentMode] = useState<PosPaymentMode>("stripe");
   const [savingPaymentMode, setSavingPaymentMode] = useState(false);
 
@@ -723,6 +730,22 @@ export default function ConfigurationPage() {
         .eq("game_key", "match")
         .maybeSingle();
       setMatchEnabled(matchRow?.enabled === true);
+      const { data: todRow } = await untypedDb
+        .from("business_games")
+        .select("enabled")
+        .eq("business_id", b.id)
+        .eq("game_key", "truth_or_dare")
+        .maybeSingle();
+      setTodEnabled(todRow?.enabled === true);
+      const { data: todSettings } = await untypedDb
+        .from("tod_settings")
+        .select("categories")
+        .eq("business_id", b.id)
+        .maybeSingle();
+      const savedCategories = Array.isArray(todSettings?.categories)
+        ? (todSettings.categories as string[]).filter((c) => (TOD_CATEGORY_KEYS as readonly string[]).includes(c))
+        : [];
+      setTodCategories(savedCategories.length > 0 ? savedCategories : [...TOD_CATEGORY_KEYS]);
       if (b.dashboard_theme_id) setThemeId(b.dashboard_theme_id);
       setPaletteId(b.dashboard_palette_id ?? null);
     } catch {
@@ -982,6 +1005,54 @@ export default function ConfigurationPage() {
       setSuccess(v ? t("configurationMatchEnabledSuccess") : t("configurationMatchDisabledSuccess"));
     }
     setSavingMatch(false);
+  };
+
+  // Truth or Dare: same upsert as Match with game_key 'truth_or_dare'; RLS restricts writes to the owner. Rolls back on error.
+  const handleToggleTod = async (v: boolean) => {
+    if (!businessId || savingTod) return;
+    const previous = todEnabled;
+    setTodEnabled(v);
+    setSavingTod(true);
+    setError(null);
+    setSuccess(null);
+    const { error: upsertErr } = await untypedDb
+      .from("business_games")
+      .upsert(
+        { business_id: businessId, game_key: "truth_or_dare", enabled: v, updated_at: new Date().toISOString() },
+        { onConflict: "business_id,game_key" },
+      );
+    if (upsertErr) {
+      setTodEnabled(previous);
+      setError(upsertErr.message);
+    } else {
+      setSuccess(v ? t("configurationTodEnabledSuccess") : t("configurationTodDisabledSuccess"));
+    }
+    setSavingTod(false);
+  };
+
+  // Truth or Dare categories: always upsert the full list (even all five) so the row is never deleted; at least one stays checked.
+  const handleToggleTodCategory = async (category: string, checked: boolean) => {
+    if (!businessId || savingTodCategories) return;
+    const previous = todCategories;
+    const next = TOD_CATEGORY_KEYS.filter((c) => (c === category ? checked : previous.includes(c)));
+    if (next.length === 0) return;
+    setTodCategories(next);
+    setSavingTodCategories(true);
+    setError(null);
+    setSuccess(null);
+    const { error: upsertErr } = await untypedDb
+      .from("tod_settings")
+      .upsert(
+        { business_id: businessId, categories: next, updated_at: new Date().toISOString() },
+        { onConflict: "business_id" },
+      );
+    if (upsertErr) {
+      setTodCategories(previous);
+      setError(upsertErr.message);
+    } else {
+      setSuccess(t("configurationTodCategoriesSuccess"));
+    }
+    setSavingTodCategories(false);
   };
 
   // D-01: guardado optimista con rollback al valor previo si la BD rechaza.
@@ -2026,6 +2097,71 @@ export default function ConfigurationPage() {
         </div>
         <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
           {t("configurationMatchHelp")}
+        </p>
+      </Section>
+
+      {/* ── 5f. Truth or Dare ───────────────────────────────────────────────── */}
+      <Section
+        icon={<IconCards size={18} color="var(--db-accent)" />}
+        title={t("configurationTodSectionTitle")}
+        subtitle={t("configurationTodSectionSubtitle")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <Toggle
+            checked={todEnabled}
+            onChange={(v) => void handleToggleTod(v)}
+            label={t("configurationTodEnabledLabel")}
+            disabled={noSupabase || noBiz || savingTod}
+          />
+          {savingTod && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>{t("tablesSavingState")}</span>
+          )}
+        </div>
+        {todEnabled && (
+          <fieldset style={{ border: "none", padding: 0, margin: "14px 0 0" }}>
+            <legend style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)", padding: 0, marginBottom: "8px" }}>
+              {t("configurationTodCategoriesLabel")}
+            </legend>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {TOD_CATEGORY_KEYS.map((category) => {
+                const checked = todCategories.includes(category);
+                const isLast = checked && todCategories.length === 1;
+                return (
+                  <label
+                    key={category}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      cursor: isLast || noSupabase || noBiz || savingTodCategories ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isLast || noSupabase || noBiz || savingTodCategories}
+                      onChange={(e) => void handleToggleTodCategory(category, e.target.checked)}
+                      style={{ marginTop: "3px", accentColor: "var(--db-accent)" }}
+                    />
+                    <span>
+                      <span style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+                        {t(`todCategory_${category}`)}
+                      </span>
+                      <span style={{ display: "block", fontSize: "12px", color: "var(--db-text-secondary)" }}>
+                        {t(`todCategoryDesc_${category}`)}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "8px 0 0" }}>
+              {t("configurationTodCategoriesHint")}
+            </p>
+          </fieldset>
+        )}
+        <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: "12px 0 0" }}>
+          {t("configurationTodHelp")}
         </p>
       </Section>
 
