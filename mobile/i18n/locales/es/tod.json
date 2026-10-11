@@ -1,0 +1,114 @@
+{
+  "title": "Truth or Dare",
+  "fromJChat": "Cartas de JChat",
+  "startedBy": "Iniciada por {{name}}",
+  "official": "Ronda oficial · {{business}}",
+  "choice": {
+    "truth": "Verdad",
+    "dare": "Reto",
+    "random": "Aleatorio"
+  },
+  "kind": {
+    "truth": "VERDAD",
+    "dare": "RETO"
+  },
+  "playEvery": "Juega cada 5 min",
+  "played_one": "{{count}} jugó",
+  "played_other": "{{count}} jugaron",
+  "timeLeft": "⏱ {{time}}",
+  "ended": "Terminada",
+  "close": "Cerrar",
+  "closeA11y": "Cerrar esta tarjeta",
+  "cooldownBtn": "Vuelve en {{time}}",
+  "playA11y": "Jugar {{choice}} en la tarjeta {{category}}",
+  "category": {
+    "classic": { "name": "Clásico", "desc": "Rompehielos suaves" },
+    "party": { "name": "Fiesta", "desc": "Ambiente de grupo" },
+    "laughs": { "name": "Risas", "desc": "Actuación e imitaciones" },
+    "confessions": { "name": "Confesiones", "desc": "Verdades personales divertidas" },
+    "talent": { "name": "Talento", "desc": "Demuestra lo que sabes" }
+  },
+  "result": {
+    "other": "@{{name}} le tocó {{kind}}: {{text}}",
+    "own": "Te tocó {{kind}}: {{text}}",
+    "loading": "…",
+    "unavailable": "Carta no disponible",
+    "randomMark": "Aleatorio",
+    "applaud": "Aplaudir",
+    "applaudA11y": "Aplaudir este resultado. Aplausos: {{count}}",
+    "ownA11y": "Tu resultado. Aplausos: {{count}}"
+  },
+  "card": {
+    "title": "Tu carta",
+    "private": "Solo tú la ves hasta que decidas",
+    "publish": "Publicar",
+    "pass": "Paso",
+    "later": "Decidir después",
+    "revealA11y": "Tu carta de {{kind}}: {{text}}",
+    "hiddenFace": "Truth or Dare",
+    "publishing": "Publicando…"
+  },
+  "welcome": {
+    "title": "Bienvenido a Truth or Dare",
+    "rule1": "Nada es obligatorio, puedes pasar",
+    "rule2": "Sin alcohol, sin contenido íntimo, sin insultos",
+    "rule3": "Puedes reportar y bloquear",
+    "notice": "Tu nombre aparecerá en el chat de este salón al publicar tu resultado",
+    "accept": "Acepto y jugar",
+    "notNow": "Ahora no",
+    "understood": "Entendido",
+    "saveError": "No pudimos guardar tu aceptación. Inténtalo de nuevo."
+  },
+  "tutorial": {
+    "step1Title": "Toca la tarjeta",
+    "step1Body": "Elige Verdad, Reto o Aleatorio en cualquier tarjeta del chat.",
+    "step2Title": "Mira tu carta en privado",
+    "step2Body": "Solo tú la ves hasta que decidas qué hacer con ella.",
+    "step3Title": "Publica o pasa",
+    "step3Body": "Si publicas, tu resultado sale en el chat y el grupo puede aplaudir. Si pasas, no pasa nada.",
+    "next": "Siguiente",
+    "start": "Empezar",
+    "skip": "Saltar",
+    "progressA11y": "Paso {{current}} de {{total}}"
+  },
+  "bar": {
+    "title_one": "🎲 {{count}} ronda activa",
+    "title_other": "🎲 {{count}} rondas activas",
+    "a11yExpand": "Ver las rondas activas de este salón",
+    "a11yCollapse": "Ocultar la lista de rondas",
+    "item": "{{name}} · {{played}} · {{time}}"
+  },
+  "home": {
+    "title": "Publicar tarjeta",
+    "subtitle": "Elige una categoría. La tarjeta se publica en este salón y dura 30 minutos.",
+    "back": "Volver",
+    "rules": "Reglas del juego",
+    "loading": "Cargando…",
+    "publishing": "Publicando…",
+    "cooldown": "Puedes publicar otra en {{time}}",
+    "categoryA11y": "Publicar una tarjeta de {{name}}"
+  },
+  "reasons": {
+    "room_not_found": "No encontramos este salón.",
+    "age_not_confirmed": "Confirma tu edad para jugar.",
+    "games_disabled": "Tienes los juegos desactivados en tus ajustes.",
+    "terms_required": "Acepta las reglas del juego para continuar.",
+    "game_disabled": "Este juego no está activo en este local.",
+    "category_disabled": "Esta categoría no está activa en este local.",
+    "unavailable": "No puedes jugar ahora mismo.",
+    "not_staff": "Solo el personal del local puede lanzar rondas oficiales.",
+    "not_in_room": "Tienes que estar en este salón del local para jugar.",
+    "round_not_found": "Esta tarjeta ya no existe.",
+    "round_ended": "Esta tarjeta ya terminó.",
+    "own_round": "No puedes jugar tu propia tarjeta.",
+    "no_cards": "No hay cartas disponibles en esta categoría por ahora.",
+    "not_found": "No encontramos esa carta.",
+    "already_decided": "Ya decidiste esta carta.",
+    "draw_expired": "Esta carta expiró. Saca otra cuando puedas.",
+    "not_in_venue": "Tienes que estar en el local para publicar.",
+    "own_result": "No puedes aplaudir tu propio resultado.",
+    "forbidden": "No tienes permiso para hacer esto.",
+    "network": "No pudimos conectar. Revisa tu conexión e inténtalo de nuevo.",
+    "default": "No se pudo completar la acción. Inténtalo de nuevo."
+  }
+}

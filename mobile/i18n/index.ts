@@ -58,6 +58,8 @@ import ticketEn from './locales/en/ticket.json';
 import ticketEs from './locales/es/ticket.json';
 import matchEn from './locales/en/match.json';
 import matchEs from './locales/es/match.json';
+import todEn from './locales/en/tod.json';
+import todEs from './locales/es/tod.json';
 
 export type SupportedLanguage = 'en' | 'es';
 
@@ -65,8 +67,8 @@ const SUPPORTED: readonly SupportedLanguage[] = ['en', 'es'];
 const FALLBACK: SupportedLanguage = 'en';
 
 export const resources = {
-  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn, pricing: pricingEn, inventory: inventoryEn, offers: offersEn, errors: errorsEn, ticket: ticketEn, match: matchEn },
-  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs, pricing: pricingEs, inventory: inventoryEs, offers: offersEs, errors: errorsEs, ticket: ticketEs, match: matchEs },
+  en: { common: en, auth: authEn, chat: chatEn, profile: profileEn, settings: settingsEn, social: socialEn, pos: posEn, feed: feedEn, onboarding: onboardingEn, reviews: reviewsEn, loyalty: loyaltyEn, events: eventsEn, reservations: reservationsEn, nearby: nearbyEn, map: mapEn, pricing: pricingEn, inventory: inventoryEn, offers: offersEn, errors: errorsEn, ticket: ticketEn, match: matchEn, tod: todEn },
+  es: { common: es, auth: authEs, chat: chatEs, profile: profileEs, settings: settingsEs, social: socialEs, pos: posEs, feed: feedEs, onboarding: onboardingEs, reviews: reviewsEs, loyalty: loyaltyEs, events: eventsEs, reservations: reservationsEs, nearby: nearbyEs, map: mapEs, pricing: pricingEs, inventory: inventoryEs, offers: offersEs, errors: errorsEs, ticket: ticketEs, match: matchEs, tod: todEs },
 } as const;
 
 /** Device language clamped to a supported one (expo-localization, SDK 56 API). */
@@ -81,7 +83,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: FALLBACK,
-  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map', 'pricing', 'inventory', 'offers', 'errors', 'ticket', 'match'],
+  ns: ['common', 'auth', 'chat', 'profile', 'settings', 'social', 'pos', 'feed', 'onboarding', 'reviews', 'loyalty', 'events', 'reservations', 'nearby', 'map', 'pricing', 'inventory', 'offers', 'errors', 'ticket', 'match', 'tod'],
   defaultNS: 'common',
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,

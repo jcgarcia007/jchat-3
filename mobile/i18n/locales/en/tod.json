@@ -1,0 +1,114 @@
+{
+  "title": "Truth or Dare",
+  "fromJChat": "JChat cards",
+  "startedBy": "Started by {{name}}",
+  "official": "Official round · {{business}}",
+  "choice": {
+    "truth": "Truth",
+    "dare": "Dare",
+    "random": "Random"
+  },
+  "kind": {
+    "truth": "TRUTH",
+    "dare": "DARE"
+  },
+  "playEvery": "Play every 5 min",
+  "played_one": "{{count}} played",
+  "played_other": "{{count}} played",
+  "timeLeft": "⏱ {{time}}",
+  "ended": "Ended",
+  "close": "Close",
+  "closeA11y": "Close this card",
+  "cooldownBtn": "Back in {{time}}",
+  "playA11y": "Play {{choice}} on the {{category}} card",
+  "category": {
+    "classic": { "name": "Classic", "desc": "Gentle icebreakers" },
+    "party": { "name": "Party", "desc": "Group vibes" },
+    "laughs": { "name": "Laughs", "desc": "Acting and impressions" },
+    "confessions": { "name": "Confessions", "desc": "Fun personal truths" },
+    "talent": { "name": "Talent", "desc": "Show what you can do" }
+  },
+  "result": {
+    "other": "@{{name}} got {{kind}}: {{text}}",
+    "own": "You got {{kind}}: {{text}}",
+    "loading": "…",
+    "unavailable": "Card unavailable",
+    "randomMark": "Random",
+    "applaud": "Applaud",
+    "applaudA11y": "Applaud this result. Applause: {{count}}",
+    "ownA11y": "Your result. Applause: {{count}}"
+  },
+  "card": {
+    "title": "Your card",
+    "private": "Only you can see it until you decide",
+    "publish": "Publish",
+    "pass": "Pass",
+    "later": "Decide later",
+    "revealA11y": "Your {{kind}} card: {{text}}",
+    "hiddenFace": "Truth or Dare",
+    "publishing": "Publishing…"
+  },
+  "welcome": {
+    "title": "Welcome to Truth or Dare",
+    "rule1": "Nothing is mandatory, you can pass",
+    "rule2": "No alcohol, no intimate content, no insults",
+    "rule3": "You can report and block",
+    "notice": "Your name will appear in this room's chat when you publish your result",
+    "accept": "I agree and play",
+    "notNow": "Not now",
+    "understood": "Got it",
+    "saveError": "We couldn't save your acceptance. Please try again."
+  },
+  "tutorial": {
+    "step1Title": "Tap the card",
+    "step1Body": "Pick Truth, Dare or Random on any card in the chat.",
+    "step2Title": "See your card in private",
+    "step2Body": "Only you can see it until you decide what to do with it.",
+    "step3Title": "Publish or pass",
+    "step3Body": "If you publish, your result goes to the chat and the group can applaud. If you pass, nothing happens.",
+    "next": "Next",
+    "start": "Start",
+    "skip": "Skip",
+    "progressA11y": "Step {{current}} of {{total}}"
+  },
+  "bar": {
+    "title_one": "🎲 {{count}} active round",
+    "title_other": "🎲 {{count}} active rounds",
+    "a11yExpand": "Show the active rounds in this room",
+    "a11yCollapse": "Hide the rounds list",
+    "item": "{{name}} · {{played}} · {{time}}"
+  },
+  "home": {
+    "title": "Publish a card",
+    "subtitle": "Pick a category. The card is published in this room and lasts 30 minutes.",
+    "back": "Back",
+    "rules": "Game rules",
+    "loading": "Loading…",
+    "publishing": "Publishing…",
+    "cooldown": "You can publish another in {{time}}",
+    "categoryA11y": "Publish a {{name}} card"
+  },
+  "reasons": {
+    "room_not_found": "We couldn't find this room.",
+    "age_not_confirmed": "Confirm your age to play.",
+    "games_disabled": "You have games turned off in your settings.",
+    "terms_required": "Accept the game rules to continue.",
+    "game_disabled": "This game isn't active at this venue.",
+    "category_disabled": "This category isn't active at this venue.",
+    "unavailable": "You can't play right now.",
+    "not_staff": "Only venue staff can launch official rounds.",
+    "not_in_room": "You need to be in this room of the venue to play.",
+    "round_not_found": "This card no longer exists.",
+    "round_ended": "This card has ended.",
+    "own_round": "You can't play your own card.",
+    "no_cards": "There are no cards available in this category right now.",
+    "not_found": "We couldn't find that card.",
+    "already_decided": "You already decided on this card.",
+    "draw_expired": "This card expired. Draw another when you can.",
+    "not_in_venue": "You need to be at the venue to publish.",
+    "own_result": "You can't applaud your own result.",
+    "forbidden": "You don't have permission to do this.",
+    "network": "We couldn't connect. Check your connection and try again.",
+    "default": "The action couldn't be completed. Please try again."
+  }
+}
