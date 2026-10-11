@@ -27,7 +27,12 @@ import {
   registerForPushNotifications,
   deleteNotification,
   listNotifications,
+  markAllNotificationsRead,
   markNotificationRead,
+  unmarkNotificationsRead,
+  isMatchNotificationType,
+  isOrderNotificationType,
+  SOCIAL_NOTIFICATION_TYPES,
   resolveNotificationRoute,
   isSocialNotificationType,
   type NotificationRow,
@@ -66,6 +71,15 @@ if (Platform.OS !== 'web') {
 
 // ── Public interface ───────────────────────────────────────────────────────────
 
+export type NotificationFilter = 'all' | 'match' | 'orders';
+
+/** Notification types behind each filter chip of the bell sheet. */
+export function notificationTypesForFilter(filter: NotificationFilter): string[] {
+  if (filter === 'match') return SOCIAL_NOTIFICATION_TYPES.filter((type) => isMatchNotificationType(type));
+  if (filter === 'orders') return SOCIAL_NOTIFICATION_TYPES.filter((type) => isOrderNotificationType(type));
+  return [...SOCIAL_NOTIFICATION_TYPES];
+}
+
 export interface UseNotificationsResult {
   /** Sorted array (newest first) of the current user's notifications. */
   notifications: NotificationRow[];
@@ -76,6 +90,13 @@ export interface UseNotificationsResult {
    * No-op if Supabase is not configured.
    */
   markRead: (id: string) => Promise<void>;
+  /**
+   * "Mark all as read" for the active filter of the bell sheet: updates the local rows at once and rolls
+   * them back if the request fails. Returns the ids the server changed ([] on failure) for the Undo.
+   */
+  markAllRead: (filter: NotificationFilter) => Promise<string[]>;
+  /** Undo of markAllRead: those ids go back to unread (rolled back to read if the request fails). */
+  undoMarkAll: (ids: string[]) => Promise<void>;
   /** Delete one notification optimistically, restoring it if the request fails. */
   remove: (id: string) => Promise<void>;
   /** Re-fetch notifications from Supabase on demand. */
@@ -129,6 +150,35 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
     );
     await markNotificationRead(id);
+  }, []);
+
+  const markAllRead = useCallback(async (filter: NotificationFilter): Promise<string[]> => {
+    if (!isSupabaseConfigured || !user?.id) return [];
+    const types = notificationTypesForFilter(filter);
+    const touched = new Set(
+      notifications.filter((n) => !n.is_read && types.includes(n.type)).map((n) => n.id),
+    );
+    // Optimistic: dots disappear and the bell counter drops immediately.
+    setNotifications((prev) => prev.map((n) => (touched.has(n.id) ? { ...n, is_read: true } : n)));
+    try {
+      return await markAllNotificationsRead(user.id, types);
+    } catch (error) {
+      console.warn('[notifications] markAllRead error:', error instanceof Error ? error.message : error);
+      setNotifications((prev) => prev.map((n) => (touched.has(n.id) ? { ...n, is_read: false } : n)));
+      return [];
+    }
+  }, [notifications, user?.id]);
+
+  const undoMarkAll = useCallback(async (ids: string[]): Promise<void> => {
+    if (!isSupabaseConfigured || ids.length === 0) return;
+    const restored = new Set(ids);
+    setNotifications((prev) => prev.map((n) => (restored.has(n.id) ? { ...n, is_read: false } : n)));
+    try {
+      await unmarkNotificationsRead(ids);
+    } catch (error) {
+      console.warn('[notifications] undoMarkAll error:', error instanceof Error ? error.message : error);
+      setNotifications((prev) => prev.map((n) => (restored.has(n.id) ? { ...n, is_read: true } : n)));
+    }
   }, []);
 
   const remove = useCallback(async (id: string) => {
@@ -301,6 +351,8 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     notifications,
     unreadCount,
     markRead,
+    markAllRead,
+    undoMarkAll,
     remove,
     refresh,
     pendingRoute,
