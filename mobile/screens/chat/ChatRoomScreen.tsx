@@ -1282,6 +1282,12 @@ export default function ChatRoomScreen() {
     [navigation],
   );
 
+  // 💬 in the top bar: the DM inbox is pushed ON TOP of this chat (no reset / popToTop), so ← and the
+  // back gesture return here with the room, its scroll position and its Realtime channels intact.
+  const handleOpenMessages = useCallback(() => {
+    navigation.navigate('DMs', { screen: 'DMInbox' });
+  }, [navigation]);
+
   const handleStartDM = useCallback(
     async (userId: string) => {
       if (!user) return;
@@ -1610,6 +1616,7 @@ export default function ChatRoomScreen() {
         usersInRoom={usersInRoom}
         onBack={handleBack}
         onMenuPress={handleMenuPress}
+        onMessagesPress={handleOpenMessages}
         hasUnreadDms={hasUnreadDms}
         onBellPress={() => setBellOpen(true)}
         unreadCount={unreadCount}
