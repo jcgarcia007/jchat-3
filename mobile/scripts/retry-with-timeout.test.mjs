@@ -64,3 +64,15 @@ test('every attempt rejects: the last error is thrown', async () => {
     /fail 2/,
   );
 });
+
+test('without timeoutMs it only retries on rejection and every attempt is a new request', async () => {
+  let calls = 0;
+  const value = await retryWithTimeout(async () => { calls += 1; if (calls < 3) throw new Error('timed out upstream'); return `req${calls}`; }, { attempts: 3, delayMs: 0 });
+  assert.equal(value, 'req3');
+  assert.equal(calls, 3);
+});
+
+test('without timeoutMs a request is not raced against any timer of its own', async () => {
+  const value = await retryWithTimeout(() => new Promise((resolve) => setTimeout(() => resolve('slow but fine'), 60)), { attempts: 1, delayMs: 0 });
+  assert.equal(value, 'slow but fine');
+});

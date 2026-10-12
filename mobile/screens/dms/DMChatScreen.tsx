@@ -434,14 +434,14 @@ export default function DMChatScreen() {
 
   // Same fetch as the first load (hidden-conversation cut included), merged into the thread without duplicates.
   // listMessages returns the WHOLE thread (a superset of "the last 50", no created_at filter, nothing depends on the
-  // device clock), so a catch-up can never leave a hole in the history. Timeout + retries: right after a network
-  // change the request can hang on a dead connection.
+  // device clock), so a catch-up can never leave a hole in the history. Retries: each request times out by itself
+  // (services/fetchWithTimeout), so a dead connection after a network change cannot hang it.
   const resyncMessages = useCallback(async () => {
     if (!user) return;
     if (resyncRetryRef.current.timer) clearTimeout(resyncRetryRef.current.timer);
     resyncRetryRef.current.timer = null;
     try {
-      const data = await retryWithTimeout(() => listMessages(conversationId, user.id), { timeoutMs: 8_000, attempts: 3, delayMs: 1_500 });
+      const data = await retryWithTimeout(() => listMessages(conversationId, user.id), { attempts: 3, delayMs: 1_500 });
       setMessages((prev) => mergeMessages(prev, data));
       resyncRetryRef.current.failures = 0;
     } catch (err) {

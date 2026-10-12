@@ -224,8 +224,8 @@ const PAGE_SIZE = 50;
 const MESSAGE_COLUMNS = 'id, room_id, user_id, body, type, media_url, metadata, is_system, created_at';
 /** Most messages fetched when catching up after a Realtime gap. */
 const RESYNC_LIMIT = 50;
-/** Catch-up request: 8 s per attempt, 3 attempts (a request can hang on a dead connection after a network change). */
-const RESYNC_REQUEST = { timeoutMs: 8_000, attempts: 3, delayMs: 1_500 } as const;
+/** Catch-up request: 3 attempts, each a new request that times out by itself (services/fetchWithTimeout). */
+const RESYNC_REQUEST = { attempts: 3, delayMs: 1_500 } as const;
 /** After a catch-up failed (all attempts timed out): try again every 15 s, at most 8 times. */
 const RESYNC_LATER_MS = 15_000;
 const RESYNC_LATER_MAX = 8;
@@ -759,14 +759,13 @@ export default function ChatRoomScreen() {
     resyncRetryRef.current.timer = null;
     try {
       const { data, error } = await retryWithTimeout(
-        (signal) =>
+        () =>
           supabase
             .from('messages')
             .select(MESSAGE_COLUMNS)
             .eq('room_id', roomId)
             .order('created_at', { ascending: false })
-            .limit(RESYNC_LIMIT)
-            .abortSignal(signal),
+            .limit(RESYNC_LIMIT),
         RESYNC_REQUEST,
       );
       if (error || !data || roomId !== activeRoomIdRef.current) return;
