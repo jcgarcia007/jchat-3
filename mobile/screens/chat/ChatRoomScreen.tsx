@@ -69,6 +69,7 @@ import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
 import { useResilientChannel } from '../../hooks/useResilientChannel';
+import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
 import { mergeMessages, newestConfirmedTimestamp } from '../../utils/mergeMessages';
@@ -889,6 +890,9 @@ export default function ChatRoomScreen() {
       void resyncMessages(activeRoomIdRef.current);
     },
   });
+
+  // Web only (0 on iOS / Android): how much of the page the on-screen keyboard covers, to lift the input.
+  const webKeyboardInset = useVisualViewportInset();
 
   // Presence (main + anchor + visited) is owned by usePresenceChannels above.
 
@@ -1761,7 +1765,9 @@ export default function ChatRoomScreen() {
 
       {/* ── Messages list ────────────────────────────────────────────────── */}
       <KeyboardAvoidingView
-        style={chatStyles.flex}
+        // Web has no keyboard events: useVisualViewportInset lifts the input instead (0 on iOS / Android).
+        enabled={Platform.OS !== 'web'}
+        style={[chatStyles.flex, webKeyboardInset > 0 ? { paddingBottom: webKeyboardInset } : null]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >

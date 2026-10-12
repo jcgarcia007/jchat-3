@@ -206,6 +206,8 @@ export function ChatInput({
 
   return (
     <KeyboardAvoidingView
+      // Off on web (no keyboard events there): the screen lifts the whole input with useVisualViewportInset.
+      enabled={Platform.OS !== 'web'}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Attachment panel — above the input bar */}
