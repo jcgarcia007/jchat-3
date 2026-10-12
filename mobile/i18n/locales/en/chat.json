@@ -371,7 +371,8 @@
     "myOrders": "My account and orders",
     "askHelp": "Ask the venue for help",
     "ownerSettings": "Owner settings",
-    "close": "Close"
+    "close": "Close",
+    "myProfile": "My profile"
   },
   "gift": {
     "title": "Gift for {{name}}",
@@ -442,5 +443,12 @@
   },
   "geo": {
     "webPermissionHint": "Turn on location for this site in your browser settings and try again."
+  },
+  "ownMenu": {
+    "title": "My photo",
+    "changePhoto": "Change photo",
+    "editProfile": "Edit profile",
+    "viewProfile": "View my profile",
+    "close": "Close"
   }
 }

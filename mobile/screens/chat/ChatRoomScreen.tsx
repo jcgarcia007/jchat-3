@@ -63,6 +63,9 @@ import { goBackOrHome } from '../../utils/navFlow';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
 import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
+import { OwnProfileMenu } from '../../components/chat/OwnProfileMenu';
+import { changeMyAvatar } from '../../services/avatar';
+import { subscribeMyProfileChanged } from '../../services/profileEvents';
 import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { useOrdersBar } from '../../context/OrdersBarContext';
@@ -230,6 +233,9 @@ const RESYNC_REQUEST = { attempts: 3, delayMs: 1_500 } as const;
 const RESYNC_LATER_MS = 15_000;
 const RESYNC_LATER_MAX = 8;
 const AUTOSCROLL_BOTTOM_THRESHOLD = 80;
+
+/** An incognito message shows its nickname, never my real name / photo. */
+const isIncognitoMessage = (message: ChatMessage): boolean => message.metadata?.incognito === true;
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -483,6 +489,7 @@ export default function ChatRoomScreen() {
   // 🎁 Gift (from the quick card / user sheet): only offered while both are present at the venue.
   const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [ownMenuOpen, setOwnMenuOpen] = useState(false);
   const {
     notifications: allNotifications,
     unreadCount,
@@ -1079,6 +1086,7 @@ export default function ChatRoomScreen() {
         sender_name: incognito?.enabled
           ? incognito.nickname
           : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
+        sender_avatar: incognito?.enabled ? undefined : (userAvatarCacheRef.current.get(user.id) ?? undefined),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).
@@ -1143,6 +1151,7 @@ export default function ChatRoomScreen() {
         sender_name: incognito?.enabled
           ? incognito.nickname
           : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
+        sender_avatar: incognito?.enabled ? undefined : (userAvatarCacheRef.current.get(user.id) ?? undefined),
       };
 
       // Inverted list → prepend (index 0 = newest = bottom).
@@ -1238,6 +1247,7 @@ export default function ChatRoomScreen() {
         sender_name: incognito?.enabled
           ? incognito.nickname
           : (userNameCacheRef.current.get(user.id) ?? t('chatRoom.fallbackUserName')),
+        sender_avatar: incognito?.enabled ? undefined : (userAvatarCacheRef.current.get(user.id) ?? undefined),
       };
       setMessages((prev) => [optimistic, ...prev]);
       isNearBottomRef.current = true;
@@ -1333,14 +1343,14 @@ export default function ChatRoomScreen() {
   // ── Tap user → anchored quick card (long-press still opens the full sheet) ──
   const handleUserPress = useCallback(
     (userId: string, displayName: string, anchor: UserAnchor) => {
-      // Your own avatar has no actions (follow / DM / block yourself): it opens your profile instead of doing nothing.
+      // Your own avatar has no actions (follow / DM / block yourself): it opens the short own-profile menu.
       if (userId === user?.id) {
-        navigation.navigate('UserProfile', { userId });
+        setOwnMenuOpen(true); // Cambiar foto · Editar perfil · Ver mi perfil
         return;
       }
       setQuickCard({ visible: true, userId, userName: displayName, anchor });
     },
-    [user?.id, navigation],
+    [user?.id],
   );
 
   // Report: the card / action sheet hand the target over, then the reason picker opens
@@ -1396,6 +1406,43 @@ export default function ChatRoomScreen() {
       navigation.navigate('ProfileSheet', { userId });
     },
     [navigation],
+  );
+
+  // My own photo menu: change it, edit the profile (inside the sheet) or view my profile (the sheet).
+  const handleChangeMyPhoto = useCallback(() => {
+    if (user?.id) void changeMyAvatar(user.id);
+  }, [user?.id]);
+  const handleEditMyProfile = useCallback(() => {
+    // The sheet first, then EditProfile on top of it: back from EditProfile returns to the sheet.
+    navigation.navigate('ProfileSheet');
+    navigation.navigate('EditProfile');
+  }, [navigation]);
+  const handleViewMyProfile = useCallback(() => navigation.navigate('ProfileSheet'), [navigation]);
+
+  // I changed my name / photo (the own-profile menu or EditProfile): my messages show it at once, no reload.
+  useEffect(
+    () =>
+      subscribeMyProfileChanged((change) => {
+        if (!user?.id || change.userId !== user.id) return;
+        if (change.displayName !== undefined && change.displayName) userNameCacheRef.current.set(user.id, change.displayName);
+        if (change.avatarUrl !== undefined) userAvatarCacheRef.current.set(user.id, change.avatarUrl);
+        setSelfProfile((prev) => ({
+          name: change.displayName !== undefined && change.displayName ? change.displayName : prev?.name ?? null,
+          avatarUrl: change.avatarUrl !== undefined ? change.avatarUrl : prev?.avatarUrl ?? null,
+        }));
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.user_id === user.id && !m.is_system
+              ? {
+                  ...m,
+                  sender_name: change.displayName !== undefined && change.displayName && !isIncognitoMessage(m) ? change.displayName : m.sender_name,
+                  sender_avatar: change.avatarUrl !== undefined && !isIncognitoMessage(m) ? change.avatarUrl ?? undefined : m.sender_avatar,
+                }
+              : m,
+          ),
+        );
+      }),
+    [user?.id],
   );
 
   // 💬 in the top bar: the DM inbox is pushed ON TOP of this chat (no reset / popToTop), so ← and the
@@ -1540,6 +1587,7 @@ export default function ChatRoomScreen() {
         theme={chatTheme}
         authorRole={roleMap.get(item.user_id) ?? null}
         onPressUser={handleUserPress}
+        onPressOwnAvatar={() => setOwnMenuOpen(true)}
         onLongPressMessage={handleLongPressMessage}
         onImagePress={setViewerImage}
         onOrderNow={handleMenuPress}
@@ -2023,11 +2071,19 @@ export default function ChatRoomScreen() {
         onOpenRoute={handleOpenNotificationRoute}
         pinnedOrders={pinnedOrders}
       />
+      <OwnProfileMenu
+        visible={ownMenuOpen}
+        onClose={() => setOwnMenuOpen(false)}
+        onChangePhoto={handleChangeMyPhoto}
+        onEditProfile={handleEditMyProfile}
+        onViewProfile={handleViewMyProfile}
+      />
       <ChatMoreSheet
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
         isOwner={isOwner}
         inVenue={venue.session?.roomId === rootRoomId}
+        onMyProfile={handleViewMyProfile}
         onMyOrders={() => navigation.navigate('MyOrders')}
         onAskHelp={() => setServiceSheetVisible(true)}
         onLeaveVenue={handleLeaveVenue}

@@ -72,6 +72,7 @@ import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector'
 import { useNavigation } from '@react-navigation/native';
 import { toUserMessage } from '../../utils/errors';
 import { safeLaunchLibrary } from '../../utils/safePicker';
+import { emitMyProfileChanged } from '../../services/profileEvents';
 import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -355,6 +356,9 @@ export default function EditProfileScreen(): React.JSX.Element {
         .eq('id', authUser.id);
 
       if (error) throw error;
+
+      // The chat (if one is open below) shows my new name / photo on my messages at once.
+      emitMyProfileChanged({ userId: authUser.id, displayName: (updates.display_name as string | null) ?? undefined, avatarUrl: finalAvatarUrl });
 
       navigation.goBack();
     } catch (err) {

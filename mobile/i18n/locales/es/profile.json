@@ -53,7 +53,8 @@
     "pleaseWaitTitle": "Espera",
     "checkingUsername": "Verificando disponibilidad del nombre de usuario…",
     "saveErrorGeneric": "Ocurrió un error al guardar.",
-    "saveFailedTitle": "No se pudo guardar"
+    "saveFailedTitle": "No se pudo guardar",
+    "avatarChangeFailed": "No se pudo cambiar tu foto. Inténtalo de nuevo."
   },
   "gifts": {
     "someone": "Alguien",

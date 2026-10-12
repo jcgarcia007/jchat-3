@@ -53,7 +53,8 @@
     "pleaseWaitTitle": "Please wait",
     "checkingUsername": "Checking username availability…",
     "saveErrorGeneric": "An error occurred while saving.",
-    "saveFailedTitle": "Save failed"
+    "saveFailedTitle": "Save failed",
+    "avatarChangeFailed": "We couldn't change your photo. Please try again."
   },
   "gifts": {
     "someone": "Someone",

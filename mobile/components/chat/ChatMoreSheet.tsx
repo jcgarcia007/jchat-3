@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — ChatMoreSheet (⋯ of the chat top bar)
  *
- * My account and orders · Ask the venue for help · Leave the venue · (owner) Owner settings.
+ * My profile · My account and orders · Ask the venue for help · Leave the venue · (owner) Owner settings.
  * Replaces the old native Alert. Rows are ≥ 52 px tall.
  */
 
@@ -9,7 +9,7 @@ import React from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { IconDoorExit, IconHelp, IconReceipt, IconSettings } from '@tabler/icons-react-native';
+import { IconDoorExit, IconHelp, IconReceipt, IconSettings, IconUser } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -20,6 +20,8 @@ interface Props {
   isOwner: boolean;
   /** Only meaningful when the user is in a venue session (non-owner). */
   inVenue: boolean;
+  /** Opens my profile as a sheet over the chat (the first row). */
+  onMyProfile: () => void;
   onMyOrders: () => void;
   onAskHelp: () => void;
   onLeaveVenue: () => void;
@@ -31,6 +33,7 @@ export function ChatMoreSheet({
   onClose,
   isOwner,
   inVenue,
+  onMyProfile,
   onMyOrders,
   onAskHelp,
   onLeaveVenue,
@@ -51,6 +54,7 @@ export function ChatMoreSheet({
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
 
+        <Row testID="more-my-profile" icon={<IconUser size={22} color={c.textPrimary} />} label={t('moreSheet.myProfile')} onPress={run(onMyProfile)} color={c.textPrimary} border={c.borderSubtle} />
         <Row icon={<IconReceipt size={22} color={c.textPrimary} />} label={t('moreSheet.myOrders')} onPress={run(onMyOrders)} color={c.textPrimary} border={c.borderSubtle} />
         {!isOwner && inVenue ? (
           <Row icon={<IconHelp size={22} color={c.textPrimary} />} label={t('moreSheet.askHelp')} onPress={run(onAskHelp)} color={c.textPrimary} border={c.borderSubtle} />

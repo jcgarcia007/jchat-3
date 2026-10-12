@@ -80,6 +80,8 @@ export interface MessageBubbleProps {
    * avatar/name area is TAPPED (opens the anchored quick card).
    */
   onPressUser?: (userId: string, displayName: string, anchor: UserAnchor) => void;
+  /** My own photo next to my messages: tapping it opens the short own-profile menu (the photo only shows when given). */
+  onPressOwnAvatar?: () => void;
   /** Called when the message bubble itself is long-pressed (e.g. to pin). */
   onLongPressMessage?: (message: ChatMessage) => void;
   /** Called with a photo message's media_url when its image is tapped. */
@@ -259,6 +261,7 @@ export function MessageBubble({
   theme,
   authorRole,
   onPressUser,
+  onPressOwnAvatar,
   onLongPressMessage,
   onImagePress,
   onOrderNow,
@@ -393,6 +396,24 @@ export function MessageBubble({
           {formatTime(message.created_at)}
         </Text>
       </View>
+      {/* My own photo (right of my messages): opens the short own-profile menu. Not for incognito sends. */}
+      {isOwn && onPressOwnAvatar && !incognito ? (
+        <Pressable
+          testID="chat-own-avatar"
+          onPress={onPressOwnAvatar}
+          accessibilityRole="button"
+          accessibilityLabel={t('ownMenu.title')}
+          style={styles.avatarWrap}
+        >
+          {message.sender_avatar ? (
+            <Image source={{ uri: message.sender_avatar }} style={[styles.avatar, { borderColor: theme.border }]} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bubbleOutBg, borderColor: theme.border }]}>
+              <Text style={[styles.avatarInitial, { color: theme.bubbleOutText }]}>{getInitials(displayName)}</Text>
+            </View>
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
