@@ -19,7 +19,8 @@ import { IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { PROFILE_PANEL_WIDTH, isProfilePanelWidth, setProfilePanelOpen } from '../../utils/profilePanelStore';
+import { PROFILE_PANEL_WIDTH, isProfilePanelWidth } from '../../utils/profilePanelLayout';
+import { setProfilePanelOpen } from '../../utils/profilePanelStore';
 
 interface Props {
   onClose: () => void;

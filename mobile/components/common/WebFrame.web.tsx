@@ -8,7 +8,8 @@ import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useThemeColors } from '../../theme/colors';
 import { WEB_COLUMN_WIDTH, WEB_WIDE_BREAKPOINT } from '../../utils/appWindow.web';
-import { PROFILE_PANEL_WIDTH, useProfilePanelOpen } from '../../utils/profilePanelStore';
+import { columnLeftWithPanel } from '../../utils/profilePanelLayout';
+import { useProfilePanelOpen } from '../../utils/profilePanelStore';
 
 export default function WebFrame({ children }: { children: React.ReactNode }): React.ReactElement {
   const c = useThemeColors();
@@ -20,7 +21,7 @@ export default function WebFrame({ children }: { children: React.ReactNode }): R
   if (width <= WEB_WIDE_BREAKPOINT) return <>{children}</>;
 
   return (
-    <View style={[styles.backdrop, { backgroundColor: c.bgBase }, panelOpen ? { alignItems: 'flex-start', paddingLeft: Math.max(0, (width - PROFILE_PANEL_WIDTH - WEB_COLUMN_WIDTH) / 2) } : null]}>
+    <View style={[styles.backdrop, { backgroundColor: c.bgBase }, panelOpen ? { alignItems: 'flex-start', paddingLeft: columnLeftWithPanel(width) } : null]}>
       <View style={[styles.column, { backgroundColor: c.bgBase, borderColor: c.borderSubtle }]}>{children}</View>
     </View>
   );

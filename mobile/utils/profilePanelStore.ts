@@ -6,11 +6,6 @@
 
 import { useSyncExternalStore } from 'react';
 
-/** Browser widths from which the profile opens as a side panel instead of a sheet. */
-export const PROFILE_PANEL_MIN_WIDTH = 900;
-/** Width of the side panel (px). */
-export const PROFILE_PANEL_WIDTH = 420;
-
 let open = false;
 const listeners = new Set<() => void>();
 
@@ -29,9 +24,4 @@ function subscribe(listener: () => void): () => void {
 
 export function useProfilePanelOpen(): boolean {
   return useSyncExternalStore(subscribe, () => open, () => false);
-}
-
-/** Pure: a panel (not a sheet) on this browser width? */
-export function isProfilePanelWidth(width: number): boolean {
-  return width >= PROFILE_PANEL_MIN_WIDTH;
 }
