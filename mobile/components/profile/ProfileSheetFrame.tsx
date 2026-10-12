@@ -11,7 +11,7 @@
  * over) — the same on iOS, Android and web.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ interface Props {
 
 const CLOSE_DISTANCE = 120;
 const CLOSE_VELOCITY = 0.9;
+const MAX_DOM_LEVELS = 8;
 const TOP_GAP = 48; // room for the new-messages pill above the sheet
 
 export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.ReactElement {
@@ -39,35 +40,51 @@ export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.
   const { t: tp } = useTranslation('profile');
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const panel = Platform.OS === 'web' && isProfilePanelWidth(width);
+  // Set when the panel's pointer-events workaround cannot be applied (see below): this opening uses the sheet.
+  const [panelFailed, setPanelFailed] = useState(false);
+  const panel = Platform.OS === 'web' && isProfilePanelWidth(width) && !panelFailed;
+  const sheetHeight = Math.max(320, height - insets.top - TOP_GAP);
+  const translateY = useRef(new Animated.Value(panel ? 0 : sheetHeight)).current;
 
   useEffect(() => {
     if (!panel) return undefined;
     setProfilePanelOpen(true);
     // The route screen is an absolute, transparent layer over the whole chat column: it would swallow every click.
     // In panel mode it must let events through to the chat behind (only the panel itself takes them). React
-    // Navigation's web stack gives no option for that, so the layers between the panel and the screen wrapper
-    // (the first one that has a screen below it as a previous sibling) get pointer-events: none while it is open.
+    // Navigation's web stack gives no option for that, so the layers between the panel and the screen wrapper get
+    // pointer-events: none while it is open. The wrapper is recognised as the first ancestor that has a screen below
+    // it as a previous sibling. The walk is bounded: at most MAX_DOM_LEVELS ancestors. If the wrapper is not found
+    // within that (a React Navigation / React Native Web update changed the DOM), everything touched is restored
+    // and THIS opening uses the sheet instead of the panel (with a console.warn), so a layout change can never leave
+    // the page unclickable.
     const restore: (() => void)[] = [];
+    const undoAll = () => restore.splice(0).forEach((undo) => undo());
+    let found = false;
     if (typeof document !== 'undefined') {
       let el = (document.querySelector('[data-testid="profile-panel"]') as HTMLElement | null)?.parentElement ?? null;
-      while (el && el !== document.body) {
+      for (let level = 0; el && el !== document.body && level < MAX_DOM_LEVELS; level += 1) {
         const target = el;
         const previous = target.style.pointerEvents;
         target.style.pointerEvents = 'none';
         restore.push(() => { target.style.pointerEvents = previous; });
-        if (target.previousElementSibling) break; // the screen wrapper: the chat's screen sits right before it
+        if (target.previousElementSibling) { found = true; break; } // the screen wrapper: the chat's screen sits right before it
         el = target.parentElement;
       }
     }
+    if (!found) {
+      undoAll();
+      console.warn(`[profile-panel] screen layer not found within ${MAX_DOM_LEVELS} levels; opening the profile as a sheet`);
+      translateY.setValue(sheetHeight);
+      setProfilePanelOpen(false);
+      setPanelFailed(true);
+      return undefined;
+    }
     return () => {
-      restore.forEach((undo) => undo());
+      undoAll();
       setProfilePanelOpen(false);
     };
-  }, [panel]);
+  }, [panel, sheetHeight, translateY]);
 
-  const sheetHeight = Math.max(320, height - insets.top - TOP_GAP);
-  const translateY = useRef(new Animated.Value(panel ? 0 : sheetHeight)).current;
   const closingRef = useRef(false);
   const useNative = Platform.OS !== 'web';
 
