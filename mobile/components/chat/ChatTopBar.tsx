@@ -213,6 +213,8 @@ export function ChatTopBar({
           </View>
         </View>
 
+        {/* Action buttons: one group with no gap (each is 40 px wide), so the glyphs sit ~18 px apart. */}
+        <View style={topBarStyles.actions}>
         {/* 💬 Messages (red dot = unread DMs) */}
         {onMessagesPress ? (
           <Pressable
@@ -274,6 +276,7 @@ export function ChatTopBar({
             <IconDots size={22} color={theme.tabActive} />
           </Pressable>
         ) : null}
+        </View>
       </View>
 
       {/* ── SubRoomTabs slot ─────────────────────────────────────────────── */}
@@ -355,8 +358,15 @@ const topBarStyles = StyleSheet.create({
   activeCount: {
     fontSize: 12,
   },
+  // The action buttons (💬 🔔 🍴 ⋯): no gap between them. 40 px wide x 44 px tall: the tall touch target is kept,
+  // and there is no horizontal hitSlop (neighbours would overlap).
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
   iconBtn: {
-    width: 44,
+    width: 40,
     height: 44,
     borderRadius: 10,
     alignItems: 'center',
@@ -364,8 +374,8 @@ const topBarStyles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 4,
-    right: 2,
+    top: 3,
+    right: 0,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -377,7 +387,7 @@ const topBarStyles = StyleSheet.create({
   dot: {
     position: 'absolute',
     top: 9,
-    right: 9,
+    right: 8,
     width: 10,
     height: 10,
     borderRadius: 5,
