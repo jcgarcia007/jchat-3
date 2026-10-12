@@ -427,5 +427,19 @@
     "senderAccepted": "{{name}} aceptó tu regalo",
     "senderDeclined": "{{name}} no aceptó tu regalo. No se te cobró nada.",
     "senderExpired": "{{name}} no respondió a tiempo. No se te cobró nada."
+  },
+  "entry": {
+    "invalidTitle": "QR no válido",
+    "invalidBody": "Este QR no es válido o el local ya no está disponible.",
+    "networkTitle": "Sin conexión",
+    "networkBody": "No pudimos abrir el local. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "goingTo": "Vas a entrar a <b>{{name}}</b>",
+    "table": "Mesa {{label}}",
+    "signInToEnter": "Inicia sesión o crea tu cuenta para entrar al chat.",
+    "notRecognized": "No reconocimos este QR"
+  },
+  "geo": {
+    "webPermissionHint": "Activa la ubicación para este sitio en los ajustes del navegador y vuelve a intentar."
   }
 }

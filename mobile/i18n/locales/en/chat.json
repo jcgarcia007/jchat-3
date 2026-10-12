@@ -427,5 +427,19 @@
     "senderAccepted": "{{name}} accepted your gift",
     "senderDeclined": "{{name}} didn't accept your gift. You weren't charged.",
     "senderExpired": "{{name}} didn't answer in time. You weren't charged."
+  },
+  "entry": {
+    "invalidTitle": "Invalid QR",
+    "invalidBody": "This QR is not valid or the venue is no longer available.",
+    "networkTitle": "No connection",
+    "networkBody": "We couldn't open the venue. Check your connection and try again.",
+    "retry": "Retry",
+    "goingTo": "You're about to enter <b>{{name}}</b>",
+    "table": "Table {{label}}",
+    "signInToEnter": "Sign in or create your account to enter the chat.",
+    "notRecognized": "We didn't recognize this QR"
+  },
+  "geo": {
+    "webPermissionHint": "Turn on location for this site in your browser settings and try again."
   }
 }
