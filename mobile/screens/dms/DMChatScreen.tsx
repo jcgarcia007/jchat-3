@@ -80,6 +80,7 @@ import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
 import { canRecordVoice } from '../../services/webVoice';
+import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
 import { isDmVoicePath } from '../../utils/mediaUrl';
@@ -427,19 +428,40 @@ export default function DMChatScreen() {
     );
   }, [conversationId, user, fetchMessages]);
 
+  const resyncRetryRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; failures: number }>({ timer: null, failures: 0 });
+
   // ── Catch-up after a Realtime gap ───────────────────────────────────────────
 
   // Same fetch as the first load (hidden-conversation cut included), merged into the thread without duplicates.
-  // listMessages has no page limit (it returns the whole thread), so a catch-up can never leave a hole in the history.
+  // listMessages returns the WHOLE thread (a superset of "the last 50", no created_at filter, nothing depends on the
+  // device clock), so a catch-up can never leave a hole in the history. Timeout + retries: right after a network
+  // change the request can hang on a dead connection.
   const resyncMessages = useCallback(async () => {
     if (!user) return;
+    if (resyncRetryRef.current.timer) clearTimeout(resyncRetryRef.current.timer);
+    resyncRetryRef.current.timer = null;
     try {
-      const data = await listMessages(conversationId, user.id);
+      const data = await retryWithTimeout(() => listMessages(conversationId, user.id), { timeoutMs: 8_000, attempts: 3, delayMs: 1_500 });
       setMessages((prev) => mergeMessages(prev, data));
+      resyncRetryRef.current.failures = 0;
     } catch (err) {
       console.warn('[DMChat] resync error', err);
+      // The network may still be settling (requests can stall for a while after it comes back): try again later.
+      const retry = resyncRetryRef.current;
+      if (retry.failures < 8) {
+        retry.failures += 1;
+        retry.timer = setTimeout(() => {
+          retry.timer = null;
+          void resyncMessages();
+        }, 15_000);
+      }
     }
   }, [conversationId, user]);
+
+  // A pending "try again later" must not outlive the screen.
+  useEffect(() => () => {
+    if (resyncRetryRef.current.timer) clearTimeout(resyncRetryRef.current.timer);
+  }, []);
 
   // ── Realtime subscription ────────────────────────────────────────────────────
 

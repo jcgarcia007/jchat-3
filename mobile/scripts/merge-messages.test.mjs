@@ -16,7 +16,7 @@ for (const name of ['mergeMessages', 'channelBackoff']) {
   const source = readFileSync(new URL(`../utils/${name}.ts`, import.meta.url), 'utf8');
   writeFileSync(out(name), ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText);
 }
-const { mergeMessages, newestConfirmedTimestamp, resyncHasGap, OPTIMISTIC_ID_PREFIX } = await import(pathToFileURL(out('mergeMessages')).href);
+const { mergeMessages, planResync, OPTIMISTIC_ID_PREFIX } = await import(pathToFileURL(out('mergeMessages')).href);
 const { channelBackoffMs, MAX_CHANNEL_BACKOFF_MS } = await import(pathToFileURL(out('channelBackoff')).href);
 
 const m = (id, created_at, extra = {}) => ({ id, created_at, ...extra });
@@ -92,18 +92,6 @@ test('an optimistic bubble stays until the confirmed row replaces it elsewhere',
   assert.deepEqual(ids(merged), [`${OPTIMISTIC_ID_PREFIX}1`, 'b', 'a']);
 });
 
-// ── newestConfirmedTimestamp ─────────────────────────────────────────────────────────────────────────
-
-test('newestConfirmedTimestamp skips optimistic bubbles (device clock) and returns the server row', () => {
-  const list = [m(`${OPTIMISTIC_ID_PREFIX}9`, '2026-10-11T10:00:09+00:00'), m('b', '2026-10-11T10:00:02+00:00'), m('a', '2026-10-11T10:00:01+00:00')];
-  assert.equal(newestConfirmedTimestamp(list), '2026-10-11T10:00:02+00:00');
-});
-
-test('newestConfirmedTimestamp: null when nothing is confirmed', () => {
-  assert.equal(newestConfirmedTimestamp([]), null);
-  assert.equal(newestConfirmedTimestamp([m(`${OPTIMISTIC_ID_PREFIX}1`, '2026-10-11T10:00:09+00:00')]), null);
-});
-
 // ── channelBackoffMs ─────────────────────────────────────────────────────────────────────────────────
 
 test('backoff: 1 s, 2 s, 5 s, 10 s, then 30 s', () => {
@@ -118,14 +106,39 @@ test('backoff never exceeds 30 s and tolerates odd input', () => {
   assert.equal(channelBackoffMs(1.9), 2000);
 });
 
-// ── resyncHasGap ─────────────────────────────────────────────────────────────────────────────────────
+// ── planResync ───────────────────────────────────────────────────────────────────────────────────────
 
-test('resync: a full result (limit rows or more) means a possible gap → reload the first page', () => {
-  assert.equal(resyncHasGap(100, 100), true);
-  assert.equal(resyncHasGap(101, 100), true);
+test('resync: the fetched page overlaps the list (a known id) → merge', () => {
+  const current = [m('k3', '2026-10-11T10:00:03+00:00'), m('k2', '2026-10-11T10:00:02+00:00')];
+  const fetched = [m('n2', '2026-10-11T10:00:05+00:00'), m('n1', '2026-10-11T10:00:04+00:00'), m('k3', '2026-10-11T10:00:03+00:00')];
+  assert.equal(planResync(current, fetched), 'merge');
 });
 
-test('resync: fewer rows than the limit is the whole gap → merge', () => {
-  assert.equal(resyncHasGap(99, 100), false);
-  assert.equal(resyncHasGap(0, 100), false);
+test('resync: no fetched id is on screen (more new messages than a page) → reload the first page', () => {
+  const current = [m('k3', '2026-10-11T10:00:03+00:00')];
+  const fetched = [m('n2', '2026-10-11T10:00:05+00:00'), m('n1', '2026-10-11T10:00:04+00:00')];
+  assert.equal(planResync(current, fetched), 'reload');
+});
+
+test('resync: empty list on screen and rows fetched → reload', () => {
+  assert.equal(planResync([], [m('n1', '2026-10-11T10:00:04+00:00')]), 'reload');
+});
+
+test('resync: nothing fetched → merge (nothing was missed)', () => {
+  assert.equal(planResync([m('k1', '2026-10-11T10:00:01+00:00')], []), 'merge');
+});
+
+test('resync: a local bubble with the device clock AHEAD does not change the plan (only ids matter)', () => {
+  // The phone's clock is 10 minutes fast: the optimistic bubble claims 10:10, the server rows are 10:00-10:05.
+  const current = [
+    m(`${OPTIMISTIC_ID_PREFIX}1`, '2026-10-11T10:10:00+00:00'),
+    m('k3', '2026-10-11T10:00:03+00:00'),
+  ];
+  const fetched = [m('n1', '2026-10-11T10:00:05+00:00'), m('k3', '2026-10-11T10:00:03+00:00')];
+  assert.equal(planResync(current, fetched), 'merge');
+  // An optimistic id never counts as "known", even if the server echoed the same string.
+  assert.equal(planResync([m(`${OPTIMISTIC_ID_PREFIX}1`, '2026-10-11T10:10:00+00:00')], [m(`${OPTIMISTIC_ID_PREFIX}1`, '2026-10-11T10:00:05+00:00')]), 'reload');
+  // The merged list keeps the local bubble and adds the missed server row without a duplicate.
+  const merged = mergeMessages(current, fetched);
+  assert.deepEqual(merged.map((r) => r.id), [`${OPTIMISTIC_ID_PREFIX}1`, 'n1', 'k3']);
 });

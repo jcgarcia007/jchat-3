@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — merge of message lists (pure). Used to catch up after a Realtime gap (resubscribe, app back
- * to the foreground, network back): the rows fetched since the newest known message are merged into the list
- * on screen without duplicates.
+ * to the foreground, network back): the last page fetched from the server is merged into the list on screen
+ * without duplicates (planResync decides between merging and reloading).
  *
  * Lists are NEWEST FIRST (the chat FlatLists are inverted: index 0 = newest = bottom).
  *   - dedupe by `id`; for a row present in both, the incoming fields win but a field the incoming row lacks
@@ -45,21 +45,22 @@ export function mergeMessages<T extends MessageLike>(current: readonly T[], inco
   return [...byId.values()].sort(compareNewestFirst);
 }
 
-/**
- * created_at of the newest CONFIRMED message of a newest-first list (the point to resync from), or null.
- * Optimistic bubbles are skipped: their timestamp is the device clock, not the server's.
- */
-export function newestConfirmedTimestamp(list: readonly MessageLike[]): string | null {
-  for (const row of list) {
-    if (!row.id.startsWith(OPTIMISTIC_ID_PREFIX)) return row.created_at;
-  }
-  return null;
-}
+export type ResyncPlan = 'merge' | 'reload';
 
 /**
- * True when a catch-up query came back FULL (limit rows or more): there may be more missed rows than it
- * returned, so merging would leave a hole between the old list and the newest ones — reload the first page.
+ * How to apply the LAST page of a room / thread fetched after a Realtime gap (no created_at filter, so it never
+ * depends on the device clock):
+ *   - 'merge'  — at least one fetched id is already on screen: the page overlaps the list, so merging it
+ *                (mergeMessages) leaves no hole; nothing fetched is also a plain merge (nothing was missed);
+ *   - 'reload' — fetched rows but none of them is on screen (more new messages than a page, or an empty list):
+ *                a merge could leave a hole in the history, so reload the first page instead.
+ * Optimistic bubbles never count as "on screen": their ids are local and not in the server's answer.
  */
-export function resyncHasGap(rowCount: number, limit: number): boolean {
-  return rowCount >= limit;
+export function planResync(current: readonly MessageLike[], fetched: readonly MessageLike[]): ResyncPlan {
+  if (fetched.length === 0) return 'merge';
+  const known = new Set<string>();
+  for (const row of current) {
+    if (!row.id.startsWith(OPTIMISTIC_ID_PREFIX)) known.add(row.id);
+  }
+  return fetched.some((row) => known.has(row.id)) ? 'merge' : 'reload';
 }

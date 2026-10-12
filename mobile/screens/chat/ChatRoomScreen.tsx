@@ -72,7 +72,8 @@ import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
-import { mergeMessages, newestConfirmedTimestamp, resyncHasGap } from '../../utils/mergeMessages';
+import { mergeMessages, planResync } from '../../utils/mergeMessages';
+import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
@@ -222,7 +223,12 @@ const PAGE_SIZE = 50;
 /** Same columns for the page load and the catch-up after a Realtime gap. */
 const MESSAGE_COLUMNS = 'id, room_id, user_id, body, type, media_url, metadata, is_system, created_at';
 /** Most messages fetched when catching up after a Realtime gap. */
-const RESYNC_LIMIT = 100;
+const RESYNC_LIMIT = 50;
+/** Catch-up request: 8 s per attempt, 3 attempts (a request can hang on a dead connection after a network change). */
+const RESYNC_REQUEST = { timeoutMs: 8_000, attempts: 3, delayMs: 1_500 } as const;
+/** After a catch-up failed (all attempts timed out): try again every 15 s, at most 8 times. */
+const RESYNC_LATER_MS = 15_000;
+const RESYNC_LATER_MAX = 8;
 const AUTOSCROLL_BOTTOM_THRESHOLD = 80;
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -277,6 +283,7 @@ export default function ChatRoomScreen() {
   // Messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Latest list, for the catch-up after a Realtime gap (newest-first).
+  const resyncRetryRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; failures: number }>({ timer: null, failures: 0 });
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -738,40 +745,60 @@ export default function ChatRoomScreen() {
   }, [hydrateRows]);
 
   /**
-   * Catch-up after the live channel was down (resubscribed, app back to the foreground, network back): the rows
-   * created after the newest known message, same table / columns / room filter as loadMessages, merged into the
-   * list without duplicates. Silent on failure: the next trigger tries again. (A message hidden while the channel
-   * was down is not removed here — the hide arrives as an UPDATE event, which a gap loses.)
+   * Catch-up after the live channel was down (resubscribed, app back to the foreground, network back): the LAST page
+   * of the room from the server (same table / columns / filters as the first page, no created_at filter — it never
+   * depends on the device clock). If it overlaps the list (a known id) it is merged without duplicates; if it does
+   * not (more new messages than a page, or an empty list) the first page is reloaded so there is no hole. The request
+   * has a timeout and retries: right after a network change it can hang on a dead connection. Silent on failure: the
+   * next trigger tries again. (A message hidden while the channel was down is not removed here — the hide arrives as
+   * an UPDATE event, which a gap loses.)
    */
   const resyncMessages = useCallback(async (roomId: string) => {
     if (!isSupabaseConfigured) return;
-    const newest = newestConfirmedTimestamp(messagesRef.current);
-    if (!newest) {
-      void loadMessages(roomId); // nothing on screen yet: a normal first page
-      return;
-    }
+    if (resyncRetryRef.current.timer) clearTimeout(resyncRetryRef.current.timer);
+    resyncRetryRef.current.timer = null;
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(MESSAGE_COLUMNS)
-        .eq('room_id', roomId)
-        .gt('created_at', newest)
-        .order('created_at', { ascending: false })
-        .limit(RESYNC_LIMIT);
-      if (error || !data || data.length === 0 || roomId !== activeRoomIdRef.current) return;
-      if (resyncHasGap(data.length, RESYNC_LIMIT)) {
-        // The query came back full: more may have been missed than it returned. Merging would leave a hole in the
-        // history, so reload the normal first page instead.
+      const { data, error } = await retryWithTimeout(
+        (signal) =>
+          supabase
+            .from('messages')
+            .select(MESSAGE_COLUMNS)
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(RESYNC_LIMIT)
+            .abortSignal(signal),
+        RESYNC_REQUEST,
+      );
+      if (error || !data || roomId !== activeRoomIdRef.current) return;
+      const rows = data as unknown as Record<string, unknown>[];
+      if (planResync(messagesRef.current, rows as unknown as { id: string; created_at: string }[]) === 'reload') {
         void loadMessages(roomId);
         return;
       }
-      const missed = await hydrateRows(data as unknown as Record<string, unknown>[]);
+      // Hydrate only what is not on screen yet (names / avatars of new senders).
+      const onScreen = new Set(messagesRef.current.map((row) => row.id));
+      const missed = await hydrateRows(rows.filter((row) => !onScreen.has(String(row.id))));
       if (roomId !== activeRoomIdRef.current) return;
       setMessages((prev) => mergeMessages(prev, missed));
+      resyncRetryRef.current.failures = 0;
     } catch (err) {
       console.warn('[ChatRoom] resync error', err);
+      // The network may still be settling (requests can stall for a while after it comes back): try again later.
+      const retry = resyncRetryRef.current;
+      if (retry.failures < RESYNC_LATER_MAX && roomId === activeRoomIdRef.current) {
+        retry.failures += 1;
+        retry.timer = setTimeout(() => {
+          retry.timer = null;
+          if (roomId === activeRoomIdRef.current) void resyncMessages(roomId);
+        }, RESYNC_LATER_MS);
+      }
     }
   }, [loadMessages, hydrateRows]);
+
+  // A pending "try again later" must not outlive the screen.
+  useEffect(() => () => {
+    if (resyncRetryRef.current.timer) clearTimeout(resyncRetryRef.current.timer);
+  }, []);
 
   useEffect(() => {
     if (initialLoading || entryVisible) return;
