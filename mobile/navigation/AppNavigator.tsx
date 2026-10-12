@@ -8,7 +8,8 @@
  * Auth comes from AuthContext (useAuth); screens consume it directly.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
@@ -34,6 +35,14 @@ import BottomTabs from './tabs/BottomTabs';
 import { HomeStatusBar, type HomeStatusBarPlacement } from '../components/venue/HomeStatusBar';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
+import {
+  clearPendingEntry,
+  loadPendingEntry,
+  resolveEntry,
+  savePendingEntry,
+  subscribePendingEntry,
+} from '../services/venueEntry';
+import { confirm, showAlert } from '../utils/dialog';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -94,7 +103,8 @@ export type MainStackParamList = {
   DMs: NavigatorScreenParams<DMStackParamList>;
   Friends: { userId?: string; initialTab?: 'followers' | 'following' | 'requests' } | undefined;
   Offers: undefined;
-  ChatRoom: { id: string };
+  /** `tableLabel`: table context from a table QR (shown in the venue session / pre-filled in the waiter call). */
+  ChatRoom: { id: string; tableLabel?: string };
   /**
    * Onboarding — 4-screen flow for brand-new users.
    * TODO(Task 1.7): gate on users.onboarding_completed so it only shows once.
@@ -204,11 +214,12 @@ function venueBarPlacement(routeName: string | null): HomeStatusBarPlacement {
  * (the DM screens sit on top of the chat), so go back to the existing instance with popTo; with no
  * ChatRoom in the stack (the bar was opened from a tab) it is a normal navigate.
  */
-function openVenueChat(roomId: string): void {
+function openVenueChat(roomId: string, tableLabel?: string): void {
   if (!navigationRef.isReady()) return;
+  const params = tableLabel ? { id: roomId, tableLabel } : { id: roomId };
   const chatInStack = navigationRef.getRootState()?.routes.some((r) => r.name === 'ChatRoom');
-  if (chatInStack) navigationRef.dispatch(StackActions.popTo('ChatRoom', { id: roomId }));
-  else navigationRef.navigate('ChatRoom', { id: roomId });
+  if (chatInStack) navigationRef.dispatch(StackActions.popTo('ChatRoom', params));
+  else navigationRef.navigate('ChatRoom', params);
 }
 
 function navigateNotificationRoute(route: NotificationRoute): void {
@@ -238,10 +249,69 @@ function AuthenticatedNotificationsBridge({ navigationReady }: { navigationReady
 // Password recovery is an in-app OTP flow. AuthContext persists recovery intent
 // before verifyOtp creates a session, so this navigator never exposes MainStack.
 
+/**
+ * EntryBridge — consumes the pending venue entry (a scanned QR / opened link saved by useEntryLinkCapture or
+ * captureWebEntry) once the person is signed in, over 18, and past the onboarding. It opens that venue's chat;
+ * the chat itself still asks the server for presence (geofence gate), so a QR never grants access by itself.
+ * The entry is cleared BEFORE it is resolved (no loops); a network failure offers Retry (it is saved again).
+ * A different venue than the active session is handled by ChatRoomScreen → venue.startSession ("Switch to …?").
+ */
+function EntryBridge({ active }: { active: boolean }) {
+  const { t } = useTranslation('chat');
+  const { t: tc } = useTranslation('common');
+  const busyRef = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  const consume = useCallback(async () => {
+    if (busyRef.current || !activeRef.current) return;
+    busyRef.current = true;
+    let retry = false;
+    try {
+      const target = await loadPendingEntry();
+      if (!target) return;
+      await clearPendingEntry();
+      try {
+        const entry = await resolveEntry(target);
+        if (!entry) {
+          showAlert(t('entry.invalidTitle'), t('entry.invalidBody'));
+          return;
+        }
+        openVenueChat(entry.roomId, entry.tableLabel ?? undefined);
+      } catch {
+        const again = await confirm(t('entry.networkTitle'), t('entry.networkBody'), {
+          confirmText: t('entry.retry'),
+          cancelText: tc('actions.cancel'),
+        });
+        if (again) {
+          await savePendingEntry(target);
+          retry = true;
+        }
+      }
+    } finally {
+      busyRef.current = false;
+    }
+    if (retry) void consume();
+  }, [t, tc]);
+
+  // Conditions became true (signed in, age confirmed, onboarding done): consume what is waiting.
+  useEffect(() => {
+    if (active) void consume();
+  }, [active, consume]);
+
+  // A link that arrives with the app already open.
+  useEffect(() => subscribePendingEntry(() => void consume()), [consume]);
+
+  return null;
+}
+
 export default function AppNavigator() {
   const { isAuthenticated, locked, isRecovering, user, ageStatus } = useAuth();
   const [navigationReady, setNavigationReady] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
+  // The onboarding check (below) has finished for this user: until then an entry must not navigate, because a
+  // brand-new user is reset to Onboarding and the chat would be wiped.
+  const [onboardingResolvedFor, setOnboardingResolvedFor] = useState<string | null>(null);
   const notificationsEnabled = isAuthenticated && !locked && !isRecovering && ageStatus === 'confirmed';
   const onboardingCheckedUserRef = useRef<string | null>(null);
 
@@ -254,6 +324,7 @@ export default function AppNavigator() {
     if (onboardingCheckedUserRef.current === user.id) return;
 
     onboardingCheckedUserRef.current = user.id;
+    const userId = user.id;
     let cancelled = false;
     void Promise.all([
       getOnboardingCompleted(user.id),
@@ -262,8 +333,11 @@ export default function AppNavigator() {
       .then(([completedRemotely, completedLocally]) => {
         if (cancelled || completedRemotely || completedLocally || !navigationRef.isReady()) return;
         navigationRef.resetRoot({ index: 0, routes: [{ name: 'Onboarding' }] });
+        // Same batch as the "resolved" flag below, so EntryBridge never sees "resolved" with the old route.
+        setCurrentRoute('Onboarding');
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setOnboardingResolvedFor(userId));
 
     return () => {
       cancelled = true;
@@ -342,6 +416,17 @@ export default function AppNavigator() {
     {notificationsEnabled ? (
       <AuthenticatedNotificationsBridge navigationReady={navigationReady} />
     ) : null}
+    {/* QR / link entry → the venue's chat, once signed in, over 18 and past the onboarding. */}
+    <EntryBridge
+      active={
+        notificationsEnabled &&
+        navigationReady &&
+        !!user?.id &&
+        onboardingResolvedFor === user.id &&
+        currentRoute !== null &&
+        currentRoute !== 'Onboarding'
+      }
+    />
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
     {notificationsEnabled && <BiometricEnrollGate />}

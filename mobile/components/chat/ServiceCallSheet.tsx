@@ -40,6 +40,7 @@ import { IconBell } from '@tabler/icons-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../services/supabase';
+import { useVenueSession } from '../../context/VenueSessionContext';
 import { useThemeColors } from '../../theme/colors';
 import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
@@ -110,7 +111,9 @@ export function ServiceCallSheet({
   const c = useThemeColors();
   const { t } = useTranslation('chat');
 
-  const [tableLabel, setTableLabel] = useState('');
+  // The table of the QR that brought the person here (venue session): pre-filled, still editable.
+  const sessionTable = useVenueSession().session?.tableLabel ?? '';
+  const [tableLabel, setTableLabel] = useState(sessionTable);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -125,8 +128,8 @@ export function ServiceCallSheet({
   useEffect(() => {
     if (!visible) return;
 
-    // Reset form fields on each open
-    setTableLabel('');
+    // Reset form fields on each open (the table starts as the QR's table, when there is one)
+    setTableLabel(sessionTable);
     setNotes('');
     setErrorMsg(null);
 
@@ -143,7 +146,7 @@ export function ServiceCallSheet({
         setCooldownUntil(null);
       }
     })();
-  }, [visible, roomId]);
+  }, [visible, roomId, sessionTable]);
 
   // ── Cooldown countdown ticker ──────────────────────────────────────────────
 

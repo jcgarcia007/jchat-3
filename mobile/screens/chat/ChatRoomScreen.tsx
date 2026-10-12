@@ -350,6 +350,17 @@ export default function ChatRoomScreen() {
 
   // ── Match (Fase D1): availability, entry-notice state and presence heartbeat ──────────────
   const matchBusinessId = room?.business_id ?? null;
+
+  // Table context from a table QR when the chat is REOPENED for a venue whose session already exists
+  // (a first entry passes it to startSession instead).
+  const enteredTableLabel = route.params.tableLabel;
+  const sessionBusinessId = venue.session?.businessId ?? null;
+  const setSessionTableLabel = venue.setTableLabel;
+  useEffect(() => {
+    if (enteredTableLabel && sessionBusinessId && sessionBusinessId === matchBusinessId) {
+      setSessionTableLabel(enteredTableLabel);
+    }
+  }, [enteredTableLabel, sessionBusinessId, matchBusinessId, setSessionTableLabel]);
   const [matchAvailable, setMatchAvailable] = useState(false);
   const [matchGames, setMatchGames] = useState<GameRow[]>([]);
   const [gamesEnabled, setGamesEnabled] = useState(true);
@@ -857,12 +868,13 @@ export default function ChatRoomScreen() {
         businessId: matchBusinessId,
         businessName: business?.name ?? '',
         roomId: rootRoomId,
+        tableLabel: route.params.tableLabel,
         matchActive: matchAvailable && gamesEnabled && matchOptInValue,
       });
       if (!started) return; // declined to switch: stay at the gate
     }
     setEntryVisible(false);
-  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled, isOwner, venue, business?.name, rootRoomId]);
+  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled, isOwner, venue, business?.name, rootRoomId, route.params.tableLabel]);
 
   // "Not now" / back: never return into the order flow (it would loop with the order screens).
   const handleBack = useCallback(() => {
