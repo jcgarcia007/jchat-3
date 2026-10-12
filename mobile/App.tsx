@@ -24,10 +24,22 @@ import { VenueSessionProvider } from './context/VenueSessionContext';
 import AppNavigator from './navigation/AppNavigator';
 import { applyAppearance, loadStoredAppearance } from './theme/appearance';
 import { loadUserSettings } from './services/userSettings';
+import { useEntryLinkCapture } from './hooks/useEntryLinkCapture';
+import { captureWebEntry } from './utils/captureWebEntry';
+
+// Web: a venue entry URL (/8-k3f9, /c/<token>, ?venue=…) is saved and the address bar cleaned BEFORE the
+// NavigationContainer mounts (it could not map those paths). No-op on iOS / Android.
+captureWebEntry();
 
 // E2E mode (Metro started with EXPO_PUBLIC_E2E=1, see e2e/README.md): the dev build's LogBox
 // notifications would cover the buttons Maestro taps. Uncaught exceptions still show their red screen.
 if (process.env.EXPO_PUBLIC_E2E === '1') LogBox.ignoreAllLogs(true);
+
+/** Native: saves the QR / link that opened the app (see hooks/useEntryLinkCapture). Renders nothing. */
+function EntryLinkCaptureBridge() {
+  useEntryLinkCapture();
+  return null;
+}
 
 function AuthenticatedAppearanceBridge() {
   const { user } = useAuth();
@@ -77,6 +89,7 @@ export default function App() {
         <StripeRoot>
           <AuthProvider>
             <AuthenticatedAppearanceBridge />
+            <EntryLinkCaptureBridge />
             <CartProvider>
               <VenueSessionProvider>
                 <WebFrame>
