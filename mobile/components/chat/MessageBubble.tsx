@@ -19,6 +19,7 @@
 import React, { useCallback, useRef } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -288,6 +289,19 @@ export function MessageBubble({
     onLongPressMessage?.(message);
   }, [onLongPressMessage, message]);
 
+  // Web: a right click opens the same actions menu as a long press and replaces the browser's own context menu.
+  // (A touch long press makes Chrome fire `contextmenu` too: that one is already covered by onLongPress.)
+  const webContextMenuProps =
+    Platform.OS === 'web'
+      ? ({
+          onContextMenu: (event: { preventDefault?: () => void; nativeEvent?: { pointerType?: string } }) => {
+            if (event.nativeEvent?.pointerType === 'touch') return;
+            event.preventDefault?.();
+            handleLongPressMessage();
+          },
+        } as Record<string, unknown>)
+      : undefined;
+
   // System messages render centered with no bubble (offer messages are NOT system).
   if ((message.is_system || message.type === 'system') && !isOffer) {
     return (
@@ -364,7 +378,7 @@ export function MessageBubble({
         )}
 
         {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
-        <Pressable onLongPress={handleLongPressMessage} delayLongPress={400}>
+        <Pressable onLongPress={handleLongPressMessage} delayLongPress={400} {...webContextMenuProps}>
           {isCard ? (
             <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} displayName={displayName} />
           ) : (
