@@ -9,5 +9,8 @@ export const APP_STORE_URL: string | null = null;
 /** Android package id of the app (app.config.ts). */
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.juangarciacruz.jchatapp';
 
-/** Download page for desktop browsers (and iOS until APP_STORE_URL is set). TODO: confirm this page exists. */
-export const DOWNLOAD_PAGE_URL = 'https://jchat.cloud/download';
+/**
+ * Download page for desktop browsers (and iOS until APP_STORE_URL is set).
+ * TODO: https://jchat.cloud/download does not exist yet (404): until that page exists this is the site's home.
+ */
+export const DOWNLOAD_PAGE_URL = 'https://jchat.cloud';
