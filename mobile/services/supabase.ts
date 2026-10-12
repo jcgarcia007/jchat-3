@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { showAlert } from '../utils/dialog';
+import { fetchWithTimeout } from './fetchWithTimeout';
 import { reportRealtimeHeartbeat } from './realtimeHealth';
 
 /** Project URL — exported so callers can reach Edge Functions (e.g. delete-account). */
@@ -55,6 +56,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
   },
   realtime: { heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS, ...webRealtimeOptions },
+  // Every REST / auth / storage / functions request ends (20 s; 120 s for file transfers). Not used by the websocket.
+  global: { fetch: fetchWithTimeout },
 });
 
 // ── Session guard for Edge Functions ──────────────────────────────────────────
