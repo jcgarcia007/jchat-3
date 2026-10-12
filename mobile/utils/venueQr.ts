@@ -7,7 +7,7 @@
  */
 
 const URL_TOKEN_RE = /\/c\/([A-Za-z0-9_-]{6,128})(?:[/?#]|$)/;
-const BARE_TOKEN_RE = /^[A-Za-z0-9_-]{6,128}$/;
+export const BARE_TOKEN_RE = /^[A-Za-z0-9_-]{6,128}$/;
 
 export function parseVenueQrToken(raw: string): string | null {
   const value = raw.trim();
