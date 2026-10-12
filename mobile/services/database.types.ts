@@ -3792,6 +3792,23 @@ export type Database = {
           table_label: string
         }[]
       }
+      resolve_venue_entry: {
+        Args: {
+          p_code?: string
+          p_label?: string
+          p_token?: string
+          p_venue?: string
+        }
+        Returns: {
+          business_id: string
+          business_name: string
+          business_slug: string
+          logo_url: string | null
+          room_id: string
+          table_label: string | null
+          table_qr_token: string | null
+        }[]
+      }
       set_item_status: {
         Args: { p_order_item_id: string; p_status: string }
         Returns: Json
