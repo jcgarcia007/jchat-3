@@ -136,3 +136,14 @@ export function parseEntryUrl(raw: string, opts: ParseEntryOptions = {}): EntryT
   const venue = validVenue(rawVenue);
   return venue ? fromVenuePath(venue, segments) : null;
 }
+
+/**
+ * `filter` of React Navigation's `linking` (native; web does not support it): false = "do not navigate to this URL".
+ * jchat://v/…, jchat://c/… (and any other venue-entry URL) enter through the `jchat://` prefix but match no
+ * screen (`room/:id`, `post/:postId` only), so without this React Navigation would try to open a screen named
+ * "v" / "c". Entries are handled solely by hooks/useEntryLinkCapture → EntryBridge. Everything else
+ * (room/:id, post/:id, confirm…) is left to linking exactly as before.
+ */
+export function shouldLinkingHandle(url: string): boolean {
+  return parseEntryUrl(url) === null;
+}

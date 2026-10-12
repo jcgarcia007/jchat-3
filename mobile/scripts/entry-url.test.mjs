@@ -16,7 +16,7 @@ for (const name of ['venueQr', 'entryUrl']) {
   const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } });
   writeFileSync(join(dir, `${name}.mjs`), outputText.replace("from './venueQr'", "from './venueQr.mjs'"));
 }
-const { parseEntryUrl, RESERVED_VENUE_SUBDOMAINS } = await import(pathToFileURL(join(dir, 'entryUrl.mjs')).href);
+const { parseEntryUrl, shouldLinkingHandle, RESERVED_VENUE_SUBDOMAINS } = await import(pathToFileURL(join(dir, 'entryUrl.mjs')).href);
 
 const VENUE = 'bar-xzx-omd2';
 const TOKEN = 'AbC123_-xyz';
@@ -97,3 +97,23 @@ test('reserved list matches migration 199 (26 names)', () => {
   assert.equal(RESERVED_VENUE_SUBDOMAINS.length, 26);
   assert.ok(RESERVED_VENUE_SUBDOMAINS.includes('otunity') && RESERVED_VENUE_SUBDOMAINS.includes('www'));
 });
+
+// ── linking `filter` (navigation/AppNavigator.tsx): false = React Navigation must not try to open it ──────────
+
+const filterCases = [
+  ['filter: scheme venue entry is not a screen', `jchat://v/${VENUE}`, false],
+  ['filter: scheme table entry is not a screen', `jchat://v/${VENUE}/8-k3f9`, false],
+  ['filter: scheme token entry is not a screen', `jchat://c/${TOKEN}`, false],
+  ['filter: https venue entry', `https://${VENUE}.jchat.cloud/`, false],
+  ['filter: apex token entry', `https://jchat.cloud/c/${TOKEN}`, false],
+  ['filter: room/:id still goes to linking', 'jchat://room/123e4567-e89b-12d3-a456-426614174000', true],
+  ['filter: post/:postId still goes to linking', 'jchat://post/abc123', true],
+  ['filter: confirm (auth) is left alone', 'jchat://confirm?token_hash=abc&type=signup', true],
+  ['filter: unknown reserved venue is not an entry, so linking keeps its behaviour', 'jchat://v/www', true],
+  ['filter: an unrelated URL', 'https://example.com/x', true],
+];
+for (const [name, url, expected] of filterCases) {
+  test(name, () => {
+    assert.equal(shouldLinkingHandle(url), expected);
+  });
+}

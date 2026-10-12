@@ -45,6 +45,7 @@ import {
 } from '../services/venueEntry';
 import { confirm, showAlert } from '../utils/dialog';
 import { planVenueChatNavigation } from '../utils/venueChatNav';
+import { shouldLinkingHandle } from '../utils/entryUrl';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -185,6 +186,8 @@ const defaultScreenOptions: NativeStackNavigationOptions = {
 
 const linking: LinkingOptions<MainStackParamList> = {
   prefixes: ['jchat://'],
+  // Venue-entry URLs (jchat://v/…, jchat://c/…) are NOT screens: useEntryLinkCapture + EntryBridge own them.
+  filter: shouldLinkingHandle,
   config: {
     screens: {
       ChatRoom: 'room/:id',
