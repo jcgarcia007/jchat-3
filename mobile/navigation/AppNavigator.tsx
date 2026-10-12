@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
+  CommonActions,
   createNavigationContainerRef,
   NavigationContainer,
   StackActions,
@@ -43,6 +44,7 @@ import {
   subscribePendingEntry,
 } from '../services/venueEntry';
 import { confirm, showAlert } from '../utils/dialog';
+import { planVenueChatNavigation } from '../utils/venueChatNav';
 import type { BottomTabParamList } from './tabs/BottomTabs';
 
 // Auth screens
@@ -210,16 +212,26 @@ function venueBarPlacement(routeName: string | null): HomeStatusBarPlacement {
 }
 
 /**
- * "Volver al chat". In React Navigation 7 navigate() pushes a second ChatRoom when one is already below
- * (the DM screens sit on top of the chat), so go back to the existing instance with popTo; with no
- * ChatRoom in the stack (the bar was opened from a tab) it is a normal navigate.
+ * Opens a venue's chat ("Volver al chat" and QR / link entries). In React Navigation 7 navigate() pushes a second
+ * ChatRoom when one is already below, and ChatRoomScreen cannot switch rooms without remounting, so
+ * planVenueChatNavigation decides: the SAME room → popTo its instance; ANOTHER room → drop that ChatRoom and what
+ * is above it and mount a new instance (one reset: a single transition, the routes below keep their state);
+ * no ChatRoom → a plain navigate.
  */
 function openVenueChat(roomId: string, tableLabel?: string): void {
   if (!navigationRef.isReady()) return;
-  const params = tableLabel ? { id: roomId, tableLabel } : { id: roomId };
-  const chatInStack = navigationRef.getRootState()?.routes.some((r) => r.name === 'ChatRoom');
-  if (chatInStack) navigationRef.dispatch(StackActions.popTo('ChatRoom', params));
-  else navigationRef.navigate('ChatRoom', params);
+  const rootState = navigationRef.getRootState();
+  const plan = planVenueChatNavigation(rootState?.routes ?? [], roomId, tableLabel);
+  if (plan.kind === 'popTo') {
+    navigationRef.dispatch(StackActions.popTo('ChatRoom', plan.params));
+  } else if (plan.kind === 'replace' && rootState) {
+    const kept = rootState.routes.slice(0, plan.keep);
+    navigationRef.dispatch(
+      CommonActions.reset({ ...rootState, routes: [...kept, { name: 'ChatRoom', params: plan.params }], index: kept.length }),
+    );
+  } else {
+    navigationRef.navigate('ChatRoom', plan.params);
+  }
 }
 
 function navigateNotificationRoute(route: NotificationRoute): void {
