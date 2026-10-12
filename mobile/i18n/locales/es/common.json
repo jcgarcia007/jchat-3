@@ -115,5 +115,12 @@
   },
   "lazy": {
     "loadError": "No pudimos cargar esta pantalla"
+  },
+  "webShell": {
+    "joinTitle": "Entra a un chat",
+    "leftVenue": "Saliste de {{business}}",
+    "scanHint": "Para volver a un chat, abre la cámara de tu teléfono y escanea el QR de la mesa o del local.",
+    "downloadApp": "Descargar la app",
+    "myProfile": "Mi perfil"
   }
 }

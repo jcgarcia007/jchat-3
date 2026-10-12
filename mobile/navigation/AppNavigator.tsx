@@ -32,7 +32,8 @@ import {
   getOnboardingCompleted,
   hasLocalOnboardingCompletion,
 } from '../services/onboarding';
-import BottomTabs from './tabs/BottomTabs';
+// iOS / Android: the bottom tabs. Web: WebNoVenueScreen (no tabs, no map) — navigation/rootTabs.web.tsx.
+import RootTabs from './rootTabs';
 import { HomeStatusBar, type HomeStatusBarPlacement } from '../components/venue/HomeStatusBar';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
@@ -102,7 +103,8 @@ export type AuthStackParamList = {
 
 /** Tabs are nested under BottomTabs — only ChatRoom is a "push" screen here */
 export type MainStackParamList = {
-  Tabs: NavigatorScreenParams<BottomTabParamList> | undefined;
+  /** Native: the tabs. Web: WebNoVenueScreen, which reads `leftBusinessName` ("Saliste de …"). */
+  Tabs: NavigatorScreenParams<BottomTabParamList> | { leftBusinessName?: string } | undefined;
   DMs: NavigatorScreenParams<DMStackParamList>;
   Friends: { userId?: string; initialTab?: 'followers' | 'following' | 'requests' } | undefined;
   Offers: undefined;
@@ -399,7 +401,7 @@ export default function AppNavigator() {
         </AgeStack.Navigator>
       ) : (
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
-          <MainStack.Screen name="Tabs" component={BottomTabs} />
+          <MainStack.Screen name="Tabs" component={RootTabs} />
           <MainStack.Screen name="DMs" component={DMStack} />
           <MainStack.Screen name="Friends" component={FriendsScreen} />
           <MainStack.Screen name="Offers" component={OffersScreen} />
@@ -445,8 +447,9 @@ export default function AppNavigator() {
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
     {notificationsEnabled && <BiometricEnrollGate />}
-    {/* Venue session + order in progress: one bar above the tab bar (tab screens only). */}
-    {notificationsEnabled ? (
+    {/* Venue session + order in progress: one bar above the tab bar (tab screens only). Not on the web: it has
+        no tabs, and "Volver al chat" is the QR. */}
+    {notificationsEnabled && Platform.OS !== 'web' ? (
       <HomeStatusBar
         placement={venueBarPlacement(currentRoute)}
         onOpenChat={openVenueChat}

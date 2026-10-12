@@ -508,7 +508,11 @@ export default function ChatRoomScreen() {
   const handleLeaveVenue = useCallback(() => {
     void confirm(t('venueSession.leaveConfirmTitle'), t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }), { confirmText: t('venueSession.leave'), cancelText: i18n.t('menu.cancel', { ns: 'match' }), destructive: true }).then((accepted) => {
       if (!accepted) return;
-      void venue.leaveVenue().then(() => navigation.goBack());
+      void venue.leaveVenue().then(() => {
+        // Web: there is no map to go back to — the root says "Saliste de {local}". Native: back, as always.
+        if (Platform.OS === 'web') navigation.reset({ index: 0, routes: [{ name: 'Tabs', params: { leftBusinessName: business?.name } }] });
+        else navigation.goBack();
+      });
     });
   }, [business?.name, navigation, i18n, t, venue]);
 

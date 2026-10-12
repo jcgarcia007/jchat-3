@@ -100,7 +100,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
     : t('venueSession.orders', { count: orders.length });
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + (placement === 'tabs' ? TAB_BAR_TOP_OFFSET + GAP : GAP) }]}>
+    <View testID="venue-home-bar" pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + (placement === 'tabs' ? TAB_BAR_TOP_OFFSET + GAP : GAP) }]}>
       {toast ? (
         <View
           accessibilityLiveRegion="polite"

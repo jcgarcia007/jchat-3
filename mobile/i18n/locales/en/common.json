@@ -115,5 +115,12 @@
   },
   "lazy": {
     "loadError": "We couldn't load this screen"
+  },
+  "webShell": {
+    "joinTitle": "Join a chat",
+    "leftVenue": "You left {{business}}",
+    "scanHint": "To get back into a chat, open your phone's camera and scan the QR code on the table or at the venue.",
+    "downloadApp": "Download the app",
+    "myProfile": "My profile"
   }
 }

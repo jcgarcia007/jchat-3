@@ -51,6 +51,7 @@ export { default as IconDice5 } from '@tabler/icons-react-native/IconDice5';
 export { default as IconDoor } from '@tabler/icons-react-native/IconDoor';
 export { default as IconDoorExit } from '@tabler/icons-react-native/IconDoorExit';
 export { default as IconDots } from '@tabler/icons-react-native/IconDots';
+export { default as IconDownload } from '@tabler/icons-react-native/IconDownload';
 export { default as IconEdit } from '@tabler/icons-react-native/IconEdit';
 export { default as IconEye } from '@tabler/icons-react-native/IconEye';
 export { default as IconEyeOff } from '@tabler/icons-react-native/IconEyeOff';

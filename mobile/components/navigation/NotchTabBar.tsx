@@ -110,6 +110,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
 
   return (
     <View
+      testID="tab-bar"
       onLayout={onLayout}
       style={[
         styles.container,

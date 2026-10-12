@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconDoorExit, IconHelp, IconReceipt, IconSettings } from '@tabler/icons-react-native';
@@ -55,7 +55,8 @@ export function ChatMoreSheet({
         {!isOwner && inVenue ? (
           <Row icon={<IconHelp size={22} color={c.textPrimary} />} label={t('moreSheet.askHelp')} onPress={run(onAskHelp)} color={c.textPrimary} border={c.borderSubtle} />
         ) : null}
-        {isOwner ? (
+        {/* Owner settings lead to POS / KDS: the web is for being inside the chat (the owner has the dashboard). */}
+        {isOwner && Platform.OS !== 'web' ? (
           <Row icon={<IconSettings size={22} color={c.textPrimary} />} label={t('moreSheet.ownerSettings')} onPress={run(onOwnerSettings)} color={c.textPrimary} border={c.borderSubtle} />
         ) : null}
         {!isOwner && inVenue ? (
