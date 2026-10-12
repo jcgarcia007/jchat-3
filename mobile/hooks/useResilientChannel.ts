@@ -3,7 +3,7 @@
  *
  * Handles the subscribe() states — SUBSCRIBED, CHANNEL_ERROR, TIMED_OUT, CLOSED. When the channel fails it is
  * REMOVED (so realtime-js stops its own rejoin and there is never a second live channel) and a new one is
- * created after 1 s, 2 s, 5 s, 10 s, then every 30 s at most (utils/channelBackoff). Every channel has its own
+ * created after 1 s, 2 s, 5 s, then every 10 s at most (utils/channelBackoff). Every channel has its own
  * topic (channelTopic) because supabase.channel(name) returns the existing channel for a repeated name and
  * `.on()` throws after subscribe().
  *

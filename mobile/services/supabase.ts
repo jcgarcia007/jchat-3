@@ -28,7 +28,7 @@ export const isSupabaseConfigured =
   !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 /**
- * Realtime options for the WEB build only (iOS / Android keep the library defaults, exactly as before).
+ * Realtime options for the WEB build only (`worker` + `heartbeatCallback`).
  * realtime-js 2.108 documents `worker` ("use a Web Worker to set a side flow") and `heartbeatCallback`. With
  * `worker: true` and no `workerUrl` the library builds the worker from a tiny script embedded in the package
  * (a Blob; it only posts a keep-alive tick), so nothing is downloaded. The point: a browser throttles timers of
@@ -37,8 +37,15 @@ export const isSupabaseConfigured =
  */
 const webRealtimeOptions =
   Platform.OS === 'web' && typeof Worker !== 'undefined'
-    ? { realtime: { worker: true, heartbeatCallback: reportRealtimeHeartbeat } }
+    ? { worker: true, heartbeatCallback: reportRealtimeHeartbeat }
     : {};
+
+/**
+ * `heartbeatIntervalMs` (documented in realtime-js 2.108's RealtimeClientOptions; default 25 s) on every platform:
+ * the socket notices a dead connection at the next missed heartbeat, so with 15 s "Reconectando…" shows ~15-30 s
+ * after the network drops instead of ~25-50 s.
+ */
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -47,7 +54,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     detectSessionInUrl: false,
   },
-  ...webRealtimeOptions,
+  realtime: { heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS, ...webRealtimeOptions },
 });
 
 // ── Session guard for Edge Functions ──────────────────────────────────────────

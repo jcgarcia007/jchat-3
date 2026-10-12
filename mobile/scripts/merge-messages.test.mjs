@@ -94,13 +94,13 @@ test('an optimistic bubble stays until the confirmed row replaces it elsewhere',
 
 // ── channelBackoffMs ─────────────────────────────────────────────────────────────────────────────────
 
-test('backoff: 1 s, 2 s, 5 s, 10 s, then 30 s', () => {
-  assert.deepEqual([0, 1, 2, 3, 4].map(channelBackoffMs), [1000, 2000, 5000, 10000, 30000]);
+test('backoff: 1 s, 2 s, 5 s, then 10 s', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(channelBackoffMs), [1000, 2000, 5000, 10000, 10000, 10000]);
 });
 
-test('backoff never exceeds 30 s and tolerates odd input', () => {
-  assert.equal(channelBackoffMs(5), 30000);
-  assert.equal(channelBackoffMs(50), 30000);
+test('backoff never exceeds 10 s and tolerates odd input', () => {
+  assert.equal(channelBackoffMs(5), 10000);
+  assert.equal(channelBackoffMs(50), 10000);
   assert.ok(channelBackoffMs(1e9) <= MAX_CHANNEL_BACKOFF_MS);
   assert.equal(channelBackoffMs(-3), 1000);
   assert.equal(channelBackoffMs(1.9), 2000);
