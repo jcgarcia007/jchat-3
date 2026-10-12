@@ -17,10 +17,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconBrandPagekit } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { getAppWindow } from '../../utils/appWindow';
+import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 
 // ---------------------------------------------------------------------------
 // Design-System gradient / border hexes specific to this screen.
@@ -46,6 +48,7 @@ const BUTTON_HEIGHT = 44;
 export default function WelcomeScreen() {
   const navigation = useNavigation<WelcomeNav>();
   const { t } = useTranslation('auth');
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient
@@ -55,6 +58,9 @@ export default function WelcomeScreen() {
       end={{ x: 0, y: 1 }}
     >
       <StatusBar barStyle="light-content" />
+
+      {/* A venue QR / link is pending: "Vas a entrar a {negocio}" (renders nothing otherwise) */}
+      <EntryVenueCard variant="welcome" style={{ marginTop: insets.top + 12, marginHorizontal: 24, alignSelf: 'stretch' }} />
 
       {/* ── Hero section ── */}
       <View style={styles.hero}>

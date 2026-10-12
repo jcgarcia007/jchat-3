@@ -21,6 +21,7 @@ import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
 import { TicketHeader } from '../../components/auth/TicketHeader';
+import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
@@ -112,6 +113,7 @@ export default function LoginEmailScreen() {
       {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
       {CaptchaGate}
       <TicketHeader />
+      <EntryVenueCard variant="ticket" />
       <TicketTitle text={t('ticket.emailTitle')} />
 
       <Text style={styles.fieldLabel}>{t('ticket.emailLabel')}</Text>

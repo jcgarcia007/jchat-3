@@ -22,6 +22,7 @@ import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
 import { TicketHeader } from '../../components/auth/TicketHeader';
+import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle, useTicketCascade } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
@@ -136,6 +137,7 @@ export default function LoginScreen() {
     <TicketShell entrance onContentReady={handleContentReady}>
       <Animated.View style={cascade.blockStyle(0)}>
         <TicketHeader />
+        <EntryVenueCard variant="ticket" />
       </Animated.View>
       <Animated.View style={cascade.blockStyle(1)}>
         <TicketTitle text={t('ticket.title')} reveal={cascade.reveal} />
