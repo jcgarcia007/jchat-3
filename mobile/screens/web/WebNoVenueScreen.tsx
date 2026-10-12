@@ -80,8 +80,8 @@ const styles = StyleSheet.create({
   iconWrap: { width: 88, height: 88, borderRadius: 44, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
   body: { fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 360, marginBottom: 8 },
-  primary: { minHeight: 52, alignSelf: 'stretch', maxWidth: 360, width: '100%', borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  primary: { minHeight: 52, alignSelf: 'center', maxWidth: 360, width: '100%', borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   primaryLabel: { fontSize: 16, fontWeight: '700' },
-  secondary: { minHeight: 52, alignSelf: 'stretch', maxWidth: 360, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  secondary: { minHeight: 52, alignSelf: 'center', maxWidth: 360, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   secondaryLabel: { fontSize: 16, fontWeight: '600' },
 });
