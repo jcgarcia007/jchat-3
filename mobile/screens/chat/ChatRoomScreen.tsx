@@ -72,7 +72,7 @@ import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
-import { mergeMessages, newestConfirmedTimestamp } from '../../utils/mergeMessages';
+import { mergeMessages, newestConfirmedTimestamp, resyncHasGap } from '../../utils/mergeMessages';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
@@ -759,6 +759,12 @@ export default function ChatRoomScreen() {
         .order('created_at', { ascending: false })
         .limit(RESYNC_LIMIT);
       if (error || !data || data.length === 0 || roomId !== activeRoomIdRef.current) return;
+      if (resyncHasGap(data.length, RESYNC_LIMIT)) {
+        // The query came back full: more may have been missed than it returned. Merging would leave a hole in the
+        // history, so reload the normal first page instead.
+        void loadMessages(roomId);
+        return;
+      }
       const missed = await hydrateRows(data as unknown as Record<string, unknown>[]);
       if (roomId !== activeRoomIdRef.current) return;
       setMessages((prev) => mergeMessages(prev, missed));

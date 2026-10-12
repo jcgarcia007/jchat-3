@@ -430,6 +430,7 @@ export default function DMChatScreen() {
   // ── Catch-up after a Realtime gap ───────────────────────────────────────────
 
   // Same fetch as the first load (hidden-conversation cut included), merged into the thread without duplicates.
+  // listMessages has no page limit (it returns the whole thread), so a catch-up can never leave a hole in the history.
   const resyncMessages = useCallback(async () => {
     if (!user) return;
     try {

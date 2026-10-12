@@ -16,7 +16,7 @@ for (const name of ['mergeMessages', 'channelBackoff']) {
   const source = readFileSync(new URL(`../utils/${name}.ts`, import.meta.url), 'utf8');
   writeFileSync(out(name), ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText);
 }
-const { mergeMessages, newestConfirmedTimestamp, OPTIMISTIC_ID_PREFIX } = await import(pathToFileURL(out('mergeMessages')).href);
+const { mergeMessages, newestConfirmedTimestamp, resyncHasGap, OPTIMISTIC_ID_PREFIX } = await import(pathToFileURL(out('mergeMessages')).href);
 const { channelBackoffMs, MAX_CHANNEL_BACKOFF_MS } = await import(pathToFileURL(out('channelBackoff')).href);
 
 const m = (id, created_at, extra = {}) => ({ id, created_at, ...extra });
@@ -116,4 +116,16 @@ test('backoff never exceeds 30 s and tolerates odd input', () => {
   assert.ok(channelBackoffMs(1e9) <= MAX_CHANNEL_BACKOFF_MS);
   assert.equal(channelBackoffMs(-3), 1000);
   assert.equal(channelBackoffMs(1.9), 2000);
+});
+
+// ── resyncHasGap ─────────────────────────────────────────────────────────────────────────────────────
+
+test('resync: a full result (limit rows or more) means a possible gap → reload the first page', () => {
+  assert.equal(resyncHasGap(100, 100), true);
+  assert.equal(resyncHasGap(101, 100), true);
+});
+
+test('resync: fewer rows than the limit is the whole gap → merge', () => {
+  assert.equal(resyncHasGap(99, 100), false);
+  assert.equal(resyncHasGap(0, 100), false);
 });

@@ -55,3 +55,11 @@ export function newestConfirmedTimestamp(list: readonly MessageLike[]): string |
   }
   return null;
 }
+
+/**
+ * True when a catch-up query came back FULL (limit rows or more): there may be more missed rows than it
+ * returned, so merging would leave a hole between the old list and the newest ones — reload the first page.
+ */
+export function resyncHasGap(rowCount: number, limit: number): boolean {
+  return rowCount >= limit;
+}
