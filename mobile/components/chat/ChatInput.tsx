@@ -245,6 +245,8 @@ export function ChatInput({
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel={attachmentOpen ? t('input.closeAttachment') : t('input.openAttachment')}
+          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
+          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: attachmentOpen ? theme.accent : theme.inputBg, borderColor: theme.border },
@@ -284,6 +286,8 @@ export function ChatInput({
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel={t('input.takePhoto')}
+          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
+          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: theme.inputBg, borderColor: theme.border },
@@ -300,6 +304,8 @@ export function ChatInput({
           onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
           accessibilityLabel={canSend ? t('input.send') : t('voice.record', { ns: 'common' })}
+          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
+          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: canSend ? theme.accent : theme.inputBg, borderColor: theme.border },

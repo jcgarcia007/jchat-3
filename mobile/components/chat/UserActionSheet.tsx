@@ -139,17 +139,17 @@ function MuteDurationPicker({ onSelect, onCancel, c }: MuteDurationPickerProps) 
     <View style={s.container}>
       <Text style={s.title}>{t('userAction.mutePickerTitle')}</Text>
 
-      <Pressable style={s.option} onPress={() => onSelect('1h')}>
+      <Pressable style={s.option} onPress={() => onSelect('1h')} accessibilityRole="button">
         <IconClock size={18} color={c.textSecondary} />
         <Text style={s.optionLabel}>{t('userAction.duration1h')}</Text>
       </Pressable>
 
-      <Pressable style={s.option} onPress={() => onSelect('24h')}>
+      <Pressable style={s.option} onPress={() => onSelect('24h')} accessibilityRole="button">
         <IconClock size={18} color={c.textSecondary} />
         <Text style={s.optionLabel}>{t('userAction.duration24h')}</Text>
       </Pressable>
 
-      <Pressable style={s.cancelOption} onPress={onCancel}>
+      <Pressable style={s.cancelOption} onPress={onCancel} accessibilityRole="button">
         <IconX size={16} color={c.textSecondary} />
         <Text style={s.cancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
       </Pressable>
@@ -477,7 +477,13 @@ export function UserActionSheet({
               </View>
             )}
           </View>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button">
+          {/* Icon-only close: 20 pt icon + 12 pt slop on every side = 44 pt touch area. */}
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={t('actions.close', { ns: 'common' })}
+          >
             <IconX size={20} color={c.textSecondary} />
           </Pressable>
         </View>

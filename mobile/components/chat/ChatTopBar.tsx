@@ -120,6 +120,8 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={t('topBar.userTapA11y', { name: displayName })}
+      // 40 pt avatar + 2 pt slop on every side = 44 pt touch area.
+      hitSlop={2}
       style={avatarStyles.wrap}
     >
       {!user.is_incognito && user.avatar_url ? (
