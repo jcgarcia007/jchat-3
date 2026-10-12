@@ -1553,6 +1553,11 @@ export default function ChatRoomScreen() {
                           ? t('chatRoom.geoNoReadingBody')
                           : t('chatRoom.geoUnavailable')}
                   </Text>
+                  {Platform.OS === 'web' && geoGate.gateStatus === 'permission_denied' ? (
+                    <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
+                      {t('geo.webPermissionHint')}
+                    </Text>
+                  ) : null}
                   <View style={gateStyles.outsideButtons}>
                     <Pressable
                       testID="chat-geo-retry"

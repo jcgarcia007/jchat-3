@@ -31,6 +31,9 @@
  */
 
 import * as Location from 'expo-location';
+import { getCurrentPosition } from './geoPosition';
+
+export { getCurrentPosition, hasForegroundPermission, requestForegroundPermission } from './geoPosition';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,23 +158,8 @@ export function isWithinRadius(
 // Permission Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Request foreground ("when-in-use") location permission.
- * Returns true when permission was granted, false otherwise.
- */
-export async function requestForegroundPermission(): Promise<boolean> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  return status === Location.PermissionStatus.GRANTED;
-}
-
-/**
- * Read-only check: is foreground location permission already granted?
- * Never shows a permission prompt (use it where asking is not allowed).
- */
-export async function hasForegroundPermission(): Promise<boolean> {
-  const { status } = await Location.getForegroundPermissionsAsync();
-  return status === Location.PermissionStatus.GRANTED;
-}
+// requestForegroundPermission / hasForegroundPermission live in ./geoPosition (platform split: expo-location on
+// iOS/Android, navigator.geolocation on web) and are re-exported at the top of this file.
 
 /**
  * Request always-on ("background") location permission.
@@ -195,22 +183,7 @@ export async function requestAlwaysPermission(): Promise<boolean> {
 // Position Fetch & Watch
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * One-shot: fetch the device's current position.
- *
- * Requires foreground permission to already be granted.
- * Throws if location services are unavailable or permission is denied.
- */
-export async function getCurrentPosition(): Promise<Coords> {
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
-  return {
-    lat: location.coords.latitude,
-    lng: location.coords.longitude,
-    mocked: location.mocked,
-  };
-}
+// getCurrentPosition: see ./geoPosition (re-exported at the top of this file).
 
 /**
  * Continuous position watcher — invokes `cb` on every location update.
