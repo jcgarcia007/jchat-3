@@ -111,5 +111,8 @@
   },
   "realtime": {
     "reconnecting": "Reconnecting…"
+  },
+  "lazy": {
+    "loadError": "We couldn't load this screen"
   }
 }

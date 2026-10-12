@@ -111,5 +111,8 @@
   },
   "realtime": {
     "reconnecting": "Reconectando…"
+  },
+  "lazy": {
+    "loadError": "No pudimos cargar esta pantalla"
   }
 }

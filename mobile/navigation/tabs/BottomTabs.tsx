@@ -10,7 +10,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import MapScreen from '../../screens/map/MapScreen';
+// Web loads the Map tab on demand (navigation/lazyScreens.web.tsx); iOS / Android import it statically.
+import { MapScreen } from '../lazyScreens';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
 import MessagesScreen from '../../screens/dms/MessagesScreen';

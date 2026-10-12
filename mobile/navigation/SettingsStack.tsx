@@ -17,7 +17,8 @@ import WorkModeScreen from '../screens/settings/WorkModeScreen';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import BlockedUsersScreen from '../screens/settings/BlockedUsersScreen';
 import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
-import PosNavigator from './PosNavigator';
+// Web loads the POS flow on demand (navigation/lazyScreens.web.tsx); iOS / Android import it statically.
+import { PosNavigator } from './lazyScreens';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
