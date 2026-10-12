@@ -17,7 +17,7 @@ writeFileSync(
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
   }).outputText,
 );
-const { createFetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS, STORAGE_FETCH_TIMEOUT_MS } = await import(pathToFileURL(file).href);
+const { createFetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS, FUNCTIONS_FETCH_TIMEOUT_MS, STORAGE_FETCH_TIMEOUT_MS } = await import(pathToFileURL(file).href);
 
 /** A fake fetch that answers after `afterMs` (never if null) and rejects like fetch does when its signal aborts. */
 function fakeFetch(afterMs, record = {}) {
@@ -36,8 +36,9 @@ function fakeFetch(afterMs, record = {}) {
     });
 }
 
-test('the defaults are 20 s and 120 s', () => {
+test('the defaults are 20 s, 45 s (Edge Functions) and 120 s (storage)', () => {
   assert.equal(DEFAULT_FETCH_TIMEOUT_MS, 20_000);
+  assert.equal(FUNCTIONS_FETCH_TIMEOUT_MS, 45_000);
   assert.equal(STORAGE_FETCH_TIMEOUT_MS, 120_000);
 });
 
@@ -93,4 +94,16 @@ test('the timer is always cleared (no pending timers keep the process alive) and
   assert.deepEqual(seenInit.headers, { a: 'b' });
   assert.ok(seenInit.signal instanceof AbortSignal);
   // If the 60 s timer were still pending, node --test would not exit promptly; reaching here quickly is the check.
+});
+
+test('Edge Function URLs use the middle timeout: slower than REST, faster than storage', async () => {
+  // Answers after 80 ms: too slow for REST (30 ms) but fine for functions (500 ms); storage has its own, longer limit.
+  const f = createFetchWithTimeout({ defaultMs: 30, functionsMs: 500, storageMs: 5000, fetchImpl: fakeFetch(80) });
+  await assert.rejects(f('https://x.supabase.co/rest/v1/messages'), (err) => err.name === 'TimeoutError');
+  await assert.rejects(f('https://x.supabase.co/auth/v1/token'), (err) => err.name === 'TimeoutError');
+  const res = await f('https://x.supabase.co/functions/v1/payments');
+  assert.equal(res.ok, true);
+  // and a function that hangs still ends at the functions limit
+  const g = createFetchWithTimeout({ defaultMs: 10, functionsMs: 40, fetchImpl: fakeFetch(null) });
+  await assert.rejects(g('https://x.supabase.co/functions/v1/delete-account'), (err) => err.name === 'TimeoutError');
 });
