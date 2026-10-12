@@ -47,7 +47,12 @@ function ConversationRow({
 }) {
   const colors = useThemeColors();
   const translation = useTranslation('social');
-  const { otherUser, lastMessageBody, lastMessageAt, unreadCount, matchBusinessName } = conversation;
+  const { otherUser, lastMessageBody, lastMessageKind, lastMessageAt, unreadCount, matchBusinessName } = conversation;
+  const previewText =
+    lastMessageKind === 'photo' ? translation.t('inbox.previewPhoto')
+    : lastMessageKind === 'voice' ? translation.t('inbox.previewVoice')
+    : lastMessageKind === 'gift' ? translation.t('inbox.previewGift')
+    : lastMessageBody ?? translation.t('inbox.noMessagesYet');
   const hasUnread = unreadCount > 0;
 
   return (
@@ -92,7 +97,7 @@ function ConversationRow({
             numberOfLines={1}
             style={[styles.rowPreview, { color: hasUnread ? colors.textPrimary : colors.textSecondary, fontWeight: hasUnread ? '500' : '400' }]}
           >
-            {lastMessageBody ?? translation.t('inbox.noMessagesYet')}
+            {previewText}
           </Text>
           {hasUnread ? (
             <View style={[styles.badge, { backgroundColor: colors.brand }]}>

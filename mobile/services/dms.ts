@@ -12,6 +12,7 @@
  */
 
 import { uriToUploadBody } from './uploadBody';
+import { dmPreviewKind, type DmPreviewKind } from '../utils/dmPreview';
 import { supabase, isSupabaseConfigured } from './supabase';
 import i18n from '../i18n';
 
@@ -72,6 +73,8 @@ export interface ConversationPreview {
   id: string;
   otherUser: DmParticipant;
   lastMessageBody: string | null;
+  /** What the last message is (text / photo / voice / gift): photos and voice notes have no body. */
+  lastMessageKind: DmPreviewKind;
   lastMessageAt: string | null;
   /** Messages sent TO currentUser that have no read_at. */
   unreadCount: number;
@@ -180,7 +183,7 @@ export async function listConversations(
       const hiddenAt = hiddenAtForUser(c, userId);
       let lastMessageQuery = supabase
         .from('dm_messages')
-        .select('body, created_at')
+        .select('body, created_at, media_url, voice_url, gift_offer_id')
         .eq('conversation_id', c.id)
         .order('created_at', { ascending: false })
         .limit(1);
@@ -190,6 +193,9 @@ export async function listConversations(
       const lastMsg = (lastMsgRows?.[0] ?? null) as {
         body: string | null;
         created_at: string;
+        media_url: string | null;
+        voice_url: string | null;
+        gift_offer_id: string | null;
       } | null;
 
       // Unread count — messages sent BY the other user that haven't been read
@@ -206,6 +212,7 @@ export async function listConversations(
         id: c.id,
         otherUser,
         lastMessageBody: lastMsg?.body ?? null,
+        lastMessageKind: dmPreviewKind(lastMsg),
         lastMessageAt: lastMsg?.created_at ?? c.last_message_at,
         unreadCount: unreadCount ?? 0,
         matchBusinessName: c.ephemeral_business_id ? (venueNames.get(c.ephemeral_business_id) ?? '') : null,

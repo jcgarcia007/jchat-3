@@ -80,6 +80,7 @@ import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
 import { canRecordVoice } from '../../services/webVoice';
+import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
 import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
@@ -302,6 +303,8 @@ export default function DMChatScreen() {
   const { t: tg } = useTranslation('chat');
   const insets = useSafeAreaInsets();
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+  // Web only (0 on iOS / Android): how much of the page the on-screen keyboard covers, to lift the composer.
+  const webKeyboardInset = useVisualViewportInset();
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
     const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKeyboardHeight(Math.max(0, Dimensions.get('screen').height - e.endCoordinates.screenY)));
@@ -705,7 +708,9 @@ export default function DMChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: c.bgBase, paddingBottom: androidKeyboardHeight }]}
+      style={[styles.container, { backgroundColor: c.bgBase, paddingBottom: androidKeyboardHeight + webKeyboardInset }]}
+      // Web has no keyboard events: useVisualViewportInset lifts the composer instead (0 on iOS / Android).
+      enabled={Platform.OS !== 'web'}
       // iOS: KeyboardAvoidingView. Android: the window is not resized (edge-to-edge) and KeyboardAvoidingView's
       // 'height' mode over-corrected and left a grey strip once the keyboard closed, so the keyboard height is
       // applied as bottom padding instead (androidKeyboardHeight).

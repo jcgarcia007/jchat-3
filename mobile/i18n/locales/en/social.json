@@ -3,7 +3,10 @@
     "title": "Messages",
     "noMessagesYet": "No messages yet",
     "now": "now",
-    "empty": "No conversations yet.\nStart chatting from a user's profile."
+    "empty": "No conversations yet.\nStart chatting from a user's profile.",
+    "previewPhoto": "📷 Photo",
+    "previewVoice": "🎤 Voice note",
+    "previewGift": "🎁 Gift"
   },
   "messages": {
     "privateTitle": "Private messages",

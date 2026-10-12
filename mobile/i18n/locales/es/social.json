@@ -3,7 +3,10 @@
     "title": "Mensajes",
     "noMessagesYet": "Aún no hay mensajes",
     "now": "ahora",
-    "empty": "Aún no tienes conversaciones.\nInicia un chat desde el perfil de un usuario."
+    "empty": "Aún no tienes conversaciones.\nInicia un chat desde el perfil de un usuario.",
+    "previewPhoto": "📷 Foto",
+    "previewVoice": "🎤 Nota de voz",
+    "previewGift": "🎁 Regalo"
   },
   "messages": {
     "privateTitle": "Mensajes privados",
