@@ -217,7 +217,7 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
             >
               <Image
                 source={{ uri: mediaUri }}
-                style={styles.bubbleImage}
+                style={[styles.bubbleImage, photoBlurred && styles.bubbleImageGated]}
                 resizeMode="cover"
                 blurRadius={photoBlurred ? 40 : 0}
               />
@@ -1069,9 +1069,12 @@ const styles = StyleSheet.create({
   photoGate: { alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12 },
   photoGateTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
   photoGateText: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
-  photoGateRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  photoGateBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  // The two actions are stacked: side by side they did not fit the 200 px photo and "Reportar" was cut off. The
+  // gated photo is taller (bubbleImageGated) so title + hint + both 40 px actions fit whole.
+  photoGateRow: { flexDirection: 'column', alignItems: 'center', gap: 0, marginTop: 2 },
+  photoGateBtn: { minHeight: 40, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   photoGateBtnText: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  bubbleImageGated: { height: 200 },
   bubbleImage: {
     width: 200,
     height: 160,
