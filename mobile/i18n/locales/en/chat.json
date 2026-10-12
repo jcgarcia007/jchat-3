@@ -450,5 +450,10 @@
     "editProfile": "Edit profile",
     "viewProfile": "View my profile",
     "close": "Close"
+  },
+  "profileHint": {
+    "title": "👤 Your profile is here",
+    "body": "Tap ⋯ and then My profile to change your photo, your name or add photos. You don't leave the chat.",
+    "ok": "Got it"
   }
 }

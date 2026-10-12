@@ -64,6 +64,9 @@ import { useVenueSession } from '../../context/VenueSessionContext';
 import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
 import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
 import { OwnProfileMenu } from '../../components/chat/OwnProfileMenu';
+import { ProfileMenuHint } from '../../components/chat/ProfileMenuHint';
+import { useProfileMenuHint } from '../../hooks/useProfileMenuHint';
+import { profileHintAllowed } from '../../utils/profileHint';
 import { changeMyAvatar } from '../../services/avatar';
 import { subscribeMyProfileChanged } from '../../services/profileEvents';
 import { GiftSheet } from '../../components/gift/GiftSheet';
@@ -490,6 +493,9 @@ export default function ChatRoomScreen() {
   const [giftTarget, setGiftTarget] = useState<{ id: string; name: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownMenuOpen, setOwnMenuOpen] = useState(false);
+  // First-time hint pointing at ⋯ ("Tu perfil está aquí"): inside the chat only, never over the entry screen.
+  const moreButtonRef = useRef<View>(null);
+  const profileHint = useProfileMenuHint({ userId: user?.id, enabled: profileHintAllowed({ entryVisible, inChat: true }) && !initialLoading });
   const {
     notifications: allNotifications,
     unreadCount,
@@ -1790,6 +1796,7 @@ export default function ChatRoomScreen() {
         onBellPress={() => setBellOpen(true)}
         unreadCount={unreadCount}
         onMorePress={!entryVisible ? () => setMoreOpen(true) : undefined}
+        moreButtonRef={moreButtonRef}
         onUserPress={handleUserPress}
       >
         {/* Sub-room tabs */}
@@ -2071,6 +2078,7 @@ export default function ChatRoomScreen() {
         onOpenRoute={handleOpenNotificationRoute}
         pinnedOrders={pinnedOrders}
       />
+      <ProfileMenuHint visible={profileHint.visible} anchorRef={moreButtonRef} onDismiss={profileHint.dismiss} />
       <OwnProfileMenu
         visible={ownMenuOpen}
         onClose={() => setOwnMenuOpen(false)}

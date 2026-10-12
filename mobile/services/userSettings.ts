@@ -106,3 +106,38 @@ export async function updateMyLanguage(
 
   if (error) throw error;
 }
+
+// ── One-time hints (users.settings.hints.*) ───────────────────────────────────
+
+function readSettingsObject(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
+/** True when the account already has hints.profileMenuSeen. Throws if the settings cannot be read. */
+export async function loadProfileHintSeen(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const { data, error } = await supabase.from('users').select('settings').eq('id', userId).single();
+  if (error) throw error;
+  const hints = readSettingsObject(readSettingsObject(data?.settings).hints);
+  return hints.profileMenuSeen === true;
+}
+
+/**
+ * Saves hints.profileMenuSeen = true in users.settings WITHOUT touching the other settings: read, merge, write the
+ * whole object back. (update_my_settings, the usual path, rejects keys it does not know — it has an allow-list —
+ * but the `settings` column itself is writable by the owner: migration 066's column allow-list.) A setting
+ * changed by another device between the read and the write could be overwritten; a tiny window for a one-off hint.
+ */
+export async function markProfileHintSeen(userId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { data, error } = await supabase.from('users').select('settings').eq('id', userId).single();
+  if (error) throw error;
+  const settings = readSettingsObject(data?.settings);
+  const hints = readSettingsObject(settings.hints);
+  if (hints.profileMenuSeen === true) return;
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ settings: { ...settings, hints: { ...hints, profileMenuSeen: true } } })
+    .eq('id', userId);
+  if (updateError) throw updateError;
+}

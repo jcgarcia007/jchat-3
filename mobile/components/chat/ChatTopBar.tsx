@@ -82,6 +82,8 @@ export interface ChatTopBarProps {
   unreadCount?: number;
   /** Opens the ⋯ options sheet. The button only shows when provided. */
   onMorePress?: () => void;
+  /** Ref of the ⋯ button (the first-time profile hint points at it). */
+  moreButtonRef?: React.Ref<View>;
   onUserPress: (userId: string, displayName: string, anchor: UserAnchor) => void;
   children?: React.ReactNode;
 }
@@ -174,6 +176,7 @@ export function ChatTopBar({
   onBellPress,
   unreadCount = 0,
   onMorePress,
+  moreButtonRef,
   onUserPress,
   children,
 }: ChatTopBarProps) {
@@ -261,6 +264,8 @@ export function ChatTopBar({
 
         {onMorePress ? (
           <Pressable
+            ref={moreButtonRef}
+            testID="chat-more-button"
             onPress={onMorePress}
             accessibilityRole="button"
             accessibilityLabel={t('topBar.moreOptions')}

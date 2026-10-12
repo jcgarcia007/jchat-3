@@ -450,5 +450,10 @@
     "editProfile": "Editar perfil",
     "viewProfile": "Ver mi perfil",
     "close": "Cerrar"
+  },
+  "profileHint": {
+    "title": "👤 Tu perfil está aquí",
+    "body": "Toca ⋯ y luego Mi perfil para cambiar tu foto, tu nombre o subir fotos. No sales del chat.",
+    "ok": "Entendido"
   }
 }
