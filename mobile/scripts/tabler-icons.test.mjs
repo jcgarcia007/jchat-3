@@ -30,3 +30,56 @@ test('every re-exported icon exists as its own file in the installed package', (
   assert.deepEqual(names, [...names].sort());
   for (const name of names) assert.ok(existsSync(`${PKG_ICONS}${name}.mjs`), `${name}.mjs not found in the package`);
 });
+
+// ── Web and native draw the same icons ──────────────────────────────────────────────────────────────
+// Native resolves the package's main entry (the CJS build, dist/cjs/icons/<Icon>.cjs); the web alias re-exports
+// each icon from its ESM file (dist/esm/icons/<Icon>.mjs). Both are generated from the SAME installed package version,
+// but this guards against a drift: for every icon of the stub the type, names and every SVG node must be identical.
+
+const PKG_DIR = fileURLToPath(new URL('../node_modules/@tabler/icons-react-native/', import.meta.url));
+
+function iconDefinition(file, call) {
+  const src = readFileSync(file, 'utf8');
+  const start = src.indexOf(call);
+  assert.ok(start >= 0, `${file}: createReactNativeComponent call not found`);
+  const open = src.indexOf('(', start);
+  // the call's argument list ends at the matching ")" followed by ";"
+  let depth = 0;
+  let end = -1;
+  for (let i = open; i < src.length; i += 1) {
+    if (src[i] === '(') depth += 1;
+    else if (src[i] === ')') {
+      depth -= 1;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  assert.ok(end > open, `${file}: unbalanced call`);
+  return src.slice(open, end + 1).replace(/\s+/g, ' ');
+}
+
+test('the package version the web icons come from is the one native uses (single install)', () => {
+  const pkg = JSON.parse(readFileSync(`${PKG_DIR}package.json`, 'utf8'));
+  assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
+  const header = readFileSync(`${PKG_DIR}dist/esm/icons/IconSend.mjs`, 'utf8').split('\n')[1];
+  assert.ok(header.includes(pkg.version), 'the icon files carry the installed package version');
+});
+
+test('every icon of the web stub has the same type, names and SVG nodes as the native (CJS) build', () => {
+  const names = [...readFileSync(STUB, 'utf8').matchAll(/export \{ default as (\w+) \}/g)].map((m) => m[1]);
+  assert.ok(names.length > 100);
+  const mismatched = [];
+  for (const name of names) {
+    const esm = iconDefinition(`${PKG_DIR}dist/esm/icons/${name}.mjs`, 'createReactNativeComponent(');
+    const cjs = iconDefinition(`${PKG_DIR}dist/cjs/icons/${name}.cjs`, 'createReactNativeComponent.default(');
+    if (esm !== cjs) mismatched.push(name);
+    // an icon with no drawing nodes would render as an empty box
+    assert.match(esm, /\[\[\s*"(path|circle|rect|line|polyline|polygon|ellipse)"/, `${name}: no SVG nodes`);
+  }
+  assert.deepEqual(mismatched, [], 'icons that differ between web (ESM) and native (CJS)');
+});
+
+test('no other icon library or bundled vector icons are used by the app (only Tabler)', () => {
+  const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'));
+  const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+  assert.deepEqual(deps.filter((d) => /vector-icons|lucide|fontawesome|ionicons|react-native-elements/i.test(d)), []);
+});
