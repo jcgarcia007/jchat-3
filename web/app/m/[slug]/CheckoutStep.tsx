@@ -80,6 +80,7 @@ export function CheckoutStep({
   onVenueError,
   onBack,
   onDone,
+  onOrderPlaced,
 }: {
   business: { id: string; name: string };
   cartItems: CheckoutCartItem[];
@@ -93,12 +94,22 @@ export function CheckoutStep({
   onVenueError?: (code: string) => void;
   onBack: () => void;
   onDone: () => void;
+  /** Called once when the payment succeeded and the order is placed (the embedded menu reports it to its parent). */
+  onOrderPlaced?: () => void;
 }) {
   const t = useTranslations("checkout");
   const tv = useTranslations("venue");
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("checking");
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
+  // The order is placed once the payment succeeded: let the embedding page know (once).
+  const orderPlacedRef = useRef(false);
+  useEffect(() => {
+    if (phase === "success" && !orderPlacedRef.current) {
+      orderPlacedRef.current = true;
+      onOrderPlaced?.();
+    }
+  }, [phase, onOrderPlaced]);
   const [error, setError] = useState<string>("");
   // Golden rule refusal (outside_venue / pickup_disabled): shown as such, never as a failed payment.
   const [venueRefused, setVenueRefused] = useState(false);

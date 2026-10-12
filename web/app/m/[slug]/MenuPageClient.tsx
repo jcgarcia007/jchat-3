@@ -10,6 +10,7 @@ import { COLOR_PALETTES_BY_SLUG } from "./templates/shared/colorPalettes";
 import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { resolveParentOrigin } from "@/lib/embedOrigins";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
@@ -1569,12 +1570,15 @@ export default function MenuPageClient({
   business,
   categories,
   isAppMode = false,
+  isEmbed = false,
   appRoomId = null,
 }: {
   business: PublicBusiness;
   categories: PublicMenuCategory[];
   /** True when running inside the native app WebView (?app=1). */
   isAppMode?: boolean;
+  /** True inside the web app's menu sheet (?embed=1): hides what is redundant there and reports the order to the parent. */
+  isEmbed?: boolean;
   /** roomId from ?room=<id> — used in the postMessage payload. */
   appRoomId?: string | null;
 }) {
@@ -1591,7 +1595,7 @@ export default function MenuPageClient({
   // These templates render their own header with the business name (in their
   // palette), so the generic dark BusinessHeader is suppressed to avoid a
   // duplicate. Only classic (and bottom-nav / any unported slug → Classic) keeps it.
-  const showBusinessHeader = ![
+  const showBusinessHeader = !isEmbed && ![
     "left-drawer", "icon-rail", "sticky-tabs", "category-sidebar", "store-sections",
     "infinite-feed", "magazine", "streaming-rows", "timeline", "carousel", "stories",
     "card-stack", "gesture", "ai-personalized", "luxury", "fullscreen-type",
@@ -1643,6 +1647,20 @@ export default function MenuPageClient({
   // ── UI state ────────────────────────────────────────────────────────────────
   const [customizerItem, setCustomizerItem] = useState<PublicMenuItem | null>(null);
   const [step, setStep] = useState<AppStep>("menu");
+
+  // Embedded in the app's menu sheet: tell the PARENT when an order was placed (added to the tab, paid, or a QR payment
+  // receipt). The target origin is the page that really embeds us (ancestorOrigins / referrer) and must be on the
+  // allow-list (lib/embedOrigins.ts) — never '*'. The ordering and payment flow itself is untouched.
+  const notifyOrderPlaced = useCallback(() => {
+    if (!isEmbed || typeof window === "undefined" || window.parent === window) return;
+    const ancestors = Array.from(window.location.ancestorOrigins ?? []);
+    const parentOrigin = resolveParentOrigin([...ancestors, document.referrer], process.env.NODE_ENV === "production");
+    if (!parentOrigin) return;
+    window.parent.postMessage({ type: "jchat:menu", event: "order_placed" }, parentOrigin);
+  }, [isEmbed]);
+  useEffect(() => {
+    if (step === "tabConfirm" || step === "tabReceipt") notifyOrderPlaced();
+  }, [step, notifyOrderPlaced]);
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [pickupTable, setPickupTable] = useState("");
   const [pickupName, setPickupName] = useState("");
@@ -2411,6 +2429,7 @@ export default function MenuPageClient({
           onVenueError={() => void refreshVenue(true)}
           // a pick-up order skipped the choice sheet, so "back" returns to the pick-up details
           onBack={() => setStep(!tableCtx && pickupType === "counter" ? "pickup" : "choice")}
+          onOrderPlaced={notifyOrderPlaced}
           onDone={() => {
             setCartItems([]);
             setStep("menu");

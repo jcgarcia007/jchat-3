@@ -387,6 +387,8 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
   if (previewPalette) data.business.menu_palette_id = previewPalette;
 
   const isAppMode = sp?.app === "1";
+  // ?embed=1: shown inside the web app's menu sheet (an iframe of our own domains, see lib/embedOrigins.ts).
+  const isEmbed = sp?.embed === "1";
   const appRoomId = typeof sp?.room === "string" ? sp.room : null;
 
   return (
@@ -394,6 +396,7 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
       business={data.business}
       categories={data.categories}
       isAppMode={isAppMode ?? false}
+      isEmbed={isEmbed}
       appRoomId={appRoomId}
     />
   );

@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { frameAncestorsForEmbed } from "./lib/embedOrigins";
 
 // ─── Security headers + CSP (W1, auditoría 2026-07-09) ────────────────────────
 //
@@ -38,7 +39,8 @@ const CSP_REPORT_ONLY = false;
 // VALIDACIÓN → ENFORCE: desplegar a un preview, recorrer los flujos con la consola abierta, revisar que
 // /api/csp-report no loguee violaciones legítimas, y sólo entonces poner CSP_REPORT_ONLY = false.
 // Al añadir un origen externo nuevo: agrégalo al directivo correspondiente aquí.
-const csp = [
+// `frameAncestors`: 'none' for the whole site; only /m/* (the public menu) is embeddable, see lib/embedOrigins.ts.
+const buildCsp = (frameAncestors: string): string => [
   `default-src 'self'`,
   // Next.js necesita 'unsafe-inline'/'unsafe-eval' para su runtime; + Stripe JS + Maps JS.
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com`,
@@ -58,19 +60,20 @@ const csp = [
   `object-src 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,
-  `frame-ancestors 'none'`,
+  `frame-ancestors ${frameAncestors}`,
   // Reporta violaciones al endpoint interno (visibles en logs de Vercel). Relativa a propósito
   // (funciona igual en preview y en prod).
   `report-uri /api/csp-report`,
 ].join("; ");
 
-const securityHeaders = [
+const buildSecurityHeaders = (embeddable: boolean) => [
   // Modo controlado por CSP_REPORT_ONLY (arriba). Con reporte activo (report-uri) las
   // violaciones salen en los logs de Vercel en cualquiera de los dos modos.
-  { key: CSP_REPORT_ONLY ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", value: csp },
+  { key: CSP_REPORT_ONLY ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", value: buildCsp(embeddable ? frameAncestorsForEmbed(process.env.NODE_ENV === "production") : "'none'") },
   // El resto SÍ en enforce (seguras, verificado que no rompen nada en esta app):
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-  { key: "X-Frame-Options", value: "DENY" },
+  // The embeddable menu (/m/*) sends NO X-Frame-Options (it cannot express an allow-list: the CSP frame-ancestors does).
+  ...(embeddable ? [] : [{ key: "X-Frame-Options", value: "DENY" }]),
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Nada en web usa cámara/micrófono del navegador (verificado); geolocation/payment self.
@@ -81,9 +84,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      // Everything EXCEPT the public menu: no framing at all (DENY + frame-ancestors 'none').
       {
-        source: "/:path*",
-        headers: securityHeaders,
+        source: "/((?!m(?:/|$)).*)",
+        headers: buildSecurityHeaders(false),
+      },
+      // The public menu /m/<slug>: embeddable ONLY by our own domains (lib/embedOrigins.ts); same headers otherwise.
+      {
+        source: "/m/:path*",
+        headers: buildSecurityHeaders(true),
       },
       // Universal Links / App Links (public/.well-known). Apple pide JSON en el AASA aunque no tenga
       // extensión; ambos archivos se cachean 1 h. Deben responder 200 directo (Apple no sigue redirecciones):
