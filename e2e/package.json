@@ -3,7 +3,8 @@
   "private": true,
   "description": "Playwright smoke tests for the Expo Web build (the Maestro flows live in e2e/maestro).",
   "scripts": {
-    "web": "playwright test -c web.config.ts"
+    "web": "playwright test -c web.config.ts",
+    "web:session": "node web/save-session.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0"

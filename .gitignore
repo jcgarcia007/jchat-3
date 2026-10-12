@@ -71,3 +71,5 @@ e2e/.env.local
 
 # Playwright web smoke test (e2e/web.config.ts)
 e2e/artifacts/
+# Signed-in Playwright web session (session tokens of the test account): never commit
+e2e/.auth/
