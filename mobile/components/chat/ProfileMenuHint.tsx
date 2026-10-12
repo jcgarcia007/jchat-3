@@ -5,11 +5,13 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Modal, Platform, Pressable, StyleSheet, Text, View, findNodeHandle, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, View, findNodeHandle } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { useAppModalFrame } from '../common/useAppModalFrame';
 
 interface Rect {
   x: number;
@@ -31,21 +33,22 @@ const CARD_MAX_WIDTH = 320;
 export function ProfileMenuHint({ visible, anchorRef, onDismiss }: Props): React.ReactElement | null {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
-  const { width: windowWidth } = useWindowDimensions();
+  // AppModal draws inside the app column on a wide web screen: window coordinates (measureInWindow) are shifted by its left edge.
+  const { left: frameLeft, width: windowWidth } = useAppModalFrame();
   const [anchor, setAnchor] = useState<Rect | null>(null);
   const buttonRef = useRef<View>(null);
 
   const measure = useCallback(() => {
     const node = anchorRef.current;
     if (node && typeof node.measureInWindow === 'function') {
-      node.measureInWindow((x, y, width, height) => setAnchor({ x, y, width, height }));
+      node.measureInWindow((x, y, width, height) => setAnchor({ x: x - frameLeft, y, width, height }));
     }
-  }, [anchorRef]);
+  }, [anchorRef, frameLeft]);
 
   useEffect(() => {
     if (visible) measure();
     else setAnchor(null);
-  }, [visible, measure, windowWidth]);
+  }, [visible, measure, windowWidth, frameLeft]);
 
   // Focus "Entendido" once the hint is on screen.
   useEffect(() => {
@@ -70,7 +73,7 @@ export function ProfileMenuHint({ visible, anchorRef, onDismiss }: Props): React
   const arrowLeft = Math.max(16, Math.min(cardWidth - 32, anchorCenter - cardLeft - 8));
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
+    <AppModal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
       <View
         testID="profile-menu-hint"
         role="dialog"
@@ -113,7 +116,7 @@ export function ProfileMenuHint({ visible, anchorRef, onDismiss }: Props): React
           </>
         ) : null}
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

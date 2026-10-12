@@ -35,7 +35,6 @@ import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -44,6 +43,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -134,7 +134,7 @@ interface ProcessingOverlayProps {
 function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
   const { t } = useTranslation('pos');
   return (
-    <Modal
+    <AppModal
       transparent
       animationType="fade"
       visible={visible}
@@ -151,7 +151,7 @@ function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
           </Text>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -194,7 +194,7 @@ interface ErrorSheetProps {
 function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: ErrorSheetProps) {
   const { t } = useTranslation('pos');
   return (
-    <Modal
+    <AppModal
       transparent
       animationType="slide"
       visible={visible}
@@ -251,7 +251,7 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -14,7 +14,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AppModal } from './common/AppModal';
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -204,7 +205,7 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
   const closeTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : insets.top || 50;
 
   return (
-    <Modal
+    <AppModal
       visible={visible && uri != null}
       transparent
       animationType="fade"
@@ -259,7 +260,7 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
           <IconX size={20} color={palette.onImage} />
         </Pressable>
       </GestureHandlerRootView>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -20,9 +20,9 @@ import {
   TouchableOpacity,
   Platform,
   AppState,
-  Modal,
   ActivityIndicator,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
@@ -433,7 +433,7 @@ export default function MapScreen() {
       </View>
 
       {/* Business preview bottom sheet (Task 2.3) */}
-      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+      <AppModal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.sheetBackdrop}>
           <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
           <View style={[styles.sheetBody, { backgroundColor: c.bgBase }]}>
@@ -472,7 +472,7 @@ export default function MapScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      </AppModal>
     </View>
   );
 }

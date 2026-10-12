@@ -13,13 +13,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Image,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
+import { useAppModalFrame } from '../common/useAppModalFrame';
 import { useTranslation } from 'react-i18next';
 import {
   IconUser,
@@ -137,12 +138,14 @@ export default function UserQuickCard({
   }, [visible, user?.id, targetUserId]);
 
   const { width: screenW, height: screenH } = getAppWindow();
+  // AppModal draws inside the app column on a wide web screen: the anchor comes in window coordinates (measureInWindow).
+  const { left: frameLeft } = useAppModalFrame();
 
   // Flip: show below the avatar when there's room, else above.
   const spaceBelow = screenH - (anchor.y + anchor.height);
   const showBelow = spaceBelow > CARD_H_EST + ARROW_SIZE + EDGE;
 
-  const centerX = anchor.x + anchor.width / 2;
+  const centerX = anchor.x - frameLeft + anchor.width / 2;
   const cardLeft = Math.max(EDGE, Math.min(centerX - CARD_W / 2, screenW - CARD_W - EDGE));
   const cardTop = showBelow
     ? anchor.y + anchor.height + ARROW_SIZE / 2
@@ -223,7 +226,7 @@ export default function UserQuickCard({
   }, [t, targetName, targetUserId, onClose]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
         <View style={[styles.wrapper, { top: cardTop, left: cardLeft }]} pointerEvents="box-none">
           {/* Arrow above the card (card is below the avatar). Painted over by the card. */}
@@ -291,7 +294,7 @@ export default function UserQuickCard({
           )}
         </View>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

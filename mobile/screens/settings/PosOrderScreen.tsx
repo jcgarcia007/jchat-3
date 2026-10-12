@@ -17,7 +17,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -26,6 +25,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -980,7 +980,7 @@ export default function PosOrderScreen() {
       )}
 
       {/* ── Modifier Sheet Modal ─────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={modifierItem !== null}
         animationType="slide"
         transparent
@@ -998,7 +998,7 @@ export default function PosOrderScreen() {
             />
           )}
         </View>
-      </Modal>
+      </AppModal>
 
     </View>
   );

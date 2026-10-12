@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconCheck } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,7 @@ export default function RadiusSheet({ visible, value, onSelect, onClose }: Radiu
   const translation = useTranslation('offers');
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
+    <AppModal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
       <TouchableWithoutFeedback accessible={false} onPress={onClose}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
       </TouchableWithoutFeedback>
@@ -72,7 +72,7 @@ export default function RadiusSheet({ visible, value, onSelect, onClose }: Radiu
           );
         })}
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

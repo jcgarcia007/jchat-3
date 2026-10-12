@@ -23,7 +23,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +31,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import {
   IconBell,
   IconBellOff,
@@ -321,7 +321,7 @@ export function PinMessageSheet({
   const s = useMemo(() => makeStyles(c, theme), [c, theme]);
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -485,7 +485,7 @@ export function PinMessageSheet({
           <View style={s.bottomPad} />
         </ScrollView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

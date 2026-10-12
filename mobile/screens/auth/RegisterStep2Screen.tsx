@@ -29,9 +29,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Modal,
   ActivityIndicator,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -610,7 +610,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           </View>
 
           {/* Language picker modal */}
-          <Modal
+          <AppModal
             visible={showLanguagePicker}
             transparent
             animationType="fade"
@@ -655,7 +655,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                 ))}
               </View>
             </Pressable>
-          </Modal>
+          </AppModal>
 
           {/* ── @username ─────────────────────────────────────────────────── */}
           <View style={styles.fieldWrap}>

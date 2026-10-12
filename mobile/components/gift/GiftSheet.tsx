@@ -12,7 +12,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -21,6 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconMinus, IconPlus, IconX } from '@tabler/icons-react-native';
@@ -167,7 +167,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const sendLabel = t('gift.send', { count, amount: formatCents(subtotal) });
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <Pressable style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
@@ -256,7 +256,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
           <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -232,14 +232,14 @@ export default function PostDetailScreen(): React.JSX.Element {
         </View>
       </KeyboardAvoidingView>
 
-      <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
+      <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
         <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
           {isOwner ? <SheetRow label={t('detail.delete')} color={c.danger} borderColor={c.borderSubtle} icon={<IconTrash size={20} color={c.danger} />} onPress={confirmDelete} /> : <SheetRow label={t('detail.reportPost')} color={c.danger} borderColor={c.borderSubtle} icon={<IconFlag size={20} color={c.danger} />} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />}
           <SheetRow label={t('detail.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} icon={<IconX size={20} color={c.textSecondary} />} onPress={() => setMenuVisible(false)} />
         </View>
-      </Modal>
+      </AppModal>
 
       <ReportReasonSheet
         visible={reportVisible}

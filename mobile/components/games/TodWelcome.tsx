@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconBan, IconEye, IconFlag, IconHandClick, IconHandStop, IconMessageCircle } from '@tabler/icons-react-native';
@@ -111,7 +112,7 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
   ] as const;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
+    <AppModal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
       <View style={[styles.scrim, { backgroundColor: c.scrim }]}>
         <SafeAreaView style={styles.center}>
           <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -159,7 +160,7 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
           </View>
         </SafeAreaView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -183,7 +184,7 @@ function TodTutorialModal({ visible, onDone }: { visible: boolean; onDone: () =>
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={finish}>
+    <AppModal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={finish}>
       <View style={[styles.scrim, { backgroundColor: c.scrim }]}>
         <SafeAreaView style={styles.center}>
           <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
@@ -225,7 +226,7 @@ function TodTutorialModal({ visible, onDone }: { visible: boolean; onDone: () =>
           </View>
         </SafeAreaView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

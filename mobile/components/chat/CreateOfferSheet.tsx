@@ -35,7 +35,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -45,6 +44,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import {
   IconCheck,
   IconChevronDown,
@@ -336,7 +336,7 @@ export function CreateOfferSheet({
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -590,7 +590,7 @@ export function CreateOfferSheet({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

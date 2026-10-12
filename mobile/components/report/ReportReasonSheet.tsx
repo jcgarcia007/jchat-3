@@ -10,7 +10,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconAlertTriangle, IconCheck } from '@tabler/icons-react-native';
@@ -90,7 +90,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
   }, [reason, phase, needsDetails, details, contentType, contentId, t]);
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
+    <AppModal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
       <TouchableWithoutFeedback accessible={false} onPress={onClose}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
       </TouchableWithoutFeedback>
@@ -203,7 +203,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
           )}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

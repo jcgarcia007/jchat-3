@@ -39,7 +39,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,6 +46,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import {
   IconAlertTriangle,
   IconBan,
@@ -443,7 +443,7 @@ export function UserActionSheet({
   const s = makeStyles(c);
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -626,7 +626,7 @@ export function UserActionSheet({
           )}
         </ScrollView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

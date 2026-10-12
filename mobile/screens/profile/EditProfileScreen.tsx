@@ -30,7 +30,6 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -40,6 +39,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
@@ -685,7 +685,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       </KeyboardAvoidingView>
 
       {/* ── Profile Theme Modal ─────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={themeModalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
@@ -720,7 +720,7 @@ export default function EditProfileScreen(): React.JSX.Element {
             />
           </ScrollView>
         </SafeAreaView>
-      </Modal>
+      </AppModal>
     </SafeAreaView>
   );
 }

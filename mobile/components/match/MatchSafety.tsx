@@ -15,7 +15,6 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 
 import { useThemeColors } from '../../theme/colors';
@@ -102,7 +102,7 @@ function SheetFrame({
 }) {
   const c = useThemeColors();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="" />
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
@@ -110,7 +110,7 @@ function SheetFrame({
           {children}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

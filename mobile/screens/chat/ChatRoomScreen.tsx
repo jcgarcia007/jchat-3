@@ -34,7 +34,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Linking,
-  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -43,6 +42,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -1637,7 +1637,7 @@ export default function ChatRoomScreen() {
   if (entryVisible) {
     return (
       <SafeAreaView style={[gateStyles.safeArea, { backgroundColor: themeColors.bgBase }]}>
-        <Modal
+        <AppModal
           visible={screenFocused}
           transparent
           animationType="slide"
@@ -1780,7 +1780,7 @@ export default function ChatRoomScreen() {
               </Pressable>
             </View>
           </View>
-        </Modal>
+        </AppModal>
 
         {/* Background placeholder behind modal */}
         <View style={[gateStyles.bgPlaceholder, { backgroundColor: themeColors.bgBase }]}>

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -360,7 +360,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         {renderPosts()}
       </ScrollView>
 
-      <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
+      <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
         <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
@@ -370,7 +370,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           <SheetRow icon={<IconBan size={20} color={c.danger} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.danger} borderColor={theme.statsBorder} onPress={confirmBlock} />
           <SheetRow icon={<IconX size={20} color={theme.bodyTextSecondary} />} label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setMenuVisible(false)} />
         </View>
-      </Modal>
+      </AppModal>
 
       <ReportReasonSheet
         visible={reportVisible}

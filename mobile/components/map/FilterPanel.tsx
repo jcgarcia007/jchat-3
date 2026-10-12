@@ -21,7 +21,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 import {
   IconAdjustmentsHorizontal,
@@ -334,7 +334,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
       )}
 
       {/* ── Advanced filter sheet ─────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={sheetVisible}
         transparent
         animationType="none"
@@ -487,7 +487,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
             </TouchableOpacity>
           </View>
         </Animated.View>
-      </Modal>
+      </AppModal>
     </View>
   );
 }

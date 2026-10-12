@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconBan, IconFlag, IconPin } from '@tabler/icons-react-native';
@@ -42,7 +43,7 @@ export function MessageActionSheet({ visible, authorName, onReport, onBlock, onP
   );
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
+    <AppModal animationType="slide" onRequestClose={onClose} statusBarTranslucent transparent visible={visible}>
       <TouchableWithoutFeedback accessible={false} onPress={onClose}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
       </TouchableWithoutFeedback>
@@ -60,7 +61,7 @@ export function MessageActionSheet({ visible, authorName, onReport, onBlock, onP
           <Text style={[styles.cancelLabel, { color: colors.textSecondary }]}>{t('actions.cancel')}</Text>
         </Pressable>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

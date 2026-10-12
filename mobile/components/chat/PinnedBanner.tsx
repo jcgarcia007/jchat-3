@@ -35,13 +35,13 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import {
   IconChevronDown,
   IconChevronUp,
@@ -221,7 +221,7 @@ function AllPinsModal({
   const s = useMemo(() => modalStyles(c, theme), [c, theme]);
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -290,7 +290,7 @@ function AllPinsModal({
           }
         />
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

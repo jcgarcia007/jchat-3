@@ -10,7 +10,8 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -61,7 +62,7 @@ export function MatchQrScanner({ visible, onToken, onClose }: MatchQrScannerProp
   );
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       {!permission ? (
         <View style={[styles.center, { backgroundColor: c.bgBase }]} />
       ) : !permission.granted ? (
@@ -111,7 +112,7 @@ export function MatchQrScanner({ visible, onToken, onClose }: MatchQrScannerProp
           </Pressable>
         </View>
       )}
-    </Modal>
+    </AppModal>
   );
 }
 

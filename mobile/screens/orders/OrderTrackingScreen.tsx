@@ -29,7 +29,6 @@ import {
   ActivityIndicator,
   AppState,
   FlatList,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -38,6 +37,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -708,7 +708,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
       </View>
 
       {/* ── "Avisar al local" sheet ── */}
-      <Modal visible={showNoticeSheet} transparent animationType="slide" onRequestClose={closeNoticeSheet}>
+      <AppModal visible={showNoticeSheet} transparent animationType="slide" onRequestClose={closeNoticeSheet}>
         <Pressable style={styles.sheetOverlay} onPress={closeNoticeSheet} accessibilityRole="none" />
         <View style={styles.sheet}>
 <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 12 }}>
@@ -778,10 +778,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
           </Pressable>
         </ScrollView>
 </View>
-      </Modal>
+      </AppModal>
 
       {/* ── Service call bottom sheet (Modal) ── */}
-      <Modal
+      <AppModal
         visible={showServiceSheet}
         transparent
         animationType="slide"
@@ -827,7 +827,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             <Text style={styles.sheetCancelLabel}>{t('actions.cancel', { ns: 'common' })}</Text>
           </Pressable>
         </View>
-      </Modal>
+      </AppModal>
     </SafeAreaView>
   );
 }

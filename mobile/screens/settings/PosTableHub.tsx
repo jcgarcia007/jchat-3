@@ -26,7 +26,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -34,6 +33,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -1476,7 +1476,7 @@ export default function PosTableHub(): React.ReactElement {
       )}
 
       {/* ── Combine picker modal ──────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={showCombinePicker}
         transparent
         animationType="slide"
@@ -1534,7 +1534,7 @@ export default function PosTableHub(): React.ReactElement {
             )}
           />
         </View>
-      </Modal>
+      </AppModal>
 
       {/* ── Fixed action bar ──────────────────────────────────────────────────── */}
       <View

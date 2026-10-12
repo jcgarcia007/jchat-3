@@ -29,7 +29,6 @@ import {
   Animated,
   FlatList,
   Image,
-  Modal,
   PanResponder,
   Platform,
   StyleSheet,
@@ -37,6 +36,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   IconChevronLeft,
@@ -260,7 +260,7 @@ export default function StoryViewerScreen({
   const stories = currentGroup.stories;
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       animationType="fade"
       statusBarTranslucent
@@ -449,7 +449,7 @@ export default function StoryViewerScreen({
           </View>
         ) : null}
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

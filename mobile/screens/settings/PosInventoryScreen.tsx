@@ -26,7 +26,6 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -35,6 +34,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -644,7 +644,7 @@ export default function PosInventoryScreen() {
       ) : null}
 
       {/* ── Scanner modal ─────────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={scannerOpen}
         animationType="slide"
         onRequestClose={() => setScannerOpen(false)}
@@ -654,10 +654,10 @@ export default function PosInventoryScreen() {
           onScanned={handleScanned}
           onClose={() => setScannerOpen(false)}
         />
-      </Modal>
+      </AppModal>
 
       {/* ── Adjust sheet modal ────────────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={adjustItem !== null}
         animationType="slide"
         transparent
@@ -678,10 +678,10 @@ export default function PosInventoryScreen() {
             ) : null}
           </Pressable>
         </Pressable>
-      </Modal>
+      </AppModal>
 
       {/* ── Link-barcode sheet modal ──────────────────────────────────────── */}
-      <Modal
+      <AppModal
         visible={linkCode !== null}
         animationType="slide"
         transparent
@@ -703,7 +703,7 @@ export default function PosInventoryScreen() {
             ) : null}
           </Pressable>
         </Pressable>
-      </Modal>
+      </AppModal>
     </View>
   );
 }

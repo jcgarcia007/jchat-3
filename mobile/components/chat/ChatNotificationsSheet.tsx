@@ -11,7 +11,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconChecks, IconX } from '@tabler/icons-react-native';
@@ -132,7 +133,7 @@ export function ChatNotificationsSheet({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 8 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
@@ -230,7 +231,7 @@ export function ChatNotificationsSheet({
           />
         ) : null}
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

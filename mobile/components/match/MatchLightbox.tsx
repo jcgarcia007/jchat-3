@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ export function MatchLightbox({ url, onClose }: MatchLightboxProps) {
   const { t } = useTranslation('match');
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={url != null} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={url != null} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable
         style={styles.backdrop}
         onPress={onClose}
@@ -41,7 +42,7 @@ export function MatchLightbox({ url, onClose }: MatchLightboxProps) {
           <IconX size={22} color={palette.onImage} strokeWidth={2.5} />
         </View>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

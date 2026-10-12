@@ -27,7 +27,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -36,6 +35,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { IconBell } from '@tabler/icons-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -241,7 +241,7 @@ export function ServiceCallSheet({
   const isDisabled = loading || cooldownUntil !== null;
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -354,7 +354,7 @@ export function ServiceCallSheet({
         </ScrollView>
 </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconDoorExit, IconHelp, IconReceipt, IconSettings, IconUser } from '@tabler/icons-react-native';
@@ -49,7 +50,7 @@ export function ChatMoreSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
@@ -71,7 +72,7 @@ export function ChatMoreSheet({
           <Text style={[styles.cancelLabel, { color: c.textSecondary }]}>{t('moreSheet.close')}</Text>
         </Pressable>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

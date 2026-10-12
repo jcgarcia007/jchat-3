@@ -9,7 +9,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -90,7 +91,7 @@ export function TodCardModal({ draw, fallbackCategory, onDecide, onClose }: Prop
   const cardWidth = Math.min(width - 48, 360);
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <AppModal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={[styles.scrim, { backgroundColor: c.scrim }]}>
         <SafeAreaView style={styles.safe}>
           <View style={styles.topRow}>
@@ -173,7 +174,7 @@ export function TodCardModal({ draw, fallbackCategory, onDecide, onClose }: Prop
           </View>
         </SafeAreaView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

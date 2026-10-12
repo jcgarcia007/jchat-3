@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 import { IconFaceId, IconFingerprint } from '@tabler/icons-react-native';
 
@@ -41,7 +42,7 @@ export default function BiometricEnrollSheet({
   const Icon = kind === 'fingerprint' ? IconFingerprint : IconFaceId;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
+    <AppModal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: c.bgSurface }]}>
           <View style={[styles.iconCircle, { backgroundColor: palette.brand }]}>
@@ -76,7 +77,7 @@ export default function BiometricEnrollSheet({
           </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

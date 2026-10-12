@@ -29,7 +29,6 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -38,6 +37,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import {
   IconBriefcase,
   IconCheck,
@@ -157,7 +157,7 @@ export function AddEmployeeSheet({
   if (!isOwner) return null;
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -322,7 +322,7 @@ export function AddEmployeeSheet({
           )}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconCamera, IconPencil, IconUser } from '@tabler/icons-react-native';
@@ -31,7 +32,7 @@ export function OwnProfileMenu({ visible, onClose, onChangePhoto, onEditProfile,
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View accessibilityViewIsModal accessibilityLabel={t('ownMenu.title')} style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
@@ -42,7 +43,7 @@ export function OwnProfileMenu({ visible, onClose, onChangePhoto, onEditProfile,
           <Text style={[styles.cancelLabel, { color: c.textSecondary }]}>{t('ownMenu.close')}</Text>
         </Pressable>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

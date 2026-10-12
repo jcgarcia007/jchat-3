@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -21,6 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconGift, IconX } from '@tabler/icons-react-native';
@@ -217,7 +217,7 @@ function GiftDetailsSheet({ visible, onClose, view }: { visible: boolean; onClos
   }, [visible, view.items]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.sheetHeader}>
@@ -255,7 +255,7 @@ function GiftDetailsSheet({ visible, onClose, view }: { visible: boolean; onClos
           ) : null}
         </ScrollView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -296,7 +296,7 @@ function GiftAcceptSheet({
   }, [sending, table, details, view.id, onDone, t]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
@@ -339,7 +339,7 @@ function GiftAcceptSheet({
         </ScrollView>
 </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

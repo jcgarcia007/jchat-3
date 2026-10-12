@@ -7,6 +7,7 @@
 
 import React, { useEffect, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+import { useWindowDimensions } from 'react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import {
@@ -16,6 +17,9 @@ import {
   type DialogRequest,
 } from '../../utils/dialogStore';
 import type { DialogButton } from '../../utils/dialog.types';
+import { WEB_COLUMN_WIDTH, WEB_WIDE_BREAKPOINT } from '../../utils/appWindow.web';
+import { columnLeftWithPanel } from '../../utils/profilePanelLayout';
+import { useProfilePanelOpen } from '../../utils/profilePanelStore';
 
 export default function DialogHost(): React.ReactElement | null {
   const queue = useSyncExternalStore(subscribeDialogs, getDialogSnapshot, getDialogSnapshot);
@@ -30,6 +34,12 @@ function DialogModal({ request }: { request: DialogRequest }): React.ReactElemen
   const titleId = `jchat-dialog-title-${request.id}`;
   const messageId = `jchat-dialog-message-${request.id}`;
   const { buttons, options } = request;
+  // On a wide screen the app is a 480 px column (WebFrame): the dialog's dimmed backdrop covers that column, not the whole
+  // browser window (and follows it to the left while the profile / menu panel is open).
+  const { width } = useWindowDimensions();
+  const panelOpen = useProfilePanelOpen();
+  const wide = width > WEB_WIDE_BREAKPOINT;
+  const left = wide ? (panelOpen ? columnLeftWithPanel(width) : (width - WEB_COLUMN_WIDTH) / 2) : 0;
 
   const press = (button?: DialogButton): void => {
     dismissDialog(request.id);
@@ -86,8 +96,11 @@ function DialogModal({ request }: { request: DialogRequest }): React.ReactElemen
       }}
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        bottom: 0,
+        ...(wide ? { left, width: WEB_COLUMN_WIDTH } : { left: 0, right: 0 }),
         zIndex: 2147483000,
+        boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -109,7 +122,8 @@ function DialogModal({ request }: { request: DialogRequest }): React.ReactElemen
           backgroundColor: c.bgElevated,
           border: `1px solid ${c.borderSubtle}`,
           color: c.textPrimary,
-          fontFamily: 'inherit',
+          // The app's own font stack (React Native Web's default): the dialog is portalled to <body>, outside the app root.
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         }}
       >
         <div style={{ padding: '20px 20px 16px' }}>

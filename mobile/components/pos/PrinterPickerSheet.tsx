@@ -27,12 +27,12 @@ import React, {
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
@@ -245,7 +245,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
           </View>
         )}
 
-        <Modal
+        <AppModal
           visible={visible}
           transparent
           animationType="slide"
@@ -268,7 +268,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
               </Text>
             </Pressable>
           </View>
-        </Modal>
+        </AppModal>
       </>
     );
   },

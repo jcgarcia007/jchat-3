@@ -32,7 +32,6 @@ import React, {
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -41,6 +40,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppModal } from '../common/AppModal';
 import { IconEye, IconEyeOff, IconLock } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
@@ -236,7 +236,7 @@ export function PasswordEntrySheet({
   const s = makeStyles(c);
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       transparent
       animationType="slide"
@@ -355,7 +355,7 @@ export function PasswordEntrySheet({
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 
