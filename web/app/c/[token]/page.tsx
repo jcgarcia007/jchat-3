@@ -8,6 +8,8 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   IconMessageCircle2,
   IconQrcode,
@@ -57,6 +59,22 @@ export default async function QREntryPage({
     room = (rpcData as ResolvedRoom[] | null)?.[0] ?? null;
     hasSession = !!authData.user;
     userId = authData.user?.id ?? "";
+  }
+
+  // Optional: send printed QR codes to the client web app (Expo Web, `<venue>.jchat.cloud`). OFF unless
+  // NEXT_PUBLIC_SPA_ENTRY_ENABLED === 'true' — without it this page behaves exactly as before. The venue name
+  // in the host is businesses.subdomain, or businesses.slug when it has none (public read). The redirect
+  // happens OUTSIDE any try/catch (redirect() works by throwing).
+  if (room && process.env.NEXT_PUBLIC_SPA_ENTRY_ENABLED === "true") {
+    const supabase = await createSupabaseServerClient();
+    // `subdomain` is not in the generated types yet → untyped client for this one read.
+    const { data: venue } = await (supabase as unknown as SupabaseClient)
+      .from("businesses")
+      .select("subdomain, slug")
+      .eq("id", room.business_id)
+      .maybeSingle();
+    const host = (venue?.subdomain as string | null | undefined) || (venue?.slug as string | null | undefined);
+    if (host) redirect(`https://${host}.jchat.cloud/c/${encodeURIComponent(token)}`);
   }
 
   const shell: React.CSSProperties = {
