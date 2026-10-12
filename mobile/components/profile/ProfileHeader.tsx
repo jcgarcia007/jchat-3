@@ -78,7 +78,10 @@ function StatItem({ label, value, theme, onPress }: { label: string; value: numb
       <Text style={[styles.statValue, { color: theme.bodyText }]}>{formatCount(value)}</Text>
       <Text
         style={[styles.statLabel, { color: theme.bodyTextSecondary }]}
-        numberOfLines={2}
+        // One line, never a broken word: native shrinks the text (down to 80 %) instead of wrapping it.
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {label}
       </Text>
@@ -270,12 +273,12 @@ const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   coverFrame: { height: 120, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' },
   coverCamera: { position: 'absolute', right: 10, bottom: 10, width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  avatarStatsRow: { minHeight: 104, marginTop: -48, paddingLeft: 28, paddingRight: 12, flexDirection: 'row', alignItems: 'flex-end' },
+  avatarStatsRow: { minHeight: 104, marginTop: -48, paddingLeft: 28, paddingRight: 8, flexDirection: 'row', alignItems: 'flex-end' },
   avatarRing: { width: 104, height: 104, borderRadius: 52, padding: 4 },
   avatar: { width: 96, height: 96, borderRadius: 48 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontSize: 30, fontWeight: '800' },
-  inlineStats: { flex: 1, height: 56, marginLeft: 6, flexDirection: 'row', alignItems: 'stretch' },
+  inlineStats: { flex: 1, height: 56, marginLeft: 4, flexDirection: 'row', alignItems: 'stretch' },
   identity: { paddingHorizontal: 20, paddingTop: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   displayName: { maxWidth: '90%', fontSize: 22, lineHeight: 28, fontWeight: '800' },
@@ -284,9 +287,10 @@ const styles = StyleSheet.create({
   addBio: { marginTop: 9, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   city: { fontSize: 14, lineHeight: 19 },
-  statItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2 },
+  // Width follows the label (flexBasis auto + grow), so the longest one ("Publicaciones") gets what it needs.
+  statItem: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 0 },
   statValue: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
-  statLabel: { minHeight: 28, fontSize: 12, lineHeight: 14, fontWeight: '600', textAlign: 'center' },
+  statLabel: { fontSize: 11, lineHeight: 16, fontWeight: '600', textAlign: 'center', maxWidth: '100%' },
   actionRow: { flexDirection: 'row', gap: 9, marginHorizontal: 16, marginTop: 12 },
   ownIconButton: { width: 44, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   ownActionButton: { flex: 1, height: 36, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
