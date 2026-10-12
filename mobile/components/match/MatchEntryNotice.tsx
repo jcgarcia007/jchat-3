@@ -10,13 +10,14 @@
  */
 
 import React, { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { IconCamera, IconEye, IconLifebuoy, IconTrash } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import type { GameRow } from '../../services/match';
+import { ThemedSwitch } from '../common/ThemedSwitch';
 
 const TERMS_URL = 'https://jchat.cloud/terms';
 const PRIVACY_URL = 'https://jchat.cloud/privacy';
@@ -66,12 +67,11 @@ function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
         <Text style={[styles.switchLabel, { color: c.textPrimary }]}>{label}</Text>
         {hint ? <Text style={[styles.switchHint, { color: c.textSecondary }]}>{hint}</Text> : null}
       </View>
-      <Switch
+      <ThemedSwitch
         value={value}
         disabled={disabled}
         onValueChange={onChange}
         trackColor={{ false: c.borderSubtle, true: c.brand }}
-        thumbColor={palette.onBrand}
         accessible={false}
       />
     </Pressable>

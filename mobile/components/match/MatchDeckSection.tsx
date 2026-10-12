@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +32,7 @@ import type { SwipeAction, SwipeResult } from '../../services/matchDeck';
 import { fetchInterests, fetchMyMatchPhotos, interestName, signedPhotoUrls } from '../../services/matchProfile';
 import type { MatchCard } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
+import { ThemedSwitch } from '../common/ThemedSwitch';
 
 interface MatchDeckSectionProps {
   businessId: string;
@@ -257,11 +258,10 @@ export function MatchDeckSection({
     >
       <View style={[styles.endSwitchRow, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
         <Text style={[styles.endSwitchLabel, { color: c.textPrimary }]}>{t('deck.notifyNewPeople')}</Text>
-        <Switch
+        <ThemedSwitch
           value={notifyNewPeople}
           onValueChange={handleNotifyToggle}
           trackColor={{ false: c.borderSubtle, true: c.brand }}
-          thumbColor={palette.onBrand}
           accessibilityLabel={t('deck.notifyNewPeople')}
         />
       </View>

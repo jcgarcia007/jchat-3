@@ -19,7 +19,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -50,6 +49,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import { showAlert } from '../../utils/dialog';
+import { ThemedSwitch } from '../../components/common/ThemedSwitch';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -236,13 +236,11 @@ function ToggleRow({
           </Text>
         )}
       </View>
-      <Switch
+      <ThemedSwitch
         testID={testID}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: palette.textTertiary, true: palette.brand }}
-        thumbColor={Platform.OS === 'android' ? palette.bgSurfaceLight : undefined}
-        ios_backgroundColor={palette.textTertiary}
         accessibilityRole="switch"
         accessibilityLabel={label}
         accessibilityState={{ checked: value }}

@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -39,6 +39,7 @@ import { loadUserSettings, updateMySettings } from '../../services/userSettings'
 import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
 import { showAlert } from '../../utils/dialog';
 import { useAppWindow } from '../../utils/appWindow';
+import { ThemedSwitch } from '../../components/common/ThemedSwitch';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchMyProfile'>;
 
@@ -439,11 +440,10 @@ export default function MatchMyProfileScreen() {
                 <Text style={[styles.settingLabel, { color: c.textPrimary }]}>{t('profile.settings.newPeople')}</Text>
                 <Text style={[styles.hint, { color: c.textSecondary }]}>{t('profile.settings.newPeopleHint')}</Text>
               </View>
-              <Switch
+              <ThemedSwitch
                 value={notifyNewPeople}
                 onValueChange={toggleNotify}
                 trackColor={{ false: c.borderSubtle, true: c.brand }}
-                thumbColor={palette.onBrand}
                 accessibilityLabel={t('profile.settings.newPeople')}
               />
             </View>

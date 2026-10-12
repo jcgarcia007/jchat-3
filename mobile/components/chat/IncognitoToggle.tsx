@@ -23,7 +23,6 @@
 import React, { useCallback } from 'react';
 import {
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -32,6 +31,7 @@ import { IconMask } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { ThemedSwitch } from '../common/ThemedSwitch';
 
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
@@ -119,12 +119,10 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
           </View>
         </View>
 
-        <Switch
+        <ThemedSwitch
           value={value.enabled}
           onValueChange={handleToggle}
           trackColor={{ false: c.bgOverlay, true: c.brand }}
-          thumbColor={palette.bgSurfaceLight}
-          ios_backgroundColor={c.bgOverlay}
           accessibilityLabel={t('incognito.toggleA11y')}
           accessibilityRole="switch"
           accessibilityState={{ checked: value.enabled }}

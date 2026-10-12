@@ -30,7 +30,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
@@ -88,6 +87,7 @@ import {
   type UserSettings,
 } from '../../services/userSettings';
 import { confirm, showAlert } from '../../utils/dialog';
+import { ThemedSwitch } from '../../components/common/ThemedSwitch';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -591,11 +591,10 @@ export default function SettingsScreen() {
           label={t('main.work')}
           sublabel={t('main.workSub')}
           right={
-            <Switch
+            <ThemedSwitch
               value={settings.notifWork}
               onValueChange={(v) => patch({ notifWork: v })}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
-              thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
               accessibilityLabel={t('main.workA11y')}
             />
           }
@@ -609,11 +608,10 @@ export default function SettingsScreen() {
           label={t('main.social')}
           sublabel={t('main.socialSub')}
           right={
-            <Switch
+            <ThemedSwitch
               value={settings.notifSocial}
               onValueChange={(v) => patch({ notifSocial: v })}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
-              thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
               accessibilityLabel={t('main.socialA11y')}
             />
           }
@@ -802,14 +800,13 @@ export default function SettingsScreen() {
           label={t('main.biometricLock')}
           sublabel={biometricAvailable || biometricOn ? t('main.biometricLockSub') : t('main.biometricLockUnavailable')}
           right={
-            <Switch
+            <ThemedSwitch
               value={biometricOn}
               disabled={!biometricAvailable && !biometricOn}
               onValueChange={(v) => {
                 void handleToggleBiometric(v);
               }}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
-              thumbColor={Platform.OS === 'android' ? c.bgSurface : undefined}
               accessibilityLabel={t('main.biometricLock')}
             />
           }
