@@ -16,10 +16,19 @@ const WEB_STUBS = {
   'react-native-webview': 'react-native-webview.tsx',
 };
 
+// Web only: '@tabler/icons-react-native' (the whole icon set, ~47 % of the web bundle) resolves to a generated
+// module that re-exports just the icons the code imports. Exact match only: the generated module itself imports
+// '@tabler/icons-react-native/<Icon>' (per-icon subpath exports), which must reach the real package.
+// Regenerate with `node scripts/gen-tabler-icons.mjs` (scripts/tabler-icons.test.mjs fails when it is stale).
+const TABLER_WEB_STUB = path.resolve(__dirname, 'web-stubs', 'tabler-icons.web.ts');
+
 const upstreamResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web') {
+    if (moduleName === '@tabler/icons-react-native') {
+      return context.resolveRequest(context, TABLER_WEB_STUB, platform);
+    }
     const pkg = Object.keys(WEB_STUBS).find(
       (name) => moduleName === name || moduleName.startsWith(`${name}/`),
     );
