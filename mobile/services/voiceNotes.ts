@@ -16,6 +16,7 @@ import { AudioQuality, IOSOutputFormat, type RecordingOptions } from 'expo-audio
 import { supabase, isSupabaseConfigured } from './supabase';
 import { AppError } from '../utils/errors';
 import { uriToUploadBody } from './uploadBody';
+import { webVoiceMimeType } from './webVoice';
 
 export const VOICE_MAX_SECONDS = 60;
 export const VOICE_MIN_SECONDS = 1;
@@ -34,8 +35,15 @@ export const VOICE_RECORDING_OPTIONS: RecordingOptions = {
     linearPCMIsBigEndian: false,
     linearPCMIsFloat: false,
   },
-  web: { mimeType: 'audio/webm', bitsPerSecond: 64000 },
+  web: { bitsPerSecond: 64000 },
 };
+
+/** Recording options for this platform: on web the MP4 type the browser supports (see webVoice.web.ts). */
+export function getVoiceRecordingOptions(): RecordingOptions {
+  const mimeType = webVoiceMimeType();
+  if (!mimeType) return VOICE_RECORDING_OPTIONS;
+  return { ...VOICE_RECORDING_OPTIONS, web: { ...VOICE_RECORDING_OPTIONS.web, mimeType } };
+}
 
 export type VoiceBucket = 'voice-notes' | 'dm-media';
 export interface VoiceSource {
@@ -59,9 +67,10 @@ function randomFileId(): string {
 async function upload(bucket: VoiceBucket, path: string, localUri: string): Promise<string> {
   // Device recordings are .m4a / .mp4 files. A web recording is a blob: URI (no extension): the check is for files.
   if (Platform.OS !== 'web' && !/\.(m4a|mp4)$/i.test(localUri)) throw new AppError('VOICE_UPLOAD_FAILED');
-  const body = await uriToUploadBody(localUri);
-  // Device: always audio/mp4 (as before). Web: the browser's own recording type (webm/opus, or mp4 on Safari).
-  const contentType = typeof Blob !== 'undefined' && body instanceof Blob && body.type ? body.type : 'audio/mp4';
+  // Always a bare audio/mp4: the buckets' allow-list has no parameters (a web blob.type is 'audio/mp4;codecs=…').
+  // On web the Blob is re-typed too, because storage-js sends a Blob as a form part carrying the blob's own type.
+  const contentType = 'audio/mp4';
+  const body = await uriToUploadBody(localUri, contentType);
   const { error } = await supabase.storage
     .from(bucket)
     .upload(path, body, { contentType, upsert: false });

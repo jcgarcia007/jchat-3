@@ -23,6 +23,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -37,6 +38,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
 import { VoiceRecorderBar } from '../common/VoiceRecorderBar';
+import { canRecordVoice } from '../../services/webVoice';
 import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { normalizeImageUri } from '../../utils/normalizeImage';
@@ -90,6 +92,8 @@ export function ChatInput({
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const canSend = text.trim().length > 0 && !disabled;
+  // Web without MP4 recording: no mic (see services/webVoice.web.ts); a short hint is shown instead.
+  const voiceOk = canRecordVoice();
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -226,6 +230,12 @@ export function ChatInput({
         onScanQr={onScanQr}
       />
 
+      {!voiceOk && !recordingVoice ? (
+        <Text style={[barStyles.voiceHint, { color: theme.tabInactive, backgroundColor: theme.topBg }]}>
+          {t('voice.webUnsupported', { ns: 'common' })}
+        </Text>
+      ) : null}
+
       {/* Input bar — replaced by the voice recorder while recording */}
       {recordingVoice ? (
         <VoiceRecorderBar
@@ -299,6 +309,7 @@ export function ChatInput({
         </Pressable>
 
         {/* Dynamic: mic (text empty) ↔ send (text present) */}
+        {canSend || voiceOk ? (
         <Pressable
           testID={canSend ? 'chat-send' : 'chat-mic'}
           onPress={canSend ? handleSend : handleMicPress}
@@ -319,6 +330,7 @@ export function ChatInput({
             <IconMicrophone size={20} color={disabled ? theme.tabInactive : theme.accent} />
           )}
         </Pressable>
+        ) : null}
 
       </View>
       )}
@@ -329,6 +341,7 @@ export function ChatInput({
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const barStyles = StyleSheet.create({
+  voiceHint: { fontSize: 12, textAlign: 'center', paddingTop: 6 },
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',

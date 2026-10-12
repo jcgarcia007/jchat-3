@@ -79,6 +79,7 @@ import { GiftCard } from '../../components/gift/GiftCard';
 import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
+import { canRecordVoice } from '../../services/webVoice';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
 import { isDmVoicePath } from '../../utils/mediaUrl';
@@ -831,6 +832,12 @@ export default function DMChatScreen() {
           />
         </View>
       ) : (
+      <>
+      {!canRecordVoice() ? (
+        <Text style={{ fontSize: 12, textAlign: 'center', paddingTop: 6, color: c.textTertiary, backgroundColor: c.bgSurface }}>
+          {tc('voice.webUnsupported')}
+        </Text>
+      ) : null}
       <View
         style={[
           styles.composer,
@@ -854,7 +861,8 @@ export default function DMChatScreen() {
           <IconPhoto size={22} color={c.textSecondary} strokeWidth={2} />
         </TouchableOpacity>
 
-        {/* Voice note */}
+        {/* Voice note (hidden on web browsers that cannot record MP4) */}
+        {canRecordVoice() ? (
         <TouchableOpacity
           style={styles.composerIconBtn}
           onPress={() => setRecordingVoice(true)}
@@ -865,6 +873,7 @@ export default function DMChatScreen() {
         >
           <IconMicrophone size={22} color={c.textSecondary} strokeWidth={2} />
         </TouchableOpacity>
+        ) : null}
 
         {/* Text input */}
         <TextInput
@@ -910,6 +919,7 @@ export default function DMChatScreen() {
           />
         </TouchableOpacity>
       </View>
+      </>
       )}
       {safety.sheets}
       <MessageActionSheet

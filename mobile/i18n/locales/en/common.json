@@ -39,7 +39,8 @@
     "unavailable": "Voice message unavailable",
     "permissionTitle": "Microphone access needed",
     "permissionMessage": "Allow microphone access in Settings to record voice messages.",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "webUnsupported": "Record voice notes from the app"
   },
   "picker": {
     "photosErrorTitle": "We couldn't open your photos",

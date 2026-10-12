@@ -39,7 +39,8 @@
     "unavailable": "Mensaje de voz no disponible",
     "permissionTitle": "Se necesita acceso al micrófono",
     "permissionMessage": "Permite el acceso al micrófono en Ajustes para grabar mensajes de voz.",
-    "openSettings": "Abrir Ajustes"
+    "openSettings": "Abrir Ajustes",
+    "webUnsupported": "Graba notas de voz desde la app"
   },
   "picker": {
     "photosErrorTitle": "No pudimos abrir tus fotos",

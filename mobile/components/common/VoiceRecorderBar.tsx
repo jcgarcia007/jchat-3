@@ -24,7 +24,7 @@ import { palette } from '../../theme/tokens';
 import {
   VOICE_MAX_SECONDS,
   VOICE_MIN_SECONDS,
-  VOICE_RECORDING_OPTIONS,
+  getVoiceRecordingOptions,
   clampVoiceSeconds,
   discardLocalRecording,
 } from '../../services/voiceNotes';
@@ -61,7 +61,7 @@ export function VoiceRecorderBar({
   borderColor,
 }: VoiceRecorderBarProps) {
   const { t } = useTranslation('common');
-  const recorder = useAudioRecorder(VOICE_RECORDING_OPTIONS);
+  const recorder = useAudioRecorder(getVoiceRecordingOptions());
   const state = useAudioRecorderState(recorder, 250);
   const [recording, setRecording] = useState(false);
   const finishedRef = useRef(false);
