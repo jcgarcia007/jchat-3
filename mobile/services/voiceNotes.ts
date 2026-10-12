@@ -11,10 +11,11 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
+import { Platform } from 'react-native';
 import { AudioQuality, IOSOutputFormat, type RecordingOptions } from 'expo-audio';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { AppError } from '../utils/errors';
+import { uriToUploadBody } from './uploadBody';
 
 export const VOICE_MAX_SECONDS = 60;
 export const VOICE_MIN_SECONDS = 1;
@@ -56,13 +57,14 @@ function randomFileId(): string {
 }
 
 async function upload(bucket: VoiceBucket, path: string, localUri: string): Promise<string> {
-  if (!/\.(m4a|mp4)$/i.test(localUri)) throw new AppError('VOICE_UPLOAD_FAILED');
-  const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  // Device recordings are .m4a / .mp4 files. A web recording is a blob: URI (no extension): the check is for files.
+  if (Platform.OS !== 'web' && !/\.(m4a|mp4)$/i.test(localUri)) throw new AppError('VOICE_UPLOAD_FAILED');
+  const body = await uriToUploadBody(localUri);
+  // Device: always audio/mp4 (as before). Web: the browser's own recording type (webm/opus, or mp4 on Safari).
+  const contentType = typeof Blob !== 'undefined' && body instanceof Blob && body.type ? body.type : 'audio/mp4';
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, decode(base64), { contentType: 'audio/mp4', upsert: false });
+    .upload(path, body, { contentType, upsert: false });
   if (error) throw error;
   return path;
 }

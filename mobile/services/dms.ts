@@ -11,8 +11,7 @@
  * Every function guards against unconfigured Supabase with isSupabaseConfigured.
  */
 
-import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
+import { uriToUploadBody } from './uploadBody';
 import { supabase, isSupabaseConfigured } from './supabase';
 import i18n from '../i18n';
 
@@ -415,10 +414,7 @@ export async function uploadDmPhoto(
   mimeType?: string | null,
 ): Promise<string> {
   if (!isSupabaseConfigured) return localUri;
-  const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const arrayBuffer = decode(base64);
+  const arrayBuffer = await uriToUploadBody(localUri, mimeType);
   const rand = Math.random().toString(36).slice(2, 8);
   const { ext, contentType } = dmPhotoType(localUri, mimeType);
   const path = `${conversationId}/${userId}/${Date.now()}_${rand}.${ext}`;

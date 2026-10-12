@@ -10,7 +10,8 @@
 import { Image } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { decode } from 'base64-arraybuffer';
+import { Platform } from 'react-native';
+import { uriToUploadBody } from './uploadBody';
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { InterestRow, MatchPhoto, MatchPhotoStatus } from './matchTypes';
 
@@ -90,12 +91,12 @@ async function toWebp(uri: string): Promise<string> {
 export async function addMatchPhoto(userId: string, localUri: string, sort: number): Promise<void> {
   if (!isSupabaseConfigured) return;
   const webpUri = await toWebp(localUri);
-  const base64 = await FileSystem.readAsStringAsync(webpUri, { encoding: FileSystem.EncodingType.Base64 });
+  const body = await uriToUploadBody(webpUri, 'image/webp');
   const path = `${userId}/${generateId()}.webp`;
 
   const { error: uploadError } = await supabase.storage
     .from(MATCH_PHOTOS_BUCKET)
-    .upload(path, decode(base64), { contentType: 'image/webp', upsert: false });
+    .upload(path, body, { contentType: 'image/webp', upsert: false });
   if (uploadError) throw uploadError;
 
   const { error: insertError } = await supabase
@@ -110,6 +111,8 @@ export async function addMatchPhoto(userId: string, localUri: string, sort: numb
 
 /** Copies the profile avatar (public URL) as a new Match photo. */
 export async function addAvatarAsMatchPhoto(userId: string, avatarUrl: string, sort: number): Promise<void> {
+  // Web has no file cache to download into: the manipulator loads the public URL directly.
+  if (Platform.OS === 'web') return addMatchPhoto(userId, avatarUrl, sort);
   const target = `${FileSystem.cacheDirectory}match-avatar-${Date.now()}.jpg`;
   const download = await FileSystem.downloadAsync(avatarUrl, target);
   try {

@@ -2,13 +2,12 @@
  * JChat 3.0 — Storage service
  *
  * Shared upload helpers for Supabase Storage.
- * Uses expo-file-system + base64-arraybuffer because React Native / Hermes
- * does not support creating Blobs from fetch() responses on device.
+ * The file bytes come from services/uploadBody (expo-file-system + base64-arraybuffer on device, because React
+ * Native / Hermes cannot create Blobs from fetch() responses; fetch().blob() on web).
  */
 
-import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { fileExtension, uriToUploadBody } from './uploadBody';
 
 /**
  * Upload a local image URI to the given Supabase Storage bucket.
@@ -16,23 +15,23 @@ import { supabase, isSupabaseConfigured } from './supabase';
  * @param userId   — the authenticated user's UUID (used as the folder prefix)
  * @param localUri — file:// URI returned by expo-image-picker or expo-camera
  * @param bucket   — target bucket id (e.g. 'post-media', 'avatars', 'covers')
+ * @param mimeType — the picker's MIME type, when known (web: blob: URIs have no extension to read it from)
  * @returns public URL of the uploaded file, or the original localUri in demo mode
  */
 export async function uploadImage(
   userId: string,
   localUri: string,
   bucket: string,
+  mimeType?: string | null,
 ): Promise<string> {
   if (!isSupabaseConfigured) return localUri;
 
-  // Read the file as base64, then decode to an ArrayBuffer. React Native / Hermes
-  // cannot build a Blob from a fetch() response, so this is the reliable path.
-  const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const arrayBuffer = decode(base64);
+  // Device: base64 → ArrayBuffer (React Native / Hermes cannot build a Blob from a fetch() response).
+  // Web: the file as a Blob. See services/uploadBody.
+  const arrayBuffer = await uriToUploadBody(localUri, mimeType);
+  const bodyType = typeof Blob !== 'undefined' && arrayBuffer instanceof Blob ? arrayBuffer.type : undefined;
 
-  const ext = localUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const ext = fileExtension(localUri, mimeType ?? bodyType);
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
   const path = `${userId}/${Date.now()}.${ext}`;
 
