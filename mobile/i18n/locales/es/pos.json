@@ -255,7 +255,9 @@
     "securityTitle": "Error de seguridad",
     "securityMessage": "El negocio del pedido no coincide. Por favor vuelve al menú.",
     "signInTitle": "Sesión requerida",
-    "signInMessage": "Necesitas iniciar sesión para pagar."
+    "signInMessage": "Necesitas iniciar sesión para pagar.",
+    "openMenu": "Abrir menú",
+    "openInTabHint": "El menú se abre en una pestaña nueva; este chat sigue abierto aquí."
   },
   "myOrders": {
     "title": "Mis pedidos",

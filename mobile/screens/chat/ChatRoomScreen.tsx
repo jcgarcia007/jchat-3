@@ -76,6 +76,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
 import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
+import { venueMenuTarget } from '../../utils/venueMenuTarget';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
 import { mergeMessages, planResync } from '../../utils/mergeMessages';
@@ -1009,17 +1010,29 @@ export default function ChatRoomScreen() {
     };
   }, [gateRefused, refusedBusinessId]);
 
+  // Where the menu button leads (utils/venueMenuTarget): native → the in-app menu as always; web → the public menu in a
+  // NEW tab (the embedded one is blocked by jchat.cloud's frame protection and web has no native Stripe), or nothing
+  // when the venue has no slug (then the button is hidden).
+  const menuTarget = useMemo(
+    () => venueMenuTarget({ platform: Platform.OS, menuMode, slug: businessSlug, externalUrl: externalMenuUrl }),
+    [menuMode, businessSlug, externalMenuUrl],
+  );
+  const menuAvailable = menuTarget.kind !== 'none';
+
   const handleMenuPress = useCallback(() => {
+    if (menuTarget.kind === 'none') return;
+    if (menuTarget.kind === 'web-tab' || menuTarget.kind === 'external') {
+      if (menuTarget.url) void Linking.openURL(menuTarget.url);
+      return;
+    }
     if (!business || !room) return;
-    if (menuMode === 'web' && businessSlug) {
+    if (menuTarget.kind === 'screen-web-preview' && businessSlug) {
       navigation.navigate('MenuWebPreview', {
         slug: businessSlug,
         businessName: business.name,
         businessId: room.business_id,
         roomId: activeRoomId,
       });
-    } else if (menuMode === 'external' && externalMenuUrl) {
-      void Linking.openURL(externalMenuUrl);
     } else {
       navigation.navigate('Menu', {
         businessId: room.business_id,
@@ -1028,7 +1041,13 @@ export default function ChatRoomScreen() {
         slug: businessSlug ?? undefined,
       });
     }
-  }, [business, room, activeRoomId, businessSlug, menuMode, externalMenuUrl, navigation]);
+  }, [menuTarget, business, room, activeRoomId, businessSlug, navigation]);
+
+  // The 🍴 button only shows when there is a menu to open (on the web: a slug / external URL).
+  const topBarBusiness = useMemo(() => {
+    const base = business ?? DEMO_BUSINESS;
+    return menuAvailable ? base : { ...base, menu_enabled: false };
+  }, [business, menuAvailable]);
 
   const handleServiceCall = useCallback(() => {
     setServiceSheetVisible(true);
@@ -1596,10 +1615,10 @@ export default function ChatRoomScreen() {
         onPressOwnAvatar={() => setOwnMenuOpen(true)}
         onLongPressMessage={handleLongPressMessage}
         onImagePress={setViewerImage}
-        onOrderNow={handleMenuPress}
+        onOrderNow={menuAvailable ? handleMenuPress : undefined}
       />
     ),
-    [user?.id, chatTheme, roleMap, handleUserPress, handleLongPressMessage, handleMenuPress],
+    [user?.id, chatTheme, roleMap, handleUserPress, handleLongPressMessage, handleMenuPress, menuAvailable],
   );
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────
@@ -1721,6 +1740,7 @@ export default function ChatRoomScreen() {
                         {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
                       </Text>
                     </Pressable>
+                    {menuAvailable ? (
                     <Pressable
                       testID="chat-geo-menu"
                       onPress={handleMenuPress}
@@ -1731,6 +1751,7 @@ export default function ChatRoomScreen() {
                         {outsidePickup ? t('chatRoom.geoMenuAndPickup') : t('chatRoom.geoViewMenu')}
                       </Text>
                     </Pressable>
+                    ) : null}
                   </View>
                 </View>
               )}
@@ -1785,7 +1806,7 @@ export default function ChatRoomScreen() {
     <View style={[chatStyles.container, { backgroundColor: chatTheme.bg }]}>
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <ChatTopBar
-        business={business ?? DEMO_BUSINESS}
+        business={topBarBusiness}
         activeCount={activeCount}
         theme={chatTheme}
         usersInRoom={usersInRoom}
@@ -1919,7 +1940,7 @@ export default function ChatRoomScreen() {
           onSendText={handleSendText}
           onSendPhoto={handleSendPhoto}
           onSendVoice={handleSendVoice}
-          onMenuPress={handleMenuPress}
+          onMenuPress={menuAvailable ? handleMenuPress : undefined}
           onServiceCall={handleServiceCall}
           onOfferPress={() => setOfferVisible(true)}
           canCreateOffer={chatPermissions.offers_manage}

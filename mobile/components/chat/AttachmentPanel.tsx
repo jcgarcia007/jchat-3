@@ -240,13 +240,15 @@ export function AttachmentPanel({
           />
         )}
 
-        {/* Menú */}
-        <OptionButton
-          theme={theme}
-          icon={<IconToolsKitchen2 size={24} color={theme.accent} />}
-          label={t('attachment.menu')}
-          onPress={handleMenu}
-        />
+        {/* Menú — only when there is a menu to open (on the web: a venue with a public menu page) */}
+        {onMenu ? (
+          <OptionButton
+            theme={theme}
+            icon={<IconToolsKitchen2 size={24} color={theme.accent} />}
+            label={t('attachment.menu')}
+            onPress={handleMenu}
+          />
+        ) : null}
 
         {/* Servicio */}
         <OptionButton

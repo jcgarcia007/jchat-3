@@ -14,3 +14,9 @@ export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com
  * TODO: https://jchat.cloud/download does not exist yet (404): until that page exists this is the site's home.
  */
 export const DOWNLOAD_PAGE_URL = 'https://jchat.cloud';
+
+/**
+ * The venue's PUBLIC menu page (Next site): https://jchat.cloud/m/<slug>. On the web build the chat opens it in a NEW
+ * tab (it has its own ordering and payment flow); the app's embedded version adds ?app=1 and is native-only.
+ */
+export const PUBLIC_MENU_BASE_URL = 'https://jchat.cloud/m';

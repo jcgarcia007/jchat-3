@@ -251,6 +251,8 @@ export function OfferCard({
 
         {/* Action row: Order now + Share */}
         <View style={s.actionRow}>
+          {/* No menu to open (e.g. a venue without a public menu page on the web): no "Order now" either. */}
+          {onOrderNow ? (
           <Pressable
             onPress={handleOrderNow}
             disabled={isExpired}
@@ -266,6 +268,7 @@ export function OfferCard({
             <IconShoppingBag size={15} color={c.bgSurface} style={{ marginRight: 6 }} />
             <Text style={s.orderBtnLabel}>{t('offer.orderNow')}</Text>
           </Pressable>
+          ) : null}
 
           <Pressable
             onPress={handleShare}

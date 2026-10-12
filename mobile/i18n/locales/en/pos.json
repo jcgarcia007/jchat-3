@@ -255,7 +255,9 @@
     "securityTitle": "Security error",
     "securityMessage": "The order's business doesn't match. Please go back to the menu.",
     "signInTitle": "Sign-in required",
-    "signInMessage": "You need to sign in to pay."
+    "signInMessage": "You need to sign in to pay.",
+    "openMenu": "Open menu",
+    "openInTabHint": "The menu opens in a new tab; this chat stays open here."
   },
   "myOrders": {
     "title": "My orders",
