@@ -266,5 +266,13 @@
     "loadError": "We couldn't load your orders.",
     "retry": "Retry",
     "orderFallback": "Order"
+  },
+  "menuSheet": {
+    "title": "Menu",
+    "frameTitle": "{{business}} menu",
+    "loadError": "We couldn't load the menu",
+    "retry": "Retry",
+    "openInTab": "Open in another tab",
+    "orderSent": "Order sent"
   }
 }

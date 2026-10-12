@@ -27,6 +27,10 @@ interface Props {
   children: React.ReactNode;
   /** Floating things drawn above the sheet (new-messages pill, DM notice). */
   overlay?: React.ReactNode;
+  /** Accessible name of the sheet / panel (default: the profile's). */
+  a11yLabel?: string;
+  /** testID prefix: `<base>-sheet`, `<base>-panel`, `<base>-sheet-close` (default 'profile'). */
+  testIDBase?: string;
 }
 
 const CLOSE_DISTANCE = 120;
@@ -34,10 +38,11 @@ const CLOSE_VELOCITY = 0.9;
 const MAX_DOM_LEVELS = 8;
 const TOP_GAP = 48; // room for the new-messages pill above the sheet
 
-export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.ReactElement {
+export function ProfileSheetFrame({ onClose, children, overlay, a11yLabel, testIDBase = 'profile' }: Props): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('common');
   const { t: tp } = useTranslation('profile');
+  const label = a11yLabel ?? tp('sheet.a11yLabel');
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   // Set when the panel's pointer-events workaround cannot be applied (see below): this opening uses the sheet.
@@ -61,7 +66,7 @@ export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.
     const undoAll = () => restore.splice(0).forEach((undo) => undo());
     let found = false;
     if (typeof document !== 'undefined') {
-      let el = (document.querySelector('[data-testid="profile-panel"]') as HTMLElement | null)?.parentElement ?? null;
+      let el = (document.querySelector(`[data-testid="${testIDBase}-panel"]`) as HTMLElement | null)?.parentElement ?? null;
       for (let level = 0; el && el !== document.body && level < MAX_DOM_LEVELS; level += 1) {
         const target = el;
         const previous = target.style.pointerEvents;
@@ -124,14 +129,14 @@ export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.
 
   if (panel) {
     return (
-      <View testID="profile-panel" pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <View testID={`${testIDBase}-panel`} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
         <View
           accessibilityViewIsModal={false}
-          accessibilityLabel={tp('sheet.a11yLabel')}
+          accessibilityLabel={label}
           style={[styles.panel, { width: PROFILE_PANEL_WIDTH, backgroundColor: c.bgBase, borderLeftColor: c.borderSubtle, pointerEvents: 'auto' }]}
         >
           <View style={styles.panelHeader}>
-            <CloseButton label={t('actions.close')} color={c.textPrimary} bg={c.bgSurface} onPress={close} />
+            <CloseButton testID={`${testIDBase}-sheet-close`} label={t('actions.close')} color={c.textPrimary} bg={c.bgSurface} onPress={close} />
           </View>
           <View style={styles.flex}>{children}</View>
         </View>
@@ -141,19 +146,19 @@ export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.
   }
 
   return (
-    <View testID="profile-sheet" style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View testID={`${testIDBase}-sheet`} style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrimMedium, opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityRole="button" accessibilityLabel={t('actions.close')} />
       </Animated.View>
       <Animated.View
         accessibilityViewIsModal
-        accessibilityLabel={tp('sheet.a11yLabel')}
+        accessibilityLabel={label}
         style={[styles.sheet, { height: sheetHeight, backgroundColor: c.bgBase, transform: [{ translateY }] }]}
       >
         <View {...pan.panHandlers} style={styles.sheetHeader}>
           <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
           <View style={styles.closeSlot}>
-            <CloseButton label={t('actions.close')} color={c.textPrimary} bg={c.bgSurface} onPress={close} />
+            <CloseButton testID={`${testIDBase}-sheet-close`} label={t('actions.close')} color={c.textPrimary} bg={c.bgSurface} onPress={close} />
           </View>
         </View>
         <View style={styles.flex}>{children}</View>
@@ -163,10 +168,10 @@ export function ProfileSheetFrame({ onClose, children, overlay }: Props): React.
   );
 }
 
-function CloseButton({ label, color, bg, onPress }: { label: string; color: string; bg: string; onPress: () => void }): React.ReactElement {
+function CloseButton({ testID, label, color, bg, onPress }: { testID: string; label: string; color: string; bg: string; onPress: () => void }): React.ReactElement {
   return (
     <Pressable
-      testID="profile-sheet-close"
+      testID={testID}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}

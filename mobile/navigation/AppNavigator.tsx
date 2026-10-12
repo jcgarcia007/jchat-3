@@ -76,6 +76,7 @@ import OffersScreen from '../screens/offers/OffersScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
+import MenuSheetScreen from '../screens/menu/MenuSheetScreen';
 import ProductDetailScreen from '../screens/menu/ProductDetailScreen';
 import CartScreen from '../screens/menu/CartScreen';
 import CheckoutScreen from '../screens/checkout/CheckoutScreen';
@@ -136,6 +137,8 @@ export type MainStackParamList = {
     /** Used by the WebView preview prototype. */
     slug?: string;
   };
+  /** Web only: the venue's public menu in a sheet over the chat (iframe `url` = …/m/<slug>?embed=1; `openUrl` = the plain page for "open in another tab"). */
+  MenuSheet: { url: string; businessName?: string; openUrl?: string };
   /** Temporary WebView prototype — shows /m/[slug] for design validation. */
   MenuWebPreview: { slug: string; businessName?: string; businessId: string; roomId?: string };
   ProductDetail: { item: MenuItem; businessName?: string };
@@ -423,6 +426,11 @@ export default function AppNavigator() {
           <MainStack.Screen name="Settings" component={SettingsStack} />
           <MainStack.Screen name="Menu" component={MenuScreen} />
           <MainStack.Screen name="MenuWebPreview" component={MenuWebPreviewScreen} />
+          <MainStack.Screen
+            name="MenuSheet"
+            component={MenuSheetScreen}
+            options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }}
+          />
           <MainStack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'modal' }} />
           <MainStack.Screen name="Cart" component={CartScreen} />
           <MainStack.Screen name="Checkout" component={CheckoutScreen} />

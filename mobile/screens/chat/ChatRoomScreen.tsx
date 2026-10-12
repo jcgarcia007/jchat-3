@@ -76,7 +76,9 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
 import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
-import { venueMenuTarget } from '../../utils/venueMenuTarget';
+import { publicMenuUrl, venueMenuTarget } from '../../utils/venueMenuTarget';
+import { subscribeMenuOrderSent } from '../../services/menuEvents';
+import { InlineToast } from '../../components/common/InlineToast';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
 import { mergeMessages, planResync } from '../../utils/mergeMessages';
@@ -250,6 +252,7 @@ export default function ChatRoomScreen() {
   const themeColors = useThemeColors();
   const { t, i18n } = useTranslation('chat');
   const { t: tc } = useTranslation('common');
+  const { t: tPos } = useTranslation('pos');
 
   const matchLanguage: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
 
@@ -1018,11 +1021,19 @@ export default function ChatRoomScreen() {
     [menuMode, businessSlug, externalMenuUrl],
   );
   const menuAvailable = menuTarget.kind !== 'none';
+  // The menu sheet reported an order: "Pedido enviado" over the chat (the sheet closed itself).
+  const [orderSentToast, setOrderSentToast] = useState(false);
+  useEffect(() => subscribeMenuOrderSent(() => setOrderSentToast(true)), []);
 
   const handleMenuPress = useCallback(() => {
     if (menuTarget.kind === 'none') return;
-    if (menuTarget.kind === 'web-tab' || menuTarget.kind === 'external') {
+    if (menuTarget.kind === 'external') {
       if (menuTarget.url) void Linking.openURL(menuTarget.url);
+      return;
+    }
+    if (menuTarget.kind === 'web-sheet') {
+      // Web: the public menu in a sheet over the chat (it stays mounted behind).
+      if (menuTarget.url && businessSlug) navigation.navigate('MenuSheet', { url: menuTarget.url, openUrl: publicMenuUrl(businessSlug), businessName: business?.name });
       return;
     }
     if (!business || !room) return;
@@ -2099,6 +2110,9 @@ export default function ChatRoomScreen() {
         onOpenRoute={handleOpenNotificationRoute}
         pinnedOrders={pinnedOrders}
       />
+      {orderSentToast ? (
+        <InlineToast testID="menu-order-sent" message={tPos('menuSheet.orderSent')} onDismiss={() => setOrderSentToast(false)} bottom={96} />
+      ) : null}
       <ProfileMenuHint visible={profileHint.visible} anchorRef={moreButtonRef} onDismiss={profileHint.dismiss} />
       <OwnProfileMenu
         visible={ownMenuOpen}

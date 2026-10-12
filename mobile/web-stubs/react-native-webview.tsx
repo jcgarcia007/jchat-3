@@ -16,6 +16,8 @@ interface WebViewStubProps {
   onLoadStart?: () => void;
   onLoadEnd?: () => void;
   onError?: () => void;
+  /** Accessible name of the frame. */
+  title?: string;
   [prop: string]: unknown;
 }
 
@@ -25,6 +27,7 @@ export default function WebView({
   onLoadStart,
   onLoadEnd,
   onError,
+  title,
 }: WebViewStubProps): React.ReactElement {
   const uri = source?.uri;
 
@@ -34,6 +37,10 @@ export default function WebView({
 
   return React.createElement('iframe', {
     src: uri,
+    title,
+    // The embedded public menu pays (Apple Pay / Google Pay / Payment Request) and reads the position for the
+    // venue's golden rule: both permissions must be DELEGATED to the frame by its embedder.
+    allow: 'payment; geolocation',
     style: { border: 0, width: '100%', height: '100%', ...(StyleSheet.flatten(style) as object) },
     onLoad: () => onLoadEnd?.(),
     onError: () => onError?.(),

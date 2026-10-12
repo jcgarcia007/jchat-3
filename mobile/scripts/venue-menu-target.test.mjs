@@ -17,15 +17,16 @@ const compile = (rel, out, fix) => {
 };
 compile('../constants/appLinks.ts', 'appLinks.mjs');
 compile('../utils/venueMenuTarget.ts', 'venueMenuTarget.mjs', true);
-const { venueMenuTarget, publicMenuUrl } = await import(pathToFileURL(join(dir, 'venueMenuTarget.mjs')).href);
+const { venueMenuTarget, publicMenuUrl, embeddedMenuUrl } = await import(pathToFileURL(join(dir, 'venueMenuTarget.mjs')).href);
 
 const t = (platform, menuMode, slug, externalUrl) => venueMenuTarget({ platform, menuMode, slug, externalUrl });
 
-test('web: a slug opens the PUBLIC menu in a new tab (no ?app=1), whatever the menu mode', () => {
+test('web: a slug opens the public menu in the SHEET (?embed=1, never ?app=1), whatever the menu mode', () => {
   for (const mode of ['web', 'native', null, undefined, 'something']) {
-    assert.deepEqual(t('web', mode, 'bar-xzx-omd2', null), { kind: 'web-tab', url: 'https://jchat.cloud/m/bar-xzx-omd2' });
+    assert.deepEqual(t('web', mode, 'bar-xzx-omd2', null), { kind: 'web-sheet', url: 'https://jchat.cloud/m/bar-xzx-omd2?embed=1' });
   }
   assert.ok(!t('web', 'web', 'bar', null).url.includes('app=1'));
+  assert.ok(t('web', 'web', 'bar', null).url.endsWith('?embed=1'));
 });
 
 test('web: an external menu still opens its own URL, even without a slug', () => {
@@ -39,7 +40,7 @@ test('web: no slug (and no usable external URL) → nothing to open, the button 
   assert.deepEqual(t('web', 'external', null, null), { kind: 'none' });
   assert.deepEqual(t('web', 'external', null, '   '), { kind: 'none' });
   // external mode without a URL falls back to the public menu when there is a slug
-  assert.deepEqual(t('web', 'external', 'bar', null), { kind: 'web-tab', url: 'https://jchat.cloud/m/bar' });
+  assert.deepEqual(t('web', 'external', 'bar', null), { kind: 'web-sheet', url: 'https://jchat.cloud/m/bar?embed=1' });
 });
 
 test('native is unchanged: external → URL, web mode + slug → embedded preview, anything else → native menu', () => {
@@ -55,4 +56,5 @@ test('native is unchanged: external → URL, web mode + slug → embedded previe
 
 test('the slug is URL-encoded and the base URL lives in one place', () => {
   assert.equal(publicMenuUrl('a b/c'), 'https://jchat.cloud/m/a%20b%2Fc');
+  assert.equal(embeddedMenuUrl('bar'), 'https://jchat.cloud/m/bar?embed=1');
 });

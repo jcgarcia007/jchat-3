@@ -16,7 +16,15 @@ export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com
 export const DOWNLOAD_PAGE_URL = 'https://jchat.cloud';
 
 /**
- * The venue's PUBLIC menu page (Next site): https://jchat.cloud/m/<slug>. On the web build the chat opens it in a NEW
- * tab (it has its own ordering and payment flow); the app's embedded version adds ?app=1 and is native-only.
+ * The venue's PUBLIC menu page (Next site): <base>/<slug>. On the web build the chat shows it in a sheet over the chat
+ * (an iframe of <base>/<slug>?embed=1: the site allows framing of /m/* by our own domains only).
+ * `EXPO_PUBLIC_MENU_BASE_URL` points a LOCAL web build at a local Next (e.g. http://127.0.0.1:3100/m); production
+ * builds never set it.
  */
-export const PUBLIC_MENU_BASE_URL = 'https://jchat.cloud/m';
+export const PUBLIC_MENU_BASE_URL = process.env.EXPO_PUBLIC_MENU_BASE_URL?.replace(/\/+$/, '') || 'https://jchat.cloud/m';
+
+/**
+ * The ONLY origin the menu sheet accepts messages from (event.origin of the embedded menu) — derived from the base URL,
+ * so it is https://jchat.cloud in production and the local Next origin in a local test build.
+ */
+export const MENU_FRAME_ORIGIN = new URL(PUBLIC_MENU_BASE_URL).origin;

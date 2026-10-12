@@ -266,5 +266,13 @@
     "loadError": "No pudimos cargar tus pedidos.",
     "retry": "Reintentar",
     "orderFallback": "Pedido"
+  },
+  "menuSheet": {
+    "title": "Menú",
+    "frameTitle": "Menú de {{business}}",
+    "loadError": "No se pudo cargar el menú",
+    "retry": "Reintentar",
+    "openInTab": "Abrir en otra pestaña",
+    "orderSent": "Pedido enviado"
   }
 }
