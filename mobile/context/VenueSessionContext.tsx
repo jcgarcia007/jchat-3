@@ -29,6 +29,7 @@ import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../service
 import { getMatchActivity } from '../services/matchDeck';
 import { matchLeaveVenue } from '../services/match';
 import { showAlert } from '../utils/dialog';
+import { shouldCountUnread } from '../utils/venueUnread';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 /** Back from the background after this long: the server presence has lapsed → check again or end. */
@@ -59,6 +60,8 @@ interface VenueSessionContextValue {
   endSession: (reason: VenueEndReason) => void;
   /** The chat screen reports it is mounted (it owns the heartbeat then) and tells Match availability. */
   setChatMounted: (mounted: boolean) => void;
+  /** The chat is mounted but something covers it (the profile sheet): new messages count as unread meanwhile. */
+  setChatCovered: (covered: boolean) => void;
   setMatchActive: (active: boolean) => void;
   setTableLabel: (label: string | undefined) => void;
 }
@@ -73,6 +76,7 @@ const VenueSessionContext = createContext<VenueSessionContextValue>({
   leaveVenue: () => Promise.resolve(),
   endSession: noop,
   setChatMounted: noop,
+  setChatCovered: noop,
   setMatchActive: noop,
   setTableLabel: noop,
 });
@@ -92,6 +96,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const sessionRef = useRef<VenueSession | null>(null);
   sessionRef.current = session;
   const chatMountedRef = useRef(false);
+  const chatCoveredRef = useRef(false);
   const matchActiveRef = useRef(false);
   const backgroundedAtRef = useRef<number | null>(null);
 
@@ -171,6 +176,10 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     chatMountedRef.current = mounted;
     if (mounted) setUnreadMessages(0);
   }, []);
+  const setChatCovered = useCallback((covered: boolean) => {
+    chatCoveredRef.current = covered;
+    if (!covered) setUnreadMessages(0); // back in front of the chat: what arrived meanwhile is on screen
+  }, []);
   const setMatchActive = useCallback((active: boolean) => {
     matchActiveRef.current = active;
   }, []);
@@ -246,7 +255,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=in.(${ids.join(',')})` },
           (payload) => {
             const row = payload.new as { user_id?: string | null };
-            if (row.user_id && row.user_id !== userId && !chatMountedRef.current) {
+            if (shouldCountUnread({ fromMe: !row.user_id || row.user_id === userId, chatMounted: chatMountedRef.current, chatCovered: chatCoveredRef.current })) {
               setUnreadMessages((n) => n + 1);
             }
           },
@@ -292,8 +301,8 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   }, [userId, endSession]);
 
   const value = useMemo<VenueSessionContextValue>(
-    () => ({ session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setMatchActive, setTableLabel }),
-    [session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setMatchActive, setTableLabel],
+    () => ({ session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel }),
+    [session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel],
   );
 
   return <VenueSessionContext.Provider value={value}>{children}</VenueSessionContext.Provider>;

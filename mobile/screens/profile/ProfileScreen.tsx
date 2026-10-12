@@ -42,7 +42,9 @@ import { confirm, showAlert } from '../../utils/dialog';
 import { shareContent } from '../../utils/shareContent';
 import { useAppWindow } from '../../utils/appWindow';
 
-type ProfileRoute = RouteProp<{ UserProfile: { userId?: string } }, 'UserProfile'>;
+// The same screen backs the Profile tab, the stacked UserProfile and the ProfileSheet over the chat.
+type ProfileParams = { userId?: string } | undefined;
+type ProfileRoute = RouteProp<{ UserProfile: ProfileParams; ProfileSheet: ProfileParams; Profile: ProfileParams }, 'UserProfile' | 'ProfileSheet' | 'Profile'>;
 
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
@@ -148,6 +150,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<ProfileRoute>();
   const { user: authUser } = useAuth();
+  // Opened as the sheet over the chat (route ProfileSheet): the sheet draws its own ✕, handle and top gap.
+  const inSheet = route.name === 'ProfileSheet';
   const routeUserId = userId ?? route.params?.userId;
   const targetId = routeUserId ?? authUser?.id ?? null;
   const isOwnProfile = !routeUserId || routeUserId === authUser?.id;
@@ -316,7 +320,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     });
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
-  if (initialLoading) return <ProfileSkeleton theme={theme} topInset={insets.top} />;
+  const topInset = inSheet ? 4 : insets.top;
+  if (initialLoading) return <ProfileSkeleton theme={theme} topInset={topInset} />;
   if (error || !profile) {
     return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.danger }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
@@ -332,13 +337,13 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   return (
     <View style={[styles.root, { backgroundColor: theme.statsBg }]}>
       <ProfileTopBar
-        isOwnProfile={isOwnProfile} showBack={route.name === 'UserProfile'} username={profile.username} topInset={insets.top}
+        isOwnProfile={isOwnProfile} showBack={route.name === 'UserProfile'} hideBack={inSheet} username={profile.username} topInset={topInset}
         onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
         onSettings={() => navigation.navigate('Settings')} onCreatePost={() => navigation.navigate('CreatePost')} theme={theme}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom + (route.name === 'UserProfile' ? 0 : homeBarInset) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom + (route.name === 'Profile' ? homeBarInset : 0) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader

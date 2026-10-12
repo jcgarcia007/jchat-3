@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { IconDownload, IconQrcode, IconUser } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
-import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { detectStorePlatform, storeLinkFor } from '../../utils/storeLink';
@@ -26,7 +25,6 @@ export default function WebNoVenueScreen(): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('common');
-  const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<RouteProp<{ Tabs: { leftBusinessName?: string } | undefined }, 'Tabs'>>();
   const leftBusinessName = route.params?.leftBusinessName?.trim() || null;
@@ -38,8 +36,8 @@ export default function WebNoVenueScreen(): React.ReactElement {
   }, []);
 
   const openProfile = useCallback(() => {
-    if (user?.id) navigation.navigate('UserProfile', { userId: user.id });
-  }, [navigation, user?.id]);
+    navigation.navigate('ProfileSheet');
+  }, [navigation]);
 
   return (
     <View testID="web-no-venue" style={[styles.root, { backgroundColor: c.bgBase, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>

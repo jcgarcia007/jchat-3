@@ -1392,7 +1392,8 @@ export default function ChatRoomScreen() {
   // (each caller closes its own surface first).
   const handleViewProfile = useCallback(
     (userId: string) => {
-      navigation.navigate('UserProfile', { userId });
+      // The profile opens as a sheet ON TOP of the chat: the room stays mounted behind it.
+      navigation.navigate('ProfileSheet', { userId });
     },
     [navigation],
   );

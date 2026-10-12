@@ -232,6 +232,7 @@ function SegmentedPicker<T extends string>({
 // ---------------------------------------------------------------------------
 
 export default function SettingsScreen() {
+  const isWeb = Platform.OS === 'web';
   const c = useThemeColors();
   const { t } = useTranslation('settings');
   const insets = useSafeAreaInsets();
@@ -545,6 +546,9 @@ export default function SettingsScreen() {
           right={<ChevronRight />}
         />
 
+        {/* Web: no subscription (an in-app purchase) and no Work Mode / POS. */}
+        {!isWeb ? (
+          <>
         <SectionDivider />
 
         {/* Plans / Cuentas */}
@@ -569,10 +573,15 @@ export default function SettingsScreen() {
             />
           </>
         )}
+          </>
+        ) : null}
 
         {/* Spacer */}
         <View style={styles.sectionGap} />
 
+        {/* Web: no push notification settings (push does not exist there). */}
+        {!isWeb ? (
+          <>
         {/* ── 2. NOTIFICATIONS ─────────────────────────────────────────────── */}
         <SectionHeader label={t('main.sectionNotifications')} />
 
@@ -646,6 +655,8 @@ export default function SettingsScreen() {
 
         {/* Spacer */}
         <View style={styles.sectionGap} />
+          </>
+        ) : null}
 
         {/* ── 3. LANGUAGE ──────────────────────────────────────────────────── */}
         <SectionHeader label={t('main.sectionLanguage')} />
@@ -780,6 +791,9 @@ export default function SettingsScreen() {
           right={<ChevronRight />}
         />
 
+        {/* Web: no Face ID / fingerprint lock. */}
+        {!isWeb ? (
+          <>
         <SectionDivider />
 
         {/* Biometric app-lock (M2) — opt-in Face ID / Touch ID gate */}
@@ -800,6 +814,8 @@ export default function SettingsScreen() {
             />
           }
         />
+          </>
+        ) : null}
 
         {/* Spacer */}
         <View style={styles.sectionGap} />

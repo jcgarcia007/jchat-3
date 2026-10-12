@@ -67,6 +67,7 @@ import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileSheetScreen from '../screens/profile/ProfileSheetScreen';
 import CreatePostScreen from '../screens/feed/CreatePostScreen';
 import PostDetailScreen from '../screens/posts/PostDetailScreen';
 import DMStack, { type DMStackParamList } from './DMStack';
@@ -118,6 +119,8 @@ export type MainStackParamList = {
   Onboarding: undefined;
   EditProfile: undefined;
   UserProfile: { userId: string };
+  /** The profile as a sheet ON TOP of the chat (transparentModal): mine when `userId` is absent. */
+  ProfileSheet: { userId?: string } | undefined;
   CreatePost: undefined;
   PostDetail: { postId: string };
   Settings: undefined;
@@ -409,6 +412,12 @@ export default function AppNavigator() {
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />
           <MainStack.Screen name="UserProfile" component={ProfileScreen} />
+          {/* transparentModal: the screen below (the chat) stays mounted and visible; ProfileSheetFrame draws the dim + sheet. */}
+          <MainStack.Screen
+            name="ProfileSheet"
+            component={ProfileSheetScreen}
+            options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }}
+          />
           <MainStack.Screen name="CreatePost" component={CreatePostScreen} />
           <MainStack.Screen name="PostDetail" component={PostDetailScreen} />
           <MainStack.Screen name="Settings" component={SettingsStack} />

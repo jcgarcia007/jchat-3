@@ -153,5 +153,11 @@
   "private": {
     "title": "Esta cuenta es privada",
     "subtitle": "Síguela para ver sus publicaciones."
+  },
+  "sheet": {
+    "a11yLabel": "Perfil",
+    "newMessages_one": "💬 {{count}} mensaje nuevo en {{business}} ↓",
+    "newMessages_other": "💬 {{count}} mensajes nuevos en {{business}} ↓",
+    "dmNoticeA11y": "Mensaje nuevo de {{name}}: {{text}}"
   }
 }

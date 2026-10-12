@@ -153,5 +153,11 @@
   "private": {
     "title": "This account is private",
     "subtitle": "Follow them to see their posts."
+  },
+  "sheet": {
+    "a11yLabel": "Profile",
+    "newMessages_one": "💬 {{count}} new message in {{business}} ↓",
+    "newMessages_other": "💬 {{count}} new messages in {{business}} ↓",
+    "dmNoticeA11y": "New message from {{name}}: {{text}}"
   }
 }

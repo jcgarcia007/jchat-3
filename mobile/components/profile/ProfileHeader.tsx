@@ -15,6 +15,8 @@ export interface ProfileTopBarProps {
   isOwnProfile: boolean;
   /** Own profile opened as a stacked screen (e.g. from the chat): show the back arrow. */
   showBack?: boolean;
+  /** Inside the profile sheet the sheet's own ✕ closes it: no back arrow (own or other's profile). */
+  hideBack?: boolean;
   username: string;
   topInset: number;
   onBack: () => void;
@@ -95,7 +97,7 @@ function StatItem({ label, value, theme, onPress }: { label: string; value: numb
  * so scrolling could pass the avatar/cover behind the status bar clock/battery.
  */
 export function ProfileTopBar({
-  isOwnProfile, showBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
+  isOwnProfile, showBack = false, hideBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
 }: ProfileTopBarProps) {
   const { t } = useTranslation('profile');
   return (
@@ -103,12 +105,12 @@ export function ProfileTopBar({
       <View style={styles.topBar}>
         {isOwnProfile ? (
           <>
-            {showBack ? (
+            {showBack && !hideBack ? (
               <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
             ) : null}
             <Text style={[styles.topUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text>
           </>
-        ) : (
+        ) : hideBack ? null : (
           <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
         )}
         {!isOwnProfile ? <Text style={[styles.otherTopUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text> : null}
