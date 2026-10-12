@@ -310,7 +310,8 @@
     "mutedTitle": "You're muted",
     "mutedMessage": "You're muted in this room.",
     "bannedTitle": "No access",
-    "bannedMessage": "You no longer have access to this room."
+    "bannedMessage": "You no longer have access to this room.",
+    "loadMessagesError": "We couldn't load the messages"
   },
   "report": {
     "title": "Report {{name}}",

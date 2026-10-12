@@ -310,7 +310,8 @@
     "mutedTitle": "Estás silenciado",
     "mutedMessage": "Estás silenciado en esta sala.",
     "bannedTitle": "Sin acceso",
-    "bannedMessage": "Ya no tienes acceso a esta sala."
+    "bannedMessage": "Ya no tienes acceso a esta sala.",
+    "loadMessagesError": "No pudimos cargar los mensajes"
   },
   "report": {
     "title": "Reportar a {{name}}",

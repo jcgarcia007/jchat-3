@@ -70,6 +70,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
 import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
+import { InlineRetryRow } from '../../components/common/InlineRetryRow';
 import { mergeMessages, newestConfirmedTimestamp } from '../../utils/mergeMessages';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
@@ -278,6 +279,8 @@ export default function ChatRoomScreen() {
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
   const [loadingMessages, setLoadingMessages] = useState(false);
+  // A page of messages could not be loaded: `before` is the page that failed (undefined = the newest page).
+  const [loadError, setLoadError] = useState<{ before?: string } | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const oldestTimestampRef = useRef<string | null>(null);
   // Cache user_id → display name to resolve sender_name for realtime messages
@@ -658,14 +661,19 @@ export default function ChatRoomScreen() {
     )];
 
     if (uniqueUserIds.length > 0) {
-      const { data: profs } = await supabase
-        .from('public_profiles')
-        .select('id, username, display_name, avatar_url')
-        .in('id', uniqueUserIds);
-      for (const p of profs ?? []) {
-        const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
-        if (nm) userNameCacheRef.current.set(p.id as string, nm);
-        userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
+      // A failed profile lookup must not lose the messages: they show with the generic sender name.
+      try {
+        const { data: profs } = await supabase
+          .from('public_profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', uniqueUserIds);
+        for (const p of profs ?? []) {
+          const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
+          if (nm) userNameCacheRef.current.set(p.id as string, nm);
+          userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
+        }
+      } catch (err) {
+        console.warn('[ChatRoom] sender profiles lookup failed:', err);
       }
     }
 
@@ -700,14 +708,12 @@ export default function ChatRoomScreen() {
 
       const { data, error } = await query;
       if (isStale()) return;
-      if (error) {
-        console.error('loadMessages error:', error);
-        return;
-      }
+      if (error) throw error;
       const rows = data ?? [];
 
       const msgs = await hydrateRows(rows as unknown as Record<string, unknown>[]);
       if (isStale()) return;
+      setLoadError(null);
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
         // msgs is DESC (newest→oldest); the last element is the oldest of the page.
@@ -721,6 +727,10 @@ export default function ChatRoomScreen() {
       } else {
         setMessages(msgs);
       }
+    } catch (err) {
+      // Network / server failure: say so (with Retry) instead of leaving an empty chat with no explanation.
+      console.error('loadMessages error:', err);
+      if (!isStale()) setLoadError({ before });
     } finally {
       if (requestId === loadSeqRef.current) setLoadingMessages(false);
     }
@@ -825,20 +835,25 @@ export default function ChatRoomScreen() {
             // scrolled up to read history, they are not yanked down.
             // If the name wasn't cached (message from a user we haven't seen yet),
             // resolve name + avatar from public_profiles and patch the message in place.
+            // If the lookup fails the message stays on screen with the generic name (it is never lost).
             if (!cachedName && raw.user_id) {
               void (async () => {
-                const { data: prof } = await supabase
-                  .from('public_profiles')
-                  .select('id, username, display_name, avatar_url')
-                  .eq('id', raw.user_id)
-                  .maybeSingle();
-                const nm = prof?.display_name ?? prof?.username ?? undefined;
-                const av = prof?.avatar_url ?? null;
-                if (nm) userNameCacheRef.current.set(raw.user_id, nm);
-                userAvatarCacheRef.current.set(raw.user_id, av);
-                if (nm) {
-                  setMessages((prev) =>
-                    prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
+                try {
+                  const { data: prof } = await supabase
+                    .from('public_profiles')
+                    .select('id, username, display_name, avatar_url')
+                    .eq('id', raw.user_id)
+                    .maybeSingle();
+                  const nm = prof?.display_name ?? prof?.username ?? undefined;
+                  const av = prof?.avatar_url ?? null;
+                  if (nm) userNameCacheRef.current.set(raw.user_id, nm);
+                  userAvatarCacheRef.current.set(raw.user_id, av);
+                  if (nm) {
+                    setMessages((prev) =>
+                      prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
+                  }
+                } catch (err) {
+                  console.warn('[ChatRoom] sender profile lookup failed:', err);
                 }
               })();
             }
@@ -1702,6 +1717,15 @@ export default function ChatRoomScreen() {
       <ReconnectingBanner
         visible={channelReconnecting}
         textColor={chatTheme.tabInactive}
+        backgroundColor={chatTheme.topBg}
+        borderColor={chatTheme.border}
+      />
+      <InlineRetryRow
+        visible={loadError !== null}
+        message={t('chatRoom.loadMessagesError')}
+        onRetry={() => void loadMessages(activeRoomId, loadError?.before)}
+        textColor={chatTheme.bubbleInText}
+        accentColor={chatTheme.accent}
         backgroundColor={chatTheme.topBg}
         borderColor={chatTheme.border}
       />
