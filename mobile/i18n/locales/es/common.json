@@ -108,5 +108,8 @@
     "copiedTitle": "Copiado",
     "copiedMessage": "Copiamos el texto al portapapeles para que lo pegues donde quieras.",
     "manualTitle": "Copia este texto"
+  },
+  "realtime": {
+    "reconnecting": "Reconectando…"
   }
 }

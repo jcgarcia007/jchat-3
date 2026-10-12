@@ -10,8 +10,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { showAlert } from '../utils/dialog';
+import { reportRealtimeHeartbeat } from './realtimeHealth';
 
 /** Project URL — exported so callers can reach Edge Functions (e.g. delete-account). */
 export const SUPABASE_URL =
@@ -25,6 +27,19 @@ export const isSupabaseConfigured =
   !!process.env.EXPO_PUBLIC_SUPABASE_URL &&
   !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+/**
+ * Realtime options for the WEB build only (iOS / Android keep the library defaults, exactly as before).
+ * realtime-js 2.108 documents `worker` ("use a Web Worker to set a side flow") and `heartbeatCallback`. With
+ * `worker: true` and no `workerUrl` the library builds the worker from a tiny script embedded in the package
+ * (a Blob; it only posts a keep-alive tick), so nothing is downloaded. The point: a browser throttles timers of
+ * a background tab, which let the socket's heartbeat lapse and the connection die; the worker's timer is not
+ * throttled. `heartbeatCallback` feeds services/realtimeHealth (the chat shows "Reconectando…" and catches up).
+ */
+const webRealtimeOptions =
+  Platform.OS === 'web' && typeof Worker !== 'undefined'
+    ? { realtime: { worker: true, heartbeatCallback: reportRealtimeHeartbeat } }
+    : {};
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage,
@@ -32,6 +47,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     detectSessionInUrl: false,
   },
+  ...webRealtimeOptions,
 });
 
 // ── Session guard for Edge Functions ──────────────────────────────────────────

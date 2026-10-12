@@ -45,7 +45,6 @@ import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 import * as ImagePicker from 'expo-image-picker';
 import {
   IconArrowLeft,
@@ -62,7 +61,10 @@ import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { useResilientChannel } from '../../hooks/useResilientChannel';
+import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
+import { mergeMessages } from '../../utils/mergeMessages';
 import {
   listMessages,
   markRead,
@@ -326,7 +328,6 @@ export default function DMChatScreen() {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState(route.params.prefill ?? '');
   const [sending, setSending] = useState(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
   // Path of the photo currently open in the fullscreen viewer (closed if a moderator hides that message).
   const viewerPathRef = useRef<string | null>(null);
 
@@ -425,69 +426,80 @@ export default function DMChatScreen() {
     );
   }, [conversationId, user, fetchMessages]);
 
+  // ── Catch-up after a Realtime gap ───────────────────────────────────────────
+
+  // Same fetch as the first load (hidden-conversation cut included), merged into the thread without duplicates.
+  const resyncMessages = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await listMessages(conversationId, user.id);
+      setMessages((prev) => mergeMessages(prev, data));
+    } catch (err) {
+      console.warn('[DMChat] resync error', err);
+    }
+  }, [conversationId, user]);
+
   // ── Realtime subscription ────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!isSupabaseConfigured || !user) return;
+  // The channel recovers by itself (backoff + catch-up); "Reconectando…" shows if it stays down > 3 s.
+  const meId = user?.id ?? '';
+  const { reconnecting: channelReconnecting } = useResilientChannel({
+    enabled: isSupabaseConfigured && !!user,
+    name: `dm_chat_${conversationId}`,
+    scopeKey: `${conversationId}:${meId}`,
+    configure: (channel) =>
+      channel
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'dm_messages',
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const newMsg = payload.new as DmMessageRow;
+            // Dedupe: a catch-up after a Realtime gap may already have brought this row.
+            setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [newMsg, ...prev]));
+            // Their reply frees me; my first message puts me in "waiting" (ephemeral chats only).
+            setMeta((m) => {
+              if (!m || m.ephemeralBusinessId == null) return m;
+              if (newMsg.sender_id !== meId) return { ...m, awaitingReply: false };
+              return m.firstSenderId == null ? { ...m, firstSenderId: meId, awaitingReply: true } : m;
+            });
 
-    const channel = supabase
-      .channel(channelTopic(`dm_chat_${conversationId}`))
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'dm_messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as DmMessageRow;
-          setMessages((prev) => [newMsg, ...prev]);
-          // Their reply frees me; my first message puts me in "waiting" (ephemeral chats only).
-          setMeta((m) => {
-            if (!m || m.ephemeralBusinessId == null) return m;
-            if (newMsg.sender_id !== user.id) return { ...m, awaitingReply: false };
-            return m.firstSenderId == null ? { ...m, firstSenderId: user.id, awaitingReply: true } : m;
-          });
-
-          // If the message is from the other user, mark it read immediately
-          if (newMsg.sender_id !== user.id) {
-            markRead(conversationId, user.id).catch(() => {});
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'dm_messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          // A moderator hid a message of the other person (migration 213): it disappears from the thread at once.
-          const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null; media_url?: string | null; media_moderation?: DmMessageRow['media_moderation'] };
-          if (row.hidden_at && row.id && row.sender_id !== user.id) {
-            setMessages((prev) => prev.filter((m) => m.id !== row.id));
-            // The photo being viewed was just hidden: close the viewer instead of leaving it on screen.
-            if (row.media_url && viewerPathRef.current === row.media_url) setViewerUri(null);
-          } else if (row.id && row.media_moderation !== undefined) {
-            // The photo verdict arrived (migration 214): update the bubble in place (blur on / off, rejected). An event that does
-            // not carry the column (a read receipt, say) must not erase a verdict that is already known.
-            setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, media_moderation: row.media_moderation ?? null } : m)));
-          }
-        },
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      // Unsubscribe on unmount
-      channel.unsubscribe();
-      channelRef.current = null;
-    };
-  }, [conversationId, user]);
+            // If the message is from the other user, mark it read immediately
+            if (newMsg.sender_id !== meId) {
+              markRead(conversationId, meId).catch(() => {});
+            }
+          },
+        )
+          .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'dm_messages',
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            // A moderator hid a message of the other person (migration 213): it disappears from the thread at once.
+            const row = payload.new as { id?: string; sender_id?: string; hidden_at?: string | null; media_url?: string | null; media_moderation?: DmMessageRow['media_moderation'] };
+            if (row.hidden_at && row.id && row.sender_id !== meId) {
+              setMessages((prev) => prev.filter((m) => m.id !== row.id));
+              // The photo being viewed was just hidden: close the viewer instead of leaving it on screen.
+              if (row.media_url && viewerPathRef.current === row.media_url) setViewerUri(null);
+            } else if (row.id && row.media_moderation !== undefined) {
+              // The photo verdict arrived (migration 214): update the bubble in place (blur on / off, rejected). An event that does
+              // not carry the column (a read receipt, say) must not erase a verdict that is already known.
+              setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, media_moderation: row.media_moderation ?? null } : m)));
+            }
+          },
+        ),
+    onResubscribed: () => {
+      void resyncMessages();
+    },
+  });
 
   // ── Send text ───────────────────────────────────────────────────────────────
 
@@ -751,6 +763,13 @@ export default function DMChatScreen() {
           </>
         )}
       </View>
+
+      <ReconnectingBanner
+        visible={channelReconnecting}
+        textColor={c.textSecondary}
+        backgroundColor={c.bgElevated}
+        borderColor={c.borderSubtle}
+      />
 
       {/* Permanent banner while the chat only exists inside the venue */}
       {isEphemeral && (

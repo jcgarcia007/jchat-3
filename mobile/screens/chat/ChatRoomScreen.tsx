@@ -68,6 +68,9 @@ import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
+import { useResilientChannel } from '../../hooks/useResilientChannel';
+import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
+import { mergeMessages, newestConfirmedTimestamp } from '../../utils/mergeMessages';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
 import { useMatchPresence } from '../../hooks/useMatchPresence';
@@ -214,6 +217,10 @@ const DEMO_MESSAGES: ChatMessage[] = [
 // ── Page size for infinite scroll ─────────────────────────────────────────────
 
 const PAGE_SIZE = 50;
+/** Same columns for the page load and the catch-up after a Realtime gap. */
+const MESSAGE_COLUMNS = 'id, room_id, user_id, body, type, media_url, metadata, is_system, created_at';
+/** Most messages fetched when catching up after a Realtime gap. */
+const RESYNC_LIMIT = 100;
 const AUTOSCROLL_BOTTOM_THRESHOLD = 80;
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -267,6 +274,9 @@ export default function ChatRoomScreen() {
 
   // Messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Latest list, for the catch-up after a Realtime gap (newest-first).
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestTimestampRef = useRef<string | null>(null);
@@ -638,6 +648,38 @@ export default function ChatRoomScreen() {
 
   // ── Load messages (initial page) ───────────────────────────────────────────
 
+  /**
+   * Turns raw `messages` rows into ChatMessages: resolves sender names / avatars from public_profiles (the RLS of
+   * `users` only lets you read your own row) and fills the name caches. Shared by the page load and the catch-up.
+   */
+  const hydrateRows = useCallback(async (rows: Record<string, unknown>[]): Promise<ChatMessage[]> => {
+    const uniqueUserIds = [...new Set(
+      rows.map((r) => r.user_id).filter(Boolean) as string[]
+    )];
+
+    if (uniqueUserIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('public_profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', uniqueUserIds);
+      for (const p of profs ?? []) {
+        const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
+        if (nm) userNameCacheRef.current.set(p.id as string, nm);
+        userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
+      }
+    }
+
+    return rows.map((row) => {
+      const senderName = typeof row.user_id === 'string'
+        ? userNameCacheRef.current.get(row.user_id)
+        : undefined;
+      const senderAvatar = typeof row.user_id === 'string'
+        ? userAvatarCacheRef.current.get(row.user_id) ?? undefined
+        : undefined;
+      return { ...row, sender_name: senderName, sender_avatar: senderAvatar } as unknown as ChatMessage;
+    });
+  }, []);
+
   const loadMessages = useCallback(async (roomId: string, before?: string) => {
     if (!isSupabaseConfigured) return;
     // A newer load, or a switch to another room, makes this response stale: drop it.
@@ -647,7 +689,7 @@ export default function ChatRoomScreen() {
     try {
       let query = supabase
         .from('messages')
-        .select('id, room_id, user_id, body, type, media_url, metadata, is_system, created_at')
+        .select(MESSAGE_COLUMNS)
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
@@ -664,34 +706,8 @@ export default function ChatRoomScreen() {
       }
       const rows = data ?? [];
 
-      // Resolver nombres de autores desde public_profiles (la RLS de `users` sólo
-      // deja ver la propia fila; public_profiles es la fuente pública correcta).
-      const uniqueUserIds = [...new Set(
-        rows.map((r: Record<string, unknown>) => r.user_id).filter(Boolean) as string[]
-      )];
-
-      if (uniqueUserIds.length > 0) {
-        const { data: profs } = await supabase
-          .from('public_profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', uniqueUserIds);
-        if (isStale()) return;
-        for (const p of profs ?? []) {
-          const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
-          if (nm) userNameCacheRef.current.set(p.id as string, nm);
-          userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
-        }
-      }
-
-      const msgs = rows.map((row: Record<string, unknown>) => {
-        const senderName = typeof row.user_id === 'string'
-          ? userNameCacheRef.current.get(row.user_id)
-          : undefined;
-        const senderAvatar = typeof row.user_id === 'string'
-          ? userAvatarCacheRef.current.get(row.user_id) ?? undefined
-          : undefined;
-        return { ...row, sender_name: senderName, sender_avatar: senderAvatar } as unknown as ChatMessage;
-      });
+      const msgs = await hydrateRows(rows as unknown as Record<string, unknown>[]);
+      if (isStale()) return;
       setHasMore(msgs.length === PAGE_SIZE);
       if (msgs.length > 0) {
         // msgs is DESC (newest→oldest); the last element is the oldest of the page.
@@ -708,7 +724,37 @@ export default function ChatRoomScreen() {
     } finally {
       if (requestId === loadSeqRef.current) setLoadingMessages(false);
     }
-  }, []);
+  }, [hydrateRows]);
+
+  /**
+   * Catch-up after the live channel was down (resubscribed, app back to the foreground, network back): the rows
+   * created after the newest known message, same table / columns / room filter as loadMessages, merged into the
+   * list without duplicates. Silent on failure: the next trigger tries again. (A message hidden while the channel
+   * was down is not removed here — the hide arrives as an UPDATE event, which a gap loses.)
+   */
+  const resyncMessages = useCallback(async (roomId: string) => {
+    if (!isSupabaseConfigured) return;
+    const newest = newestConfirmedTimestamp(messagesRef.current);
+    if (!newest) {
+      void loadMessages(roomId); // nothing on screen yet: a normal first page
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(MESSAGE_COLUMNS)
+        .eq('room_id', roomId)
+        .gt('created_at', newest)
+        .order('created_at', { ascending: false })
+        .limit(RESYNC_LIMIT);
+      if (error || !data || data.length === 0 || roomId !== activeRoomIdRef.current) return;
+      const missed = await hydrateRows(data as unknown as Record<string, unknown>[]);
+      if (roomId !== activeRoomIdRef.current) return;
+      setMessages((prev) => mergeMessages(prev, missed));
+    } catch (err) {
+      console.warn('[ChatRoom] resync error', err);
+    }
+  }, [loadMessages, hydrateRows]);
 
   useEffect(() => {
     if (initialLoading || entryVisible) return;
@@ -747,91 +793,87 @@ export default function ChatRoomScreen() {
   // ── Realtime subscription (messages) ──────────────────────────────────────
   const meId = user?.id;
 
-  useEffect(() => {
-    if (!isSupabaseConfigured || entryVisible) return;
-
-    // Unique topic per subscription — see PinnedBanner: repeated topics return the
-    // existing (already-subscribed) channel and .on() then throws. The filter below
-    // does the real scoping, not the topic.
-    const topic = `room-messages:${activeRoomId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const channel = supabase
-      .channel(topic)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `room_id=eq.${activeRoomId}`,
-        },
-        (payload) => {
-          const raw = payload.new as ChatMessage;
-          const cachedName = userNameCacheRef.current.get(raw.user_id);
-          const cachedAvatar = userAvatarCacheRef.current.get(raw.user_id);
-          const newMsg: ChatMessage = cachedName
-            ? { ...raw, sender_name: cachedName, sender_avatar: cachedAvatar ?? undefined }
-            : raw;
-          setMessages((prev) => {
-            // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [newMsg, ...prev];
-          });
-          // With the inverted list a new message at index 0 appears at the bottom
-          // automatically: if the user is at the bottom they see it; if they
-          // scrolled up to read history, they are not yanked down.
-          // If the name wasn't cached (message from a user we haven't seen yet),
-          // resolve name + avatar from public_profiles and patch the message in place.
-          if (!cachedName && raw.user_id) {
-            void (async () => {
-              const { data: prof } = await supabase
-                .from('public_profiles')
-                .select('id, username, display_name, avatar_url')
-                .eq('id', raw.user_id)
-                .maybeSingle();
-              const nm = prof?.display_name ?? prof?.username ?? undefined;
-              const av = prof?.avatar_url ?? null;
-              if (nm) userNameCacheRef.current.set(raw.user_id, nm);
-              userAvatarCacheRef.current.set(raw.user_id, av);
-              if (nm) {
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
-              }
-            })();
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `room_id=eq.${activeRoomId}`,
-        },
-        (payload) => {
-          // A moderator hid the message (migration 213): everyone but its author drops it from the list at once.
-          const row = payload.new as {
-            id?: string;
-            user_id?: string;
-            type?: string;
-            metadata?: Record<string, unknown>;
-            hidden_at?: string | null;
-          };
-          if (row.hidden_at && row.id && row.user_id !== meId) {
-            setMessages((prev) => prev.filter((m) => m.id !== row.id));
-          } else if (row.id && isTodMessageType(row.type) && row.metadata) {
-            // Truth or Dare: the server patches plays / status / applause in the message metadata.
-            const metadata = row.metadata;
-            setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, metadata } : m)));
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [activeRoomId, entryVisible, meId]);
+  // The channel recovers by itself (backoff + catch-up); "Reconectando…" shows if it stays down > 3 s.
+  const { reconnecting: channelReconnecting } = useResilientChannel({
+    enabled: isSupabaseConfigured && !entryVisible,
+    name: `room-messages:${activeRoomId}`,
+    scopeKey: `${activeRoomId}:${meId ?? ''}`,
+    configure: (channel) =>
+      channel
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${activeRoomId}`,
+          },
+          (payload) => {
+            const raw = payload.new as ChatMessage;
+            const cachedName = userNameCacheRef.current.get(raw.user_id);
+            const cachedAvatar = userAvatarCacheRef.current.get(raw.user_id);
+            const newMsg: ChatMessage = cachedName
+              ? { ...raw, sender_name: cachedName, sender_avatar: cachedAvatar ?? undefined }
+              : raw;
+            setMessages((prev) => {
+              // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
+              if (prev.some((m) => m.id === newMsg.id)) return prev;
+              return [newMsg, ...prev];
+            });
+            // With the inverted list a new message at index 0 appears at the bottom
+            // automatically: if the user is at the bottom they see it; if they
+            // scrolled up to read history, they are not yanked down.
+            // If the name wasn't cached (message from a user we haven't seen yet),
+            // resolve name + avatar from public_profiles and patch the message in place.
+            if (!cachedName && raw.user_id) {
+              void (async () => {
+                const { data: prof } = await supabase
+                  .from('public_profiles')
+                  .select('id, username, display_name, avatar_url')
+                  .eq('id', raw.user_id)
+                  .maybeSingle();
+                const nm = prof?.display_name ?? prof?.username ?? undefined;
+                const av = prof?.avatar_url ?? null;
+                if (nm) userNameCacheRef.current.set(raw.user_id, nm);
+                userAvatarCacheRef.current.set(raw.user_id, av);
+                if (nm) {
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
+                }
+              })();
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${activeRoomId}`,
+          },
+          (payload) => {
+            // A moderator hid the message (migration 213): everyone but its author drops it from the list at once.
+            const row = payload.new as {
+              id?: string;
+              user_id?: string;
+              type?: string;
+              metadata?: Record<string, unknown>;
+              hidden_at?: string | null;
+            };
+            if (row.hidden_at && row.id && row.user_id !== meId) {
+              setMessages((prev) => prev.filter((m) => m.id !== row.id));
+            } else if (row.id && isTodMessageType(row.type) && row.metadata) {
+              // Truth or Dare: the server patches plays / status / applause in the message metadata.
+              const metadata = row.metadata;
+              setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, metadata } : m)));
+            }
+          },
+        ),
+    onResubscribed: () => {
+      void resyncMessages(activeRoomIdRef.current);
+    },
+  });
 
   // Presence (main + anchor + visited) is owned by usePresenceChannels above.
 
@@ -1656,6 +1698,13 @@ export default function ChatRoomScreen() {
           onSelectProtected={handleSelectProtectedSubRoom}
         />
       </ChatTopBar>
+
+      <ReconnectingBanner
+        visible={channelReconnecting}
+        textColor={chatTheme.tabInactive}
+        backgroundColor={chatTheme.topBg}
+        borderColor={chatTheme.border}
+      />
 
       {/* Truth or Dare: strip of active rounds of THIS room, right under the room tabs (hidden when there are none). */}
       <TodRoundsBar

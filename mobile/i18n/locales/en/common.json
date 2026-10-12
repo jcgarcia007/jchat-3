@@ -108,5 +108,8 @@
     "copiedTitle": "Copied",
     "copiedMessage": "We copied the text to your clipboard so you can paste it anywhere.",
     "manualTitle": "Copy this text"
+  },
+  "realtime": {
+    "reconnecting": "Reconnecting…"
   }
 }
