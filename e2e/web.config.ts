@@ -10,7 +10,7 @@
  * PLAYWRIGHT_CHROMIUM_PATH at an installed Chromium / chrome-headless-shell binary.
  */
 
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined;
@@ -40,6 +40,12 @@ export default defineConfig({
     {
       name: 'desktop-1280x800',
       use: { viewport: { width: 1280, height: 800 } },
+    },
+    // Safari on iPhone: WebKit with the iPhone 15 profile (npx playwright install webkit). Only the iOS viewport spec.
+    {
+      name: 'iphone-webkit',
+      testMatch: /ios-viewport\.spec\.ts/,
+      use: { ...devices['iPhone 15'], launchOptions: {} },
     },
   ],
 });
