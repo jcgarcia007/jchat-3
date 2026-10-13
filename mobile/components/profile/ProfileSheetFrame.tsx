@@ -5,7 +5,9 @@
  *   slides up from the bottom. Closes with ✕, by tapping the backdrop, by dragging the handle / header down, and
  *   with the system back (the screen is a transparentModal route: goBack()).
  *   Wide web (>= 900 px): a right-hand panel (420 px) and NO backdrop: the chat stays visible and usable on the
- *   left (WebFrame shifts the phone-width column, see utils/profilePanelStore).
+ *   left (WebFrame shifts the phone-width column, see utils/profilePanelStore). A screen can opt out with
+ *   `allowPanel={false}` (the venue menu does): it then keeps the phone behaviour at every width — a sheet inside the
+ *   480 px app column, backdrop over the column only, and the column does not move.
  *
  * The drag uses React Native's PanResponder on the header only (so the profile's own scrolling is never fought
  * over) — the same on iOS, Android and web.
@@ -31,6 +33,8 @@ interface Props {
   a11yLabel?: string;
   /** testID prefix: `<base>-sheet`, `<base>-panel`, `<base>-sheet-close` (default 'profile'). */
   testIDBase?: string;
+  /** Wide web: false keeps the bottom sheet (inside the app column) instead of the right-hand panel. Default true. */
+  allowPanel?: boolean;
 }
 
 const CLOSE_DISTANCE = 120;
@@ -38,7 +42,7 @@ const CLOSE_VELOCITY = 0.9;
 const MAX_DOM_LEVELS = 8;
 const TOP_GAP = 48; // room for the new-messages pill above the sheet
 
-export function ProfileSheetFrame({ onClose, children, overlay, a11yLabel, testIDBase = 'profile' }: Props): React.ReactElement {
+export function ProfileSheetFrame({ onClose, children, overlay, a11yLabel, testIDBase = 'profile', allowPanel = true }: Props): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('common');
   const { t: tp } = useTranslation('profile');
@@ -47,7 +51,7 @@ export function ProfileSheetFrame({ onClose, children, overlay, a11yLabel, testI
   const { width, height } = useWindowDimensions();
   // Set when the panel's pointer-events workaround cannot be applied (see below): this opening uses the sheet.
   const [panelFailed, setPanelFailed] = useState(false);
-  const panel = Platform.OS === 'web' && isProfilePanelWidth(width) && !panelFailed;
+  const panel = allowPanel && Platform.OS === 'web' && isProfilePanelWidth(width) && !panelFailed;
   const sheetHeight = Math.max(320, height - insets.top - TOP_GAP);
   const translateY = useRef(new Animated.Value(panel ? 0 : sheetHeight)).current;
 

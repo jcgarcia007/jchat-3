@@ -106,6 +106,8 @@ export default function MenuSheetScreen(): React.ReactElement {
       onClose={close}
       a11yLabel={t('menuSheet.frameTitle', { business: businessName ?? '' })}
       testIDBase="menu"
+      // On desktop the menu is a sheet INSIDE the 480 px column like on the phone (not a side panel; the profile keeps its panel).
+      allowPanel={false}
       overlay={
         <>
           {venue.session ? <NewMessagesPill count={unread} business={venue.session.businessName} onPress={close} /> : null}

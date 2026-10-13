@@ -2,6 +2,8 @@
  * JChat 3.0 — the venue menu on the web: a SHEET over the chat (feat/web-menu-sheet).
  *
  * Needs the saved session (e2e/.auth/web-session.json, git-ignored; `npm run web:session`): skipped without it.
+ * Desktop (1280 px): the menu is a sheet INSIDE the 480 px app column, like on the phone — no side panel, the column
+ * does not move (fix/web-menu-sheet-column); the PROFILE keeps its right-hand panel.
  * Bar XZX at 390 px: tapping 🍴 opens the menu sheet (an iframe of …/m/<slug>?embed=1), no new tab opens, and the chat
  * stays mounted behind it; ✕ closes the sheet and the chat is as it was. Nothing is ordered or paid.
  *
@@ -11,14 +13,16 @@
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const SESSION = path.resolve(__dirname, '..', '.auth', 'web-session.json');
 const MENU_BASE = (process.env.E2E_MENU_BASE_URL ?? 'https://jchat.cloud/m').replace(/\/+$/, '');
 
 test.skip(!existsSync(SESSION), 'no saved web session (run: npm run web:session)');
+// Tests whose title starts with "[desktop]" run at 1280 px; every other test at 390 px.
 test.beforeEach(({}, testInfo) => {
-  test.skip(testInfo.project.name !== 'mobile-390x844', 'phone viewport only');
+  const desktop = testInfo.title.startsWith('[desktop]');
+  test.skip(testInfo.project.name !== (desktop ? 'desktop-1280x800' : 'mobile-390x844'), desktop ? 'desktop viewport only' : 'phone viewport only');
 });
 test.use({
   storageState: existsSync(SESSION) ? SESSION : undefined,
@@ -118,4 +122,65 @@ test('the framed menu says "ready" and accepts a table context only from its par
   // 4. The token is in no URL: not the page's, not the frame's.
   expect(page.url()).not.toContain('table');
   expect(frame.url()).not.toContain('test-venue-table');
+});
+
+/** The 480 px app column (WebFrame): the first near-full-height element that is 480 px wide. */
+async function appColumn(page: Page) {
+  return page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll<HTMLElement>('#root div')).find((e) => {
+      const r = e.getBoundingClientRect();
+      return Math.abs(r.width - 480) <= 1 && r.height >= window.innerHeight * 0.9;
+    });
+    const r = el?.getBoundingClientRect();
+    return r ? { left: Math.round(r.left), right: Math.round(r.right) } : null;
+  });
+}
+
+async function enterChat(page: Page) {
+  await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
+  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
+}
+
+test('[desktop] 🍴 opens the menu as a sheet INSIDE the 480 px column: no side panel, the column does not move, ✕ closes', async ({ page }) => {
+  await enterChat(page);
+  const before = await appColumn(page);
+  expect(before, 'the 480 px column exists').not.toBeNull();
+
+  await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
+  await expect(page.getByTestId('menu-sheet')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('menu-panel')).toHaveCount(0); // no right-hand panel
+  await page.waitForTimeout(500); // the sheet slides up
+
+  // The sheet content and its ✕ are inside the column; the column itself did not move.
+  const inside = async (testId: string) => {
+    const box = await page.getByTestId(testId).boundingBox();
+    expect(box, testId).not.toBeNull();
+    expect(box!.x, `${testId} left edge`).toBeGreaterThanOrEqual(before!.left - 1);
+    expect(box!.x + box!.width, `${testId} right edge`).toBeLessThanOrEqual(before!.right + 1);
+  };
+  await inside('menu-sheet-content');
+  await inside('menu-sheet-close');
+  expect(await appColumn(page)).toEqual(before);
+
+  await page.getByTestId('menu-sheet-close').click();
+  await expect(page.getByTestId('menu-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('chat-more-button')).toBeVisible();
+  await expect(page.getByPlaceholder('Mensaje…')).toBeVisible();
+  expect(await appColumn(page)).toEqual(before);
+  await page.screenshot({ path: 'artifacts/web-menu-sheet-column/1280-after-close.png' });
+});
+
+test('[desktop] the profile still opens as the right-hand panel and shifts the column', async ({ page }) => {
+  await enterChat(page);
+  const before = await appColumn(page);
+  await page.getByTestId('chat-more-button').click();
+  await page.getByTestId('more-my-profile').click();
+  await expect(page.getByTestId('profile-panel')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('profile-sheet')).toHaveCount(0);
+  const shifted = await appColumn(page);
+  expect(shifted!.left, 'the column moved left to make room for the panel').toBeLessThan(before!.left);
+  await page.getByTestId('profile-sheet-close').click();
+  await expect(page.getByTestId('profile-panel')).toHaveCount(0);
+  expect(await appColumn(page)).toEqual(before);
 });
