@@ -26,6 +26,9 @@ import { applyAppearance, loadStoredAppearance } from './theme/appearance';
 import { loadUserSettings } from './services/userSettings';
 import { useEntryLinkCapture } from './hooks/useEntryLinkCapture';
 import { captureWebEntry } from './utils/captureWebEntry';
+import { installWebInputFontFloor } from './utils/webInputFontFloor';
+import { setWebThemeColorBase } from './utils/webThemeColor';
+import { useThemeColors } from './theme/colors';
 
 // Web: a venue entry URL (/8-k3f9, /c/<token>, ?venue=…) is saved and the address bar cleaned BEFORE the
 // NavigationContainer mounts (it could not map those paths). No-op on iOS / Android.
@@ -65,6 +68,14 @@ function AuthenticatedAppearanceBridge() {
 
 export default function App() {
   const [appearanceReady, setAppearanceReady] = useState(false);
+  const appColors = useThemeColors();
+
+  // Web only (no-ops on iOS / Android): browser bar colour follows the app theme; text fields never go under 16 px
+  // (iOS Safari zooms the page otherwise).
+  useEffect(() => {
+    setWebThemeColorBase(appColors.bgBase);
+  }, [appColors.bgBase]);
+  useEffect(() => installWebInputFontFloor(), []);
 
   useEffect(() => {
     let mounted = true;

@@ -60,6 +60,7 @@ import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
+import { setWebThemeColorOverride } from '../../utils/webThemeColor';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
 import { ChatMoreSheet } from '../../components/chat/ChatMoreSheet';
@@ -345,6 +346,11 @@ export default function ChatRoomScreen() {
 
   const activeSubRoomData = subRooms.find((r) => r.id === activeRoomId) ?? null;
   const chatTheme = getChatTheme(activeSubRoomData?.chat_theme_id ?? room?.chat_theme_id ?? 1);
+  // Web: the browser bar (iOS status bar) takes the chat top bar colour while the chat is open.
+  useEffect(() => {
+    setWebThemeColorOverride(chatTheme.topBg);
+    return () => setWebThemeColorOverride(null);
+  }, [chatTheme.topBg]);
 
   // ── Multi-room presence (main + anchor + visited) ───────────────────────────
 
