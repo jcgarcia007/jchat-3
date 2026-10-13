@@ -1,7 +1,7 @@
 // Checks the framing headers of a RUNNING Next server (next start / dev / a deployment). Run from web/:
 //   node scripts/check-frame-headers.mjs [BASE_URL] [SLUG]       (default http://127.0.0.1:3100, slug bar-xzx-omd2)
 // Expectations: /m/<slug> is embeddable by our own domains only (no X-Frame-Options, CSP frame-ancestors = allow-list);
-// every other page (/dashboard, /login-ish, /c/*, /) keeps X-Frame-Options: DENY and frame-ancestors 'none'.
+// every other page (/dashboard, /auth/login, /c/*, /) keeps X-Frame-Options: DENY and frame-ancestors 'none'.
 
 const base = (process.argv[2] ?? 'http://127.0.0.1:3100').replace(/\/$/, '');
 const slug = process.argv[3] ?? 'bar-xzx-omd2';
@@ -23,7 +23,7 @@ for (const path of [`/m/${slug}`, `/m/${slug}?embed=1`]) {
   check(`${path}: no *.vercel.app, no bare *`, !!fa && !fa.includes('*.vercel.app') && !/(^| )\*( |$)/.test(fa), fa);
   if (prod) check(`${path}: no localhost in production`, !!fa && !fa.includes('localhost'), fa);
 }
-for (const path of ['/dashboard', '/login', '/c/anything', '/', '/pricing', '/nearby']) {
+for (const path of ['/dashboard', '/auth/login', '/c/anything', '/', '/pricing', '/nearby']) {
   const res = await fetch(base + path, { redirect: 'manual' });
   const fa = ancestorsOf(res.headers.get('content-security-policy'));
   check(`${path}: X-Frame-Options DENY`, res.headers.get('x-frame-options') === 'DENY', res.headers.get('x-frame-options'));
