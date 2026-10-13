@@ -47,5 +47,11 @@ export default defineConfig({
       testMatch: /ios-viewport\.spec\.ts/,
       use: { ...devices['iPhone 15'], launchOptions: {} },
     },
+    // Tablet width: only the audit walks it (npm run web:audit), the smoke specs stay on phone + desktop.
+    {
+      name: 'tablet-768x1024',
+      testMatch: /audit\.spec\.ts/,
+      use: { viewport: { width: 768, height: 1024 }, hasTouch: true, deviceScaleFactor: 2 },
+    },
   ],
 });

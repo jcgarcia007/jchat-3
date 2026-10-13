@@ -4,9 +4,12 @@
   "description": "Playwright smoke tests for the Expo Web build (the Maestro flows live in e2e/maestro).",
   "scripts": {
     "web": "playwright test -c web.config.ts",
-    "web:session": "node web/save-session.mjs"
+    "web:session": "node web/save-session.mjs",
+    "web:audit": "WEB_AUDIT=1 PLAYWRIGHT_HTML_OUTPUT_DIR=artifacts/web-audit/html PLAYWRIGHT_HTML_OPEN=never sh -c \"rm -rf artifacts/web-audit/data; playwright test -c web.config.ts web/audit.spec.ts --reporter=html,list; node web/audit-report.mjs\""
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/cli": "^0.1.22",
     "@playwright/test": "1.64.0"
   }
 }
