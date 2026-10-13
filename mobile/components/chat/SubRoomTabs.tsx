@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { IconLock } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
+import { ensureTextContrast } from '../../utils/ensureTextContrast';
 import type { ChatTheme } from '../../theme/chatThemes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -80,6 +81,8 @@ export function SubRoomTabs({
   if (rooms.length <= 1) return null;
 
   const sorted = [...rooms].sort((a, b) => a.sort - b.sort);
+  // The venue's accent stays the underline; only the active tab's TEXT is nudged until it is readable (>= 4.5:1).
+  const activeText = ensureTextContrast(theme.tabActive, theme.topBg, 4.5);
 
   return (
     <ScrollView
@@ -108,12 +111,12 @@ export function SubRoomTabs({
           >
             <View style={tabStyles.labelRow}>
               {locked && (
-                <IconLock size={11} color={isActive ? theme.tabActive : theme.tabInactive} />
+                <IconLock size={11} color={isActive ? activeText : theme.tabInactive} />
               )}
               <Text
                 style={[
                   tabStyles.label,
-                  { color: isActive ? theme.tabActive : theme.tabInactive },
+                  { color: isActive ? activeText : theme.tabInactive },
                   isActive && tabStyles.labelActive,
                 ]}
                 numberOfLines={1}
