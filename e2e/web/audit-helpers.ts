@@ -141,7 +141,9 @@ const DOM_CHECKS = `(opts) => {
   }
 
   // 2b. iOS Safari hygiene: text fields under 16 px (it zooms the page on focus) and a document that scrolls.
-  for (const f of Array.from(root.querySelectorAll('input,textarea'))) {
+  // Touch sizes only: the 16 px rule (web/app/globals.css, Expo input floor) applies on (hover: none) and (pointer: coarse);
+  // desktop keeps the designed sizes, so a 14 px field at 1280 is not a defect.
+  for (const f of opts.touch ? Array.from(root.querySelectorAll('input,textarea')) : []) {
     if (['checkbox', 'radio', 'hidden', 'range', 'file', 'button', 'submit'].includes(f.type) || !isVisible(f)) continue;
     const r = f.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) continue;
@@ -356,7 +358,7 @@ export class Audit {
 
     const [w] = meta.size.split('x').map(Number);
     const raw = (await page
-      .evaluate(`(${DOM_CHECKS})(${JSON.stringify({ desktop: w >= 900, phone: w <= 480, expectColumn: this.expectColumn, appShell: this.expectColumn })})`)
+      .evaluate(`(${DOM_CHECKS})(${JSON.stringify({ desktop: w >= 900, phone: w <= 480, touch: w <= 800, expectColumn: this.expectColumn, appShell: this.expectColumn })})`)
       .catch((e) => [{ kind: 'navigation', msg: `check failed: ${String(e).slice(0, 120)}`, target: '' }])) as { kind: string; msg: string; target: string }[];
     for (const r of raw) this.push({ kind: r.kind, message: r.msg, target: r.target, shot: shotRel });
 

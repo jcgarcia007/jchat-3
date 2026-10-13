@@ -20,7 +20,8 @@ import { Audit, withAccountLock } from './audit-helpers';
 
 const SESSION = path.resolve(__dirname, '..', '.auth', 'web-session.json');
 const VENUE = 'bar-xzx-omd2';
-const PROD = 'https://jchat.cloud';
+// AUDIT_NEXT_BASE points the public-pages suite at a local Next (e.g. http://127.0.0.1:3100) to check unreleased web/ changes.
+const PROD = process.env.AUDIT_NEXT_BASE ?? 'https://jchat.cloud';
 const THEMES = ['light', 'dark'] as const;
 const LANGS = ['es', 'en'] as const;
 
