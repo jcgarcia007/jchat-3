@@ -16,7 +16,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { Audit } from './audit-helpers';
+import { Audit, withAccountLock } from './audit-helpers';
 
 const SESSION = path.resolve(__dirname, '..', '.auth', 'web-session.json');
 const VENUE = 'bar-xzx-omd2';
@@ -138,7 +138,8 @@ for (const theme of THEMES) {
       });
 
       test('signed-in walk', async ({ page }, testInfo) => {
-        test.setTimeout(10 * 60_000);
+        test.setTimeout(30 * 60_000); // includes the wait for the account lock (the 6 walks run one at a time)
+        await withAccountLock(async () => {
         page.setDefaultTimeout(8000);
         const a = new Audit(page, meta(testInfo, 'app', theme, lang));
         closePopups(page);
@@ -237,7 +238,10 @@ for (const theme of THEMES) {
         await a.step('Menú del local (hoja)', async () => {
           await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
           await expect(page.getByTestId('menu-sheet').or(page.getByTestId('menu-sheet-content')).first()).toBeVisible();
-          await a.screen('Menú del local (hoja)', { settleMs: 4000 });
+          // The build used by npm run web:audit points the sheet at the LOCAL Next (E2E_MENU_BASE_URL), so the framed
+          // page really renders; production still sends frame-ancestors 'none' until web/ is deployed.
+          if (process.env.E2E_MENU_BASE_URL) await expect(page.frameLocator('iframe').locator('body')).not.toBeEmpty({ timeout: 25_000 });
+          await a.screen('Menú del local (hoja)', { settleMs: 2500 });
           await ensureChat(page);
         });
 
@@ -333,6 +337,7 @@ for (const theme of THEMES) {
         a.save();
         testInfo.annotations.push({ type: 'screens', description: `${a.screens.length}` });
         expect(a.findings.filter((f) => f.severity === 'bloqueante')).toEqual([]);
+        });
       });
     });
   }
@@ -431,7 +436,7 @@ const NEXT_PAGES: [string, string][] = [
   ['Eliminar cuenta (info)', '/account/delete'],
   ['Precios', '/pricing'],
   ['Cerca de mí', '/nearby'],
-  ['Login (solo cargar)', '/login'],
+  ['Login (solo cargar)', '/auth/login'],
   ['Ruta inexistente (404)', '/ruta-que-no-existe-audit'],
 ];
 
@@ -451,10 +456,12 @@ for (const theme of THEMES) {
         const a = new Audit(page, meta(testInfo, 'next-prod', theme, lang), false);
         for (const [name, route] of NEXT_PAGES) {
           await a.step(name, async () => {
+            a.expect404 = /inexistente/.test(name);
             const res = await page.goto(`${PROD}${route}`, { waitUntil: 'load', timeout: 30_000 });
             if (res && res.status() >= 400 && !/inexistente/.test(name)) a.push({ kind: 'http-4xx', screen: name, message: `GET ${route} → ${res.status()}` });
             await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => undefined);
             await a.screen(name, { settleMs: 900 });
+            a.expect404 = false;
           });
         }
         for (const file of ['/robots.txt', '/sitemap.xml']) {

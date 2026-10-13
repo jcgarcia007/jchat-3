@@ -5,7 +5,8 @@
   "scripts": {
     "web": "playwright test -c web.config.ts",
     "web:session": "node web/save-session.mjs",
-    "web:audit": "WEB_AUDIT=1 PLAYWRIGHT_HTML_OUTPUT_DIR=artifacts/web-audit/html PLAYWRIGHT_HTML_OPEN=never sh -c \"rm -rf artifacts/web-audit/data; playwright test -c web.config.ts web/audit.spec.ts --reporter=html,list; node web/audit-report.mjs\""
+    "web:audit": "WEB_AUDIT=1 E2E_MENU_BASE_URL=http://127.0.0.1:3100/m PLAYWRIGHT_HTML_OUTPUT_DIR=artifacts/web-audit/html PLAYWRIGHT_HTML_OPEN=never sh -c \"rm -rf artifacts/web-audit/data artifacts/web-audit/.account-lock; npm run web:audit:build && playwright test -c web.config.ts web/audit.spec.ts --reporter=html,list; node web/audit-report.mjs\"",
+    "web:audit:build": "cd ../mobile && EXPO_PUBLIC_MENU_BASE_URL=http://127.0.0.1:3100/m npx expo export -p web --output-dir dist-web-audit --clear"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

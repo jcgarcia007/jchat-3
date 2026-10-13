@@ -26,12 +26,27 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     launchOptions: executablePath ? { executablePath } : {},
   },
-  webServer: {
-    command: `node web/serve-dist.mjs ../mobile/dist-web ${PORT}`,
-    url: `http://127.0.0.1:${PORT}/`,
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  // npm run web:audit exports the app into dist-web-audit with the menu pointed at a LOCAL Next (port 3100) and starts
+  // both; the regular smoke run serves dist-web only.
+  webServer: [
+    {
+      command: `node web/serve-dist.mjs ../mobile/${process.env.WEB_AUDIT ? 'dist-web-audit' : 'dist-web'} ${PORT}`,
+      url: `http://127.0.0.1:${PORT}/`,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+    ...(process.env.WEB_AUDIT
+      ? [
+          {
+            command: 'npm run dev -- -p 3100',
+            cwd: '../web',
+            url: 'http://127.0.0.1:3100/robots.txt',
+            reuseExistingServer: true,
+            timeout: 120_000,
+          },
+        ]
+      : []),
+  ],
   projects: [
     {
       name: 'mobile-390x844',

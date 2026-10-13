@@ -44,6 +44,7 @@ export const EXPECTED_NOISE: { test: RegExp; why: string }[] = [
   { test: /expo-notifications.*not yet fully supported on web/i, why: 'expo-notifications on web: no push listener (known limitation)' },
   { test: /useNativeDriver.*not supported/i, why: 'react-native-web falls back to JS animation (known, harmless)' },
   { test: /\/favicon\.ico/i, why: 'favicon probe' },
+  { test: /_next\/webpack-hmr/i, why: 'Next dev server hot-reload websocket (only the local dev server used for the menu sheet)' },
 ];
 
 const SHAPES = 'path,circle,rect,line,polyline,polygon,ellipse';
@@ -204,7 +205,11 @@ const DOM_CHECKS = `(opts) => {
     if (text.length < 4) continue;
     const clipsX = cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1;
     const clipsY = cs.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + 1;
-    if ((clipsX || clipsY) && cs.overflowX !== 'scroll' && cs.overflowX !== 'auto' && cs.overflowY !== 'scroll' && cs.overflowY !== 'auto') {
+    // numberOfLines / ellipsis / line-clamp truncate ON PURPOSE (react-native-web emits them): not a defect. Words broken
+    // in the middle (below) and text clipped by overflow:hidden without any of those still are.
+    const clamp = cs.getPropertyValue('-webkit-line-clamp');
+    const intentional = cs.textOverflow === 'ellipsis' || (clamp !== '' && clamp !== 'none');
+    if (!intentional && (clipsX || clipsY) && cs.overflowX !== 'scroll' && cs.overflowX !== 'auto' && cs.overflowY !== 'scroll' && cs.overflowY !== 'auto') {
       const key = 'cut:' + text.slice(0, 30);
       if (!seenText.has(key)) { seenText.add(key); out.push({ kind: 'cut-text', msg: 'texto cortado/truncado: "' + text.slice(0, 60) + '"', target: label(el) }); }
     }
@@ -261,6 +266,8 @@ export class Audit {
   private shots = 0;
   readonly screens: string[] = [];
   readonly noise = new Map<string, number>();
+  /** Set while a step navigates to a route that is SUPPOSED to be a 404 (the probe for the not-found page). */
+  expect404 = false;
 
   constructor(
     readonly page: Page,
@@ -275,6 +282,7 @@ export class Audit {
       const text = msg.text();
       const known = noisy(text);
       if (known) return note(known.why);
+      if (this.expect404 && /status of 404/.test(text)) return note('expected 404 (nonexistent route used as the not-found probe)');
       const loc = msg.location();
       const isReact = /Warning:|React|validateDOMNesting|Each child in a list|act\(/i.test(text);
       this.buffer.push({
@@ -302,6 +310,7 @@ export class Audit {
       const url = res.url();
       const known = noisy(url);
       if (known) return note(known.why);
+      if (s === 404 && this.expect404 && res.request().isNavigationRequest()) return note('expected 404 (nonexistent route used as the not-found probe)');
       this.buffer.push({ kind: s >= 500 ? 'http-5xx' : 'http-4xx', message: `${res.request().method()} ${redact(url)} → ${s}` });
     });
   }
@@ -374,10 +383,18 @@ export class Audit {
         for (const v of res.violations) {
           if (v.impact !== 'serious' && v.impact !== 'critical') continue;
           const nodes = v.nodes.slice(0, 3).map((n) => n.target.join(' ').slice(0, 90));
+          // color-contrast: keep the colours and the ratio axe measured (needed to pick token values).
+          const contrast =
+            v.id === 'color-contrast'
+              ? v.nodes.slice(0, 6).map((n) => {
+                  const d = (n.any[0]?.data ?? {}) as { fgColor?: string; bgColor?: string; contrastRatio?: number; expectedContrastRatio?: string };
+                  return `${d.fgColor} sobre ${d.bgColor} = ${d.contrastRatio} (mín ${d.expectedContrastRatio}) «${(n.html.match(/>([^<]{2,30})</)?.[1] ?? '').trim()}»`;
+                })
+              : [];
           this.push({
             kind: v.impact === 'critical' ? 'axe-critical' : 'axe-serious',
             message: `axe ${v.id}: ${v.help} (${v.nodes.length} nodo${v.nodes.length === 1 ? '' : 's'})`,
-            detail: nodes.join(' | '),
+            detail: contrast.length ? contrast.join(' | ') : nodes.join(' | '),
             target: nodes[0],
             shot: shotRel,
           });
@@ -408,5 +425,36 @@ function redact(url: string) {
     return u.toString().replace(/\/t\/[^/]+/, '/t/<token>').replace(/[A-Za-z0-9_-]{40,}/g, '<redacted>').slice(0, 160);
   } catch {
     return url.slice(0, 100);
+  }
+}
+
+/**
+ * The signed-in walks all use the SAME test account. Supabase Realtime presence keys the channel by user, so two
+ * walks running at once (the config runs several workers) fight over it and log "[presence] … CHANNEL_ERROR". Walks
+ * therefore take this cross-process lock (an atomic mkdir) and run one at a time; everything else stays parallel.
+ */
+export async function withAccountLock<T>(fn: () => Promise<T>): Promise<T> {
+  const { mkdirSync, rmSync, statSync } = await import('node:fs');
+  const dir = path.join(AUDIT_DIR, '.account-lock');
+  mkdirSync(AUDIT_DIR, { recursive: true });
+  const deadline = Date.now() + 25 * 60_000;
+  for (;;) {
+    try {
+      mkdirSync(dir);
+      break;
+    } catch {
+      try {
+        if (Date.now() - statSync(dir).mtimeMs > 15 * 60_000) rmSync(dir, { recursive: true, force: true }); // stale (a crashed run)
+      } catch {
+        /* released meanwhile */
+      }
+      if (Date.now() > deadline) throw new Error('timed out waiting for the account lock');
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 }
