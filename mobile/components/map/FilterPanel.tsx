@@ -408,6 +408,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                       accessibilityRole="radio"
                       accessibilityState={{ checked: sel, disabled: !hasLocation }}
                       accessibilityLabel={distanceLabel(km)}
+                      aria-checked={sel}
                     >
                       <Text style={[styles.segmentedLabel, { color: sel ? palette.bgSurfaceLight : c.textPrimary }]}>
                         {distanceLabel(km)}

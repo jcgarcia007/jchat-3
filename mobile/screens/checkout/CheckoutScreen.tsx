@@ -845,6 +845,7 @@ export default function CheckoutScreen() {
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={tipPresetLabel(preset)}
+                    aria-checked={isSelected}
                   >
                     <Text
                       style={[

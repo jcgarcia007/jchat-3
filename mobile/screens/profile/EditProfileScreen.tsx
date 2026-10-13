@@ -629,6 +629,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                       accessibilityRole="radio"
                       accessibilityState={{ checked: isSelected }}
                       accessibilityLabel={lang.label}
+                      aria-checked={isSelected}
                     >
                       <Text
                         style={[

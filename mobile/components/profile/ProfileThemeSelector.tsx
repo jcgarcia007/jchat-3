@@ -71,6 +71,7 @@ function ThemeCard({ theme, isSelected, onPress }: ThemeCardProps): React.JSX.El
       ]}
       accessibilityRole="radio"
       accessibilityState={{ checked: isSelected }}
+      aria-checked={isSelected}
       accessibilityLabel={
         isSelected
           ? t('themeSelector.themeOptionSelectedA11y', { name: theme.name })

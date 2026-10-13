@@ -181,6 +181,7 @@ function AdjustSheet({ item, businessId, onDone, onClose }: AdjustSheetProps) {
               ]}
               accessibilityRole="radio"
               accessibilityState={{ checked: mode === m }}
+              aria-checked={mode === m}
             >
               <Text
                 style={[

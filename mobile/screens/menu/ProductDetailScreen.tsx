@@ -431,6 +431,7 @@ export default function ProductDetailScreen() {
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={`${size.label}${size.price_cents > 0 ? `, +${formatCents(size.price_cents)}` : ''}`}
+                    aria-checked={isSelected}
                   >
                     {/* Radio indicator */}
                     <View

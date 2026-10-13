@@ -476,6 +476,7 @@ export default function CartScreen() {
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={t('cart.orderTypeCardA11y', { label, sublabel })}
+                    aria-checked={isSelected}
                   >
                     <Icon
                       size={24}
