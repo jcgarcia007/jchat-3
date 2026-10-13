@@ -25,7 +25,7 @@ export const palette = {
   borderSubtle: '#2a2a2e',
   textPrimary: '#f5f5f7',
   textSecondary: '#aeaeb2',
-  textTertiary: '#636366',
+  textTertiary: '#919195',
 
   // 1.3 Light Mode Surface Colors
   bgBaseLight: '#f9f9fb',
@@ -33,8 +33,8 @@ export const palette = {
   bgElevatedLight: '#f2f2f7',
   borderSubtleLight: '#e5e5ea',
   textPrimaryLight: '#1d1d1f',
-  textSecondaryLight: '#8e8e93',
-  textTertiaryLight: '#c7c7cc',
+  textSecondaryLight: '#55555a',
+  textTertiaryLight: '#6d6d72',
 
   // 1.4 Map Colors — light
   mapLightBase: '#eef1f8',

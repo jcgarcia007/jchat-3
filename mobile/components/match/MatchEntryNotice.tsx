@@ -60,11 +60,12 @@ function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
     <Pressable
       onPress={() => !disabled && onChange(!value)}
       accessible={false}
-      style={[styles.switchRow, { opacity: disabled ? 0.5 : 1 }]}
+      style={styles.switchRow}
     >
       <View style={styles.switchTexts}>
-        <Text style={[styles.switchLabel, { color: c.textPrimary }]}>{label}</Text>
-        {hint ? <Text style={[styles.switchHint, { color: c.textSecondary }]}>{hint}</Text> : null}
+        {/* Disabled = the dimmer textTertiary (still >= 4.5:1), not opacity 0.5, which dropped it to ~2.5:1. */}
+        <Text style={[styles.switchLabel, { color: disabled ? c.textTertiary : c.textPrimary }]}>{label}</Text>
+        {hint ? <Text style={[styles.switchHint, { color: disabled ? c.textTertiary : c.textSecondary }]}>{hint}</Text> : null}
       </View>
       <ThemedSwitch
         value={value}

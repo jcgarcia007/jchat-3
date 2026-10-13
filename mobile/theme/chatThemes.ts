@@ -13,8 +13,9 @@
  *   inputBg     — slightly elevated surface; usually close to bubbleInBg but at
  *                 reduced opacity / shifted lightness so it reads as an inset field.
  *   tabActive   — identical to accent (per spec).
- *   tabInactive — a muted/grayed tone legible on bg; for dark themes: 40–50 % opacity
- *                 white; for light themes: a mid-gray derived from bg.
+ *   tabInactive — a muted/grayed tone legible on bg (WCAG AA, >= 4.5:1 on topBg and bg: scripts/
+ *                 theme-contrast.test.mjs); for dark themes: ~46 % opacity white; for light themes: a
+ *                 darker mid-gray derived from bg.
  *
  * getChatTheme(themeId) returns theme 1 (Black & Blue) for out-of-range ids.
  */
@@ -50,7 +51,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#1e1e22',        // midway between bg and bubbleInBg
     tabActive: '#378add',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 2 · Neomorphism ─────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#5068e0',
     inputBg: '#dddfe8',        // recessed inset field
     tabActive: '#5068e0',
-    tabInactive: '#8e91a8',    // muted purple-gray, legible on #e8eaf0
+    tabInactive: '#5f6171',    // muted purple-gray, legible on #e8eaf0
   },
 
   // ─── 3 · Brutalist ───────────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#2a0d18',        // matches bubbleInBg (inset field same surface)
     tabActive: '#ff6b35',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 5 · Sage & Clay ─────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#e8e3d8',        // matches bubbleInBg
     tabActive: '#6b8f71',
-    tabInactive: '#8e8880',    // warm mid-gray, readable on #f0ede6
+    tabInactive: '#66625c',    // warm mid-gray, readable on #f0ede6
   },
 
   // ─── 6 · Electric Orange ─────────────────────────────────────────────────────
@@ -137,7 +138,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#1f1f1f',        // slightly elevated above bg
     tabActive: '#ff5c00',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 7 · Arctic Blue ─────────────────────────────────────────────────────────
@@ -155,7 +156,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#e0eaff',        // recessed field, matches topBg tone
     tabActive: '#2a5fcf',
-    tabInactive: '#6080b0',    // muted mid-blue, readable on light bg
+    tabInactive: '#506a92',    // muted mid-blue, readable on light bg
   },
 
   // ─── 8 · Mint Dark ───────────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#010d0a',
     inputBg: '#00190f',        // slightly above bg
     tabActive: '#00ff88',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 9 · Rose Gold ───────────────────────────────────────────────────────────
@@ -189,7 +190,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#221015',        // matches bubbleInBg
     tabActive: '#c9826e',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 10 · Swiss Mono ─────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#f5f5f5',        // matches bubbleInBg
     tabActive: '#000000',
-    tabInactive: '#888888',    // mid-gray, readable on white
+    tabInactive: '#6b6b6b',    // mid-gray, readable on white
   },
 
   // ─── 11 · Deep Space ─────────────────────────────────────────────────────────
@@ -224,7 +225,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#050818',
     inputBg: '#080e28',        // matches bubbleInBg
     tabActive: '#d4a820',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 12 · Pastel Soft ────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#ffffff',
     inputBg: '#f0e0f8',        // slightly elevated above bg
     tabActive: '#d4a0e8',
-    tabInactive: '#a880c0',    // muted purple, readable on #fef6ff
+    tabInactive: '#7e6090',    // muted purple, readable on #fef6ff
   },
 
   // ─── 13 · Retro 80s ──────────────────────────────────────────────────────────
@@ -259,7 +260,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#0a001a',
     inputBg: '#1a0035',        // matches bubbleInBg
     tabActive: '#ff00ff',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.47)',
   },
 
   // ─── 14 · Sand Dunes ─────────────────────────────────────────────────────────
@@ -276,7 +277,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#1a1208',
     inputBg: '#221a0a',        // matches bubbleInBg
     tabActive: '#c8a040',
-    tabInactive: 'rgba(255,255,255,0.35)',
+    tabInactive: 'rgba(255,255,255,0.46)',
   },
 
   // ─── 15 · Icy Glass ──────────────────────────────────────────────────────────
@@ -294,7 +295,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     bubbleOutText: '#1a2a50',
     inputBg: 'rgba(255,255,255,0.5)',  // frosted-glass field
     tabActive: 'rgba(60,120,220,0.4)',
-    tabInactive: 'rgba(30,60,120,0.35)',
+    tabInactive: '#616161',
   },
 ];
 
