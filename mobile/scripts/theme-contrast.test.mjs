@@ -42,14 +42,10 @@ export function contrast(fg, bg) {
 }
 
 const KNOWN_BELOW = new Map([
-  // Brand-coloured TEXT and white text ON brand fills sit at 3.67:1 (#5C7CFA is a fixed Design System colour). They
-  // pass the 3:1 bar for large text only. Pending a design decision (see the audit-fixes report).
-  ['onBrand on brand', 'white on #5C7CFA = 3.67:1 (large text only)'],
-  ['light · brand on bgBase', 'brand text on light surfaces ≈ 3.5:1'],
-  ['light · brand on bgSurface', 'brand text on light surfaces ≈ 3.7:1'],
-  ['light · brand on bgElevated', 'brand text on light surfaces ≈ 3.3:1'],
-  ['light · brand on bgOverlay', 'same surface as bgElevated in light'],
-  ['dark · brand on bgOverlay', 'brand text on the dark overlay surface 3.9:1 (overlay is used for chips/inputs, not body text)'],
+  // Brand blue as text on the dark "overlay" surface (chips / inputs, not body text) is 3.89:1; everything else the
+  // brand blue does as text, icon or fill (brandText / brandFill) passes. #5C7CFA itself stays the colour for logos,
+  // large accents and decoration (3.67:1 with white), so it is not checked as text any more.
+  ['dark · brandText on bgOverlay', 'brand text on the dark overlay surface 3.89:1 (chips / inputs, not body text)'],
 ]);
 
 const failures = [];
@@ -73,14 +69,14 @@ function check(name, fg, bg) {
 const dark = { bgBase: palette.bgBase, bgSurface: palette.bgSurface, bgElevated: palette.bgElevated, bgOverlay: palette.bgOverlay };
 const light = { bgBase: palette.bgBaseLight, bgSurface: palette.bgSurfaceLight, bgElevated: palette.bgElevatedLight, bgOverlay: palette.bgElevatedLight };
 for (const [scheme, surfaces, text] of [
-  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brand: palette.brand }],
-  ['light', light, { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brand: palette.brand }],
+  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brand }],
+  ['light', light, { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight }],
 ]) {
   for (const [textName, color] of Object.entries(text)) {
     for (const [surfaceName, surface] of Object.entries(surfaces)) check(`${scheme} · ${textName} on ${surfaceName}`, color, surface);
   }
 }
-check('onBrand on brand', palette.onBrand, palette.brand);
+check('onBrand on brandFill', palette.onBrand, palette.brandFill);
 
 // Chat themes: the text pairs of the room (tabs, bubbles).
 for (const t of CHAT_THEMES) {

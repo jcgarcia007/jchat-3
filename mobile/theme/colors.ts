@@ -14,6 +14,7 @@ import { palette } from './tokens';
 /** Theme-independent tokens shared by both schemes. */
 const shared = {
   brand: palette.brand,
+  brandFill: palette.brandFill,
   brandDark: palette.brandDark,
   brandLight: palette.brandLight,
   brandPurple: palette.brandPurple,
@@ -43,6 +44,8 @@ const shared = {
 
 export const darkColors = {
   ...shared,
+  /** Brand blue as text / icon: #5C7CFA on dark surfaces. */
+  brandText: palette.brand,
   bgBase: palette.bgBase,
   bgSurface: palette.bgSurface,
   bgElevated: palette.bgElevated,
@@ -58,6 +61,8 @@ export type ThemeColors = { [K in keyof typeof darkColors]: string };
 
 export const lightColors: ThemeColors = {
   ...shared,
+  /** Brand blue as text / icon: the darker #3B5BDB on light surfaces (4.7:1+). */
+  brandText: palette.brandTextLight,
   bgBase: palette.bgBaseLight,
   bgSurface: palette.bgSurfaceLight,
   bgElevated: palette.bgElevatedLight,

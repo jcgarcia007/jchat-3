@@ -9,6 +9,10 @@ export const palette = {
   // 1.1 Brand Colors (theme-independent)
   brand: '#5C7CFA',
   brandDark: '#4A6AE8',
+  /** Fill behind white text / icons (buttons, selected chips): 5.0:1 with white. #5C7CFA stays the brand colour for logos, large accents and decoration (3.67:1 with white). */
+  brandFill: '#4263EB',
+  /** Brand blue as TEXT / ICON on light surfaces: 4.7:1 on #e8eaf0. Dark mode keeps #5C7CFA (5.2:1 on the dark background). */
+  brandTextLight: '#3B5BDB',
   brandLight: 'rgba(92,124,250,0.12)',
   brandPurple: '#7C3AED',
   success: '#1D9E75',
