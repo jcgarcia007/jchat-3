@@ -89,6 +89,9 @@ md += `
 - **Menú del local (hoja):** \`npm run web:audit\` exporta la app con \`EXPO_PUBLIC_MENU_BASE_URL\` apuntando a un Next local (puerto 3100) y lo arranca, así la hoja se prueba contra el código nuevo. En producción \`jchat.cloud/m/...\` sigue con \`frame-ancestors 'none'\` hasta desplegar \`web/\`.
 - **Cuenta compartida:** los recorridos con sesión usan la misma cuenta; se ejecutan de uno en uno (candado) para no pelear por la presencia de Realtime. Comprobado: los \`[presence] … CHANNEL_ERROR\` a 1280 aparecían (17 veces) mientras había OTRA sesión de la misma cuenta abierta (emulador Android); con esa sesión cerrada, 0. Antes de correr la auditoría, cierra la app de la cuenta Test en otros dispositivos / simuladores.
 - **404 esperado:** la ruta inexistente de jchat.cloud es una sonda; su 404 no cuenta.
+- **Campos < 16 px de jchat.cloud (producción):** ya corregido en \`web/app/globals.css\` (verificado en el Next local: 14 → 16 px en \`/account/delete\`, \`/nearby\`, \`/auth/*\`, \`/pricing\`); la auditoría mira producción, así que lo seguirá marcando hasta desplegar \`web/\`.
+- **Aviso de hidratación del menú (hoja):** React avisa de un atributo distinto entre servidor y cliente en \`IconRail\` > \`DenseRow\` (plantilla del menú, anterior a estos cambios); solo se hizo visible cuando el Next local dejó de bloquear su HMR (\`allowedDevOrigins\`). Pendiente de investigar.
+- **Contraste que queda en la app:** textos de colores del tema del local (botón «Llamar al mesero» sobre el acento, inicial del avatar) y rojos de aviso sobre fondos tintados.
 - **No cubierto:** envío de formularios, registro paso 2, Match / Truth or Dare por dentro, visor de imágenes, DM con foto sensible, panel de dueño/POS.
 - Heurística de "componente probable": confirmar con grep antes de arreglar.
 `;
