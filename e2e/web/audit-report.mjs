@@ -87,7 +87,7 @@ md += `
 
 - **Idioma de la sesión con login:** el idioma es \`users.language\` (ajuste de cuenta en el servidor), así que el recorrido con sesión corre solo en el idioma de la cuenta de prueba (\`AUDIT_APP_LANG\`, por defecto en) y varía el tema; es/en se cubre sin sesión (app pública y jchat.cloud). La suite NUNCA pulsa selectores, interruptores ni filas de ajustes (solo abre pantallas de una lista blanca y las cierra).
 - **Menú del local (hoja):** \`npm run web:audit\` exporta la app con \`EXPO_PUBLIC_MENU_BASE_URL\` apuntando a un Next local (puerto 3100) y lo arranca, así la hoja se prueba contra el código nuevo. En producción \`jchat.cloud/m/...\` sigue con \`frame-ancestors 'none'\` hasta desplegar \`web/\`.
-- **Cuenta compartida:** los recorridos con sesión usan la misma cuenta; se ejecutan de uno en uno (candado) para no pelear por la presencia de Realtime.
+- **Cuenta compartida:** los recorridos con sesión usan la misma cuenta; se ejecutan de uno en uno (candado) para no pelear por la presencia de Realtime. Comprobado: los \`[presence] … CHANNEL_ERROR\` a 1280 aparecían (17 veces) mientras había OTRA sesión de la misma cuenta abierta (emulador Android); con esa sesión cerrada, 0. Antes de correr la auditoría, cierra la app de la cuenta Test en otros dispositivos / simuladores.
 - **404 esperado:** la ruta inexistente de jchat.cloud es una sonda; su 404 no cuenta.
 - **No cubierto:** envío de formularios, registro paso 2, Match / Truth or Dare por dentro, visor de imágenes, DM con foto sensible, panel de dueño/POS.
 - Heurística de "componente probable": confirmar con grep antes de arreglar.
