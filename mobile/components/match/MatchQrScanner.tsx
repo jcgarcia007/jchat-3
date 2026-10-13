@@ -72,7 +72,7 @@ export function MatchQrScanner({ visible, onToken, onClose }: MatchQrScannerProp
           <Pressable
             onPress={() => void requestPermission()}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.primaryBtn, { backgroundColor: c.brand, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [styles.primaryBtn, { backgroundColor: c.brandFill, opacity: pressed ? 0.8 : 1 }]}
           >
             <Text style={[styles.primaryBtnText, { color: palette.onBrand }]}>{t('scanner.grant')}</Text>
           </Pressable>

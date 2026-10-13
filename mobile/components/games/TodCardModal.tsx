@@ -9,7 +9,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -118,7 +119,7 @@ export function TodCardModal({ draw, fallbackCategory, onDecide, onClose }: Prop
               >
                 <meta.Icon size={64} color={meta.onColor} />
                 <Text style={[styles.hiddenTitle, { color: meta.onColor }]}>{t('card.hiddenFace')}</Text>
-                {!ready ? <ActivityIndicator color={meta.onColor} /> : null}
+                {!ready ? <Spinner color={meta.onColor} /> : null}
               </Animated.View>
 
               {/* The card itself */}
@@ -150,10 +151,10 @@ export function TodCardModal({ draw, fallbackCategory, onDecide, onClose }: Prop
               accessibilityState={{ disabled: !revealed || busy !== null, busy: busy === 'publish' }}
               disabled={!revealed || busy !== null}
               onPress={() => void decide(true)}
-              style={[styles.publish, { backgroundColor: c.brand, opacity: revealed && busy === null ? 1 : 0.5 }]}
+              style={[styles.publish, { backgroundColor: c.brandFill, opacity: revealed && busy === null ? 1 : 0.5 }]}
             >
               {busy === 'publish' ? (
-                <ActivityIndicator color={palette.onBrand} />
+                <Spinner color={palette.onBrand} />
               ) : (
                 <Text style={styles.publishText}>{t('card.publish')}</Text>
               )}
@@ -166,7 +167,7 @@ export function TodCardModal({ draw, fallbackCategory, onDecide, onClose }: Prop
               style={[styles.pass, { borderColor: palette.onImageMuted, opacity: revealed && busy === null ? 1 : 0.5 }]}
             >
               {busy === 'pass' ? (
-                <ActivityIndicator color={palette.onImage} />
+                <Spinner color={palette.onImage} />
               ) : (
                 <Text style={styles.passText}>{t('card.pass')}</Text>
               )}

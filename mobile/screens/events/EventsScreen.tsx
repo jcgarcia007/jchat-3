@@ -18,11 +18,11 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   RefreshControl,
   Image,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
@@ -205,7 +205,7 @@ export default function EventsScreen({
   if (loading && events.length === 0) {
     return (
       <View style={[styles.center, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator color={palette.brand} size="large" />
+        <Spinner color={palette.brand} size="large" />
       </View>
     );
   }

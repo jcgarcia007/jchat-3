@@ -21,10 +21,10 @@ import {
   Image,
   Pressable,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   StyleSheet,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -126,7 +126,7 @@ function UserRow({
       </Pressable>
       <View style={styles.actions}>
         {busy ? (
-          <ActivityIndicator size="small" color={c.brand} />
+          <Spinner size="small" color={c.brandText} />
         ) : (
           actions.map((a) => (
             <Pressable
@@ -138,7 +138,7 @@ function UserRow({
                 styles.actionBtn,
                 a.destructive
                   ? { borderColor: c.borderSubtle, backgroundColor: 'transparent' }
-                  : { backgroundColor: c.brand },
+                  : { backgroundColor: c.brandFill },
               ]}
             >
               <Text
@@ -384,7 +384,7 @@ export default function FriendsScreen() {
               <View
                 style={[
                   styles.tabUnderline,
-                  { backgroundColor: active ? c.brand : 'transparent' },
+                  { backgroundColor: active ? c.brandFill : 'transparent' },
                 ]}
               />
             </Pressable>
@@ -395,7 +395,7 @@ export default function FriendsScreen() {
       {/* Body */}
       {access === 'checking' ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={c.brand} />
+          <Spinner size="large" color={c.brandText} />
         </View>
       ) : access !== 'ok' ? (
         <View style={styles.center}>
@@ -413,14 +413,14 @@ export default function FriendsScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => void load(tab)}
-            style={[styles.retryBtn, { backgroundColor: c.brand }]}
+            style={[styles.retryBtn, { backgroundColor: c.brandFill }]}
           >
             <Text style={[styles.actionText, { color: palette.bgSurfaceLight }]}>{t('friends.retry')}</Text>
           </Pressable>
         </View>
       ) : loading && data.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={c.brand} />
+          <Spinner size="large" color={c.brandText} />
         </View>
       ) : data.length === 0 ? (
         <View style={styles.center}>

@@ -1,12 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Linking,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconArrowLeft } from '@tabler/icons-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -226,7 +226,7 @@ export default function MenuWebPreviewScreen() {
           </Text>
           <Pressable
             onPress={handleRetry}
-            style={[styles.retryBtn, { backgroundColor: palette.brand }]}
+            style={[styles.retryBtn, { backgroundColor: palette.brandFill }]}
           >
             <Text style={styles.retryBtnText}>{t('webPreview.retry')}</Text>
           </Pressable>
@@ -246,7 +246,7 @@ export default function MenuWebPreviewScreen() {
           />
           {loading && (
             <View style={[styles.loadingOverlay, { backgroundColor: c.bgBase }]}>
-              <ActivityIndicator size="large" color={palette.brand} />
+              <Spinner size="large" color={palette.brand} />
             </View>
           )}
         </View>

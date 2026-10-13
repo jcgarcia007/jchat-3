@@ -31,7 +31,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StatusBar,
@@ -39,6 +38,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -888,7 +888,7 @@ export default function PosSplitScreen(): React.ReactElement {
             accessibilityRole="button"
             accessibilityLabel={t('workMode.pinCancel')}
           >
-            <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+            <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
           </Pressable>
           <View style={styles.headerTitles}>
             <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -911,7 +911,7 @@ export default function PosSplitScreen(): React.ReactElement {
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [
               styles.unavailableBack,
-              { backgroundColor: c.brand },
+              { backgroundColor: c.brandFill },
               pressed && { opacity: 0.8 },
             ]}
             accessibilityRole="button"
@@ -966,7 +966,7 @@ export default function PosSplitScreen(): React.ReactElement {
                 accessibilityLabel={t('pos.printBtn')}
               >
                 {printStatus[lastSuccessKey] === 'printing' ? (
-                  <ActivityIndicator color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
+                  <Spinner color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
                 ) : (
                   <IconPrinter size={20} color={palette.onBrand} strokeWidth={2} style={{ marginRight: 8 }} />
                 )}
@@ -1035,7 +1035,7 @@ export default function PosSplitScreen(): React.ReactElement {
             accessibilityRole="button"
             accessibilityLabel={t('pos.tipBack')}
           >
-            <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+            <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
           </Pressable>
           <View style={styles.headerTitles}>
             <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -1090,7 +1090,7 @@ export default function PosSplitScreen(): React.ReactElement {
             onPress={handleTipConfirm}
             style={({ pressed }) => [
               styles.tipConfirmBtn,
-              { backgroundColor: c.brand },
+              { backgroundColor: c.brandFill },
               pressed && { opacity: 0.82 },
             ]}
             accessibilityRole="button"
@@ -1183,7 +1183,7 @@ export default function PosSplitScreen(): React.ReactElement {
             ) : readerStatus === 'error' ? (
               <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
             ) : (
-              <ActivityIndicator size="small" color={c.brand} />
+              <Spinner size="small" color={c.brandText} />
             )}
           </View>
           <Text
@@ -1230,7 +1230,7 @@ export default function PosSplitScreen(): React.ReactElement {
             {t('pos.splitTabTotal')}
           </Text>
           {tabLoading ? (
-            <ActivityIndicator color={c.brand} style={{ marginTop: 6 }} />
+            <Spinner color={c.brandText} style={{ marginTop: 6 }} />
           ) : (
             <Text style={[styles.totalCardAmount, { color: c.textPrimary }]}>
               {tabAmountCents !== null ? formatCents(tabAmountCents) : '—'}
@@ -1370,7 +1370,7 @@ export default function PosSplitScreen(): React.ReactElement {
               accessibilityRole="button"
             >
               {splitting ? (
-                <ActivityIndicator color={palette.onBrand} size="small" />
+                <Spinner color={palette.onBrand} size="small" />
               ) : (
                 <Text style={styles.createBtnText}>{t('pos.splitCreateBtn')}</Text>
               )}
@@ -1441,7 +1441,7 @@ export default function PosSplitScreen(): React.ReactElement {
                           accessibilityState={{ disabled: !canPay }}
                         >
                           {isThisPaying && isProcessing ? (
-                            <ActivityIndicator color={palette.onBrand} size="small" />
+                            <Spinner color={palette.onBrand} size="small" />
                           ) : (
                             <Text
                               style={[
@@ -1560,8 +1560,8 @@ export default function PosSplitScreen(): React.ReactElement {
                   { backgroundColor: c.brandLight, borderColor: c.brand },
                 ]}
               >
-                <ActivityIndicator color={c.brand} style={{ marginRight: 10 }} />
-                <Text style={[styles.progressLabel, { color: c.brand }]}>
+                <Spinner color={c.brandText} style={{ marginRight: 10 }} />
+                <Text style={[styles.progressLabel, { color: c.brandText }]}>
                   {checkoutPhaseLabel}
                 </Text>
               </View>
@@ -1701,7 +1701,7 @@ export default function PosSplitScreen(): React.ReactElement {
                             accessibilityState={{ disabled: !canCharge }}
                           >
                             {isCharging ? (
-                              <ActivityIndicator color={palette.onBrand} size="small" />
+                              <Spinner color={palette.onBrand} size="small" />
                             ) : (
                               <Text
                                 style={[
@@ -1729,8 +1729,8 @@ export default function PosSplitScreen(): React.ReactElement {
                   { backgroundColor: c.brandLight, borderColor: c.brand },
                 ]}
               >
-                <ActivityIndicator color={c.brand} style={{ marginRight: 10 }} />
-                <Text style={[styles.progressLabel, { color: c.brand }]}>
+                <Spinner color={c.brandText} style={{ marginRight: 10 }} />
+                <Text style={[styles.progressLabel, { color: c.brandText }]}>
                   {checkoutPhaseLabel}
                 </Text>
               </View>

@@ -23,7 +23,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   ListRenderItemInfo,
   RefreshControl,
@@ -31,6 +30,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -298,7 +298,7 @@ export default function FeedScreen() {
     if (!loadingMore) return null;
     return (
       <View style={styles.footer}>
-        <ActivityIndicator size="small" color={c.brand} />
+        <Spinner size="small" color={c.brandText} />
       </View>
     );
   }, [loadingMore, c.brand]);
@@ -319,7 +319,7 @@ export default function FeedScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="large" color={c.brand} />
+        <Spinner size="large" color={c.brandText} />
       </View>
     );
   }

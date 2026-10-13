@@ -35,7 +35,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -46,6 +45,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { IconPlus } from '@tabler/icons-react-native';
@@ -257,7 +257,7 @@ export default function StoriesRow({
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="small" color={c.brand} />
+        <Spinner size="small" color={c.brandText} />
       </View>
     );
   }
@@ -287,7 +287,7 @@ export default function StoriesRow({
                 ]}
               >
                 {uploading ? (
-                  <ActivityIndicator size="small" color={palette.brand} />
+                  <Spinner size="small" color={palette.brand} />
                 ) : currentUserAvatarUrl ? (
                   <Image
                     source={{ uri: currentUserAvatarUrl }}
@@ -399,7 +399,7 @@ export default function StoriesRow({
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.textModalBtn, { backgroundColor: palette.brand }]}
+                style={[styles.textModalBtn, { backgroundColor: palette.brandFill }]}
                 onPress={() => handleAndroidTextConfirm(false)}
               >
                 <Text style={[styles.textModalBtnLabel, { color: palette.textPrimary }]}>

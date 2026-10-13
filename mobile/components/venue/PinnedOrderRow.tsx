@@ -31,7 +31,7 @@ export function PinnedOrderRow({ order, onPress, background }: Props): React.Rea
       style={[styles.row, { backgroundColor: background, borderBottomColor: c.borderSubtle }]}
     >
       <View style={[styles.icon, { backgroundColor: c.brandLight }]}>
-        <IconReceipt size={21} color={c.brand} strokeWidth={2} />
+        <IconReceipt size={21} color={c.brandText} strokeWidth={2} />
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1}>
@@ -42,7 +42,7 @@ export function PinnedOrderRow({ order, onPress, background }: Props): React.Rea
         </Text>
       </View>
       <View style={[styles.badge, { backgroundColor: c.brandLight }]}>
-        <Text style={[styles.badgeText, { color: c.brand }]}>{t('messages.pinnedBadge')}</Text>
+        <Text style={[styles.badgeText, { color: c.brandText }]}>{t('messages.pinnedBadge')}</Text>
       </View>
     </Pressable>
   );

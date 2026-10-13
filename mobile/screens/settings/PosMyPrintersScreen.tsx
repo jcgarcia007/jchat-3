@@ -12,7 +12,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Linking,
   Pressable,
@@ -22,6 +21,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -213,7 +213,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     if (addPhase === 'listing') {
       return (
         <View style={[s.addCard, { backgroundColor: colors.bgSurface }]}>
-          <ActivityIndicator color={colors.brand} />
+          <Spinner color={colors.brand} />
           <Text style={[s.addPhaseLabel, { color: colors.textSecondary }]}>
             {t('pos.printers.loadingPaired')}
           </Text>
@@ -262,7 +262,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             {([58, 80] as const).map((w) => (
               <Pressable
                 key={w}
-                style={[s.widthChip, selectedWidth === w && { backgroundColor: colors.brand }]}
+                style={[s.widthChip, selectedWidth === w && { backgroundColor: colors.brandFill }]}
                 onPress={() => setSelectedWidth(w)}
               >
                 <Text style={[s.widthChipText, selectedWidth === w && { color: palette.onBrand }]}>
@@ -272,7 +272,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             ))}
           </View>
           <Pressable
-            style={[s.primaryBtn, { backgroundColor: colors.brand, marginTop: 16 }]}
+            style={[s.primaryBtn, { backgroundColor: colors.brandFill, marginTop: 16 }]}
             onPress={handleConfirmWidth}
           >
             <Text style={s.primaryBtnText}>{t('pos.printers.printTest')}</Text>
@@ -294,7 +294,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           </Text>
           {testState === 'printing' ? (
             <>
-              <ActivityIndicator color={colors.brand} />
+              <Spinner color={colors.brand} />
               <Text style={[s.addPhaseLabel, { color: colors.textSecondary }]}>
                 {t('pos.printers.testPrinting')}
               </Text>
@@ -305,7 +305,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
                 ✓ {t('pos.printers.testOk')}
               </Text>
               <Pressable
-                style={[s.primaryBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
+                style={[s.primaryBtn, { backgroundColor: colors.brandFill, marginTop: 12 }]}
                 onPress={handleSave}
               >
                 <Text style={s.primaryBtnText}>{t('pos.printers.save')}</Text>
@@ -317,7 +317,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
                 {t('pos.printers.testError')}: {testError}
               </Text>
               <Pressable
-                style={[s.primaryBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
+                style={[s.primaryBtn, { backgroundColor: colors.brandFill, marginTop: 12 }]}
                 onPress={handleConfirmWidth}
               >
                 <Text style={s.primaryBtnText}>{t('pos.printers.retry')}</Text>
@@ -369,7 +369,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
         </View>
 
         {loading ? (
-          <ActivityIndicator color={colors.brand} style={{ marginVertical: 16 }} />
+          <Spinner color={colors.brand} style={{ marginVertical: 16 }} />
         ) : btPrinters.length === 0 ? (
           <Text style={[s.emptyHint, { color: colors.textTertiary }]}>
             {t('pos.printers.noBtSaved')}

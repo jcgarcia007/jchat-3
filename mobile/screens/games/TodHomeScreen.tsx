@@ -8,7 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -136,7 +137,7 @@ export default function TodHomeScreen() {
 
         {categories == null ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={c.brand} />
+            <Spinner color={c.brandText} />
             <Text style={[styles.loadingText, { color: c.textSecondary }]}>{t('home.loading')}</Text>
           </View>
         ) : (
@@ -162,7 +163,7 @@ export default function TodHomeScreen() {
                   <Text style={[styles.rowName, { color: c.textPrimary }]}>{name}</Text>
                   <Text style={[styles.rowDesc, { color: c.textSecondary }]}>{t(`category.${category}.desc`)}</Text>
                 </View>
-                {busy ? <ActivityIndicator color={cat.color} /> : null}
+                {busy ? <Spinner color={cat.color} /> : null}
               </Pressable>
             );
           })

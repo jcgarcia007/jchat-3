@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
@@ -245,12 +246,12 @@ export default function ProfileHeader({
             <Text style={[styles.blockedNotice, { color: theme.bodyTextSecondary }]}>{t('header.blockedMe')}</Text>
           ) : relation === 'blockedByMe' ? (
             <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
-              {followBusy ? <ActivityIndicator color={theme.btn2Color} /> : <Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.unblock')}</Text>}
+              {followBusy ? <Spinner color={theme.btn2Color} /> : <Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.unblock')}</Text>}
             </TouchableOpacity>
           ) : (
             <>
               <TouchableOpacity testID="profile-follow" style={[styles.primaryButton, { backgroundColor: followOutlined ? theme.btn2Bg : theme.btn1Bg }, followOutlined && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={followAction} disabled={followBusy} accessibilityRole="button">
-                {followBusy ? <ActivityIndicator color={followOutlined ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
+                {followBusy ? <Spinner color={followOutlined ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onMessage} accessibilityRole="button"><IconMessage size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.message')}</Text></TouchableOpacity>
             </>

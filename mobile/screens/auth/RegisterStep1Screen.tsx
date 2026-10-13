@@ -239,7 +239,7 @@ export default function RegisterStep1Screen() {
         >
           {/* ── Progress dots ──────────────────────────────────────────── */}
           <View style={styles.dotsRow} accessible accessibilityRole="image" accessibilityLabel={t('register.step1Indicator')}>
-            <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
+            <View style={[styles.dot, { backgroundColor: palette.brandFill, width: 20 }]} />
             <View style={[styles.dot, { backgroundColor: c.borderSubtle }]} />
           </View>
 
@@ -455,7 +455,7 @@ export default function RegisterStep1Screen() {
 
           {/* ── Continue button ────────────────────────────────────────── */}
           <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: palette.brand }]}
+            style={[styles.continueButton, { backgroundColor: palette.brandFill }]}
             onPress={handleContinue}
             activeOpacity={0.85}
             accessibilityRole="button"

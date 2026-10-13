@@ -10,7 +10,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from './Spinner';
 import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -182,7 +183,7 @@ export function VoiceRecorderBar({
         accessibilityLabel={t('voice.send')}
         accessibilityState={{ disabled: !recording }}
       >
-        {recording ? <IconSend size={20} color={backgroundColor} /> : <ActivityIndicator size="small" color={backgroundColor} />}
+        {recording ? <IconSend size={20} color={backgroundColor} /> : <Spinner size="small" color={backgroundColor} />}
       </Pressable>
     </View>
   );

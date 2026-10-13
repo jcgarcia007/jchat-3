@@ -14,7 +14,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -25,6 +24,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -128,7 +128,7 @@ function TabPill({
       style={[
         styles.tabPill,
         {
-          backgroundColor: active ? c.brand : c.bgSurface,
+          backgroundColor: active ? c.brandFill : c.bgSurface,
           borderColor: active ? c.brand : c.borderSubtle,
         },
       ]}
@@ -193,7 +193,7 @@ function MenuItemCard({
               { backgroundColor: c.brandLight },
             ]}
           >
-            <Text style={[styles.cardInitial, { color: c.brand }]}>
+            <Text style={[styles.cardInitial, { color: c.brandText }]}>
               {getInitials(item.name)}
             </Text>
           </View>
@@ -401,7 +401,7 @@ function ModifierSheet({
           <Text style={[styles.modItemName, { color: c.textPrimary }]}>
             {item.name}
           </Text>
-          <Text style={[styles.modLivePrice, { color: c.brand }]}>
+          <Text style={[styles.modLivePrice, { color: c.brandText }]}>
             {t('pos.modLivePrice', { price: formatPrice(livePrice) })}
           </Text>
         </View>
@@ -418,7 +418,7 @@ function ModifierSheet({
       {/* Groups */}
       {loading ? (
         <View style={styles.modLoadingBox}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
           <Text style={[styles.modLoadingText, { color: c.textTertiary }]}>
             {t('pos.modLoading')}
           </Text>
@@ -444,7 +444,7 @@ function ModifierSheet({
                   <View style={styles.modGroupMeta}>
                     {group.min_select > 0 && (
                       <View style={[styles.modRequiredBadge, { backgroundColor: c.brandLight }]}>
-                        <Text style={[styles.modRequiredText, { color: c.brand }]}>
+                        <Text style={[styles.modRequiredText, { color: c.brandText }]}>
                           {t('pos.modRequired')}
                         </Text>
                       </View>
@@ -483,7 +483,7 @@ function ModifierSheet({
                             styles.checkbox,
                             {
                               borderColor: isSelected ? c.brand : c.borderSubtle,
-                              backgroundColor: isSelected ? c.brand : 'transparent',
+                              backgroundColor: isSelected ? c.brandFill : 'transparent',
                             },
                           ]}
                         >
@@ -499,7 +499,7 @@ function ModifierSheet({
                           ]}
                         >
                           {isSelected && (
-                            <View style={[styles.radioDot, { backgroundColor: c.brand }]} />
+                            <View style={[styles.radioDot, { backgroundColor: c.brandFill }]} />
                           )}
                         </View>
                       )}
@@ -533,7 +533,7 @@ function ModifierSheet({
         disabled={!canAdd || loading}
         style={({ pressed }) => [
           styles.modAddBtn,
-          { backgroundColor: canAdd && !loading ? c.brand : c.borderSubtle },
+          { backgroundColor: canAdd && !loading ? c.brandFill : c.borderSubtle },
           pressed && { opacity: 0.8 },
         ]}
         accessibilityRole="button"
@@ -837,7 +837,7 @@ export default function PosOrderScreen() {
           style={styles.backButton}
           accessibilityRole="button"
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <View style={styles.headerTitleBlock}>
           <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -876,7 +876,7 @@ export default function PosOrderScreen() {
       {/* ── Menu items ──────────────────────────────────────────────────────── */}
       {loadingMenu ? (
         <View style={styles.loadingCenter}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : filteredItems.length === 0 ? (
         <View style={styles.loadingCenter}>
@@ -962,14 +962,14 @@ export default function PosOrderScreen() {
             disabled={modeParam === 'submit' && submitting}
             style={({ pressed }) => [
               styles.submitBtn,
-              { backgroundColor: c.brand },
+              { backgroundColor: c.brandFill },
               ((modeParam === 'submit' && submitting) || pressed) && { opacity: 0.7 },
             ]}
             accessibilityRole="button"
             accessibilityState={{ disabled: modeParam === 'submit' && submitting }}
           >
             {modeParam === 'submit' && submitting ? (
-              <ActivityIndicator color={palette.onBrand} size="small" />
+              <Spinner color={palette.onBrand} size="small" />
             ) : (
               <Text style={styles.submitBtnText}>
                 {modeParam === 'draft' ? t('pos.draftDone') : t('pos.submitButton')}

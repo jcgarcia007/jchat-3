@@ -27,7 +27,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -39,6 +38,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -391,7 +391,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="large" color={c.brand} />
+        <Spinner size="large" color={c.brandText} />
       </View>
     );
   }
@@ -409,7 +409,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           accessibilityLabel={t('back', { ns: 'common' })}
           disabled={saving}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
@@ -424,9 +424,9 @@ export default function EditProfileScreen(): React.JSX.Element {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator size="small" color={c.brand} />
+            <Spinner size="small" color={c.brandText} />
           ) : (
-            <Text style={[styles.saveText, { color: c.brand }]}>{t('actions.save', { ns: 'common' })}</Text>
+            <Text style={[styles.saveText, { color: c.brandText }]}>{t('actions.save', { ns: 'common' })}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -704,7 +704,7 @@ export default function EditProfileScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel={t('edit.closeThemePickerA11y')}
             >
-              <IconCheck size={22} color={c.brand} />
+              <IconCheck size={22} color={c.brandText} />
             </TouchableOpacity>
           </View>
 
@@ -735,7 +735,7 @@ interface StatusProps {
 function UsernameIndicator({ status }: StatusProps): React.JSX.Element | null {
   if (status === 'idle') return null;
   if (status === 'checking') {
-    return <ActivityIndicator size="small" color={palette.brand} style={styles.statusIcon} />;
+    return <Spinner size="small" color={palette.brand} style={styles.statusIcon} />;
   }
   if (status === 'available') {
     return <IconCheck size={18} color={palette.success} style={styles.statusIcon} />;

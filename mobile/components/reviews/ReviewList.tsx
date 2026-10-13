@@ -25,7 +25,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -33,6 +32,7 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { IconFlag, IconMessageCircle } from '@tabler/icons-react-native';
@@ -137,7 +137,7 @@ function ReviewCard({ review, onReport, colors: c }: ReviewCardProps): React.Rea
       {review.response ? (
         <View style={styles.responseBlock}>
           <View style={styles.responseHeader}>
-            <IconMessageCircle size={14} color={c.brand} />
+            <IconMessageCircle size={14} color={c.brandText} />
             <Text style={styles.responseLabel}>{t('reviewList.ownerResponseLabel')}</Text>
             {review.responded_at ? (
               <Text style={styles.responseDate}>
@@ -207,7 +207,7 @@ export function ReviewList({ businessId }: ReviewListProps): React.ReactElement 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.brand} />
+        <Spinner color={c.brandText} />
       </View>
     );
   }
@@ -270,7 +270,7 @@ function makeCardStyles(c: ReturnType<typeof useThemeColors>) {
     avatarText: {
       fontSize: 12,
       fontWeight: '700',
-      color: c.brand,
+      color: c.brandText,
     },
     authorBlock: {
       flex: 1,
@@ -309,7 +309,7 @@ function makeCardStyles(c: ReturnType<typeof useThemeColors>) {
     responseLabel: {
       fontSize: 12,
       fontWeight: '600',
-      color: c.brand,
+      color: c.brandText,
       flex: 1,
     },
     responseDate: {
@@ -349,7 +349,7 @@ function makeListStyles(c: ReturnType<typeof useThemeColors>) {
     retryButton: {
       paddingVertical: 8,
       paddingHorizontal: 20,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 8,
     },
     retryLabel: {

@@ -13,7 +13,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -114,17 +115,17 @@ export default function MenuSheetScreen(): React.ReactElement {
         ) : null}
         {state === 'loading' ? (
           <View style={styles.center} pointerEvents="none">
-            <ActivityIndicator size="large" color={c.brand} />
+            <Spinner size="large" color={c.brandText} />
           </View>
         ) : null}
         {state === 'error' ? (
           <View style={styles.center} testID="menu-sheet-error">
             <Text style={[styles.errorTitle, { color: c.textPrimary }]}>{t('menuSheet.loadError')}</Text>
-            <Pressable testID="menu-sheet-retry" onPress={retry} accessibilityRole="button" style={[styles.primary, { backgroundColor: palette.brand }]}>
+            <Pressable testID="menu-sheet-retry" onPress={retry} accessibilityRole="button" style={[styles.primary, { backgroundColor: palette.brandFill }]}>
               <Text style={[styles.primaryLabel, { color: palette.onBrand }]}>{t('menuSheet.retry')}</Text>
             </Pressable>
             <Pressable testID="menu-sheet-open-tab" onPress={openInTab} accessibilityRole="button" style={styles.secondary}>
-              <Text style={[styles.secondaryLabel, { color: c.brand }]}>{t('menuSheet.openInTab')}</Text>
+              <Text style={[styles.secondaryLabel, { color: c.brandText }]}>{t('menuSheet.openInTab')}</Text>
             </Pressable>
           </View>
         ) : null}

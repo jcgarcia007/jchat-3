@@ -108,7 +108,7 @@ export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps
       {/* ── Toggle row ──────────────────────────────────────────────────────── */}
       <View style={styles.row}>
         <View style={styles.labelGroup}>
-          <IconMask size={20} color={c.brand} />
+          <IconMask size={20} color={c.brandText} />
           <View style={styles.labelText}>
             <Text style={styles.label}>
               {t('incognito.title')}

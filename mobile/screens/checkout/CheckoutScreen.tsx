@@ -32,7 +32,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -43,6 +42,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -142,7 +142,7 @@ function ProcessingOverlay({ visible, colors: c }: ProcessingOverlayProps) {
     >
       <View style={overlayStyles.backdrop}>
         <View style={[overlayStyles.card, { backgroundColor: c.bgElevated }]}>
-          <ActivityIndicator size="large" color={palette.brand} />
+          <Spinner size="large" color={palette.brand} />
           <Text style={[overlayStyles.text, { color: c.textPrimary }]}>
             {t('checkout.processing')}
           </Text>
@@ -228,7 +228,7 @@ function ErrorSheet({ visible, errorMessage, onRetry, onDismiss, colors: c }: Er
             onPress={onRetry}
             style={({ pressed }) => [
               sheetStyles.retryBtn,
-              { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t('checkout.retryA11y')}
@@ -721,7 +721,7 @@ export default function CheckoutScreen() {
             onPress={handleBack}
             style={({ pressed }) => [
               styles.backMenuBtn,
-              { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t('checkout.backToMenuA11y')}
@@ -935,7 +935,7 @@ export default function CheckoutScreen() {
               </View>
             ) : quoteState.status === 'loading' ? (
               <View style={styles.quotePlaceholder}>
-                <ActivityIndicator color={palette.brand} />
+                <Spinner color={palette.brand} />
               </View>
             ) : null}
 
@@ -945,7 +945,7 @@ export default function CheckoutScreen() {
                 <Pressable
                   onPress={handleRetryQuote}
                   accessibilityRole="button"
-                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
                 >
                   <Text style={styles.quoteRetryText}>{t('checkout.quoteRetry')}</Text>
                 </Pressable>
@@ -960,7 +960,7 @@ export default function CheckoutScreen() {
                 <Pressable
                   onPress={handleVenueRetry}
                   accessibilityRole="button"
-                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
                 >
                   <Text style={styles.quoteRetryText}>{t('checkout.venueRetry')}</Text>
                 </Pressable>
@@ -992,7 +992,7 @@ export default function CheckoutScreen() {
               style={({ pressed }) => [
                 styles.payButton,
                 {
-                  backgroundColor: palette.brand,
+                  backgroundColor: palette.brandFill,
                   opacity: payDisabled ? 0.5 : pressed ? 0.9 : 1,
                 },
               ]}
@@ -1001,7 +1001,7 @@ export default function CheckoutScreen() {
               accessibilityState={{ disabled: payDisabled }}
             >
               {processing || quoteLoading ? (
-                <ActivityIndicator color={palette.bgSurfaceLight} size="small" />
+                <Spinner color={palette.bgSurfaceLight} size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
                   {quote ? t(payWithFaceId ? 'checkout.payButton' : 'checkout.payButtonPlain', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') }) : t('checkout.payWaiting')}

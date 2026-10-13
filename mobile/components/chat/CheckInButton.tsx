@@ -27,12 +27,12 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -167,7 +167,7 @@ export function CheckInButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator
+        <Spinner
           size="small"
           color={c.bgSurface}
           style={styles.icon}
@@ -195,7 +195,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 20,
       paddingVertical: 8,
       paddingHorizontal: 16,

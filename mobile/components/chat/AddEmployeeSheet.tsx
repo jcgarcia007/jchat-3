@@ -27,7 +27,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -37,6 +36,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import {
   IconBriefcase,
@@ -185,7 +185,7 @@ export function AddEmployeeSheet({
               {success ? (
                 <IconCheck size={22} color={c.success} />
               ) : (
-                <IconUserPlus size={22} color={c.brand} />
+                <IconUserPlus size={22} color={c.brandText} />
               )}
             </View>
             <View style={s.headerText}>
@@ -259,7 +259,7 @@ export function AddEmployeeSheet({
                       </Text>
                     </View>
                     {isSelected ? (
-                      <IconCheck size={18} color={c.brand} />
+                      <IconCheck size={18} color={c.brandText} />
                     ) : (
                       <IconChevronRight size={16} color={c.textTertiary} />
                     )}
@@ -300,7 +300,7 @@ export function AddEmployeeSheet({
               ]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={c.bgSurface} />
+                <Spinner size="small" color={c.bgSurface} />
               ) : (
                 <Text style={s.ctaBtnLabel}>
                   {selectedRole ? t('employee.inviteAs', { role: roleLabel(selectedRole) }) : t('employee.selectRole')}
@@ -432,7 +432,7 @@ function makeStyles(c: ThemeColors) {
       justifyContent: 'center',
     },
     roleIconWrapSelected: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
     },
     roleLabel: {
       color: c.textPrimary,
@@ -441,7 +441,7 @@ function makeStyles(c: ThemeColors) {
     },
     roleLabelSelected: {
       fontWeight: '700',
-      color: c.brand,
+      color: c.brandText,
     },
 
     // Success
@@ -468,7 +468,7 @@ function makeStyles(c: ThemeColors) {
 
     // CTA button
     ctaBtn: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 14,
       paddingVertical: 15,
       alignItems: 'center',

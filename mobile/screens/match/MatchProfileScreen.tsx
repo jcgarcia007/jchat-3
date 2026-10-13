@@ -8,7 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -145,7 +146,7 @@ export default function MatchProfileScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : unavailable || !card ? (
         <View style={styles.center}>
@@ -186,14 +187,14 @@ export default function MatchProfileScreen() {
             <View style={styles.nameRow}>
               <Text style={[styles.name, { color: c.textPrimary }]}>{name}</Text>
               {card.is_verified && (
-                <IconRosetteDiscountCheckFilled size={22} color={c.brand} accessibilityLabel={t('card.verified')} />
+                <IconRosetteDiscountCheckFilled size={22} color={c.brandText} accessibilityLabel={t('card.verified')} />
               )}
             </View>
             {card.username && card.display_name?.trim() ? (
               <Text style={[styles.username, { color: c.textSecondary }]}>@{card.username}</Text>
             ) : null}
             {card.super_liked_me && (
-              <View style={[styles.superPill, { backgroundColor: c.brand }]}>
+              <View style={[styles.superPill, { backgroundColor: c.brandFill }]}>
                 <Text style={[styles.superPillText, { color: palette.onBrand }]}>{t('card.superLikedMe')}</Text>
               </View>
             )}
@@ -214,7 +215,7 @@ export default function MatchProfileScreen() {
                         style={[
                           styles.chip,
                           isCommon
-                            ? { backgroundColor: c.brand, borderColor: c.brand }
+                            ? { backgroundColor: c.brandFill, borderColor: c.brand }
                             : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
                         ]}
                       >
@@ -232,7 +233,7 @@ export default function MatchProfileScreen() {
               accessibilityRole="link"
               style={styles.fullProfile}
             >
-              <Text style={[styles.fullProfileText, { color: c.brand }]}>{t('profileView.fullProfile')}</Text>
+              <Text style={[styles.fullProfileText, { color: c.brandText }]}>{t('profileView.fullProfile')}</Text>
             </Pressable>
 
             {notice && (
@@ -246,7 +247,7 @@ export default function MatchProfileScreen() {
             {(
               [
                 { action: 'pass', label: t('deck.pass'), color: c.danger, icon: <IconX size={28} color={c.danger} /> },
-                { action: 'super', label: t('deck.superLike'), color: c.brand, icon: <IconStarFilled size={24} color={c.brand} /> },
+                { action: 'super', label: t('deck.superLike'), color: c.brandText, icon: <IconStarFilled size={24} color={c.brandText} /> },
                 { action: 'like', label: t('deck.likeButton'), color: c.success, icon: <IconHeartFilled size={26} color={c.success} /> },
               ] as const
             ).map(({ action, label, color, icon }) => (

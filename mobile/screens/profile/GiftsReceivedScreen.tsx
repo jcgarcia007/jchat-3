@@ -11,12 +11,12 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 import { IconGift } from '@tabler/icons-react-native';
 
@@ -180,7 +180,7 @@ export default function GiftsReceivedScreen({ userId }: Props) {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator color={palette.brand} size="large" />
+        <Spinner color={palette.brand} size="large" />
       </View>
     );
   }

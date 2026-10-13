@@ -30,7 +30,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -40,6 +39,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { IconEye, IconEyeOff, IconLock } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
@@ -260,7 +260,7 @@ export function PasswordEntrySheet({
           {/* Header */}
           <View style={s.header}>
             <View style={s.lockIconWrap}>
-              <IconLock size={22} color={c.brand} />
+              <IconLock size={22} color={c.brandText} />
             </View>
             <Text style={s.title}>{t('password.title')}</Text>
             <Text style={s.subtitle}>
@@ -338,7 +338,7 @@ export function PasswordEntrySheet({
             ]}
           >
             {loading ? (
-              <ActivityIndicator size="small" color={c.bgSurface} />
+              <Spinner size="small" color={c.bgSurface} />
             ) : (
               <Text style={s.buttonLabel}>{t('password.enterRoom')}</Text>
             )}
@@ -453,7 +453,7 @@ function makeStyles(c: ThemeColors) {
       marginLeft: 2,
     },
     button: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 14,
       paddingVertical: 15,
       alignItems: 'center',

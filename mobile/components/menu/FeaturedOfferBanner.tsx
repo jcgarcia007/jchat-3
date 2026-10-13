@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignSelf: 'flex-start',
-    backgroundColor: palette.brand,
+    backgroundColor: palette.brandFill,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,

@@ -21,13 +21,13 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import { StarRating } from './StarRating';
@@ -144,7 +144,7 @@ export function RatingPrompt({
           accessibilityState={{ disabled: loading || rating === 0 }}
         >
           {loading ? (
-            <ActivityIndicator size="small" color={c.bgSurface} />
+            <Spinner size="small" color={c.bgSurface} />
           ) : (
             <Text style={styles.submitLabel}>{t('ratingPrompt.submit')}</Text>
           )}
@@ -212,7 +212,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       flex: 2,
       paddingVertical: 12,
       borderRadius: 10,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       alignItems: 'center',
     },
     submitButtonDisabled: {

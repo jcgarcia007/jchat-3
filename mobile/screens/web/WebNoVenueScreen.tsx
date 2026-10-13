@@ -54,7 +54,7 @@ export default function WebNoVenueScreen(): React.ReactElement {
           testID="web-download-app"
           onPress={downloadApp}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.primary, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.primary, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
         >
           <IconDownload size={20} color={palette.onBrand} />
           <Text style={[styles.primaryLabel, { color: palette.onBrand }]}>{t('webShell.downloadApp')}</Text>

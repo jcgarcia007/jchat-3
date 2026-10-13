@@ -16,7 +16,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -26,6 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
@@ -118,7 +118,7 @@ export default function ConfirmAgeScreen() {
   if (ageStatus === 'loading') {
     return (
       <View style={[...frame, styles.centerFill]}>
-        <ActivityIndicator color={c.brand} />
+        <Spinner color={c.brandText} />
       </View>
     );
   }
@@ -130,7 +130,7 @@ export default function ConfirmAgeScreen() {
         <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('age.loadError')}</Text>
         <Pressable
           onPress={() => void refreshAge()}
-          style={[styles.button, { backgroundColor: c.brand, marginTop: 20, alignSelf: 'stretch' }]}
+          style={[styles.button, { backgroundColor: c.brandFill, marginTop: 20, alignSelf: 'stretch' }]}
           accessibilityRole="button"
           accessibilityLabel={t('age.retry')}
         >
@@ -210,7 +210,7 @@ export default function ConfirmAgeScreen() {
               styles.checkbox,
               {
                 borderColor: terms ? palette.brand : LOCAL_COLORS.checkboxBorder,
-                backgroundColor: terms ? palette.brand : 'transparent',
+                backgroundColor: terms ? palette.brandFill : 'transparent',
               },
             ]}
           >
@@ -243,12 +243,12 @@ export default function ConfirmAgeScreen() {
         <Pressable
           onPress={onContinue}
           disabled={!canContinue}
-          style={[styles.button, { backgroundColor: c.brand, opacity: canContinue ? 1 : 0.4, marginTop: 28 }]}
+          style={[styles.button, { backgroundColor: c.brandFill, opacity: canContinue ? 1 : 0.4, marginTop: 28 }]}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canContinue }}
           accessibilityLabel={t('age.continue')}
         >
-          {busy ? <ActivityIndicator color={LOCAL_COLORS.onBrand} /> : <Text style={styles.buttonLabel}>{t('age.continue')}</Text>}
+          {busy ? <Spinner color={LOCAL_COLORS.onBrand} /> : <Text style={styles.buttonLabel}>{t('age.continue')}</Text>}
         </Pressable>
 
         <Pressable onPress={() => void signOut().catch(() => null)} style={styles.linkButton} accessibilityRole="button">

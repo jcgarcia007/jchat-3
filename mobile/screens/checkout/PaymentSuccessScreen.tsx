@@ -245,7 +245,7 @@ export default function PaymentSuccessScreen() {
             </Text>
             <View style={styles.savePromptButtons}>
               <Pressable
-                style={[styles.saveBtn, styles.saveBtnPrimary, { backgroundColor: c.brand }]}
+                style={[styles.saveBtn, styles.saveBtnPrimary, { backgroundColor: c.brandFill }]}
                 onPress={handleSaveCard}
                 disabled={isSaving}
                 accessibilityLabel={t('success.saveCardA11y')}
@@ -285,7 +285,7 @@ export default function PaymentSuccessScreen() {
         {/* ── View the order (primary CTA) ──────────────────────────────── */}
         <Pressable
           testID="success-view-order"
-          style={[styles.backBtn, { backgroundColor: c.brand }]}
+          style={[styles.backBtn, { backgroundColor: c.brandFill }]}
           onPress={handleViewOrder}
           accessibilityLabel={orderId ? t('success.viewOrderA11y') : t('success.viewMyOrdersA11y')}
           accessibilityRole="button"

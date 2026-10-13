@@ -116,7 +116,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
             hitSlop={8}
             style={styles.toastUndo}
           >
-            <Text style={[styles.toastUndoLabel, { color: c.brand }]}>{t('venueSession.undo')}</Text>
+            <Text style={[styles.toastUndoLabel, { color: c.brandText }]}>{t('venueSession.undo')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -264,7 +264,7 @@ function Segment({
         accessibilityLabel={actionA11y}
         accessibilityActions={extraActions}
         onAccessibilityAction={onExtraAction ? () => onExtraAction() : undefined}
-        style={({ pressed }) => [styles.button, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [styles.button, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
       >
         <Text style={[styles.buttonLabel, { color: palette.onBrand }]}>{action}</Text>
       </Pressable>

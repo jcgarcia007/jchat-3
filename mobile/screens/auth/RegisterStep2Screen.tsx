@@ -29,8 +29,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ActivityIndicator,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
@@ -698,7 +698,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               {/* Availability indicator */}
               <View style={styles.availabilityIcon}>
                 {availability === 'checking' && (
-                  <ActivityIndicator size="small" color={c.textTertiary} />
+                  <Spinner size="small" color={c.textTertiary} />
                 )}
                 {availability === 'available' && !usernameFormatError && (
                   <IconCheck size={18} color={palette.success} strokeWidth={2.5} />
@@ -752,7 +752,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
                       : termsAccepted
                       ? palette.brand
                       : LOCAL_COLORS.checkboxBorder,
-                    backgroundColor: termsAccepted ? palette.brand : 'transparent',
+                    backgroundColor: termsAccepted ? palette.brandFill : 'transparent',
                   },
                 ]}
               >
@@ -805,7 +805,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             style={[
               styles.createButton,
               {
-                backgroundColor: palette.brand,
+                backgroundColor: palette.brandFill,
                 opacity: submitting ? 0.7 : 1,
               },
             ]}
@@ -816,7 +816,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             accessibilityLabel={t('register.createA11y')}
           >
             {submitting ? (
-              <ActivityIndicator color={LOCAL_COLORS.onBrand} />
+              <Spinner color={LOCAL_COLORS.onBrand} />
             ) : (
               <Text style={styles.createButtonText}>
                 {t('register.createButton')}

@@ -67,7 +67,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             accessibilityRole="button"
             activeOpacity={0.8}
             onPress={() => onEnter(item)}
-            style={[styles.enter, { backgroundColor: colors.brand }]}
+            style={[styles.enter, { backgroundColor: colors.brandFill }]}
           >
             <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>
               {mapTranslation.t('nearbyEnter')}

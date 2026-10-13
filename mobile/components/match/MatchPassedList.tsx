@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react-native';
 
@@ -60,9 +61,9 @@ export function MatchPassedList({ cards, photoUrls, busyId, onLike, onSkip, onOp
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={t('review.like')}
-            style={({ pressed }) => [styles.likeBtn, { backgroundColor: c.brand, opacity: pressed || busy ? 0.7 : 1 }]}
+            style={({ pressed }) => [styles.likeBtn, { backgroundColor: c.brandFill, opacity: pressed || busy ? 0.7 : 1 }]}
           >
-            {busy ? <ActivityIndicator color={palette.onBrand} /> : <Text style={[styles.likeLabel, { color: palette.onBrand }]}>{t('review.like')}</Text>}
+            {busy ? <Spinner color={palette.onBrand} /> : <Text style={[styles.likeLabel, { color: palette.onBrand }]}>{t('review.like')}</Text>}
           </Pressable>
           <Pressable
             onPress={() => onSkip(item)}

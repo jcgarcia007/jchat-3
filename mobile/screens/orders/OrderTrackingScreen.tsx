@@ -26,7 +26,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   AppState,
   FlatList,
   Platform,
@@ -37,6 +36,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -375,7 +375,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
   if (loadingOrder) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={c.brand} />
+        <Spinner size="large" color={c.brandText} />
       </SafeAreaView>
     );
   }
@@ -465,7 +465,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
           </View>
         )}
         {isPending && (
-          <View style={[styles.statusBanner, { backgroundColor: c.brand }]}>
+          <View style={[styles.statusBanner, { backgroundColor: c.brandFill }]}>
             <Text style={styles.statusBannerText}>{t('tracking.orderPending')}</Text>
           </View>
         )}
@@ -765,7 +765,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
                 accessibilityRole="button"
               >
                 {noticeSending ? (
-                  <ActivityIndicator size="small" color={c.bgSurface} />
+                  <Spinner size="small" color={c.bgSurface} />
                 ) : (
                   <Text style={styles.sheetConfirmLabel}>{t('tracking.noticeSend')}</Text>
                 )}
@@ -809,7 +809,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
             accessibilityState={{ disabled: serviceCallLoading }}
           >
             {serviceCallLoading ? (
-              <ActivityIndicator size="small" color={c.bgSurface} />
+              <Spinner size="small" color={c.bgSurface} />
             ) : (
               <>
                 <IconBellRinging size={18} color={c.bgSurface} />
@@ -1087,7 +1087,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 12,
       paddingVertical: 14,
     },
@@ -1165,7 +1165,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 12,
       paddingVertical: 14,
       marginTop: 4,

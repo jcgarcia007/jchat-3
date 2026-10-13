@@ -16,8 +16,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -242,14 +242,14 @@ export default function ChangePasswordScreen() {
 
           {/* Save button */}
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: palette.brand }, loading && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: palette.brandFill }, loading && styles.saveBtnDisabled]}
             onPress={handleSave}
             disabled={loading}
             accessibilityRole="button"
             accessibilityLabel={t('changePassword.saveA11y')}
           >
             {loading
-              ? <ActivityIndicator color={palette.onBrand} />
+              ? <Spinner color={palette.onBrand} />
               : <Text style={styles.saveBtnText}>{t('changePassword.saveButton')}</Text>
             }
           </TouchableOpacity>

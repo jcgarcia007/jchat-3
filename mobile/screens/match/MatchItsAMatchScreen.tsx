@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -93,7 +94,7 @@ export default function MatchItsAMatchScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.photos}>
             <View style={[styles.photo, { borderColor: c.brand }]}>{photo(myPhoto)}</View>
-            <View style={[styles.heart, { backgroundColor: c.brand }]}>
+            <View style={[styles.heart, { backgroundColor: c.brandFill }]}>
               <IconHeartFilled size={22} color={palette.onBrand} />
             </View>
             <View style={[styles.photo, { borderColor: c.brand }]}>{photo(theirPhoto)}</View>
@@ -112,11 +113,11 @@ export default function MatchItsAMatchScreen() {
             accessibilityState={{ disabled: !canFollow }}
             style={[
               styles.followBtn,
-              { backgroundColor: canFollow ? c.brand : c.bgElevated, borderColor: c.brand },
+              { backgroundColor: canFollow ? c.brandFill : c.bgElevated, borderColor: c.brand },
             ]}
           >
             {follow.busy ? (
-              <ActivityIndicator color={palette.onBrand} />
+              <Spinner color={palette.onBrand} />
             ) : (
               <Text style={[styles.followText, { color: canFollow ? palette.onBrand : c.brand }]}>{followLabel}</Text>
             )}
@@ -159,7 +160,7 @@ export default function MatchItsAMatchScreen() {
             accessibilityRole="button"
             style={[styles.sendBtn, { borderColor: c.brand, opacity: params.conversationId ? 1 : 0.5 }]}
           >
-            <Text style={[styles.sendText, { color: c.brand }]}>{t('itsAMatch.sendMessage')}</Text>
+            <Text style={[styles.sendText, { color: c.brandText }]}>{t('itsAMatch.sendMessage')}</Text>
           </Pressable>
 
           <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" style={styles.keepBtn}>

@@ -8,7 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -108,7 +109,7 @@ export default function MatchInterestsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : (
         <>
@@ -128,7 +129,7 @@ export default function MatchInterestsScreen() {
                     style={[
                       styles.chip,
                       active
-                        ? { backgroundColor: c.brand, borderColor: c.brand }
+                        ? { backgroundColor: c.brandFill, borderColor: c.brand }
                         : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
                     ]}
                   >
@@ -149,10 +150,10 @@ export default function MatchInterestsScreen() {
               onPress={() => void handleSave()}
               disabled={missing > 0 || saving}
               accessibilityRole="button"
-              style={[styles.saveBtn, { backgroundColor: c.brand, opacity: missing > 0 || saving ? 0.5 : 1 }]}
+              style={[styles.saveBtn, { backgroundColor: c.brandFill, opacity: missing > 0 || saving ? 0.5 : 1 }]}
             >
               {saving ? (
-                <ActivityIndicator color={palette.onBrand} />
+                <Spinner color={palette.onBrand} />
               ) : (
                 <Text style={[styles.saveText, { color: palette.onBrand }]}>{t('interests.save')}</Text>
               )}

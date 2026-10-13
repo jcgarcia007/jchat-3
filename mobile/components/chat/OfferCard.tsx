@@ -277,7 +277,7 @@ export function OfferCard({
             accessibilityLabel={t('offer.shareOffer')}
             style={({ pressed }) => [s.shareBtn, pressed && s.shareBtnPressed]}
           >
-            <IconShare size={18} color={c.brand} />
+            <IconShare size={18} color={c.brandText} />
           </Pressable>
         </View>
       </View>
@@ -396,7 +396,7 @@ function makeStyles(c: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 10,
       paddingVertical: 10,
     },

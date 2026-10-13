@@ -38,7 +38,7 @@ export default function MenuWebPreviewScreen(): React.ReactElement {
       </View>
       <View style={styles.body}>
         <Text style={[styles.hint, { color: c.textSecondary }]}>{t('webPreview.openInTabHint')}</Text>
-        <Pressable testID="web-open-menu" onPress={openMenu} accessibilityRole="button" style={({ pressed }) => [styles.button, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}>
+        <Pressable testID="web-open-menu" onPress={openMenu} accessibilityRole="button" style={({ pressed }) => [styles.button, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}>
           <Text style={[styles.buttonLabel, { color: palette.onBrand }]}>{t('webPreview.openMenu')}</Text>
         </Pressable>
       </View>

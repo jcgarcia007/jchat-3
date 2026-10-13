@@ -31,7 +31,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useVenueAccess } from '../../hooks/useVenueAccess';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -42,6 +41,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -439,7 +439,7 @@ export default function ProductDetailScreen() {
                         styles.radio,
                         {
                           borderColor: isSelected ? palette.brand : c.borderSubtle,
-                          backgroundColor: isSelected ? palette.brand : 'transparent',
+                          backgroundColor: isSelected ? palette.brandFill : 'transparent',
                         },
                       ]}
                     >
@@ -499,7 +499,7 @@ export default function ProductDetailScreen() {
                         styles.checkbox,
                         {
                           borderColor: isChecked ? palette.brand : c.borderSubtle,
-                          backgroundColor: isChecked ? palette.brand : 'transparent',
+                          backgroundColor: isChecked ? palette.brandFill : 'transparent',
                         },
                       ]}
                     >
@@ -524,7 +524,7 @@ export default function ProductDetailScreen() {
           {/* ── Modifier groups (new system) ── */}
           {modifiersState === 'loading' ? (
             <View style={[styles.section, { backgroundColor: c.bgSurface, alignItems: 'center' }]}>
-              <ActivityIndicator color={palette.brand} />
+              <Spinner color={palette.brand} />
               <Text style={[styles.optionsStateText, { color: c.textSecondary }]}>{t('productDetail.loadingOptions')}</Text>
             </View>
           ) : null}
@@ -534,7 +534,7 @@ export default function ProductDetailScreen() {
               <Pressable
                 onPress={() => setModifiersNonce((n) => n + 1)}
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.optionsRetryBtn, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.optionsRetryBtn, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
               >
                 <Text style={styles.optionsRetryText}>{t('productDetail.optionsRetry')}</Text>
               </Pressable>
@@ -592,7 +592,7 @@ export default function ProductDetailScreen() {
                             styles.radio,
                             {
                               borderColor: isChosen ? palette.brand : c.borderSubtle,
-                              backgroundColor: isChosen ? palette.brand : 'transparent',
+                              backgroundColor: isChosen ? palette.brandFill : 'transparent',
                             },
                           ]}
                         >
@@ -604,7 +604,7 @@ export default function ProductDetailScreen() {
                             styles.checkbox,
                             {
                               borderColor: isChosen ? palette.brand : c.borderSubtle,
-                              backgroundColor: isChosen ? palette.brand : 'transparent',
+                              backgroundColor: isChosen ? palette.brandFill : 'transparent',
                             },
                           ]}
                         >
@@ -731,7 +731,7 @@ export default function ProductDetailScreen() {
             style={({ pressed }) => [
               styles.addButton,
               {
-                backgroundColor: canAddToCart ? palette.brand : c.bgElevated,
+                backgroundColor: canAddToCart ? palette.brandFill : c.bgElevated,
                 opacity: pressed ? 0.8 : 1,
               },
             ]}

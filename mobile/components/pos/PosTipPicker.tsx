@@ -118,7 +118,7 @@ export default function PosTipPicker({
                 style={({ pressed }) => [
                   styles.presetBtn,
                   isActive
-                    ? { backgroundColor: c.brand, borderColor: c.brand }
+                    ? { backgroundColor: c.brandFill, borderColor: c.brand }
                     : { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
                   pressed && !isActive && { opacity: 0.7 },
                 ]}
@@ -177,7 +177,7 @@ export default function PosTipPicker({
                 style={[
                   styles.modeBtn,
                   customMode === 'pct'
-                    ? { backgroundColor: c.brand }
+                    ? { backgroundColor: c.brandFill }
                     : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
                 ]}
                 accessibilityRole="button"
@@ -197,7 +197,7 @@ export default function PosTipPicker({
                 style={[
                   styles.modeBtn,
                   customMode === 'amt'
-                    ? { backgroundColor: c.brand }
+                    ? { backgroundColor: c.brandFill }
                     : { backgroundColor: 'transparent', borderColor: c.borderSubtle, borderWidth: 1 },
                 ]}
                 accessibilityRole="button"

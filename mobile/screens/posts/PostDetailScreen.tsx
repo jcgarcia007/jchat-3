@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -166,7 +166,7 @@ export default function PostDetailScreen(): React.JSX.Element {
   }, [t, user?.id]);
 
   if (loading || !post) {
-    return <View style={[styles.center, { backgroundColor: c.bgBase }]}><ActivityIndicator color={c.brand} /></View>;
+    return <View style={[styles.center, { backgroundColor: c.bgBase }]}><Spinner color={c.brandText} /></View>;
   }
 
   const isOwner = post.user_id === user?.id;
@@ -226,8 +226,8 @@ export default function PostDetailScreen(): React.JSX.Element {
 
         <View style={[styles.composer, { backgroundColor: c.bgBase, borderTopColor: c.borderSubtle }]}>
           <TextInput value={comment} onChangeText={setComment} maxLength={1000} editable={!busy} placeholder={t('detail.commentPlaceholder')} placeholderTextColor={c.textTertiary} style={[styles.commentInput, { color: c.textPrimary, backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]} />
-          <TouchableOpacity style={[styles.sendButton, { backgroundColor: comment.trim() && !busy ? c.brand : c.bgSurface }]} testID="comment-send" disabled={!comment.trim() || busy} onPress={() => void sendComment()} accessibilityRole="button" accessibilityLabel={t('detail.sendCommentA11y')}>
-            {busy ? <ActivityIndicator size="small" color={c.textPrimary} /> : <IconSend size={20} color={comment.trim() ? c.bgBase : c.textTertiary} />}
+          <TouchableOpacity style={[styles.sendButton, { backgroundColor: comment.trim() && !busy ? c.brandFill : c.bgSurface }]} testID="comment-send" disabled={!comment.trim() || busy} onPress={() => void sendComment()} accessibilityRole="button" accessibilityLabel={t('detail.sendCommentA11y')}>
+            {busy ? <Spinner size="small" color={c.textPrimary} /> : <IconSend size={20} color={comment.trim() ? c.bgBase : c.textTertiary} />}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

@@ -38,7 +38,7 @@ export function CartBar({ onPress }: CartBarProps) {
         onPress={onPress}
         style={({ pressed }) => [
           styles.bar,
-          { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
+          { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 },
         ]}
         accessibilityRole="button"
         accessibilityLabel={t('cartBar.viewCartA11y', { count: itemCount, total: formattedTotal })}

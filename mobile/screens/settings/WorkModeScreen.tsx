@@ -13,7 +13,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StatusBar,
@@ -22,6 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -236,7 +236,7 @@ export default function WorkModeScreen() {
         accessibilityRole="button"
         accessibilityLabel={t('workMode.pinCancel')}
       >
-        <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+        <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
       </Pressable>
       <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
         {mode === 'setPin'
@@ -329,14 +329,14 @@ export default function WorkModeScreen() {
           disabled={confirmDisabled}
           style={({ pressed }) => [
             styles.pinConfirmButton,
-            { backgroundColor: c.brand },
+            { backgroundColor: c.brandFill },
             confirmDisabled && { opacity: 0.5 },
             pressed && { opacity: 0.75 },
           ]}
           accessibilityRole="button"
         >
           {submitting ? (
-            <ActivityIndicator color={palette.onBrand} />
+            <Spinner color={palette.onBrand} />
           ) : (
             <Text style={styles.pinConfirmLabel}>{t('workMode.pinConfirm')}</Text>
           )}
@@ -359,7 +359,7 @@ export default function WorkModeScreen() {
     if (loading) {
       return (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
           <Text style={[styles.loadingText, { color: c.textTertiary }]}>
             {t('workMode.loading')}
           </Text>
@@ -398,7 +398,7 @@ export default function WorkModeScreen() {
             ]}
           >
             <View style={styles.cardIcon}>
-              <IconBriefcase size={22} color={c.brand} strokeWidth={2} />
+              <IconBriefcase size={22} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.cardBody}>
               <Text style={[styles.cardName, { color: c.textPrimary }]}>
@@ -412,7 +412,7 @@ export default function WorkModeScreen() {
               onPress={() => (b.has_pin ? openVerifyPin(b) : openSetPin(b))}
               style={({ pressed }) => [
                 styles.cardAction,
-                { backgroundColor: c.brand },
+                { backgroundColor: c.brandFill },
                 pressed && { opacity: 0.75 },
               ]}
               accessibilityRole="button"

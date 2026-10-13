@@ -13,7 +13,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconFingerprint } from '@tabler/icons-react-native';
@@ -55,7 +56,7 @@ export default function LockScreen() {
 
       <View style={styles.center}>
         <View style={[styles.iconRing, { backgroundColor: c.brandLight, borderColor: c.brand }]}>
-          <IconFingerprint size={56} color={c.brand} strokeWidth={1.5} />
+          <IconFingerprint size={56} color={c.brandText} strokeWidth={1.5} />
         </View>
         <Text style={[styles.title, { color: c.textPrimary }]}>{t('lock.title')}</Text>
         <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('lock.subtitle')}</Text>
@@ -67,13 +68,13 @@ export default function LockScreen() {
           disabled={attempting}
           style={({ pressed }) => [
             styles.unlockButton,
-            { backgroundColor: c.brand, opacity: attempting ? 0.7 : pressed ? 0.85 : 1 },
+            { backgroundColor: c.brandFill, opacity: attempting ? 0.7 : pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel={t('lock.unlockButton')}
         >
           {attempting ? (
-            <ActivityIndicator color={palette.onBrand} />
+            <Spinner color={palette.onBrand} />
           ) : (
             <Text style={styles.unlockLabel}>{t('lock.unlockButton')}</Text>
           )}

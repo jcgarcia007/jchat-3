@@ -16,7 +16,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -24,6 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -278,7 +278,7 @@ export default function PosApprovalScreen(): React.ReactElement {
 
         {/* Action buttons */}
         {isProcessing ? (
-          <ActivityIndicator style={{ marginTop: 12 }} />
+          <Spinner style={{ marginTop: 12 }} />
         ) : (
           <View style={styles.actions}>
             <TouchableOpacity
@@ -340,7 +340,7 @@ export default function PosApprovalScreen(): React.ReactElement {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} />
+        <Spinner style={{ marginTop: 40 }} />
       ) : orders.length === 0 ? (
         <ScrollView contentContainerStyle={styles.empty}>
           <Text style={styles.emptyText}>{t('pos.approval.empty')}</Text>

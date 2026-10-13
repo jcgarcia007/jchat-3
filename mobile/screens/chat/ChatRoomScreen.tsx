@@ -30,7 +30,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -42,6 +41,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
@@ -1715,7 +1715,7 @@ export default function ChatRoomScreen() {
 
               {geoGate.gateStatus === 'checking' && (
                 <View style={gateStyles.geoStatus}>
-                  <ActivityIndicator size="small" color={themeColors.brand} />
+                  <Spinner size="small" color={themeColors.brand} />
                   <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
                     {t('chatRoom.geoVerifying')}
                   </Text>
@@ -1791,7 +1791,7 @@ export default function ChatRoomScreen() {
         {/* Background placeholder behind modal */}
         <View style={[gateStyles.bgPlaceholder, { backgroundColor: themeColors.bgBase }]}>
           {initialLoading && (
-            <ActivityIndicator size="large" color={themeColors.brand} />
+            <Spinner size="large" color={themeColors.brand} />
           )}
         </View>
       </SafeAreaView>
@@ -1803,7 +1803,7 @@ export default function ChatRoomScreen() {
   if (initialLoading) {
     return (
       <View style={[loadStyles.container, { backgroundColor: chatTheme.bg }]}>
-        <ActivityIndicator size="large" color={chatTheme.accent} />
+        <Spinner size="large" color={chatTheme.accent} />
       </View>
     );
   }
@@ -1924,7 +1924,7 @@ export default function ChatRoomScreen() {
           ListFooterComponent={
             loadingMessages ? (
               <View style={chatStyles.loadingHeader}>
-                <ActivityIndicator size="small" color={chatTheme.accent} />
+                <Spinner size="small" color={chatTheme.accent} />
               </View>
             ) : null
           }

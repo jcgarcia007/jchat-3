@@ -142,7 +142,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         style={[
           styles.offersButton,
           {
-            backgroundColor: colors.brand,
+            backgroundColor: colors.brandFill,
             shadowColor: colors.brand,
           },
         ]}

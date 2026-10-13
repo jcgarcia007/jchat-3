@@ -414,7 +414,7 @@ export default function BusinessPreviewCard({
         <View style={styles.actionRow}>
           {/* Enter Chat — primary */}
           <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: c.brand }]}
+            style={[styles.btnPrimary, { backgroundColor: c.brandFill }]}
             onPress={() => onEnterChat(business.id)}
             accessibilityRole="button"
             accessibilityLabel={t('businessPreviewCard.enterChatA11y')}
@@ -446,7 +446,7 @@ export default function BusinessPreviewCard({
             accessibilityRole="button"
             accessibilityLabel={t('businessPreviewCard.navigateA11y')}
           >
-            <IconNavigation size={18} color={c.brand} />
+            <IconNavigation size={18} color={c.brandText} />
           </Pressable>
 
           {/* Share icon button */}

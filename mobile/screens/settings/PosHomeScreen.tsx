@@ -22,7 +22,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StatusBar,
@@ -30,6 +29,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -193,8 +193,8 @@ export default function PosHomeScreen() {
         >
           <View style={styles.cardTopRow}>
             <View style={[styles.stateChip, { backgroundColor: c.brand + '18' }]}>
-              <IconPlugConnected size={11} color={c.brand} strokeWidth={2} />
-              <Text style={[styles.stateText, { color: c.brand }]}>
+              <IconPlugConnected size={11} color={c.brandText} strokeWidth={2} />
+              <Text style={[styles.stateText, { color: c.brandText }]}>
                 {t('pos.combinedWith', { label: primaryLabel })}
               </Text>
             </View>
@@ -258,14 +258,14 @@ export default function PosHomeScreen() {
           {/* Combined-primary indicator */}
           {isPrimary ? (
             <View style={[styles.assignBadge, { backgroundColor: c.brand + '18' }]}>
-              <IconPlugConnected size={10} color={c.brand} strokeWidth={2} />
+              <IconPlugConnected size={10} color={c.brandText} strokeWidth={2} />
             </View>
           ) : null}
 
           {/* F2 — session code active indicator */}
           {item.has_access_code ? (
             <View style={[styles.assignBadge, { backgroundColor: c.brand + '18' }]}>
-              <IconKey size={10} color={c.brand} strokeWidth={2} />
+              <IconKey size={10} color={c.brandText} strokeWidth={2} />
             </View>
           ) : null}
 
@@ -312,7 +312,7 @@ export default function PosHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('workMode.pinCancel')}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <Text
           style={[styles.headerTitle, { color: c.textPrimary }]}
@@ -329,7 +329,7 @@ export default function PosHomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('pos.inventoryBtn')}
           >
-            <IconArchive size={22} color={c.brand} strokeWidth={2} />
+            <IconArchive size={22} color={c.brandText} strokeWidth={2} />
           </Pressable>
         ) : null}
 
@@ -340,7 +340,7 @@ export default function PosHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('pos.receiptsTitle')}
         >
-          <IconReceipt size={22} color={c.brand} strokeWidth={2} />
+          <IconReceipt size={22} color={c.brandText} strokeWidth={2} />
         </Pressable>
 
         {/* ── F4: Aprobaciones pendientes ─────────────────────────────────── */}
@@ -365,7 +365,7 @@ export default function PosHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('pos.ordersBtn')}
         >
-          <IconClipboardList size={22} color={c.brand} strokeWidth={2} />
+          <IconClipboardList size={22} color={c.brandText} strokeWidth={2} />
           {readyCount > 0 && (
             <View style={[styles.ordersBadge, { backgroundColor: c.success }]}>
               <Text style={styles.ordersBadgeText}>{readyCount}</Text>
@@ -380,14 +380,14 @@ export default function PosHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('pos.printers.title')}
         >
-          <IconPrinter size={22} color={c.brand} strokeWidth={2} />
+          <IconPrinter size={22} color={c.brandText} strokeWidth={2} />
         </Pressable>
       </View>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
           <Text style={[styles.loadingText, { color: c.textTertiary }]}>
             {t('pos.tablesLoading')}
           </Text>

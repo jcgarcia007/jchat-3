@@ -22,7 +22,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -31,6 +30,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import {
   IconBell,
@@ -472,7 +472,7 @@ export function PinMessageSheet({
             ]}
           >
             {saving ? (
-              <ActivityIndicator size="small" color={palette.onBrand} />
+              <Spinner size="small" color={palette.onBrand} />
             ) : (
               <>
                 <IconPin size={18} color={palette.onBrand} />

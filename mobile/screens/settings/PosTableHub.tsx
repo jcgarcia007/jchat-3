@@ -24,7 +24,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -33,6 +32,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -927,7 +927,7 @@ export default function PosTableHub(): React.ReactElement {
           accessibilityRole="button"
           accessibilityLabel={t('workMode.pinCancel')}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <View style={styles.headerTitleBlock}>
           <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -958,7 +958,7 @@ export default function PosTableHub(): React.ReactElement {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : (
         <ScrollView
@@ -973,7 +973,7 @@ export default function PosTableHub(): React.ReactElement {
           {(combinedSecondaries.length > 0 || combining) && (
             <View style={[styles.combinedSection, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
               <View style={styles.combinedHeader}>
-                <IconPlugConnected size={14} color={c.brand} strokeWidth={2} />
+                <IconPlugConnected size={14} color={c.brandText} strokeWidth={2} />
                 <Text style={[styles.combinedHeaderText, { color: c.textSecondary }]}>
                   {t('pos.combinedTablesSection')}
                 </Text>
@@ -995,7 +995,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!uncombiningId }}
                   >
                     {uncombiningId === sec.table_id ? (
-                      <ActivityIndicator size="small" color={c.danger} />
+                      <Spinner size="small" color={c.danger} />
                     ) : (
                       <>
                         <IconPlugOff size={12} color={c.danger} strokeWidth={2} />
@@ -1009,7 +1009,7 @@ export default function PosTableHub(): React.ReactElement {
               ))}
               {combining && (
                 <View style={[styles.combinedRow, { borderTopColor: c.borderSubtle }]}>
-                  <ActivityIndicator size="small" color={c.brand} />
+                  <Spinner size="small" color={c.brandText} />
                   <Text style={[styles.combinedRowLabel, { color: c.textTertiary }]}>
                     {t('pos.combineMesa')}…
                   </Text>
@@ -1074,7 +1074,7 @@ export default function PosTableHub(): React.ReactElement {
           {/* ── F2 Código de mesa ────────────────────────────────────────── */}
           <View style={[styles.codeCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <View style={styles.codeCardHeader}>
-              <IconKey size={16} color={c.brand} strokeWidth={1.5} />
+              <IconKey size={16} color={c.brandText} strokeWidth={1.5} />
               <Text style={[styles.codeCardTitle, { color: c.textPrimary }]}>
                 {t('pos.tableCode.title')}
               </Text>
@@ -1104,7 +1104,7 @@ export default function PosTableHub(): React.ReactElement {
                 <View style={styles.codeActions}>
                   {/* Print */}
                   <Pressable
-                    style={[styles.codeActionBtn, { backgroundColor: c.brand }]}
+                    style={[styles.codeActionBtn, { backgroundColor: c.brandFill }]}
                     onPress={() => void handlePrintCode()}
                     accessibilityRole="button"
                   >
@@ -1138,7 +1138,7 @@ export default function PosTableHub(): React.ReactElement {
                       accessibilityRole="button"
                     >
                       {releaseLoading
-                        ? <ActivityIndicator size="small" color={c.danger} />
+                        ? <Spinner size="small" color={c.danger} />
                         : <IconLock size={14} color={c.danger} strokeWidth={1.8} />
                       }
                       <Text style={[styles.codeActionLabel, { color: c.danger }]}>
@@ -1155,13 +1155,13 @@ export default function PosTableHub(): React.ReactElement {
                   {t('pos.tableCode.empty')}
                 </Text>
                 <Pressable
-                  style={[styles.codeOpenBtn, { backgroundColor: c.brand }]}
+                  style={[styles.codeOpenBtn, { backgroundColor: c.brandFill }]}
                   onPress={() => void handleOpenSession()}
                   disabled={sessionLoading}
                   accessibilityRole="button"
                 >
                   {sessionLoading
-                    ? <ActivityIndicator size="small" color={palette.onBrand} />
+                    ? <Spinner size="small" color={palette.onBrand} />
                     : <IconKey size={14} color={palette.onBrand} strokeWidth={1.8} />
                   }
                   <Text style={styles.codeOpenLabel}>
@@ -1215,7 +1215,7 @@ export default function PosTableHub(): React.ReactElement {
                       {
                         left,
                         top,
-                        backgroundColor: hasDraftForSeat ? c.brand : c.bgSurface,
+                        backgroundColor: hasDraftForSeat ? c.brandFill : c.bgSurface,
                         borderColor: hasDraftForSeat ? c.brand : c.borderSubtle,
                       },
                       pressed && { opacity: 0.8 },
@@ -1253,7 +1253,7 @@ export default function PosTableHub(): React.ReactElement {
                 style={[
                   styles.filterChip,
                   selectedOrderId === null
-                    ? { backgroundColor: c.brand }
+                    ? { backgroundColor: c.brandFill }
                     : { backgroundColor: c.bgSurface, borderColor: c.borderSubtle, borderWidth: 1 },
                 ]}
                 accessibilityRole="button"
@@ -1279,7 +1279,7 @@ export default function PosTableHub(): React.ReactElement {
                     style={[
                       styles.filterChip,
                       isActive
-                        ? { backgroundColor: c.brand }
+                        ? { backgroundColor: c.brandFill }
                         : { backgroundColor: c.bgSurface, borderColor: c.borderSubtle, borderWidth: 1 },
                     ]}
                     accessibilityRole="button"
@@ -1326,7 +1326,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
                     {voidingOrderId === actionOrderId ? (
-                      <ActivityIndicator color={palette.onBrand} size="small" />
+                      <Spinner color={palette.onBrand} size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
                         {t('pos.voidOrderCancelBtn')}
@@ -1340,7 +1340,7 @@ export default function PosTableHub(): React.ReactElement {
                     disabled={!!voidingOrderId}
                     style={({ pressed }) => [
                       styles.orderActionBtn,
-                      { backgroundColor: c.brand },
+                      { backgroundColor: c.brandFill },
                       pressed && !voidingOrderId && { opacity: 0.8 },
                       !!voidingOrderId && styles.orderActionBtnDisabled,
                     ]}
@@ -1349,7 +1349,7 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!voidingOrderId }}
                   >
                     {voidingOrderId === actionOrderId ? (
-                      <ActivityIndicator color={palette.onBrand} size="small" />
+                      <Spinner color={palette.onBrand} size="small" />
                     ) : (
                       <Text style={styles.orderActionBtnText}>
                         {t('pos.voidOrderEditBtn')}
@@ -1498,7 +1498,7 @@ export default function PosTableHub(): React.ReactElement {
               accessibilityRole="button"
               accessibilityLabel={t('pos.combineCancel')}
             >
-              <Text style={[styles.modalCloseText, { color: c.brand }]}>
+              <Text style={[styles.modalCloseText, { color: c.brandText }]}>
                 {t('pos.combineCancel')}
               </Text>
             </Pressable>
@@ -1529,7 +1529,7 @@ export default function PosTableHub(): React.ReactElement {
                     {t('pos.tableSeats', { count: freeTable.seats })}
                   </Text>
                 )}
-                <IconPlugConnected size={16} color={c.brand} strokeWidth={1.5} />
+                <IconPlugConnected size={16} color={c.brandText} strokeWidth={1.5} />
               </Pressable>
             )}
           />
@@ -1564,7 +1564,7 @@ export default function PosTableHub(): React.ReactElement {
           accessibilityState={{ disabled: !hasDraft || submitting }}
         >
           {submitting ? (
-            <ActivityIndicator color={palette.onBrand} size="small" />
+            <Spinner color={palette.onBrand} size="small" />
           ) : (
             <Text
               style={[

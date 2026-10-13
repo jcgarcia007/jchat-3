@@ -33,7 +33,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -44,6 +43,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import {
   IconCheck,
@@ -360,7 +360,7 @@ export function CreateOfferSheet({
           {/* Header */}
           <View style={s.headerRow}>
             <View style={s.headerIconWrap}>
-              <IconTag size={20} color={c.brand} />
+              <IconTag size={20} color={c.brandText} />
             </View>
             <Text style={s.headerTitle}>{t('offerCreate.header')}</Text>
             <Pressable
@@ -573,7 +573,7 @@ export function CreateOfferSheet({
               ]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={c.bgSurface} />
+                <Spinner size="small" color={c.bgSurface} />
               ) : (
                 <Text style={s.postBtnLabel}>{t('offerCreate.postButton')}</Text>
               )}
@@ -702,7 +702,7 @@ function makeStyles(c: ThemeColors) {
       fontWeight: '600',
     },
     typeLabelActive: {
-      color: c.brand,
+      color: c.brandText,
     },
     typeCheckDot: {
       position: 'absolute',
@@ -711,7 +711,7 @@ function makeStyles(c: ThemeColors) {
       width: 18,
       height: 18,
       borderRadius: 9,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -769,7 +769,7 @@ function makeStyles(c: ThemeColors) {
     },
     chipActive: {
       borderColor: c.brand,
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
     },
     chipPressed: {
       opacity: 0.7,
@@ -821,7 +821,7 @@ function makeStyles(c: ThemeColors) {
       flexShrink: 0,
     },
     checkboxChecked: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderColor: c.brand,
     },
     roomName: {
@@ -831,7 +831,7 @@ function makeStyles(c: ThemeColors) {
       fontWeight: '500',
     },
     roomNameChecked: {
-      color: c.brand,
+      color: c.brandText,
       fontWeight: '700',
     },
     userCountBadge: {
@@ -854,7 +854,7 @@ function makeStyles(c: ThemeColors) {
 
     // Post button
     postBtn: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderRadius: 14,
       paddingVertical: 15,
       alignItems: 'center',

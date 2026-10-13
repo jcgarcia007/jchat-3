@@ -90,7 +90,7 @@ export default function WelcomeScreen() {
             style={[
               styles.dot,
               i === 0
-                ? { backgroundColor: palette.brand, width: 20 }
+                ? { backgroundColor: palette.brandFill, width: 20 }
                 : { backgroundColor: WELCOME_COLORS.dotInactive },
             ]}
           />
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   primaryButton: {
-    backgroundColor: palette.brand,
+    backgroundColor: palette.brandFill,
   },
   primaryButtonText: {
     fontSize: 16,

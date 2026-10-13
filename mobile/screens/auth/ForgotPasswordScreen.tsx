@@ -13,8 +13,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -223,14 +223,14 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: palette.brand }, loading && styles.btnDisabled]}
+                style={[styles.primaryBtn, { backgroundColor: palette.brandFill }, loading && styles.btnDisabled]}
                 onPress={handleSend}
                 disabled={loading}
                 accessibilityRole="button"
                 accessibilityLabel={t('forgotPassword.sendA11y')}
               >
                 {loading
-                  ? <ActivityIndicator color={palette.textPrimary} />
+                  ? <Spinner color={palette.textPrimary} />
                   : <Text style={styles.primaryBtnText}>{t('forgotPassword.sendButton')}</Text>}
               </TouchableOpacity>
             </>
@@ -260,7 +260,7 @@ export default function ForgotPasswordScreen() {
               <TouchableOpacity
                 style={[
                   styles.primaryBtn,
-                  { backgroundColor: palette.brand },
+                  { backgroundColor: palette.brandFill },
                   (loading || code.length !== 6) && styles.btnDisabled,
                 ]}
                 onPress={handleVerify}
@@ -268,7 +268,7 @@ export default function ForgotPasswordScreen() {
                 accessibilityRole="button"
               >
                 {loading
-                  ? <ActivityIndicator color={palette.textPrimary} />
+                  ? <Spinner color={palette.textPrimary} />
                   : <Text style={styles.primaryBtnText}>{t('forgotPassword.verify')}</Text>}
               </TouchableOpacity>
 

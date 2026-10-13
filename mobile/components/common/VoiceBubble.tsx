@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from './Spinner';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
 import { IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react-native';
@@ -104,7 +105,7 @@ export function VoiceBubble({ id, source, durationSec, textColor, pending = fals
         hitSlop={6}
       >
         {loading || pending ? (
-          <ActivityIndicator size="small" color={textColor} />
+          <Spinner size="small" color={textColor} />
         ) : status.playing ? (
           <IconPlayerPause size={18} color={textColor} />
         ) : (

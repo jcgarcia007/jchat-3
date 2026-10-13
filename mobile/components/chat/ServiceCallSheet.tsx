@@ -24,7 +24,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -35,6 +34,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { IconBell } from '@tabler/icons-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -336,7 +336,7 @@ export function ServiceCallSheet({
             ]}
           >
             {loading ? (
-              <ActivityIndicator size="small" color={c.bgSurface} />
+              <Spinner size="small" color={c.bgSurface} />
             ) : (
               <Text style={s.buttonLabel}>{t('service.callWaiter')}</Text>
             )}

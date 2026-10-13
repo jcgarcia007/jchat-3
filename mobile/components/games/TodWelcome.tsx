@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -123,7 +124,7 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
               {rules.map(({ key, Icon }) => (
                 <View key={key} style={styles.ruleRow}>
                   <View style={[styles.ruleIcon, { backgroundColor: c.brandLight }]}>
-                    <Icon size={20} color={c.brand} />
+                    <Icon size={20} color={c.brandText} />
                   </View>
                   <Text style={[styles.ruleText, { color: c.textPrimary }]}>{t(`welcome.${key}`)}</Text>
                 </View>
@@ -136,7 +137,7 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
                 <Pressable
                   accessibilityRole="button"
                   onPress={onDismiss}
-                  style={[styles.primary, { backgroundColor: c.brand }]}
+                  style={[styles.primary, { backgroundColor: c.brandFill }]}
                 >
                   <Text style={styles.primaryText}>{t('welcome.understood')}</Text>
                 </Pressable>
@@ -147,9 +148,9 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
                     accessibilityState={{ disabled: saving, busy: saving }}
                     disabled={saving}
                     onPress={onAccept}
-                    style={[styles.primary, { backgroundColor: c.brand, opacity: saving ? 0.7 : 1 }]}
+                    style={[styles.primary, { backgroundColor: c.brandFill, opacity: saving ? 0.7 : 1 }]}
                   >
-                    {saving ? <ActivityIndicator color={palette.onBrand} /> : <Text style={styles.primaryText}>{t('welcome.accept')}</Text>}
+                    {saving ? <Spinner color={palette.onBrand} /> : <Text style={styles.primaryText}>{t('welcome.accept')}</Text>}
                   </Pressable>
                   <Pressable accessibilityRole="button" disabled={saving} onPress={onDismiss} style={styles.secondary}>
                     <Text style={[styles.secondaryText, { color: c.textSecondary }]}>{t('welcome.notNow')}</Text>
@@ -190,7 +191,7 @@ function TodTutorialModal({ visible, onDone }: { visible: boolean; onDone: () =>
           <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
             <View style={styles.cardContent}>
               <View style={[styles.tutorialIcon, { backgroundColor: c.brandLight }]}>
-                <current.Icon size={40} color={c.brand} />
+                <current.Icon size={40} color={c.brandText} />
               </View>
               <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header">
                 {t(current.title)}
@@ -213,7 +214,7 @@ function TodTutorialModal({ visible, onDone }: { visible: boolean; onDone: () =>
               <Pressable
                 accessibilityRole="button"
                 onPress={last ? finish : () => setStep((n) => n + 1)}
-                style={[styles.primary, { backgroundColor: c.brand }]}
+                style={[styles.primary, { backgroundColor: c.brandFill }]}
               >
                 <Text style={styles.primaryText}>{last ? t('tutorial.start') : t('tutorial.next')}</Text>
               </Pressable>

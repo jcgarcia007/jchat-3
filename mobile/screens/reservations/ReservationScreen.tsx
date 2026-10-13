@@ -19,7 +19,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -29,6 +28,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
@@ -565,7 +565,7 @@ export default function ReservationScreen({
               accessibilityLabel={t('timeAccessibilityLabel')}
             />
             {checkingFull && (
-              <ActivityIndicator
+              <Spinner
                 size="small"
                 color={palette.brand}
                 style={{ marginTop: 6 }}
@@ -708,7 +708,7 @@ export default function ReservationScreen({
             ]}
           >
             {submitting ? (
-              <ActivityIndicator color={palette.onBrand} size="small" />
+              <Spinner color={palette.onBrand} size="small" />
             ) : (
               <Text style={styles.submitBtnText}>
                 {slotFull && wantsWaitlist

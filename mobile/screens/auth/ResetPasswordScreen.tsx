@@ -13,9 +13,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   BackHandler,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconEye, IconEyeOff, IconLock } from '@tabler/icons-react-native';
@@ -189,14 +189,14 @@ export default function ResetPasswordScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: palette.brand }, loading && styles.btnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: palette.brandFill }, loading && styles.btnDisabled]}
             onPress={handleSave}
             disabled={loading}
             accessibilityRole="button"
             accessibilityLabel={t('resetPassword.saveA11y')}
           >
             {loading
-              ? <ActivityIndicator color={palette.textPrimary} />
+              ? <Spinner color={palette.textPrimary} />
               : <Text style={styles.saveBtnText}>{t('resetPassword.saveButton')}</Text>}
           </TouchableOpacity>
 

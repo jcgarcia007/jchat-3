@@ -28,7 +28,7 @@ export function NewMessagesPill({ count, business, onPress }: Props): React.Reac
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityLiveRegion="polite"
-      style={({ pressed }) => [styles.pill, { top: insets.top + 6, backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [styles.pill, { top: insets.top + 6, backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
     >
       <Text numberOfLines={1} style={[styles.label, { color: palette.onBrand }]}>{label}</Text>
     </Pressable>

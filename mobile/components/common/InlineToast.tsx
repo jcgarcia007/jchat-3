@@ -68,7 +68,7 @@ export function InlineToast({
           }}
           style={styles.action}
         >
-          <Text style={[styles.actionLabel, { color: c.brand }]}>{actionLabel}</Text>
+          <Text style={[styles.actionLabel, { color: c.brandText }]}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>

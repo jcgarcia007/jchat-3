@@ -117,7 +117,7 @@ export function ChatNotificationsSheet({
           style={[styles.row, { backgroundColor: item.is_read ? c.bgSurface : c.bgElevated, borderBottomColor: c.borderSubtle }]}
         >
           <View style={[styles.iconWrap, { backgroundColor: c.brandLight }]}>
-            <Icon size={20} color={c.brand} strokeWidth={2} />
+            <Icon size={20} color={c.brandText} strokeWidth={2} />
           </View>
           <View style={styles.rowText}>
             <Text style={[styles.text, { color: c.textPrimary }]}>{textFor(item)}</Text>
@@ -160,7 +160,7 @@ export function ChatNotificationsSheet({
                 accessibilityState={{ selected: active }}
                 style={[
                   styles.chip,
-                  { backgroundColor: active ? c.brand : c.bgElevated, borderColor: active ? c.brand : c.borderSubtle },
+                  { backgroundColor: active ? c.brandFill : c.bgElevated, borderColor: active ? c.brand : c.borderSubtle },
                 ]}
               >
                 <Text style={[styles.chipLabel, { color: active ? palette.onBrand : c.textPrimary }]}>
@@ -184,8 +184,8 @@ export function ChatNotificationsSheet({
               accessibilityLabel={t('notificationsSheet.markAllRead')}
               style={[styles.markAllBtn, { backgroundColor: c.brandLight, opacity: marking ? 0.6 : 1 }]}
             >
-              <IconChecks size={17} color={c.brand} />
-              <Text style={[styles.markAllLabel, { color: c.brand }]}>{t('notificationsSheet.markAllRead')}</Text>
+              <IconChecks size={17} color={c.brandText} />
+              <Text style={[styles.markAllLabel, { color: c.brandText }]}>{t('notificationsSheet.markAllRead')}</Text>
             </Pressable>
           </View>
         ) : null}

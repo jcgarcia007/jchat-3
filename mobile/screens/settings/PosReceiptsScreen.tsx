@@ -12,7 +12,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StatusBar,
@@ -20,6 +19,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -160,7 +160,7 @@ function ReceiptRowItem({ row, businessId, pickerRef, colors, t }: RowProps) {
         accessibilityLabel={reprintLabel}
       >
         {printState === 'printing' ? (
-          <ActivityIndicator size="small" color={printBtnColor} />
+          <Spinner size="small" color={printBtnColor} />
         ) : (
           <IconPrinter size={16} color={canReprint ? printBtnColor : colors.textSecondary} />
         )}
@@ -249,7 +249,7 @@ export default function PosReceiptsScreen(): React.ReactElement {
       {/* Body */}
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.brand} size="large" />
+          <Spinner color={colors.brand} size="large" />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             {t('settings:pos.receiptsLoading')}
           </Text>

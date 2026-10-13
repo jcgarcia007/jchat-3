@@ -497,7 +497,7 @@ export default function SettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('back', { ns: 'common' })}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('main.title')}</Text>
       </View>
@@ -511,7 +511,7 @@ export default function SettingsScreen() {
 
         {/* Email (display only) */}
         <SettingsRow
-          icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconUser size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.email')}
           sublabel={user?.email ?? '—'}
         />
@@ -520,7 +520,7 @@ export default function SettingsScreen() {
 
         {/* Change password */}
         <SettingsRow
-          icon={<IconLock size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconLock size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.changePassword')}
           onPress={handleChangePassword}
           right={<ChevronRight />}
@@ -530,7 +530,7 @@ export default function SettingsScreen() {
 
         {/* @username (display only) */}
         <SettingsRow
-          icon={<IconUser size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconUser size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.username')}
           sublabel={username ? `@${username}` : '@—'}
         />
@@ -539,7 +539,7 @@ export default function SettingsScreen() {
 
         {/* My orders */}
         <SettingsRow
-          icon={<IconReceipt size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconReceipt size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.myOrders')}
           sublabel={t('main.myOrdersSub')}
           onPress={() => navigation.navigate('MyOrders')}
@@ -553,7 +553,7 @@ export default function SettingsScreen() {
 
         {/* Plans / Cuentas */}
         <SettingsRow
-          icon={<IconCreditCard size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconCreditCard size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.plans')}
           sublabel={t('main.plansSub')}
           onPress={() => navigation.navigate('Pricing')}
@@ -565,7 +565,7 @@ export default function SettingsScreen() {
           <>
             <SectionDivider />
             <SettingsRow
-              icon={<IconBriefcase size={20} color={c.brand} strokeWidth={2} />}
+              icon={<IconBriefcase size={20} color={c.brandText} strokeWidth={2} />}
               label={t('workMode.row')}
               sublabel={t('workMode.rowSub')}
               onPress={() => navigation.navigate('WorkMode')}
@@ -587,7 +587,7 @@ export default function SettingsScreen() {
 
         {/* Work notifications toggle */}
         <SettingsRow
-          icon={<IconBell size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconBell size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.work')}
           sublabel={t('main.workSub')}
           right={
@@ -604,7 +604,7 @@ export default function SettingsScreen() {
 
         {/* Social notifications toggle */}
         <SettingsRow
-          icon={<IconBell size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconBell size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.social')}
           sublabel={t('main.socialSub')}
           right={
@@ -627,7 +627,7 @@ export default function SettingsScreen() {
           <View key={key} style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
             <View style={styles.row}>
               <View style={styles.rowIcon}>
-                <IconEyeOff size={20} color={c.brand} strokeWidth={2} />
+                <IconEyeOff size={20} color={c.brandText} strokeWidth={2} />
               </View>
               <View style={styles.rowBody}>
                 <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t(label)}</Text>
@@ -662,7 +662,7 @@ export default function SettingsScreen() {
         <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
           <View style={styles.row}>
             <View style={styles.rowIcon}>
-              <IconLanguage size={20} color={c.brand} strokeWidth={2} />
+              <IconLanguage size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
               <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.language')}</Text>
@@ -689,7 +689,7 @@ export default function SettingsScreen() {
         <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
           <View style={styles.row}>
             <View style={styles.rowIcon}>
-              <IconMoon size={20} color={c.brand} strokeWidth={2} />
+              <IconMoon size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
               <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.theme')}</Text>
@@ -719,7 +719,7 @@ export default function SettingsScreen() {
         <View style={[styles.compoundRow, { backgroundColor: c.bgSurface }]}>
           <View style={styles.row}>
             <View style={styles.rowIcon}>
-              <IconSpeakerphone size={20} color={c.brand} strokeWidth={2} />
+              <IconSpeakerphone size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
               <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.feedRadius')}</Text>
@@ -747,7 +747,7 @@ export default function SettingsScreen() {
         <SectionHeader label={t('main.sectionPrivacy')} />
 
         <SettingsRow
-          icon={<IconShield size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconShield size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.privacySettings')}
           onPress={handlePrivacy}
           right={<ChevronRight />}
@@ -796,7 +796,7 @@ export default function SettingsScreen() {
 
         {/* Biometric app-lock (M2) — opt-in Face ID / Touch ID gate */}
         <SettingsRow
-          icon={<IconFingerprint size={20} color={c.brand} strokeWidth={2} />}
+          icon={<IconFingerprint size={20} color={c.brandText} strokeWidth={2} />}
           label={t('main.biometricLock')}
           sublabel={biometricAvailable || biometricOn ? t('main.biometricLockSub') : t('main.biometricLockUnavailable')}
           right={

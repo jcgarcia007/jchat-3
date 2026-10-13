@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -17,6 +16,7 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -83,7 +83,7 @@ export default function MyOrdersScreen(): React.ReactElement {
             {business ? ` · ${business}` : ''}
           </Text>
           <Text style={[styles.rowMeta, { color: c.textTertiary }]}>{date}</Text>
-          <Text style={[styles.rowStatus, { color: c.brand }]}>
+          <Text style={[styles.rowStatus, { color: c.brandText }]}>
             {t(orderStatusLabelKey(item.status, item.approval_status))}
           </Text>
         </View>
@@ -109,14 +109,14 @@ export default function MyOrdersScreen(): React.ReactElement {
       </View>
 
       {loading ? (
-        <View style={styles.center}><ActivityIndicator color={c.brand} size="large" /></View>
+        <View style={styles.center}><Spinner color={c.brandText} size="large" /></View>
       ) : failed && orders.length === 0 ? (
         <View style={styles.center}>
           <Text style={[styles.message, { color: c.textSecondary }]}>{t('myOrders.loadError')}</Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => { void load(); }}
-            style={[styles.retryBtn, { backgroundColor: c.brand }]}
+            style={[styles.retryBtn, { backgroundColor: c.brandFill }]}
           >
             <Text style={styles.retryText}>{t('myOrders.retry')}</Text>
           </Pressable>

@@ -25,7 +25,6 @@ import React, {
 } from 'react';
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
@@ -39,6 +38,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { useTranslation } from 'react-i18next';
@@ -770,7 +770,7 @@ export default function DMChatScreen() {
               onPress={() => void follow.follow()}
               disabled={follow.relation !== 'none' || follow.busy || follow.loading}
               accessibilityRole="button"
-              style={[styles.followBtn, { borderColor: palette.brand, backgroundColor: follow.relation === 'none' ? palette.brand : 'transparent' }]}
+              style={[styles.followBtn, { borderColor: palette.brand, backgroundColor: follow.relation === 'none' ? palette.brandFill : 'transparent' }]}
             >
               <Text style={[styles.followBtnText, { color: follow.relation === 'none' ? palette.onBrand : palette.brand }]}>
                 {follow.relation === 'following'
@@ -812,7 +812,7 @@ export default function DMChatScreen() {
       {/* Messages */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={palette.brand} />
+          <Spinner color={palette.brand} />
         </View>
       ) : (
         <FlatList

@@ -100,7 +100,7 @@ function ConversationRow({
             {previewText}
           </Text>
           {hasUnread ? (
-            <View style={[styles.badge, { backgroundColor: colors.brand }]}>
+            <View style={[styles.badge, { backgroundColor: colors.brandFill }]}>
               <Text style={[styles.badgeText, { color: palette.bgSurfaceLight }]}>
                 {unreadCount > 99 ? '99+' : String(unreadCount)}
               </Text>

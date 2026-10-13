@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -276,7 +277,7 @@ export default function MatchMyProfileScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
@@ -345,7 +346,7 @@ export default function MatchMyProfileScreen() {
                   { width: tile, height: tile * 1.25, borderColor: c.borderSubtle, backgroundColor: c.bgElevated },
                 ]}
               >
-                {busy ? <ActivityIndicator color={c.brand} /> : <IconPlus size={28} color={c.brand} />}
+                {busy ? <Spinner color={c.brandText} /> : <IconPlus size={28} color={c.brandText} />}
               </Pressable>
             )}
           </View>
@@ -357,8 +358,8 @@ export default function MatchMyProfileScreen() {
               accessibilityRole="button"
               style={[styles.secondaryBtn, { borderColor: c.brand, opacity: busy ? 0.6 : 1 }]}
             >
-              <IconUserCircle size={20} color={c.brand} />
-              <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.photos.useProfilePhoto')}</Text>
+              <IconUserCircle size={20} color={c.brandText} />
+              <Text style={[styles.secondaryBtnText, { color: c.brandText }]}>{t('profile.photos.useProfilePhoto')}</Text>
             </Pressable>
           ) : null}
 
@@ -380,7 +381,7 @@ export default function MatchMyProfileScreen() {
             accessibilityRole="button"
             style={[styles.secondaryBtn, { borderColor: c.brand }]}
           >
-            <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.interests.edit')}</Text>
+            <Text style={[styles.secondaryBtnText, { color: c.brandText }]}>{t('profile.interests.edit')}</Text>
           </Pressable>
 
           {/* Settings: age range + new-people notification */}
@@ -396,7 +397,7 @@ export default function MatchMyProfileScreen() {
                   accessibilityRole="button"
                   style={[styles.secondaryBtn, { borderColor: c.brand }]}
                 >
-                  <Text style={[styles.secondaryBtnText, { color: c.brand }]}>{t('profile.settings.ageCustomize')}</Text>
+                  <Text style={[styles.secondaryBtnText, { color: c.brandText }]}>{t('profile.settings.ageCustomize')}</Text>
                 </Pressable>
               </>
             ) : (

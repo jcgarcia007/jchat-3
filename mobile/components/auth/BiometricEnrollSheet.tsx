@@ -45,7 +45,7 @@ export default function BiometricEnrollSheet({
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: c.bgSurface }]}>
-          <View style={[styles.iconCircle, { backgroundColor: palette.brand }]}>
+          <View style={[styles.iconCircle, { backgroundColor: palette.brandFill }]}>
             <Icon size={32} color={palette.onBrand} strokeWidth={1.8} />
           </View>
 
@@ -57,7 +57,7 @@ export default function BiometricEnrollSheet({
           </Text>
 
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: palette.brand }]}
+            style={[styles.primaryBtn, { backgroundColor: palette.brandFill }]}
             onPress={onEnable}
             accessibilityRole="button"
             accessibilityLabel={t('biometricEnroll.enable')}

@@ -10,7 +10,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -184,7 +184,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
 
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {loading ? (
-              <ActivityIndicator color={c.brand} style={styles.loader} />
+              <Spinner color={c.brandText} style={styles.loader} />
             ) : categories.length === 0 ? (
               <Text style={[styles.empty, { color: c.textSecondary }]}>{t('gift.emptyMenu')}</Text>
             ) : (
@@ -249,9 +249,9 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             disabled={sending || count === 0}
             accessibilityRole="button"
             accessibilityLabel={sendLabel}
-            style={({ pressed }) => [styles.sendBtn, { backgroundColor: c.brand, opacity: sending || count === 0 ? 0.5 : pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.sendBtn, { backgroundColor: c.brandFill, opacity: sending || count === 0 ? 0.5 : pressed ? 0.85 : 1 }]}
           >
-            {sending ? <ActivityIndicator color={palette.onBrand} /> : <Text style={[styles.sendLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{sendLabel}</Text>}
+            {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.sendLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{sendLabel}</Text>}
           </Pressable>
           <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>
         </View>

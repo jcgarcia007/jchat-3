@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -120,7 +120,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
               <Pressable
                 accessibilityRole="button"
                 onPress={onClose}
-                style={[styles.primary, { backgroundColor: colors.brand }]}
+                style={[styles.primary, { backgroundColor: colors.brandFill }]}
               >
                 <Text style={[styles.primaryLabel, { color: palette.onBrand }]}>{t('actions.close')}</Text>
               </Pressable>
@@ -188,10 +188,10 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                 accessibilityRole="button"
                 disabled={!canSend}
                 onPress={() => { void send(); }}
-                style={[styles.primary, { backgroundColor: colors.brand, opacity: canSend ? 1 : 0.45 }]}
+                style={[styles.primary, { backgroundColor: colors.brandFill, opacity: canSend ? 1 : 0.45 }]}
               >
                 {phase === 'sending' ? (
-                  <ActivityIndicator color={palette.onBrand} />
+                  <Spinner color={palette.onBrand} />
                 ) : (
                   <Text style={[styles.primaryLabel, { color: palette.onBrand }]}>{t('report.send')}</Text>
                 )}

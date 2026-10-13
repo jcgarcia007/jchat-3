@@ -34,7 +34,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StatusBar,
@@ -42,6 +41,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -451,7 +451,7 @@ export default function PosCheckoutScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('workMode.pinCancel')}
           >
-            <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+            <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
           </Pressable>
           <View style={styles.headerTitles}>
             <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -475,7 +475,7 @@ export default function PosCheckoutScreen() {
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [
               styles.unavailableBack,
-              { backgroundColor: c.brand },
+              { backgroundColor: c.brandFill },
               pressed && { opacity: 0.8 },
             ]}
             accessibilityRole="button"
@@ -554,7 +554,7 @@ export default function PosCheckoutScreen() {
               ) : readerStatus === 'error' ? (
                 <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
               ) : (
-                <ActivityIndicator size="small" color={c.brand} />
+                <Spinner size="small" color={c.brandText} />
               )}
             </View>
             <Text
@@ -595,7 +595,7 @@ export default function PosCheckoutScreen() {
         {/* ── Tab total preview ── */}
         {tabLoading ? (
           <View style={styles.ordersLoading}>
-            <ActivityIndicator color={c.brand} />
+            <Spinner color={c.brandText} />
           </View>
         ) : !hasTab ? (
           <View style={[styles.emptyOrders, { borderColor: c.borderSubtle }]}>
@@ -649,7 +649,7 @@ export default function PosCheckoutScreen() {
                 <IconCheck size={20} color={palette.onBrand} strokeWidth={3} />
               </View>
             ) : (
-              <ActivityIndicator color={c.brand} style={{ marginRight: 10 }} />
+              <Spinner color={c.brandText} style={{ marginRight: 10 }} />
             )}
             <View>
               <Text
@@ -709,7 +709,7 @@ export default function PosCheckoutScreen() {
             disabled={!canCharge}
             style={({ pressed }) => [
               styles.chargeBtn,
-              { backgroundColor: canCharge ? c.brand : c.borderSubtle },
+              { backgroundColor: canCharge ? c.brandFill : c.borderSubtle },
               pressed && canCharge && { opacity: 0.82 },
             ]}
             accessibilityRole="button"
@@ -748,7 +748,7 @@ export default function PosCheckoutScreen() {
                   accessibilityLabel={isExternal ? t('pos.voucher.reprint') : t('pos.printBtn')}
                 >
                   {printStatus === 'printing' ? (
-                    <ActivityIndicator color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
+                    <Spinner color={palette.onBrand} size="small" style={{ marginRight: 8 }} />
                   ) : (
                     <IconPrinter size={20} color={palette.onBrand} strokeWidth={2} style={{ marginRight: 8 }} />
                   )}
@@ -818,7 +818,7 @@ export default function PosCheckoutScreen() {
               onPress={() => void handleExternalCharge('card_external', computedTipCents)}
               style={({ pressed }) => [
                 styles.extMethodBtn,
-                { backgroundColor: c.brand },
+                { backgroundColor: c.brandFill },
                 pressed && { opacity: 0.82 },
               ]}
               accessibilityRole="button"
@@ -867,7 +867,7 @@ export default function PosCheckoutScreen() {
               onPress={() => void handleStripeCharge(computedTipCents)}
               style={({ pressed }) => [
                 styles.tipConfirmBtn,
-                { backgroundColor: c.brand },
+                { backgroundColor: c.brandFill },
                 pressed && { opacity: 0.82 },
               ]}
               accessibilityRole="button"

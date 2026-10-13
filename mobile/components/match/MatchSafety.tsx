@@ -13,7 +13,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,6 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 
@@ -131,10 +131,10 @@ function PrimaryButton({
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
-      style={[styles.primaryBtn, { backgroundColor: c.brand, opacity: disabled || loading ? 0.5 : 1 }]}
+      style={[styles.primaryBtn, { backgroundColor: c.brandFill, opacity: disabled || loading ? 0.5 : 1 }]}
     >
       {loading ? (
-        <ActivityIndicator color={palette.onBrand} />
+        <Spinner color={palette.onBrand} />
       ) : (
         <Text style={[styles.primaryBtnText, { color: palette.onBrand }]}>{label}</Text>
       )}

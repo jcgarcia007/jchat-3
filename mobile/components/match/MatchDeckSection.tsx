@@ -9,7 +9,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
@@ -272,7 +273,7 @@ export function MatchDeckSection({
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.brand} />
+        <Spinner color={c.brandText} />
       </View>
     );
   }

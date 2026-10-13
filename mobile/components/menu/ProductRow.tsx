@@ -152,7 +152,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
             onPress={handleAdd}
             style={({ pressed }) => [
               styles.addButton,
-              { backgroundColor: palette.brand, opacity: pressed ? 0.75 : 1 },
+              { backgroundColor: palette.brandFill, opacity: pressed ? 0.75 : 1 },
               hasPhoto ? styles.addButtonPhoto : styles.addButtonCompact,
             ]}
             accessibilityRole="button"

@@ -8,7 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -207,7 +208,7 @@ export default function MatchActivityScreen() {
             </Text>
             <View style={styles.rowMeta}>
               {item.isSuper && (
-                <View style={[styles.superPill, { backgroundColor: c.brand }]}>
+                <View style={[styles.superPill, { backgroundColor: c.brandFill }]}>
                   <Text style={[styles.superPillText, { color: palette.onBrand }]}>{t('card.superLikedMe')}</Text>
                 </View>
               )}
@@ -236,7 +237,7 @@ export default function MatchActivityScreen() {
               accessibilityLabel={t('activity.openChatA11y', { name })}
               style={[styles.iconBtn, { opacity: item.conversationId ? 1 : 0.4 }]}
             >
-              <IconMessageCircle size={22} color={c.brand} />
+              <IconMessageCircle size={22} color={c.brandText} />
             </Pressable>
             <Pressable
               onPress={() => confirmDeleteMatch(item)}
@@ -290,7 +291,7 @@ export default function MatchActivityScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : (
         <FlatList

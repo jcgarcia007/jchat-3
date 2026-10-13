@@ -5,7 +5,8 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Spinner } from './Spinner';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -25,7 +26,7 @@ export function ReconnectingBanner({ visible, textColor, backgroundColor, border
       accessibilityLiveRegion="polite"
       style={[styles.banner, { backgroundColor, borderBottomColor: borderColor }]}
     >
-      <ActivityIndicator size="small" color={textColor} />
+      <Spinner size="small" color={textColor} />
       <Text style={[styles.text, { color: textColor }]}>{t('realtime.reconnecting')}</Text>
     </View>
   );

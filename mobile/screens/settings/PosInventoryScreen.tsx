@@ -23,7 +23,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +33,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -174,7 +174,7 @@ function AdjustSheet({ item, businessId, onDone, onClose }: AdjustSheetProps) {
               style={({ pressed }) => [
                 styles.modeChip,
                 {
-                  backgroundColor: mode === m ? c.brand : c.bgBase,
+                  backgroundColor: mode === m ? c.brandFill : c.bgBase,
                   borderColor: mode === m ? c.brand : c.borderSubtle,
                   opacity: pressed ? 0.8 : 1,
                 },
@@ -246,7 +246,7 @@ function AdjustSheet({ item, businessId, onDone, onClose }: AdjustSheetProps) {
           style={({ pressed }) => [
             styles.applyBtn,
             {
-              backgroundColor: c.brand,
+              backgroundColor: c.brandFill,
               opacity: applying || successStock !== null ? 0.6 : pressed ? 0.85 : 1,
             },
           ]}
@@ -539,7 +539,7 @@ export default function PosInventoryScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('scanner.close')}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
           {t('title')}
@@ -552,7 +552,7 @@ export default function PosInventoryScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('scanBtn')}
         >
-          <IconBarcode size={26} color={c.brand} strokeWidth={2} />
+          <IconBarcode size={26} color={c.brandText} strokeWidth={2} />
         </Pressable>
       </View>
 
@@ -595,13 +595,13 @@ export default function PosInventoryScreen() {
       {/* ── Body ────────────────────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : errorMsg ? (
         <View style={styles.center}>
           <Text style={[styles.errorBody, { color: c.danger }]}>{errorMsg}</Text>
           <Pressable onPress={() => void load()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={[styles.retryText, { color: c.brand }]}>{t('loadError')}</Text>
+            <Text style={[styles.retryText, { color: c.brandText }]}>{t('loadError')}</Text>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
@@ -634,7 +634,7 @@ export default function PosInventoryScreen() {
           onPress={() => setScannerOpen(true)}
           style={({ pressed }) => [
             styles.fab,
-            { backgroundColor: c.brand, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: c.brandFill, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel={t('scanBtn')}

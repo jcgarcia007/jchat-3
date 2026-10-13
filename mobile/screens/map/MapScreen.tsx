@@ -20,8 +20,8 @@ import {
   TouchableOpacity,
   Platform,
   AppState,
-  ActivityIndicator,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -311,7 +311,7 @@ export default function MapScreen() {
   if (region === null) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator size="large" color={palette.brand} />
+        <Spinner size="large" color={palette.brand} />
         <Text style={[styles.loadingText, { color: c.textSecondary }]}>{t('mapScreen.findingLocation')}</Text>
       </View>
     );

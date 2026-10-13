@@ -282,7 +282,7 @@ function makeStyles(c: ReturnType<typeof useThemeColors>) {
       borderColor: c.borderSubtle,
     },
     triggerButtonActive: {
-      backgroundColor: c.brand,
+      backgroundColor: c.brandFill,
       borderColor: c.brand,
     },
     triggerButtonCooldown: {

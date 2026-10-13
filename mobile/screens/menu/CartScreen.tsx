@@ -33,7 +33,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -44,6 +43,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -405,7 +405,7 @@ export default function CartScreen() {
             onPress={handleBrowseMenu}
             style={({ pressed }) => [
               styles.browseButton,
-              { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t('cart.browseMenuA11y')}
@@ -578,7 +578,7 @@ export default function CartScreen() {
                 <View style={[styles.userPickerList, { borderColor: c.borderSubtle }]}>
                   {roomUsersLoading ? (
                     <View style={styles.pickerLoading}>
-                      <ActivityIndicator size="small" color={palette.brand} />
+                      <Spinner size="small" color={palette.brand} />
                     </View>
                   ) : roomUsers.length === 0 ? (
                     <Text style={[styles.pickerEmpty, { color: c.textTertiary }]}>
@@ -680,7 +680,7 @@ export default function CartScreen() {
             style={({ pressed }) => [
               styles.checkoutButton,
               {
-                backgroundColor: canCheckout ? palette.brand : c.bgElevated,
+                backgroundColor: canCheckout ? palette.brandFill : c.bgElevated,
                 opacity: pressed ? 0.85 : 1,
               },
             ]}

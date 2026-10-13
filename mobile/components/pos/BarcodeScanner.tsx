@@ -102,7 +102,7 @@ export default function BarcodeScanner({
           onPress={() => void requestPermission()}
           style={({ pressed }) => [
             styles.permissionBtn,
-            { backgroundColor: c.brand, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: c.brandFill, opacity: pressed ? 0.8 : 1 },
           ]}
           accessibilityRole="button"
         >

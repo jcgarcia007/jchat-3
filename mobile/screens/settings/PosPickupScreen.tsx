@@ -20,7 +20,6 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   SectionList,
   StatusBar,
@@ -28,6 +27,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -261,7 +261,7 @@ export default function PosPickupScreen() {
                 accessibilityLabel={t('pos.pickupDelivered')}
               >
                 {isDelivering ? (
-                  <ActivityIndicator size="small" color={palette.onBrand} />
+                  <Spinner size="small" color={palette.onBrand} />
                 ) : (
                   <>
                     <IconCheck size={12} color={palette.onBrand} strokeWidth={2.5} />
@@ -318,7 +318,7 @@ export default function PosPickupScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('workMode.pinCancel')}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
 
         <View style={styles.headerCenter}>
@@ -348,7 +348,7 @@ export default function PosPickupScreen() {
           onPress={() => setShowOnlyReady(false)}
           style={[
             styles.filterBtn,
-            !showOnlyReady && { backgroundColor: c.brand + 'DD' },
+            !showOnlyReady && { backgroundColor: c.brandFill + 'DD' },
           ]}
           accessibilityRole="button"
           accessibilityState={{ selected: !showOnlyReady }}
@@ -386,7 +386,7 @@ export default function PosPickupScreen() {
       {/* ── Body ───────────────────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
           <Text style={[styles.centerText, { color: c.textTertiary }]}>
             {t('pos.pickupLoading')}
           </Text>

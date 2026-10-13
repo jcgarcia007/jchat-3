@@ -21,7 +21,7 @@ export default function CategoryChip({ active, label, onPress }: CategoryChipPro
       style={[
         styles.chip,
         {
-          backgroundColor: active ? colors.brand : colors.bgSurface,
+          backgroundColor: active ? colors.brandFill : colors.bgSurface,
           borderColor: active ? colors.brand : colors.borderSubtle,
         },
       ]}

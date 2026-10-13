@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconBuildingStore } from '@tabler/icons-react-native';
@@ -49,7 +49,7 @@ export default function NearbyScreen() {
   if (nearby.loading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.bgBase }]}>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <Spinner size="large" color={colors.brand} />
       </View>
     );
   }

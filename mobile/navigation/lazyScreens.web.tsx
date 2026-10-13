@@ -12,7 +12,8 @@
  */
 
 import React, { Suspense, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 
 import { palette } from '../theme/tokens';
@@ -22,7 +23,7 @@ function ScreenFallback(): React.ReactElement {
   const c = useThemeColors();
   return (
     <View style={[styles.center, { backgroundColor: c.bgBase }]} accessibilityRole="progressbar">
-      <ActivityIndicator color={c.brand} />
+      <Spinner color={c.brand} />
     </View>
   );
 }

@@ -14,7 +14,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from './common/Spinner';
 import { AppModal } from './common/AppModal';
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -240,7 +241,7 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
             ) : null}
             {status === 'loading' ? (
               <View style={styles.center} pointerEvents="none">
-                <ActivityIndicator color={palette.onImage} />
+                <Spinner color={palette.onImage} />
               </View>
             ) : null}
             {status === 'error' ? (

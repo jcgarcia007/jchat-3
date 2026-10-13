@@ -30,7 +30,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -39,6 +38,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -491,7 +491,7 @@ export default function MenuScreen() {
       {/* ── Loading state ── */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={palette.brand} />
+          <Spinner size="large" color={palette.brand} />
         </View>
       ) : (
         <ScrollView
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: palette.brand,
+    backgroundColor: palette.brandFill,
     borderRadius: 10,
     minWidth: 16,
     height: 16,

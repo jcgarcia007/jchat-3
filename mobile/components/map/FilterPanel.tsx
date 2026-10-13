@@ -259,7 +259,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
           style={({ pressed }) => [
             styles.advancedBtn,
             {
-              backgroundColor: active ? palette.brand : c.bgElevated,
+              backgroundColor: active ? palette.brandFill : c.bgElevated,
               opacity: pressed ? 0.75 : 1,
             },
           ]}
@@ -291,7 +291,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
               style={[
                 styles.chip,
                 {
-                  backgroundColor: isActive ? palette.brand : c.bgSurface,
+                  backgroundColor: isActive ? palette.brandFill : c.bgSurface,
                   borderColor: isActive ? palette.brand : c.borderSubtle,
                 },
               ]}
@@ -399,7 +399,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                       style={[
                         styles.segmentedBtn,
                         {
-                          backgroundColor: sel ? palette.brand : c.bgElevated,
+                          backgroundColor: sel ? palette.brandFill : c.bgElevated,
                           borderColor: sel ? palette.brand : c.borderSubtle,
                           opacity: hasLocation ? 1 : 0.4,
                         },
@@ -477,7 +477,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.footerApplyBtn, { backgroundColor: palette.brand }]}
+              style={[styles.footerApplyBtn, { backgroundColor: palette.brandFill }]}
               onPress={handleApply}
               accessibilityRole="button"
               accessibilityLabel={t('filterPanel.applyFiltersA11y')}

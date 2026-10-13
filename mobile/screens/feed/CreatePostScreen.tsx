@@ -26,10 +26,10 @@ import {
   ScrollView,
   Image,
   StyleSheet,
-  ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -267,7 +267,7 @@ export default function CreatePostScreen() {
           accessibilityLabel={t('create.postA11y')}
         >
           {posting ? (
-            <ActivityIndicator size="small" color={c.brand} />
+            <Spinner size="small" color={c.brandText} />
           ) : (
             <Text
               style={[
@@ -333,7 +333,7 @@ export default function CreatePostScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('create.galleryA11y')}
             >
-              <IconPhoto size={22} color={c.brand} strokeWidth={1.8} />
+              <IconPhoto size={22} color={c.brandText} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
                 {t('create.gallery')}
               </Text>
@@ -347,7 +347,7 @@ export default function CreatePostScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('create.cameraA11y')}
             >
-              <IconCamera size={22} color={c.brand} strokeWidth={1.8} />
+              <IconCamera size={22} color={c.brandText} strokeWidth={1.8} />
               <Text style={[styles.pickerLabel, { color: c.textSecondary }]}>
                 {t('create.camera')}
               </Text>

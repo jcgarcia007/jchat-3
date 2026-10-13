@@ -13,7 +13,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -524,7 +524,7 @@ export default function PrivacyScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator color={palette.brand} />
+        <Spinner color={palette.brand} />
       </View>
     );
   }
@@ -547,7 +547,7 @@ export default function PrivacyScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('back', { ns: 'common' })}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
           {t('main.privacySettings')}
@@ -580,7 +580,7 @@ export default function PrivacyScreen() {
 
       {saving && (
         <View style={styles.savingRow}>
-          <ActivityIndicator size="small" color={palette.brand} />
+          <Spinner size="small" color={palette.brand} />
           <Text style={[styles.savingText, { color: c.textTertiary }]}>{t('privacy.saving')}</Text>
         </View>
       )}

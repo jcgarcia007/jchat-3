@@ -15,7 +15,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
 import { IconAward, IconCoin, IconStar, IconX } from '@tabler/icons-react-native';
 
@@ -170,7 +170,7 @@ function RewardCard({
         style={[
           styles.redeemBtn,
           {
-            backgroundColor: canAfford && !redeeming ? palette.brand : c.bgOverlay,
+            backgroundColor: canAfford && !redeeming ? palette.brandFill : c.bgOverlay,
           },
         ]}
         accessibilityRole="button"
@@ -328,7 +328,7 @@ export default function LoyaltyScreen({ businessId }: Props) {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bgBase }]}>
-        <ActivityIndicator color={palette.brand} size="large" />
+        <Spinner color={palette.brand} size="large" />
       </View>
     );
   }

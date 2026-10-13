@@ -9,7 +9,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +19,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -117,7 +117,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
   if (!view) {
     return (
       <View style={[styles.card, styles.loading, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
-        <ActivityIndicator color={c.brand} />
+        <Spinner color={c.brandText} />
       </View>
     );
   }
@@ -148,7 +148,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
     <View style={[styles.card, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
       <View style={styles.top}>
         <View style={[styles.iconWrap, { backgroundColor: c.brandLight }]}>
-          <IconGift size={22} color={c.brand} strokeWidth={2} />
+          <IconGift size={22} color={c.brandText} strokeWidth={2} />
         </View>
         <Text style={[styles.headline, { color: c.textPrimary }]}>{headline}</Text>
       </View>
@@ -157,7 +157,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
       </Text>
 
       <Pressable onPress={() => setDetailsOpen(true)} accessibilityRole="button" style={styles.detailsBtn}>
-        <Text style={[styles.detailsLabel, { color: c.brand }]}>{t('giftCard.details')}</Text>
+        <Text style={[styles.detailsLabel, { color: c.brandText }]}>{t('giftCard.details')}</Text>
       </Pressable>
 
       {canRespond ? (
@@ -176,7 +176,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
             onPress={() => setAcceptOpen(true)}
             disabled={busy}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.actionBtn, { backgroundColor: c.brand, opacity: pressed || busy ? 0.7 : 1 }]}
+            style={({ pressed }) => [styles.actionBtn, { backgroundColor: c.brandFill, opacity: pressed || busy ? 0.7 : 1 }]}
           >
             <Text style={[styles.actionLabel, { color: palette.onBrand }]}>{t('giftCard.accept')}</Text>
           </Pressable>
@@ -332,9 +332,9 @@ function GiftAcceptSheet({
             onPress={() => void confirm()}
             disabled={sending || !table.trim()}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brand, opacity: sending || !table.trim() ? 0.5 : pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brandFill, opacity: sending || !table.trim() ? 0.5 : pressed ? 0.85 : 1 }]}
           >
-            {sending ? <ActivityIndicator color={palette.onBrand} /> : <Text style={[styles.confirmLabel, { color: palette.onBrand }]}>{t('giftCard.confirmAccept')}</Text>}
+            {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.confirmLabel, { color: palette.onBrand }]}>{t('giftCard.confirmAccept')}</Text>}
           </Pressable>
         </ScrollView>
 </View>

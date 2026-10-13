@@ -32,7 +32,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   Animated,
   FlatList,
   Pressable,
@@ -41,6 +40,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import {
   IconChevronDown,
@@ -572,7 +572,7 @@ export function PinnedBanner({
             style={s.unpinBtn}
           >
             {isUnpinning ? (
-              <ActivityIndicator size="small" color={c.textSecondary} />
+              <Spinner size="small" color={c.textSecondary} />
             ) : (
               <IconX size={14} color={c.textSecondary} />
             )}

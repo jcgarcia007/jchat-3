@@ -38,7 +38,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,6 +45,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import {
   IconAlertTriangle,
@@ -228,7 +228,7 @@ function ActionRow({ icon, label, onPress, destructive = false, loading = false,
         {label}
       </Text>
       {loading && (
-        <ActivityIndicator
+        <Spinner
           size="small"
           color={destructive ? palette.danger : c.brand}
           style={s.spinner}
@@ -470,7 +470,7 @@ export function UserActionSheet({
             </Text>
             {isModOrOwner && (
               <View style={s.roleBadge}>
-                <IconShield size={11} color={c.brand} />
+                <IconShield size={11} color={c.brandText} />
                 <Text style={s.roleBadgeText}>
                   {viewerRole === 'owner' ? t('userAction.ownerView') : t('userAction.moderatorView')}
                 </Text>
@@ -692,7 +692,7 @@ function makeStyles(c: ThemeColors) {
       gap: 4,
     },
     roleBadgeText: {
-      color: c.brand,
+      color: c.brandText,
       fontSize: 11,
       fontWeight: '600',
     },

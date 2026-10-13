@@ -65,7 +65,7 @@ export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCard
         accessibilityRole="button"
         activeOpacity={0.8}
         onPress={() => onEnter(item)}
-        style={[styles.enterButton, { backgroundColor: colors.brand }]}
+        style={[styles.enterButton, { backgroundColor: colors.brandFill }]}
       >
         <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>{translation.t('enter')}</Text>
       </TouchableOpacity>

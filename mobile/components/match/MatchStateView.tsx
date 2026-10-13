@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../common/Spinner';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -47,11 +48,11 @@ export function MatchStateView({ title, message, primary, secondary, link, child
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.primary,
-            { backgroundColor: c.brand, opacity: pressed || primary.loading ? 0.8 : 1 },
+            { backgroundColor: c.brandFill, opacity: pressed || primary.loading ? 0.8 : 1 },
           ]}
         >
           {primary.loading ? (
-            <ActivityIndicator color={palette.onBrand} />
+            <Spinner color={palette.onBrand} />
           ) : (
             <>
               {primary.icon}
@@ -67,7 +68,7 @@ export function MatchStateView({ title, message, primary, secondary, link, child
           style={({ pressed }) => [styles.secondary, { borderColor: c.brand, opacity: pressed ? 0.8 : 1 }]}
         >
           {secondary.icon}
-          <Text style={[styles.secondaryText, { color: c.brand }]}>{secondary.label}</Text>
+          <Text style={[styles.secondaryText, { color: c.brandText }]}>{secondary.label}</Text>
         </Pressable>
       ) : null}
       {link ? (
@@ -76,7 +77,7 @@ export function MatchStateView({ title, message, primary, secondary, link, child
           accessibilityRole="link"
           style={({ pressed }) => [styles.link, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <Text style={[styles.linkText, { color: c.brand }]}>{link.label}</Text>
+          <Text style={[styles.linkText, { color: c.brandText }]}>{link.label}</Text>
         </Pressable>
       ) : null}
     </View>

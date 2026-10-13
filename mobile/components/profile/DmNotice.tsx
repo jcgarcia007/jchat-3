@@ -39,7 +39,7 @@ export function DmNotice({ notice, extraTop = 0, onOpen, onDismiss }: Props): Re
       accessibilityLiveRegion="polite"
       style={({ pressed }) => [styles.box, { top: insets.top + 6 + extraTop, backgroundColor: c.bgSurface, borderColor: c.borderSubtle, opacity: pressed ? 0.85 : 1 }]}
     >
-      <IconMessageCircle size={20} color={c.brand} />
+      <IconMessageCircle size={20} color={c.brandText} />
       <Text numberOfLines={1} style={[styles.text, { color: c.textPrimary }]}>
         <Text style={styles.name}>{notice.name}</Text>
         {notice.text ? `  ${notice.text}` : ''}

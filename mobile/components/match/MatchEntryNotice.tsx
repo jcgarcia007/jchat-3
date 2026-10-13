@@ -115,7 +115,7 @@ export function MatchEntryNotice({
       <View style={styles.points}>
         {points.map(({ key, Icon }) => (
           <View key={key} style={styles.pointRow}>
-            <Icon size={20} color={c.brand} />
+            <Icon size={20} color={c.brandText} />
             <View style={styles.pointTexts}>
               <Text style={[styles.pointTitle, { color: c.textPrimary }]}>{t(`entry.points.${key}.title`)}</Text>
               <Text style={[styles.pointText, { color: c.textSecondary }]}>{t(`entry.points.${key}.body`)}</Text>
@@ -156,7 +156,7 @@ export function MatchEntryNotice({
           accessibilityState={{ expanded: guideOpen }}
           style={styles.guideToggle}
         >
-          <Text style={[styles.guideToggleText, { color: c.brand }]}>
+          <Text style={[styles.guideToggleText, { color: c.brandText }]}>
             {guideOpen ? t('entry.hideGuide') : t('entry.seeGuide')}
           </Text>
         </Pressable>
@@ -190,7 +190,7 @@ export function MatchEntryNotice({
       <Text style={[styles.legal, { color: c.textSecondary }]}>
         {t('entry.legalPrefix')}{' '}
         <Text
-          style={{ color: c.brand, textDecorationLine: 'underline' }}
+          style={{ color: c.brandText, textDecorationLine: 'underline' }}
           accessibilityRole="link"
           onPress={() => void Linking.openURL(TERMS_URL)}
         >
@@ -198,7 +198,7 @@ export function MatchEntryNotice({
         </Text>{' '}
         {t('entry.legalAnd')}{' '}
         <Text
-          style={{ color: c.brand, textDecorationLine: 'underline' }}
+          style={{ color: c.brandText, textDecorationLine: 'underline' }}
           accessibilityRole="link"
           onPress={() => void Linking.openURL(PRIVACY_URL)}
         >

@@ -62,7 +62,7 @@ export function MatchCard({ card, photoUrl, interestNames, maxChips = 4 }: Match
       />
 
       {card.super_liked_me && (
-        <View style={[styles.superBadge, { backgroundColor: c.brand }]}>
+        <View style={[styles.superBadge, { backgroundColor: c.brandFill }]}>
           <Text style={[styles.superBadgeText, { color: palette.onBrand }]}>{t('card.superLikedMe')}</Text>
         </View>
       )}
@@ -73,7 +73,7 @@ export function MatchCard({ card, photoUrl, interestNames, maxChips = 4 }: Match
             {name}
           </Text>
           {card.is_verified && (
-            <IconRosetteDiscountCheckFilled size={20} color={c.brand} accessibilityLabel={t('card.verified')} />
+            <IconRosetteDiscountCheckFilled size={20} color={c.brandText} accessibilityLabel={t('card.verified')} />
           )}
         </View>
         {card.username && card.display_name?.trim() ? (
@@ -91,7 +91,7 @@ export function MatchCard({ card, photoUrl, interestNames, maxChips = 4 }: Match
                   style={[
                     styles.chip,
                     isCommon
-                      ? { backgroundColor: c.brand }
+                      ? { backgroundColor: c.brandFill }
                       : { backgroundColor: palette.scrimMedium, borderColor: palette.onImageFaint, borderWidth: 1 },
                   ]}
                 >

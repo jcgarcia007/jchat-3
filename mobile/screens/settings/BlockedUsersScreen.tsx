@@ -8,7 +8,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -17,6 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -106,9 +106,9 @@ export default function BlockedUsersScreen() {
           accessibilityLabel={t('blockedUsers.unblockA11y', { name: nameOf(item) })}
         >
           {busyId === item.id ? (
-            <ActivityIndicator size="small" color={c.brand} />
+            <Spinner size="small" color={c.brandText} />
           ) : (
-            <Text style={[styles.unblockLabel, { color: c.brand }]}>{t('blockedUsers.unblock')}</Text>
+            <Text style={[styles.unblockLabel, { color: c.brandText }]}>{t('blockedUsers.unblock')}</Text>
           )}
         </Pressable>
       </View>
@@ -131,14 +131,14 @@ export default function BlockedUsersScreen() {
           accessibilityRole="button"
           accessibilityLabel={tc('back')}
         >
-          <IconChevronLeft size={24} color={c.brand} strokeWidth={2} />
+          <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('blockedUsers.title')}</Text>
       </View>
 
       {loading && users.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator color={c.brand} />
+          <Spinner color={c.brandText} />
         </View>
       ) : failed ? (
         <View style={styles.center}>
@@ -148,7 +148,7 @@ export default function BlockedUsersScreen() {
             style={[styles.retry, { borderColor: c.brand }]}
             accessibilityRole="button"
           >
-            <Text style={[styles.retryLabel, { color: c.brand }]}>{tc('actions.retry')}</Text>
+            <Text style={[styles.retryLabel, { color: c.brandText }]}>{tc('actions.retry')}</Text>
           </Pressable>
         </View>
       ) : (

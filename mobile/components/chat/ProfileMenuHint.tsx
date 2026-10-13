@@ -108,7 +108,7 @@ export function ProfileMenuHint({ visible, anchorRef, onDismiss }: Props): React
                 testID="profile-menu-hint-ok"
                 onPress={onDismiss}
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.ok, { backgroundColor: palette.brand, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.ok, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
               >
                 <Text style={[styles.okLabel, { color: palette.onBrand }]}>{t('profileHint.ok')}</Text>
               </Pressable>

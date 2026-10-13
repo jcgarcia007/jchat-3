@@ -209,7 +209,7 @@ export default function EventDetailScreen({
               onPress={() => onJoinChat(event.room_id!)}
               style={[
                 styles.joinButton,
-                { backgroundColor: palette.brand },
+                { backgroundColor: palette.brandFill },
               ]}
               activeOpacity={0.8}
             >

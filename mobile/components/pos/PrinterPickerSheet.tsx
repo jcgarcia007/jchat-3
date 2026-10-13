@@ -25,13 +25,13 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '../common/Spinner';
 import { AppModal } from '../common/AppModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -241,7 +241,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
       <>
         {loading && (
           <View style={s.spinnerOverlay} pointerEvents="none">
-            <ActivityIndicator color={colors.brand} />
+            <Spinner color={colors.brand} />
           </View>
         )}
 

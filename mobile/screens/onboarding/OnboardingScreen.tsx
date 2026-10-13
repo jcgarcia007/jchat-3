@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   },
 
   ctaButtonSolid: {
-    backgroundColor: palette.brand,
+    backgroundColor: palette.brandFill,
     // Soft brand glow
     shadowColor: palette.brand,
     shadowOffset: { width: 0, height: 4 },

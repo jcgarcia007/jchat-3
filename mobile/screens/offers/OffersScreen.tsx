@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -9,6 +8,7 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -261,14 +261,14 @@ export default function OffersScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.brand} size="large" />
+          <Spinner color={colors.brand} size="large" />
         </View>
       ) : (
         <FlatList
           contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList]}
           data={items}
           keyExtractor={itemKey}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.brand} style={styles.footer} /> : null}
+          ListFooterComponent={loadingMore ? <Spinner color={colors.brand} style={styles.footer} /> : null}
           onEndReached={() => { void loadMore(); }}
           onEndReachedThreshold={0.5}
           renderItem={renderItem}

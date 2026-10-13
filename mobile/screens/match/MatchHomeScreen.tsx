@@ -10,7 +10,8 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -131,7 +132,7 @@ export default function MatchHomeScreen() {
       <View style={styles.body}>
         {checking && (
           <View style={styles.block}>
-            <ActivityIndicator color={c.brand} />
+            <Spinner color={c.brandText} />
           </View>
         )}
 

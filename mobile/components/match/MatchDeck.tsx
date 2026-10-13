@@ -113,7 +113,7 @@ function Stamps() {
         <Text style={[styles.stampText, { color: c.danger }]}>{t('deck.nope')}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampSuper, { borderColor: c.brand }, superStyle]}>
-        <Text style={[styles.stampText, { color: c.brand }]}>{t('deck.superLike')}</Text>
+        <Text style={[styles.stampText, { color: c.brandText }]}>{t('deck.superLike')}</Text>
       </Animated.View>
     </View>
   );
@@ -176,7 +176,7 @@ function Controls({
         () => swipeUp(),
         !canSwipe || superLeft <= 0,
         c.brand,
-        <IconStarFilled size={24} color={c.brand} />,
+        <IconStarFilled size={24} color={c.brandText} />,
         String(superLeft),
       )}
       {button(t('deck.likeButton'), () => swipeRight(), !canSwipe, c.success, <IconHeartFilled size={26} color={c.success} />)}
