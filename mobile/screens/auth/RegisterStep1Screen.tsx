@@ -477,7 +477,7 @@ export default function RegisterStep1Screen() {
               accessibilityLabel={t('register.login')}
               hitSlop={8}
             >
-              <Text style={[styles.loginLink, { color: palette.brand }]}>
+              <Text style={[styles.loginLink, { color: c.brandText }]}>
                 {t('register.login')}
               </Text>
             </TouchableOpacity>

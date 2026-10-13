@@ -281,9 +281,9 @@ export default function UserQuickCard({
                   icon={<IconBell size={18} color={c.textPrimary} strokeWidth={1.8} />}
                   onPress={() => onOpenFull(targetUserId, targetName)} />
               )}
-              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.report')} testID="quick-card-report"
+              <Cell borderColor={c.borderSubtle} labelColor={c.dangerText} label={t('quickCard.report')} testID="quick-card-report"
                 icon={<IconFlag size={18} color={c.dangerText} strokeWidth={1.8} />} onPress={handleReport} />
-              <Cell borderColor={c.borderSubtle} labelColor={c.danger} label={t('quickCard.block')} testID="quick-card-block" last
+              <Cell borderColor={c.borderSubtle} labelColor={c.dangerText} label={t('quickCard.block')} testID="quick-card-block" last
                 icon={<IconBan size={18} color={c.dangerText} strokeWidth={1.8} />} onPress={handleBlock} />
             </View>
           </Pressable>
