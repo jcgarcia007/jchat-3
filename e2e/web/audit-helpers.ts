@@ -455,6 +455,9 @@ export async function withAccountLock<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } finally {
+    // Let Supabase Realtime drop this walk's presence before the next one joins with the same account key (without
+    // the pause the next walk logs "[presence] … CHANNEL_ERROR" even when the walks never overlap).
+    await new Promise((r) => setTimeout(r, 20_000));
     rmSync(dir, { recursive: true, force: true });
   }
 }
