@@ -55,12 +55,11 @@ interface SwitchRowProps {
 function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
   const c = useThemeColors();
   return (
+    // ONE control per row: the Switch (role switch, label, hint, checked). The row only widens the tap target for
+    // sighted users (accessible={false}: it is not a second control for screen readers / axe — no nested controls).
     <Pressable
       onPress={() => !disabled && onChange(!value)}
-      accessibilityRole="switch"
-      accessibilityLabel={label}
-      accessibilityHint={hint}
-      accessibilityState={{ checked: value, disabled: !!disabled }}
+      accessible={false}
       style={[styles.switchRow, { opacity: disabled ? 0.5 : 1 }]}
     >
       <View style={styles.switchTexts}>
@@ -72,7 +71,8 @@ function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
         disabled={disabled}
         onValueChange={onChange}
         trackColor={{ false: c.borderSubtle, true: c.brand }}
-        accessible={false}
+        accessibilityLabel={label}
+        accessibilityHint={hint}
       />
     </Pressable>
   );

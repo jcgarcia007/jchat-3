@@ -25,6 +25,7 @@
 import React, { useCallback, useRef } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -289,7 +290,9 @@ export function ChatTopBar({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={topBarStyles.avatarsContent}
           style={[topBarStyles.avatarsScroll, { borderBottomColor: theme.border }]}
-          accessibilityRole="list"
+          // Web: a ScrollView renders <ul><div>…</div></ul> (no <li>), which fails aria-required-children, so the
+          // row is a labelled group there; iOS / Android keep the list role.
+          {...(Platform.OS === 'web' ? ({ role: 'group' } as object) : { accessibilityRole: 'list' as const })}
           accessibilityLabel={t('topBar.peopleList')}
         >
           {usersInRoom.map((u) => (

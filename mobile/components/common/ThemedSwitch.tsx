@@ -12,7 +12,12 @@ import { Platform, Switch, type SwitchProps } from 'react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 
-export function ThemedSwitch({ trackColor, thumbColor, ios_backgroundColor, ...rest }: SwitchProps): React.ReactElement {
+export function ThemedSwitch({ trackColor, thumbColor, ios_backgroundColor, ...props }: SwitchProps): React.ReactElement {
+  // react-native-web draws the switch as <div wrapper><input role="switch" aria-label/></div> and copies the generic
+  // accessibility props onto the WRAPPER too: a second, unnamed "switch" (axe: nested-interactive / empty button).
+  // The input already carries role + label + checked, so the wrapper only keeps layout props.
+  const { accessibilityRole: _role, accessibilityState: _state, accessibilityHint: _hint, ...webRest } = props;
+  const rest = Platform.OS === 'web' ? webRest : props;
   const c = useThemeColors();
   const off = trackColor?.false ?? c.borderSubtle;
   const on = trackColor?.true ?? c.brand;
