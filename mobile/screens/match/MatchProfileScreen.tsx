@@ -157,7 +157,7 @@ export default function MatchProfileScreen() {
             {photos[0] && urls[photos[0]] ? (
               <Pressable
                 onPress={() => setLightbox(urls[photos[0]])}
-                accessibilityRole="imagebutton"
+                accessibilityRole="button"
                 accessibilityLabel={t('profileView.photoA11y', { name })}
                 style={[styles.mainPhoto, { borderColor: card.super_liked_me ? c.brand : c.borderSubtle }]}
               >
@@ -172,7 +172,7 @@ export default function MatchProfileScreen() {
                     <Pressable
                       key={path}
                       onPress={() => setLightbox(urls[path])}
-                      accessibilityRole="imagebutton"
+                      accessibilityRole="button"
                       accessibilityLabel={t('profileView.photoA11y', { name })}
                       style={styles.thumb}
                     >

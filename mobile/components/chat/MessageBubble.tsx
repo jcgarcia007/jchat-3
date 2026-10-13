@@ -168,14 +168,14 @@ function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, displa
           ) : message.media_url ? (
             <Pressable
               onPress={() => onImagePress?.(message.media_url!)}
-              accessibilityRole="imagebutton"
+              accessibilityRole="button" // 'imagebutton' has no ARIA role on web (the label became a role-less div)
               accessibilityLabel={t('bubble.openPhotoA11y')}
             >
               <Image
                 source={{ uri: message.media_url }}
                 style={styles.photoImage}
                 resizeMode="cover"
-                accessibilityLabel={t('bubble.photoA11y')}
+                alt={t('bubble.photoA11y')}
               />
             </Pressable>
           ) : (

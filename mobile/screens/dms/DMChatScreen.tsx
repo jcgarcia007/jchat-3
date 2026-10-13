@@ -212,7 +212,7 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
               onPress={() => { if (message.media_url) onOpenPhoto?.(message.media_url); }}
               onLongPress={onLongPress}
               delayLongPress={350}
-              accessibilityRole={canOpenPhoto ? 'imagebutton' : undefined}
+              accessibilityRole={canOpenPhoto ? 'button' : undefined}
               accessibilityLabel={canOpenPhoto ? t('dmChat.openPhotoA11y') : undefined}
             >
               <Image
