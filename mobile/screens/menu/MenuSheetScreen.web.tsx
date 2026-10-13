@@ -31,7 +31,9 @@ import { useIncomingDmNotice, type IncomingDmNotice } from '../../hooks/useIncom
 import { emitMenuOrderSent } from '../../services/menuEvents';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { getEntryTableToken } from '../../services/venueTable';
 import { parseMenuSheetMessage } from '../../utils/menuSheetMessage';
+import { buildTableContextMessage } from '../../utils/menuTableMessage';
 
 const LOAD_TIMEOUT_MS = 15_000;
 
@@ -58,7 +60,16 @@ export default function MenuSheetScreen(): React.ReactElement {
   // The menu reports an order: close the sheet and let the chat say "Pedido enviado".
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (parseMenuSheetMessage({ origin: event.origin, data: event.data }, MENU_FRAME_ORIGIN) !== 'order_placed') return;
+      const kind = parseMenuSheetMessage({ origin: event.origin, data: event.data }, MENU_FRAME_ORIGIN);
+      if (kind === 'ready') {
+        // The framed menu is listening: tell it which table this person entered by (if any). The target origin is the
+        // menu's own; the token comes from memory (services/venueTable) and is never put in a URL or logged.
+        const message = buildTableContextMessage(getEntryTableToken(venue.session?.roomId), venue.session?.tableLabel);
+        const target = event.source as Window | null;
+        if (message && target && typeof target.postMessage === 'function') target.postMessage(message, MENU_FRAME_ORIGIN);
+        return;
+      }
+      if (kind !== 'order_placed') return;
       if (closingRef.current) return;
       closingRef.current = true;
       emitMenuOrderSent();
@@ -66,7 +77,7 @@ export default function MenuSheetScreen(): React.ReactElement {
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [navigation]);
+  }, [navigation, venue.session?.roomId, venue.session?.tableLabel]);
 
   // A frame that never finishes loading (blocked, offline, wrong headers) must not spin forever.
   useEffect(() => {

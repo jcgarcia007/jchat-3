@@ -81,3 +81,41 @@ test('order_placed from the framed menu closes the sheet and shows "Pedido envia
   await expect(page.getByTestId('menu-order-sent')).toContainText(/Pedido enviado/);
   await expect(page.getByTestId('chat-more-button')).toBeVisible();
 });
+
+test('the framed menu says "ready" and accepts a table context only from its parent with a valid shape (nothing is ordered)', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  const MENU_ORIGIN = new URL(process.env.E2E_MENU_BASE_URL as string).origin;
+  await page.addInitScript(() => {
+    (window as unknown as { __menuMsgs: unknown[] }).__menuMsgs = [];
+    window.addEventListener('message', (e) => (window as unknown as { __menuMsgs: unknown[] }).__menuMsgs.push({ origin: e.origin, data: e.data }));
+  });
+  await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
+  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
+  await expect(page.frameLocator('iframe').locator('body')).not.toBeEmpty({ timeout: 25_000 });
+
+  // 1. The menu announces itself to the parent: exactly {type, event}, from the menu's own origin.
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __menuMsgs: { data: { event?: string } }[] }).__menuMsgs.some((m) => m.data?.event === 'ready'))).toBe(true);
+  const ready = await page.evaluate(() => (window as unknown as { __menuMsgs: { origin: string; data: unknown }[] }).__menuMsgs.find((m) => (m.data as { event?: string })?.event === 'ready'));
+  expect(ready).toEqual({ origin: MENU_ORIGIN, data: { type: 'jchat:menu', event: 'ready' } });
+
+  const frame = page.frames().find((f) => f.url().startsWith(MENU_ORIGIN) && f.url().includes('/m/'))!;
+  const stored = () => frame.evaluate(() => sessionStorage.getItem('jchat.tableContext'));
+  const send = (data: unknown) => page.evaluate(([d, origin]) => document.querySelector('iframe')!.contentWindow!.postMessage(d, origin as string), [data, MENU_ORIGIN] as const);
+
+  // 2. Malformed contexts are ignored (bad token, extra keys, other event).
+  await send({ type: 'jchat:menu', event: 'context', table: { token: 'https://evil.example/x', label: 'T8' } });
+  await send({ type: 'jchat:menu', event: 'context', table: { token: 'test-venue-table-1a2b3c4d', label: 'T8' }, extra: 1 });
+  await send({ type: 'jchat:menu', event: 'order_placed' });
+  await page.waitForTimeout(600);
+  expect(await stored()).toBeNull();
+
+  // 3. A valid one from the parent is kept (this frame's own sessionStorage), with a synthetic token — never a real one.
+  await send({ type: 'jchat:menu', event: 'context', table: { token: 'test-venue-table-1a2b3c4d', label: 'T8' } });
+  await expect.poll(stored).toContain('"tableLabel":"T8"');
+
+  // 4. The token is in no URL: not the page's, not the frame's.
+  expect(page.url()).not.toContain('table');
+  expect(frame.url()).not.toContain('test-venue-table');
+});

@@ -8,6 +8,7 @@
  * Auth comes from AuthContext (useAuth); screens consume it directly.
  */
 
+import { setEntryTableToken } from '../services/venueTable';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -300,6 +301,9 @@ function EntryBridge({ active }: { active: boolean }) {
           showAlert(t('entry.invalidTitle'), t('entry.invalidBody'));
           return;
         }
+        // The table QR token stays in memory (never a route param: those can reach the browser URL); the web menu
+        // sheet hands it to the framed menu by postMessage.
+        setEntryTableToken(entry.roomId, entry.tableQrToken);
         openVenueChat(entry.roomId, entry.tableLabel ?? undefined);
       } catch {
         const again = await confirm(t('entry.networkTitle'), t('entry.networkBody'), {

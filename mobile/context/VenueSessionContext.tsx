@@ -30,6 +30,7 @@ import { getMatchActivity } from '../services/matchDeck';
 import { matchLeaveVenue } from '../services/match';
 import { showAlert } from '../utils/dialog';
 import { shouldCountUnread } from '../utils/venueUnread';
+import { clearEntryTableToken } from '../services/venueTable';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 /** Back from the background after this long: the server presence has lapsed → check again or end. */
@@ -103,6 +104,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   // ── Ending ───────────────────────────────────────────────────────────────────
 
   const endSession = useCallback((reason: VenueEndReason) => {
+    clearEntryTableToken(); // the table QR token only lives as long as the venue session
     const current = sessionRef.current;
     if (!current) return;
     sessionRef.current = null;
