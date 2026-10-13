@@ -94,28 +94,31 @@ export function CheckoutStep({
   onVenueError?: (code: string) => void;
   onBack: () => void;
   onDone: () => void;
-  /** Called once when the payment succeeded and the order is placed (the embedded menu reports it to its parent). */
-  onOrderPlaced?: () => void;
+  /**
+   * Called once when the payment succeeded and the order is placed (the embedded menu reports it to its parent).
+   * `trackingCode` is the guest tracking code of this order (guest-pay), which the framing app uses to claim it.
+   */
+  onOrderPlaced?: (info?: { trackingCode?: string | null }) => void;
 }) {
   const t = useTranslations("checkout");
   const tv = useTranslations("venue");
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("checking");
   const [paidStatus, setPaidStatus] = useState<PaidStatus>("succeeded");
+  // Guest orders only: unguessable code from guest-pay → /o/<code> (follow the order without an account).
+  const [trackingCode, setTrackingCode] = useState<string | null>(null);
   // The order is placed once the payment succeeded: let the embedding page know (once).
   const orderPlacedRef = useRef(false);
   useEffect(() => {
     if (phase === "success" && !orderPlacedRef.current) {
       orderPlacedRef.current = true;
-      onOrderPlaced?.();
+      onOrderPlaced?.({ trackingCode });
     }
-  }, [phase, onOrderPlaced]);
+  }, [phase, onOrderPlaced, trackingCode]);
   const [error, setError] = useState<string>("");
   // Golden rule refusal (outside_venue / pickup_disabled): shown as such, never as a failed payment.
   const [venueRefused, setVenueRefused] = useState(false);
   const [intent, setIntent] = useState<IntentResult | null>(null);
-  // Guest orders only: unguessable code from guest-pay → /o/<code> (follow the order without an account).
-  const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   // Name the order is served under — from the pickup screen (presetName). May be
   // empty (optional). Used only for the on-screen receipt.

@@ -11,6 +11,7 @@ import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { resolveParentOrigin } from "@/lib/embedOrigins";
+import { buildOrderPlacedMessage, type OrderPlacedInfo } from "@/lib/embedOrderMessage";
 import { parseTableContextMessage, readyMessage } from "@/lib/embedTableContext";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
@@ -1652,12 +1653,14 @@ export default function MenuPageClient({
   // Embedded in the app's menu sheet: tell the PARENT when an order was placed (added to the tab, paid, or a QR payment
   // receipt). The target origin is the page that really embeds us (ancestorOrigins / referrer) and must be on the
   // allow-list (lib/embedOrigins.ts) — never '*'. The ordering and payment flow itself is untouched.
-  const notifyOrderPlaced = useCallback(() => {
+  // For a guest card payment the message also carries the order's tracking code (and the order id when known) so the
+  // app can claim the order for its signed-in user (RPC claim_embedded_order). Never logged; same validated parent only.
+  const notifyOrderPlaced = useCallback((info?: OrderPlacedInfo) => {
     if (!isEmbed || typeof window === "undefined" || window.parent === window) return;
     const ancestors = Array.from(window.location.ancestorOrigins ?? []);
     const parentOrigin = resolveParentOrigin([...ancestors, document.referrer], process.env.NODE_ENV === "production");
     if (!parentOrigin) return;
-    window.parent.postMessage({ type: "jchat:menu", event: "order_placed" }, parentOrigin);
+    window.parent.postMessage(buildOrderPlacedMessage(info), parentOrigin);
   }, [isEmbed]);
   useEffect(() => {
     if (step === "tabConfirm" || step === "tabReceipt") notifyOrderPlaced();
