@@ -488,7 +488,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Progress dots — both filled ─────────────────────────────── */}
-          <View style={styles.dotsRow} accessibilityLabel={t('register.step2Indicator')}>
+          <View style={styles.dotsRow} accessible accessibilityRole="image" accessibilityLabel={t('register.step2Indicator')}>
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
           </View>

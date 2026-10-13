@@ -1029,6 +1029,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     marginLeft: 4,
+    flexShrink: 0, // the badge keeps its width; the label wraps by words instead of being squeezed mid-word on narrow phones
   },
   lockedBadgeText: {
     fontSize: 11,

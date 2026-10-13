@@ -41,7 +41,7 @@ export function LanguagePill() {
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={[styles.option, active && styles.optionActive]}
             accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
+            accessibilityState={{ checked: active }}
             accessibilityLabel={t(option.a11yKey)}
           >
             <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>

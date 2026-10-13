@@ -390,7 +390,7 @@ export function CreateOfferSheet({
                     key={opt.value}
                     onPress={() => setOfferType(opt.value)}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
+                    accessibilityState={{ checked: active }}
                     accessibilityLabel={t(opt.labelKey)}
                     style={({ pressed }) => [
                       s.typeCell,
@@ -476,7 +476,7 @@ export function CreateOfferSheet({
                     key={opt.label}
                     onPress={() => setDurationIdx(idx)}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
+                    accessibilityState={{ checked: active }}
                     style={({ pressed }) => [
                       s.chip,
                       active && s.chipActive,

@@ -198,7 +198,7 @@ function ReportSheet({
                 key={r}
                 onPress={() => setReason(r)}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: active }}
+                accessibilityState={{ checked: active }}
                 style={[
                   styles.reasonRow,
                   { borderColor: active ? c.brand : c.borderSubtle, backgroundColor: c.bgElevated },

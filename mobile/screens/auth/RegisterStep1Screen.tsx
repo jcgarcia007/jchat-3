@@ -238,7 +238,7 @@ export default function RegisterStep1Screen() {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Progress dots ──────────────────────────────────────────── */}
-          <View style={styles.dotsRow} accessibilityLabel={t('register.step1Indicator')}>
+          <View style={styles.dotsRow} accessible accessibilityRole="image" accessibilityLabel={t('register.step1Indicator')}>
             <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
             <View style={[styles.dot, { backgroundColor: c.borderSubtle }]} />
           </View>

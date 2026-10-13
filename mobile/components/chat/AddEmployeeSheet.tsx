@@ -228,7 +228,7 @@ export function AddEmployeeSheet({
                       setErrorMsg(null);
                     }}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
+                    accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={roleLabel(role)}
                     style={({ pressed }) => [
                       s.roleRow,

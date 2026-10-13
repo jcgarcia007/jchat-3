@@ -380,7 +380,7 @@ export function PinMessageSheet({
                 },
               ]}
               accessibilityRole="radio"
-              accessibilityState={{ selected: notify }}
+              accessibilityState={{ checked: notify }}
             >
               <IconBell size={16} color={notify ? theme.accent : c.textSecondary} />
               <Text
@@ -403,7 +403,7 @@ export function PinMessageSheet({
                 },
               ]}
               accessibilityRole="radio"
-              accessibilityState={{ selected: !notify }}
+              accessibilityState={{ checked: !notify }}
             >
               <IconBellOff
                 size={16}
