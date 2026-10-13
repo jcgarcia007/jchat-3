@@ -11,6 +11,7 @@ import { MenuPaletteContext } from "./templates/shared/paletteContext";
 import { IconShoppingCart } from "@tabler/icons-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { resolveParentOrigin } from "@/lib/embedOrigins";
+import { parseTableContextMessage, readyMessage } from "@/lib/embedTableContext";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
 import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
@@ -1661,6 +1662,38 @@ export default function MenuPageClient({
   useEffect(() => {
     if (step === "tabConfirm" || step === "tabReceipt") notifyOrderPlaced();
   }, [step, notifyOrderPlaced]);
+
+  // Embedded in the app's sheet: the app tells us which table the person entered by (see lib/embedTableContext.ts).
+  // We say "ready" to the validated parent, and accept a `context` reply only from window.parent on an allowed origin
+  // with the exact shape. The token is kept in memory + this frame's own sessionStorage (as the QR flow does) and is
+  // never logged or put in a URL. Which table is real is still decided by the server when the order is placed.
+  const [embedTableCtx, setEmbedTableCtx] = useState<{ token: string; tableLabel: string } | null>(null);
+  useEffect(() => {
+    if (!isEmbed || typeof window === "undefined" || window.parent === window) return undefined;
+    const ancestors = Array.from(window.location.ancestorOrigins ?? []);
+    const parentOrigin = resolveParentOrigin([...ancestors, document.referrer], process.env.NODE_ENV === "production");
+    if (!parentOrigin) return undefined;
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent || event.origin !== parentOrigin) return;
+      const ctx = parseTableContextMessage(event.data);
+      if (!ctx) return;
+      setEmbedTableCtx({ token: ctx.token, tableLabel: ctx.label });
+      try {
+        sessionStorage.setItem(TABLE_CONTEXT_KEY, JSON.stringify({ token: ctx.token, tableLabel: ctx.label, businessSlug: business.slug }));
+      } catch {
+        // storage can be blocked in a third-party frame: the in-memory context still works
+      }
+    };
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(readyMessage(), parentOrigin);
+    return () => window.removeEventListener("message", onMessage);
+  }, [isEmbed, business.slug]);
+  useEffect(() => {
+    if (!embedTableCtx) return;
+    setTableCtx(embedTableCtx);
+    setPickupType("table");
+    setPickupTable(embedTableCtx.tableLabel);
+  }, [embedTableCtx]);
   const [pickupType, setPickupType] = useState<PickupType>("counter");
   const [pickupTable, setPickupTable] = useState("");
   const [pickupName, setPickupName] = useState("");

@@ -82,6 +82,10 @@ const buildSecurityHeaders = (embeddable: boolean) => [
 ];
 
 const nextConfig: NextConfig = {
+  // Dev server only (ignored by `next build` / production): lets the menu be framed by a LOCAL Expo web build on
+  // 127.0.0.1 and still hydrate. Without it Next blocks its dev resources (HMR) for a cross-origin parent and the framed
+  // page stays server-rendered only.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async headers() {
     return [
       // Everything EXCEPT the public menu: no framing at all (DENY + frame-ancestors 'none').

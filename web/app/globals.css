@@ -50,3 +50,11 @@ body {
 .spin {
   animation: spin 0.7s linear infinite;
 }
+
+/* iOS Safari zooms the whole page when a text field under 16px gets focus and leaves it zoomed. Every field is at least
+   16px (none of the app's fields is larger, so nothing shrinks); unlayered, so it wins over the Tailwind text-* utilities. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
